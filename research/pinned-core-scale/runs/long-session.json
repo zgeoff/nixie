@@ -1,0 +1,632 @@
+{
+  "profile": {
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "cacheTTL": "5m"
+  },
+  "startedAt": "2026-10-22T23:33:35.903Z",
+  "hoursBetweenTurns": 3,
+  "core": {
+    "items": 41,
+    "tokens": 1970,
+    "budget": 2000
+  },
+  "turns": [
+    {
+      "step": 0,
+      "sentAt": "2026-10-22T23:33:35.906Z",
+      "change": null,
+      "message": "Morning! Bram's popping round later. What's the guest wifi password, and who's Biscuit's vet again?",
+      "reply": "Morning, though it's only 01:33, so maybe go back to sleep first!\n\n- Guest wifi: **heron-42**\n- Biscuit's vet: **Dr. Amara Osei at Larkfield Vets**",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": false
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "cffb6c86-660b-4652-9105-773fc4f6866e",
+        "messageID": "a2be1d41-7926-49c4-995b-b3244d95f774"
+      },
+      "usage": {
+        "inputTokens": 2,
+        "outputTokens": 132,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 4512
+      },
+      "costUSD": 0.025208,
+      "error": null
+    },
+    {
+      "step": 1,
+      "sentAt": "2026-10-23T02:33:35.930Z",
+      "change": null,
+      "message": "Writing Edda a postcard tonight. Which city do I address it to?",
+      "reply": "Ghent, that's where Edda lives.",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": false
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "13dcf0e1-a489-4cc5-a945-d9ef961e577b",
+        "messageID": "c49a4cfe-1fe6-4e77-8887-b84faa35a232"
+      },
+      "usage": {
+        "inputTokens": 2,
+        "outputTokens": 16,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 4738
+      },
+      "costUSD": 0.024018,
+      "error": null
+    },
+    {
+      "step": 2,
+      "sentAt": "2026-10-23T05:33:35.920Z",
+      "change": "sister",
+      "message": "I'm ordering Edda a plant from a florist. Which city should they deliver to?",
+      "reply": "Rotterdam. My memory now says Edda has moved there. That also means the postcard should go to Rotterdam, not Ghent as I told you earlier. Do you have her new street address?",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": true
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "11f6f7d1-998e-4636-ba9c-62e96011951a",
+        "messageID": "ffe649fd-a878-4de1-b07a-8e96a7840504"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 144,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 5045
+      },
+      "costUSD": 0.028121,
+      "error": null
+    },
+    {
+      "step": 3,
+      "sentAt": "2026-10-23T08:33:35.946Z",
+      "change": null,
+      "message": "What could I cook tonight? Keep what I eat in mind.",
+      "reply": "Some pescatarian ideas:\n\n- **Salmon traybake** with potatoes, leeks and a lemon-dill yoghurt\n- **Prawn and chorizo-free paella**, with peppers, peas and smoked paprika for the smoky bit\n- **Kibbeling-style fish tacos** with crunchy slaw and lime\n- **Mushroom and spinach risotto**, if you'd rather skip fish tonight\n\nI'd go for the salmon traybake: one tray, little washing up, good for a Friday.",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "eccb45ba-887f-4c72-a2f0-70241a7cb5ec",
+        "messageID": "8bfd12c7-6414-419d-a8fe-ea74ee856dc1"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 203,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 5240
+      },
+      "costUSD": 0.030276,
+      "error": null
+    },
+    {
+      "step": 4,
+      "sentAt": "2026-10-23T11:33:35.937Z",
+      "change": null,
+      "message": "When do the bins go out this week?",
+      "reply": "This week's already been and gone: they went out Wednesday evening for Thursday's collection. Next time is **Wednesday 28 October**, in the evening, for collection on Thursday 29 October.",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "fba27ec0-ba42-40e6-ac4d-1405fe514ef0",
+        "messageID": "bd94324b-63bc-4436-9fa0-69b349ab98e5"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 168,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 5484
+      },
+      "costUSD": 0.030796,
+      "error": null
+    },
+    {
+      "step": 5,
+      "sentAt": "2026-10-23T14:33:35.916Z",
+      "change": null,
+      "message": "Remind me which evening choir is.",
+      "reply": "Monday evenings. Next one is Monday 26 October.",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "67cee215-7a2b-4dd8-89b7-b5bc95079634",
+        "messageID": "7dfdb7ee-cfb0-46ec-be2d-fa77f36f0917"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 21,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 5694
+      },
+      "costUSD": 0.028906,
+      "error": null
+    },
+    {
+      "step": 6,
+      "sentAt": "2026-10-23T17:33:35.908Z",
+      "change": null,
+      "message": "Biscuit's sneezing a bit. Who should I ring?",
+      "reply": "Dr. Amara Osei at Larkfield Vets. It's Friday evening, so they may be closed now. Their voicemail or website should give an out-of-hours number. I don't have their phone number saved.\n\nA bit of sneezing is often minor. Ring sooner if Biscuit stops eating, has trouble breathing, seems lethargic, or has thick or bloody discharge. At eleven, it's worth not waiting too long.",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": false
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "8433e109-e2e4-4993-a7f2-d11f61b37e51",
+        "messageID": "3fd65ae4-5ea7-4b67-bcd0-4252f0cb11c8"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 214,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 5767
+      },
+      "costUSD": 0.033131,
+      "error": null
+    },
+    {
+      "step": 7,
+      "sentAt": "2026-10-23T20:33:35.918Z",
+      "change": null,
+      "message": "Plan me a Saturday with my run and some time at the allotment.",
+      "reply": "Saturday 24 October:\n\n- **08:30** 5 km along the Vecht\n- **09:30** Shower and a proper breakfast\n- **10:30** Cycle to plot 23 at Kromme Rijn. Late October is a good time to clear spent plants, mulch, and plant garlic if you haven't yet.\n- **13:00** Lunch, packed or at home. No skipping it!\n- **14:00** A last hour at the plot, or home if the weather turns\n- **Afternoon** Free. Any coffee before 15:00, rooibos later.\n\nKeep an eye on Biscuit's sneezing through the day too.",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "b2d8f858-ef93-4e04-a7d3-54a27b9e4d7f",
+        "messageID": "fc225560-3052-4995-ac9a-bd540fc1400f"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 290,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 6033
+      },
+      "costUSD": 0.035981,
+      "error": null
+    },
+    {
+      "step": 8,
+      "sentAt": "2026-10-23T23:33:35.942Z",
+      "change": null,
+      "message": "Edda's birthday parcel is wrapped. Which city does it go to again?",
+      "reply": "Rotterdam. She's moved there from Ghent.",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": true
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "58122be1-cd22-46be-9e5d-2c97d192f887",
+        "messageID": "b2d2860a-ba20-4605-9e9e-73762ce566b4"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 20,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 6379
+      },
+      "costUSD": 0.032311,
+      "error": null
+    },
+    {
+      "step": 9,
+      "sentAt": "2026-10-24T02:33:35.925Z",
+      "change": null,
+      "message": "Any ideas for Juniper's birthday present?",
+      "reply": "Her birthday is 14 November, three weeks away. She likes old jazz records, so:\n\n- **A classic jazz LP** she doesn't have yet, such as Ella Fitzgerald, Billie Holiday or a Blue Note reissue\n- **A digging trip together** to a record shop in Utrecht, with her choosing and you paying\n- **Something for her setup:** a record cleaning kit, a good stylus, or a nice storage crate\n- **Tickets to a live jazz night**, such as one at TivoliVredenburg\n\nMy pick: one carefully chosen record plus the shop trip. You'd need to check her shelf first so you don't double up.",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "b2d9e748-5616-43bc-bcbd-7929173e996c",
+        "messageID": "15c0d8ca-756e-4c01-af74-927398da72db"
+      },
+      "usage": {
+        "inputTokens": 2,
+        "outputTokens": 240,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 6488
+      },
+      "costUSD": 0.037248,
+      "error": null
+    },
+    {
+      "step": 10,
+      "sentAt": "2026-11-02T16:15:55.042Z",
+      "change": null,
+      "message": "The pet insurance form wants the vet's name. What do I write?",
+      "reply": "**Dr. Amara Osei, Larkfield Vets.** If the form asks for the practice's address or phone number, I don't have those saved, so check a recent invoice or their website.\n\nHow's Biscuit's sneezing, by the way?",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": false
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "e9b94bde-2fd3-4f0a-a589-a86b226a11f3",
+        "messageID": "f348f615-ec83-4fb3-8b17-9e65b3dbeb54"
+      },
+      "usage": {
+        "inputTokens": 2,
+        "outputTokens": 138,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 6819
+      },
+      "costUSD": 0.036863,
+      "error": null
+    },
+    {
+      "step": 11,
+      "sentAt": "2026-11-02T16:16:11.619Z",
+      "change": null,
+      "message": "It's drizzling. Worth taking the train home today?",
+      "reply": "I'd take the train. Your rear brake is dodgy, wet roads make that worse, and you've got choir tonight, so arriving dry helps.\n\nOne snag: my note says you take the **07:40** train home when it rains, which can't be right for an evening trip. Maybe the note-taker misheard 17:40? If that's your usual train, it's 24 minutes from now. Tell me the right time and I'll fix the note.\n\nAlso, your bike would stay in Houten overnight.",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "908d2ca2-e848-4294-bd16-9da590abc034",
+        "messageID": "566da085-05f1-43e1-aaf2-2ffd12cbbd36"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 357,
+        "cacheReadTokens": 6819,
+        "cacheWriteTokens": 184
+      },
+      "costUSD": 0.0094398,
+      "error": null
+    },
+    {
+      "step": 12,
+      "sentAt": "2026-11-02T16:16:19.568Z",
+      "change": "wifi",
+      "message": "Bram's coming over to look at the router. Which guest wifi password should he use?",
+      "reply": "**kestrel-17.** That's the new one. heron-42, which I gave you before, is out of date.",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": true
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "b23bc851-b794-434c-b13a-edac4ee1cfb1",
+        "messageID": "67a45efc-c5cd-4dfb-87cd-787366ad425a"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 66,
+        "cacheReadTokens": 7003,
+        "cacheWriteTokens": 647
+      },
+      "costUSD": 0.0059716000000000005,
+      "error": null
+    },
+    {
+      "step": 13,
+      "sentAt": "2026-11-02T16:16:24.964Z",
+      "change": null,
+      "message": "Any thoughts on a game for board game night?",
+      "reply": "Board game night is this Friday, 6 November. A few ideas, depending on the crowd:\n\n- **Cascadia**: calm and pretty, about 45 min, works for 1 to 4 players\n- **Codenames**: great for bigger groups and lots of chat\n- **Wingspan**: a step up in depth, lovely for nature-minded people\n- **The Crew**: a cooperative trick-taker, quick and clever\n\nMy pick is Cascadia, since it's easy to teach and suits a relaxed Friday. If you're expecting six or more, go with Codenames. How many are coming?",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "3a8d548b-00b3-4a9c-9605-4a57b8c03cb6",
+        "messageID": "085787c9-65b4-4230-a13c-047520f0001e"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 259,
+        "cacheReadTokens": 7650,
+        "cacheWriteTokens": 111
+      },
+      "costUSD": 0.007281,
+      "error": null
+    },
+    {
+      "step": 14,
+      "sentAt": "2026-11-02T16:16:30.830Z",
+      "change": null,
+      "message": "Biscuit's check-up form asks for the vet. Whose name goes on it?",
+      "reply": "**Dr. Amara Osei, Larkfield Vets.** If the sneezing is still around, mention it at the check-up.",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": false
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "44966e93-7e5a-4215-ab00-49698057353c",
+        "messageID": "1bd53276-6995-4b6a-a94c-0ee563706733"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 43,
+        "cacheReadTokens": 7761,
+        "cacheWriteTokens": 316
+      },
+      "costUSD": 0.0040082,
+      "error": null
+    },
+    {
+      "step": 15,
+      "sentAt": "2026-11-02T16:16:33.477Z",
+      "change": null,
+      "message": "Should I call Mum today or tomorrow?",
+      "reply": "Neither, really. Ilse prefers Sunday afternoon calls, so the natural slot is **Sunday 8 November**.\n\nIf it can't wait, call tomorrow. Tonight's choir, so today is tight anyway.",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "dcc7e81f-a31c-42ca-bf89-02da012dbf72",
+        "messageID": "24bf4d29-09f5-4e17-989c-e95a14b184b3"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 161,
+        "cacheReadTokens": 8077,
+        "cacheWriteTokens": 89
+      },
+      "costUSD": 0.0052964,
+      "error": null
+    },
+    {
+      "step": 16,
+      "sentAt": "2026-11-02T16:16:38.550Z",
+      "change": null,
+      "message": "Updating my contacts: what's Edda's city, and what's the guest wifi password?",
+      "reply": "- Edda: **Rotterdam**\n- Guest wifi: **kestrel-17**",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": false
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "cdc30505-62c7-435e-8add-58d4cbbec944",
+        "messageID": "03ce8dd0-8f9c-4531-bd96-c1233b34ec06"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 48,
+        "cacheReadTokens": 8166,
+        "cacheWriteTokens": 219
+      },
+      "costUSD": 0.0037042,
+      "error": null
+    },
+    {
+      "step": 17,
+      "sentAt": "2026-11-02T16:16:42.606Z",
+      "change": null,
+      "message": "What should I read once I finish the Earthsea books?",
+      "reply": "A few that would follow on well:\n\n- **The Left Hand of Darkness** by Le Guin, if you want more of her, just with a cold planet instead of wizards\n- **The Riddle-Master trilogy** by Patricia McKillip: quiet, strange, and full of the same old-language magic\n- **Piranesi** by Susanna Clarke: short, luminous, and set in a house full of tides, which suits a hydrologist\n- **A Psalm for the Wild-Built** by Becky Chambers: gentle and hopeful, and a good palate cleanser\n\nMy pick is Piranesi. It has the same calm, wondering feel as Earthsea, and the water will make you smile.",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "181c9fe9-aba9-4d37-994d-426a6e2fba5d",
+        "messageID": "508cd3ea-7f4b-4eb0-998a-104ae7d0c773"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 356,
+        "cacheReadTokens": 8385,
+        "cacheWriteTokens": 95
+      },
+      "costUSD": 0.009288,
+      "error": null
+    },
+    {
+      "step": 18,
+      "sentAt": "2026-11-02T16:16:48.851Z",
+      "change": "allergy",
+      "message": "The dentist's new-patient form asks about medicine allergies. What do I put?",
+      "reply": "**Penicillin.** That's the only medicine allergy I have on record. If you know what the reaction was, such as a rash or swelling, add that too, since dentists sometimes prescribe antibiotics. If there's anything else you react to, put it down as well. I only know what you've told me.",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": false
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "e2ec6064-a2dd-4968-91e5-921c6b003a41",
+        "messageID": "9d9aaf6b-aab1-465e-bbe4-9086351c5514"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 191,
+        "cacheReadTokens": 8480,
+        "cacheWriteTokens": 658
+      },
+      "costUSD": 0.008822,
+      "error": null
+    },
+    {
+      "step": 19,
+      "sentAt": "2026-11-02T16:16:53.667Z",
+      "change": null,
+      "message": "Plan a dinner for Juniper and me tonight.",
+      "reply": "Tonight's choir, so dinner needs to be quick. A plan:\n\n- **Starter-free, one-pan main:** cod or hake with cherry tomatoes, olives and capers, roasted for 15 minutes, with couscous on the side\n- **Something green:** spinach wilted with garlic, or a quick rocket salad\n- **Pudding:** dark chocolate and clementines, no cooking needed\n\nYou can make it in about 30 minutes, so eat at around 18:30 and still get to rehearsal. If Juniper's cooking or you're running late, flip it into a late supper after choir instead.",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "45e64373-468d-4ffb-8d85-0628971d1d05",
+        "messageID": "5027338b-9e90-4f55-8553-175800bb7a9c"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 289,
+        "cacheReadTokens": 9138,
+        "cacheWriteTokens": 240
+      },
+      "costUSD": 0.008823600000000001,
+      "error": null
+    },
+    {
+      "step": 20,
+      "sentAt": "2026-11-02T16:16:59.384Z",
+      "change": null,
+      "message": "My GP wants a list of my medicine allergies. What do I tell them?",
+      "reply": "**Penicillin**, plus the reaction you had if you remember it. That's the only one I know of. Since you only found out recently, Dr. Aalders may want to note how it was diagnosed or suggest an allergy test to confirm it.",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": false
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "03a3e764-5d4c-40dd-bd6a-79c4af7f6bb9",
+        "messageID": "8b906562-9bd9-4565-89af-1255a340f880"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 130,
+        "cacheReadTokens": 9378,
+        "cacheWriteTokens": 343
+      },
+      "costUSD": 0.0062066000000000005,
+      "error": null
+    },
+    {
+      "step": 21,
+      "sentAt": "2026-11-02T16:17:03.954Z",
+      "change": null,
+      "message": "A friend's visiting tonight. What's the guest wifi password?",
+      "reply": "**kestrel-17.**",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": false
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "93f17cc7-984c-43dc-bc99-0749a2b4582e",
+        "messageID": "d90cb304-d651-426d-802f-b48ef2c2ba04"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 11,
+        "cacheReadTokens": 9721,
+        "cacheWriteTokens": 182
+      },
+      "costUSD": 0.0030902,
+      "error": null
+    },
+    {
+      "step": 22,
+      "sentAt": "2026-11-02T16:17:06.178Z",
+      "change": null,
+      "message": "What should we do this weekend if it stays dry?",
+      "reply": "If it stays dry (I can't check the forecast, so look nearer the time), here are some ideas for 7 and 8 November:\n\n- **Saturday:** your Vecht run, then an afternoon at plot 23 to tidy up and get garlic in\n- **A walk on the Utrechtse Heuvelrug**: autumn colours, mushrooms, and a pub lunch\n- **A day trip by train to a Museumkaart museum**, such as the Kröller-Müller with its sculpture garden and Hoge Veluwe walks\n- **Sunday afternoon:** your call with Mum\n\nMy pick: Kröller-Müller on Saturday after the run. You'd get art, a walk, and good practice for the Eifel in May. Bring lunch or plan a stop there.",
+      "grade": null,
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "4c97b5cb-0ff2-42e2-a910-04500bc81e05",
+        "messageID": "8587a6a5-c709-42ad-97b9-9ec40466c24c"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 326,
+        "cacheReadTokens": 9903,
+        "cacheWriteTokens": 57
+      },
+      "costUSD": 0.0088016,
+      "error": null
+    },
+    {
+      "step": 23,
+      "sentAt": "2026-11-02T16:17:11.766Z",
+      "change": null,
+      "message": "Edda asked if I will visit soon. Roughly how long is the train from Utrecht to where she lives?",
+      "reply": "About **40 minutes** from Utrecht Centraal to Rotterdam Centraal on the intercity, with several trains an hour. That's from memory, so check the NS app for exact times.\n\nMuch easier than Ghent was!",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": true
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "3cf59560-d1cc-4a6c-8cf2-c4c0c5d021a1",
+        "messageID": "8980c147-df26-4730-8e2f-f6590398af50"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 134,
+        "cacheReadTokens": 9960,
+        "cacheWriteTokens": 391
+      },
+      "costUSD": 0.006643,
+      "error": null
+    },
+    {
+      "step": 24,
+      "sentAt": "2026-11-02T16:17:16.745Z",
+      "change": "vet",
+      "message": "Biscuit needs her booster jab. Who do I book it with?",
+      "reply": "**Dr. Tobias Hale at Millbrook Vets**, since you've switched Biscuit there. Earlier today I put Dr. Osei at Larkfield on the pet insurance and check-up forms. If those haven't gone off yet, change them to Dr. Hale. If they have, it's worth letting the insurer know.",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": true
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "a5d57777-a036-452b-8b15-107c54253e94",
+        "messageID": "239bbd54-50fa-4584-981e-605cdf481ab4"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 168,
+        "cacheReadTokens": 10351,
+        "cacheWriteTokens": 442
+      },
+      "costUSD": 0.007656200000000001,
+      "error": null
+    },
+    {
+      "step": 25,
+      "sentAt": "2026-11-02T16:17:21.189Z",
+      "change": null,
+      "message": "Last check before I fill in the cat-sitter's sheet: Biscuit's vet, the guest wifi password, my medicine allergies, and Edda's city?",
+      "reply": "- Biscuit's vet: **Dr. Tobias Hale, Millbrook Vets**\n- Guest wifi: **kestrel-17**\n- Your medicine allergies: **penicillin**\n- Edda's city: **Rotterdam**",
+      "grade": {
+        "hasCurrent": true,
+        "hasStale": false
+      },
+      "attempts": 1,
+      "boundary": {
+        "sessionID": "95aeda56-7d51-48e6-abd1-5cb90acf2bfd",
+        "messageID": "837ab1da-e8bb-47f9-8355-0ab5291276b0"
+      },
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 125,
+        "cacheReadTokens": 10793,
+        "cacheWriteTokens": 251
+      },
+      "costUSD": 0.0059296,
+      "error": null
+    }
+  ],
+  "failures": [],
+  "gaps": [
+    {
+      "from": "2026-10-23T06:15:41.819Z",
+      "seconds": 194
+    },
+    {
+      "from": "2026-10-23T10:11:47.094Z",
+      "seconds": 271
+    },
+    {
+      "from": "2026-10-23T21:52:44.631Z",
+      "seconds": 351
+    },
+    {
+      "from": "2026-10-24T03:24:45.717Z",
+      "seconds": 580
+    },
+    {
+      "from": "2026-10-24T03:45:25.601Z",
+      "seconds": 822569
+    }
+  ],
+  "spentUSD": 0.44382099999999997,
+  "finishedAt": "2026-11-02T16:17:25.526Z"
+}

@@ -6,13 +6,15 @@ in a session that runs for days. The
 tested the note with one item in a short session. [Memory in context](../../docs/architecture/memory/context.md#the-pinned-core)
 describes the change note this spike tests. With 41 pinned items at 1,970 of the 2,000-token budget,
 the conversation's model followed the note in all 5 trials, on the turn that carried it and on the
-turns after it.
+turns after it. In one session open for 10 days, it followed all 4 notes on every later turn, and
+followed the first note 10 days and 23 turns after it, so the run gives no reason to send the core
+again in a long session.
 
 ## Questions
 
-1. Does the model follow a change note when the pinned core is full? The answer tells whether the
+1. Does the model follow a change note when the pinned core is full? The answer shows whether the
    change note design holds at the core's budget.
-2. Does it still follow one in a session that runs for days? The answer tells whether a long session
+2. Does it still follow one in a session that runs for days? The answer shows whether a long session
    needs the core sent again in place of a change note.
 
 ## Versions
@@ -102,8 +104,46 @@ allergy that memory does not hold.
 On the note's turn, the note and the model's longer reply added 503 to 821 tokens of cache writes.
 The 20 turns needed no retry and came to $0.19 at list prices.
 
+### A session that runs for days
+
+The model followed every change note on every later turn of the session. The run file is
+[`runs/long-session.json`](runs/long-session.json).
+
+The host slept 5 times during the run, and the script recorded each gap. 4 lasted 3 to 10 minutes
+and fell inside the 3 hours between turns. The fifth lasted 9.5 days, from 24 October 03:45 UTC to
+2 November 16:15 UTC. The script then ran each overdue turn at once, so the session's 26 turns fell
+in 2 runs:
+
+| Turns    | When                           | Spacing           | Changes               |
+| -------- | ------------------------------ | ----------------- | --------------------- |
+| 0 to 9   | 22 October 23:33 to 24 October | 3 hours           | sister's city         |
+| 10 to 25 | 2 November 16:15 to 16:17 UTC  | 2 to 17 s         | wifi, allergy and vet |
+
+Each message carries its time in its stamp, so the model saw the 9.5-day jump. The table lists each
+graded turn after a change:
+
+| Change        | Asked again with no note                | Longest gap after its note | Answered with the current value |
+| ------------- | --------------------------------------- | -------------------------- | ------------------------------- |
+| sister's city | 4 turns: 8, 16, 23, 25                  | 10 days, 23 turns          | 5 of 5                          |
+| wifi          | 3 turns: 16, 21, 25                     | 13 turns, 62 s             | 4 of 4                          |
+| allergy       | 2 turns: 20, 25                         | 7 turns, 32 s              | 3 of 3                          |
+| vet           | 1 turn: 25                              | 1 turn, 4 s                | 2 of 2                          |
+
+Each count in the last column includes the note's own turn. The model named the old vet on 4 turns
+before the vet changed, and on the note's turn it gave the new vet and told Rowan to correct the 2
+forms where it had put the old one. On turn 23 it answered "about 40 minutes from Utrecht Centraal to
+Rotterdam Centraal" and added "Much easier than Ghent was!", a reply that names the old city beside
+the new one.
+
+The context grew
+from 4,512 tokens on the first turn to 11,044 on the last. The 26 turns needed no retry and came to
+$0.44 at list prices, so the spike's 2 runs came to $0.63.
+
 ## Untested
 
+- Days between a later note and the turns after it. The 9.5-day sleep put the wifi, allergy and vet
+  notes and every turn after them within 2 minutes, so only the sister's note was followed days
+  after it came.
 - The production tool list. With memory tools, the model could recall an item to check a note.
 - A session that compacts after a core change.
 - A core change while a turn is in flight.
