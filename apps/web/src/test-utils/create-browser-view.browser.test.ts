@@ -29,9 +29,9 @@ test.skipIf(browserSkip.isSkipped)(
   async () => {
     const ctx = await setupTest();
 
-    // Each query string loads the module afresh and closeAll stops its Chrome, as a test file's
-    // start and end do. A Chrome started before the last one exits closes its pipe at once, and an
-    // exiting Chrome still writes to its folders, so the script waits for each exit.
+    // Each query string loads the module afresh, and closeAll stops its Chrome. A Chrome started
+    // before the last one exits closes its pipe at once, and an exiting Chrome still writes to its
+    // folders, so the script waits for each exit.
     const modulePath = JSON.stringify(join(import.meta.dir, 'create-browser-view.ts'));
 
     const script = `const first = await import(${modulePath} + '?first');

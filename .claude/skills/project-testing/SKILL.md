@@ -68,7 +68,8 @@ Before you write, run or debug a `*.browser.test.ts` suite, read
 
 Five lanes run suites that need a real system the parallel run cannot host. `bun run test` leaves
 each one out of the parallel run, and the browser, Agent SDK and e2e lanes' scripts run their files
-one at a time. The imp and model API lanes run outside CI, as [Runs](#runs) gives.
+one at a time, in one test process. The imp and model API lanes run outside CI, as [Runs](#runs)
+gives.
 
 | Lane      | Files                 | Real system                                                   | Script           | Limit per test     |
 | --------- | --------------------- | ------------------------------------------------------------- | ---------------- | ------------------ |
@@ -90,7 +91,8 @@ utils.
 
 ## Preloads
 
-The unit run leaves isolation off because a fresh global object for each file costs time and memory.
+Every test script passes `--no-isolate`, because a fresh global object for each file costs time and
+memory, and isolation hides a leak between files.
 
 A preload's body runs once for each worker. Under `--parallel=N --no-isolate` with N of 2 or more,
 Bun runs a preload's `beforeAll` and `afterAll` around each file, and otherwise once for the run. So

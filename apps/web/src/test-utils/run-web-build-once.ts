@@ -7,14 +7,26 @@ import { removeExitedProcessDirs } from './remove-exited-process-dirs';
 
 const builds: { web?: Promise<string> } = {};
 
-// The browser lane builds the client once before its test processes start, and a build in each
-// of them would run once per file.
+// The browser lane builds the client before its test process starts, so the build's memory never
+// sits beside Chrome's.
 export function runWebBuildOnce(): Promise<string> {
   const browserRun = findBrowserRun(process.env);
 
-  builds.web ??= browserRun === null ? runBuild() : Promise.resolve(browserRun.webServerPath);
+  builds.web ??=
+    browserRun === null ? runBuildOrForget() : Promise.resolve(browserRun.webServerPath);
 
   return builds.web;
+}
+
+// The lanes run every file in one process, and a test that times out stops the build it started,
+// so a failed build is dropped and the next caller builds again.
+async function runBuildOrForget(): Promise<string> {
+  try {
+    return await runBuild();
+  } catch (error) {
+    delete builds.web;
+    throw error;
+  }
 }
 
 const webDir = join(import.meta.dir, '..', '..');
