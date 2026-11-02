@@ -11,12 +11,18 @@ import { readBackupJobBundle } from './test-utils/read-backup-job-bundle';
 async function setupTest() {
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-backup-cli-'));
 
-  onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
+  // Bun runs onTestFinished callbacks in the order they register, so a stack, which unwinds in
+  // reverse, stops each job's process group and waits for it before the data folder goes
+  const cleanup = new AsyncDisposableStack();
+
+  onTestFinished(() => cleanup.disposeAsync());
+
+  cleanup.defer(() => rm(dataDir, { recursive: true, force: true }));
 
   const restic = await createStubRestic(dataDir);
   const bundle = await readBackupJobBundle();
 
-  return { dataDir, restic, bundle };
+  return { dataDir, restic, bundle, cleanup };
 }
 
 test('it publishes the staged sets once and exits 0 for run', async () => {
@@ -43,8 +49,10 @@ test('it publishes the staged sets once and exits 0 for run', async () => {
     stderr: 'inherit',
   });
 
-  onTestFinished(() => {
+  ctx.cleanup.defer(async () => {
     stopProcesses([child.pid]);
+
+    await child.exited;
   });
 
   const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
@@ -83,8 +91,10 @@ test('it exits 1 and logs the failed set when restic fails to prune for run', as
     stderr: 'inherit',
   });
 
-  onTestFinished(() => {
+  ctx.cleanup.defer(async () => {
     stopProcesses([child.pid]);
+
+    await child.exited;
   });
 
   const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
@@ -109,7 +119,7 @@ test('it exits 0 and logs the held lock when another pass holds staging for run'
 
   invariant(lock);
 
-  onTestFinished(() => {
+  ctx.cleanup.defer(() => {
     lock.release();
   });
 
@@ -127,8 +137,10 @@ test('it exits 0 and logs the held lock when another pass holds staging for run'
     stderr: 'inherit',
   });
 
-  onTestFinished(() => {
+  ctx.cleanup.defer(async () => {
     stopProcesses([child.pid]);
+
+    await child.exited;
   });
 
   const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
@@ -152,8 +164,10 @@ test('it exits 1 and names the variable when the job has no key repo', async () 
     stderr: 'inherit',
   });
 
-  onTestFinished(() => {
+  ctx.cleanup.defer(async () => {
     stopProcesses([child.pid]);
+
+    await child.exited;
   });
 
   const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
