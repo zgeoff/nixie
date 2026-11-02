@@ -41,8 +41,10 @@ of the nixie image.
 
 The job runs on a schedule of its own: a CronJob on Kubernetes, and a container that loops in the
 Compose project. Each job run on Kubernetes publishes what nixie staged since the last one and
-exits, so a backup credential sits in a running container only while a job run lasts. The job mounts
-only the staging directory on the data volume, and the 2 containers exchange 2 kinds of file there:
+exits, so a backup credential sits in a running container only while a job run lasts. The job's
+container mounts only the staging directory on the data volume, and the 2 containers exchange 2
+kinds of file there. On Kubernetes, an init container that holds no secret mounts the whole volume
+first, only to create that directory. The 2 kinds of file:
 
 - **A snapshot set:** a directory nixie writes, holding the copies, a manifest and a `complete`
   marker. The manifest records the set's kind (scheduled or forget), its sequence number and a
