@@ -33,7 +33,9 @@ import { renderInboxMessage } from '../../modules/sessions/src/render-inbox-mess
 // @boundaries-ignore a spike imports the code it measures
 import { renderPinnedMemory } from '../../modules/sessions/src/render-pinned-memory';
 // @boundaries-ignore a spike imports the code it measures
-import { renderSystemPrompt } from '../../modules/sessions/src/render-system-prompt';
+import '../../modules/memory/src/memory-record-kind';
+// @boundaries-ignore a spike imports the code it measures
+import { renderPrompt } from '../../modules/prompts/src/render-prompt';
 // @boundaries-ignore a spike imports the code it measures
 import type { MemoryItem, MemoryLineOptions, PinnedCoreUse } from '../../modules/sessions/src/types';
 // @boundaries-ignore a spike imports the code it measures
@@ -55,7 +57,14 @@ const countContext = {
     limits: defaultGateLimits,
     ownerName,
     ownerPronouns: defaultOwnerPronouns,
+    getPromptsInForce: () => ({ snapshotHash: 'sha256:spike', prompts: {} }),
   },
+};
+
+// a message from the owner, with no task messaging around it
+const inboxView = {
+  messaging: { directory: [], hopLimit: 20, ownerName },
+  wake: { hop: 0, cause: { kind: 'owner' as const } },
 };
 
 // pins candidates in order until the next pin would take the core past its budget
@@ -106,7 +115,7 @@ export function buildLines(now: Date): MemoryLineOptions {
 }
 
 export function renderSpikeSystemPrompt(): string {
-  return renderSystemPrompt(persona, null, { ownerName });
+  return renderPrompt('session', { persona, skillCatalog: null, owner: { name: ownerName } }, {});
 }
 
 // the blocks a first session opens with: the pinned memory and the status, with the memory
@@ -179,7 +188,7 @@ export function buildOwnerInput(
   return [
     {
       uuid: encodeInboxUUID(sequence),
-      text: [...blocks, renderInboxMessage(record, buildLines(sentAt))].join('\n\n'),
+      text: [...blocks, renderInboxMessage(record, buildLines(sentAt), inboxView)].join('\n\n'),
     },
   ];
 }
