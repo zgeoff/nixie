@@ -1,47 +1,41 @@
 ---
 name: project-docs-writing
 description:
-  nixie's own rules for repo prose, on top of the shared docs-writing skill — decision records
-  edited in place, spikes under research/, the Linear project, the architecture areas, and the
-  voice. Use with docs-writing whenever you write, edit, or review prose in this repo.
+  "The one docs-writing rule nixie replaces: a doc links the Linear issue for planned work or an
+  open choice. Also where nixie's spikes live and when to delete one, and how its docs name the
+  person a deployment works for. Load it beside docs-writing before you write, edit or review prose
+  in nixie."
+metadata:
+  kind: rule-set
 ---
 
-# Project docs writing
+# nixie docs writing
 
-Load the shared `docs-writing` skill first. This skill holds only what nixie adds to it, and where
-the two disagree, this one wins.
+## Departures
 
-## Decision records
+- Link the Linear issue for planned work or an open choice from the doc that meets it, and keep the
+  question itself in the issue, in the nixie project. The
+  [Describe the system as it is now](../docs-writing/SKILL.md#describe-the-system-as-it-is-now) rule
+  leaves tracker links out of docs. nixie is in its first build, so its designs describe work not
+  yet built, and the link keeps one copy of each open question.
 
-A changed decision is edited in place, not superseded by a new record. The record keeps its number
-and states the decision as it now stands, its header gains an `Updated` date, and a `## Changes`
-list at its end gives each change's date and a one-line summary. The `## Changes` list is the one
-place a record holds history.
+## Spikes
 
-## Spikes and open work
+- Put each spike in `research/<name>/`, and list it in the
+  [spikes index](../../../research/README.md).
+- Delete a spike once the architecture doc that owns its finding states that finding. Link a doc
+  that cited the spike to the commit before the one that deleted the spike, so the link still opens.
 
-A design's evidence lives in a spike under `research/<name>/`, and the design doc links the spike
-instead of repeating its numbers or its method. A spike's README is its landing page, and its full
-report is the `results.md` beside it; the [spikes index](../../../research/README.md) gives what
-each one holds. A spike is deleted once its finding sits in the architecture doc that owns it, and a
-link that cites a deleted spike points at the commit that last held it.
+## The person nixie works for
 
-Planned work, open choices and later stages live in the nixie Linear project, and a doc links the
-issue instead of restating the question.
+- Address that person as "you", and call them "the user" in an architecture doc, as the opening of
+  the [glossary](../../../docs/glossary.md) says.
+- Write "you" only where that person acts: "memory shows in 2 ways", not "you see memory in 2 ways".
+- Never call that person "the owner" in a doc. In the glossary, `owner` is a value of a memory
+  item's subject.
 
-## Architecture areas
+## Runs
 
-The areas of `docs/architecture/` follow the design's: `core/`, `policy/`, `connectors/` and
-`channels/`, beside the architecture overview.
-
-## Voice
-
-Guides, runbooks and design docs address the reader as "you", the one person a nixie deployment
-works for. A sentence drops the actor where the actor adds nothing: "memory shows in 2 ways", not
-"you see memory in 2 ways".
-
-Architecture docs are declarative and third person, and call that person "the user": "a task waits
-for the user's next message". The docs never write "the owner".
-
-Terms follow the [glossary](../../../docs/glossary.md), one meaning each. "Run" always takes its
-noun: job run, task run, worker run or code run.
+- Never write "run" as a bare noun. Name which run it is from the
+  [glossary](../../../docs/glossary.md), such as a job run or a task run. "Run" as a verb needs no
+  noun.

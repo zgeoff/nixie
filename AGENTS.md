@@ -11,9 +11,13 @@ The rules a task needs are not repeated here. Load the skill for the work before
 | Skill                  | Load before                                                                        |
 | ---------------------- | ---------------------------------------------------------------------------------- |
 | `code-style`           | writing, reviewing, or renaming any TypeScript — the shared function-verb taxonomy |
+| `project-code-style`   | the same, beside `code-style` — methods a library calls by name                    |
 | `testing`              | designing, writing, or reviewing tests                                             |
+| `project-testing`      | the same, beside `testing` — nixie's lanes, harnesses and MSW server               |
 | `docs-writing`         | writing or editing any committed prose: `docs/`, READMEs, this file, skills        |
 | `project-docs-writing` | the same, beside `docs-writing` — nixie's own prose rules                          |
+| `ci-design`            | adding or changing a workflow, a job or a step                                     |
+| `project-ci-design`    | the same, beside `ci-design` — nixie's test budget and required checks             |
 
 ## Repo structure
 
