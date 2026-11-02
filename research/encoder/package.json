@@ -16,6 +16,6 @@
     "ts-pattern": "5.9.2"
   },
   "devDependencies": {
-    "@types/bun": "1.4.3"
+    "@types/bun": "1.4.4"
   }
 }
