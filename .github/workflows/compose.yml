@@ -2,10 +2,10 @@
 # that digest under that tag, then starts the recipe with CI's overlay, which swaps nixie's release
 # image for the test build on the test sandbox, because the release image leaves the test sandbox
 # out. It checks that nixie's health URL answers ready through the recipe's origin, and that the
-# enrol service prints a sign-in code. The recipe job is a required check, so it runs on every pull
-# request, and GitHub never counts a skipped job as a pass; on a pull request that changes no file
-# the recipe or the test build reads, each of its steps skips. A pull request runs the digest check
-# only when it changes the recipe or that check; every push to main runs it in full.
+# enrol service prints a sign-in code. The recipe job is a required check, and GitHub counts a
+# skipped job as a pass, so the job runs on every pull request; on a pull request that changes no
+# file the recipe or the test build reads, each of its steps skips. A pull request runs the digest
+# check only when it changes the recipe or that check; every push to main runs it in full.
 name: Compose
 
 on:
