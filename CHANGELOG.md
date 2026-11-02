@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.59.1](https://github.com/zgeoff/nixie/compare/v0.59.0...v0.59.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **deps:** update patch updates ([#776](https://github.com/zgeoff/nixie/issues/776)) ([31dd394](https://github.com/zgeoff/nixie/commit/31dd394d491ea1067af870471537470a2083b312))
+* **deps:** update sherpa-onnx-node to v2 ([#778](https://github.com/zgeoff/nixie/issues/778)) ([559b372](https://github.com/zgeoff/nixie/commit/559b372d1bef48a2d5e892fac2b279af887c7fe1))
+* **deps:** update tanstack-query monorepo to v5.105.0 ([#789](https://github.com/zgeoff/nixie/issues/789)) ([534001a](https://github.com/zgeoff/nixie/commit/534001a78d53b33e9a3ab8e8eb392a819bbdc9bb))
+
 ## [0.59.0](https://github.com/zgeoff/nixie/compare/v0.58.1...v0.59.0) (2026-11-01)
 
 
