@@ -89,3 +89,5 @@ one person a nixie deployment works for, and the architecture docs call that per
 | event log  | nixie's record of everything it does                                                      |
 | record     | One entry in the event log                                                                |
 | projection | A table built from the event log, such as the data the dashboard reads                    |
+
+<!-- probe: throwaway change for a CI skip check -->
