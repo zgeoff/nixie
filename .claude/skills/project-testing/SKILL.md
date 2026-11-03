@@ -117,9 +117,7 @@ release bundle sets it to `false`, so the bundler drops the code behind it.
 
 - Move a harness to [`libs/testing/src/`](../../../libs/testing/src/) once a second server package
   needs it, and search there before you write one. A server package is any package the nixie server
-  runs: the server app, a module, an adapter or a server-only lib. That lib is `server-only`, as the
-  [code layout](../../../docs/architecture/code-layout.md) defines, so a guest keeps its test
-  helpers in its own package.
+  runs: the server app, a module, an adapter or a lib.
 - Import the harness that spawns nixie in an `e2e/` suite from
   [`@heynixie/server/test-utils`](../../../apps/server/src/test-utils/index.ts), and the helpers
   that an `e2e/` suite shares with the browser suites from

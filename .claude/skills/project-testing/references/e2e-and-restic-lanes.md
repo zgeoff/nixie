@@ -16,11 +16,11 @@ Each lane script makes its builds with the root `package.json` scripts below, an
 folder under `node_modules/.cache/nixie-test-bundles/`. A lane script makes a build again only when
 one of the files it is made from changes.
 
-| Build                   | Made by                         | Use it in a test                                                                        |
-| ----------------------- | ------------------------------- | --------------------------------------------------------------------------------------- |
-| nixie's test bundle     | `bun run test:bundles`          | `startSpawnedNixie` from `@heynixie/server/test-utils` starts it                        |
-| the web build           | `bun run test:web-build`        | pass the path from `readWebBuild` in `@heynixie/builds-e2e` to `startBuiltWeb`          |
-| the backup job's bundle | `bun run test:backup-job-build` | run the path from `readBackupJobBundle` in `@heynixie/builds-e2e` with `bun <path> run` |
+| Build                   | Made by                         | Use it in a test                                                                                   |
+| ----------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
+| nixie's test bundle     | `bun run test:bundles`          | `startSpawnedNixie` from `@heynixie/server/test-utils` starts it                                   |
+| the web build           | `bun run test:web-build`        | pass the path from `readWebBuild` in `@heynixie/web/test-utils` to `startBuiltWeb`                 |
+| the backup job's bundle | `bun run test:backup-job-build` | run the path from `readBackupJobBundle` in `@heynixie/backup-job/test-utils` with `bun <path> run` |
 
 - Leave `startSpawnedNixie` on the test bundle. Give it a `release` path only in a suite that checks
   the release bundle itself, such as

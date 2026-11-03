@@ -35,7 +35,6 @@ adapters/          one outside system each, named <interface>-<system> (sandbox-
 guests/            programs that run inside a sandbox; reach nixie only through libs/wire
 libs/              shared code that belongs to no domain
 e2e/               whole-program suites
-builds-e2e/        the web client and backup job builds that e2e/ suites run; only e2e/ imports it
 integration/       in-process suites of one flow across several packages
 evals/             checks committed evaluation reports against the code
 research/<name>/   spikes: a Bun package each, indexed in research/README.md; CI typechecks
