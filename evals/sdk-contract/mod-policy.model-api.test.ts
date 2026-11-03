@@ -80,7 +80,7 @@ test.skipIf(!isContractRun)(
       tool_name: 'Bash',
     });
   },
-  32_000,
+  48_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -106,7 +106,7 @@ test.skipIf(!isContractRun)(
       },
     ]);
   },
-  9000,
+  25_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -128,7 +128,7 @@ test.skipIf(!isContractRun)(
       },
     ]);
   },
-  16_000,
+  25_000,
 );
 
 // The stub-model suite leaves this case out: the CLI waits out its own hooks-worker watchdog, about
@@ -166,5 +166,5 @@ test.skipIf(!isContractRun)(
       },
     ]);
   },
-  30_000,
+  61_000,
 );

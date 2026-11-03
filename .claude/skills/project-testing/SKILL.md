@@ -62,8 +62,10 @@ lane is a run of its own, for suites that need a real system.
   runbook's variables are set, and a skipped run does not count as a run.
 - Test the imp adapter in the unit run instead, on `startTestImpd` from `@impz/testing`. It runs
   impd's own API on stand-ins for the VMs and the host, so the test needs no `/dev/kvm`.
-- Set no time limit in a test. The one exception is a model API test: give it about twice its
-  measured time, within its lane's limit. A live model's time varies by test.
+- Set no time limit in a test. The one exception is a model API test: give it about twice its time
+  measured on an [imp](../../../docs/glossary.md), within its lane's limit, with the steps in the
+  [SDK contract suite runbook](../../../docs/runbooks/sdk-contract-suite.md). A live model's time
+  varies by test, and the suite runs only on an imp.
 - Install the Bun version in `.bun-version` before you change a test that asserts on an error Bun
   raises, such as the code of a refused connection. That error can change between Bun releases.
 - Add each pattern you add to `pathIgnorePatterns` in the root `bunfig.toml` to the root
@@ -79,7 +81,10 @@ nixie replaces these rules of the shared `testing` skill.
 - Leave the model API suites out of CI. nixie's CI holds no model credential. The suites form the
   [SDK contract suite](../../../evals/sdk-contract/README.md), and a preview service in nixie's
   private deployment repo runs it on each pull request that changes the Agent SDK version. It posts
-  the result as the `sdk-contract` commit status.
+  the result as the `sdk-contract` commit status. Run the suite by hand on that pull request too,
+  with the steps in the [SDK contract suite runbook](../../../docs/runbooks/sdk-contract-suite.md).
+  Merge that pull request only after a comment on it shows every probe passing at its head commit,
+  by the Agent SDK bump rule in [AGENTS.md](../../../AGENTS.md).
 - Add a package's MSW handlers through `addMockHandlers` from `@heynixie/mock-server`, in a test
   preload of the package, and list that preload in the root [`bunfig.toml`](../../../bunfig.toml),
   as [the web client's preload](../../../apps/web/src/mocks/test-preload.ts) does.

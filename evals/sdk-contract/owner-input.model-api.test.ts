@@ -39,7 +39,7 @@ test.skipIf(!isContractRun)(
     expect(ownerRead).toBeGreaterThan(stepOne);
     expect(firstResult).toBeGreaterThan(ownerRead);
   },
-  28_000,
+  38_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -56,5 +56,5 @@ test.skipIf(!isContractRun)(
     expect(results).toStrictEqual(['error_during_execution']);
     expect(probe.run.messages.at(-1)).toMatchObject({ type: 'assistant' });
   },
-  21_000,
+  27_000,
 );

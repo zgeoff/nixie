@@ -36,7 +36,7 @@ test.skipIf(!isContractRun)(
     expect(read.text).toInclude('exceeds maximum allowed tokens. Output has been saved to');
     expect(read.text).not.toInclude('Log 0: the lamp burned');
   },
-  16_000,
+  27_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -55,7 +55,7 @@ test.skipIf(!isContractRun)(
     expect(read.text).not.toInclude('Output has been saved to');
     expect(read.text).not.toInclude('<persisted-output>');
   },
-  13_000,
+  27_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -75,7 +75,7 @@ test.skipIf(!isContractRun)(
     expect(read.text).not.toInclude('Output has been saved to');
     expect(read.text).not.toInclude('<persisted-output>');
   },
-  16_000,
+  34_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -98,5 +98,5 @@ test.skipIf(!isContractRun)(
       { type: 'text', text: expect.toStartWith('[Image: source: ') },
     ]);
   },
-  16_000,
+  24_000,
 );

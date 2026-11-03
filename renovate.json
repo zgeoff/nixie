@@ -11,6 +11,14 @@
       "description": "Hold msw below 3. msw 3 intercepts fetch at node:net, which Bun's own fetch never uses, so the test mock server catches nothing under Bun and the tests reach the real network. Lift this rule once msw's fetch interception works under Bun.",
       "matchPackageNames": ["msw"],
       "allowedVersions": "<3"
+    },
+    {
+      "description": "An Agent SDK bump waits for a hand run of the SDK contract suite, which no CI job runs, so Renovate never merges it. It gets its own labelled pull request, out of the weekly patch group, so the wait holds back no other update. The group keeps every package that pins the SDK at one version.",
+      "matchPackageNames": ["@anthropic-ai/claude-agent-sdk"],
+      "groupName": "agent sdk",
+      "schedule": ["at any time"],
+      "automerge": false,
+      "addLabels": ["agent-sdk"]
     }
   ]
 }

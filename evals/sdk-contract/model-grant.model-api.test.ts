@@ -55,5 +55,5 @@ test.skipIf(!isContractRun).each(['bearer', 'x-api-key'] as const)(
 
     expect(result.result.trim()).toBe('READY');
   },
-  7000,
+  19_000,
 );
