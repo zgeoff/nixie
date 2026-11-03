@@ -14,17 +14,19 @@ metadata:
 ## Departures
 
 - Keep the name of a method that a library calls by that name, such as `executeQuery`, which Kysely
-  calls on a database connection. The [Banned verbs](../code-style/SKILL.md#banned-verbs) rule bans
-  `execute`, but the library decides the name.
-  [`build-sqlite-worker-dialect.ts`](../../../libs/db/src/build-sqlite-worker-dialect.ts) defines
-  nixie's `executeQuery`.
+  calls on a database connection. [code-style](../code-style/SKILL.md) bans names that start with
+  `execute`, but a renamed method never gets called.
+  [`executeQuery`](../../../libs/db/src/build-sqlite-worker-dialect.ts) in the SQLite worker dialect
+  keeps its name for this reason.
 
 ## The function-verb lint rule
 
-- Add each such name to the `exemptNames` option of the `zgeoff/function-verb` lint rule in
-  [`.oxlintrc.json`](../../../.oxlintrc.json), in the commit that adds the method. The rule exempts
-  the whole name only, so `executeQueryBatch` still needs a verb from the role table.
-- Pass a handler that a library calls under a key it names, such as the `fetch` key of Bun's server
-  or of oRPC's link, as a named function: `fetch: answerRequest`. The lint rule reads the function's
-  own name, so this needs no exemption. An inline function takes the key's name, and the rule fails
-  that name on a banned verb such as `fetch`.
+- When the `zgeoff/function-verb` lint rule rejects the name of a method that a library calls, add
+  that exact name to the rule's `exemptNames` option in [`.oxlintrc.json`](../../../.oxlintrc.json),
+  in the commit that adds the method. The option matches exact names, so your own helper
+  `executeQueryBatch` still fails. Name a helper with a verb that code-style allows.
+- Give a library a handler as a named function, such as `fetch: answerRequest` with
+  `function answerRequest`. This covers a key that the library names, such as `fetch` on Bun's
+  server or on oRPC's `RPCLink`. An arrow function or a method shorthand under the key takes the
+  key's name, and the rule fails it when the key starts with a banned verb. Never add `fetch` to
+  `exemptNames`: the option would then skip every function named `fetch`.
