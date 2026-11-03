@@ -1,31 +1,47 @@
 import { expect, test } from 'bun:test';
 import { systemClock } from '@heynixie/clock';
-import type { TasksTables } from '@heynixie/tasks';
+import type { ListedTask } from '@heynixie/tasks';
+import { readInbox, readTaskList } from '@heynixie/tasks';
 import type { HeldTasks } from './seed-held-tasks';
 import { seedHeldTasks } from './seed-held-tasks';
 import { startDataLog } from './start-data-log';
 import { startInProcessNixie } from './start-in-process-nixie';
 import type { BootFiles } from './write-boot-files';
 
+interface HeldRead {
+  readonly listed: readonly ListedTask[];
+  readonly unreadKinds: readonly (readonly string[])[];
+}
+
 function setupTest() {
   return {
-    readStartedRows: async (files: BootFiles) => {
+    readHeldTasks: async (files: BootFiles, held: HeldTasks): Promise<HeldRead> => {
       const data = await startDataLog({
         dataDir: files.dataDir,
         deploymentKey: files.deploymentKey,
         clock: systemClock,
       });
 
-      const rows = await data.writer.db
-        .$extendTables<TasksTables>()
-        .selectFrom('tasks')
-        .select(['task_id', 'state', 'read_cursor', 'last_inbox_sequence'])
-        .where('started_by', 'is not', null)
-        .execute();
+      const directory = [held.heldID, held.pausedID].map((taskID) => ({
+        taskID,
+        name: taskID,
+        brief: 'A held task.',
+        isWokenByMessages: true,
+      }));
+
+      const listed = await readTaskList(
+        data.context,
+        { directory },
+        { callerID: null, state: 'all', limit: 10 },
+      );
+
+      const inboxes = await Promise.all(
+        [held.heldID, held.pausedID].map((taskID) => readInbox(data.context, taskID)),
+      );
 
       await data.writer.stop();
 
-      return rows;
+      return { listed, unreadKinds: inboxes.map((inbox) => inbox.map((record) => record.kind)) };
     },
   };
 }
@@ -33,27 +49,25 @@ function setupTest() {
 test('it leaves one held started task waiting with a message unread, and one held and paused', async () => {
   const ctx = setupTest();
   const seeded = Promise.withResolvers<HeldTasks>();
-  const read = Promise.withResolvers<Awaited<ReturnType<typeof ctx.readStartedRows>>>();
+  const read = Promise.withResolvers<HeldRead>();
 
   await startInProcessNixie({
     seedData: async (files) => {
       const held = await seedHeldTasks(files);
-      const rows = await ctx.readStartedRows(files);
+      const tasks = await ctx.readHeldTasks(files, held);
 
       seeded.resolve(held);
-      read.resolve(rows);
+      read.resolve(tasks);
     },
   });
 
   const held = await seeded.promise;
-  const rows = await read.promise;
+  const tasks = await read.promise;
 
-  expect(rows.map((row) => [row.task_id, row.state])).toIncludeSameMembers([
+  expect(tasks.listed.map((task) => [task.id, task.state])).toIncludeSameMembers([
     [held.heldID, 'waiting'],
     [held.pausedID, 'paused'],
   ]);
 
-  expect(rows).toSatisfyAll(
-    (row: (typeof rows)[number]) => row.read_cursor < row.last_inbox_sequence,
-  );
+  expect(tasks.unreadKinds).toStrictEqual([['owner_message'], ['owner_message']]);
 });

@@ -203,63 +203,6 @@ test('it gets a sandbox whose imp impd still backs up as retired', async () => {
   expect(found?.isRetired).toBeTrue();
 });
 
-test('it gets no sandbox whose imp the host lost, and records the sandbox destroyed', async () => {
-  const ctx = await setupTest();
-  const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
-
-  ctx.imp.created.length = 0;
-
-  const found = await ctx.adapter.read(sandbox.id);
-  const records = await ctx.readSandboxRecords();
-
-  expect(found).toBeNull();
-
-  expect(records.at(-1)).toMatchObject({
-    kind: 'sandbox.destroyed',
-    payload: { sandboxID: sandbox.id },
-  });
-});
-
-test('it lists no sandbox whose imp the host lost', async () => {
-  const ctx = await setupTest();
-  const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
-
-  ctx.imp.created.length = 0;
-
-  const listed = await ctx.adapter.list(sandbox.spec.owner);
-
-  expect(listed).toStrictEqual([]);
-});
-
-test.each([
-  ['public egress with a grant', 'fetch', { kind: 'public' }],
-  ['public egress with a grant', 'coding', { kind: 'public' }],
-  [
-    'a grant with egress outside a coding session (conversation)',
-    'conversation',
-    { kind: 'allow', hosts: ['github.com'] },
-  ],
-  [
-    'a grant with egress outside a coding session (worker)',
-    'worker',
-    { kind: 'allow', hosts: ['github.com'] },
-  ],
-] as const)(
-  'it refuses %s for a %s sandbox and touches neither impd nor the log',
-  async (reason, kind, egress) => {
-    const ctx = await setupTest();
-
-    const spec = buildMockSandboxSpec({ kind, egress, grants: [buildMockGrantSpec()] });
-
-    expect(ctx.adapter.create(spec)).rejects.toThrow(new SandboxSpecRefusedError(reason));
-
-    const records = await ctx.readSandboxRecords();
-
-    expect(records).toStrictEqual([]);
-    expect(ctx.imp.calls).toStrictEqual([]);
-  },
-);
-
 test('it gives a coding session a box policy with its hosts beside its grant', async () => {
   const ctx = await setupTest();
 

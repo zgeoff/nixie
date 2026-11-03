@@ -51,11 +51,16 @@ A task's inbox is the records on its thread whose kind is input for it: a messag
 fired timer, an action's outcome, a message from another task, or a message the user moved. A step's
 own records share the thread and stay out of the inbox.
 
-Every inbox record wakes the task, except a task message that its sender sent with no wake or that
-the hop limit held back ([task messages](./task-messages.md)). The tasks projection keeps the
-sequence of the newest waking record on the task's row, and a waiting task becomes ready in the same
-transaction that writes the record. The same write ends the conversation's retry wait, so the user's
-next message gets a try at once.
+Every inbox record wakes the task, except a task message in one of these cases, which
+[task messages](./task-messages.md) explains:
+
+- its receiver runs only on its schedule, as the memory writer does;
+- its sender sent it with no wake;
+- the hop limit held it back.
+
+The tasks projection keeps the sequence of the newest waking record on the task's row, and a waiting
+task becomes ready in the same transaction that writes the record. The same write ends the
+conversation's retry wait, so the user's next message gets a try at once.
 
 nixie refuses inbox input for a task that does not exist or has finished, which means done, failed
 or closed, because no step would read the input. A done or closed task never runs again. A failed
@@ -127,9 +132,11 @@ reaches the step at once.
   lost lease, and the runner aborts the step at once. A stop withdraws the task's pending timers, so
   they never fire, and releases each message wait that the task has open on another task. A stopped
   task takes inbox input and leaves it unread.
-- **Restart** of a stopped task returns it to the state it had before the stop. A restart of a
-  failed task returns it to ready. Either goes to ready when waking input waits unread. The next
-  step resumes the session from the last committed step, as a step after a crash does.
+- **Restart** of a stopped task returns it to the ready or waiting state that the task saved when it
+  last left one of them, the state that a pause keeps. A task paused before the stop therefore comes
+  back ready or waiting, never paused. A restart of a failed task returns it to ready. Either goes
+  to ready when waking input waits unread. The next step resumes the session from the last committed
+  step, as a step after a crash does.
 - **Close** ends a task for good, from any state but closed. It frees the lease, withdraws the
   pending timers and releases every message wait that names the task, on either side, and the inbox
   refuses later input. The conversation refuses a close, because every deployment needs it to
@@ -147,9 +154,9 @@ restart never sends it, and an action with a started attempt runs on to its outc
 ## Task messages
 
 One task reaches another with a task message on the receiver's thread. A message wakes its receiver
-unless the sender sent it with no wake or the hop limit held it back, and a question or a request
-can open a message wait on the receiver. [Task messages](./task-messages.md) covers the tools, the
-hop limit and the waits.
+except in the cases that the [inbox](#the-inbox) lists, and a question or a request can open a
+message wait on the receiver. [Task messages](./task-messages.md) covers the tools, the hop limit
+and the waits.
 
 ## Started tasks
 

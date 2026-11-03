@@ -1,9 +1,18 @@
 import { expect, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
-import { claimTask, runTaskStep, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
+import {
+  claimTask,
+  runTaskStep,
+  writeInboxRecords,
+  writeStepCommit,
+  writeTaskControl,
+} from '@heynixie/tasks';
 import type { ConversationStep } from '@heynixie/tasks/test-utils';
-import { seedConversationStep, seedStartedTask } from '@heynixie/tasks/test-utils';
+import {
+  seedConversationStep,
+  seedStartedTask,
+  writeTestTaskMessage,
+} from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import type { NixieRunnerOptions } from './start-nixie-runner';
@@ -293,7 +302,7 @@ test('it commits a step whose imp fails to sleep, with no step error', async () 
   expect(committed).toHaveLength(1);
 });
 
-test('it keeps destroying the imps of closed tasks after the destroy of one fails', async () => {
+test('it destroys the imps of closed tasks, and on a later pass the one whose destroy failed', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
   const stuck = await ctx.seedTask(starter);
@@ -309,11 +318,17 @@ test('it keeps destroying the imps of closed tasks after the destroy of one fail
   await ctx.runNextStep(runner);
   await ctx.runNextStep(runner);
 
-  ctx.guest.failDestroy(stuck, 'the imp would not stop');
+  ctx.guest.failNextDestroy(stuck, 'the imp would not stop');
 
   await writeTaskControl(ctx.context, { taskID: stuck, control: 'close' });
   await waitForCondition(() => ctx.events.includes('nixie_runner.task_remove_failed'));
   await writeTaskControl(ctx.context, { taskID: other, control: 'close' });
+
+  await waitForCondition(async () => {
+    const sandboxes = await ctx.sandboxes.list(stuck);
+
+    return sandboxes.length === 0;
+  });
 
   await waitForCondition(async () => {
     const sandboxes = await ctx.sandboxes.list(other);
@@ -321,9 +336,11 @@ test('it keeps destroying the imps of closed tasks after the destroy of one fail
     return sandboxes.length === 0;
   });
 
-  const stuckSandboxes = await ctx.sandboxes.list(stuck);
-
-  expect(stuckSandboxes).toHaveLength(1);
+  expect(ctx.events.filter((event) => event.startsWith('nixie_runner.task_'))).toStrictEqual([
+    'nixie_runner.task_remove_failed',
+    'nixie_runner.task_removed',
+    'nixie_runner.task_removed',
+  ]);
 });
 
 test('it rebuilds the session of a task whose imp is gone with the messages the task sent', async () => {
@@ -333,28 +350,32 @@ test('it rebuilds the session of a task whose imp is gone with the messages the 
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Which quay?');
 
-  await writeRecords(ctx.context.log, [
+  const claim = await claimTask(ctx.context, { holder: 'test-runner', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  await writeTestTaskMessage(
+    ctx.context,
     {
-      kind: 'task_message',
-      definitions: ctx.context.definitions(),
-      thread: 'conversation',
-      payload: {
-        messageID: 'r7md3x2kqe',
-        from: taskID,
-        to: 'conversation',
-        kind: 'report',
-        replyTo: null,
-        onBehalfOf: [],
-        hop: 1,
-        hopLimit: 20,
-        wake: false,
-        woke: false,
-        source: `task:${taskID}`,
-      },
-      erasable: { body: 'High tide on Saturday is at 06:42 at Bramble Quay.' },
+      directory: [
+        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      ],
+      hopLimit: 20,
     },
-  ]);
+    {
+      from: taskID,
+      to: 'conversation',
+      kind: 'report',
+      body: 'High tide on Saturday is at 06:42 at Bramble Quay.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: false,
+    },
+  );
+
+  await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [] });
 
   const [lost] = await ctx.sandboxes.list(taskID);
 

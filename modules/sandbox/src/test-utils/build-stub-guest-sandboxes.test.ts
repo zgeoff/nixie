@@ -724,17 +724,31 @@ test('it fails the sleep of a sandbox a test makes fail, and keeps it awake', as
   expect(sandbox.copyIn([])).resolves.toBeUndefined();
 });
 
-test('it fails the destroy of a sandbox a test makes fail, and keeps it listed', async () => {
+test('it fails the next destroy of a sandbox a test makes fail, and keeps it listed', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
 
-  ctx.stub.failDestroy(ctx.spec.owner, 'the imp would not stop');
+  ctx.stub.failNextDestroy(ctx.spec.owner, 'the imp would not stop');
 
   expect(sandbox.destroy()).rejects.toThrow('the imp would not stop');
 
   const listed = await ctx.stub.adapter.list(ctx.spec.owner);
 
   expect(listed.map((found) => found.id)).toStrictEqual([sandbox.id]);
+});
+
+test('it destroys a sandbox on the try after the destroy that a test made fail', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.failNextDestroy(ctx.spec.owner, 'the imp would not stop');
+
+  await sandbox.destroy().catch(() => {});
+  await sandbox.destroy();
+
+  const listed = await ctx.stub.adapter.list(ctx.spec.owner);
+
+  expect(listed).toStrictEqual([]);
 });
 
 test('it refuses every command', async () => {

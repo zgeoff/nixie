@@ -181,3 +181,56 @@ test('it never removes a secret it did not add', async () => {
 
   expect(failure).toBeInstanceOf(Error);
 });
+
+test('it reads a sandbox it made through the adapter', async () => {
+  const ctx = await setupTest();
+
+  const isolation = await setupIsolationAdapter({
+    port: ctx.imp.port,
+    removeSecret: mock(),
+    publicEgress: null,
+    guestToolPort: ctx.imp.guestToolPort,
+    secret: 'nixie-test-a',
+  });
+
+  const sandbox = await isolation.createSandbox(buildMockSandboxSpec({ grants: [] }));
+  const found = await isolation.readSandbox(sandbox.id);
+
+  expect(found?.id).toBe(sandbox.id);
+});
+
+test('it lists the sandboxes it made for an owner through the adapter', async () => {
+  const ctx = await setupTest();
+
+  const isolation = await setupIsolationAdapter({
+    port: ctx.imp.port,
+    removeSecret: mock(),
+    publicEgress: null,
+    guestToolPort: ctx.imp.guestToolPort,
+    secret: 'nixie-test-a',
+  });
+
+  const sandbox = await isolation.createSandbox(buildMockSandboxSpec({ grants: [] }));
+  const listed = await isolation.listSandboxes(sandbox.spec.owner);
+
+  expect(listed.map((held) => held.id)).toStrictEqual([sandbox.id]);
+});
+
+test('it reads the sandbox records the adapter wrote', async () => {
+  const ctx = await setupTest();
+
+  const isolation = await setupIsolationAdapter({
+    port: ctx.imp.port,
+    removeSecret: mock(),
+    publicEgress: null,
+    guestToolPort: ctx.imp.guestToolPort,
+    secret: 'nixie-test-a',
+  });
+
+  const sandbox = await isolation.createSandbox(buildMockSandboxSpec({ grants: [] }));
+  const records = await isolation.readSandboxRecords();
+
+  expect(records).toIncludeAllPartialMembers([
+    { kind: 'sandbox.created', payload: expect.objectContaining({ sandboxID: sandbox.id }) },
+  ]);
+});

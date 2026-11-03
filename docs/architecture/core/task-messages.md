@@ -1,10 +1,10 @@
 # Task messages
 
 A task message is a record that one task writes to another task's thread through the message tool.
-It lands in the receiver's inbox, and it wakes the receiver unless its sender sent it with no wake
-or the hop limit held it back. A question or a request can open a message wait, in which the sender
-waits on the receiver until a reply answers it. The tasks module owns the message tool, the list
-tool, the hop count and the waits.
+It lands in the receiver's inbox, and it wakes the receiver unless the receiver runs only on its
+schedule, its sender sent it with no wake, or the hop limit held it back. A question or a request
+can open a message wait, in which the sender waits on the receiver until a reply answers it. The
+tasks module owns the message tool, the list tool, the hop count and the waits.
 
 [Tasks](./tasks.md) covers the inbox, steps and started tasks.
 [Conversation turns](./conversation-turns.md) covers the block that shows a task message to the

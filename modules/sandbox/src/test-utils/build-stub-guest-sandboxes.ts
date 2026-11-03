@@ -70,7 +70,7 @@ export interface StubGuestSandboxes {
 
   readonly failSleep: (owner: string, reason: string) => void;
 
-  readonly failDestroy: (owner: string, reason: string) => void;
+  readonly failNextDestroy: (owner: string, reason: string) => void;
 }
 
 const adapterID = 'stub-guest';
@@ -178,7 +178,7 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     failSleep: (owner, reason) => {
       state.sleepFailures.set(owner, reason);
     },
-    failDestroy: (owner, reason) => {
+    failNextDestroy: (owner, reason) => {
       state.destroyFailures.set(owner, reason);
     },
   };
@@ -277,6 +277,7 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
       const failure = state.destroyFailures.get(own.owner);
 
       if (failure !== undefined) {
+        state.destroyFailures.delete(own.owner);
         throw new Error(failure);
       }
 

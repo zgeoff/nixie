@@ -1,7 +1,11 @@
 import type { Sandbox } from '@heynixie/sandbox';
 import type { RunEndpoint } from '@heynixie/tools';
 import { machineTypes } from '@zgeoff/std';
+import invariant from 'tiny-invariant';
+import { match } from 'ts-pattern';
 import { assign, fromPromise, setup } from 'xstate';
+import type { SandboxPlan } from './pick-sandbox-plan';
+import { pickSandboxPlan } from './pick-sandbox-plan';
 
 export interface TaskImpParts {
   readonly startEndpoint: () => Promise<RunEndpoint>;
@@ -257,18 +261,30 @@ export const taskImpMachine = setup({
 
 async function prepareSandbox(input: PrepareInput): Promise<Sandbox> {
   const current = input.sandbox === null ? null : await input.parts.readSandbox(input.sandbox.id);
+  const plan = pickSandboxPlan({ current, mayBeAsleep: input.isAsleep });
 
-  const held =
-    current === null
-      ? await input.parts.createSandbox()
-      : { sandbox: current, isKept: input.isAsleep };
+  const ready = await match(plan)
+    .with({ kind: 'create' }, () => createReadySandbox(input.parts))
+    .with({ kind: 'use' }, (used) => used)
+    .exhaustive();
 
-  // Waking an awake sandbox costs nothing, so a kept one that may sleep is woken too.
-  if (held.isKept && held.sandbox.suspension.kind === 'memory') {
-    await held.sandbox.suspension.wake();
+  if (ready.toWake !== null) {
+    await ready.toWake.wake();
   }
 
-  return held.sandbox;
+  return ready.sandbox;
+}
+
+type ReadySandbox = Extract<SandboxPlan, { readonly kind: 'use' }>;
+
+async function createReadySandbox(parts: TaskImpParts): Promise<ReadySandbox> {
+  const created = await parts.createSandbox();
+
+  const plan = pickSandboxPlan({ current: created.sandbox, mayBeAsleep: created.isKept });
+
+  invariant(plan.kind === 'use', 'a created sandbox is ready to use');
+
+  return plan;
 }
 
 function buildBusyError(): Error {
