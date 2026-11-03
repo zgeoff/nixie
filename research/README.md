@@ -38,6 +38,7 @@ lists the variable.
 | [memory-retrieval](memory-retrieval/)                   | keyword search, BM25 and local embeddings, on synthetic memory and on one deployment's own turns                         |
 | [model-eval](model-eval/)                               | persona, invented memory, tool honesty, cost and latency per model                                                       |
 | [paste-spans](paste-spans/)                             | which spans of a message you pasted, kept right through edits                                                            |
+| [pinned-core-scale](pinned-core-scale/)                 | whether the model follows the pinned-core change note with a full core and in a days-long session                        |
 | [policy-rules](policy-rules/)                           | one decision per call whatever the rule order, a stable snapshot hash, and prompts by cause                              |
 | [replica-encryption](replica-encryption/)               | Litestream through a host crypt gateway, process outages, and a restore without the database                             |
 | [sandbox-under-load](sandbox-under-load/)               | a token rotation during a long turn under imp's broker, and parallel tool calls over HTTP MCP                            |
