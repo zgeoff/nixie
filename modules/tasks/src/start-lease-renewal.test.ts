@@ -184,7 +184,6 @@ test('it leaves the step that started it unsettled while a renewal waits at a fa
   });
 
   onTestFinished(() => {
-    setWorkTracker(null);
     setFaultPointHandler(null);
   });
 

@@ -1,4 +1,4 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { setWorkTracker } from '@heynixie/clock';
 import { buildWorkTracker, waitForCondition } from '@heynixie/testing';
 import { subscribeToRecordCommits } from './subscribe-to-record-commits';
@@ -78,11 +78,6 @@ test('it reports the head read after a commit as unsettled work until the read e
   const onRecords = mock<() => void>();
 
   setWorkTracker(tracker);
-
-  onTestFinished(() => {
-    setWorkTracker(null);
-  });
-
   subscribeToRecordCommits(started.writer, onRecords);
 
   await waitForCondition(() => tracker.isSettled());

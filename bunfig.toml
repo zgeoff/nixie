@@ -31,6 +31,7 @@ pathIgnorePatterns = ["docs/design/**", "research/**"]
 # registers the jest-extended matchers for `bun test`
 preload = [
   "./libs/testing/src/define-test-build.ts",
+  "./libs/testing/src/reset-work-tracker.ts",
   "./libs/testing/src/set-test-tmpdir.ts",
   "./libs/testing/src/keep-native-web-socket.ts",
   "@zgeoff/bun-test-extended",

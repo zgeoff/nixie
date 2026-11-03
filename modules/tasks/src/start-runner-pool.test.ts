@@ -293,10 +293,6 @@ test('it reports a claim in flight as unsettled work, and settles once the runne
 
   setWorkTracker(tracker);
 
-  onTestFinished(() => {
-    setWorkTracker(null);
-  });
-
   const miss = work.holdNextMiss();
 
   const pool = startRunnerPool(ctx.clock, {

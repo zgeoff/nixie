@@ -14,6 +14,18 @@ test('it refuses a tracker outside a test build', () => {
   }).toThrowWithMessage(Error, 'a work tracker exists only in a test build');
 });
 
+test('it clears the tracker outside a test build', () => {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
+  expect(() => {
+    setWorkTracker(null);
+  }).not.toThrow();
+});
+
 test('it installs a tracker that tracked work then runs through in a test build', async () => {
   const tracked: string[] = [];
 
@@ -23,10 +35,6 @@ test('it installs a tracker that tracked work then runs through in a test build'
 
       return work();
     },
-  });
-
-  onTestFinished(() => {
-    setWorkTracker(null);
   });
 
   await withTrackedWork(() => Promise.resolve('claimed'));
