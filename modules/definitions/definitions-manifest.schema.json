@@ -143,6 +143,30 @@
                 }
               },
               "additionalProperties": false
+            },
+            "task": {
+              "type": "object",
+              "properties": {
+                "_template": {
+                  "type": "string"
+                },
+                "persona": {
+                  "type": "string"
+                },
+                "frame": {
+                  "type": "string"
+                },
+                "inputs": {
+                  "type": "string"
+                },
+                "instructions": {
+                  "type": "string"
+                },
+                "safety": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

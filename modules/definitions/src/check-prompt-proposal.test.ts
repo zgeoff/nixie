@@ -42,7 +42,7 @@ test('it refuses a prompt that nixie does not have', () => {
     {
       path: 'nixie.yaml',
       reason:
-        'prompts: no prompt is named greeter; the prompts are writer, consolidator, content-checker, retirement-checker, session, compaction',
+        'prompts: no prompt is named greeter; the prompts are writer, consolidator, content-checker, retirement-checker, session, compaction, task',
     },
   ]);
 });
