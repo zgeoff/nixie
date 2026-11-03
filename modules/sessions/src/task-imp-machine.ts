@@ -22,12 +22,12 @@ export interface TaskImp {
   readonly sandbox: Sandbox;
 }
 
-export interface Reply<T> {
+interface Reply<T> {
   readonly resolve: (value: T) => void;
   readonly reject: (error: unknown) => void;
 }
 
-export type TaskImpEvent =
+type TaskImpEvent =
   | { readonly type: 'acquire'; readonly reply: Reply<TaskImp> }
   | { readonly type: 'release'; readonly reply: Reply<void> }
   | { readonly type: 'remove'; readonly reply: Reply<number> };
