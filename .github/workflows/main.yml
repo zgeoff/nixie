@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: zgeoff/tools/.github/workflows/bun-checks.yml@931e0b748396d6ed4bca8531eacba01cc506dcb0 # main
+    uses: zgeoff/tools/.github/workflows/bun-checks.yml@eca6feb7afac97f3f72a61c9f9ef2bed7d599e5a # main
     with:
       scripts: ${{ vars.BUN_CHECK_SCRIPTS }}
       # the pull request that landed the commits already scanned them
