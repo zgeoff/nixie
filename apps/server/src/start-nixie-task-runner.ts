@@ -6,7 +6,7 @@ import type { ServerParts } from './types';
 
 // A started task gets the two tools every task holds and the clock, never the conversation's other
 // tools: it runs untrusted, and the start may only narrow its starter's tools.
-export const startedTaskToolNames = ['tasks.list', 'task.message', 'time.now'] as const;
+const startedTaskToolNames = ['tasks.list', 'task.message', 'time.now'] as const;
 
 export async function startNixieTaskRunner(parts: ServerParts): Promise<NixieRunner> {
   const runner = await startNixieRunner({

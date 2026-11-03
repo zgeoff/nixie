@@ -11,7 +11,7 @@ import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
 import { taskStepStartedCodec } from './task-step-started-codec';
 import type { Lease, StartedClaim, StepWake, TasksContext, TasksTables } from './types';
 
-export type ClaimedTasks = 'started' | 'unstarted';
+type ClaimedTasks = 'started' | 'unstarted';
 
 export interface ClaimTaskOptions {
   readonly holder: string;

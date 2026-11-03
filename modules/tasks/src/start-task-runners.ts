@@ -8,7 +8,7 @@ import type { RunnerPool } from './start-runner-pool';
 import { startRunnerPool } from './start-runner-pool';
 import type { RunStep, StepErrored, TasksContext } from './types';
 
-export interface StartedTaskPool {
+interface StartedTaskPool {
   readonly runStep: RunStep;
   readonly size: number;
 }
