@@ -124,10 +124,6 @@ starts a task with a brief. Each call writes a routing record, and the conversat
 where it sent the message, as [0018](../../../decisions/0018-the-conversation-and-tasks.md)
 requires.
 
-A started task runs on the nixie runner, in an imp of its own that sleeps while the task waits, and
-reports back with a task message, as
-[started tasks](../../../architecture/core/tasks.md#the-nixie-runner) describes.
-
 Moving a misrouted message is one checked action in the client, which writes a correction record and
 updates both tasks' inboxes in one transaction.
 
@@ -243,9 +239,8 @@ Before any task starts, nixie finishes any pending cleanup of invalid transcript
 3. Marks each action that started an attempt without a recorded result as unknown, under
    [actions](actions.md).
 4. Fires every timer that fell due while nixie was down.
-5. Destroys every sandbox that belongs to a step that no longer runs, through its recorded sandbox
-   adapter. It keeps the imp of each started task that is not done or closed, so a waiting task
-   resumes the same session.
+5. Destroys every sandbox of a step that no longer runs, through its recorded sandbox adapter, and
+   keeps the imp of each started task that is not done or closed.
 
 Each step commit records the SDK session's last chain entry as the task's session boundary. The
 rerun calls `query()` with `resume`, `resumeSessionAt` at that boundary and `forkSession: true`,

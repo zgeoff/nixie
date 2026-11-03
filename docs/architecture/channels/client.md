@@ -234,15 +234,14 @@ so a message sent there lands in the task's inbox and never in the conversation'
 shows only once the task's read succeeds, so a closed task's page keeps its thread readable with no
 composer, and a failed read shows the failure with a retry.
 
-A [task message](../core/tasks.md#task-messages) shows in its receiver's thread as a framed block
-with its sender's name, its kind and its hop, and with a mark when the message woke nobody. A
-message whose text a forget erased shows as forgotten. The exchange notice that the hop limit writes
-on the sender's thread shows who waits on whom, with a link that opens the receiver's page at the
-message that woke nobody, or the conversation's page when the conversation receives it. That page
-reads earlier pages of its thread until it holds the message, because its first page holds only the
-newest records, and then scrolls to the message. A failed read stops the reading and offers a retry,
-and only that retry reads the page again. A stop shows as a marker that lists the actions it
-cancelled.
+A [task message](../core/task-messages.md) shows in its receiver's thread as a framed block with its
+sender's name, its kind and its hop, and with a mark when the message woke nobody. A message whose
+text a forget erased shows as forgotten. The exchange notice that the hop limit writes on the
+sender's thread shows who waits on whom, with a link that opens the receiver's page at the message
+that woke nobody, or the conversation's page when the conversation receives it. That page reads
+earlier pages of its thread until it holds the message, because its first page holds only the newest
+records, and then scrolls to the message. A failed read stops the reading and offers a retry, and
+only that retry reads the page again. A stop shows as a marker that lists the actions it cancelled.
 
 ## The outbox
 

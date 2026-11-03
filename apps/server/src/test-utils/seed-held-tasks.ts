@@ -12,7 +12,7 @@ export interface HeldTasks {
 }
 
 // A held task waits with a message unread, as the step that held it left it; one of the two is
-// also paused. The nixie that wrote the data must have stopped.
+// also paused. No nixie may hold the data's writer lock.
 export async function seedHeldTasks(
   nixie: Pick<BootFiles, 'dataDir' | 'deploymentKey'>,
 ): Promise<HeldTasks> {

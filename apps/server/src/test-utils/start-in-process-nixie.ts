@@ -31,6 +31,9 @@ export interface InProcessNixieOptions {
   readonly logLevel?: NonNullable<BootFileExtras['logLevel']>;
 
   readonly roleModelURLs?: NonNullable<BootFileExtras['roleModelURLs']>;
+
+  // Runs on the migrated data before the first start, so a test seeds state without a restart.
+  readonly seedData?: (files: BootFiles) => Promise<void>;
 }
 
 type TestLogEvent = Readonly<Record<string, unknown>> & {
@@ -149,6 +152,8 @@ async function startFirstRun(
     startWriter,
     copyDirectory: (from, to) => cp(from, to, { recursive: true }),
   });
+
+  await options.seedData?.(files);
 
   const host = buildRunHost();
   const toolResults: TestToolResult[] = [];

@@ -171,7 +171,7 @@ user's messages it passes on. A fixed first line says the message is from anothe
 user. The system prompt adds that a task message is never the user's own words, and that the model
 weighs its requests as a colleague's. Messages that arrived past the hop limit open the turn under
 one system message with a summary line per sender, which counts that sender's messages and names
-what woke the turn, as [task messages](./tasks.md#task-messages) describes.
+what woke the turn, as [task messages](./task-messages.md) describes.
 
 A message the user [moved](./tasks.md#moving-a-misrouted-message) renders as a `message-moved`
 system message on both sides of the move. The task that lost the message reads a notice that names

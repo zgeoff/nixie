@@ -1,23 +1,18 @@
 import { expect, test } from 'bun:test';
 import { systemClock } from '@heynixie/clock';
 import type { TasksTables } from '@heynixie/tasks';
+import type { HeldTasks } from './seed-held-tasks';
 import { seedHeldTasks } from './seed-held-tasks';
 import { startDataLog } from './start-data-log';
 import { startInProcessNixie } from './start-in-process-nixie';
+import type { BootFiles } from './write-boot-files';
 
-async function setupTest() {
-  const nixie = await startInProcessNixie();
-
-  nixie.signalStop();
-
-  await nixie.exited;
-
+function setupTest() {
   return {
-    nixie,
-    readStates: async () => {
+    readStartedRows: async (files: BootFiles) => {
       const data = await startDataLog({
-        dataDir: nixie.dataDir,
-        deploymentKey: nixie.deploymentKey,
+        dataDir: files.dataDir,
+        deploymentKey: files.deploymentKey,
         clock: systemClock,
       });
 
@@ -36,9 +31,22 @@ async function setupTest() {
 }
 
 test('it leaves one held started task waiting with a message unread, and one held and paused', async () => {
-  const ctx = await setupTest();
-  const held = await seedHeldTasks(ctx.nixie);
-  const rows = await ctx.readStates();
+  const ctx = setupTest();
+  const seeded = Promise.withResolvers<HeldTasks>();
+  const read = Promise.withResolvers<Awaited<ReturnType<typeof ctx.readStartedRows>>>();
+
+  await startInProcessNixie({
+    seedData: async (files) => {
+      const held = await seedHeldTasks(files);
+      const rows = await ctx.readStartedRows(files);
+
+      seeded.resolve(held);
+      read.resolve(rows);
+    },
+  });
+
+  const held = await seeded.promise;
+  const rows = await read.promise;
 
   expect(rows.map((row) => [row.task_id, row.state])).toIncludeSameMembers([
     [held.heldID, 'waiting'],

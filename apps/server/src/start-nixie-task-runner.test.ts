@@ -4,7 +4,6 @@ import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createTestClient } from './test-utils/create-test-client';
-import { seedHeldTasks } from './test-utils/seed-held-tasks';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
@@ -185,27 +184,4 @@ test('it claims and answers a message to the conversation while every claim loop
 
   expect(answered.map((record) => record.message?.text)).toContain('It is sunny at the quay.');
   expect(busy).toBe(2);
-});
-
-test('it runs a held started task at server start, and leaves a held task that the user paused paused', async () => {
-  const ctx = await setupTest();
-
-  ctx.nixie.signalStop();
-
-  await ctx.nixie.exited;
-
-  const held = await seedHeldTasks(ctx.nixie);
-
-  ctx.nixie.guest.addKindReplies('worker', { text: 'Looking at the tides now.' });
-
-  const again = ctx.nixie.startAgain();
-
-  const revived = await again.waitForLogEvent('tasks.held_revived');
-
-  await waitForCondition(() => ctx.readTaskTurns().some((turn) => turn.owner === held.heldID));
-
-  const pausedTurns = ctx.readTaskTurns().filter((turn) => turn.owner === held.pausedID);
-
-  expect(revived['tasks']).toBe(1);
-  expect(pausedTurns).toStrictEqual([]);
 });

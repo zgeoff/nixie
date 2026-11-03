@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test';
+import { waitForCondition } from '@heynixie/testing';
 import { z } from 'zod';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
+import type { HeldTasks } from './test-utils/seed-held-tasks';
+import { seedHeldTasks } from './test-utils/seed-held-tasks';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
@@ -51,4 +54,29 @@ test('it logs a skill export that fails at the error level', async () => {
   const failed = await nixie.waitForLogEvent('definitions.export_failed');
 
   expect(failed).toMatchObject({ level: 'error' });
+});
+
+test('it runs a held started task at server start, and leaves a held task that the user paused paused', async () => {
+  const seeded = Promise.withResolvers<HeldTasks>();
+
+  const nixie = await startInProcessNixie({
+    roleModelURLs: { task: 'http://127.0.0.1:4040' },
+    seedData: async (files) => {
+      const held = await seedHeldTasks(files);
+
+      seeded.resolve(held);
+    },
+  });
+
+  const held = await seeded.promise;
+  const revived = await nixie.waitForLogEvent('tasks.held_revived');
+
+  await waitForCondition(() =>
+    nixie.guest.received.some((received) => received.owner === held.heldID),
+  );
+
+  const paused = nixie.guest.received.filter((received) => received.owner === held.pausedID);
+
+  expect(revived['tasks']).toBe(1);
+  expect(paused).toStrictEqual([]);
 });
