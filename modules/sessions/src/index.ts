@@ -50,6 +50,8 @@ export type {
 
 export { startSessionRunner } from './start-session-runner';
 export { startConversationRunner } from './start-conversation-runner';
+export type { NixieRunner, NixieRunnerOptions } from './start-nixie-runner';
+export { startNixieRunner } from './start-nixie-runner';
 export type { CheckerRunnerOptions } from './start-checker-runner';
 export { startCheckerRunner } from './start-checker-runner';
 export type { CheckerTask, CheckerTaskOptions } from './start-checker-task';

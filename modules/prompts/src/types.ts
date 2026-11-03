@@ -29,6 +29,11 @@ export interface PromptContexts {
     readonly owner: PromptOwner;
     readonly summary: { readonly words: number };
   };
+  readonly task: {
+    readonly persona: string;
+    readonly owner: PromptOwner;
+    readonly task: { readonly name: string; readonly brief: string };
+  };
 }
 
 export type PromptID = keyof PromptContexts;

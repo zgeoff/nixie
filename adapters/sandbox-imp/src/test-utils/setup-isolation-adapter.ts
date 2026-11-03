@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
+import type { TestRecorder } from '@heynixie/sandbox/test-utils';
 import { setupTestRecorder, startStubToolEndpoint } from '@heynixie/sandbox/test-utils';
 import { buildImpSandboxAdapter } from '../build-imp-sandbox-adapter';
 import type { PublicEgressConfig } from '../parse-imp-config';
@@ -20,6 +21,10 @@ interface IsolationAdapterOptions {
 
 interface IsolationAdapter {
   readonly createSandbox: (spec: SandboxSpec) => Promise<Sandbox>;
+
+  readonly readSandbox: SandboxAdapter['read'];
+  readonly listSandboxes: SandboxAdapter['list'];
+  readonly readSandboxRecords: TestRecorder['readSandboxRecords'];
 }
 
 export function setupIsolationAdapter(options: IsolationAdapterOptions): Promise<IsolationAdapter> {
@@ -53,19 +58,24 @@ async function createIsolationAdapter(
 
   await createTestSecret(options, defer);
 
-  const sandboxes = buildSandboxTracker(
-    buildImpSandboxAdapter({
-      port: options.port,
-      recorder: recorder.recorder,
-      config: { publicEgress: options.publicEgress },
-      toolTarget: () => ({ path: join(directory, 'tools.sock') }),
-      ...(options.guestToolPort === undefined ? {} : { guestToolPort: options.guestToolPort }),
-    }),
-  );
+  const adapter = buildImpSandboxAdapter({
+    port: options.port,
+    recorder: recorder.recorder,
+    config: { publicEgress: options.publicEgress },
+    toolTarget: () => ({ path: join(directory, 'tools.sock') }),
+    ...(options.guestToolPort === undefined ? {} : { guestToolPort: options.guestToolPort }),
+  });
+
+  const sandboxes = buildSandboxTracker(adapter);
 
   defer(() => sandboxes.removeAll());
 
-  return { createSandbox: sandboxes.create };
+  return {
+    createSandbox: sandboxes.create,
+    readSandbox: (id) => adapter.read(id),
+    listSandboxes: (owner) => adapter.list(owner),
+    readSandboxRecords: recorder.readSandboxRecords,
+  };
 }
 
 async function createTestSecret(

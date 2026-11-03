@@ -11,6 +11,7 @@ export { findKeptSandbox } from './find-kept-sandbox';
 export { isTestSandbox } from './is-test-sandbox';
 export { mergeExecEnv } from './merge-exec-env';
 export type { StaleSandboxesOptions } from './remove-stale-sandboxes';
+export { readSandboxOwners } from './read-sandbox-owners';
 export { removeStaleSandboxes } from './remove-stale-sandboxes';
 export { requireSandboxSpec } from './require-sandbox-spec';
 export { runCommand } from './run-command';

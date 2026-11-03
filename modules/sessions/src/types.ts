@@ -136,8 +136,13 @@ export interface SessionDefinitions {
   readonly policyHash: string;
 }
 
+export type SessionFrame =
+  | { readonly kind: 'conversation' }
+  | { readonly kind: 'task'; readonly startedBy: string };
+
 export interface ConversationRun {
   readonly context: TasksContext;
+  readonly frame: SessionFrame;
   readonly profile: ResolvedProfile;
 
   readonly turnProfile: TurnProfile;
@@ -155,7 +160,7 @@ export interface ConversationRun {
 
   readonly status: StatusRegistry;
 
-  readonly memory: () => ConversationMemory;
+  readonly memory?: () => ConversationMemory;
   readonly memorySettings: ConversationMemorySettings;
   readonly compaction: CompactionSettings;
 

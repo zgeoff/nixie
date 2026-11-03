@@ -10,8 +10,11 @@ export interface TurnRetrieval {
   readonly messages: readonly PastMessage[];
 }
 
+type RetrievalRun = Pick<ConversationRun, 'context' | 'memorySettings'> &
+  Required<Pick<ConversationRun, 'memory'>>;
+
 export async function readTurnRetrieval(
-  run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings'>,
+  run: RetrievalRun,
   query: TurnContextQuery,
   times: MemoryLineOptions,
 ): Promise<TurnRetrieval> {
@@ -85,7 +88,7 @@ interface MessageSearch {
 }
 
 async function readRetrievedMessages(
-  run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings'>,
+  run: RetrievalRun,
   query: TurnContextQuery,
   search: MessageSearch,
 ): Promise<readonly PastMessage[]> {

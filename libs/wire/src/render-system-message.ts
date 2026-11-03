@@ -15,6 +15,7 @@ export type SystemMessageType =
   | 'outcome'
   | 'task-messages'
   | 'task-board'
+  | 'task-start'
   | 'message-moved';
 
 export interface SystemMessage {

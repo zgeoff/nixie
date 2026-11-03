@@ -1,6 +1,10 @@
 export { makeStubStep } from './make-stub-step';
 export type { TaskStepsOptions } from './run-task-steps';
 export { runTaskSteps } from './run-task-steps';
+export type { ConversationStep } from './seed-conversation-step';
+export { seedConversationStep } from './seed-conversation-step';
+export type { StartedTaskSeed } from './seed-started-task';
+export { seedStartedTask } from './seed-started-task';
 export { startFaultPointFailure } from './start-fault-point-failure';
 export { startNextTestWriter } from './start-next-test-writer';
 export type { TestTasks } from './start-test-tasks';

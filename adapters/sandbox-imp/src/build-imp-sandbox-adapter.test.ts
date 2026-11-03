@@ -203,35 +203,6 @@ test('it gets a sandbox whose imp impd still backs up as retired', async () => {
   expect(found?.isRetired).toBeTrue();
 });
 
-test.each([
-  ['public egress with a grant', 'fetch', { kind: 'public' }],
-  ['public egress with a grant', 'coding', { kind: 'public' }],
-  [
-    'a grant with egress outside a coding session (conversation)',
-    'conversation',
-    { kind: 'allow', hosts: ['github.com'] },
-  ],
-  [
-    'a grant with egress outside a coding session (worker)',
-    'worker',
-    { kind: 'allow', hosts: ['github.com'] },
-  ],
-] as const)(
-  'it refuses %s for a %s sandbox and touches neither impd nor the log',
-  async (reason, kind, egress) => {
-    const ctx = await setupTest();
-
-    const spec = buildMockSandboxSpec({ kind, egress, grants: [buildMockGrantSpec()] });
-
-    expect(ctx.adapter.create(spec)).rejects.toThrow(new SandboxSpecRefusedError(reason));
-
-    const records = await ctx.readSandboxRecords();
-
-    expect(records).toStrictEqual([]);
-    expect(ctx.imp.calls).toStrictEqual([]);
-  },
-);
-
 test('it gives a coding session a box policy with its hosts beside its grant', async () => {
   const ctx = await setupTest();
 

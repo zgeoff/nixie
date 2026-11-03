@@ -7,19 +7,28 @@ import { makeStepErrorLogger } from './make-step-error-logger';
 import { startQueueCheckTask } from './start-queue-check-task';
 import type { ServerParts } from './types';
 
-export async function startRunners(parts: ServerParts, runStep: RunStep): Promise<void> {
+export interface RunnerSteps {
+  readonly system: RunStep;
+  readonly started: RunStep;
+}
+
+export async function startRunners(parts: ServerParts, runSteps: RunnerSteps): Promise<void> {
   const onError = (error: unknown) => {
     parts.log('runner.failed', toErrorFields(error));
     parts.onFailure(error);
   };
 
-  const steps = await startQueueCheckTask(parts, runStep);
+  const steps = await startQueueCheckTask(parts, runSteps.system);
 
   const logStepError = makeStepErrorLogger(parts.log);
   const markConversationFailure = makeConversationFailureMarker(parts.state);
 
   const tasks = startTaskRunners(parts.context, {
     runStep: parts.tools.actions.trackSteps(steps),
+    started: {
+      runStep: parts.tools.actions.trackSteps(runSteps.started),
+      size: parts.config.tasks.startedClaimLoops,
+    },
     onStepErrored: (errored) => {
       logStepError(errored);
       markConversationFailure(errored);

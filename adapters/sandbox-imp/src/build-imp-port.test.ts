@@ -255,6 +255,76 @@ test('it reopens the tool route of a conversation imp after a sleep and a wake',
   });
 });
 
+test('it gets no sandbox whose imp impd lost, and records the sandbox destroyed', async () => {
+  const impd = await startTestImpd();
+
+  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+
+  // The adapter's cleanup removes its imps and its secret through impd, so impd stops after it.
+  const started = setupIsolationAdapter({
+    port: guested.port,
+    removeSecret: async (name) => {
+      await impd.client.secrets.delete({ name });
+    },
+    publicEgress: null,
+    secret: 'nixie-test-reef',
+  });
+
+  onTestFinished(impd.stop);
+
+  const isolation = await started;
+
+  await impd.seedImage('reef-image');
+
+  const sandbox = await isolation.createSandbox(
+    buildMockSandboxSpec({ kind: 'worker', image: 'reef-image', grants: [] }),
+  );
+
+  await impd.client.imps.destroy({ name: sandbox.id });
+
+  const found = await isolation.readSandbox(sandbox.id);
+  const records = await isolation.readSandboxRecords();
+
+  expect(found).toBeNull();
+
+  expect(records.at(-1)).toMatchObject({
+    kind: 'sandbox.destroyed',
+    payload: { sandboxID: sandbox.id },
+  });
+});
+
+test('it lists no sandbox whose imp impd lost', async () => {
+  const impd = await startTestImpd();
+
+  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+
+  // The adapter's cleanup removes its imps and its secret through impd, so impd stops after it.
+  const started = setupIsolationAdapter({
+    port: guested.port,
+    removeSecret: async (name) => {
+      await impd.client.secrets.delete({ name });
+    },
+    publicEgress: null,
+    secret: 'nixie-test-reef',
+  });
+
+  onTestFinished(impd.stop);
+
+  const isolation = await started;
+
+  await impd.seedImage('reef-image');
+
+  const sandbox = await isolation.createSandbox(
+    buildMockSandboxSpec({ kind: 'worker', image: 'reef-image', grants: [] }),
+  );
+
+  await impd.client.imps.destroy({ name: sandbox.id });
+
+  const listed = await isolation.listSandboxes(sandbox.spec.owner);
+
+  expect(listed).toStrictEqual([]);
+});
+
 test('it refuses to read the features of an impd of major 7 with imp client 6', () => {
   const answerRequest = mock(() =>
     Response.json({ json: { version: '7.0.0', features: {}, egress: {} } }),

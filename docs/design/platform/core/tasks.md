@@ -239,8 +239,8 @@ Before any task starts, nixie finishes any pending cleanup of invalid transcript
 3. Marks each action that started an attempt without a recorded result as unknown, under
    [actions](actions.md).
 4. Fires every timer that fell due while nixie was down.
-5. Destroys every sandbox that belongs to a step that no longer runs, through its recorded sandbox
-   adapter.
+5. Destroys every sandbox of a step that no longer runs, through its recorded sandbox adapter, and
+   keeps the imp of each started task that is not done or closed.
 
 Each step commit records the SDK session's last chain entry as the task's session boundary. The
 rerun calls `query()` with `resume`, `resumeSessionAt` at that boundary and `forkSession: true`,

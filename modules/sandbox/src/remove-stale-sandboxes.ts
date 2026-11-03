@@ -1,5 +1,6 @@
 import type { Log } from '@heynixie/log';
-import type { Sandbox, SandboxTables } from './types';
+import { readSandboxOwners } from './read-sandbox-owners';
+import type { Sandbox } from './types';
 
 export interface StaleSandboxesOptions {
   readonly log: Log;
@@ -12,16 +13,9 @@ export interface StaleSandboxesOptions {
 }
 
 export async function removeStaleSandboxes(options: StaleSandboxesOptions): Promise<void> {
-  const rows = await options.log.writer.db
-    .$extendTables<SandboxTables>()
-    .selectFrom('sandboxes')
-    .select('owner')
-    .distinct()
-    .where('adapter', '=', options.adapter.id)
-    .orderBy('owner')
-    .execute();
+  const owners = await readSandboxOwners(options.log, options.adapter.id);
 
-  const stale = rows.map((row) => row.owner).filter((owner) => !options.keptOwners.includes(owner));
+  const stale = owners.filter((owner) => !options.keptOwners.includes(owner));
 
   const sandboxes = await Promise.all(stale.map((owner) => options.adapter.list(owner)));
 

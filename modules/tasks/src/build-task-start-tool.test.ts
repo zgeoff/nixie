@@ -47,7 +47,7 @@ test('it starts a task with its name and brief, routes the unread message to it,
     result: {
       taskID: task.task_id,
       name: 'Garden plan',
-      note: 'In your reply, tell Robin in a few words that you passed this to the Garden plan task. No runner runs a started task in this release, so the task holds its messages unread: tell Robin it is queued.',
+      note: 'In your reply, tell Robin in a few words that you passed this to the Garden plan task. The task starts on its brief now, and its report comes back to you as a task message.',
     },
   });
 

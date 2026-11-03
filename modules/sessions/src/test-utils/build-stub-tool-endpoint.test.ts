@@ -45,3 +45,21 @@ test('it numbers each step token a run issues and records which ones stopped', a
     { stepRunID: 'conversation:2@2', session: null, token: 'step-token-2', isStopped: false },
   ]);
 });
+
+test('it rejects the first starts it is told to fail, then starts the run', async () => {
+  const stub = buildStubToolEndpoint({ failedStarts: 1 });
+
+  const run = {
+    runID: 'k3vq8m2xpa',
+    thread: 'k3vq8m2xpa',
+    tools: ['time.now'],
+    model: { model: 'claude-test-1', profile: 'chat-direct' },
+  };
+
+  const failed = stub.endpoint.startRun(run);
+
+  const started = await stub.endpoint.startRun(run);
+
+  expect(failed).rejects.toThrow('the tool socket could not bind');
+  expect(started).toMatchObject({ runID: 'k3vq8m2xpa' });
+});

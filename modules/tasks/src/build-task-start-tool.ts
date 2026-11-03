@@ -71,8 +71,8 @@ export function buildTaskStartTool(
           name,
           note:
             `In your reply, tell ${owner} in a few words that you passed this to the ${name} ` +
-            'task. No runner runs a started task in this release, so the task holds its ' +
-            `messages unread: tell ${owner} it is queued.`,
+            'task. The task starts on its brief now, and its report comes back to you as a ' +
+            'task message.',
         },
       };
     },

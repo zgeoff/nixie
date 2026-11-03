@@ -136,13 +136,18 @@ function readTurnNote(run: ConversationRun, isNewSession: boolean): Promise<Turn
 }
 
 // The SDK acknowledges an inbox record by its message's uuid, so the preamble joins the first
-// message rather than going in a message of its own.
+// message rather than going in a message of its own. A turn with no message, such as a started
+// task's first, sends the preamble alone under a uuid that names no inbox record.
 function buildTurnInput(
   messages: readonly InboxMessage[],
   blocks: readonly (string | null)[],
 ): readonly InboxMessage[] {
   const [first, ...rest] = messages;
   const preamble = blocks.filter((block) => block !== null);
+
+  if (first === undefined && preamble.length > 0) {
+    return [{ uuid: crypto.randomUUID(), text: preamble.join('\n\n') }];
+  }
 
   if (first === undefined || preamble.length === 0) {
     return messages;

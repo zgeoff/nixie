@@ -114,6 +114,89 @@ test("it reads a task's message as a turn, and pairs the reply after it with tha
   ]);
 });
 
+test('it reads a message the task sent from the thread of the task it went to, in order among its own turns', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'planner',
+      payload: {
+        messageID: 'b6rd2k9wpe',
+        from: 'conversation',
+        to: 'planner',
+        kind: 'request',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 0,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:conversation',
+      },
+      erasable: { body: 'Find a dentist slot this week.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'planner',
+      erasable: { text: 'On it.' },
+    },
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'p2xc7d4nqa',
+        from: 'planner',
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:planner',
+      },
+      erasable: { body: 'Thursday at 10 is free.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'planner',
+      erasable: { text: 'Reported.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'planner',
+      erasable: { text: 'Thanks.' },
+    },
+  ]);
+
+  const records = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'planner',
+    beforeSequence: 5,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+  });
+
+  expect(
+    records.map((turn) => ({
+      sequence: turn.record.sequence,
+      answered: turn.answered?.sequence ?? null,
+      isSent: turn.isSent ?? false,
+    })),
+  ).toStrictEqual([
+    { sequence: 1, answered: null, isSent: false },
+    { sequence: 2, answered: 1, isSent: false },
+    { sequence: 3, answered: null, isSent: true },
+    { sequence: 4, answered: 1, isSent: false },
+  ]);
+});
+
 test('it keeps a reply that committed after a message still pending, paired with the message before that one', async () => {
   const ctx = await setupTest();
 

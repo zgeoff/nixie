@@ -7,7 +7,7 @@ import { pickSessionPosition } from './pick-session-position';
 import { readSessionMarks } from './read-session-marks';
 import { runCompactionStep } from './run-compaction-step';
 import { runInboxStep } from './run-inbox-step';
-import type { ConversationRun } from './types';
+import type { ConversationRun, SessionFrame, SessionPosition } from './types';
 
 export function runConversationStep(
   conversation: ConversationRun,
@@ -40,7 +40,7 @@ export function runConversationStep(
       return runCompactionStep(step, position.boundary);
     }
 
-    if (input.inbox.length === 0) {
+    if (input.inbox.length === 0 && !isTaskStart(run.frame, position)) {
       return {
         next: 'wait',
         records: [],
@@ -51,4 +51,9 @@ export function runConversationStep(
 
     return runInboxStep(step, { canCompact: true, before: [] });
   });
+}
+
+// A started task's brief is its first piece of work, and it arrives in no inbox record.
+function isTaskStart(frame: SessionFrame, position: SessionPosition): boolean {
+  return frame.kind === 'task' && position.state === 'fresh';
 }

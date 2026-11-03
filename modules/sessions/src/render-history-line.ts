@@ -22,12 +22,23 @@ export function renderHistoryLine(turn: HistoryTurn, times: MessageTimeOptions):
   }
 
   if (record.kind === 'task_message') {
-    return renderTaskHistoryLine(record, times);
+    return turn.isSent === true
+      ? renderSentHistoryLine(record, times)
+      : renderTaskHistoryLine(record, times);
   }
 
   const words = `[${formatMessageStamp(record, times)}] owner: ${renderOwnerText(record)}`;
 
   return [words, ...renderImageMarkers(record)].join('\n');
+}
+
+function renderSentHistoryLine(record: LogRecord, times: MessageTimeOptions): string {
+  const message = taskMessageCodec.decode(record.payload);
+  const time = formatMessageTime(record.recordedAt, null, times);
+  const body = record.erasable.status === 'readable' ? record.erasable.fields['body'] : undefined;
+  const text = typeof body === 'string' ? body : '[a message since forgotten]';
+
+  return `[#${record.sequence} · ${time}] nixie, to task ${message.to} (${message.kind}): ${text}`;
 }
 
 function renderTaskHistoryLine(record: LogRecord, times: MessageTimeOptions): string {

@@ -11,7 +11,7 @@ test('it names each prompt that nixie does not have, with the prompts it has', (
       input: {},
     }),
   ).toStrictEqual([
-    'prompts: no prompt is named greeter; the prompts are writer, consolidator, content-checker, retirement-checker, session, compaction',
+    'prompts: no prompt is named greeter; the prompts are writer, consolidator, content-checker, retirement-checker, session, compaction, task',
   ]);
 });
 

@@ -7,6 +7,7 @@ import type {
   GuestHome,
   Sandbox,
   SandboxAdapter,
+  SandboxKind,
   SandboxRecorder,
   SandboxSpec,
 } from '../types';
@@ -53,6 +54,10 @@ export interface StubGuestSandboxes {
 
   readonly addReplies: (...replies: readonly StubGuestReply[]) => void;
 
+  // A sandbox of the kind takes these before the shared replies, so a test that runs the
+  // conversation and a worker at once knows which one gets each reply.
+  readonly addKindReplies: (kind: SandboxKind, ...replies: readonly StubGuestReply[]) => void;
+
   readonly addCheckAnswers: (...outputs: readonly unknown[]) => void;
 
   readonly setContextSize: (tokens: number) => void;
@@ -62,6 +67,10 @@ export interface StubGuestSandboxes {
   readonly removeSessions: (owner: string) => void;
 
   readonly failCopyOut: (owner: string, reason: string) => void;
+
+  readonly failSleep: (owner: string, reason: string) => void;
+
+  readonly failNextDestroy: (owner: string, reason: string) => void;
 }
 
 const adapterID = 'stub-guest';
@@ -82,7 +91,10 @@ interface StubState {
   readonly purged: string[];
   readonly checks: CheckRequest[];
   readonly replies: StubGuestReply[];
+  readonly kindReplies: Map<SandboxKind, StubGuestReply[]>;
   readonly checkAnswers: unknown[];
+  readonly sleepFailures: Map<string, string>;
+  readonly destroyFailures: Map<string, string>;
   contextSize: number | null;
 }
 
@@ -96,7 +108,10 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     purged: [],
     checks: [],
     replies: [],
+    kindReplies: new Map(),
     checkAnswers: [],
+    sleepFailures: new Map(),
+    destroyFailures: new Map(),
     contextSize: null,
   };
 
@@ -132,6 +147,12 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     addReplies: (...replies) => {
       state.replies.push(...replies);
     },
+    addKindReplies: (kind, ...replies) => {
+      const queue = state.kindReplies.get(kind) ?? [];
+
+      queue.push(...replies);
+      state.kindReplies.set(kind, queue);
+    },
     addCheckAnswers: (...outputs) => {
       state.checkAnswers.push(...outputs);
     },
@@ -153,6 +174,12 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
       for (const own of collectOwned(state, owner)) {
         own.copyOutFailure = reason;
       }
+    },
+    failSleep: (owner, reason) => {
+      state.sleepFailures.set(owner, reason);
+    },
+    failNextDestroy: (owner, reason) => {
+      state.destroyFailures.set(owner, reason);
     },
   };
 }
@@ -230,6 +257,12 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
     suspension: {
       kind: 'memory',
       sleep: async () => {
+        const failure = state.sleepFailures.get(own.owner);
+
+        if (failure !== undefined) {
+          throw new Error(failure);
+        }
+
         own.isAsleep = true;
 
         await state.options.recorder.write({ event: 'slept', sandboxID: id });
@@ -241,6 +274,13 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
       },
     },
     destroy: async () => {
+      const failure = state.destroyFailures.get(own.owner);
+
+      if (failure !== undefined) {
+        state.destroyFailures.delete(own.owner);
+        throw new Error(failure);
+      }
+
       state.sandboxes.delete(id);
 
       await state.options.recorder.write({
@@ -318,7 +358,9 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: GuestHome | n
           owner: sandbox.spec.owner,
           disk: sandbox.own.disk,
           home: guestHome,
-          takeReply: () => state.replies.shift() ?? { text: defaultReply },
+          takeReply: () =>
+            state.kindReplies.get(sandbox.spec.kind)?.shift() ??
+            state.replies.shift() ?? { text: defaultReply },
           takeContextSize: () => {
             const size = state.contextSize;
 

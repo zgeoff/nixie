@@ -1,10 +1,10 @@
 import { buildModelGrant, deriveModelSecret } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
 import type { GuestCommand, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
-import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
+import { createWorkerSandbox } from './create-worker-sandbox';
 import { isContextOverflow } from './is-context-overflow';
 import { runGuestTurn } from './run-guest-turn';
 
@@ -49,7 +49,13 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
 
   await options.sandboxes.addSecret(secret);
 
-  const sandbox = await setupSessionSandbox(options, buildModelGrant(secret));
+  const worker = await createWorkerSandbox({
+    sandboxes: options.sandboxes,
+    image: options.image,
+    owner: options.taskID,
+    limits: options.limits,
+    modelGrant: buildModelGrant(secret),
+  });
 
   const model: ToolRunModel = {
     model: options.profile.profile.model,
@@ -65,32 +71,9 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
 
   return {
     model,
-    runSession: (session) => runSession({ ...options, sandbox, endpoint }, session),
+    runSession: (session) => runSession({ ...options, sandbox: worker.sandbox, endpoint }, session),
     stop: () => endpoint.stop(),
   };
-}
-
-async function setupSessionSandbox(
-  options: SessionRunnerOptions,
-  grant: ReturnType<typeof buildModelGrant>,
-): ReturnType<SandboxAdapter['create']> {
-  const spec = buildSandboxSpec({
-    kind: 'worker',
-    image: options.image,
-    owner: options.taskID,
-    limits: options.limits,
-    modelGrant: grant,
-  });
-
-  const existing = await options.sandboxes.list(options.taskID);
-
-  const kept = findKeptSandbox(existing, spec);
-
-  await Promise.all(
-    existing.filter((sandbox) => sandbox !== kept).map((sandbox) => sandbox.destroy()),
-  );
-
-  return kept ?? options.sandboxes.create(spec);
 }
 
 interface SessionRun extends SessionRunnerOptions {

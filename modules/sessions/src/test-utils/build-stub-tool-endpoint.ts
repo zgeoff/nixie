@@ -15,7 +15,12 @@ export interface StubToolEndpoint {
   readonly steps: readonly StubStepToken[];
 }
 
-export function buildStubToolEndpoint(): StubToolEndpoint {
+export interface StubToolEndpointOptions {
+  // The first starts reject, as a tool socket that cannot bind would.
+  readonly failedStarts?: number;
+}
+
+export function buildStubToolEndpoint(options: StubToolEndpointOptions = {}): StubToolEndpoint {
   const runs: ToolRun[] = [];
   const steps: StubStepToken[] = [];
 
@@ -25,6 +30,10 @@ export function buildStubToolEndpoint(): StubToolEndpoint {
     endpoint: {
       startRun: (run) => {
         runs.push(run);
+
+        if (runs.length <= (options.failedStarts ?? 0)) {
+          return Promise.reject(new Error('the tool socket could not bind'));
+        }
 
         return Promise.resolve({
           runID: run.runID,

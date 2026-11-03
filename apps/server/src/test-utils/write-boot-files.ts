@@ -24,7 +24,7 @@ export interface BootFileExtras {
 
   readonly isBackupOn?: boolean;
 
-  readonly roleModelURLs?: Readonly<Partial<Record<'memory-writer' | 'checker', string>>>;
+  readonly roleModelURLs?: Readonly<Partial<Record<'memory-writer' | 'checker' | 'task', string>>>;
 }
 
 export async function writeBootFiles(

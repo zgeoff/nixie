@@ -1,12 +1,14 @@
 import type { LogRecord } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
-import { renderPrompt } from '@heynixie/prompts';
 import { readTaskList } from '@heynixie/tasks';
+import { match } from 'ts-pattern';
 import { formatMessageTime } from './format-message-time';
 import { isCoreChanged } from './is-core-changed';
+import type { TurnRetrieval } from './read-turn-retrieval';
 import { readTurnRetrieval } from './read-turn-retrieval';
 import { renderCoreChanges } from './render-core-changes';
 import { renderPinnedMemory } from './render-pinned-memory';
+import { renderSessionPrompt } from './render-session-prompt';
 import { renderTaskBoard } from './render-task-board';
 import { renderTurnPreamble } from './render-turn-preamble';
 import type {
@@ -15,6 +17,7 @@ import type {
   MemoryItem,
   MemoryLineOptions,
   MemoryRef,
+  SessionFrame,
 } from './types';
 
 export interface TurnContextQuery {
@@ -28,12 +31,14 @@ export interface TurnContextQuery {
   readonly previousCore: readonly MemoryRef[] | null;
 
   readonly isNewSession: boolean;
+
+  readonly isFirstSession: boolean;
 }
 
 export interface TurnContext {
   readonly systemPrompt: string;
 
-  readonly pinnedMemory: string;
+  readonly pinnedMemory: string | null;
 
   readonly preamble: readonly string[];
   readonly pinnedCore: readonly MemoryRef[];
@@ -42,13 +47,20 @@ export interface TurnContext {
   readonly retrievedMessages: readonly number[];
 }
 
-const boardLimit = 20;
+type TurnContextRun = Pick<
+  ConversationRun,
+  'context' | 'frame' | 'memory' | 'memorySettings' | 'defaultZone' | 'messaging'
+>;
+
+const noRetrieval: TurnRetrieval = { items: [], selfNotes: [], messages: [] };
 
 export async function readTurnContext(
-  run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings' | 'defaultZone' | 'messaging'>,
+  run: TurnContextRun,
   query: TurnContextQuery,
 ): Promise<TurnContext> {
-  const memory = run.memory();
+  const frame = run.frame;
+  const readMemory = run.memory;
+  const memory = readMemory?.() ?? null;
 
   const lines = {
     ownerName: run.memorySettings.ownerName,
@@ -56,33 +68,36 @@ export async function readTurnContext(
     now: new Date(run.context.clock.now()),
   };
 
-  const core = await memory.readPinnedCore();
-  const retrieval = await readTurnRetrieval(run, query, lines);
+  const core = memory === null ? [] : await memory.readPinnedCore();
+
+  const retrieval =
+    readMemory === undefined
+      ? noRetrieval
+      : await readTurnRetrieval({ ...run, memory: readMemory }, query, lines);
 
   const at = formatMessageTime(lines.now, null, lines);
-  const pinnedMemory = renderPinnedMemory(core, lines);
-
-  const changes = await readCoreChanges(memory, query, { core, lines });
-
-  const tasks = await readTaskList(run.context, run.messaging, {
-    callerID: query.taskID,
-    state: 'all',
-    limit: boardLimit,
-  });
+  const pinnedMemory = memory === null ? null : renderPinnedMemory(core, lines);
+  const changes = memory === null ? null : await readCoreChanges(memory, query, { core, lines });
 
   return {
-    systemPrompt: renderPrompt(
-      'session',
-      {
-        persona: query.persona,
-        skillCatalog: query.skillCatalog,
-        owner: { name: lines.ownerName },
-      },
-      query.prompts,
-    ),
+    systemPrompt: renderSessionPrompt(frame, {
+      taskID: query.taskID,
+      persona: query.persona,
+      skillCatalog: query.skillCatalog,
+      ownerName: lines.ownerName,
+      messaging: run.messaging,
+      prompts: query.prompts,
+    }),
     pinnedMemory,
     preamble: renderTurnPreamble(
-      { changes, retrieval, thread: query.taskID, at, board: renderTaskBoard(tasks, lines) },
+      {
+        start: pickStartNote(frame, query),
+        changes,
+        retrieval,
+        thread: query.taskID,
+        at,
+        board: await readBoard(run, frame, { taskID: query.taskID, lines }),
+      },
       lines,
     ),
     pinnedCore: core.map((item) => toMemoryRef(item)),
@@ -116,6 +131,46 @@ async function readCoreChanges(
   const use = await memory.readPinnedCoreUse();
 
   return renderCoreChanges(previousCore, pinned.core, { ...pinned.lines, unpinnedShortIDs, use });
+}
+
+// A started task opens its first session with no message in its inbox, so this note gives the
+// turn its input.
+function pickStartNote(frame: SessionFrame, query: TurnContextQuery): string | null {
+  return match(frame)
+    .with({ kind: 'conversation' }, () => null)
+    .with({ kind: 'task' }, (task) =>
+      query.isFirstSession
+        ? `Your task starts now: do what the brief in your instructions asks. When you have the result, send it with task.message to ${task.startedBy}, the task that started you, with the kind report.`
+        : null,
+    )
+    .exhaustive();
+}
+
+interface BoardQuery {
+  readonly taskID: string;
+  readonly lines: MemoryLineOptions;
+}
+
+const boardLimit = 20;
+
+// A task finds the other tasks with tasks.list, and a prompt with no board keeps its cached prefix
+// stable.
+async function readBoard(
+  run: TurnContextRun,
+  frame: SessionFrame,
+  query: BoardQuery,
+): Promise<string | null> {
+  if (frame.kind === 'task') {
+    return null;
+  }
+
+  const tasks = await readTaskList(run.context, run.messaging, {
+    callerID: query.taskID,
+    state: 'all',
+    limit: boardLimit,
+  });
+
+  return renderTaskBoard(tasks, query.lines);
 }
 
 function toMemoryRef(item: MemoryItem): MemoryRef {

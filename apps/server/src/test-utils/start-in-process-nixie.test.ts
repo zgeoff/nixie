@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
+import { join } from 'node:path';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { loadDeploymentConfig } from '../load-deployment-config';
@@ -11,6 +12,32 @@ test('it starts nixie in the test process and reaches ready', async () => {
   const ready = await nixie.waitForLogEvent('ready');
 
   expect(ready).toMatchObject({ event: 'ready', level: 'info' });
+});
+
+test('it seeds the migrated data before nixie first starts', async () => {
+  const seeded: string[] = [];
+
+  const nixie = await startInProcessNixie({
+    seedData: async (files) => {
+      const data = await stat(join(files.dataDir, 'nixie.db'));
+
+      const found = data.isFile() ? 'migrated' : 'missing';
+
+      seeded.push(found);
+    },
+  });
+
+  const ready = await nixie.waitForLogEvent('ready');
+
+  expect(seeded).toStrictEqual(['migrated']);
+  expect(ready).toMatchObject({ event: 'ready' });
+});
+
+test('it gives a role the model URL it names', async () => {
+  const nixie = await startInProcessNixie({ roleModelURLs: { task: 'http://127.0.0.1:4040' } });
+  const config = await loadDeploymentConfig(nixie.configPath);
+
+  expect(config.models.roles.task).toBe('scripted-task');
 });
 
 test('it reads the records and the exit code once nixie stops', async () => {

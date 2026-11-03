@@ -189,7 +189,8 @@ test('it puts the task board in the newest turn and keeps the system prompt the 
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  ctx.guest.addReplies(
+  ctx.guest.addKindReplies(
+    'conversation',
     {
       toolUse: {
         name: 'task.start',
@@ -203,7 +204,9 @@ test('it puts the task board in the newest turn and keeps the system prompt the 
   await sendClientMessage(api.client, { text: 'Order the spring seed.' }, 'Started.');
   await sendClientMessage(api.client, { text: 'What is on my board?' }, 'It is on your board.');
 
-  const [first, second] = ctx.guest.turns;
+  const [first, second] = ctx.guest.received.flatMap((received) =>
+    received.owner === 'conversation' && received.frame.type === 'turn' ? [received.frame] : [],
+  );
 
   invariant(first);
   invariant(second);
