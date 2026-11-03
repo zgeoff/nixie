@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.60.0](https://github.com/zgeoff/nixie/compare/v0.59.1...v0.60.0) (2026-11-03)
+
+
+### Features
+
+* **backup:** stage snapshot sets and ship them with a backup job ([#716](https://github.com/zgeoff/nixie/issues/716)) ([3cddbbf](https://github.com/zgeoff/nixie/commit/3cddbbfaf93da716137b0a77783d2eeca0c9b1b9))
+
+
+### Bug Fixes
+
+* **deps:** update @zgeoff/std to v0.3.2 ([#801](https://github.com/zgeoff/nixie/issues/801)) ([d5e3693](https://github.com/zgeoff/nixie/commit/d5e3693c67ba6208f32a4d21cf67fbe51c425af3))
+* **deps:** update onnxruntime-node to v1.31.1 ([#804](https://github.com/zgeoff/nixie/issues/804)) ([2b85360](https://github.com/zgeoff/nixie/commit/2b85360cf92e1b70b793806dd5cd113894721538))
+* **deps:** update onnxruntime-web to v1.31.1 ([#805](https://github.com/zgeoff/nixie/issues/805)) ([e6c79e1](https://github.com/zgeoff/nixie/commit/e6c79e1092b7a37e081bb7c7e3a5138c76c45003))
+
 ## [0.59.1](https://github.com/zgeoff/nixie/compare/v0.59.0...v0.59.1) (2026-11-02)
 
 
