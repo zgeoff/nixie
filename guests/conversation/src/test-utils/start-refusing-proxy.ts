@@ -3,11 +3,11 @@ export interface RefusingProxy {
 
   readonly targets: () => readonly string[];
 
-  readonly stop: () => Promise<void>;
+  readonly stop: () => void;
 }
 
-// A proxy that stalls would hang the client past the test's limit, so this one refuses at once and
-// the test reads the host from the list.
+// A request the proxy left unanswered would fail a test only at its time limit, with no host named,
+// so the proxy refuses each request at once and lists its target.
 export function startRefusingProxy(): RefusingProxy {
   const targets: string[] = [];
 
@@ -27,8 +27,6 @@ export function startRefusingProxy(): RefusingProxy {
     targets: () => [...targets],
     stop: () => {
       server.stop(true);
-
-      return Promise.resolve();
     },
   };
 }
