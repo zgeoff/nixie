@@ -23,7 +23,7 @@ stateDiagram-v2
   running --> done: the step commits as done
   running --> failed: steps throw too many times in a row
   failed --> ready: a restart, or a start of the conversation
-  waiting --> ready: a record lands in the inbox
+  waiting --> ready: a record lands in the inbox, or a start revives a held started task
   running --> paused: the step ends after a pause
   ready --> paused: a pause
   waiting --> paused: a pause
@@ -212,10 +212,34 @@ names of that step's tasks and keeps no hash of it. That compare runs before the
 so the transaction counts the step's tasks again, and when a start in the same step committed in
 between, the start compares the names again.
 
-No runner runs a started task, so the server runs a holding step for it. The holding step writes
-nothing, marks nothing read, and holds the task, so the task waits with every message unread and
-never fails. Each later message to it wakes it into one more holding step. The start tool's note
-tells the model to tell the user that the task is queued.
+### The nixie runner
+
+The nixie runner in `modules/sessions` runs every started task's steps, in a
+[sandbox of the task's own](../connectors/sandboxes.md#a-started-tasks-sandbox), on the model
+profile of the `task` role. A started task claims its steps through a claim pool apart from the
+conversation's ([leases and recovery](./leases-and-recovery.md#runner-pools)). Each step runs the
+conversation's step machinery with three changes:
+
+- The system prompt is the built-in `task` prompt, whose frame holds the task's name and brief, with
+  an empty persona part and empty inputs and instructions.
+- The turn holds no pinned memory, no retrieval and no task board. The task finds the other tasks
+  with the list tool.
+- The tool run, keyed on the task's ID, holds the list tool, the message tool and the clock, and
+  each call passes the same decision point as the conversation's.
+
+A started task's brief arrives in no inbox record, so the first session of a started task opens with
+a start note as its input, which points the task at its brief and tells it to report with a task
+message of kind report to the task that started it. The step that sends the report commits the task
+as waiting, and the user closes it.
+
+A rebuilt session reads the task's own thread and also the messages the task sent, which live on
+their receivers' threads, so a rebuilt task still knows what it reported. The conversation's rebuild
+reads its sent messages the same way.
+
+Only a waking inbox record moves a waiting task to ready. So each start of the server, after it
+writes the conversation task and before any claim, revives to ready each started task that waits
+with unread input or with a brief that no session read, and a claim loop runs it. A task that the
+user paused or stopped keeps its state.
 
 ### Routing records
 

@@ -50,6 +50,21 @@ sandbox whose owner no longer runs
 ([leases and recovery](../core/leases-and-recovery.md#crash-recovery)). A grant's environment holds
 placeholders only, so a spec in a record never holds a credential.
 
+### A started task's sandbox
+
+Each task that the conversation starts runs in a worker sandbox of its own, which the task's ID
+owns, on the conversation image with 1 vCPU, 1024 MiB of memory and 4096 MiB of disk. The nixie
+runner creates it at the task's first step. After a step that waits, the runner sleeps the sandbox
+when its adapter can sleep one, and the next step wakes it, so a task that waits for days holds no
+host memory. Crash recovery keeps the sandbox of every started task that is not done or closed, so a
+waiting task resumes the same session after a restart. A stopped or failed task keeps its sandbox
+too, because a restart of the task resumes it.
+
+The runner destroys the sandbox once its task is done or closed. It checks on each record commit and
+once at its start, because a step returns before its commit, and a close of an idle task runs no
+step. When the sandbox is gone anyway, the next step makes a new one, and the session rebuilds from
+the log ([started tasks](../core/tasks.md#started-tasks)).
+
 ## The tool route
 
 A sandbox with a tool route reaches nixie's tools over a reverse forward, never over a network route

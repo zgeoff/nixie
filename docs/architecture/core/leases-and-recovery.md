@@ -40,7 +40,9 @@ leases as they were.
 A runner pool runs a fixed number of runners over one claim function. An idle runner sleeps for a
 poll interval unless the pool wakes it. Task steps and action attempts run in pools of their own, so
 an action goes out while every task runner is busy with a long turn. The task pool runs one more
-runner that fires due timers on each poll.
+runner that fires due timers on each poll. The tasks that the conversation starts claim their steps
+through a claim pool of their own, with 2 claim loops unless `tasks.startedClaimLoops` sets another
+number, so the user's next message never waits behind their long steps.
 
 A stop claims nothing new and waits a bounded grace for the work in flight. Work still running at
 the deadline is left to recover exactly as after a crash, and a claim that commits after the stop
@@ -60,8 +62,9 @@ in order:
    have reached the provider ([actions](./actions.md#attempts)).
 4. It fires every timer that fell due while nixie was down.
 5. It runs the sandbox cleanup the server passes in, whose job is to destroy every sandbox that
-   belongs to a step that no longer runs. The sandboxes projection lists each sandbox that still
-   stands with its owner and the adapter that made it
+   belongs to a step that no longer runs. It keeps the sandboxes of the conversation, the system
+   tasks and every started task that is not done or closed. The sandboxes projection lists each
+   sandbox that still stands with its owner and the adapter that made it
    ([sandboxes](../connectors/sandboxes.md#records-and-recovery)).
 
 The actions module and the sandbox module depend on tasks, and modules form no cycles, so the server
