@@ -68,7 +68,8 @@ image, with the limits of a system task's sandbox. The task's ID is the sandbox'
 the sandbox at the task's first step. Its life follows the task:
 
 1. When a step leaves the task waiting, the runner puts the sandbox to sleep, if its adapter can. A
-   task that waits for days then holds no host memory.
+   task that waits for days then holds no host memory. A sleep that fails leaves the sandbox awake,
+   and the step's result still commits.
 2. The next step of the task wakes the sandbox.
 3. Crash recovery keeps the sandbox while the task is not done or closed, so the task's session
    survives a restart of nixie. This covers a stopped or failed task too, because a restart of the
@@ -138,6 +139,9 @@ and the secrets.
 - **Credentials at start.** In an imp with a grant, a command starts only once impd has set the
   broker's environment variables for that boot: its proxy, its bypass list and its certificate. impd
   refuses a command whose environment replaces one of them.
+- **Lost imps.** A host can lose an imp without a destroy from nixie, so a sandbox row alone never
+  proves that its imp exists. When the adapter reads or lists a row whose imp impd no longer holds,
+  it records the sandbox destroyed and leaves it out, so its owner creates a new one.
 - **Backups.** A sandbox's disk holds the user's conversation, so a copy of it in impd's backups
   would outlive a [forget](../../glossary.md). The adapter creates every imp with impd's backup
   opt-out, which holds for the imp's life, and refuses to create one on an impd that would ignore

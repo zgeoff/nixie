@@ -632,8 +632,10 @@
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
+        "@zgeoff/std": "catalog:",
         "tiny-invariant": "catalog:",
         "ts-pattern": "catalog:",
+        "xstate": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {

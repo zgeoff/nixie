@@ -18,6 +18,8 @@ export interface ClaimTaskOptions {
   readonly leaseMs: number;
 
   readonly tasks?: ClaimedTasks;
+
+  readonly taskID?: string;
 }
 
 interface StartedStep {
@@ -36,7 +38,7 @@ export async function claimTask(
     kind: 'task',
     holder: options.holder,
     durationMs: options.leaseMs,
-    readCandidate: (tx, now) => readClaimableTask(tx, now, options.tasks ?? null),
+    readCandidate: (tx, now) => readClaimableTask(tx, now, options),
     onClaim: async (tx, held) => {
       started.step = await writeStepStart(tx, context, held);
     },
@@ -48,8 +50,10 @@ export async function claimTask(
 async function readClaimableTask(
   tx: Transaction<unknown>,
   now: number,
-  tasks: ClaimedTasks | null,
+  options: ClaimTaskOptions,
 ): Promise<string | null> {
+  const tasks = options.tasks ?? null;
+  const taskID = options.taskID;
   const startedBy = tasks === 'started' ? 'is not' : 'is';
 
   const row = await tx
@@ -63,6 +67,7 @@ async function readClaimableTask(
     .where('tasks.state', 'in', ['ready', 'running'])
     .where((eb) => eb.or([eb('leases.holder', 'is', null), eb('leases.expires_at', '<=', now)]))
     .$if(tasks !== null, (query) => query.where('tasks.started_by', startedBy, null))
+    .where((eb) => (taskID === undefined ? eb.and([]) : eb('tasks.task_id', '=', taskID)))
     .orderBy('tasks.updated_sequence')
     .limit(1)
     .executeTakeFirst();

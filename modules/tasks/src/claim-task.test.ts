@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { createTask } from './create-task';
+import { seedConversationStep } from './test-utils/seed-conversation-step';
 import { seedStartedTask } from './test-utils/seed-started-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
@@ -136,13 +137,15 @@ test('it pauses a running task whose pause waited on a step whose lease expired,
 
 test('it claims only a started task for the started tasks', async () => {
   const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  await createTask(ctx.context, 'tidy the inbox');
 
   const startedID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
   });
-
-  await createTask(ctx.context, 'tidy the inbox');
 
   const claim = await claimTask(ctx.context, {
     holder: 'runner-a',
@@ -153,10 +156,28 @@ test('it claims only a started task for the started tasks', async () => {
   expect(claim?.lease.workID).toBe(startedID);
 });
 
-test('it never claims a started task for the unstarted tasks', async () => {
+test('it claims only the task it names, though an older task is ready', async () => {
   const ctx = await setupTest();
 
+  await createTask(ctx.context, 'tidy the inbox');
+
+  const namedID = await createTask(ctx.context, 'water the ferns');
+
+  const claim = await claimTask(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    taskID: namedID,
+  });
+
+  expect(claim?.lease.workID).toBe(namedID);
+});
+
+test('it never claims a started task for the unstarted tasks', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
   await seedStartedTask(ctx.context, {
+    starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
   });

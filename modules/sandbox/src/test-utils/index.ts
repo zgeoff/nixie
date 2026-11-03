@@ -1,5 +1,6 @@
 export type { MockSandboxSpecOverrides } from './build-mock-sandbox-spec';
 export { buildMockGrantSpec } from './build-mock-grant-spec';
+export { buildMockSandbox } from './build-mock-sandbox';
 export { buildMockSandboxSpec } from './build-mock-sandbox-spec';
 
 export type {

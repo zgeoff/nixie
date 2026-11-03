@@ -2,7 +2,8 @@ import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
 import { claimTask, runTaskStep, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
-import { seedStartedTask } from '@heynixie/tasks/test-utils';
+import type { ConversationStep } from '@heynixie/tasks/test-utils';
+import { seedConversationStep, seedStartedTask } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import type { NixieRunnerOptions } from './start-nixie-runner';
@@ -36,6 +37,7 @@ async function setupTest() {
             auth_header: 'x-api-key',
             model: 'claude-test-errands',
             effort: 'low',
+            context_tokens: 200_000,
           },
         },
         roles: { conversation: 'chat-direct', task: 'errands' },
@@ -79,8 +81,10 @@ async function setupTest() {
     runs: tools.runs,
     events,
     startRunner,
-    seedTask: () =>
+    seedConversationStep: () => seedConversationStep(host.context),
+    seedTask: (starter: ConversationStep) =>
       seedStartedTask(host.context, {
+        starter: starter.claim,
         name: 'Tide tables',
         brief: 'Find the high tides for Saturday.',
       }),
@@ -114,7 +118,8 @@ async function setupTest() {
 
 test("it runs a started task's first step in a worker imp that the task owns", async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -136,7 +141,8 @@ test("it runs a started task's first step in a worker imp that the task owns", a
 
 test("it runs a started task's tool run on its own ID with the tools it is given and the task role's model", async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -153,7 +159,8 @@ test("it runs a started task's tool run on its own ID with the tools it is given
 
 test("it opens a started task's first session under the task prompt, with a start note as its input and no persona or memory", async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -176,7 +183,8 @@ test("it opens a started task's first session under the task prompt, with a star
 
 test('it sleeps the imp of a step that waits, and wakes the same imp for the next message', async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -195,7 +203,8 @@ test('it sleeps the imp of a step that waits, and wakes the same imp for the nex
 
 test('it resumes the same session for the next message', async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -213,7 +222,9 @@ test("it starts a task's tool run again on the step after a start that failed", 
 
   const failing = buildStubToolEndpoint({ failedStarts: 1 });
 
-  await ctx.seedTask();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter);
 
   const runner = await ctx.startRunner({ tools: failing.endpoint });
 
@@ -225,7 +236,8 @@ test("it starts a task's tool run again on the step after a start that failed", 
 
 test('it destroys the imp of an idle task when the task closes, with no further step', async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -241,11 +253,53 @@ test('it destroys the imp of an idle task when the task closes, with no further 
   expect(ctx.guest.turns).toHaveLength(1);
 });
 
+test("it compacts a started task's session under the task prompt, with its name and brief and no persona", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter);
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const prompts = ctx.guest.summaries.map((summary) => summary.systemPrompt);
+
+  expect(prompts).toStrictEqual([
+    expect.stringContaining('You are "Tide tables", one of the tasks that nixie runs'),
+  ]);
+
+  expect(prompts.join('')).toInclude('Find the high tides for Saturday.');
+  expect(prompts.join('')).not.toInclude('You are Pip.');
+});
+
+test('it commits a step whose imp fails to sleep, with no step error', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
+  const runner = await ctx.startRunner();
+
+  ctx.guest.failSleep(taskID, 'the snapshot would not write');
+
+  await ctx.runNextStep(runner);
+
+  const errored = await ctx.readKinds('task.step_errored');
+  const committed = await ctx.readKinds('task.step_committed');
+
+  expect(errored).toStrictEqual([]);
+  expect(committed).toHaveLength(1);
+});
+
 test('it keeps destroying the imps of closed tasks after the destroy of one fails', async () => {
   const ctx = await setupTest();
-  const stuck = await ctx.seedTask();
+  const starter = await ctx.seedConversationStep();
+  const stuck = await ctx.seedTask(starter);
 
   const other = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
     name: 'Ferry times',
     brief: 'Find the last ferry on Sunday.',
   });
@@ -274,7 +328,8 @@ test('it keeps destroying the imps of closed tasks after the destroy of one fail
 
 test('it rebuilds the session of a task whose imp is gone with the messages the task sent', async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);

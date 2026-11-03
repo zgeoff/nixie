@@ -712,17 +712,28 @@ test('it fails each copy out of a sandbox a test makes fail, with the reason giv
   );
 });
 
+test('it fails the sleep of a sandbox a test makes fail, and keeps it awake', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  invariant(sandbox.suspension.kind === 'memory');
+
+  ctx.stub.failSleep(ctx.spec.owner, 'the snapshot would not write');
+
+  expect(sandbox.suspension.sleep()).rejects.toThrow('the snapshot would not write');
+  expect(sandbox.copyIn([])).resolves.toBeUndefined();
+});
+
 test('it fails the destroy of a sandbox a test makes fail, and keeps it listed', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
 
   ctx.stub.failDestroy(ctx.spec.owner, 'the imp would not stop');
 
-  const destroyed = sandbox.destroy();
+  expect(sandbox.destroy()).rejects.toThrow('the imp would not stop');
 
   const listed = await ctx.stub.adapter.list(ctx.spec.owner);
 
-  expect(destroyed).rejects.toThrow('the imp would not stop');
   expect(listed.map((found) => found.id)).toStrictEqual([sandbox.id]);
 });
 

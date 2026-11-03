@@ -68,6 +68,8 @@ export interface StubGuestSandboxes {
 
   readonly failCopyOut: (owner: string, reason: string) => void;
 
+  readonly failSleep: (owner: string, reason: string) => void;
+
   readonly failDestroy: (owner: string, reason: string) => void;
 }
 
@@ -78,7 +80,6 @@ interface SandboxState {
   readonly disk: StubGuestDisk;
   isAsleep: boolean;
   copyOutFailure: string | null;
-  destroyFailure: string | null;
 }
 
 interface StubState {
@@ -92,6 +93,8 @@ interface StubState {
   readonly replies: StubGuestReply[];
   readonly kindReplies: Map<SandboxKind, StubGuestReply[]>;
   readonly checkAnswers: unknown[];
+  readonly sleepFailures: Map<string, string>;
+  readonly destroyFailures: Map<string, string>;
   contextSize: number | null;
 }
 
@@ -107,6 +110,8 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     replies: [],
     kindReplies: new Map(),
     checkAnswers: [],
+    sleepFailures: new Map(),
+    destroyFailures: new Map(),
     contextSize: null,
   };
 
@@ -170,10 +175,11 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
         own.copyOutFailure = reason;
       }
     },
+    failSleep: (owner, reason) => {
+      state.sleepFailures.set(owner, reason);
+    },
     failDestroy: (owner, reason) => {
-      for (const own of collectOwned(state, owner)) {
-        own.destroyFailure = reason;
-      }
+      state.destroyFailures.set(owner, reason);
     },
   };
 }
@@ -251,6 +257,12 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
     suspension: {
       kind: 'memory',
       sleep: async () => {
+        const failure = state.sleepFailures.get(own.owner);
+
+        if (failure !== undefined) {
+          throw new Error(failure);
+        }
+
         own.isAsleep = true;
 
         await state.options.recorder.write({ event: 'slept', sandboxID: id });
@@ -262,8 +274,10 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
       },
     },
     destroy: async () => {
-      if (own.destroyFailure !== null) {
-        throw new Error(own.destroyFailure);
+      const failure = state.destroyFailures.get(own.owner);
+
+      if (failure !== undefined) {
+        throw new Error(failure);
       }
 
       state.sandboxes.delete(id);
@@ -445,7 +459,6 @@ function registerSandboxState(state: StubState, row: SandboxRow): SandboxState {
     disk: buildStubGuestDisk(),
     isAsleep: false,
     copyOutFailure: null,
-    destroyFailure: null,
   };
 
   state.sandboxes.set(row.sandboxID, own);

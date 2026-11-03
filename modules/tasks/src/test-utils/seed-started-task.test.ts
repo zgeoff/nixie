@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { TasksTables } from '../types';
+import { seedConversationStep } from './seed-conversation-step';
 import { seedStartedTask } from './seed-started-task';
 import { startTestTasks } from './start-test-tasks';
 
@@ -9,10 +10,12 @@ async function setupTest() {
   return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
 }
 
-test('it leaves a ready task that the conversation started, beside a waiting conversation', async () => {
+test('it leaves a ready task that the starter step started, and the starter as it was', async () => {
   const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
 
   const taskID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
   });
@@ -24,7 +27,7 @@ test('it leaves a ready task that the conversation started, beside a waiting con
     .execute();
 
   expect(rows).toStrictEqual([
-    { task_id: 'conversation', state: 'waiting', started_by: null },
+    { task_id: 'conversation', state: 'running', started_by: null },
     { task_id: taskID, state: 'ready', started_by: 'conversation' },
   ]);
 });

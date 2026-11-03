@@ -9,6 +9,8 @@ import type { RunStep, StepInput, StepResult, TaskMessaging, TasksContext } from
 import { readStartedTaskIDs, readTaskStarter, startRunnerPool } from '@heynixie/tasks';
 import type { RunEndpoint, ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
+import type { Actor } from 'xstate';
+import { createActor } from 'xstate';
 import { buildDefaultStatus } from './build-default-status';
 import { createWorkerSandbox } from './create-worker-sandbox';
 import { makeSessionGuard } from './make-session-guard';
@@ -16,6 +18,8 @@ import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-ru
 import { makeSystemTaskRunner } from './make-system-task-runner';
 import { runConversationStep } from './run-conversation-step';
 import { sessionImageBudget } from './session-image-budget';
+import type { TaskImp, TaskImpParts } from './task-imp-machine';
+import { taskImpMachine } from './task-imp-machine';
 import type { ConversationMemorySettings, ConversationRun, SessionDefinitions } from './types';
 
 export interface NixieRunnerOptions extends SystemTaskOptions {
@@ -38,10 +42,7 @@ export interface NixieRunner {
   readonly runStep: RunStep;
 }
 
-interface TaskSandbox {
-  readonly sandbox: Sandbox;
-  readonly isAsleep: boolean;
-}
+type TaskImpActor = Actor<typeof taskImpMachine>;
 
 interface TaskRunner {
   readonly options: NixieRunnerOptions;
@@ -49,8 +50,7 @@ interface TaskRunner {
   readonly grant: GrantSpec;
   readonly model: ToolRunModel;
 
-  readonly endpoints: Map<string, Promise<RunEndpoint>>;
-  readonly sandboxes: Map<string, TaskSandbox>;
+  readonly imps: Map<string, TaskImpActor>;
 }
 
 export const startNixieRunner = makeSystemTaskRunner<NixieRunnerOptions, NixieRunner>({
@@ -66,11 +66,10 @@ export const startNixieRunner = makeSystemTaskRunner<NixieRunnerOptions, NixieRu
       session,
       grant: buildModelGrant(secret),
       model: { model: session.profile.profile.model, profile: session.profile.profile.id },
-      endpoints: new Map(),
-      sandboxes: new Map(),
+      imps: new Map(),
     };
 
-    session.defer(() => removeEndpoints(runner));
+    session.defer(() => stopTaskImps(runner));
 
     const watch = startEndedTaskWatch(runner);
 
@@ -80,18 +79,18 @@ export const startNixieRunner = makeSystemTaskRunner<NixieRunnerOptions, NixieRu
   },
 });
 
-async function removeEndpoints(runner: TaskRunner): Promise<void> {
-  await Promise.all([...runner.endpoints.keys()].map((taskID) => removeEndpoint(runner, taskID)));
-}
+async function stopTaskImps(runner: TaskRunner): Promise<void> {
+  const imps = [...runner.imps.values()];
 
-async function removeEndpoint(runner: TaskRunner, taskID: string): Promise<void> {
-  const started = runner.endpoints.get(taskID);
+  runner.imps.clear();
 
-  runner.endpoints.delete(taskID);
+  await Promise.all(
+    imps.map(async (imp) => {
+      imp.stop();
 
-  const endpoint = await started;
-
-  await endpoint?.stop();
+      await imp.getSnapshot().context.endpoint?.stop();
+    }),
+  );
 }
 
 interface EndedTaskWatch {
@@ -141,7 +140,7 @@ async function removeEndedTasks(runner: TaskRunner): Promise<void> {
 
   const ended = await readStartedTaskIDs(options.context, {
     end: 'ended',
-    among: [...new Set([...owners, ...runner.endpoints.keys()])],
+    among: [...new Set([...owners, ...runner.imps.keys()])],
   });
 
   // One task whose removal fails stays ended, so it is in the next sweep, and the rest go now.
@@ -155,16 +154,64 @@ async function removeEndedTasks(runner: TaskRunner): Promise<void> {
 }
 
 async function removeEndedTask(runner: TaskRunner, taskID: string): Promise<void> {
+  const imp = resolveTaskImp(runner, taskID);
+  const removed = Promise.withResolvers<number>();
+
+  imp.send({ type: 'remove', reply: removed });
+
+  const sandboxes = await removed.promise;
+
+  runner.imps.delete(taskID);
+  imp.stop();
+  runner.options.log('nixie_runner.task_removed', { taskID, sandboxes });
+}
+
+function resolveTaskImp(runner: TaskRunner, taskID: string): TaskImpActor {
+  const held = runner.imps.get(taskID);
+
+  if (held !== undefined) {
+    return held;
+  }
+
+  const imp = createActor(taskImpMachine, { input: buildTaskImpParts(runner, taskID) });
+
+  imp.start();
+  runner.imps.set(taskID, imp);
+
+  return imp;
+}
+
+function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
   const options = runner.options;
 
-  const sandboxes = await options.sandboxes.list(taskID);
+  return {
+    startEndpoint: () =>
+      options.tools.startRun({
+        runID: taskID,
+        thread: taskID,
+        tools: options.toolNames,
+        model: runner.model,
+      }),
+    readSandbox: (id) => options.sandboxes.read(id),
+    createSandbox: () =>
+      createWorkerSandbox({
+        sandboxes: options.sandboxes,
+        image: options.image,
+        owner: taskID,
+        limits: runner.session.limits,
+        modelGrant: runner.grant,
+      }),
+    removeSandboxes: async () => {
+      const sandboxes = await options.sandboxes.list(taskID);
 
-  await Promise.all(sandboxes.map((sandbox) => sandbox.destroy()));
+      await Promise.all(sandboxes.map((sandbox) => sandbox.destroy()));
 
-  await removeEndpoint(runner, taskID);
-
-  runner.sandboxes.delete(taskID);
-  options.log('nixie_runner.task_removed', { taskID, sandboxes: sandboxes.length });
+      return sandboxes.length;
+    },
+    onSleepFailed: (error) => {
+      options.log('nixie_runner.sleep_failed', { taskID, ...toErrorFields(error) }, 'error');
+    },
+  };
 }
 
 async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<StepResult> {
@@ -172,73 +219,23 @@ async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<Ste
 
   invariant(startedBy !== null, `the nixie runner runs started tasks only, not ${input.taskID}`);
 
-  const endpoint = await resolveEndpoint(runner, input.taskID);
-  const sandbox = await resolveAwakeSandbox(runner, input.taskID);
+  const imp = resolveTaskImp(runner, input.taskID);
+  const acquired = Promise.withResolvers<TaskImp>();
 
-  const result = await runConversationStep(
-    buildTaskRun(runner, { startedBy, endpoint, sandbox }),
-    input,
-  );
+  imp.send({ type: 'acquire', reply: acquired });
+
+  const held = await acquired.promise;
+  const result = await runConversationStep(buildTaskRun(runner, { startedBy, ...held }), input);
 
   if (result.next === 'wait') {
-    await sleepSandbox(runner, input.taskID, sandbox);
+    const released = Promise.withResolvers<void>();
+
+    imp.send({ type: 'release', reply: released });
+
+    await released.promise;
   }
 
   return result;
-}
-
-// A task runs one step at a time, so a start that failed leaves the cache before the next step.
-async function resolveEndpoint(runner: TaskRunner, taskID: string): Promise<RunEndpoint> {
-  const started =
-    runner.endpoints.get(taskID) ??
-    runner.options.tools.startRun({
-      runID: taskID,
-      thread: taskID,
-      tools: runner.options.toolNames,
-      model: runner.model,
-    });
-
-  runner.endpoints.set(taskID, started);
-
-  try {
-    return await started;
-  } catch (error) {
-    runner.endpoints.delete(taskID);
-    throw error;
-  }
-}
-
-// A sandbox that the host lost is gone from the adapter, so the step gets a new one, and the
-// guest's missing session sends the step down the rebuild path.
-async function resolveAwakeSandbox(runner: TaskRunner, taskID: string): Promise<Sandbox> {
-  const cached = runner.sandboxes.get(taskID);
-
-  const current =
-    cached === undefined ? null : await runner.options.sandboxes.read(cached.sandbox.id);
-
-  const held =
-    cached !== undefined && current !== null ? cached : await createTaskSandbox(runner, taskID);
-
-  if (held.isAsleep && held.sandbox.suspension.kind === 'memory') {
-    await held.sandbox.suspension.wake();
-  }
-
-  runner.sandboxes.set(taskID, { sandbox: held.sandbox, isAsleep: false });
-
-  return held.sandbox;
-}
-
-async function createTaskSandbox(runner: TaskRunner, taskID: string): Promise<TaskSandbox> {
-  const created = await createWorkerSandbox({
-    sandboxes: runner.options.sandboxes,
-    image: runner.options.image,
-    owner: taskID,
-    limits: runner.session.limits,
-    modelGrant: runner.grant,
-  });
-
-  // A kept sandbox may sleep from an earlier process, and waking an awake one costs nothing.
-  return { sandbox: created.sandbox, isAsleep: created.isKept };
 }
 
 interface TaskRunParts {
@@ -269,14 +266,4 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     imageBudget: sessionImageBudget,
     session: makeSessionGuard(),
   };
-}
-
-async function sleepSandbox(runner: TaskRunner, taskID: string, sandbox: Sandbox): Promise<void> {
-  if (sandbox.suspension.kind === 'none') {
-    return;
-  }
-
-  await sandbox.suspension.sleep();
-
-  runner.sandboxes.set(taskID, { sandbox, isAsleep: true });
 }

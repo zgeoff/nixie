@@ -52,7 +52,7 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
       isRetired,
     });
 
-  const getRowSandbox = makeRowSandboxReader(options.port, sleeping, getSandbox);
+  const getRowSandbox = makeRowSandboxReader(options.port, options.recorder, sleeping, getSandbox);
 
   const images = new Map<string, SandboxImage>();
 
@@ -78,8 +78,9 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
     },
     list: async (owner) => {
       const rows = await options.recorder.list('imp', owner);
+      const sandboxes = await Promise.all(rows.map((row) => getRowSandbox(row)));
 
-      return Promise.all(rows.map((row) => getRowSandbox(row)));
+      return sandboxes.filter((sandbox) => sandbox !== null);
     },
     addSecret: makeSecretAdder(options.port),
     addImage,
@@ -87,17 +88,25 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
   };
 }
 
+// A host can lose an imp with no destroy from nixie, so a row alone never proves the imp exists.
 function makeRowSandboxReader(
   port: ImpPort,
+  recorder: SandboxRecorder,
   sleeping: SleepRegistry,
   getSandbox: (id: string, spec: SandboxSpec, isRetired: boolean) => Sandbox,
-): (row: SandboxRow) => Promise<Sandbox> {
+): (row: SandboxRow) => Promise<Sandbox | null> {
   return async (row) => {
     const isBackedUp = await port.readImpBackup(row.sandboxID);
 
+    if (isBackedUp === null) {
+      await recorder.write({ event: 'destroyed', sandboxID: row.sandboxID, reason: 'destroyed' });
+
+      return null;
+    }
+
     sleeping.setAsleep(row.sandboxID, row.state === 'sleeping');
 
-    return getSandbox(row.sandboxID, row.spec, isBackedUp === true);
+    return getSandbox(row.sandboxID, row.spec, isBackedUp);
   };
 }
 

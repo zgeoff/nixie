@@ -4,6 +4,7 @@ import { waitForCondition } from '@heynixie/testing';
 import { claimTask } from './claim-task';
 import { createTask } from './create-task';
 import { startTaskRunners } from './start-task-runners';
+import { seedConversationStep } from './test-utils/seed-conversation-step';
 import { seedStartedTask } from './test-utils/seed-started-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { RunStep, StepErrored, StepResult, TasksTables } from './types';
@@ -238,8 +239,10 @@ test('it fires a due timer on its next poll', async () => {
 
 test('it runs a started task through the started step', async () => {
   const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
 
   const taskID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
   });
@@ -267,8 +270,25 @@ test('it claims a message to the conversation while every claim loop of the star
 
   const held = Promise.withResolvers<void>();
 
-  await seedStartedTask(ctx.context, { name: 'Tide tables', brief: 'Find the high tides.' });
-  await seedStartedTask(ctx.context, { name: 'Moon phases', brief: 'List the full moons.' });
+  const starter = await seedConversationStep(ctx.context);
+
+  await seedStartedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides.',
+  });
+
+  await seedStartedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Moon phases',
+    brief: 'List the full moons.',
+  });
+
+  await writeStepCommit(ctx.context, starter.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [starter.messageSequence],
+  });
 
   const started = new Set<string>();
 
