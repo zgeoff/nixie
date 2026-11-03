@@ -7,4 +7,5 @@ export const promptIDs = [
   'retirement-checker',
   'session',
   'compaction',
+  'task',
 ] as const satisfies readonly PromptID[];

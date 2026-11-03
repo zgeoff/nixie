@@ -80,14 +80,15 @@ already answered or lapsed, a stale proposal, or an edit that fails the checks i
 A template reads `parts.<name>` for each part of its prompt, and every path in its row. A part reads
 every path in its row and the parts listed before it.
 
-| Prompt               | Parts                                              | Paths                                                                                                             |
-| -------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `writer`             | `persona`, `instruction`, `safety`                 | `persona`, `owner.name`, `owner.label`, `owner.mention`, `assistant.name`, `assistant.label`, `assistant.mention` |
-| `consolidator`       | `persona`, `nameRule`, `instruction`, `safety`     | `persona`, `owner.name`, `memory.maxChanges`                                                                      |
-| `content-checker`    | `nameRule`, `instruction`, `safety`                | `owner.name`, `owner.nameAtSentenceStart`                                                                         |
-| `retirement-checker` | `instruction`, `safety`                            | none                                                                                                              |
-| `session`            | `skillCatalog`, `instruction`, `routing`, `safety` | `persona`, `skillCatalog`, `owner.name`                                                                           |
-| `compaction`         | `instruction`, `safety`                            | `owner.name`, `owner.nameAtSentenceStart`, `summary.words`                                                        |
+| Prompt               | Parts                                                  | Paths                                                                                                             |
+| -------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `writer`             | `persona`, `instruction`, `safety`                     | `persona`, `owner.name`, `owner.label`, `owner.mention`, `assistant.name`, `assistant.label`, `assistant.mention` |
+| `consolidator`       | `persona`, `nameRule`, `instruction`, `safety`         | `persona`, `owner.name`, `memory.maxChanges`                                                                      |
+| `content-checker`    | `nameRule`, `instruction`, `safety`                    | `owner.name`, `owner.nameAtSentenceStart`                                                                         |
+| `retirement-checker` | `instruction`, `safety`                                | none                                                                                                              |
+| `session`            | `skillCatalog`, `instruction`, `routing`, `safety`     | `persona`, `skillCatalog`, `owner.name`                                                                           |
+| `compaction`         | `instruction`, `safety`                                | `owner.name`, `owner.nameAtSentenceStart`, `summary.words`                                                        |
+| `task`               | `persona`, `frame`, `inputs`, `instructions`, `safety` | `persona`, `owner.name`, `task.name`, `task.brief`                                                                |
 
 Each path holds one value:
 
@@ -104,6 +105,8 @@ Each path holds one value:
 | `assistant.mention`         | The words a shared memory uses for the assistant                |
 | `memory.maxChanges`         | The most changes one consolidation may propose                  |
 | `summary.words`             | The word target of a compaction summary                         |
+| `task.name`                 | The name of the task that the prompt runs                       |
+| `task.brief`                | The brief of the task that the prompt runs                      |
 
 `owner.nameAtSentenceStart` differs between the two prompts that accept it. The `content-checker`
 prompt keeps your configured name exactly as you wrote it, and falls back to "The owner". The
@@ -111,5 +114,5 @@ prompt keeps your configured name exactly as you wrote it, and falls back to "Th
 `River`.
 
 A part with a condition renders as empty text when its condition fails, whatever its text: `persona`
-when no persona is in force, `nameRule` when no name is configured, and `skillCatalog` when the
-conversation has no skills.
+when no persona is in force or the task runs without one, `nameRule` when no name is configured, and
+`skillCatalog` when the conversation has no skills.
