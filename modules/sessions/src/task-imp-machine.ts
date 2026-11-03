@@ -84,9 +84,21 @@ export const taskImpMachine = setup({
 
   // A task runs one step at a time, so only the sweep can meet a change in flight, and it retries.
   on: {
-    acquire: { actions: (busy) => busy.event.reply.reject(buildBusyError()) },
-    release: { actions: (busy) => busy.event.reply.reject(buildBusyError()) },
-    remove: { actions: (busy) => busy.event.reply.reject(buildBusyError()) },
+    acquire: {
+      actions: (busy) => {
+        busy.event.reply.reject(buildBusyError());
+      },
+    },
+    release: {
+      actions: (busy) => {
+        busy.event.reply.reject(buildBusyError());
+      },
+    },
+    remove: {
+      actions: (busy) => {
+        busy.event.reply.reject(buildBusyError());
+      },
+    },
   },
   states: {
     idle: {
@@ -120,7 +132,9 @@ export const taskImpMachine = setup({
         onError: {
           target: 'idle',
           actions: [
-            (failed) => failed.context.acquired?.reject(failed.event.error),
+            (failed) => {
+              failed.context.acquired?.reject(failed.event.error);
+            },
             assign({ acquired: null }),
           ],
         },
@@ -139,14 +153,18 @@ export const taskImpMachine = setup({
           target: 'awake',
           actions: [
             assign((done) => ({ sandbox: done.event.output, isAsleep: false })),
-            (done) => resolveAcquired(done.context),
+            (done) => {
+              resolveAcquired(done.context);
+            },
             assign({ acquired: null }),
           ],
         },
         onError: {
           target: 'idle',
           actions: [
-            (failed) => failed.context.acquired?.reject(failed.event.error),
+            (failed) => {
+              failed.context.acquired?.reject(failed.event.error);
+            },
             assign({ sandbox: null, isAsleep: false, acquired: null }),
           ],
         },
@@ -179,15 +197,21 @@ export const taskImpMachine = setup({
           target: 'asleep',
           actions: [
             assign((done) => ({ isAsleep: done.context.sandbox?.suspension.kind === 'memory' })),
-            (done) => done.context.released?.resolve(),
+            (done) => {
+              done.context.released?.resolve();
+            },
             assign({ released: null }),
           ],
         },
         onError: {
           target: 'awake',
           actions: [
-            (failed) => failed.context.parts.onSleepFailed(failed.event.error),
-            (failed) => failed.context.released?.resolve(),
+            (failed) => {
+              failed.context.parts.onSleepFailed(failed.event.error);
+            },
+            (failed) => {
+              failed.context.released?.resolve();
+            },
             assign({ released: null }),
           ],
         },
@@ -212,12 +236,16 @@ export const taskImpMachine = setup({
         input: (entered) => entered.context,
         onDone: {
           target: 'gone',
-          actions: (done) => done.context.removed?.resolve(done.event.output),
+          actions: (done) => {
+            done.context.removed?.resolve(done.event.output);
+          },
         },
         onError: {
           target: 'idle',
           actions: [
-            (failed) => failed.context.removed?.reject(failed.event.error),
+            (failed) => {
+              failed.context.removed?.reject(failed.event.error);
+            },
             assign({ sandbox: null, isAsleep: false, removed: null }),
           ],
         },
