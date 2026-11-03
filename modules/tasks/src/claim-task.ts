@@ -11,9 +11,13 @@ import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
 import { taskStepStartedCodec } from './task-step-started-codec';
 import type { Lease, StartedClaim, StepWake, TasksContext, TasksTables } from './types';
 
+export type ClaimedTasks = 'started' | 'unstarted';
+
 export interface ClaimTaskOptions {
   readonly holder: string;
   readonly leaseMs: number;
+
+  readonly tasks?: ClaimedTasks;
 }
 
 interface StartedStep {
@@ -32,7 +36,7 @@ export async function claimTask(
     kind: 'task',
     holder: options.holder,
     durationMs: options.leaseMs,
-    readCandidate: readClaimableTask,
+    readCandidate: (tx, now) => readClaimableTask(tx, now, options.tasks ?? null),
     onClaim: async (tx, held) => {
       started.step = await writeStepStart(tx, context, held);
     },
@@ -41,7 +45,13 @@ export async function claimTask(
   return lease === null || started.step === null ? null : { lease, ...started.step };
 }
 
-async function readClaimableTask(tx: Transaction<unknown>, now: number): Promise<string | null> {
+async function readClaimableTask(
+  tx: Transaction<unknown>,
+  now: number,
+  tasks: ClaimedTasks | null,
+): Promise<string | null> {
+  const startedBy = tasks === 'started' ? 'is not' : 'is';
+
   const row = await tx
     .$extendTables<TasksTables>()
     .selectFrom('tasks')
@@ -52,6 +62,7 @@ async function readClaimableTask(tx: Transaction<unknown>, now: number): Promise
     .where('tasks.claimable_at', '<=', now)
     .where('tasks.state', 'in', ['ready', 'running'])
     .where((eb) => eb.or([eb('leases.holder', 'is', null), eb('leases.expires_at', '<=', now)]))
+    .$if(tasks !== null, (query) => query.where('tasks.started_by', startedBy, null))
     .orderBy('tasks.updated_sequence')
     .limit(1)
     .executeTakeFirst();

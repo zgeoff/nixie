@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { createTask } from './create-task';
+import { seedStartedTask } from './test-utils/seed-started-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 import { writeTaskControl } from './write-task-control';
@@ -131,4 +132,40 @@ test('it pauses a running task whose pause waited on a step whose lease expired,
   expect(records).toStrictEqual([{ kind: 'task.step_interrupted' }, { kind: 'task.paused' }]);
   expect(lease.holder).toBeNull();
   expect(task.state).toBe('paused');
+});
+
+test('it claims only a started task for the started tasks', async () => {
+  const ctx = await setupTest();
+
+  const startedID = await seedStartedTask(ctx.context, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  await createTask(ctx.context, 'tidy the inbox');
+
+  const claim = await claimTask(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    tasks: 'started',
+  });
+
+  expect(claim?.lease.workID).toBe(startedID);
+});
+
+test('it never claims a started task for the unstarted tasks', async () => {
+  const ctx = await setupTest();
+
+  await seedStartedTask(ctx.context, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const claim = await claimTask(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    tasks: 'unstarted',
+  });
+
+  expect(claim).toBeNull();
 });

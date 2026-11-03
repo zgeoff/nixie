@@ -61,7 +61,7 @@ test('it reads every section, with the default of each setting the file leaves o
       sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
     },
     time: { default_zone: 'Australia/Sydney' },
-    tasks: { runners: 3, messaging: { hopLimit: 20 } },
+    tasks: { runners: 3, startedClaimLoops: 2, messaging: { hopLimit: 20 } },
     actions: { runners: 4 },
     skills: { catalogShare: 0.02 },
     backup: { isEnabled: true, intervalMs: 3_600_000 },
