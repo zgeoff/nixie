@@ -65,8 +65,9 @@ the sandbox at the task's first step. Its life follows the task:
    task carries on in the same session.
 4. When the task is done or closed, the runner destroys the sandbox.
 
-A close of an idle task runs no step, so the runner learns of the end from the log. It reads the
-ended tasks among the sandbox owners once when it starts and again after each record commit.
+A close of an idle task runs no step, so no step can tell the runner that the task ended. The runner
+looks for done and closed tasks among the sandbox owners once when it starts, and again after each
+record commit.
 
 A sandbox can still go missing, such as when the host loses the imp. The next step of the task then
 creates a new sandbox, and the guest opens a new session from the log.

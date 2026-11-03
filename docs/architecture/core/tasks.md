@@ -19,7 +19,7 @@ stateDiagram-v2
   [*] --> waiting: the conversation is created
   ready --> running: a runner claims a step
   running --> ready: the step commits with work left, or throws
-  running --> waiting: the step commits with nothing unread, or holds
+  running --> waiting: the step commits with nothing unread
   running --> done: the step commits as done
   running --> failed: steps throw too many times in a row
   failed --> ready: a restart, or a start of the conversation
@@ -80,10 +80,7 @@ The commit record carries the step key, which the log holds unique, so a second 
 step fails and changes nothing. The next state is ready when the step asked to continue or input
 arrived while it ran, done when the step returned done, and waiting otherwise. Input that arrived
 during a step makes the task ready whatever the step chose, because that input still needs a step to
-read it. One exception: a step that holds its inbox commits the task as waiting with its input
-unread, because no step can read that input yet, and a ready task would only loop through empty
-steps. The next waking record makes the task ready again, as [started tasks](#started-tasks)
-describes.
+read it.
 
 A step that throws records its error and frees the lease, and the task waits a retry delay before
 its next claim. The error's message is free text, so the record keeps it in its erasable fields,
@@ -132,7 +129,7 @@ a rebuild gives the same rows.
 - **Interrupt** of a running task records the step it interrupts, and that step's watch fires the
   step's interrupt signal. A conversation turn then ends at its last chain entry and commits as
   usual, as [conversation turns](./conversation-turns.md#interrupts) describes. A step that runs no
-  model, such as a holding step, has no turn to end, and commits when it would have.
+  model has no turn to end, and commits when it would have.
 
 An [action](./actions.md) whose task is paused or closed waits unclaimed until it has started an
 attempt, so a pause holds the queued actions with the task. A stop
@@ -231,9 +228,9 @@ changes:
 The brief is in the task's creation record, and no inbox record holds it. So the task's first
 session opens with a start note as its input. The note tells the model to do what the brief asks,
 and to send the result to the task that started it, as a task message of kind `report`. After the
-step that sends the report, the task waits until the user closes it. When the guest loses the task's
-session, the next step [opens a new one](./session-opening.md) from the task's thread and the
-messages it sent.
+step that sends the report, the task waits: a message to it wakes it again, and the user closes it
+when its work is done. When the guest loses the task's session, the next step
+[opens a new one](./session-opening.md) from the task's thread and the messages it sent.
 
 A started task can wait with unread input, or with a brief that no session read. Only a waking inbox
 record moves a waiting task to ready, so such a task never runs. At each server start, after the
