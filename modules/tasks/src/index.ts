@@ -39,6 +39,7 @@ export { readInbox } from './read-inbox';
 export { readSessionBoundary } from './read-session-boundary';
 export { requireLease } from './require-lease';
 export { resetLease } from './reset-lease';
+export { reviveHeldTasks } from './revive-held-tasks';
 export { runDueTimers } from './run-due-timers';
 export type { RecoveryDependencies } from './run-recovery';
 export { runRecovery } from './run-recovery';
