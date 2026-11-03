@@ -151,7 +151,11 @@ jobs:
       sha: ${{ needs.resolve.outputs.sha }}
 
   backup:
+    name: Release the backup image
     needs: resolve
+    concurrency:
+      group: release-backup
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write

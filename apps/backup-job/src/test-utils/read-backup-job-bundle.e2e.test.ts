@@ -10,6 +10,8 @@ test('it returns the backup job bundle in the run’s template, the same for eac
     import.meta.dir,
     '..',
     '..',
+    '..',
+    '..',
     'node_modules',
     '.cache',
     'nixie-test-bundles',

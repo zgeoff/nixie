@@ -38,18 +38,20 @@ Each line links the section that explains it.
 
 ## Runs
 
-A file's suffix or folder decides how it runs. A file with none of these runs in the unit run. A
-lane is a run of its own, for suites that need a real system.
+Find a test file's command in this table by the file's suffix or folder. A file that matches no
+other row belongs to the unit run. Each other row is a lane, with its own command and its own limit
+per test.
 
-| Files                 | Command                                            | Limit per test | In CI |
-| --------------------- | -------------------------------------------------- | -------------- | ----- |
-| any other `*.test.ts` | `bun run test`                                     | 5 s            | yes   |
-| `*.browser.test.ts`   | `bun run test:browser`                             | 10 s           | yes   |
-| `*.agent-sdk.test.ts` | `bun run test:agent-sdk`                           | 5 s            | yes   |
-| `e2e/**`              | `bun run test:e2e`                                 | 15 s           | yes   |
-| `*.restic.test.ts`    | `bun run test:restic`                              | 40 s           | yes   |
-| `*.imp.test.ts`       | `bun run test:imp` in the package                  | 14 s           | no    |
-| `*.model-api.test.ts` | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract` | 120 s          | no    |
+| Files                               | Command                                            | Limit per test | In CI           |
+| ----------------------------------- | -------------------------------------------------- | -------------- | --------------- |
+| any other `*.test.ts`               | `bun run test`                                     | 5 s            | yes             |
+| `*.browser.test.ts`                 | `bun run test:browser`                             | 10 s           | yes             |
+| `*.agent-sdk.test.ts`               | `bun run test:agent-sdk`                           | 5 s            | yes             |
+| `e2e/**`, except `*.restic.test.ts` | `bun run test:e2e`                                 | 15 s           | yes             |
+| `*.e2e.test.ts` outside `e2e/`      | `bun run test:e2e`                                 | 15 s           | yes             |
+| `e2e/**/*.restic.test.ts`           | `bun run test:restic`                              | 40 s           | in `images.yml` |
+| `*.imp.test.ts`                     | `bun run test:imp` in the package                  | 14 s           | no              |
+| `*.model-api.test.ts`               | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract` | 120 s          | no              |
 
 - Run the unit tests through `bun run test`. It runs `bun run models`, which fetches the memory
   encoder's model files, and `bun run test:bundles`, which builds the server bundles that the server
@@ -115,9 +117,7 @@ release bundle sets it to `false`, so the bundler drops the code behind it.
 
 - Move a harness to [`libs/testing/src/`](../../../libs/testing/src/) once a second server package
   needs it, and search there before you write one. A server package is any package the nixie server
-  runs: the server app, a module, an adapter or a server-only lib. That lib is `server-only`, as the
-  [code layout](../../../docs/architecture/code-layout.md) defines, so a guest keeps its test
-  helpers in its own package.
+  runs: the server app, a module, an adapter or a lib.
 - Import the harness that spawns nixie in an `e2e/` suite from
   [`@heynixie/server/test-utils`](../../../apps/server/src/test-utils/index.ts), and the helpers
   that an `e2e/` suite shares with the browser suites from

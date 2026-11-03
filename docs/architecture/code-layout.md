@@ -101,9 +101,9 @@ production code reach test code.
 
 - **Libs depend only on libs.** A guest or a client therefore never reaches a module through a lib,
   because no lib can depend on one.
-- **`server-only`** marks a lib that only the trusted core and the test suites may use: `libs/db`
-  and `libs/testing`. Its rule allows dependents tagged `app`, `module`, `adapter`, `server-only`,
-  `e2e`, `integration` or `eval`, so a guest or a client that declares it fails the check.
+- **`server-only`** marks a lib that only the trusted core and the test suites may use: `libs/db`.
+  Its rule allows dependents tagged `app`, `module`, `adapter`, `server-only`, `e2e`, `integration`
+  or `eval`, so a guest or a client that declares it fails the check.
 - **An adapter depends only on the module that owns its interface.** The tags allow any module, so
   review holds this rule.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
@@ -172,8 +172,7 @@ The other packages each hold one piece the modules and apps share:
   when another part reads the work's failure, and the file lock that the writer and the backup job
   each take.
 - `libs/logger` is the logger, so a module that logs needs none of the health code.
-- `libs/testing` holds the test helpers and the [crash test harness](core/crash-tests.md), tagged
-  `server-only`.
+- `libs/testing` holds the test helpers and the [crash test harness](core/crash-tests.md).
 
 ## Tests and checks
 
@@ -182,9 +181,9 @@ Tests run on `bun test`, and each test sits beside the module it tests, as `x.te
 are 3 at the root: `e2e/`, which holds whole-program suites such as the
 [crash tests](core/crash-tests.md); `integration/`, which runs one flow across several packages in
 one process; and `evals/`, which checks committed evaluation reports against the code. Their helpers
-live in packages: the spawned-nixie harness in the server's test utilities, and the eval helpers in
-the memory module and the conversation guest. A guest keeps its test helpers inside its own package,
-because `libs/testing` is server-only.
+live in packages: the spawned-nixie harness in the server's test utilities, the helpers that build
+the web client and the backup job in those apps' test utilities, and the eval helpers in the memory
+module and the conversation guest.
 
 The product tests that run the Agent SDK's `query()` live in `guests/conversation`, the one product
 package that imports the SDK. They run against the guest's own stub model, so none of them needs an

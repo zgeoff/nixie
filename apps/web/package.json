@@ -35,6 +35,7 @@
     "@babel/core": "catalog:",
     "@faker-js/faker": "catalog:",
     "@heynixie/mock-server": "workspace:*",
+    "@heynixie/testing": "workspace:*",
     "@msw/data": "catalog:",
     "@orpc/server": "catalog:",
     "@pandacss/dev": "catalog:",

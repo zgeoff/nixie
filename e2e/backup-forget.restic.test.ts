@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeSnapshotSet } from '@heynixie/backup';
+import { readBackupJobBundle } from '@heynixie/backup-job/test-utils';
 import { startDatabase } from '@heynixie/db';
 import {
   createRecordKey,
@@ -16,7 +17,6 @@ import { $ } from 'bun';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import { readBackupJobBundle } from './test-utils/read-backup-job-bundle';
 
 // Bun's skipIf takes a boolean and has no in-body skip, so the gate reads the binary at collection;
 // CI's image job always names one, so there a missing binary fails the run instead
