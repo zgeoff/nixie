@@ -19,17 +19,14 @@ async function runCLI(): Promise<void> {
   }
 
   const backup = getStepEnv(process.env, 'BACKUP');
-  const pinned = findPinnedVersion(readFileSync(binariesPath, 'utf8'), 'restic');
+  const binaries = readFileSync(binariesPath, 'utf8');
 
   const printed =
     await $`docker run --rm --network none --entrypoint restic ${backup} version`.text();
 
   process.stdout.write(printed);
 
-  if (
-    pinned === null ||
-    !printed.split('\n').some((line) => line.startsWith(`restic ${pinned} `))
-  ) {
+  if (!isPinnedResticPrinted(binaries, printed)) {
     console.log(`::error::the backup image runs another restic than ${binariesPath} pins`);
 
     process.exitCode = 1;
@@ -40,14 +37,16 @@ async function runCLI(): Promise<void> {
   await $`docker run --rm --network none --read-only ${backup} --help`;
 }
 
-function findPinnedVersion(binaries: string, name: string): string | null {
-  const fields = binaries
+function isPinnedResticPrinted(binaries: string, printed: string): boolean {
+  const pinned = binaries
     .split('\n')
     .filter((line) => !line.startsWith('#'))
     .map((line) => line.split(/\s+/u))
-    .find((line) => line[0] === name);
+    .find((fields) => fields[0] === 'restic')?.[1];
 
-  return fields?.[1] ?? null;
+  return (
+    pinned !== undefined && printed.split('\n').some((line) => line.startsWith(`restic ${pinned} `))
+  );
 }
 
 if (import.meta.main) {
