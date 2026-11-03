@@ -335,6 +335,8 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/clock": "workspace:*",
+        "@zgeoff/std": "catalog:",
+        "xstate": "catalog:",
         "zod": "catalog:",
       },
     },

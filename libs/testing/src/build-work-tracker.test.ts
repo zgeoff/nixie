@@ -118,3 +118,41 @@ test('it runs a wait outside any work without a change to the state', async () =
 
   expect(settled).toBeFalse();
 });
+
+test('it keeps a work with 2 waits settled until the last of them ends', async () => {
+  const tracker = buildWorkTracker();
+  const firstHold = Promise.withResolvers<void>();
+  const secondHold = Promise.withResolvers<void>();
+  const rest = Promise.withResolvers<void>();
+  const parked = Promise.withResolvers<void>();
+  const firstEnded = Promise.withResolvers<void>();
+
+  const work = tracker.runWork(async () => {
+    const first = tracker.runParked(() => firstHold.promise);
+    const second = tracker.runParked(() => secondHold.promise);
+
+    parked.resolve();
+
+    await first;
+
+    firstEnded.resolve();
+
+    await second;
+    await rest.promise;
+  });
+
+  await parked.promise;
+
+  firstHold.resolve();
+
+  await firstEnded.promise;
+
+  const settledWithOneWait = tracker.isSettled();
+
+  secondHold.resolve();
+  rest.resolve();
+
+  await work;
+
+  expect(settledWithOneWait).toBeTrue();
+});

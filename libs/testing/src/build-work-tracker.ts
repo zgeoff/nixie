@@ -1,5 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { WorkTracker as ClockWorkTracker } from '@heynixie/clock';
+import { machineTypes } from '@zgeoff/std';
+import type { ActorRefFrom } from 'xstate';
+import { assign, createActor, setup } from 'xstate';
 
 export interface WorkTracker extends ClockWorkTracker {
   readonly runParked: <T>(wait: () => Promise<T>) => Promise<T>;
@@ -7,9 +10,39 @@ export interface WorkTracker extends ClockWorkTracker {
   readonly isSettled: () => boolean;
 }
 
-interface Work {
-  parked: number;
+interface WorkContext {
+  readonly waits: number;
 }
+
+type WorkEvent = { readonly type: 'park' } | { readonly type: 'unpark' };
+
+const workMachine = setup({
+  types: machineTypes<{ context: WorkContext; events: WorkEvent }>(),
+  guards: { hasOtherWaits: (check) => check.context.waits > 1 },
+}).createMachine({
+  id: 'work',
+  context: { waits: 0 },
+  initial: 'running',
+  states: {
+    running: {
+      on: { park: { target: 'parked', actions: assign({ waits: 1 }) } },
+    },
+    parked: {
+      on: {
+        park: { actions: assign({ waits: (parked) => parked.context.waits + 1 }) },
+        unpark: [
+          {
+            guard: 'hasOtherWaits',
+            actions: assign({ waits: (parked) => parked.context.waits - 1 }),
+          },
+          { target: 'running', actions: assign({ waits: 0 }) },
+        ],
+      },
+    },
+  },
+});
+
+type Work = ActorRefFrom<typeof workMachine>;
 
 export function buildWorkTracker(): WorkTracker {
   const current = new AsyncLocalStorage<Work>();
@@ -17,7 +50,7 @@ export function buildWorkTracker(): WorkTracker {
 
   return {
     runWork: async (work) => {
-      const entry: Work = { parked: 0 };
+      const entry = createActor(workMachine).start();
 
       running.add(entry);
 
@@ -34,14 +67,14 @@ export function buildWorkTracker(): WorkTracker {
         return wait();
       }
 
-      entry.parked += 1;
+      entry.send({ type: 'park' });
 
       try {
         return await wait();
       } finally {
-        entry.parked -= 1;
+        entry.send({ type: 'unpark' });
       }
     },
-    isSettled: () => [...running].every((entry) => entry.parked > 0),
+    isSettled: () => [...running].every((entry) => entry.getSnapshot().matches('parked')),
   };
 }
