@@ -38,19 +38,20 @@ Each line links the section that explains it.
 
 ## Runs
 
-A file's suffix or folder decides how it runs. A file with none of these runs in the unit run. A
-lane is a run of its own, for suites that need a real system.
+Find a test file's command in this table by the file's suffix or folder. A file that matches no
+other row belongs to the unit run. Each other row is a lane, with its own command and its own limit
+per test.
 
-| Files                 | Command                                            | Limit per test | In CI |
-| --------------------- | -------------------------------------------------- | -------------- | ----- |
-| any other `*.test.ts` | `bun run test`                                     | 5 s            | yes   |
-| `*.browser.test.ts`   | `bun run test:browser`                             | 10 s           | yes   |
-| `*.agent-sdk.test.ts` | `bun run test:agent-sdk`                           | 5 s            | yes   |
-| `e2e/**`              | `bun run test:e2e`                                 | 15 s           | yes   |
-| `builds-e2e/**`       | `bun run test:e2e`                                 | 15 s           | yes   |
-| `*.restic.test.ts`    | `bun run test:restic`                              | 40 s           | yes   |
-| `*.imp.test.ts`       | `bun run test:imp` in the package                  | 14 s           | no    |
-| `*.model-api.test.ts` | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract` | 120 s          | no    |
+| Files                                               | Command                                            | Limit per test | In CI |
+| --------------------------------------------------- | -------------------------------------------------- | -------------- | ----- |
+| any other `*.test.ts`                               | `bun run test`                                     | 5 s            | yes   |
+| `*.browser.test.ts`                                 | `bun run test:browser`                             | 10 s           | yes   |
+| `*.agent-sdk.test.ts`                               | `bun run test:agent-sdk`                           | 5 s            | yes   |
+| `e2e/**`, except `*.restic.test.ts`                 | `bun run test:e2e`                                 | 15 s           | yes   |
+| `builds-e2e/**`, the tests of the e2e build helpers | `bun run test:e2e`                                 | 15 s           | yes   |
+| `e2e/**/*.restic.test.ts`                           | `bun run test:restic`                              | 40 s           | yes   |
+| `*.imp.test.ts`                                     | `bun run test:imp` in the package                  | 14 s           | no    |
+| `*.model-api.test.ts`                               | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract` | 120 s          | no    |
 
 - Run the unit tests through `bun run test`. It runs `bun run models`, which fetches the memory
   encoder's model files, and `bun run test:bundles`, which builds the server bundles that the server
