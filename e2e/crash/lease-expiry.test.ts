@@ -67,15 +67,18 @@ test('it lets runner B take an expired lease at the next generation, and commits
 test('it lets runner B claim only once the renewed lease expires, never before', async () => {
   const ctx = await setupTest();
 
-  const nixie = ctx.nixie.harness.start([{ point: 'renew.after', kind: 'task' }]);
-  const lateReply = Promise.withResolvers<void>();
+  const nixie = ctx.nixie.harness.start([
+    { point: 'renew.after', kind: 'task' },
+    { point: 'step.commit.before', workID: 'conversation' },
+  ]);
 
   await nixie.ready;
 
-  ctx.nixie.model.addReplies({ text: 'Late.', gate: lateReply.promise }, { text: 'Hi.' });
+  ctx.nixie.model.addReplies({ text: 'Late.' }, { text: 'Hi.' });
   void nixie.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 
-  await ctx.nixie.waitForModelCalls(1);
+  const lateCommit = await nixie.waitForArrival('step.commit.before', 'conversation');
+
   await ctx.nixie.harness.advance(20_000);
 
   const renewal = await nixie.waitForArrival('renew.after', 'conversation');
@@ -86,14 +89,9 @@ test('it lets runner B claim only once the renewed lease expires, never before',
 
   await ctx.nixie.harness.advance(1000);
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
-  await nixie.request('arm', { point: 'step.commit.before', workID: 'conversation' });
 
   nixie.release(renewal);
-  lateReply.resolve();
-
-  const arrival = await nixie.waitForArrival('step.commit.before', 'conversation');
-
-  nixie.release(arrival);
+  nixie.release(lateCommit);
   nixie.signal('SIGTERM');
 
   const exit = await nixie.exited;

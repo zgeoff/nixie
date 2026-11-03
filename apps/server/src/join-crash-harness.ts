@@ -1,3 +1,4 @@
+import { setWorkTracker } from '@heynixie/clock';
 import { setFaultPointHandler } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
 import { readDescendants, startHarnessLink, stopProcesses } from '@heynixie/testing';
@@ -27,6 +28,7 @@ export function joinCrashHarness(
   const link = startHarnessLink(env);
 
   setFaultPointHandler((id, work) => link.waitAtFaultPoint(id, work));
+  setWorkTracker(link.workTracker);
 
   return {
     link,

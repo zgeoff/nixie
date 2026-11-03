@@ -1,3 +1,4 @@
+import { withTrackedWork } from '@heynixie/clock';
 import { assign, createActor, fromPromise, setup, stateIn } from 'xstate';
 import { subscribeToCommits } from './subscribe-to-commits';
 import type { LogTables, Writer } from './types';
@@ -95,7 +96,7 @@ export function subscribeToRecordCommits(
   onRecords: () => void,
 ): () => void {
   const actor = createActor(recordCommitMachine, {
-    input: { readHead: () => readHeadSequence(writer), onRecords },
+    input: { readHead: () => withTrackedWork(() => readHeadSequence(writer)), onRecords },
   });
 
   actor.start();

@@ -116,6 +116,12 @@ jobs:
             nixie.cache-from=type=gha,scope=preview
             nixie.cache-to=type=gha,mode=max,scope=preview
 
+      # the builder keeps a second copy of each layer it loaded into Docker, on the disk that holds
+      # the data volume, and nixie reports unready once that disk is 90% full
+      - name: Free the builder's cache
+        if: ${{ env.RECIPE_CHANGED == 'true' }}
+        run: docker buildx prune --all --force
+
       - name: Start the recipe
         if: ${{ env.RECIPE_CHANGED == 'true' }}
         run: docker compose -f compose.yaml -f ci/compose.yaml up --wait --wait-timeout 300

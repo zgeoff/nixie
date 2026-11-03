@@ -127,6 +127,7 @@
     "ci:compose:check-sign-in-code": "bun scripts/compose/check-sign-in-code.ts",
     "ci:compose:write-throwaway-secrets": "bun scripts/compose/write-throwaway-secrets.ts",
     "ci:config-schema:run-config-schema-check": "bun scripts/config-schema/run-config-schema-check.ts",
+    "ci:images:check-backup-image": "bun scripts/images/check-backup-image.ts",
     "ci:images:check-carried-manifest": "bun scripts/images/check-carried-manifest.ts",
     "ci:images:check-printed-sandbox-images": "bun scripts/images/check-printed-sandbox-images.ts",
     "ci:images:rehearse-release-assets": "bun scripts/images/rehearse-release-assets.ts",

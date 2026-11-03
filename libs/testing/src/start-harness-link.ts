@@ -2,6 +2,8 @@ import { setImmediate } from 'node:timers/promises';
 import { z } from 'zod';
 import type { TestClock } from './build-test-clock';
 import { buildTestClock } from './build-test-clock';
+import type { WorkTracker } from './build-work-tracker';
+import { buildWorkTracker } from './build-work-tracker';
 import { harnessEnv } from './harness-env';
 import type { FaultPointArm, FaultPointWork, HarnessMessage, NixieMessage } from './types';
 
@@ -14,6 +16,7 @@ export type HarnessOperation<Args> = (args: Args) => unknown;
 
 export interface HarnessLink {
   readonly clock: TestClock;
+  readonly workTracker: WorkTracker;
   readonly waitAtFaultPoint: (point: string, work: FaultPointWork) => Promise<void>;
   readonly registerOperation: <Args>(
     name: string,
@@ -57,6 +60,7 @@ export function startHarnessLink(
   channel: HarnessChannel = processChannel,
 ): HarnessLink {
   const clock = buildTestClock(Number(env[harnessEnv.clockMs] ?? '0'));
+  const workTracker = buildWorkTracker();
   const arms = parseArms(env[harnessEnv.faultPoints]);
 
   const operations = new Map<string, HarnessOperation<unknown>>();
@@ -64,7 +68,10 @@ export function startHarnessLink(
 
   const arrivals = { next: 1 };
 
-  operations.set('advance', (args) => runAdvance(clock, advanceArgsSchema.parse(args)));
+  operations.set('advance', (args) =>
+    runAdvance({ clock, workTracker }, advanceArgsSchema.parse(args)),
+  );
+
   operations.set('arm', (args) => runArm(arms, faultPointArmSchema.parse(args)));
 
   channel.subscribe((message) => {
@@ -80,6 +87,7 @@ export function startHarnessLink(
 
   return {
     clock,
+    workTracker,
     waitAtFaultPoint: async (point, work) => {
       const arm = arms.find((candidate) => isArmMatch(candidate, point, work));
 
@@ -97,7 +105,7 @@ export function startHarnessLink(
       holds.set(arrivalID, hold.resolve);
       channel.send({ type: 'arrived', arrivalID, point, work });
 
-      await hold.promise;
+      await workTracker.runParked(() => hold.promise);
     },
     registerOperation: (name, schema, operation) => {
       operations.set(name, (args) => operation(schema.parse(args)));
@@ -125,25 +133,32 @@ function buildHeldArm(arm: FaultPointArm): HeldArm {
 
 const defaultSettleTimeoutMs = 5000;
 
+interface AdvanceTarget {
+  readonly clock: TestClock;
+  readonly workTracker: WorkTracker;
+}
+
 async function runAdvance(
-  clock: TestClock,
+  target: AdvanceTarget,
   advance: z.infer<typeof advanceArgsSchema>,
 ): Promise<{ readonly settled: boolean }> {
-  const before = clock.countSleepers();
-
-  clock.advance(advance.durationMs);
+  target.clock.advance(advance.durationMs);
 
   if (advance.settle !== true) {
     return { settled: false };
   }
 
-  const deadline = Date.now() + (advance.settleTimeoutMs ?? defaultSettleTimeoutMs);
+  const deadline = performance.now() + (advance.settleTimeoutMs ?? defaultSettleTimeoutMs);
 
-  while (clock.countSleepers() < before && Date.now() < deadline) {
+  // A runner hands work on to the next in microtasks, such as a commit that wakes a pool, so each
+  // check waits a task first, and sees every hand-off that the last work started.
+  await setImmediate();
+
+  while (!target.workTracker.isSettled() && performance.now() < deadline) {
     await Bun.sleep(5);
   }
 
-  return { settled: clock.countSleepers() >= before };
+  return { settled: target.workTracker.isSettled() };
 }
 
 function runArm(arms: HeldArm[], arm: FaultPointArm): null {

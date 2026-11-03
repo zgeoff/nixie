@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
-import { waitForCondition } from '@heynixie/testing';
+import { setWorkTracker } from '@heynixie/clock';
+import { buildWorkTracker, waitForCondition } from '@heynixie/testing';
 import { subscribeToRecordCommits } from './subscribe-to-record-commits';
 import { startTestLog } from './test-utils/start-test-log';
 import { withWriteTransaction } from './with-write-transaction';
@@ -68,6 +69,31 @@ test('it calls back for a record that commits while it reads its first head', as
   await waitForCondition(() => onRecords.mock.calls.length > 0);
 
   expect(onRecords).toHaveBeenCalledOnce();
+});
+
+test('it reports the head read after a commit as unsettled work until the read ends', async () => {
+  const started = await startTestLog();
+
+  const tracker = buildWorkTracker();
+  const onRecords = mock<() => void>();
+
+  setWorkTracker(tracker);
+  subscribeToRecordCommits(started.writer, onRecords);
+
+  await waitForCondition(() => tracker.isSettled());
+
+  await writeRecords(started.log, [
+    { kind: 'owner_message', definitions: { snapshotHash: 'sha256:bb22' } },
+  ]);
+
+  const settledAfterCommit = tracker.isSettled();
+
+  await waitForCondition(() => tracker.isSettled());
+
+  expect({ settledAfterCommit, calls: onRecords.mock.calls.length }).toStrictEqual({
+    settledAfterCommit: false,
+    calls: 1,
+  });
 });
 
 test('it stops calling back once unsubscribed', async () => {

@@ -126,14 +126,22 @@ test('it advances the clock and wakes its sleepers for an advance', async () => 
   expect(link.clock.now()).toBe(5000);
 });
 
-test('it reports an advance settled once every sleeper it woke sleeps again', async () => {
+test('it reports an advance settled only once the work of the runner it woke ends', async () => {
   const stub = buildStubHarnessChannel();
   const link = startHarnessLink({ NIXIE_TEST_CLOCK_MS: '0' }, stub.channel);
+  const claim = Promise.withResolvers<void>();
+  const progress = { started: false, sentBeforeEnd: -1 };
 
   void (async () => {
-    for (;;) {
-      await link.clock.sleep(1000);
-    }
+    await link.clock.sleep(1000);
+
+    await link.workTracker.runWork(async () => {
+      progress.started = true;
+
+      await claim.promise;
+
+      progress.sentBeforeEnd = stub.sent.length;
+    });
   })();
 
   stub.sendToLink({
@@ -143,16 +151,123 @@ test('it reports an advance settled once every sleeper it woke sleeps again', as
     args: { durationMs: 1000, settle: true },
   });
 
+  await waitForCondition(() => progress.started);
+
+  claim.resolve();
+
   await waitForCondition(() => stub.sent.length === 1);
 
-  expect(stub.sent).toStrictEqual([{ type: 'reply', requestID: 1, result: { settled: true } }]);
+  expect({ sentBeforeEnd: progress.sentBeforeEnd, sent: stub.sent }).toStrictEqual({
+    sentBeforeEnd: 0,
+    sent: [{ type: 'reply', requestID: 1, result: { settled: true } }],
+  });
 });
 
-test('it reports an advance unsettled when a sleeper it woke does not sleep again', async () => {
+test('it reports an advance settled only once a runner that another woke before the reply ends its work', async () => {
   const stub = buildStubHarnessChannel();
   const link = startHarnessLink({ NIXIE_TEST_CLOCK_MS: '0' }, stub.channel);
+  const read = Promise.withResolvers<void>();
+  const secondClaim = Promise.withResolvers<void>();
 
-  void link.clock.sleep(1000);
+  const wake = new AbortController();
+
+  const progress = { firstEnded: false, secondStarted: false, sentBeforeSecondEnd: -1 };
+
+  void (async () => {
+    await link.clock.sleep(1000);
+
+    await link.workTracker.runWork(() => {
+      void link.workTracker.runWork(async () => {
+        await read.promise;
+
+        wake.abort();
+      });
+
+      return Promise.resolve();
+    });
+
+    progress.firstEnded = true;
+  })();
+
+  void (async () => {
+    await link.clock.sleep(60_000, wake.signal);
+
+    await link.workTracker.runWork(async () => {
+      progress.secondStarted = true;
+
+      await secondClaim.promise;
+
+      progress.sentBeforeSecondEnd = stub.sent.length;
+    });
+  })();
+
+  stub.sendToLink({
+    type: 'request',
+    requestID: 1,
+    operation: 'advance',
+    args: { durationMs: 1000, settle: true },
+  });
+
+  await waitForCondition(() => progress.firstEnded);
+
+  read.resolve();
+
+  await waitForCondition(() => progress.secondStarted);
+
+  secondClaim.resolve();
+
+  await waitForCondition(() => stub.sent.length === 1);
+
+  expect({ sentBeforeSecondEnd: progress.sentBeforeSecondEnd, sent: stub.sent }).toStrictEqual({
+    sentBeforeSecondEnd: 0,
+    sent: [{ type: 'reply', requestID: 1, result: { settled: true } }],
+  });
+});
+
+test('it reports an advance settled while the runner it woke waits at an armed fault point', async () => {
+  const stub = buildStubHarnessChannel();
+
+  const link = startHarnessLink(
+    { NIXIE_TEST_CLOCK_MS: '0', NIXIE_TEST_FAULT_POINTS: '[{"point":"claim.after"}]' },
+    stub.channel,
+  );
+
+  void (async () => {
+    await link.clock.sleep(1000);
+
+    await link.workTracker.runWork(() =>
+      link.waitAtFaultPoint('claim.after', { kind: 'task', id: 'task-1' }),
+    );
+  })();
+
+  stub.sendToLink({
+    type: 'request',
+    requestID: 1,
+    operation: 'advance',
+    args: { durationMs: 1000, settle: true, settleTimeoutMs: 1000 },
+  });
+
+  await waitForCondition(() => stub.sent.length === 2);
+
+  expect(stub.sent).toStrictEqual([
+    { type: 'arrived', arrivalID: 1, point: 'claim.after', work: { kind: 'task', id: 'task-1' } },
+    { type: 'reply', requestID: 1, result: { settled: true } },
+  ]);
+});
+
+test('it reports an advance unsettled when the work of a runner it woke outlasts the timeout', async () => {
+  const stub = buildStubHarnessChannel();
+  const link = startHarnessLink({ NIXIE_TEST_CLOCK_MS: '0' }, stub.channel);
+  const claim = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    claim.resolve();
+  });
+
+  void (async () => {
+    await link.clock.sleep(1000);
+    await link.workTracker.runWork(() => claim.promise);
+  })();
 
   stub.sendToLink({
     type: 'request',

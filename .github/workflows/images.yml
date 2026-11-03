@@ -108,11 +108,7 @@ jobs:
       - name: Check that the backup image runs its pinned restic and the job
         env:
           BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
-        run: |
-          pinned=$(grep -v '^#' apps/backup-job/binaries.txt | awk '$1 == "restic" { print $2 }')
-          docker run --rm --network none --entrypoint restic "$BACKUP" version | tee "$RUNNER_TEMP/restic-version.txt"
-          grep -q "^restic $pinned " "$RUNNER_TEMP/restic-version.txt"
-          docker run --rm --network none --read-only "$BACKUP" --help
+        run: bun run --silent ci:images:check-backup-image
 
       # before the sandbox manifest is written, so its context is the checkout, as in the Preview
       # workflow's web build, and the two share their layers through the web scope

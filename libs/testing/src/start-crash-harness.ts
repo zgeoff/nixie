@@ -77,7 +77,7 @@ export function startCrashHarness(options: CrashHarnessOptions): CrashHarness {
       );
 
       if (advanceOptions.settle === true && !replies.every((reply) => isSettled(reply))) {
-        throw new Error('a runner the advance woke did not sleep again');
+        throw new Error('a runner the advance woke did not settle');
       }
     },
     stop,
