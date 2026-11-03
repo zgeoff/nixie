@@ -35,12 +35,12 @@ libs/       shared code that belongs to no domain
 - **A guest** holds the code a sandbox image runs. It depends only on `libs/wire`, and speaks to
   nixie through those wire formats over the sandbox's route back to nixie.
 
-The workspace globs cover those 5 folders, the Pulumi component, the root `e2e/`, `integration/` and
-`evals/` packages, and the spikes in `research/`. The spikes join the workspace so that CI
-typechecks them, and they stand outside the package rules here: a spike pins the exact versions it
-ran against, imports product files by path with a `@boundaries-ignore` comment, and has no tests
-that CI runs. A spike whose pins conflict with the workspace stays out of it and installs on its
-own, as do the Agent SDK spikes under `docs/design/`.
+The workspace globs cover those 5 folders, the Pulumi component, the root `e2e/`, `builds-e2e/`,
+`integration/` and `evals/` packages, and the spikes in `research/`. The spikes join the workspace
+so that CI typechecks them, and they stand outside the package rules here: a spike pins the exact
+versions it ran against, imports product files by path with a `@boundaries-ignore` comment, and has
+no tests that CI runs. A spike whose pins conflict with the workspace stays out of it and installs
+on its own, as do the Agent SDK spikes under `docs/design/`.
 
 `deploy/` holds the deployment artifacts nixie ships: the Compose recipe in `deploy/compose/`, the
 [reference Kubernetes manifests](deployment/kubernetes.md) in `deploy/kubernetes/`, and the
@@ -81,29 +81,32 @@ dependency against the rules in the root `turbo.json`. The check fails on a depe
 deny, an import of a workspace package that the importer does not declare, an import of a file
 outside the importer's package, and a cycle between packages.
 
-| Tag           | Packages                             | May depend on                     |
-| ------------- | ------------------------------------ | --------------------------------- |
-| `app`         | `apps/server`, `apps/counting-proxy` | modules, adapters, libs           |
-| `client`      | `apps/web`                           | libs without `server-only`        |
-| `sidecar`     | `apps/backup-job`                    | libs without `server-only`        |
-| `module`      | `modules/*`                          | other modules, libs               |
-| `adapter`     | `adapters/*`                         | modules, libs                     |
-| `guest`       | `guests/*`                           | libs without `server-only`        |
-| `lib`         | `libs/*`                             | libs                              |
-| `deploy`      | `deploy/pulumi-k8s`                  | no workspace package              |
-| `e2e`         | `e2e/`                               | the apps, modules, adapters, libs |
-| `integration` | `integration/`                       | the app, modules, adapters, libs  |
-| `eval`        | `evals/`                             | modules, guests, libs             |
+| Tag           | Packages                             | May depend on                                  |
+| ------------- | ------------------------------------ | ---------------------------------------------- |
+| `app`         | `apps/server`, `apps/counting-proxy` | modules, adapters, libs                        |
+| `client`      | `apps/web`                           | libs without `server-only`                     |
+| `sidecar`     | `apps/backup-job`                    | libs without `server-only`                     |
+| `module`      | `modules/*`                          | other modules, libs                            |
+| `adapter`     | `adapters/*`                         | modules, libs                                  |
+| `guest`       | `guests/*`                           | libs without `server-only`                     |
+| `lib`         | `libs/*`                             | libs                                           |
+| `deploy`      | `deploy/pulumi-k8s`                  | no workspace package                           |
+| `e2e`         | `e2e/`                               | the apps, modules, adapters, libs, e2e-support |
+| `e2e-support` | `builds-e2e/`                        | the web client, the backup job, libs           |
+| `integration` | `integration/`                       | the app, modules, adapters, libs               |
+| `eval`        | `evals/`                             | modules, guests, libs                          |
 
 The backup job depends on libs alone, so it never reaches the modules that hold the deployment key.
 Nothing depends on the `e2e`, `integration` and `eval` packages, so their wide rules never let
-production code reach test code.
+production code reach test code. The `e2e-support` rule allows only `e2e` dependents, so a product
+package that declares `builds-e2e/` fails the check.
 
 - **Libs depend only on libs.** A guest or a client therefore never reaches a module through a lib,
   because no lib can depend on one.
 - **`server-only`** marks a lib that only the trusted core and the test suites may use: `libs/db`
   and `libs/testing`. Its rule allows dependents tagged `app`, `module`, `adapter`, `server-only`,
-  `e2e`, `integration` or `eval`, so a guest or a client that declares it fails the check.
+  `e2e`, `e2e-support`, `integration` or `eval`, so a guest or a client that declares it fails the
+  check.
 - **An adapter depends only on the module that owns its interface.** The tags allow any module, so
   review holds this rule.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
@@ -181,10 +184,17 @@ Tests run on `bun test`, and each test sits beside the module it tests, as `x.te
 `x.ts`. A lint rule refuses a test file with no module of its name beside it. The only test folders
 are 3 at the root: `e2e/`, which holds whole-program suites such as the
 [crash tests](core/crash-tests.md); `integration/`, which runs one flow across several packages in
-one process; and `evals/`, which checks committed evaluation reports against the code. Their helpers
-live in packages: the spawned-nixie harness in the server's test utilities, and the eval helpers in
-the memory module and the conversation guest. A guest keeps its test helpers inside its own package,
-because `libs/testing` is server-only.
+one process; and `evals/`, which checks committed evaluation reports against the code.
+
+Their helpers live in packages:
+
+- the spawned-nixie harness in the server's test utilities;
+- the eval helpers in the memory module and the conversation guest;
+- the helpers that build the web client and the backup job for the `e2e/` suites in `builds-e2e/`.
+  Its tests run with the `e2e/` suites, because each reads a build that the e2e lane makes before
+  its tests start.
+
+A guest keeps its test helpers inside its own package, because `libs/testing` is server-only.
 
 The product tests that run the Agent SDK's `query()` live in `guests/conversation`, the one product
 package that imports the SDK. They run against the guest's own stub model, so none of them needs an

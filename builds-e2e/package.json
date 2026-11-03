@@ -1,0 +1,16 @@
+{
+  "name": "@heynixie/builds-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/testing": "workspace:*",
+    "@heynixie/web": "workspace:*"
+  }
+}

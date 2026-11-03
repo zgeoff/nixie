@@ -2,9 +2,9 @@ import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createStubRestic } from '@heynixie/backup-job/test-utils';
+import { readBackupJobBundle } from '@heynixie/builds-e2e';
 import { startSpawnedNixie } from '@heynixie/server/test-utils';
 import { $ } from 'bun';
-import { readBackupJobBundle } from '../test-utils/read-backup-job-bundle';
 
 async function setupTest() {
   const nixie = await startSpawnedNixie({ backups: true });

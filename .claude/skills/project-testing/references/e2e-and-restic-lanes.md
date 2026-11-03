@@ -1,9 +1,11 @@
 # The e2e and restic lanes
 
 The e2e lane drives the built nixie, the web client and the backup job from outside, through the
-suites under `e2e/`. The restic lane, the `*.restic.test.ts` suites under `e2e/`, runs the backup
-job against a real restic binary. Run them with `bun run test:e2e` and `bun run test:restic` from
-the repo root. Each script runs its files one after another in one test process.
+suites under `e2e/`. It also runs the tests of `builds-e2e/`, the package that builds the web client
+and the backup job for those suites. The restic lane, the `*.restic.test.ts` suites under `e2e/`,
+runs the backup job against a real restic binary. Run them with `bun run test:e2e` and
+`bun run test:restic` from the repo root. Each script runs its files one after another in one test
+process.
 
 ## Traps
 
@@ -16,7 +18,7 @@ the repo root. Each script runs its files one after another in one test process.
   suites read the web build, because a build takes longer than a test's limit on a host with 2
   cores.
 - **Run the backup job from its bundle.** Every suite that runs the job runs the bundle that
-  [`readBackupJobBundle`](../../../../e2e/test-utils/read-backup-job-bundle.ts) reads, as the image
+  [`readBackupJobBundle`](../../../../builds-e2e/src/read-backup-job-bundle.ts) reads, as the image
   does.
 - **Point a local restic run at a restic binary.** A restic suite takes its binary from
   `NIXIE_RESTIC_BINARY`, or from `restic` on `PATH` when that variable is unset. It skips when

@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claimFileLock } from '@heynixie/async';
 import { createStagedSet, createStubRestic } from '@heynixie/backup-job/test-utils';
+import { readBackupJobBundle } from '@heynixie/builds-e2e';
 import { stopProcesses } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import { readBackupJobBundle } from './test-utils/read-backup-job-bundle';
 
 async function setupTest() {
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-backup-cli-'));

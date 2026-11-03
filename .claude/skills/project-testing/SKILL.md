@@ -47,6 +47,7 @@ lane is a run of its own, for suites that need a real system.
 | `*.browser.test.ts`   | `bun run test:browser`                             | 10 s           | yes   |
 | `*.agent-sdk.test.ts` | `bun run test:agent-sdk`                           | 5 s            | yes   |
 | `e2e/**`              | `bun run test:e2e`                                 | 15 s           | yes   |
+| `builds-e2e/**`       | `bun run test:e2e`                                 | 15 s           | yes   |
 | `*.restic.test.ts`    | `bun run test:restic`                              | 40 s           | yes   |
 | `*.imp.test.ts`       | `bun run test:imp` in the package                  | 14 s           | no    |
 | `*.model-api.test.ts` | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract` | 120 s          | no    |

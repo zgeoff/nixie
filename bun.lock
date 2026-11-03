@@ -186,6 +186,14 @@
         "vite": "catalog:",
       },
     },
+    "builds-e2e": {
+      "name": "@heynixie/builds-e2e",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/testing": "workspace:*",
+        "@heynixie/web": "workspace:*",
+      },
+    },
     "deploy/pulumi-k8s": {
       "name": "@heynixie/pulumi-k8s",
       "version": "0.0.0",
@@ -205,6 +213,7 @@
         "@heynixie/async": "workspace:*",
         "@heynixie/backup": "workspace:*",
         "@heynixie/backup-job": "workspace:*",
+        "@heynixie/builds-e2e": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
@@ -1105,6 +1114,8 @@
     "@heynixie/backup": ["@heynixie/backup@workspace:modules/backup"],
 
     "@heynixie/backup-job": ["@heynixie/backup-job@workspace:apps/backup-job"],
+
+    "@heynixie/builds-e2e": ["@heynixie/builds-e2e@workspace:builds-e2e"],
 
     "@heynixie/clock": ["@heynixie/clock@workspace:libs/clock"],
 

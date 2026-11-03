@@ -10,6 +10,7 @@
     "@heynixie/async": "workspace:*",
     "@heynixie/backup": "workspace:*",
     "@heynixie/backup-job": "workspace:*",
+    "@heynixie/builds-e2e": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
