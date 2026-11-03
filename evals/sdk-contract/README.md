@@ -64,7 +64,7 @@ suite runs `model-grant`, because only the real broker replaces the placeholder 
 
 ## Run it
 
-The [SDK contract suite runbook](../../docs/runbooks/sdk-contract-suite.md) gives the credential the
-probes read, the command, and what to do when a probe fails on a new SDK version. The deployment
-repo's preview service runs the suite on each pull request that changes the SDK version, and posts
-the result as the `sdk-contract` commit status, so no credential for it lives in this repo's CI.
+The [SDK contract suite runbook](../../docs/runbooks/sdk-contract-suite.md) gives where the suite
+runs, the steps to run it by hand on each Agent SDK bump, and what to do when a probe fails. The
+deployment repo's preview service also runs the suite on each pull request that changes the SDK
+version, and posts the result as the `sdk-contract` commit status.

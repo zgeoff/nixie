@@ -90,6 +90,12 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
   owner agreed. Run spikes, close questions that evidence or an existing decision settles, and set
   configurable defaults for tuning values without asking.
 - **Repo-sync PRs.** A sync PR that repo-sync opens merges without asking, once CI is green.
+- **Agent SDK bump PRs.** Never merge a PR that changes the `@anthropic-ai/claude-agent-sdk` version
+  until it has a comment with the output of the SDK contract suite. The output must show every test
+  of the suite passing at the PR's head commit. No CI job runs the suite, because CI holds no model
+  credential. An agent in an [imp](docs/glossary.md) runs it by hand and posts the comment, with the
+  steps in the [SDK contract suite runbook](docs/runbooks/sdk-contract-suite.md). Renovate labels
+  such a PR `agent-sdk` and never merges it.
 - **Plans.** A plan for work about to be built lives in its Linear issue or its PR, never in
   `docs/`. Planned work, open choices and later stages live in the nixie project in Linear.
 
