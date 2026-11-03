@@ -57,10 +57,10 @@ inside nixie owns these parts:
   test sleeps to let time pass.
 - **The work tracker.** An advance can wait until the runners settle, so the test knows that they
   finished the work that the advance made due. Each claim and run of a runner pool counts as work,
-  and so does each read that turns a commit into a wake of the pools, so a runner that another
-  runner wakes keeps the advance waiting. A runner held at a fault point counts as settled, because
-  only the test moves it on. Work that waits on a reply the test holds back, such as a gated
-  provider call, never settles, and the advance reports that it did not settle.
+  and so do each lease renewal and each read that turns a commit into a wake of the pools, so a
+  runner that another runner wakes keeps the advance waiting. A runner held at a fault point counts
+  as settled, because only the test moves it on. Work that waits on a reply the test holds back,
+  such as a gated provider call, never settles, and the advance reports that it did not settle.
 - **The fault points.** The test arms a fault point at start, or later over the channel. An arm can
   name the kind of work, its ID, and how many times it holds. A runner that reaches an armed point
   reports its arrival and waits. Other runners carry on. The test then releases the runner or kills

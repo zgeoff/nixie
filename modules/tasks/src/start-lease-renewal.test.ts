@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { waitForCondition } from '@heynixie/testing';
+import { setWorkTracker } from '@heynixie/clock';
+import { buildWorkTracker, waitForCondition } from '@heynixie/testing';
 import { setFaultPointHandler } from './set-fault-point-handler';
 import { startLeaseRenewal } from './start-lease-renewal';
 import { claimTestLease } from './test-utils/claim-test-lease';
@@ -157,4 +158,54 @@ test('it reaches renew.before and renew.after around each renewal', async () => 
   await waitForCondition(() => reached.length === 2);
 
   expect(reached).toStrictEqual(['renew.before', 'renew.after']);
+});
+
+test('it leaves the step that started it unsettled while a renewal waits at a fault point', async () => {
+  const ctx = await setupTest();
+
+  const tracker = buildWorkTracker();
+  const hold = Promise.withResolvers<void>();
+  const step = Promise.withResolvers<void>();
+  const reached: FaultPointID[] = [];
+
+  const lease = await claimTestLease(ctx.context, {
+    kind: 'task',
+    workID: 'work-1',
+    holder: 'runner-a',
+    durationMs: 60_000,
+  });
+
+  setWorkTracker(tracker);
+
+  setFaultPointHandler((id) => {
+    reached.push(id);
+
+    return tracker.runParked(() => hold.promise);
+  });
+
+  onTestFinished(() => {
+    setWorkTracker(null);
+    setFaultPointHandler(null);
+  });
+
+  const work = tracker.runWork(async () => {
+    const renewal = startLeaseRenewal(ctx.context, lease, 60_000);
+
+    await step.promise;
+
+    await renewal.stop();
+  });
+
+  ctx.clock.advance(20_000);
+
+  await waitForCondition(() => reached.length === 1);
+
+  const settled = tracker.isSettled();
+
+  hold.resolve();
+  step.resolve();
+
+  await work;
+
+  expect(settled).toBeFalse();
 });

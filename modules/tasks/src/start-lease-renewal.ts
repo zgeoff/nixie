@@ -1,3 +1,4 @@
+import { withTrackedWork } from '@heynixie/clock';
 import { withWriteTransaction } from '@heynixie/log';
 import type { Lease, TasksContext, TasksTables } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
@@ -56,7 +57,9 @@ async function runRenewals(
       return;
     }
 
-    const held = await runRenewal(context, loop);
+    // The loop runs beside the step that started it, so each renewal counts as work of its own: a
+    // hold at a renewal fault point then leaves the step's own work unsettled, and the reverse.
+    const held = await withTrackedWork(() => runRenewal(context, loop));
 
     renewal.held = held;
   }
