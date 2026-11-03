@@ -95,6 +95,7 @@ export async function startConversationRunner(
 
   const run: ConversationRun = {
     ...options,
+    frame: { kind: 'conversation' },
     sandbox,
     endpoint,
     model,

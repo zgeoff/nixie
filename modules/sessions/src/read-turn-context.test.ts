@@ -26,6 +26,7 @@ test('it renders the system prompt with the session prompt override in force', a
   const context = await readTurnContext(
     {
       context: ctx.tasks.context,
+      frame: { kind: 'conversation' } as const,
       memory: () => ({
         readPinnedCore: () => Promise.resolve([]),
         readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
@@ -45,6 +46,7 @@ test('it renders the system prompt with the session prompt override in force', a
       batch: [],
       previousCore: null,
       isNewSession: true,
+      isFirstSession: true,
     },
   );
 
@@ -70,10 +72,12 @@ test('it puts the task board in the turn, after the system prompt, and leaves th
     batch: [],
     previousCore: null,
     isNewSession: false,
+    isFirstSession: false,
   };
 
   const run = {
     context: ctx.tasks.context,
+    frame: { kind: 'conversation' } as const,
     memory: () => memory,
     memorySettings: ctx.memorySettings,
     defaultZone: 'UTC',
@@ -160,6 +164,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
   const context = await readTurnContext(
     {
       context: ctx.tasks.context,
+      frame: { kind: 'conversation' } as const,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
       messaging: { directory: [], hopLimit: 20, ownerName: null },
@@ -173,6 +178,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
       batch: [],
       previousCore: [{ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01', version: 1 }],
       isNewSession: false,
+      isFirstSession: false,
     },
   );
 
@@ -212,6 +218,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
   const context = await readTurnContext(
     {
       context: ctx.tasks.context,
+      frame: { kind: 'conversation' } as const,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
       messaging: { directory: [], hopLimit: 20, ownerName: null },
@@ -225,9 +232,86 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
       batch: [],
       previousCore: [{ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01', version: 1 }],
       isNewSession: false,
+      isFirstSession: false,
     },
   );
 
   expect(readPinnedCoreUse).toHaveBeenCalledOnce();
   expect(context.preamble.join('\n')).toInclude('Pinned memory now: 1 item, 31 of 2000 tokens.');
+});
+
+test("it renders a started task's first turn with the task prompt, a start note, and no memory or board", async () => {
+  const ctx = await setupTest();
+
+  const context = await readTurnContext(
+    {
+      context: ctx.tasks.context,
+      frame: { kind: 'task', startedBy: 'conversation' },
+      memorySettings: { ...ctx.memorySettings, ownerName: 'Robin' },
+      messaging: {
+        directory: [
+          {
+            taskID: 'k3x9m2p7qa',
+            name: 'Tide tables',
+            brief: 'Find the high tides for Saturday.',
+            isWokenByMessages: true,
+          },
+        ],
+        hopLimit: 20,
+        ownerName: 'Robin',
+      },
+      defaultZone: 'UTC',
+    },
+    {
+      taskID: 'k3x9m2p7qa',
+      persona: '',
+      prompts: {},
+      skillCatalog: null,
+      batch: [],
+      previousCore: null,
+      isNewSession: true,
+      isFirstSession: true,
+    },
+  );
+
+  expect(context).toStrictEqual({
+    systemPrompt: expect.stringMatching(
+      /^You are "Tide tables", one of the tasks that nixie runs for Robin\./u,
+    ),
+    pinnedMemory: null,
+    preamble: [
+      expect.stringMatching(
+        /^<system-message type="task-start" [^>]+>\nYour task starts now: do what the brief in your instructions asks\. When you have the result, send it with task\.message to conversation, the task that started you, with the kind report\.\n<\/system-message/u,
+      ),
+    ],
+    pinnedCore: [],
+    retrieved: [],
+    retrievedMessages: [],
+  });
+});
+
+test("it gives a started task's rebuilt session no start note", async () => {
+  const ctx = await setupTest();
+
+  const context = await readTurnContext(
+    {
+      context: ctx.tasks.context,
+      frame: { kind: 'task', startedBy: 'conversation' },
+      memorySettings: ctx.memorySettings,
+      messaging: { directory: [], hopLimit: 20, ownerName: null },
+      defaultZone: 'UTC',
+    },
+    {
+      taskID: 'k3x9m2p7qa',
+      persona: '',
+      prompts: {},
+      skillCatalog: null,
+      batch: [],
+      previousCore: null,
+      isNewSession: true,
+      isFirstSession: false,
+    },
+  );
+
+  expect(context.preamble).toStrictEqual([]);
 });

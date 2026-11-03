@@ -22,7 +22,7 @@ export interface SessionOpeningQuery {
 
   readonly zone?: string | null;
 
-  readonly pinnedMemory: string;
+  readonly pinnedMemory: string | null;
 
   readonly model: string;
   readonly status: StatusRegistry;
