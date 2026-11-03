@@ -27,7 +27,9 @@ async function setupTest() {
 
   const proxy = startRefusingProxy();
 
-  stack.defer(() => proxy.stop());
+  stack.defer(() => {
+    proxy.stop();
+  });
 
   const startSession = (toolServer: McpServerConfig) => {
     const session = query({

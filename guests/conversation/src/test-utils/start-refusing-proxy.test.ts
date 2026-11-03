@@ -6,7 +6,9 @@ import { startRefusingProxy } from './start-refusing-proxy';
 function setupTest() {
   const proxy = startRefusingProxy();
 
-  onTestFinished(() => proxy.stop());
+  onTestFinished(() => {
+    proxy.stop();
+  });
 
   return { proxy };
 }
@@ -28,8 +30,8 @@ test.each([
 
   client.write(request);
 
-  const [answer]: unknown[] = await once(client, 'data');
+  const answer: unknown[] = await once(client, 'data');
 
-  expect(String(answer)).toStartWith('HTTP/1.1 403 Forbidden');
+  expect(String(answer[0])).toStartWith('HTTP/1.1 403 Forbidden');
   expect(ctx.proxy.targets()).toStrictEqual([target]);
 });
