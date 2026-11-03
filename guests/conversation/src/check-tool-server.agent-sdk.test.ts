@@ -5,9 +5,12 @@ import { join } from 'node:path';
 import type { McpServerConfig, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { checkToolServer } from './check-tool-server';
+import { buildStubContractEnv } from './test-utils/build-stub-contract-env';
 import { createStubToolServer } from './test-utils/create-stub-tool-server';
 import { readProcessesInDirectory } from './test-utils/read-processes-in-directory';
+import { startRefusingProxy } from './test-utils/start-refusing-proxy';
 import { startStubHTTPToolServer } from './test-utils/start-stub-http-tool-server';
+import { startStubModel } from './test-utils/start-stub-model';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -17,6 +20,14 @@ async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'nixie-tool-check-'));
 
   stack.defer(() => rm(home, { recursive: true, force: true }));
+
+  const model = startStubModel();
+
+  stack.defer(() => model.stop());
+
+  const proxy = startRefusingProxy();
+
+  stack.defer(() => proxy.stop());
 
   const startSession = (toolServer: McpServerConfig) => {
     const session = query({
@@ -28,10 +39,10 @@ async function setupTest() {
         mcpServers: { nixie: toolServer },
         cwd: home,
         env: {
-          PATH: process.env['PATH'] ?? '',
-          HOME: home,
-          CLAUDE_CONFIG_DIR: join(home, '.claude'),
-          ANTHROPIC_API_KEY: 'imp-placeholder',
+          ...buildStubContractEnv(process.env, model.url, home),
+          HTTPS_PROXY: proxy.url,
+          HTTP_PROXY: proxy.url,
+          NO_PROXY: '127.0.0.1',
         },
       },
     });
@@ -45,8 +56,20 @@ async function setupTest() {
     return session;
   };
 
-  return { home, startSession };
+  return { home, proxy, startSession };
 }
+
+test('it runs a session from start to exit with no request to a host outside the test', async () => {
+  const ctx = await setupTest();
+
+  const session = ctx.startSession(createStubToolServer().config);
+
+  await checkToolServer(session, () => Promise.resolve());
+
+  await session.return();
+
+  expect(ctx.proxy.targets()).toStrictEqual([]);
+});
 
 test('it removes the home a session ran in only once the CLI has exited', async () => {
   const ctx = await setupTest();
