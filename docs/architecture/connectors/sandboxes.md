@@ -53,9 +53,9 @@ placeholders only, so a spec in a record never holds a credential.
 ### A started task's sandbox
 
 Each task that the conversation starts runs in a worker sandbox of its own, on the conversation
-image with 1 vCPU, 1024 MiB of memory and 4096 MiB of disk. The task's ID is the sandbox's owner.
-The [nixie runner](../core/tasks.md#the-nixie-runner), which runs the steps of started tasks,
-creates the sandbox at the task's first step. Its life follows the task:
+image, with the limits of a system task's sandbox. The task's ID is the sandbox's owner. The
+[nixie runner](../core/tasks.md#the-nixie-runner), which runs the steps of started tasks, creates
+the sandbox at the task's first step. Its life follows the task:
 
 1. When a step leaves the task waiting, the runner puts the sandbox to sleep, if its adapter can. A
    task that waits for days then holds no host memory.
