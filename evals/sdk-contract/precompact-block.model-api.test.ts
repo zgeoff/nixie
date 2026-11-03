@@ -31,7 +31,7 @@ test.skipIf(!isContractRun)(
 
     expect(probe.postCompacts).toHaveLength(1);
   },
-  29_000,
+  46_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -61,5 +61,5 @@ test.skipIf(!isContractRun)(
         result.usage.cache_creation_input_tokens,
     ).toBeGreaterThan(20_000);
   },
-  20_000,
+  37_000,
 );

@@ -35,7 +35,7 @@ test.skipIf(!isContractRun)(
     expect(result.session_id).not.toBe(run.sessionID);
     expect(run.after).toStrictEqual(run.before);
   },
-  20_000,
+  32_000,
 );
 
 test.skipIf(!isContractRun)(
@@ -73,7 +73,7 @@ test.skipIf(!isContractRun)(
       errors: [expect.stringMatching(/^No message found with message\.uuid of: /u)],
     });
   },
-  33_000,
+  45_000,
 );
 
 test.skipIf(!isContractRun)(
