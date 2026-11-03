@@ -106,14 +106,20 @@ function startEndedTaskWatch(runner: TaskRunner): EndedTaskWatch {
   const sweep = startRunnerPool<never>(context.clock, {
     size: 1,
     pollMs: 60_000,
+
+    // The pool stops for good on a throw, so a failed sweep logs and waits for the next one.
     claim: async () => {
-      await removeEndedTasks(runner);
+      try {
+        await removeEndedTasks(runner);
+      } catch (error) {
+        runner.options.log('nixie_runner.sweep_failed', toErrorFields(error), 'error');
+      }
 
       return null;
     },
     run: async () => {},
     onError: (error) => {
-      runner.options.log('nixie_runner.sweep_failed', toErrorFields(error), 'error');
+      runner.options.log('nixie_runner.watch_stopped', toErrorFields(error), 'error');
     },
   });
 
@@ -138,16 +144,27 @@ async function removeEndedTasks(runner: TaskRunner): Promise<void> {
     among: [...new Set([...owners, ...runner.endpoints.keys()])],
   });
 
+  // One task whose removal fails stays ended, so it is in the next sweep, and the rest go now.
   for (const taskID of ended) {
-    const sandboxes = await options.sandboxes.list(taskID);
-
-    await Promise.all(sandboxes.map((sandbox) => sandbox.destroy()));
-
-    await removeEndpoint(runner, taskID);
-
-    runner.sandboxes.delete(taskID);
-    options.log('nixie_runner.task_removed', { taskID, sandboxes: sandboxes.length });
+    try {
+      await removeEndedTask(runner, taskID);
+    } catch (error) {
+      options.log('nixie_runner.task_remove_failed', { taskID, ...toErrorFields(error) }, 'error');
+    }
   }
+}
+
+async function removeEndedTask(runner: TaskRunner, taskID: string): Promise<void> {
+  const options = runner.options;
+
+  const sandboxes = await options.sandboxes.list(taskID);
+
+  await Promise.all(sandboxes.map((sandbox) => sandbox.destroy()));
+
+  await removeEndpoint(runner, taskID);
+
+  runner.sandboxes.delete(taskID);
+  options.log('nixie_runner.task_removed', { taskID, sandboxes: sandboxes.length });
 }
 
 async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<StepResult> {
@@ -170,7 +187,8 @@ async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<Ste
   return result;
 }
 
-function resolveEndpoint(runner: TaskRunner, taskID: string): Promise<RunEndpoint> {
+// A task runs one step at a time, so a start that failed leaves the cache before the next step.
+async function resolveEndpoint(runner: TaskRunner, taskID: string): Promise<RunEndpoint> {
   const started =
     runner.endpoints.get(taskID) ??
     runner.options.tools.startRun({
@@ -182,7 +200,12 @@ function resolveEndpoint(runner: TaskRunner, taskID: string): Promise<RunEndpoin
 
   runner.endpoints.set(taskID, started);
 
-  return started;
+  try {
+    return await started;
+  } catch (error) {
+    runner.endpoints.delete(taskID);
+    throw error;
+  }
 }
 
 // A sandbox that the host lost is gone from the adapter, so the step gets a new one, and the

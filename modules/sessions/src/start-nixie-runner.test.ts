@@ -1,9 +1,11 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
-import { writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
+import { claimTask, runTaskStep, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
 import { seedStartedTask } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
+import type { NixieRunnerOptions } from './start-nixie-runner';
 import { startNixieRunner } from './start-nixie-runner';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
@@ -15,7 +17,7 @@ async function setupTest() {
 
   const tools = buildStubToolEndpoint();
 
-  const startRunner = async () => {
+  const startRunner = async (parts: Partial<Pick<NixieRunnerOptions, 'tools'>> = {}) => {
     const runner = await startNixieRunner({
       context: host.context,
       models: modelsConfigSchema.parse({
@@ -40,7 +42,7 @@ async function setupTest() {
       secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
       sandboxes: host.sandboxes,
       image: 'nixie-conversation-0123456789ab',
-      tools: tools.endpoint,
+      tools: parts.tools ?? tools.endpoint,
       toolNames: ['tasks.list', 'task.message', 'time.now'],
       getDefinitions: () => ({
         persona: 'You are Pip.',
@@ -89,6 +91,19 @@ async function setupTest() {
       ]),
     runNextStep: (runner: Awaited<ReturnType<typeof startRunner>>) =>
       runNextStep(host.context, runner.runStep),
+    runNextStepWithNoRetryDelay: async (runner: Awaited<ReturnType<typeof startRunner>>) => {
+      const claim = await claimTask(host.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+      invariant(claim !== null, 'a task has work to claim');
+
+      await runTaskStep(host.context, claim, {
+        runStep: runner.runStep,
+        leaseMs: 60_000,
+        maxStepErrors: 3,
+        retryDelayMs: 0,
+        maxRetryDelayMs: 0,
+      });
+    },
     readKinds: (kind: string) => readRecordsByKind(host.context.log, kind),
   };
 }
@@ -187,6 +202,21 @@ test('it resumes the same session for the next message', async () => {
 
   expect(second?.resume?.sessionID).toBeString();
   expect(first?.resume).toBeNull();
+});
+
+test("it starts a task's tool run again on the step after a start that failed", async () => {
+  const ctx = await setupTest();
+
+  const failing = buildStubToolEndpoint({ failedStarts: 1 });
+
+  await ctx.seedTask();
+
+  const runner = await ctx.startRunner({ tools: failing.endpoint });
+
+  await ctx.runNextStepWithNoRetryDelay(runner);
+  await ctx.runNextStep(runner);
+
+  expect(ctx.guest.turns).toHaveLength(1);
 });
 
 test('it destroys the imp of an idle task when the task closes, with no further step', async () => {
