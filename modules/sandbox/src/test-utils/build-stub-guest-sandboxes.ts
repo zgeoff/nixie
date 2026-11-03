@@ -67,6 +67,8 @@ export interface StubGuestSandboxes {
   readonly removeSessions: (owner: string) => void;
 
   readonly failCopyOut: (owner: string, reason: string) => void;
+
+  readonly failDestroy: (owner: string, reason: string) => void;
 }
 
 const adapterID = 'stub-guest';
@@ -76,6 +78,7 @@ interface SandboxState {
   readonly disk: StubGuestDisk;
   isAsleep: boolean;
   copyOutFailure: string | null;
+  destroyFailure: string | null;
 }
 
 interface StubState {
@@ -167,6 +170,11 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
         own.copyOutFailure = reason;
       }
     },
+    failDestroy: (owner, reason) => {
+      for (const own of collectOwned(state, owner)) {
+        own.destroyFailure = reason;
+      }
+    },
   };
 }
 
@@ -254,6 +262,10 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
       },
     },
     destroy: async () => {
+      if (own.destroyFailure !== null) {
+        throw new Error(own.destroyFailure);
+      }
+
       state.sandboxes.delete(id);
 
       await state.options.recorder.write({
@@ -433,6 +445,7 @@ function registerSandboxState(state: StubState, row: SandboxRow): SandboxState {
     disk: buildStubGuestDisk(),
     isAsleep: false,
     copyOutFailure: null,
+    destroyFailure: null,
   };
 
   state.sandboxes.set(row.sandboxID, own);

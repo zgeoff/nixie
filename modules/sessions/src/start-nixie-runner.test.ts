@@ -16,6 +16,7 @@ async function setupTest() {
   const host = await startTestSessionHost();
 
   const tools = buildStubToolEndpoint();
+  const events: string[] = [];
 
   const startRunner = async (parts: Partial<Pick<NixieRunnerOptions, 'tools'>> = {}) => {
     const runner = await startNixieRunner({
@@ -63,7 +64,9 @@ async function setupTest() {
       compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 },
       defaultZone: 'UTC',
       messaging: { directory: [], hopLimit: 20, ownerName: 'Robin' },
-      log: () => {},
+      log: (event) => {
+        events.push(event);
+      },
     });
 
     host.defer(() => runner.stop());
@@ -74,6 +77,7 @@ async function setupTest() {
   return {
     ...host,
     runs: tools.runs,
+    events,
     startRunner,
     seedTask: () =>
       seedStartedTask(host.context, {
@@ -235,6 +239,37 @@ test('it destroys the imp of an idle task when the task closes, with no further 
   });
 
   expect(ctx.guest.turns).toHaveLength(1);
+});
+
+test('it keeps destroying the imps of closed tasks after the destroy of one fails', async () => {
+  const ctx = await setupTest();
+  const stuck = await ctx.seedTask();
+
+  const other = await seedStartedTask(ctx.context, {
+    name: 'Ferry times',
+    brief: 'Find the last ferry on Sunday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  ctx.guest.failDestroy(stuck, 'the imp would not stop');
+
+  await writeTaskControl(ctx.context, { taskID: stuck, control: 'close' });
+  await waitForCondition(() => ctx.events.includes('nixie_runner.task_remove_failed'));
+  await writeTaskControl(ctx.context, { taskID: other, control: 'close' });
+
+  await waitForCondition(async () => {
+    const sandboxes = await ctx.sandboxes.list(other);
+
+    return sandboxes.length === 0;
+  });
+
+  const stuckSandboxes = await ctx.sandboxes.list(stuck);
+
+  expect(stuckSandboxes).toHaveLength(1);
 });
 
 test('it rebuilds the session of a task whose imp is gone with the messages the task sent', async () => {

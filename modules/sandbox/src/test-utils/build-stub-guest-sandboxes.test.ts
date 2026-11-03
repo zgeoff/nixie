@@ -712,6 +712,20 @@ test('it fails each copy out of a sandbox a test makes fail, with the reason giv
   );
 });
 
+test('it fails the destroy of a sandbox a test makes fail, and keeps it listed', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.failDestroy(ctx.spec.owner, 'the imp would not stop');
+
+  const destroyed = sandbox.destroy();
+
+  const listed = await ctx.stub.adapter.list(ctx.spec.owner);
+
+  expect(destroyed).rejects.toThrow('the imp would not stop');
+  expect(listed.map((found) => found.id)).toStrictEqual([sandbox.id]);
+});
+
 test('it refuses every command', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
