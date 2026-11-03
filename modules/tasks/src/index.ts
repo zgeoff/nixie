@@ -36,6 +36,7 @@ export { ownerMessageCodec } from './owner-message-codec';
 export { planReadCursor } from './plan-read-cursor';
 export { readConversationErrors } from './read-conversation-errors';
 export { readInbox } from './read-inbox';
+export { readSentTaskMessages } from './read-sent-task-messages';
 export { readSessionBoundary } from './read-session-boundary';
 export { requireLease } from './require-lease';
 export { resetLease } from './reset-lease';

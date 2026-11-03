@@ -278,6 +278,38 @@ test("it renders a task's message framed as a task message, with its ID, its sen
   );
 });
 
+test('it renders a message the task sent as its own words, with the task it went to and its kind', () => {
+  const record = buildMockLogRecord({
+    sequence: 48_310,
+    kind: 'task_message',
+    thread: 'conversation',
+    recordedAt: new Date('2026-10-12T10:31:05Z'),
+    payload: {
+      messageID: 'p2xc7d4nqa',
+      from: 'planner',
+      to: 'conversation',
+      kind: 'report',
+      replyTo: null,
+      onBehalfOf: [],
+      hop: 1,
+      hopLimit: 20,
+      wake: true,
+      woke: true,
+      source: 'task:planner',
+    },
+    erasable: { status: 'readable', fields: { body: 'The dentist has Thursday at 10.' } },
+  });
+
+  const line = renderHistoryLine(
+    { record, answered: null, isSent: true },
+    { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+  );
+
+  expect(line).toBe(
+    '[#48310 · Mon 12 Oct, 21:31, Sydney] nixie, to task conversation (report): The dentist has Thursday at 10.',
+  );
+});
+
 test("it renders a forgotten task message's body as forgotten", () => {
   const record = buildMockLogRecord({
     sequence: 48_300,
