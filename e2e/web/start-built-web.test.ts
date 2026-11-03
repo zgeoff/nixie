@@ -1,6 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { readWebBuild } from '@heynixie/builds-e2e';
-import { startBuiltWeb, startStubAPI } from '@heynixie/web/test-utils';
+import { readWebBuild, startBuiltWeb, startStubAPI } from '@heynixie/web/test-utils';
 
 test('it serves the built web client against the given API', async () => {
   const serverPath = await readWebBuild();

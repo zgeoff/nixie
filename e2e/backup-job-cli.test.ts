@@ -3,8 +3,11 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claimFileLock } from '@heynixie/async';
-import { createStagedSet, createStubRestic } from '@heynixie/backup-job/test-utils';
-import { readBackupJobBundle } from '@heynixie/builds-e2e';
+import {
+  createStagedSet,
+  createStubRestic,
+  readBackupJobBundle,
+} from '@heynixie/backup-job/test-utils';
 import { stopProcesses } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 

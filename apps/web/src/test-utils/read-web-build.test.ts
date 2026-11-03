@@ -10,6 +10,8 @@ test('it returns the server entry of the web build in the run’s template, the 
     import.meta.dir,
     '..',
     '..',
+    '..',
+    '..',
     'node_modules',
     '.cache',
     'nixie-test-bundles',

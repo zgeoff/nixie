@@ -1,8 +1,8 @@
 import { join } from 'node:path';
 import { createRunTemplate } from '@heynixie/testing';
-import { runWebBuild } from '@heynixie/web/test-utils';
+import { runWebBuild } from './run-web-build';
 
-const repoRoot = join(import.meta.dir, '..', '..');
+const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
 
 // A web build takes longer than a test's limit on a host with 2 cores, so the e2e lane fills the
 // template before its tests start, and each suite reads it.

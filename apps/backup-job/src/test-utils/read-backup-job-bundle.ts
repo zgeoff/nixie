@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { createRunTemplate } from '@heynixie/testing';
 
-const repoRoot = join(import.meta.dir, '..', '..');
+const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
 
 // The suites run the job as the image does, from its bundle, so the e2e and restic lanes fill the
 // template before their tests start, and each suite reads it.

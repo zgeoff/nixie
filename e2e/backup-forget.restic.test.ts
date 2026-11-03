@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeSnapshotSet } from '@heynixie/backup';
-import { readBackupJobBundle } from '@heynixie/builds-e2e';
+import { readBackupJobBundle } from '@heynixie/backup-job/test-utils';
 import { startDatabase } from '@heynixie/db';
 import {
   createRecordKey,

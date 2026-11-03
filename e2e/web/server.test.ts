@@ -1,8 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { readWebBuild } from '@heynixie/builds-e2e';
-import { startBuiltWeb, startStubAPI, store } from '@heynixie/web/test-utils';
+import { readWebBuild, startBuiltWeb, startStubAPI, store } from '@heynixie/web/test-utils';
 
 async function setupTest() {
   const serverPath = await readWebBuild();

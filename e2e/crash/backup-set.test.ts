@@ -1,8 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createStubRestic } from '@heynixie/backup-job/test-utils';
-import { readBackupJobBundle } from '@heynixie/builds-e2e';
+import { createStubRestic, readBackupJobBundle } from '@heynixie/backup-job/test-utils';
 import { startSpawnedNixie } from '@heynixie/server/test-utils';
 import { $ } from 'bun';
 

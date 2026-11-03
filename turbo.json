@@ -52,15 +52,7 @@
       // the whole-program suites run builds of the server, the web client and the backup job as
       // child processes, and nothing depends on them
       "e2e": {
-        "dependencies": {
-          "allow": ["app", "client", "sidecar", "module", "adapter", "lib", "e2e-support"]
-        }
-      },
-      // the helpers that build the web client and the backup job for the whole-program suites,
-      // which only those suites may depend on, so product code never reaches test code
-      "e2e-support": {
-        "dependencies": { "allow": ["client", "sidecar", "lib"] },
-        "dependents": { "allow": ["e2e"] }
+        "dependencies": { "allow": ["app", "client", "sidecar", "module", "adapter", "lib"] }
       },
       // the in-process suites run one flow across several packages on the server's test harnesses,
       // and nothing depends on them
@@ -69,16 +61,7 @@
       },
       "server-only": {
         "dependents": {
-          "allow": [
-            "app",
-            "module",
-            "adapter",
-            "server-only",
-            "eval",
-            "e2e",
-            "e2e-support",
-            "integration"
-          ]
+          "allow": ["app", "module", "adapter", "server-only", "eval", "e2e", "integration"]
         }
       }
     }
