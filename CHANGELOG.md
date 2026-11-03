@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.0](https://github.com/zgeoff/nixie/compare/v0.60.0...v0.61.0) (2026-11-03)
+
+
+### Features
+
+* **tasks:** run started tasks on the nixie runner ([#816](https://github.com/zgeoff/nixie/issues/816)) ([e228224](https://github.com/zgeoff/nixie/commit/e2282244c25b85fa4463936449c6436eceb64e13))
+
 ## [0.60.0](https://github.com/zgeoff/nixie/compare/v0.59.1...v0.60.0) (2026-11-03)
 
 
