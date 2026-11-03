@@ -1,10 +1,11 @@
 # The e2e and restic lanes
 
 Start a whole lane through its lane script, `bun run test:e2e` or `bun run test:restic`, from the
-repo root. The [Runs](../SKILL.md#runs) table gives each lane's files and limit. The lane script
-makes the builds that the tests run before the tests start. When a build is missing, the first test
-that needs it makes it, and that test runs past its limit. Clean up each process and folder a test
-makes, because the files of a lane share one process.
+repo root. The [Runs](../SKILL.md#runs) table gives each lane's files and limit. Name a test outside
+`e2e/` that reads one of the builds below `*.e2e.test.ts`, so it runs in the e2e lane. The lane
+script makes the builds that the tests run before the tests start. When a build is missing, the
+first test that needs it makes it, and that test runs past its limit. Clean up each process and
+folder a test makes, because the files of a lane share one process.
 
 To run one file again, run its lane script once, then `bun test --timeout=<limit_ms> <path>` from
 the repo root. For a restic file, set `NIXIE_RESTIC_BINARY` first, as in [Restic](#restic).
