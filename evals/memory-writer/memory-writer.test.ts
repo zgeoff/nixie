@@ -1,11 +1,13 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { buildWriterTools, createWriterStaging } from '@heynixie/memory';
-import { buildWriterEvalInput } from '../test-utils/build-writer-eval-input';
-import { checkWriterRule } from '../test-utils/check-writer-rule';
-import { loadWriterCases } from '../test-utils/load-writer-cases';
-import type { WriterCall } from '../test-utils/load-writer-report';
-import { loadWriterReport } from '../test-utils/load-writer-report';
+import type { WriterCall } from '@heynixie/memory/evals';
+import {
+  buildWriterEvalInput,
+  checkWriterRule,
+  loadWriterCases,
+  loadWriterReport,
+} from '@heynixie/memory/evals';
 
 async function setupTest() {
   const cases = await loadWriterCases(join(import.meta.dir, 'cases.json'));

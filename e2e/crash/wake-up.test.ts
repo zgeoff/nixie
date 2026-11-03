@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
-import { runOracle } from '../test-utils/run-oracle';
-import { startSpawnedNixie } from '../test-utils/start-spawned-nixie';
+import { runOracle, startSpawnedNixie } from '@heynixie/server/test-utils';
 
 async function setupTest() {
   const nixie = await startSpawnedNixie();

@@ -2,10 +2,9 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { buildContractEnv, runContractQuery } from '@heynixie/conversation/sdk-contract';
 import { buildModelGrant } from '@heynixie/models';
 import invariant from 'tiny-invariant';
-import { buildContractEnv } from '../test-utils/build-contract-env';
-import { runContractQuery } from '../test-utils/run-contract-query';
 
 // Each probe calls the model on the subscription, so only a contract run enables it. Bun 1.4.2's
 // skipIf takes a boolean and has no in-body skip.

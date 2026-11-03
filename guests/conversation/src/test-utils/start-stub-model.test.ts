@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { startStubModel } from './start-stub-model';
 
 function setupTest() {
@@ -57,6 +58,64 @@ test('it streams a reply as server-sent events when the request asks', async () 
   expect(response.headers.get('content-type')).toBe('text/event-stream');
   expect(text).toInclude('"text_delta","text":"streamed"');
   expect(text).toEndWith('event: message_stop\ndata: {"type":"message_stop"}\n\n');
+});
+
+test('it counts 10 tokens for any request when no rate is set', async () => {
+  const ctx = setupTest();
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages/count_tokens`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [{ role: 'user', content: 'a long log' }] }),
+  });
+
+  const body = await response.json();
+
+  expect(body).toStrictEqual({ input_tokens: 10 });
+});
+
+test('it counts the tokens of a request from the characters of its messages at the set rate', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.setCharactersPerToken(2);
+
+  const messages = [{ role: 'user', content: 'a log' }];
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages/count_tokens`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages }),
+  });
+
+  const body = await response.json();
+
+  expect(JSON.stringify(messages)).toHaveLength(35);
+  expect(body).toStrictEqual({ input_tokens: 18 });
+});
+
+test('it streams an endless reply up to its text and never ends the message', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({ text: 'still going', isEndless: true });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', stream: true, messages: [] }),
+  });
+
+  invariant(response.body !== null, 'the stub answered a streamed request with no body');
+
+  const reader = response.body.getReader();
+
+  onTestFinished(() => reader.cancel());
+
+  const first = await reader.read();
+
+  invariant(first.value instanceof Uint8Array, 'the stub ended the stream before its first chunk');
+
+  const text = new TextDecoder().decode(first.value);
+
+  expect(text).toInclude('"text_delta","text":"still going"');
+  expect(text).not.toInclude('content_block_stop');
+  expect(text).not.toInclude('message_stop');
 });
 
 test('it answers a reply that scripts thinking with a thinking block before the reply and the thinking tokens in its usage', async () => {
@@ -250,6 +309,56 @@ test('it refuses a request with the scripted credential failure as a 401 the CLI
     type: 'error',
     error: { type: 'authentication_error', message: 'invalid x-api-key' },
   });
+});
+
+test('it refuses a request with the scripted missing resource as a 404', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({ notFound: 'model: model-gone' });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-gone', messages: [] }),
+  });
+
+  const body = await response.json();
+
+  expect(response.status).toBe(404);
+
+  expect(body).toStrictEqual({
+    type: 'error',
+    error: { type: 'not_found_error', message: 'model: model-gone' },
+  });
+});
+
+test('it ends a reply that scripts the output cap with the max_tokens stop reason', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({ text: 'cut', isOutputCapped: true });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  const body = await response.json();
+
+  expect(body).toMatchObject({ stop_reason: 'max_tokens' });
+});
+
+test('it streams the max_tokens stop reason for a reply that scripts the output cap', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({ text: 'cut', isOutputCapped: true });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', stream: true, messages: [] }),
+  });
+
+  const text = await response.text();
+
+  expect(text).toInclude('"stop_reason":"max_tokens"');
 });
 
 test('it records every request with its path, headers and body', async () => {

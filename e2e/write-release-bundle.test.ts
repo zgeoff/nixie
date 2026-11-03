@@ -2,8 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeReleaseBundle } from '@heynixie/server/test-utils';
-import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
+import { startSpawnedNixie, writeReleaseBundle } from '@heynixie/server/test-utils';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-release-'));

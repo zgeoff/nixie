@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createTestClient, runHostCommand } from '@heynixie/server/test-utils';
-import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
+import { createTestClient, runHostCommand, startSpawnedNixie } from '@heynixie/server/test-utils';
 
 test('it resets the running server through the reset command, which exits 0 with the server, and starts again', async () => {
   const nixie = await startSpawnedNixie();

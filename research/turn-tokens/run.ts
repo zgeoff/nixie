@@ -45,9 +45,7 @@ import { renderRetrievedItems } from '../../modules/sessions/src/render-retrieve
 // @boundaries-ignore a spike imports the code it measures
 import { renderPrompt } from '../../modules/prompts/src/render-prompt';
 // @boundaries-ignore a spike imports the code it measures
-import { buildCheckerEvalInput } from '../../evals/test-utils/build-checker-eval-input';
-// @boundaries-ignore a spike imports the code it measures
-import { loadCheckerCorpus } from '../../evals/test-utils/load-checker-corpus';
+import { buildCheckerEvalInput, loadCheckerCorpus } from '../../modules/memory/src/evals';
 import type { ToolSet } from './build-role-tools';
 import { buildRoleTools } from './build-role-tools';
 import { fixtures } from './spike-fixtures';

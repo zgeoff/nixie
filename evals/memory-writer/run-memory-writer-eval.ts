@@ -7,14 +7,17 @@ import { createSdkMcpServer, query } from '@anthropic-ai/claude-agent-sdk';
 import type { JSONObject } from '@heynixie/log';
 import type { StagedWrite } from '@heynixie/memory';
 import { buildWriterTools, createWriterStaging } from '@heynixie/memory';
+import type {
+  WriterCall,
+  WriterCase,
+  WriterEvalInput,
+  WriterReport,
+  WriterToolSpec,
+} from '@heynixie/memory/evals';
+import { buildWriterEvalInput, loadWriterCases } from '@heynixie/memory/evals';
 import type { ToolDefinition, ToolRegistry } from '@heynixie/tools';
 import { buildToolRegistry } from '@heynixie/tools';
 import { z } from 'zod';
-import type { WriterEvalInput, WriterToolSpec } from '../test-utils/build-writer-eval-input';
-import { buildWriterEvalInput } from '../test-utils/build-writer-eval-input';
-import type { WriterCase } from '../test-utils/load-writer-cases';
-import { loadWriterCases } from '../test-utils/load-writer-cases';
-import type { WriterCall, WriterReport } from '../test-utils/load-writer-report';
 
 const model = parseArgs({ options: { model: { type: 'string', default: 'claude-haiku-5-5' } } })
   .values.model;

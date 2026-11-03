@@ -4,10 +4,11 @@ A crash test runs nixie as a child process, holds one of its runners at a named 
 the process with `SIGKILL`, and starts it again on the same data directory. When the scenario ends,
 the test checks the event log and the projections against one oracle. Every test ends with the same
 oracle, so each one proves the same thing: a crash at that point loses nothing and repeats nothing.
-The suites live in the root `e2e/` folder, a workspace package that imports nixie's packages by name
-as the server does, and the harness parts live in `libs/testing`.
-[Leases and recovery](./leases-and-recovery.md) covers the fault points and the recovery that a
-restart runs. [Actions](./actions.md) covers the action queue whose repeats the tests look for.
+The suites live in the root `e2e/` folder. The harness that spawns nixie lives in the server's test
+utilities, and the parts it builds on, such as the crash harness and the doubles, live in
+`libs/testing`. [Leases and recovery](./leases-and-recovery.md) covers the fault points and the
+recovery that a restart runs. [Actions](./actions.md) covers the action queue whose repeats the
+tests look for.
 
 ```mermaid
 flowchart LR
@@ -23,10 +24,12 @@ flowchart LR
 
 The child process runs a test build of nixie: the same modules a release composes, with the test
 pieces behind the test-build flag switched on ([code layout](../code-layout.md#test-builds)). It
-writes the real event log, runs the real recovery, task runners, action runners and tool endpoint,
-and runs each conversation turn through the real Agent SDK. The SDK runs in a guest that the process
-sandbox adapter starts as a local child, so CI needs no `/dev/kvm` and no imp. The test-only parts
-are four:
+runs from the test bundle that `bun run test:bundles` builds once for each set of sources, so a
+start pays for no transpile. The bundle keeps each module's source folder, so its guests start from
+their source as they do in an unbundled run. It writes the real event log, runs the real recovery,
+task runners, action runners and tool endpoint, and runs each conversation turn through the real
+Agent SDK. The SDK runs in a guest that the process sandbox adapter starts as a local child, so CI
+needs no `/dev/kvm` and no imp. The test-only parts are four:
 
 - The test connector declares one queued action, `test.send`, which the test rule allows. The
   production rule set stays read-only, so no release build can queue it.

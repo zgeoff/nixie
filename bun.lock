@@ -202,19 +202,13 @@
       "name": "@heynixie/e2e",
       "version": "0.0.0",
       "dependencies": {
-        "@heynixie/actions": "workspace:*",
         "@heynixie/async": "workspace:*",
         "@heynixie/backup": "workspace:*",
         "@heynixie/backup-job": "workspace:*",
-        "@heynixie/clock": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
-        "@heynixie/logger": "workspace:*",
-        "@heynixie/memory": "workspace:*",
-        "@heynixie/sandbox": "workspace:*",
         "@heynixie/server": "workspace:*",
-        "@heynixie/tasks": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@heynixie/web": "workspace:*",
         "@heynixie/wire": "workspace:*",
@@ -240,7 +234,6 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@heynixie/testing": "workspace:*",
         "tiny-invariant": "catalog:",
       },
     },
@@ -251,6 +244,7 @@
         "@anthropic-ai/claude-agent-sdk": "catalog:",
         "@heynixie/wire": "workspace:*",
         "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -263,6 +257,16 @@
       "dependencies": {
         "@heynixie/wire": "workspace:*",
         "entities": "catalog:",
+      },
+    },
+    "integration": {
+      "name": "@heynixie/integration",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/memory": "workspace:*",
+        "@heynixie/server": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "tiny-invariant": "catalog:",
       },
     },
     "libs/async": {
@@ -1125,6 +1129,8 @@
     "@heynixie/evals": ["@heynixie/evals@workspace:evals"],
 
     "@heynixie/fetch": ["@heynixie/fetch@workspace:guests/fetch"],
+
+    "@heynixie/integration": ["@heynixie/integration@workspace:integration"],
 
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
 
