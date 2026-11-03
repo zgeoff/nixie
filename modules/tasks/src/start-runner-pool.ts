@@ -1,4 +1,5 @@
 import type { Clock } from '@heynixie/clock';
+import { withTrackedWork } from '@heynixie/clock';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
 export interface RunnerPoolOptions<W> {
@@ -82,7 +83,7 @@ async function runRunner<W>(
 
       // A claim reads the time when it starts, so the poll counts from there: work that fell due
       // while a slow claim waited on the database is claimed at once, not a full poll later.
-      if (!(await runClaim(options, state))) {
+      if (!(await withTrackedWork(() => runClaim(options, state)))) {
         await clock.sleep(
           options.pollMs - (clock.now() - claimedAt),
           AbortSignal.any([state.stopping, wake]),

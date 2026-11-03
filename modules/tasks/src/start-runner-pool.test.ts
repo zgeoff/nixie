@@ -1,5 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { setWorkTracker } from '@heynixie/clock';
+import { buildTestClock, buildWorkTracker, waitForCondition } from '@heynixie/testing';
 import { setFaultPointHandler } from './set-fault-point-handler';
 import { startRunnerPool } from './start-runner-pool';
 import { buildStubPoolWork } from './test-utils/build-stub-pool-work';
@@ -283,4 +284,41 @@ test('it reports an error a run threw and stops claiming', async () => {
 
   expect(onError).toHaveBeenCalledExactlyOnceWith(failure);
   expect(work.queue).toStrictEqual(['b']);
+});
+
+test('it reports a claim in flight as unsettled work, and settles once the runner sleeps again', async () => {
+  const ctx = setupTest();
+  const work = buildStubPoolWork([]);
+  const tracker = buildWorkTracker();
+
+  setWorkTracker(tracker);
+
+  onTestFinished(() => {
+    setWorkTracker(null);
+  });
+
+  const miss = work.holdNextMiss();
+
+  const pool = startRunnerPool(ctx.clock, {
+    size: 1,
+    pollMs: 1000,
+    claim: work.claim,
+    run: work.run,
+    onError: () => {},
+  });
+
+  onTestFinished(() => pool.stop(0));
+
+  await miss.started;
+
+  const settledDuringClaim = tracker.isSettled();
+
+  miss.release();
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
+  expect({ settledDuringClaim, settledAsleep: tracker.isSettled() }).toStrictEqual({
+    settledDuringClaim: false,
+    settledAsleep: true,
+  });
 });

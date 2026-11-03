@@ -69,7 +69,7 @@ test('it refuses an advance while a nixie it started is not yet ready, which wou
   );
 });
 
-test('it settles an advance once every runner it woke sleeps again', async () => {
+test('it settles an advance once the work of every runner it woke ends', async () => {
   const ctx = setupTest();
   const nixie = ctx.harness.start();
 
@@ -80,16 +80,16 @@ test('it settles an advance once every runner it woke sleeps again', async () =>
   await expect(ctx.harness.advance(1000, { settle: true, settleTimeoutMs: 200 })).toResolve();
 });
 
-test('it refuses a settled advance when a runner it woke does not sleep again', async () => {
+test('it refuses a settled advance when the work of a runner it woke never ends', async () => {
   const ctx = setupTest();
   const nixie = ctx.harness.start();
 
   await nixie.ready;
 
-  await nixie.request('sleepOnce', 1000);
+  await nixie.request('startStuckWork', 1000);
 
   expect(ctx.harness.advance(1000, { settle: true, settleTimeoutMs: 200 })).rejects.toThrow(
-    'a runner the advance woke did not sleep again',
+    'a runner the advance woke did not settle',
   );
 });
 

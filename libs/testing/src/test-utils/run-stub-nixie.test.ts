@@ -62,7 +62,7 @@ test('it starts a child that keeps running and answers with its PID', async () =
   expect(probeProcessGone(childPID)).toBe(false);
 });
 
-test('it leaves a sleeper that an advance wakes and that does not sleep again', async () => {
+test('it starts a work that an advance wakes and that never ends', async () => {
   const ctx = setupTest();
   const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 0 });
 
@@ -70,14 +70,14 @@ test('it leaves a sleeper that an advance wakes and that does not sleep again', 
 
   await nixie.ready;
 
-  await nixie.request('sleepOnce', 1000);
+  await nixie.request('startStuckWork', 1000);
 
   expect(
     nixie.request('advance', { durationMs: 1000, settle: true, settleTimeoutMs: 200 }),
   ).resolves.toStrictEqual({ settled: false });
 });
 
-test('it starts a poll that sleeps again each time an advance wakes it', async () => {
+test('it starts a poll whose work ends each time an advance wakes it', async () => {
   const ctx = setupTest();
   const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 0 });
 

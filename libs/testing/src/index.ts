@@ -6,6 +6,8 @@ export type { RunTemplateOptions } from './create-run-template';
 export { createRunTemplate } from './create-run-template';
 export type { TestClock } from './build-test-clock';
 export { buildTestClock } from './build-test-clock';
+export type { WorkTracker } from './build-work-tracker';
+export { buildWorkTracker } from './build-work-tracker';
 export type { GatedCall, GatedCallOptions } from './make-gated-call';
 export { makeGatedCall } from './make-gated-call';
 export type { WaitForConditionOptions } from './wait-for-condition';

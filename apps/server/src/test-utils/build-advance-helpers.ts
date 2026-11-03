@@ -1,45 +1,23 @@
-import { setTimeout } from 'node:timers/promises';
 import type { CrashHarness, FaultPointArrival } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import type { SpawnedNixie } from './start-spawned-nixie';
 import type { MatchRecord, TestRecord } from './types';
-import { waitForMatch } from './wait-for-match';
-
-export interface AdvanceWaits {
-  readonly advanceWaitMs: number;
-
-  readonly lastAdvanceWaitMs: number;
-}
-
-// A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and the
-// last wait ends inside the e2e lane's 15 s limit per test, so a miss fails on its own message.
-const defaultAdvanceWaits: AdvanceWaits = { advanceWaitMs: 1000, lastAdvanceWaitMs: 10_000 };
 
 export function buildAdvanceHelpers(
   harness: Pick<CrashHarness, 'advance'>,
   readRecords: SpawnedNixie['readRecords'],
-  waits: AdvanceWaits = defaultAdvanceWaits,
 ): Pick<SpawnedNixie, 'advanceUntilArrival' | 'advanceUntilRecord'> {
   return {
     advanceUntilRecord: (stepMs, maxSteps, matches) =>
       runAdvances(
-        {
-          harness,
-          stepMs,
-          waits,
-          waitFor: (timeoutMs) => waitForMatchWithin(readRecords, matches, timeoutMs),
-        },
+        { harness, stepMs, read: () => readMatchingRecord(readRecords, matches) },
         maxSteps,
       ),
     advanceUntilArrival: (nixie, point, options) => {
       const arrival = nixie.waitForArrival(point);
 
       return runAdvances(
-        {
-          harness,
-          stepMs: options.stepMs,
-          waits,
-          waitFor: (timeoutMs) => waitForArrivalWithin(arrival, timeoutMs),
-        },
+        { harness, stepMs: options.stepMs, read: () => readSettledArrival(arrival) },
         options.maxSteps,
       );
     },
@@ -49,18 +27,12 @@ export function buildAdvanceHelpers(
 interface Advances<T> {
   readonly harness: Pick<CrashHarness, 'advance'>;
   readonly stepMs: number;
-  readonly waits: AdvanceWaits;
 
-  readonly waitFor: (timeoutMs: number) => Promise<T | null>;
+  readonly read: () => Promise<T | null>;
 }
 
 async function runAdvances<T>(advances: Advances<T>, remaining: number): Promise<T> {
-  await advances.harness.advance(advances.stepMs);
-
-  const timeoutMs =
-    remaining <= 1 ? advances.waits.lastAdvanceWaitMs : advances.waits.advanceWaitMs;
-
-  const found = await advances.waitFor(timeoutMs);
+  const found = await runAdvance(advances);
 
   if (found !== null) {
     return found;
@@ -73,19 +45,60 @@ async function runAdvances<T>(advances: Advances<T>, remaining: number): Promise
   return runAdvances(advances, remaining - 1);
 }
 
-async function waitForMatchWithin(
-  readRecords: SpawnedNixie['readRecords'],
-  matches: MatchRecord,
-  timeoutMs: number,
-): Promise<TestRecord | null> {
-  const found = await waitForMatch(readRecords, matches, timeoutMs).catch(() => null);
+async function runAdvance<T>(advances: Advances<T>): Promise<T | null> {
+  const failure = runSettledAdvance(advances);
+  const found: { value: T | null } = { value: null };
 
-  return found;
+  // A runner that waits on a reply the test holds back, such as a gated provider call, never
+  // settles, so what the advance brings ends the wait too. The advance itself always ends: nixie
+  // replies by its settle deadline, and a nixie that dies rejects the request.
+  await waitForCondition(
+    async () => {
+      const ended = Bun.peek.status(failure) !== 'pending';
+
+      found.value = await advances.read();
+
+      return found.value !== null || ended;
+    },
+    { timeoutMs: Number.POSITIVE_INFINITY },
+  );
+
+  const settleFailure = found.value === null ? await failure : null;
+
+  if (settleFailure !== null) {
+    throw settleFailure;
+  }
+
+  return found.value;
 }
 
-function waitForArrivalWithin(
+// A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and the
+// settle ends inside the e2e lane's 15 s limit per test, so a turn that never ends fails on its own.
+const settleTimeoutMs = 10_000;
+
+async function runSettledAdvance<T>(advances: Advances<T>): Promise<unknown> {
+  try {
+    await advances.harness.advance(advances.stepMs, { settle: true, settleTimeoutMs });
+
+    return null;
+  } catch (error) {
+    return error;
+  }
+}
+
+async function readMatchingRecord(
+  readRecords: SpawnedNixie['readRecords'],
+  matches: MatchRecord,
+): Promise<TestRecord | null> {
+  const records = await readRecords();
+
+  return records.find((record) => matches(record)) ?? null;
+}
+
+// nixie sends an arrival before the settled reply, on the same channel, so a read after the reply
+// sees it.
+function readSettledArrival(
   arrival: Promise<FaultPointArrival>,
-  timeoutMs: number,
 ): Promise<FaultPointArrival | null> {
-  return Promise.race([arrival, setTimeout(timeoutMs, null)]);
+  return Promise.race([arrival, Promise.resolve(null)]);
 }

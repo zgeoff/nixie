@@ -49,13 +49,18 @@ so a rerun that sends the same arguments in another key order matches the action
 ## The harness link
 
 The test drives the child through one channel, and the child answers on the same channel. The link
-inside nixie owns three things:
+inside nixie owns these parts:
 
 - **The clock.** Every lease, timer, retry delay and poll in the child reads one test clock. It
-  starts at the time the test passes and moves only when the test asks it to advance. An advance can
-  wait until every sleeper it woke has slept again, so the test knows that the runners finished the
-  work that the advance made due. The test carries the clock's time from one process to the next, so
-  a restart never moves time backwards. No test sleeps to let time pass.
+  starts at the time the test passes and moves only when the test asks it to advance. The test
+  carries the clock's time from one process to the next, so a restart never moves time backwards. No
+  test sleeps to let time pass.
+- **The work tracker.** An advance can wait until the runners settle, so the test knows that they
+  finished the work that the advance made due. Each claim and run of a runner pool counts as work,
+  and so does each read that turns a commit into a wake of the pools, so a runner that another
+  runner wakes keeps the advance waiting. A runner held at a fault point counts as settled, because
+  only the test moves it on. Work that waits on a reply the test holds back, such as a gated
+  provider call, never settles, and the advance reports that it did not settle.
 - **The fault points.** The test arms a fault point at start, or later over the channel. An arm can
   name the kind of work, its ID, and how many times it holds. A runner that reaches an armed point
   reports its arrival and waits. Other runners carry on. The test then releases the runner or kills

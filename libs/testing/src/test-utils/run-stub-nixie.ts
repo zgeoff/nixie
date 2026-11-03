@@ -18,8 +18,11 @@ link.registerOperation('hold', z.string(), async (workID) => {
   return 'released';
 });
 
-link.registerOperation('sleepOnce', z.number(), (durationMs) => {
-  void link.clock.sleep(durationMs);
+link.registerOperation('startStuckWork', z.number(), (durationMs) => {
+  void (async () => {
+    await link.clock.sleep(durationMs);
+    await link.workTracker.runWork(() => Promise.withResolvers<void>().promise);
+  })();
 
   return null;
 });
@@ -28,6 +31,7 @@ link.registerOperation('startPoll', z.number(), (intervalMs) => {
   void (async () => {
     for (;;) {
       await link.clock.sleep(intervalMs);
+      await link.workTracker.runWork(() => Promise.resolve());
     }
   })();
 
