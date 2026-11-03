@@ -1,7 +1,7 @@
 import type { CleanupRecordSessions } from '@heynixie/api';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
-import type { CheckerTask } from '@heynixie/sessions';
+import type { CheckerTask, NixieRunner } from '@heynixie/sessions';
 import type { APIGate } from './build-api-gate';
 import type { ServerResetControl } from './build-server-reset';
 import type { ServerInputs } from './server-inputs';
@@ -37,6 +37,7 @@ export interface ServerPartValues {
   readonly definitions_seed: SeedResult;
   readonly start_record: void;
   readonly conversation_task: void;
+  readonly nixie_runner: NixieRunner;
   readonly runners: void;
   readonly seed_poll: void;
   readonly skill_lapse_sweep: void;

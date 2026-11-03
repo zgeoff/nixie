@@ -7,6 +7,7 @@ import type {
   GuestHome,
   Sandbox,
   SandboxAdapter,
+  SandboxKind,
   SandboxRecorder,
   SandboxSpec,
 } from '../types';
@@ -53,6 +54,10 @@ export interface StubGuestSandboxes {
 
   readonly addReplies: (...replies: readonly StubGuestReply[]) => void;
 
+  // A sandbox of the kind takes these before the shared replies, so a test that runs the
+  // conversation and a worker at once knows which one gets each reply.
+  readonly addKindReplies: (kind: SandboxKind, ...replies: readonly StubGuestReply[]) => void;
+
   readonly addCheckAnswers: (...outputs: readonly unknown[]) => void;
 
   readonly setContextSize: (tokens: number) => void;
@@ -82,6 +87,7 @@ interface StubState {
   readonly purged: string[];
   readonly checks: CheckRequest[];
   readonly replies: StubGuestReply[];
+  readonly kindReplies: Map<SandboxKind, StubGuestReply[]>;
   readonly checkAnswers: unknown[];
   contextSize: number | null;
 }
@@ -96,6 +102,7 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     purged: [],
     checks: [],
     replies: [],
+    kindReplies: new Map(),
     checkAnswers: [],
     contextSize: null,
   };
@@ -131,6 +138,12 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
     readSandboxIDs: () => [...state.sandboxes.keys()],
     addReplies: (...replies) => {
       state.replies.push(...replies);
+    },
+    addKindReplies: (kind, ...replies) => {
+      const queue = state.kindReplies.get(kind) ?? [];
+
+      queue.push(...replies);
+      state.kindReplies.set(kind, queue);
     },
     addCheckAnswers: (...outputs) => {
       state.checkAnswers.push(...outputs);
@@ -318,7 +331,9 @@ function startGuest(state: StubState, sandbox: GuestSandbox, home: GuestHome | n
           owner: sandbox.spec.owner,
           disk: sandbox.own.disk,
           home: guestHome,
-          takeReply: () => state.replies.shift() ?? { text: defaultReply },
+          takeReply: () =>
+            state.kindReplies.get(sandbox.spec.kind)?.shift() ??
+            state.replies.shift() ?? { text: defaultReply },
           takeContextSize: () => {
             const size = state.contextSize;
 

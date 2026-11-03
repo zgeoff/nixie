@@ -29,6 +29,8 @@ export interface InProcessNixieOptions {
   readonly extraDefinitions?: readonly string[];
 
   readonly logLevel?: NonNullable<BootFileExtras['logLevel']>;
+
+  readonly roleModelURLs?: NonNullable<BootFileExtras['roleModelURLs']>;
 }
 
 type TestLogEvent = Readonly<Record<string, unknown>> & {
@@ -139,6 +141,7 @@ async function startFirstRun(
     secrets: options.extraSecrets ?? [],
     definitions: options.extraDefinitions ?? [],
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
+    ...(options.roleModelURLs === undefined ? {} : { roleModelURLs: options.roleModelURLs }),
   });
 
   await writeMigratedData(files.dataDir, {

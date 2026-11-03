@@ -65,6 +65,26 @@ test('it reads the inbox messages and replies with the queued reply, then with t
   expect(defaulted.frames[1]).toMatchObject({ type: 'assistant', text: 'Hello.' });
 });
 
+test('it replies to a sandbox of a kind with the replies queued for that kind before the shared ones', async () => {
+  const ctx = await setupTest();
+  const conversation = await ctx.stub.adapter.create(ctx.spec);
+
+  const worker = await ctx.stub.adapter.create(
+    buildMockSandboxSpec({ kind: 'worker', owner: 'k3vq8m2xpa' }),
+  );
+
+  ctx.stub.addReplies({ text: 'APPLE' });
+  ctx.stub.addKindReplies('worker', { text: 'PEAR' });
+
+  const input = [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Say a fruit.' }];
+
+  const fromWorker = await runGuestFrame(worker, buildMockTurnFrame({ input }));
+  const fromConversation = await runGuestFrame(conversation, buildMockTurnFrame({ input }));
+
+  expect(fromWorker.frames[1]).toMatchObject({ type: 'assistant', text: 'PEAR' });
+  expect(fromConversation.frames[1]).toMatchObject({ type: 'assistant', text: 'APPLE' });
+});
+
 test('it fails a turn that resumes a session the sandbox does not hold', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);

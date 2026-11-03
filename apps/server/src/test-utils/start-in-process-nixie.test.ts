@@ -13,6 +13,13 @@ test('it starts nixie in the test process and reaches ready', async () => {
   expect(ready).toMatchObject({ event: 'ready', level: 'info' });
 });
 
+test('it gives a role the model URL it names', async () => {
+  const nixie = await startInProcessNixie({ roleModelURLs: { task: 'http://127.0.0.1:4040' } });
+  const config = await loadDeploymentConfig(nixie.configPath);
+
+  expect(config.models.roles.task).toBe('scripted-task');
+});
+
 test('it reads the records and the exit code once nixie stops', async () => {
   const nixie = await startInProcessNixie();
 

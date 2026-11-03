@@ -4,14 +4,15 @@ import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
 import { startPromptLapseSweep } from '@heynixie/prompts';
 import { startSkillLapseSweep } from '@heynixie/skills';
 import type { RunStep } from '@heynixie/tasks';
-import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
+import { conversationTaskID, createConversationTask, reviveHeldTasks } from '@heynixie/tasks';
 import { makeRetriedStart } from './make-retried-start';
 import { registerHarnessOperations } from './register-harness-operations';
 import { runDefinitionsSeed } from './run-definitions-seed';
-import { runHeldTaskStep } from './run-held-task-step';
 import { runTestTaskStep } from './run-test-task-step';
+import { runUnknownTaskStep } from './run-unknown-task-step';
 import type { ServerPartValues } from './server-part-values';
 import { startDefinitionsExports } from './start-definitions-exports';
+import { startNixieTaskRunner } from './start-nixie-task-runner';
 import { startRunners } from './start-runners';
 import { startSeedPoll } from './start-seed-poll';
 import { startServerBackups } from './start-server-backups';
@@ -37,7 +38,22 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'conversation_task',
     needs: ['server_parts', 'start_record'],
-    start: (reader) => createConversationTask(reader.get('server_parts').context),
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+
+      await createConversationTask(parts.context);
+
+      const revived = await reviveHeldTasks(parts.context);
+
+      if (revived > 0) {
+        parts.log('tasks.held_revived', { tasks: revived });
+      }
+    },
+  },
+  {
+    name: 'nixie_runner',
+    needs: ['server_parts', 'add_images'],
+    start: makeRetriedStart('nixie_runner', (parts) => startNixieTaskRunner(parts)),
   },
   {
     name: 'runners',
@@ -48,6 +64,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'conversation_imp',
       'memory_writer',
       'memory_consolidator',
+      'nixie_runner',
     ],
     start: async (reader) => {
       const parts = reader.get('server_parts');
@@ -64,9 +81,12 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const otherStep: RunStep =
         NIXIE_TEST_BUILD && harness !== undefined
           ? (input) => Promise.resolve(runTestTaskStep(parts.context.clock, input))
-          : runHeldTaskStep;
+          : runUnknownTaskStep;
 
-      await startRunners(parts, (input) => (systemSteps.get(input.taskID) ?? otherStep)(input));
+      await startRunners(parts, {
+        system: (input) => (systemSteps.get(input.taskID) ?? otherStep)(input),
+        started: reader.get('nixie_runner').runStep,
+      });
 
       parts.state.update({ areRunnersStarted: true });
     },
