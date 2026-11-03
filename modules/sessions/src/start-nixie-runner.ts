@@ -155,8 +155,8 @@ async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<Ste
 
   invariant(startedBy !== null, `the nixie runner runs started tasks only, not ${input.taskID}`);
 
-  const endpoint = await readEndpoint(runner, input.taskID);
-  const sandbox = await readAwakeSandbox(runner, input.taskID);
+  const endpoint = await resolveEndpoint(runner, input.taskID);
+  const sandbox = await resolveAwakeSandbox(runner, input.taskID);
 
   const result = await runConversationStep(
     buildTaskRun(runner, { startedBy, endpoint, sandbox }),
@@ -170,7 +170,7 @@ async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<Ste
   return result;
 }
 
-function readEndpoint(runner: TaskRunner, taskID: string): Promise<RunEndpoint> {
+function resolveEndpoint(runner: TaskRunner, taskID: string): Promise<RunEndpoint> {
   const started =
     runner.endpoints.get(taskID) ??
     runner.options.tools.startRun({
@@ -187,7 +187,7 @@ function readEndpoint(runner: TaskRunner, taskID: string): Promise<RunEndpoint> 
 
 // A sandbox that the host lost is gone from the adapter, so the step gets a new one, and the
 // guest's missing session sends the step down the rebuild path.
-async function readAwakeSandbox(runner: TaskRunner, taskID: string): Promise<Sandbox> {
+async function resolveAwakeSandbox(runner: TaskRunner, taskID: string): Promise<Sandbox> {
   const cached = runner.sandboxes.get(taskID);
 
   const current =
