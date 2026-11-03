@@ -62,7 +62,9 @@ conversation. They leave out every message from the turn's first inbox record on
 message reaches the model once, as a live message. They keep every committed reply, because a turn
 that left messages for the next step commits its reply after them. They hold the messages from other
 tasks beside the user's, each in a `<task-message>` element with its ID, so a rebuilt session can
-still name the message it answers.
+still name the message it answers. They hold the messages that the session's task sent to other
+tasks too. Those messages are on the receivers' threads, so the builder reads them by sender and
+merges them in by sequence, and a rebuilt session still knows what its task sent.
 
 ## The note over the recent turns
 

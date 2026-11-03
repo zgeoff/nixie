@@ -52,18 +52,24 @@ placeholders only, so a spec in a record never holds a credential.
 
 ### A started task's sandbox
 
-Each task that the conversation starts runs in a worker sandbox of its own, which the task's ID
-owns, on the conversation image with 1 vCPU, 1024 MiB of memory and 4096 MiB of disk. The nixie
-runner creates it at the task's first step. After a step that waits, the runner sleeps the sandbox
-when its adapter can sleep one, and the next step wakes it, so a task that waits for days holds no
-host memory. Crash recovery keeps the sandbox of every started task that is not done or closed, so a
-waiting task resumes the same session after a restart. A stopped or failed task keeps its sandbox
-too, because a restart of the task resumes it.
+Each task that the conversation starts runs in a worker sandbox of its own, on the conversation
+image with 1 vCPU, 1024 MiB of memory and 4096 MiB of disk. The task's ID is the sandbox's owner.
+The [nixie runner](../core/tasks.md#the-nixie-runner), which runs the steps of started tasks,
+creates the sandbox at the task's first step. Its life follows the task:
 
-The runner destroys the sandbox once its task is done or closed. It checks on each record commit and
-once at its start, because a step returns before its commit, and a close of an idle task runs no
-step. When the sandbox is gone anyway, the next step makes a new one, and the session rebuilds from
-the log ([started tasks](../core/tasks.md#started-tasks)).
+1. When a step leaves the task waiting, the runner puts the sandbox to sleep, if its adapter can. A
+   task that waits for days then holds no host memory.
+2. The next step of the task wakes the sandbox.
+3. Crash recovery keeps the sandbox while the task is not done or closed, so the task's session
+   survives a restart of nixie. This covers a stopped or failed task too, because a restart of the
+   task carries on in the same session.
+4. When the task is done or closed, the runner destroys the sandbox.
+
+A close of an idle task runs no step, so the runner learns of the end from the log. It reads the
+ended tasks among the sandbox owners once when it starts and again after each record commit.
+
+A sandbox can still go missing, such as when the host loses the imp. The next step of the task then
+creates a new sandbox, and the guest opens a new session from the log.
 
 ## The tool route
 

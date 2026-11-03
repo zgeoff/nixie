@@ -23,7 +23,7 @@ stateDiagram-v2
   running --> done: the step commits as done
   running --> failed: steps throw too many times in a row
   failed --> ready: a restart, or a start of the conversation
-  waiting --> ready: a record lands in the inbox, or a start revives a held started task
+  waiting --> ready: a record lands in the inbox, or a server start revives a started task with work left
   running --> paused: the step ends after a pause
   ready --> paused: a pause
   waiting --> paused: a pause
@@ -214,32 +214,31 @@ between, the start compares the names again.
 
 ### The nixie runner
 
-The nixie runner in `modules/sessions` runs every started task's steps, in a
+The server gives the steps of every started task to the nixie runner, the step function in
+`modules/sessions` that runs a started task. The steps claim through a claim pool of their own, so
+the conversation never waits behind them
+([leases and recovery](./leases-and-recovery.md#runner-pools)). Each step runs in a
 [sandbox of the task's own](../connectors/sandboxes.md#a-started-tasks-sandbox), on the model
-profile of the `task` role. A started task claims its steps through a claim pool apart from the
-conversation's ([leases and recovery](./leases-and-recovery.md#runner-pools)). Each step runs the
-conversation's step machinery with three changes:
+profile of the `task` role. It runs the same turn code as the conversation's steps, with these
+changes:
 
-- The system prompt is the built-in `task` prompt, whose frame holds the task's name and brief, with
-  an empty persona part and empty inputs and instructions.
-- The turn holds no pinned memory, no retrieval and no task board. The task finds the other tasks
-  with the list tool.
-- The tool run, keyed on the task's ID, holds the list tool, the message tool and the clock, and
-  each call passes the same decision point as the conversation's.
+- The system prompt is the built-in `task` prompt. Its frame holds the task's name and brief, and
+  its persona, inputs and instructions parts are empty.
+- The turn holds no pinned memory, no memory retrieval and no task board.
+- The task's tools are the list tool, the message tool and the clock. Each call goes through the
+  [decision point](../policy/decision-point.md), as the conversation's tool calls do.
 
-A started task's brief arrives in no inbox record, so the first session of a started task opens with
-a start note as its input, which points the task at its brief and tells it to report with a task
-message of kind report to the task that started it. The step that sends the report commits the task
-as waiting, and the user closes it.
+The brief is in the task's creation record, and no inbox record holds it. So the task's first
+session opens with a start note as its input. The note tells the model to do what the brief asks,
+and to send the result to the task that started it, as a task message of kind `report`. After the
+step that sends the report, the task waits until the user closes it. When the guest loses the task's
+session, the next step [opens a new one](./session-opening.md) from the task's thread and the
+messages it sent.
 
-A rebuilt session reads the task's own thread and also the messages the task sent, which live on
-their receivers' threads, so a rebuilt task still knows what it reported. The conversation's rebuild
-reads its sent messages the same way.
-
-Only a waking inbox record moves a waiting task to ready. So each start of the server, after it
-writes the conversation task and before any claim, revives to ready each started task that waits
-with unread input or with a brief that no session read, and a claim loop runs it. A task that the
-user paused or stopped keeps its state.
+A started task can wait with unread input, or with a brief that no session read. Only a waking inbox
+record moves a waiting task to ready, so such a task never runs. At each server start, after the
+server writes the conversation task and before any claim, it moves each such task to ready. A task
+that the user paused or stopped keeps its state.
 
 ### Routing records
 
