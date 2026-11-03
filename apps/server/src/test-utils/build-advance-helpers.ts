@@ -45,16 +45,23 @@ async function runAdvances<T>(advances: Advances<T>, remaining: number): Promise
   return runAdvances(advances, remaining - 1);
 }
 
+// A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and the
+// settle ends inside the e2e lane's 15 s limit per test, so a turn that never ends fails on its own.
+const settleTimeoutMs = 10_000;
+
 async function runAdvance<T>(advances: Advances<T>): Promise<T | null> {
-  const failure = runSettledAdvance(advances);
+  const advance = advances.harness.advance(advances.stepMs, { settle: true, settleTimeoutMs });
   const found: { value: T | null } = { value: null };
+
+  // A found record ends the wait before the advance does, and its later failure must not surface.
+  void Promise.allSettled([advance]);
 
   // A runner that waits on a reply the test holds back, such as a gated provider call, never
   // settles, so what the advance brings ends the wait too. The advance itself always ends: nixie
   // replies by its settle deadline, and a nixie that dies rejects the request.
   await waitForCondition(
     async () => {
-      const ended = Bun.peek.status(failure) !== 'pending';
+      const ended = Bun.peek.status(advance) !== 'pending';
 
       found.value = await advances.read();
 
@@ -63,27 +70,11 @@ async function runAdvance<T>(advances: Advances<T>): Promise<T | null> {
     { timeoutMs: Number.POSITIVE_INFINITY },
   );
 
-  const settleFailure = found.value === null ? await failure : null;
-
-  if (settleFailure !== null) {
-    throw settleFailure;
+  if (found.value === null) {
+    await advance;
   }
 
   return found.value;
-}
-
-// A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and the
-// settle ends inside the e2e lane's 15 s limit per test, so a turn that never ends fails on its own.
-const settleTimeoutMs = 10_000;
-
-async function runSettledAdvance<T>(advances: Advances<T>): Promise<unknown> {
-  try {
-    await advances.harness.advance(advances.stepMs, { settle: true, settleTimeoutMs });
-
-    return null;
-  } catch (error) {
-    return error;
-  }
 }
 
 async function readMatchingRecord(

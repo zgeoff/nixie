@@ -23,7 +23,7 @@ test('it reports unsettled while a work runs, and settled once it ends', async (
   });
 });
 
-test('it reports settled once a work that throws ends', async () => {
+test('it reports settled once a work that throws ends', () => {
   const tracker = buildWorkTracker();
 
   const work = tracker.runWork(async () => {
@@ -32,8 +32,7 @@ test('it reports settled once a work that throws ends', async () => {
     throw new Error('the claim failed');
   });
 
-  await expect(work).rejects.toThrow('the claim failed');
-
+  expect(work).rejects.toThrow('the claim failed');
   expect(tracker.isSettled()).toBeTrue();
 });
 
