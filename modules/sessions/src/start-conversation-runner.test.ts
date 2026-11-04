@@ -2042,6 +2042,8 @@ test('it answers the message that waited for the owner once the owner retries th
 
   const [message] = await ctx.writeMessage('What do I need?');
 
+  invariant(message);
+
   await ctx.runNextStep(runner);
 
   await withWriteTransaction(ctx.context.log.writer, (tx) =>
@@ -2055,9 +2057,15 @@ test('it answers the message that waited for the owner once the owner retries th
     readTestTaskProgress(ctx.context, 'conversation'),
   ]);
 
-  expect({ replies, task }).toMatchObject({
-    replies: [{ erasable: { fields: { text: 'You need milk.' } } }],
-    task: { state: 'waiting', readCursor: message?.sequence },
+  expect(replies.map((reply) => reply.erasable)).toStrictEqual([
+    { status: 'readable', fields: { text: 'You need milk.' } },
+  ]);
+
+  expect(task).toStrictEqual({
+    state: 'waiting',
+    stepErrors: 0,
+    readCursor: message.sequence,
+    sessionBoundary: expect.toBeString(),
   });
 });
 
