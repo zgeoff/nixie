@@ -1,4 +1,6 @@
 import { expect, mock, test } from 'bun:test';
+import { readLinkTarget } from '@heynixie/connectors';
+import { seedWebFetchLinks } from '@heynixie/connectors/test-utils';
 import { resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
@@ -9,7 +11,6 @@ import {
   writeInboxRecords,
 } from '@heynixie/tasks';
 import { writeTestTaskMessage } from '@heynixie/tasks/test-utils';
-import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
@@ -459,15 +460,25 @@ test("it removes the thread's web fetch links on a forget", async () => {
     toolNames: ['notes_read'],
   });
 
-  await sql`insert into web_fetch_links (session_key, number, url, thread) values
-    ('session-a', 1, 'https://pier.test/a', 'conversation'),
-    ('session-c', 1, 'https://pier.test/c', 'task-tides')`.execute(ctx.context.log.writer.db);
+  await seedWebFetchLinks(ctx.context.log, {
+    sessionKey: 'session-a',
+    thread: 'conversation',
+    urls: ['https://pier.test/a'],
+  });
+
+  await seedWebFetchLinks(ctx.context.log, {
+    sessionKey: 'session-c',
+    thread: 'task-tides',
+    urls: ['https://pier.test/c'],
+  });
 
   await runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
 
-  const links = await sql`select thread from web_fetch_links`.execute(ctx.context.log.writer.db);
+  const threadLink = await readLinkTarget(ctx.context.log, { sessionKey: 'session-a', number: 1 });
+  const otherLink = await readLinkTarget(ctx.context.log, { sessionKey: 'session-c', number: 1 });
 
-  expect(links.rows).toStrictEqual([{ thread: 'task-tides' }]);
+  expect(threadLink).toBeNull();
+  expect(otherLink).toBe('https://pier.test/c');
 });
 
 test("it hands each turn's tool calls the newest invalidation the step saw", async () => {

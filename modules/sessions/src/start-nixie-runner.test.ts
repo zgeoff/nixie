@@ -1,4 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { readLinkTarget } from '@heynixie/connectors';
+import { seedWebFetchLinks } from '@heynixie/connectors/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import {
   claimTask,
@@ -15,7 +17,6 @@ import {
   writeTestTaskMessage,
 } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
-import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { NixieRunnerOptions } from './start-nixie-runner';
 import { startNixieRunner } from './start-nixie-runner';
@@ -612,22 +613,38 @@ test("it shreds the summary and removes the web fetch links of a task that reads
   await ctx.runNextStep(runner);
   await ctx.runNextStep(runner);
 
-  await sql`insert into web_fetch_links (session_key, number, url, thread) values
-    ('session-tides', 1, 'https://harbour.test/tides', ${taskID}),
-    ('session-ferry', 1, 'https://harbour.test/ferry', 'conversation')`.execute(
-    ctx.context.log.writer.db,
-  );
+  await seedWebFetchLinks(ctx.context.log, {
+    sessionKey: 'session-tides',
+    thread: taskID,
+    urls: ['https://harbour.test/tides'],
+  });
+
+  await seedWebFetchLinks(ctx.context.log, {
+    sessionKey: 'session-ferry',
+    thread: 'conversation',
+    urls: ['https://harbour.test/ferry'],
+  });
 
   await runner.cleanupSessions({ itemID: 'item-bees' });
 
   const summaries = await ctx.readKinds('model.session_summarized');
-  const links = await sql`select thread from web_fetch_links`.execute(ctx.context.log.writer.db);
+
+  const taskLink = await readLinkTarget(ctx.context.log, {
+    sessionKey: 'session-tides',
+    number: 1,
+  });
+
+  const otherLink = await readLinkTarget(ctx.context.log, {
+    sessionKey: 'session-ferry',
+    number: 1,
+  });
 
   expect(summaries.map((record) => [record.thread, record.erasable.status])).toStrictEqual([
     [taskID, 'shredded'],
   ]);
 
-  expect(links.rows).toStrictEqual([{ thread: 'conversation' }]);
+  expect(taskLink).toBeNull();
+  expect(otherLink).toBe('https://harbour.test/ferry');
 });
 
 test('it runs the brief of a task that reads memory when a forget comes before its first session', async () => {
