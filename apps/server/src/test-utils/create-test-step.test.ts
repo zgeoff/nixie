@@ -55,6 +55,7 @@ test('it returns the first step of a new task that a runner claimed', async () =
     inbox: [],
     wake: { hop: 0, cause: { kind: 'carried' } },
     sessionBoundary: null,
+    startSequence: expect.any(Number),
     signal: step.signal,
     interrupt: step.interrupt,
   });

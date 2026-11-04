@@ -1,11 +1,12 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { planBackoffDelay } from '@heynixie/retry';
 import { buildPausedRecord } from './build-paused-record';
+import { probeWakingInputSince } from './probe-waking-input-since';
 import { requireLease } from './require-lease';
 import { resetLease } from './reset-lease';
 import { StepFailedError } from './step-failed-error';
 import { taskStepErroredCodec } from './task-step-errored-codec';
-import type { StepErrored, TaskClaim, TasksContext, TasksTables } from './types';
+import type { StartedClaim, StepErrored, TasksContext, TasksTables } from './types';
 
 export interface StepErrorOptions {
   readonly maxStepErrors: number;
@@ -16,7 +17,7 @@ export interface StepErrorOptions {
 
 export function writeStepError(
   context: TasksContext,
-  claim: TaskClaim,
+  claim: StartedClaim,
   failure: StepErrorOptions & { readonly error: unknown },
 ): Promise<StepErrored> {
   const taskID = claim.lease.workID;
@@ -35,11 +36,17 @@ export function writeStepError(
 
     const errors = task.step_errors + 1;
     const stepFailure = failure.error instanceof StepFailedError ? failure.error : null;
+    const isWaitingForOwner = stepFailure?.isWaitingForOwner === true;
+
+    const hasWakeSinceStart = isWaitingForOwner
+      ? await probeWakingInputSince(tx, taskID, claim.startSequence)
+      : false;
 
     const retry = planRetry(
       {
         isConversation: task.is_conversation === 1,
-        isWaitingForOwner: stepFailure?.isWaitingForOwner === true,
+        isWaitingForOwner,
+        hasWakeSinceStart,
       },
       errors,
       failure,
@@ -89,17 +96,20 @@ interface RetryFacts {
   readonly isConversation: boolean;
 
   readonly isWaitingForOwner: boolean;
+
+  readonly hasWakeSinceStart: boolean;
 }
 
 // A conversation that waits for its owner takes its next step from a message or a retry, both of
-// which move it to ready.
+// which move it to ready. A message that arrived while the step ran moved nothing, because the
+// task was running, so it makes the task ready here.
 function planRetry(
   facts: RetryFacts,
   errors: number,
   options: StepErrorOptions,
 ): { readonly nextState: 'ready' | 'waiting' | 'failed'; readonly delayMs: number } {
   if (facts.isConversation && facts.isWaitingForOwner) {
-    return { nextState: 'waiting', delayMs: 0 };
+    return { nextState: facts.hasWakeSinceStart ? 'ready' : 'waiting', delayMs: 0 };
   }
 
   if (facts.isConversation) {

@@ -59,6 +59,7 @@ test('it claims the next step for runner-a with the unread inbox of its task', a
     stepKey: `${task.task_id}:1`,
     lease: { kind: 'task', workID: task.task_id, holder: 'runner-a', expiresAt: 1_060_000 },
     sessionBoundary: null,
+    startSequence: expect.any(Number),
   });
 
   expect(step.inbox).toPartiallyContain({ kind: 'task.wake', thread: task.task_id });

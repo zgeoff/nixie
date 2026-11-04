@@ -115,7 +115,9 @@ the user. The error record keeps the reason, and the error's records commit in t
 before it. The conversation's turn uses it for
 [a call the model API refuses](./conversation-turns.md#a-call-the-model-api-refuses). When the error
 waits for the user, the conversation waits instead of retrying, and its next step runs once a waking
-record arrives. Any other task retries such an error after its delay, as it retries every error.
+record arrives. A waking record that arrived while the step ran makes the conversation ready at
+once, because the record could not wake a running task. Any other task retries such an error after
+its delay, as it retries every error.
 
 ## Pause, stop and close
 

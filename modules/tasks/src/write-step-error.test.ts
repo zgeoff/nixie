@@ -209,6 +209,35 @@ test('it claims a conversation that waits for its owner once a message arrives',
   expect(next?.lease.workID).toBe('conversation');
 });
 
+test('it claims a conversation at once when a message arrived while its step failed for a reason that waits for the owner', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'what is on today?');
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      erasable: { text: 'and tomorrow?' },
+    },
+  ]);
+
+  await writeStepError(ctx.context, claim, {
+    error: new StepFailedError('the weekly allowance is used up', {
+      reason: 'quota',
+      isWaitingForOwner: true,
+      records: [],
+    }),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(next?.lease.workID).toBe('conversation');
+});
+
 test('it retries the conversation after its backoff when its step failed for a reason that retries on its own', async () => {
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'what is on today?');

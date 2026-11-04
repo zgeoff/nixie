@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import type { ActionsTables } from '@heynixie/actions';
 import { actionsProjection, writeUnknownOutcomes } from '@heynixie/actions';
 import { logProjections, readRecords, startWriter } from '@heynixie/log';
-import type { StepInput, TasksContext } from '@heynixie/tasks';
+import type { TasksContext } from '@heynixie/tasks';
 import {
   tasksProjections,
   writeInboxRecords,
@@ -14,6 +14,7 @@ import {
 import { buildTestClock } from '@heynixie/testing';
 import { buildActions } from './build-actions';
 import { makeQueueCheckStep } from './make-queue-check-step';
+import type { TestStep } from './test-utils/claim-test-step';
 import { claimTestStep } from './test-utils/claim-test-step';
 import { createTestStep } from './test-utils/create-test-step';
 import { runCrashedTestAttempt } from './test-utils/run-crashed-test-attempt';
@@ -80,7 +81,7 @@ async function setupTest() {
       return next;
     },
 
-    failStep: async (failed: StepInput) => {
+    failStep: async (failed: TestStep) => {
       await writeStepError(context, failed, {
         error: new Error('the step failed'),
         maxStepErrors: 3,

@@ -2,7 +2,7 @@ import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { claimTask } from '../claim-task';
 import { createTask } from '../create-task';
-import type { TaskClaim, TaskState, TasksContext } from '../types';
+import type { StartedClaim, TaskState, TasksContext } from '../types';
 import { writeStepCommit } from '../write-step-commit';
 import { writeStepError } from '../write-step-error';
 import { writeTaskControl } from '../write-task-control';
@@ -12,7 +12,7 @@ export type TestTaskState = TaskState | 'pause_requested';
 export interface TestTask {
   readonly taskID: string;
 
-  readonly claim: TaskClaim | null;
+  readonly claim: StartedClaim | null;
 }
 
 export async function createTestTaskInState(
@@ -69,7 +69,7 @@ export async function createTestTaskInState(
     .exhaustive();
 }
 
-async function claimOne(context: TasksContext): Promise<TaskClaim> {
+async function claimOne(context: TasksContext): Promise<StartedClaim> {
   const claim = await claimTask(context, { holder: 'runner-a', leaseMs: 60_000 });
 
   invariant(claim, 'the new task is claimable');
