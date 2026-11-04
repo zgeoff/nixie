@@ -8,11 +8,15 @@ test('it adds a revival of the conversation after a failed step', async () => {
     task: { taskID: 'conversation', errors: 1, isWaitingForRetry: true, reason: 'model_api.quota' },
   });
 
+  const before = new Date();
+
   const result = await writeMockRetry({ clientActionID: '7d3c9a52-1f4e-4b8a-9c61-2e5f8a0b4d17' });
+
+  const after = new Date();
 
   const revived = store.records.findFirst((query) => query.where({ kind: 'task.revived' }));
 
-  expect(result).toStrictEqual({ status: 'retried', retriedAt: expect.toBeValidDate() });
+  expect(result).toStrictEqual({ status: 'retried', retriedAt: expect.toBeBetween(before, after) });
   expect(revived?.task).toStrictEqual({ taskID: 'conversation' });
 });
 
