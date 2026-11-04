@@ -1,17 +1,16 @@
 import { expect, test } from 'bun:test';
 import { isStepEnded } from './is-step-ended.ts';
 
-test('it takes a committed step whose read cursor is at the sent message', () => {
+test('it takes a committed step whose read cursor is at the sent message, with no reply', () => {
   expect(
     isStepEnded(
       {
         records: [
           { sequence: 10, kind: 'owner_message' },
-          { sequence: 11, kind: 'model.reply' },
-          { sequence: 12, kind: 'task.step_committed' },
+          { sequence: 11, kind: 'task.step_committed' },
         ],
         lastStepEnd: {
-          sequence: 12,
+          sequence: 11,
           kind: 'task.step_committed',
           task: { readCursor: 10, stepKey: 'conversation:3' },
         },
