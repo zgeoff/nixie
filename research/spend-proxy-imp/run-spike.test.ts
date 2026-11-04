@@ -2,7 +2,8 @@ import { expect, test } from 'bun:test';
 import { http, HttpResponse } from 'msw';
 // @boundaries-ignore a spike imports the code it measures
 import { mockServer } from '../../libs/mock-server/src/index.ts';
-import { createSpikeClient, runSpike } from './run-spike.ts';
+import { createSpikeClient } from './create-spike-client.ts';
+import { runSpike } from './run-spike.ts';
 
 // MSW answers the preview's API on preview.test; the host, the reader and the scratch directory
 // are stand-ins

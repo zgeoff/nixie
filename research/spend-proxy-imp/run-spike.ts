@@ -4,16 +4,13 @@
 // reads the broker's audit. It writes each step's output to SPIKE_WORK and changes nothing on the
 // host: the preview service owns the imp, its grants and its proxy.
 // Usage: bun run-spike.ts, with the variables that results.md#setup lists
-import { createORPCClient } from '@orpc/client';
-import { RPCLink } from '@orpc/client/fetch';
 import { $ } from 'bun';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { match } from 'ts-pattern';
 // @boundaries-ignore a spike imports the code it measures
 import type { ContractClient, ContractOutputs } from '../../libs/contract/src/index.ts';
-// @boundaries-ignore a spike imports the code it measures
-import { clientHeaderName } from '../../libs/contract/src/index.ts';
-import { match } from 'ts-pattern';
+import { createSpikeClient } from './create-spike-client.ts';
 import { isStepEnded } from './is-step-ended.ts';
 import { pickTaskFollowUp } from './pick-task-follow-up.ts';
 
@@ -124,18 +121,6 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
     'audit.txt',
     (await hostImp(`audit ${target.imp} --limit 50`)) +
       (await hostImp(`audit ${target.imp} --kind refused --limit 50`)),
-  );
-}
-
-export function createSpikeClient(origin: string, token: string | null): ContractClient {
-  return createORPCClient<ContractClient>(
-    new RPCLink({
-      url: `${origin}/rpc`,
-      headers:
-        token === null
-          ? { [clientHeaderName]: 'spike' }
-          : { [clientHeaderName]: 'spike', authorization: `Bearer ${token}` },
-    }),
   );
 }
 
