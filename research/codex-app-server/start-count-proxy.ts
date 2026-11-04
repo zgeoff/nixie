@@ -8,18 +8,20 @@ export interface ProxyCall {
   readonly upgrade: string | null;
   readonly status: number;
   readonly usage: unknown;
+
+  // why the proxy could not read the response's usage, or null when it read it
+  readonly error: string | null;
 }
 
 export interface CountProxy {
   readonly url: string;
   readonly calls: ProxyCall[];
 
-  // resolves once every response the proxy has passed on has had its usage read
+  // resolves once every response the proxy has passed on has had its usage read, and rejects when
+  // any read failed
   readonly waitForCounts: () => Promise<void>;
   readonly stop: () => Promise<void>;
 }
-
-const upstream = 'https://api.openai.com';
 
 const completedEvent = z.object({
   type: z.literal('response.completed'),
@@ -27,11 +29,12 @@ const completedEvent = z.object({
 });
 
 // A local stand-in for the counting proxy: it reads HTTP requests only, as the real proxy does,
-// forwards each one to the OpenAI API, and keeps the usage of each response. It refuses a
-// websocket upgrade, so a CLI that tries one shows in `calls` with its `upgrade` header.
-export function startCountProxy(): CountProxy {
+// forwards each one to `upstream`, the model API's origin, and keeps the usage of each response. It
+// refuses a websocket upgrade, so a CLI that tries one shows in `calls` with its `upgrade` header.
+export function startCountProxy(upstream: string): CountProxy {
   const calls: ProxyCall[] = [];
   const counting = new Set<Promise<void>>();
+  const failures: unknown[] = [];
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -44,7 +47,7 @@ export function startCountProxy(): CountProxy {
     const upgrade = request.headers.get('upgrade');
 
     if (upgrade) {
-      calls.push({ method: request.method, path: url.pathname, upgrade, status: 426, usage: null });
+      calls.push({ method: request.method, path: url.pathname, upgrade, status: 426, usage: null, error: null });
       return new Response('the counting proxy reads HTTP only', { status: 426 });
     }
     const headers = new Headers(request.headers);
@@ -62,13 +65,18 @@ export function startCountProxy(): CountProxy {
     outHeaders.delete('content-encoding');
     outHeaders.delete('content-length');
     if (!response.body) {
-      calls.push({ method: request.method, path: url.pathname, upgrade, status: response.status, usage: null });
+      calls.push({ method: request.method, path: url.pathname, upgrade, status: response.status, usage: null, error: null });
       return new Response(null, { status: response.status, headers: outHeaders });
     }
     const [toClient, toCount] = response.body.tee();
+    const call = { method: request.method, path: url.pathname, upgrade, status: response.status };
     const counted = readUsage(toCount)
       .then((usage) => {
-        calls.push({ method: request.method, path: url.pathname, upgrade, status: response.status, usage });
+        calls.push({ ...call, usage, error: null });
+      })
+      .catch((error: unknown) => {
+        failures.push(error);
+        calls.push({ ...call, usage: null, error: String(error) });
       })
       .finally(() => {
         counting.delete(counted);
@@ -83,6 +91,9 @@ export function startCountProxy(): CountProxy {
     calls,
     waitForCounts: async () => {
       await Promise.all(counting);
+      if (failures.length > 0) {
+        throw new AggregateError(failures, `the proxy could not read ${failures.length} usage`);
+      }
     },
     stop: async () => {
       await server.stop(true);

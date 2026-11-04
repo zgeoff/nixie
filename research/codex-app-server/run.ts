@@ -83,7 +83,7 @@ async function run({ name, model, apiKey }: RunArgs, host: Host): Promise<void> 
   // Codex puts the git remote and path of the repo around its working directory in each tool
   // call's `_meta`; a repo of its own keeps this checkout's out of the logs
   await Bun.$`git init -q`.cwd(join(stateDir, 'work'));
-  const proxy = startCountProxy();
+  const proxy = startCountProxy('https://api.openai.com');
   const tools = startToolServer(slowToolMs);
   const codexHome = join(stateDir, 'codex');
   const mcpToken = crypto.randomUUID();
