@@ -8,7 +8,7 @@ import { dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
 import { runCodexAppServer } from './run-codex-app-server.ts';
-import { type AppServer, startAppServer } from './start-app-server.ts';
+import { type AppServer, type AppServerLauncher, startAppServer } from './start-app-server.ts';
 import { type CountProxy, type HTTPClient, startCountProxy } from './start-count-proxy.ts';
 import { startToolServer } from './start-tool-server.ts';
 
@@ -63,10 +63,16 @@ interface Host {
   readonly name: string;
 }
 
+// the outside systems the spike reaches, which only the entry point builds
+interface RunDeps {
+  readonly host: Host;
+  readonly httpClient: HTTPClient;
+  readonly launchAppServer: AppServerLauncher;
+}
+
 async function run(
   { name, model, apiKey }: RunArgs,
-  host: Host,
-  httpClient: HTTPClient,
+  { host, httpClient, launchAppServer }: RunDeps,
 ): Promise<void> {
   const outDir = findChildDir(resolve(import.meta.dir, 'runs'), name);
   const stateDir = findChildDir(resolve(import.meta.dir, '.state'), name);
@@ -106,16 +112,16 @@ async function run(
 
   try {
     writeConfig(runState, proxy.url, tools.url, false);
-    servers['first-process'] = await openServer(runState);
+    servers['first-process'] = await openServer(runState, launchAppServer);
     await runFirstProcess(runState, servers['first-process'], proxy, turns);
     await servers['first-process'].stop();
 
-    servers['second-process'] = await openServer(runState);
+    servers['second-process'] = await openServer(runState, launchAppServer);
     await runSecondProcess(runState, servers['second-process'], proxy, turns);
     await servers['second-process'].stop();
 
     writeConfig(runState, proxy.url, tools.url, true);
-    servers['websocket-process'] = await openServer(runState);
+    servers['websocket-process'] = await openServer(runState, launchAppServer);
     await runWebsocketCheck(runState, servers['websocket-process'], proxy, turns);
   } finally {
     await Promise.all(Object.values(servers).map((server) => server.stop()));
@@ -217,8 +223,8 @@ enabled = false
   );
 }
 
-async function openServer(runState: Run): Promise<AppServer> {
-  return startAppServer(runCodexAppServer(runState.env, runState.workDir), () => ({
+async function openServer(runState: Run, launchAppServer: AppServerLauncher): Promise<AppServer> {
+  return startAppServer(launchAppServer(runState.env, runState.workDir), () => ({
     error: { code: -32601, message: 'the spike answers no server request' },
   }));
 }
@@ -594,8 +600,8 @@ function parseRunArgs(argv: string[], apiKey: string | undefined): RunArgs {
   return { name, model, apiKey };
 }
 
-await run(
-  parseRunArgs(process.argv.slice(2), process.env.OPENAI_API_KEY),
-  { home: homedir(), name: hostname() },
-  fetch,
-);
+await run(parseRunArgs(process.argv.slice(2), process.env.OPENAI_API_KEY), {
+  host: { home: homedir(), name: hostname() },
+  httpClient: fetch,
+  launchAppServer: runCodexAppServer,
+});

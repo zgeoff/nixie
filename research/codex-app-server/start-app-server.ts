@@ -51,6 +51,8 @@ export interface AppServerProcess {
   readonly kill: () => void;
 }
 
+export type AppServerLauncher = (env: Record<string, string>, cwd: string) => AppServerProcess;
+
 // Codex reports these as they stream; the spike reads the completed items instead.
 const quietNotifications = [
   'item/agentMessage/delta',

@@ -10,7 +10,12 @@ import { parseJSONOrNull } from '@heynixie/wire';
 import { z } from 'zod';
 import { pickMockStatus } from './pick-mock-status.ts';
 import { runCodexAppServer } from './run-codex-app-server.ts';
-import { type AppServer, type ServerRequestReply, startAppServer } from './start-app-server.ts';
+import {
+  type AppServer,
+  type AppServerLauncher,
+  type ServerRequestReply,
+  startAppServer,
+} from './start-app-server.ts';
 
 const codexVersion = 'codex-cli 0.166.0';
 const accountID = 'acct-placeholder';
@@ -78,7 +83,13 @@ interface TurnOutcome {
   readonly error: unknown;
 }
 
-async function run(host: { readonly home: string; readonly name: string }): Promise<void> {
+// the outside systems the probe reaches, which only the entry point builds
+interface ProbeDeps {
+  readonly host: { readonly home: string; readonly name: string };
+  readonly launchAppServer: AppServerLauncher;
+}
+
+async function run({ host, launchAppServer }: ProbeDeps): Promise<void> {
   const version = (await Bun.$`codex --version`.text()).trim();
 
   if (version !== codexVersion) {
@@ -117,7 +128,9 @@ async function run(host: { readonly home: string; readonly name: string }): Prom
   const tls = await createCertificate(stateRoot);
 
   for (const probeCase of cases) {
-    results.push(await runCase(probeCase, join(stateRoot, String(results.length)), now, tls));
+    const stateDir = join(stateRoot, String(results.length));
+
+    results.push(await runCase(probeCase, { stateDir, now, tls, launchAppServer }));
   }
   const outDir = resolve(import.meta.dir, 'runs', 'plan-login');
 
@@ -158,11 +171,16 @@ async function createCertificate(dir: string): Promise<Certificate> {
   return { caPath, certPath, keyPath };
 }
 
+interface CaseContext {
+  readonly stateDir: string;
+  readonly now: number;
+  readonly tls: Certificate;
+  readonly launchAppServer: AppServerLauncher;
+}
+
 async function runCase(
   probeCase: ProbeCase,
-  stateDir: string,
-  now: number,
-  tls: Certificate,
+  { stateDir, now, tls, launchAppServer }: CaseContext,
 ): Promise<CaseResult> {
   const mock = startMock(tls);
   const codexHome = join(stateDir, 'codex');
@@ -200,7 +218,7 @@ async function runCase(
 
   try {
     server = await startAppServer(
-      runCodexAppServer(
+      launchAppServer(
         {
           CODEX_HOME: codexHome,
           HOME: join(stateDir, 'home'),
@@ -421,4 +439,4 @@ function buildReplyStream(): string {
   return events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join('');
 }
 
-await run({ home: homedir(), name: hostname() });
+await run({ host: { home: homedir(), name: hostname() }, launchAppServer: runCodexAppServer });
