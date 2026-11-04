@@ -10,7 +10,7 @@ import {
   createSystemTask,
   writeInboxRecords,
 } from '@heynixie/tasks';
-import { writeTestTaskMessage } from '@heynixie/tasks/test-utils';
+import { readTestTaskProgress, writeTestTaskMessage } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
@@ -1900,19 +1900,16 @@ test('it fails the step, records no reply and leaves the message unread when the
   const [replies, errored, task] = await Promise.all([
     ctx.readKinds('model.reply'),
     ctx.readKinds('task.step_errored'),
-    ctx.db
-      .selectFrom('tasks')
-      .select(['state', 'step_errors', 'read_cursor', 'session_boundary'])
-      .executeTakeFirstOrThrow(),
+    readTestTaskProgress(ctx.context, 'conversation'),
   ]);
 
   expect(replies).toStrictEqual([]);
 
   expect(task).toStrictEqual({
     state: 'ready',
-    step_errors: 1,
-    read_cursor: 0,
-    session_boundary: null,
+    stepErrors: 1,
+    readCursor: 0,
+    sessionBoundary: null,
   });
 
   expect(errored).toMatchObject([
@@ -1958,12 +1955,12 @@ test.each([
 
     const [replies, task] = await Promise.all([
       ctx.readKinds('model.reply'),
-      ctx.db.selectFrom('tasks').select(['state', 'read_cursor']).executeTakeFirstOrThrow(),
+      readTestTaskProgress(ctx.context, 'conversation'),
     ]);
 
     expect({ replies, task }).toMatchObject({
       replies: [{ erasable: { fields: { text: 'You need milk.' } } }],
-      task: { state: 'waiting', read_cursor: message?.sequence },
+      task: { state: 'waiting', readCursor: message?.sequence },
     });
   },
 );
@@ -1996,15 +1993,12 @@ test.each([
 
     const [claim, task] = await Promise.all([
       claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 }),
-      ctx.db
-        .selectFrom('tasks')
-        .select(['state', 'step_errors', 'read_cursor'])
-        .executeTakeFirstOrThrow(),
+      readTestTaskProgress(ctx.context, 'conversation'),
     ]);
 
     expect({ claim, task }).toStrictEqual({
       claim: null,
-      task: { state: 'waiting', step_errors: 1, read_cursor: 0 },
+      task: { state: 'waiting', stepErrors: 1, readCursor: 0, sessionBoundary: null },
     });
   },
 );
@@ -2085,7 +2079,7 @@ test('it records the replies the model gave before the model API refused the cal
 
   const [replies, task] = await Promise.all([
     ctx.readKinds('model.reply'),
-    ctx.db.selectFrom('tasks').select(['state', 'read_cursor']).executeTakeFirstOrThrow(),
+    readTestTaskProgress(ctx.context, 'conversation'),
   ]);
 
   expect({ replies, task }).toMatchObject({
@@ -2096,7 +2090,7 @@ test('it records the replies the model gave before the model API refused the cal
         erasable: { fields: { text: 'Let me check the calendar.' } },
       },
     ],
-    task: { state: 'waiting', read_cursor: 0 },
+    task: { state: 'waiting', readCursor: 0 },
   });
 });
 

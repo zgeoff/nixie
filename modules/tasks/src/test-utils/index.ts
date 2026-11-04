@@ -1,5 +1,7 @@
 export { buildMockTaskStartBounds } from './build-mock-task-start-bounds';
 export { makeStubStep } from './make-stub-step';
+export type { TestTaskProgress } from './read-test-task-progress';
+export { readTestTaskProgress } from './read-test-task-progress';
 export type { TaskStepsOptions } from './run-task-steps';
 export { runTaskSteps } from './run-task-steps';
 export type { ConversationStep } from './seed-conversation-step';
