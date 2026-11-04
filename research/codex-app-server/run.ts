@@ -37,6 +37,7 @@ interface TurnRecord {
   readonly turnId: string;
   readonly status: string;
   readonly reply: string;
+  readonly itemTypes: readonly string[];
   readonly toolCallItemIds: readonly string[];
   readonly tokenUsageEvents: number;
   readonly rawResponseEvents: number;
@@ -45,6 +46,7 @@ interface TurnRecord {
 
 const threadResult = z.object({ thread: z.object({ id: z.string() }) });
 const turnResult = z.object({ turn: z.object({ id: z.string() }) });
+const turnStarted = z.object({ threadId: z.string(), turn: z.object({ id: z.string() }) });
 const turnCompleted = z.object({
   turn: z.object({ id: z.string(), status: z.string() }),
 });
@@ -302,13 +304,39 @@ async function runFirstProcess(
       extra: {},
     }),
   );
-  const compactStart = server.log.length;
+  turns.push(await runCompaction(server, proxy, threadId));
+}
+
+// Compaction runs as a turn of its own, which `thread/compact/start` starts without naming it.
+async function runCompaction(
+  server: AppServer,
+  proxy: CountProxy,
+  threadId: string,
+): Promise<TurnRecord> {
+  const logStart = server.log.length;
+  await proxy.waitForCounts();
+  const proxyStart = proxy.calls.length;
 
   await server.request('thread/compact/start', { threadId });
-  await server.waitFor('item/completed', compactStart, (params) => {
-    const parsed = itemEvent.safeParse(params);
-    return parsed.success && parsed.data.item.type === 'contextCompaction';
+  const started = turnStarted.parse(
+    (
+      await server.waitFor('turn/started', logStart, (params) => {
+        return turnStarted.safeParse(params).data?.threadId === threadId;
+      })
+    ).params,
+  );
+  const compaction = await collectTurn(server, proxy, {
+    step: 'compaction',
+    threadId,
+    turnId: started.turn.id,
+    logStart,
+    proxyStart,
   });
+
+  if (compaction.status !== 'completed' || !compaction.itemTypes.includes('contextCompaction')) {
+    throw new Error(`the compaction turn ended ${compaction.status}`);
+  }
+  return compaction;
 }
 
 async function runSecondProcess(
@@ -413,6 +441,30 @@ async function runTurn(
     });
     await plan.onToolCall(turnId);
   }
+  return collectTurn(server, proxy, {
+    step: plan.step,
+    threadId: plan.threadId,
+    turnId,
+    logStart,
+    proxyStart,
+  });
+}
+
+interface StartedTurn {
+  readonly step: string;
+  readonly threadId: string;
+  readonly turnId: string;
+  readonly logStart: number;
+  readonly proxyStart: number;
+}
+
+// Waits for a started turn to end, and gathers what the server and the proxy saw of it.
+async function collectTurn(
+  server: AppServer,
+  proxy: CountProxy,
+  started: StartedTurn,
+): Promise<TurnRecord> {
+  const { step, threadId, turnId, logStart, proxyStart } = started;
   const completed = await server.waitFor('turn/completed', logStart, (params) => {
     const parsed = turnCompleted.safeParse(params);
     return parsed.success && parsed.data.turn.id === turnId;
@@ -430,16 +482,17 @@ async function runTurn(
     return event.method === 'item/completed' && parsed.success ? [parsed.data.item] : [];
   });
 
-  console.log(`${plan.step}: ${done.turn.status}`);
+  console.log(`${step}: ${done.turn.status}`);
   return {
-    step: plan.step,
-    threadId: plan.threadId,
+    step,
+    threadId,
     turnId,
     status: done.turn.status,
     reply: items
       .filter((item) => item.type === 'agentMessage')
       .map((item) => item.text ?? '')
       .join('\n'),
+    itemTypes: items.map((item) => item.type),
     toolCallItemIds: items.filter((item) => item.type === 'mcpToolCall').map((item) => item.id),
     tokenUsageEvents: events.filter((event) => event.method === 'thread/tokenUsage/updated').length,
     rawResponseEvents: events.filter((event) => event.method === 'rawResponse/completed').length,
