@@ -8,6 +8,7 @@ import { homedir, hostname } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseJSONOrNull } from '@heynixie/wire';
 import { z } from 'zod';
+import { pickMockStatus } from './pick-mock-status.ts';
 import { type AppServer, type ServerRequestReply, startAppServer } from './start-app-server.ts';
 
 const codexVersion = 'codex-cli 0.166.0';
@@ -336,7 +337,7 @@ function startMock(tls: Certificate): Mock {
   async function answerRequest(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
     const body = request.method === 'POST' ? await request.text() : '';
-    const status = pickStatus(path, failures);
+    const status = pickMockStatus(path, failures);
     const record = {
       path,
       authorization: request.headers.get('authorization'),
@@ -380,16 +381,6 @@ const accountsCheck = {
     },
   ],
 };
-
-function pickStatus(path: string, failures: number): number {
-  if (path.endsWith('/responses')) {
-    return failures > 0 ? 401 : 200;
-  }
-  if (path.endsWith('/accounts/check')) {
-    return 200;
-  }
-  return path === '/oauth/token' ? 401 : 404;
-}
 
 function readGrantType(body: string): string | null {
   const parsed = z.object({ grant_type: z.string() }).safeParse(parseJSONOrNull(body));
