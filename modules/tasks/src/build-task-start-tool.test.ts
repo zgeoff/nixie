@@ -274,13 +274,20 @@ test('it shows the model each selectable model as an enum value, with its descri
     }),
   );
 
-  expect(tool.input['properties']).toMatchObject({
+  expect(tool.input['properties']).toStrictEqual({
+    name: expect.toBeObject(),
+    brief: expect.toBeObject(),
     model: {
       type: 'string',
       enum: ['second-look', 'quick'],
       description:
         'The model the task runs on; leave it out for the usual one. second-look: Another family; quick: Fast and cheap',
     },
+    persona: expect.toBeObject(),
+    memory: expect.toBeObject(),
+    tools: expect.toBeObject(),
+    report: expect.toBeObject(),
+    limits: expect.toBeObject(),
   });
 });
 
@@ -529,9 +536,11 @@ test('it tells the model that a task started with no report sends none', async (
     buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
   );
 
-  expect(outcome).toMatchObject({
+  expect(outcome).toStrictEqual({
     status: 'ok',
     result: {
+      taskID: expect.toBeString(),
+      name: 'Seed list',
       note: 'In your reply, tell Robin in a few words that you passed this to the Seed list task. The task starts on its brief now, and it sends you no report.',
     },
   });

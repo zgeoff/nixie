@@ -374,7 +374,10 @@ test.each([
       buildMockToolContext({ run: { thread: taskID, stepRunID: buildStepRunID(claim) } }),
     );
 
-    expect(outcome).toMatchObject({ status: 'ok', result: { woke } });
+    expect(outcome).toStrictEqual({
+      status: 'ok',
+      result: { messageID: expect.toBeString(), woke, hop: 1 },
+    });
   },
 );
 

@@ -211,12 +211,18 @@ test('it runs a stranger that the conversation starts on another model, and its 
   const [taskTurn] = ctx.readTaskTurns();
   const report = ctx.readConversationTurns().at(-1)?.frame.input.at(-1)?.text ?? '';
 
-  expect(taskTurn?.frame.profile).toMatchObject({
+  invariant(taskTurn);
+
+  expect(taskTurn.frame.profile).toStrictEqual({
     model: 'second-look-test-model',
     baseURL: 'http://127.0.0.1:4060',
+    authHeader: 'bearer',
+    effort: 'low',
+    contextTokens: null,
+    cacheTTL: '5m',
   });
 
-  expect(taskTurn?.frame.systemPrompt).not.toInclude('You are nixie.');
+  expect(taskTurn.frame.systemPrompt).not.toInclude('You are nixie.');
 
   expect(report).toMatch(
     /<task-message id="\w+" from="\w+" name="Second look" kind="report"[^>]*>\nThis message is from another task, not from the owner\.\nThe north bed gets no afternoon sun\./u,

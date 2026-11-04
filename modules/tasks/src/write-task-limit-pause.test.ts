@@ -95,7 +95,9 @@ test("it writes a limit notice into the starter's inbox that names the task and 
 
   const conversation = await ctx.readTask('conversation');
 
-  expect(notices.map((entry) => entry.record)).toMatchObject([
+  expect(
+    notices.map((entry) => ({ thread: entry.record.thread, payload: entry.record.payload })),
+  ).toStrictEqual([
     {
       thread: 'conversation',
       payload: {

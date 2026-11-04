@@ -76,10 +76,17 @@ test('it gives each selectable model a priced profile of its own at the URL it n
     },
   ]);
 
-  expect(config.models.profiles['selectable-second-look']).toMatchObject({
+  expect(config.models.profiles['selectable-second-look']).toStrictEqual({
+    id: 'selectable-second-look',
     baseURL: 'http://127.0.0.1:4050',
+    credential: 'deployment:scripted',
+    authHeader: 'bearer',
     model: 'second-look-test-model',
-    prices: { input: 1 },
+    effort: 'low',
+    contextTokens: null,
+    cacheTTL: '5m',
+    providerPin: null,
+    prices: { input: 1, cacheWrite: 1, cacheWrite1h: 1, cachedInput: 0.1, output: 4 },
   });
 });
 

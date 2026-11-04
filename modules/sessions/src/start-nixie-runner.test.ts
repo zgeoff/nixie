@@ -458,9 +458,12 @@ test("it runs a task on its chosen model's profile, through that profile's host,
     }),
   ]);
 
-  expect(turn?.profile).toMatchObject({
+  expect(turn?.profile).toStrictEqual({
     model: 'other-family-test-3',
     baseURL: 'https://router.example.test/anthropic',
+    effort: 'low',
+    contextTokens: null,
+    cacheTTL: '5m',
     authHeader: 'bearer',
   });
 
@@ -727,7 +730,9 @@ test('it pauses a task at its turn limit with no turn, and tells its starter in 
   expect(ctx.guest.turns).toHaveLength(1);
   expect(paused.map((record) => record.thread)).toStrictEqual([taskID]);
 
-  expect(notices).toMatchObject([
+  expect(
+    notices.map((record) => ({ thread: record.thread, payload: record.payload })),
+  ).toStrictEqual([
     {
       thread: 'conversation',
       payload: { taskID, used: { turns: 1, dollars: 0 }, limits: { turns: 1, dollars: 2 } },
@@ -773,7 +778,12 @@ test("it pauses a task at its dollar limit, priced on its model's profile", asyn
   const [notice] = await ctx.readKinds('task.limit_notice');
 
   expect(ctx.guest.turns).toHaveLength(1);
-  expect(notice?.payload).toMatchObject({ used: { turns: 1, dollars: expect.toBePositive() } });
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 1, dollars: expect.toBePositive() },
+    limits: { turns: 25, dollars: 1e-6 },
+  });
 });
 
 test('it runs the next turn of a task paused at its turn limit once the limit is raised', async () => {

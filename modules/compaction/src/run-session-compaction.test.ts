@@ -299,8 +299,19 @@ test('it keeps the long summary and its call usage when the cut fails', async ()
     },
   );
 
-  expect(outcome.record).toMatchObject({
+  expect(outcome.record).toStrictEqual({
+    kind: 'model.session_summarized',
+    definitions: { snapshotHash: 'sha256:test' },
     payload: {
+      boundary: {
+        sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
+        messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
+      },
+      model: 'claude-test',
+      profile: 'task-direct',
+      summaryTokens: expect.toBePositive(),
+      throughSequence: 0,
+      trigger: 'overflow',
       isCut: true,
       usage: { inputTokens: 12, outputTokens: 7, cacheReadTokens: 3, cacheWriteTokens: 1 },
     },

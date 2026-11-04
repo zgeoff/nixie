@@ -72,9 +72,17 @@ test('it gives a task that reads memory the memory read tools that its starter h
     buildMockTaskStartBounds(),
   );
 
-  expect(plan).toMatchObject({
+  expect(plan).toStrictEqual({
     status: 'planned',
-    options: { memory: 'read', tools: ['tasks.list', 'task.message', 'memory.recall'] },
+    options: {
+      model: null,
+      profile: null,
+      persona: 'default',
+      memory: 'read',
+      tools: ['tasks.list', 'task.message', 'memory.recall'],
+      report: 'wake',
+      limits: { turns: 25, dollars: 2 },
+    },
   });
 });
 
@@ -85,7 +93,18 @@ test('it leaves out each base tool that its starter lacks', () => {
     buildMockTaskStartBounds(),
   );
 
-  expect(plan).toMatchObject({ status: 'planned', options: { tools: ['task.message'] } });
+  expect(plan).toStrictEqual({
+    status: 'planned',
+    options: {
+      model: null,
+      profile: null,
+      persona: 'default',
+      memory: 'none',
+      tools: ['task.message'],
+      report: 'wake',
+      limits: { turns: 25, dollars: 2 },
+    },
+  });
 });
 
 test('it refuses a model that is not selectable', () => {
@@ -133,7 +152,18 @@ test('it plans limits at the max', () => {
       { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default' },
       buildMockTaskStartBounds(),
     ),
-  ).toMatchObject({ status: 'planned', options: { limits: { turns: 100, dollars: 10 } } });
+  ).toStrictEqual({
+    status: 'planned',
+    options: {
+      model: null,
+      profile: null,
+      persona: 'default',
+      memory: 'none',
+      tools: ['tasks.list', 'task.message'],
+      report: 'wake',
+      limits: { turns: 100, dollars: 10 },
+    },
+  });
 });
 
 test('it refuses a stranger that reads memory', () => {
@@ -173,7 +203,18 @@ test("it plans a start with no persona from a starter that runs with none as the
       { tools: ['tasks.list', 'task.message', 'task.start'], memory: 'none', persona: 'none' },
       buildMockTaskStartBounds(),
     ),
-  ).toMatchObject({ status: 'planned', options: { persona: 'none' } });
+  ).toStrictEqual({
+    status: 'planned',
+    options: {
+      model: null,
+      profile: null,
+      persona: 'none',
+      memory: 'none',
+      tools: ['tasks.list', 'task.message'],
+      report: 'wake',
+      limits: { turns: 25, dollars: 2 },
+    },
+  });
 });
 
 test('it refuses a memory tool for a task with no memory', () => {

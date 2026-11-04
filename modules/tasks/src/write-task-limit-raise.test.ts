@@ -48,7 +48,12 @@ test('it lets a plain resume through once the limit is raised and the task pause
 
   const resumed = await writeTaskControl(ctx.context, { taskID, control: 'resume' });
 
-  expect(resumed).toMatchObject({ status: 'controlled', state: 'ready' });
+  expect(resumed).toStrictEqual({
+    status: 'controlled',
+    state: 'ready',
+    isPauseRequested: false,
+    sequence: expect.toBeNumber(),
+  });
 });
 
 test('it raises the limit of a held task that the user stopped, and leaves the task stopped', async () => {
@@ -86,7 +91,12 @@ test('it restarts a stopped task once its limit is raised', async () => {
 
   const restarted = await writeTaskControl(ctx.context, { taskID, control: 'restart' });
 
-  expect(restarted).toMatchObject({ status: 'controlled', state: 'ready' });
+  expect(restarted).toStrictEqual({
+    status: 'controlled',
+    state: 'ready',
+    isPauseRequested: false,
+    sequence: expect.toBeNumber(),
+  });
 });
 
 test('it refuses a raise of a task that its limit does not hold', async () => {
@@ -121,7 +131,11 @@ test.each([
   const resumed = await writeTaskControl(ctx.context, { taskID, control: 'resume' });
 
   expect(raised).toStrictEqual({ status: 'refused', reason: 'not_raised' });
-  expect(resumed).toMatchObject({ status: 'refused', refusal: { reason: 'at_limit' } });
+
+  expect(resumed).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'at_limit', state: 'paused', isPauseRequested: false },
+  });
 });
 
 test('it refuses a raise of an unknown task', async () => {
