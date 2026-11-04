@@ -131,6 +131,6 @@ export { taskPausedCodec } from './task-paused-codec';
 export { taskRestartedCodec } from './task-restarted-codec';
 export { taskResumedCodec } from './task-resumed-codec';
 export { taskStoppedCodec } from './task-stopped-codec';
-export type { StepErrorOptions } from './write-step-error';
+export type { StepErrorOptions } from './build-step-failure-plan';
 export { writeStepError } from './write-step-error';
 export type { TasksRecordKind } from './tasks-record-kind';

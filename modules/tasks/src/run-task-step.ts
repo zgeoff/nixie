@@ -1,4 +1,5 @@
 import { StaleWriterError } from '@heynixie/log';
+import type { StepErrorOptions } from './build-step-failure-plan';
 import { LeaseLostError } from './lease-lost-error';
 import { readInbox } from './read-inbox';
 import { readSessionBoundary } from './read-session-boundary';
@@ -6,7 +7,6 @@ import { startLeaseRenewal } from './start-lease-renewal';
 import { startStepControlWatch } from './start-step-control-watch';
 import type { RunStep, StartedClaim, StepErrored, TasksContext } from './types';
 import { writeStepCommit } from './write-step-commit';
-import type { StepErrorOptions } from './write-step-error';
 import { writeStepError } from './write-step-error';
 
 export interface TaskStepOptions extends StepErrorOptions {
