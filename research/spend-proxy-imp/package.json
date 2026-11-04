@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@orpc/client": "1.16.1",
-    "msw": "2.15.0",
     "ts-pattern": "5.9.2"
   }
 }
