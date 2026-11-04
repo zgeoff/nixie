@@ -13,8 +13,9 @@ import { join } from 'node:path';
 import type { ContractClient, ContractOutputs } from '../../libs/contract/src/index.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { clientHeaderName } from '../../libs/contract/src/index.ts';
-import { findNewTaskID } from './find-new-task-id.ts';
+import { match } from 'ts-pattern';
 import { isStepEnded } from './is-step-ended.ts';
+import { pickTaskFollowUp } from './pick-task-follow-up.ts';
 
 export interface SpikeTarget {
   readonly impCLI: string;
@@ -74,8 +75,6 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
   await deps.writeOutput('plain.jsonl', formatRecords(plainPage, plain.sequence));
   await writeCount('count-1.json', 'after the plain turn');
 
-  // the task this turn starts is the one task that was not there before it, so a task an earlier
-  // spike started never stands in for it
   const knownIDs = (await deps.client.tasks.list()).tasks.map((task) => task.taskID);
   const taskTurn = await deps.client.conversation.send(
     buildTypedMessage(
@@ -90,14 +89,16 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
   );
   await deps.writeOutput('task.jsonl', formatRecords(taskTurnPage, taskTurn.sequence));
 
-  const taskID = findNewTaskID(knownIDs, (await deps.client.tasks.list()).tasks);
-  if (taskID === undefined) {
-    // a failed model call ends the turn before the conversation can start the task
-    deps.log('== the conversation started no task; task.jsonl holds its turn');
-  } else {
-    const taskPage = await waitForStepEnd(deps, taskID, 0, "the task's step");
-    await deps.writeOutput('task-thread.jsonl', formatRecords(taskPage, 0));
-  }
+  await match(pickTaskFollowUp(knownIDs, (await deps.client.tasks.list()).tasks))
+    .with({ kind: 'no-task' }, async () => {
+      // a failed model call ends the turn before the conversation can start the task
+      deps.log('== the conversation started no task; task.jsonl holds its turn');
+    })
+    .with({ kind: 'wait-for-task' }, async ({ taskID }) => {
+      const taskPage = await waitForStepEnd(deps, taskID, 0, "the task's step");
+      await deps.writeOutput('task-thread.jsonl', formatRecords(taskPage, 0));
+    })
+    .exhaustive();
   await writeCount('count-2.json', "after the task's step");
 
   deps.log("== nixie's own token counts, from the turn-ended records of each thread");
