@@ -1,7 +1,11 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
-import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import {
+  buildMockSandboxSpec,
+  buildStubSandboxes,
+  makeSummaryAnswerQueue,
+} from '@heynixie/sandbox/test-utils';
 import { runSessionCompaction } from './run-session-compaction';
 
 async function setupTest() {
@@ -196,17 +200,32 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
 
   const long = 'The ferry to the island leaves at nine, and the hostel holds the bags. '.repeat(40);
 
-  ctx.sandboxes.setSummaryScript((frame) => [
-    {
-      type: 'summarized',
-      boundary: {
-        sessionID: 'c3d4e5f6-1a2b-4c3d-8e4f-5a6b7c8d9e02',
-        messageID: '9e8d7c6b-5a4f-4e3d-9c2b-1a0f9e8d7c10',
-      },
-      text: frame.instruction.includes('past the cap') ? 'The ferry leaves at nine.' : long,
-      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    },
-  ]);
+  ctx.sandboxes.setSummaryScript(
+    makeSummaryAnswerQueue([
+      [
+        {
+          type: 'summarized',
+          boundary: {
+            sessionID: 'c3d4e5f6-1a2b-4c3d-8e4f-5a6b7c8d9e02',
+            messageID: '9e8d7c6b-5a4f-4e3d-9c2b-1a0f9e8d7c10',
+          },
+          text: long,
+          usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        },
+      ],
+      [
+        {
+          type: 'summarized',
+          boundary: {
+            sessionID: 'c3d4e5f6-1a2b-4c3d-8e4f-5a6b7c8d9e02',
+            messageID: '9e8d7c6b-5a4f-4e3d-9c2b-1a0f9e8d7c10',
+          },
+          text: 'The ferry leaves at nine.',
+          usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        },
+      ],
+    ]),
+  );
 
   const outcome = await runSessionCompaction(
     { ...run, compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 100 } },
@@ -227,8 +246,17 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
     },
   );
 
-  expect(outcome.record).toMatchObject({
+  expect(outcome.record).toStrictEqual({
+    kind: 'model.session_summarized',
+    definitions: { snapshotHash: 'sha256:test' },
     payload: {
+      boundary: {
+        sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
+        messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
+      },
+      model: 'claude-test',
+      profile: 'task-direct',
+      summaryTokens: expect.toBePositive(),
       throughSequence: 0,
       trigger: 'overflow',
       isCut: true,
@@ -264,20 +292,21 @@ test('it keeps the long summary and its call usage when the cut fails', async ()
 
   const long = 'The ferry to the island leaves at nine, and the hostel holds the bags. '.repeat(40);
 
-  ctx.sandboxes.setSummaryScript((frame) =>
-    frame.instruction.includes('past the cap')
-      ? [{ type: 'failed', reason: 'error', detail: 'the cut call ended with no summary' }]
-      : [
-          {
-            type: 'summarized',
-            boundary: {
-              sessionID: 'c3d4e5f6-1a2b-4c3d-8e4f-5a6b7c8d9e02',
-              messageID: '9e8d7c6b-5a4f-4e3d-9c2b-1a0f9e8d7c10',
-            },
-            text: long,
-            usage: { inputTokens: 12, outputTokens: 7, cacheReadTokens: 3, cacheWriteTokens: 1 },
+  ctx.sandboxes.setSummaryScript(
+    makeSummaryAnswerQueue([
+      [
+        {
+          type: 'summarized',
+          boundary: {
+            sessionID: 'c3d4e5f6-1a2b-4c3d-8e4f-5a6b7c8d9e02',
+            messageID: '9e8d7c6b-5a4f-4e3d-9c2b-1a0f9e8d7c10',
           },
-        ],
+          text: long,
+          usage: { inputTokens: 12, outputTokens: 7, cacheReadTokens: 3, cacheWriteTokens: 1 },
+        },
+      ],
+      [{ type: 'failed', reason: 'error', detail: 'the cut call ended with no summary' }],
+    ]),
   );
 
   const outcome = await runSessionCompaction(
