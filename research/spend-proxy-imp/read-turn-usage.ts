@@ -4,33 +4,29 @@
 // Usage: bun read-turn-usage.ts [database]
 import { Database } from 'bun:sqlite';
 
-function readTurnUsage(path: string): void {
-  const db = new Database(path, { readonly: true });
+export interface TurnUsage {
+  readonly thread: string;
+  readonly turns: number;
+  readonly tokens: number;
+}
+
+export function readTurnUsage(db: Database): readonly TurnUsage[] {
   const rows = db
     .query<{ thread: string; payload: string }, []>(
       "select thread, payload from records where kind = 'model.turn_ended' order by sequence",
     )
     .all();
 
-  const usage = collectThreadUsage(rows);
+  const threads = collectThreadUsage(rows);
 
-  for (const thread of usage) {
-    console.log(JSON.stringify(thread));
-  }
-
-  console.log(
-    JSON.stringify({
+  return [
+    ...threads,
+    {
       thread: 'all',
-      turns: usage.reduce((sum, thread) => sum + thread.turns, 0),
-      tokens: usage.reduce((sum, thread) => sum + thread.tokens, 0),
-    }),
-  );
-}
-
-interface TurnUsage {
-  readonly thread: string;
-  readonly turns: number;
-  readonly tokens: number;
+      turns: threads.reduce((sum, thread) => sum + thread.turns, 0),
+      tokens: threads.reduce((sum, thread) => sum + thread.tokens, 0),
+    },
+  ];
 }
 
 function collectThreadUsage(
@@ -71,5 +67,10 @@ function parseTurnTokens(payload: string): number {
   }, 0);
 }
 
-// the call comes last, so every constant above exists when it runs
-readTurnUsage(process.argv[2] ?? '/data/nixie.db');
+if (import.meta.main) {
+  const db = new Database(process.argv[2] ?? '/data/nixie.db', { readonly: true });
+
+  for (const usage of readTurnUsage(db)) {
+    console.log(JSON.stringify(usage));
+  }
+}
