@@ -324,6 +324,65 @@ test('it clears the failure notice once a turn succeeds', async () => {
   });
 });
 
+test('it clears the failure notice once you retry the turn', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is it raining?' } });
+
+  await store.records.create({
+    kind: 'task.step_errored',
+    task: {
+      errorLimit: 3,
+      errors: 1,
+      isWaitingForRetry: true,
+      reason: 'model_api.quota',
+      stepKey: 'conversation:1',
+      taskID: 'conversation',
+    },
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  await rendered.findByRole('alert');
+  await ctx.user.click(rendered.getByRole('button', { name: 'Retry' }));
+
+  await waitFor(() => {
+    expect(rendered.queryByRole('alert')).toBeNull();
+  });
+});
+
+test('it shows the failure notice below the conversation and above the composer', async () => {
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the river high?' } });
+
+  await store.records.create({
+    kind: 'task.step_errored',
+    task: {
+      errorLimit: 3,
+      errors: 1,
+      isWaitingForRetry: true,
+      reason: 'model_api.quota',
+      stepKey: 'conversation:1',
+      taskID: 'conversation',
+    },
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const notice = await rendered.findByRole('alert');
+
+  const message = rendered.getByText('Is the river high?');
+  const composer = rendered.getByRole('textbox', { name: 'Message' });
+
+  expect([
+    message.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING,
+    notice.compareDocumentPosition(composer) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ]).toStrictEqual([Node.DOCUMENT_POSITION_FOLLOWING, Node.DOCUMENT_POSITION_FOLLOWING]);
+});
+
 test('it drops the failure notice of a step a reset removed while the read after the reset fails', async () => {
   await createDeviceSession();
 
