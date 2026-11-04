@@ -11,12 +11,19 @@ export interface AppServer {
   readonly request: (method: string, params: unknown) => Promise<unknown>;
   readonly notify: (method: string) => void;
 
-  // resolves with the first notification from now on that has `method` and passes `test`
+  // resolves with the first notification at or after log position `since` that has `method` and
+  // passes `test`, including one that arrived before the call
   readonly waitFor: (
     method: string,
+    since: number,
     test?: (params: unknown) => boolean,
   ) => Promise<Notification>;
   readonly stop: () => Promise<void>;
+}
+
+interface LoggedNotification {
+  readonly position: number;
+  readonly notification: Notification;
 }
 
 interface Waiter {
@@ -40,6 +47,7 @@ export function startAppServer(env: Record<string, string>, cwd: string): AppSer
   const log: unknown[] = [];
   const pending = new Map<number, PromiseWithResolvers<unknown>>();
   const waiters = new Set<Waiter>();
+  const notifications: LoggedNotification[] = [];
   const child = Bun.spawn(['codex', 'app-server', '--strict-config'], {
     cwd,
     env,
@@ -67,6 +75,7 @@ export function startAppServer(env: Record<string, string>, cwd: string): AppSer
     if (parsed.method) {
       const notification = { method: parsed.method, params: parsed.params };
 
+      notifications.push({ position: log.length - 1, notification });
       for (const waiter of waiters) {
         if (waiter.method === notification.method && waiter.test(notification.params)) {
           waiters.delete(waiter);
@@ -103,11 +112,24 @@ export function startAppServer(env: Record<string, string>, cwd: string): AppSer
     notify: (method) => {
       send({ method });
     },
-    waitFor: async (method, test = () => true) => {
-      const found = Promise.withResolvers<Notification>();
+    waitFor: async (method, since, test = () => true) => {
+      const earlier = notifications.find(
+        (entry) =>
+          entry.position >= since &&
+          entry.notification.method === method &&
+          test(entry.notification.params),
+      );
 
-      waiters.add({ method, test, resolve: found.resolve });
-      return withDeadline(found.promise, method);
+      if (earlier) {
+        return earlier.notification;
+      }
+      const found = Promise.withResolvers<Notification>();
+      const waiter = { method, test, resolve: found.resolve };
+
+      waiters.add(waiter);
+      return withDeadline(found.promise, method).finally(() => {
+        waiters.delete(waiter);
+      });
     },
     stop: async () => {
       child.stdin.end();

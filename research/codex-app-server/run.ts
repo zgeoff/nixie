@@ -278,13 +278,13 @@ async function runFirstProcess(
       extra: {},
     }),
   );
-  const compacted = server.waitFor('item/completed', (params) => {
+  const compactStart = server.log.length;
+
+  await server.request('thread/compact/start', { threadId });
+  await server.waitFor('item/completed', compactStart, (params) => {
     const parsed = itemEvent.safeParse(params);
     return parsed.success && parsed.data.item.type === 'contextCompaction';
   });
-
-  await server.request('thread/compact/start', { threadId });
-  await compacted;
 }
 
 async function runSecondProcess(
@@ -371,10 +371,6 @@ async function runTurn(
   const logStart = server.log.length;
   await proxy.waitForCounts();
   const proxyStart = proxy.calls.length;
-  const toolCall = server.waitFor('item/started', (params) => {
-    const parsed = itemEvent.safeParse(params);
-    return parsed.success && parsed.data.item.type === 'mcpToolCall';
-  });
   const result = turnResult.parse(
     await server.request('turn/start', {
       threadId: plan.threadId,
@@ -383,18 +379,21 @@ async function runTurn(
     }),
   );
   const turnId = result.turn.id;
-  const completed = server.waitFor('turn/completed', (params) => {
+
+  if (plan.onToolCall) {
+    await server.waitFor('item/started', logStart, (params) => {
+      const parsed = itemEvent.safeParse(params);
+      return (
+        parsed.success && parsed.data.turnId === turnId && parsed.data.item.type === 'mcpToolCall'
+      );
+    });
+    await plan.onToolCall(turnId);
+  }
+  const completed = await server.waitFor('turn/completed', logStart, (params) => {
     const parsed = turnCompleted.safeParse(params);
     return parsed.success && parsed.data.turn.id === turnId;
   });
-
-  if (plan.onToolCall) {
-    await toolCall;
-    await plan.onToolCall(turnId);
-  } else {
-    void toolCall.catch(() => undefined);
-  }
-  const done = turnCompleted.parse((await completed).params);
+  const done = turnCompleted.parse(completed.params);
 
   await proxy.waitForCounts();
   const events = server.log.slice(logStart).flatMap((entry) => {

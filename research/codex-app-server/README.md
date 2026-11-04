@@ -18,7 +18,8 @@ proxy over a websocket? Should the Codex guest use app-server or `codex exec --j
   `turn/interrupt` takes `threadId` and `turnId`, and `turn/steer` takes `expectedTurnId`.
 - `thread/tokenUsage/updated` arrives once for each model call, with `tokenUsage.last` equal to the
   model API's usage on all 13 calls. It also repeats a stored figure after a resume, a fork and a
-  compaction; only an event whose `total` grows by `last` is a new call.
+  compaction. An event is a new call only when its turn started in this process and its `total`
+  grows by its `last`.
 - Codex sends `_meta.callId` on each `tools/call`, equal to the app-server item ID of that call.
 - With `supports_websockets = true`, Codex tried a websocket first; with `false`, it sent HTTP only.
 - `tool_output_token_limit` is a top-level key: strict config refuses it under

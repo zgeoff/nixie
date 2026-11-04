@@ -92,18 +92,35 @@ websocket turn counts 2 proxy requests for 1 model call, because 1 of them is th
 [measured].
 
 Codex also sends the notification when no model call happened: once after `thread/resume`, once
-after `thread/fork`, and twice around the compaction's own call [measured]. Each of these repeats a
-stored figure, and its `tokenUsage.total` doesn't grow by `tokenUsage.last` [measured]. A guest that
-counts a call only when `total.totalTokens` grows by exactly `last.totalTokens` on the same thread
-gets the proxy's 13 usages, and no others [measured].
+after `thread/fork`, and twice around the compaction's own call [measured]. The resume and fork
+replays arrive before the new turn's `turn/started`, with the `turnId` of the thread's first turn,
+which the second process never started [measured]. The 2 compaction extras keep the compaction's
+`turnId`, and their `tokenUsage.total` doesn't grow by `tokenUsage.last` [measured].
+
+A guest that counts a call only when both of these hold gets the proxy's 13 usages, and no others
+[measured]:
+
+1. The event's `turnId` names a turn that this process saw in `turn/started`.
+2. `total.totalTokens` grows by exactly `last.totalTokens` over the thread's previous event.
+
+A thread with a single call has its `total` equal to its `last`, as the websocket thread's only
+event shows [measured]. A replay of such a thread would pass the second condition, so the first
+condition is the one that drops it [guess: no step replayed a one-call thread; a resume of the
+websocket thread would settle it].
 
 ```bash
-jq -s -c '[.[] | reduce (.[] | select(.method == "thread/tokenUsage/updated") | .params) as $p
-  ({seen: {}, calls: []};
-   if $p.tokenUsage.total.totalTokens - (.seen[$p.threadId] // 0) == $p.tokenUsage.last.totalTokens
-   then .calls += [$p.tokenUsage.last.totalTokens] else . end
-   | .seen[$p.threadId] = $p.tokenUsage.total.totalTokens) | .calls[]] | sort' \
-  rpc-first-process.json rpc-second-process.json rpc-websocket-process.json
+for f in rpc-first-process.json rpc-second-process.json rpc-websocket-process.json; do
+  jq -c 'reduce (.[] | select(.from == "server" and .method != null)) as $m
+    ({started: {}, seen: {}, calls: []};
+     if $m.method == "turn/started" then .started[$m.params.turn.id] = true
+     elif $m.method == "thread/tokenUsage/updated" then
+       ($m.params.tokenUsage) as $u
+       | (if .started[$m.params.turnId]
+            and $u.total.totalTokens - (.seen[$m.params.threadId] // 0) == $u.last.totalTokens
+          then .calls += [$u.last.totalTokens] else . end)
+       | .seen[$m.params.threadId] = $u.total.totalTokens
+     else . end) | .calls[]' "$f"
+done | jq -s -c sort
 jq -c '[.[] | select(.usage) | .usage.total_tokens] | sort' proxy.json
 ```
 
@@ -268,7 +285,8 @@ The Codex guest needs 4 things from this spike:
 1. Set `supports_websockets = false` on its model provider, so no call leaves as a websocket.
 2. Put `tool_output_token_limit` at the top level of `config.toml`.
 3. Run Codex in a working directory outside any git repo, so `_meta` carries no remote or commit.
-4. Send a `call` frame only for a `thread/tokenUsage/updated` whose `total` grows by its `last`.
+4. Send a `call` frame only for a `thread/tokenUsage/updated` that passes the
+   [2 conditions](#usage-for-each-model-call).
 
 These would change the pick:
 
@@ -281,6 +299,7 @@ These would change the pick:
 ## Untested
 
 - `thread/revert`, which the spike read in the protocol and never called.
+- A resume or a fork of a thread with a single model call.
 - The built-in `openai` provider, and a custom provider that leaves out `supports_websockets`.
 - A turn long enough for automatic compaction, and a model call that fails or retries.
 - Reasoning effort above `low`, and models other than `gpt-6-luna`.
