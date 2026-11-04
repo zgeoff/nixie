@@ -722,16 +722,30 @@ test('it sends the model no error text on the turn that resumes before a refused
 
   invariant(first?.type === 'ended');
 
+  const firstCount = ctx.frames.length;
+
   await runTurnAt('What do I need?', first.boundary);
+
+  const refusedCount = ctx.frames.length;
+
   await runTurnAt('What do I need?', first.boundary);
 
   const messages = JSON.stringify(ctx.model.requests.at(-1)?.body?.messages);
 
   expect({
+    refused: ctx.frames.slice(firstCount, refusedCount),
     hasError: messages.includes('API Error'),
     hasReason: messages.includes('Weekly allowance'),
     last: ctx.frames.findLast((frame) => frame.type === 'assistant'),
   }).toStrictEqual({
+    refused: [
+      {
+        type: 'failed',
+        reason: 'model_api',
+        error: 'quota',
+        detail: 'API Error: Request rejected (429) · Weekly allowance used up',
+      },
+    ],
     hasError: false,
     hasReason: false,
     last: {
