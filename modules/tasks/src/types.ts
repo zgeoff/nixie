@@ -60,6 +60,42 @@ export interface TaskProfile {
   readonly isWokenByMessages: boolean;
 }
 
+export type TaskPersona = 'default' | 'none';
+
+export type TaskMemory = 'none' | 'read';
+
+export type TaskReport = 'wake' | 'next_turn' | 'none';
+
+export interface TaskLimits {
+  readonly turns: number;
+  readonly dollars: number;
+}
+
+export interface TaskRunOptions {
+  readonly model: string | null;
+
+  readonly profile: string | null;
+  readonly persona: TaskPersona;
+  readonly memory: TaskMemory;
+  readonly tools: readonly string[];
+  readonly report: TaskReport;
+  readonly limits: TaskLimits;
+}
+
+export interface TaskModelChoice {
+  readonly name: string;
+  readonly profile: string;
+  readonly description: string;
+}
+
+export interface TaskStartBounds {
+  readonly models: readonly TaskModelChoice[];
+  readonly limits: { readonly default: TaskLimits; readonly max: TaskLimits };
+
+  readonly memoryTools: { readonly read: readonly string[]; readonly write: readonly string[] };
+  readonly conversationTools: readonly string[];
+}
+
 export interface TaskMessaging {
   readonly directory: readonly TaskProfile[];
   readonly hopLimit: number;

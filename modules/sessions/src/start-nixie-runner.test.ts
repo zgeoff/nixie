@@ -1,4 +1,6 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
+import { readLinkTarget } from '@heynixie/connectors';
+import { seedWebFetchLinks } from '@heynixie/connectors/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import {
   claimTask,
@@ -6,8 +8,9 @@ import {
   writeInboxRecords,
   writeStepCommit,
   writeTaskControl,
+  writeTaskLimitRaise,
 } from '@heynixie/tasks';
-import type { ConversationStep } from '@heynixie/tasks/test-utils';
+import type { ConversationStep, StartedTaskSeed } from '@heynixie/tasks/test-utils';
 import {
   seedConversationStep,
   seedStartedTask,
@@ -17,6 +20,7 @@ import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import type { NixieRunnerOptions } from './start-nixie-runner';
 import { startNixieRunner } from './start-nixie-runner';
+import { buildStubMemory } from './test-utils/build-stub-memory';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
 import { runNextStep } from './test-utils/run-next-step';
@@ -28,7 +32,12 @@ async function setupTest() {
   const tools = buildStubToolEndpoint();
   const events: string[] = [];
 
-  const startRunner = async (parts: Partial<Pick<NixieRunnerOptions, 'tools'>> = {}) => {
+  const noMemory = buildStubMemory({
+    pinned: [],
+    pinnedUse: { items: 0, tokens: 0, budget: 2000 },
+  });
+
+  const startRunner = async (parts: Partial<Pick<NixieRunnerOptions, 'tools' | 'memory'>> = {}) => {
     const runner = await startNixieRunner({
       context: host.context,
       models: modelsConfigSchema.parse({
@@ -48,14 +57,25 @@ async function setupTest() {
             effort: 'low',
             context_tokens: 200_000,
           },
+          'router-b': {
+            base_url: 'https://router.example.test/anthropic',
+            credential: 'deployment:router',
+            auth_header: 'bearer',
+            model: 'other-family-test-3',
+            effort: 'low',
+            prices: { input: 3, cache_write: 3, cache_write_1h: 3, cached_input: 0.3, output: 15 },
+          },
         },
         roles: { conversation: 'chat-direct', task: 'errands' },
+        selectable: {
+          'second-look': { profile: 'router-b', description: 'Another family' },
+        },
       }),
-      secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+      secrets: { model_credentials: { anthropic: 'not-a-real-key', router: 'not-a-real-token' } },
       sandboxes: host.sandboxes,
       image: 'nixie-conversation-0123456789ab',
       tools: parts.tools ?? tools.endpoint,
-      toolNames: ['tasks.list', 'task.message', 'time.now'],
+      memory: parts.memory ?? (() => noMemory),
       getDefinitions: () => ({
         persona: 'You are Pip.',
         prompts: {},
@@ -91,11 +111,12 @@ async function setupTest() {
     events,
     startRunner,
     seedConversationStep: () => seedConversationStep(host.context),
-    seedTask: (starter: ConversationStep) =>
+    seedTask: (starter: ConversationStep, options: StartedTaskSeed['options'] = {}) =>
       seedStartedTask(host.context, {
         starter: starter.claim,
         name: 'Tide tables',
         brief: 'Find the high tides for Saturday.',
+        options,
       }),
     writeMessage: (taskID: string, text: string) =>
       writeInboxRecords(host.context, [
@@ -104,6 +125,28 @@ async function setupTest() {
           definitions: host.context.definitions(),
           thread: taskID,
           erasable: { text },
+        },
+      ]),
+    writeTaskMessage: (taskID: string, body: string) =>
+      writeInboxRecords(host.context, [
+        {
+          kind: 'task_message',
+          definitions: host.context.definitions(),
+          thread: taskID,
+          payload: {
+            messageID: 'q8v3m1x7ka',
+            from: 'conversation',
+            to: taskID,
+            kind: 'request',
+            replyTo: null,
+            onBehalfOf: [],
+            hop: 1,
+            hopLimit: 20,
+            wake: true,
+            woke: true,
+            source: 'task:conversation',
+          },
+          erasable: { body },
         },
       ]),
     runNextStep: (runner: Awaited<ReturnType<typeof startRunner>>) =>
@@ -388,4 +431,381 @@ test('it rebuilds the session of a task whose imp is gone with the messages the 
 
   expect(rebuilt?.resume).toBeNull();
   expect(input).toInclude('High tide on Saturday is at 06:42 at Bramble Quay.');
+});
+
+test("it runs a task on its chosen model's profile, through that profile's host, with its own tool list", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    tools: ['tasks.list', 'task.message', 'web_fetch'],
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const [sandbox] = await ctx.sandboxes.list(taskID);
+
+  const [turn] = ctx.guest.turns;
+
+  expect(sandbox?.spec.grants).toStrictEqual([
+    expect.objectContaining({
+      host: 'router.example.test',
+      env: { ANTHROPIC_AUTH_TOKEN: expect.toBeString() },
+    }),
+  ]);
+
+  expect(turn?.profile).toStrictEqual({
+    model: 'other-family-test-3',
+    baseURL: 'https://router.example.test/anthropic',
+    effort: 'low',
+    contextTokens: null,
+    cacheTTL: '5m',
+    authHeader: 'bearer',
+  });
+
+  expect(ctx.runs).toStrictEqual([
+    {
+      runID: taskID,
+      thread: taskID,
+      tools: ['tasks.list', 'task.message', 'web_fetch'],
+      model: { model: 'other-family-test-3', profile: 'router-b' },
+    },
+  ]);
+});
+
+test('it gives a stranger no persona text and no memory item', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { model: 'second-look', profile: 'router-b', persona: 'none' });
+
+  const memory = buildStubMemory({
+    pinned: [
+      {
+        itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
+        version: 1,
+        shortID: 'm4k2p8w1qz',
+        subject: 'owner',
+        text: 'Keeps bees on the allotment',
+        origin: 'owner',
+        source: 'owner',
+        model: null,
+        recordedAt: Date.UTC(2026, 9, 1),
+        evidenceQuote: null,
+        approval: null,
+      },
+    ],
+    pinnedUse: { items: 1, tokens: 8, budget: 2000 },
+  });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
+
+  await ctx.runNextStep(runner);
+
+  const [turn] = ctx.guest.turns;
+
+  invariant(turn);
+
+  const input = turn.input.map((message) => message.text).join('\n');
+
+  expect(turn.systemPrompt).not.toInclude('You are Pip.');
+  expect(input).not.toInclude('Keeps bees on the allotment');
+  expect(input).not.toInclude('pinned-memory');
+});
+
+test('it gives another me the persona and the pinned memory', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+
+  const memory = buildStubMemory({
+    pinned: [
+      {
+        itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
+        version: 1,
+        shortID: 'm4k2p8w1qz',
+        subject: 'owner',
+        text: 'Keeps bees on the allotment',
+        origin: 'owner',
+        source: 'owner',
+        model: null,
+        recordedAt: Date.UTC(2026, 9, 1),
+        evidenceQuote: null,
+        approval: null,
+      },
+    ],
+    pinnedUse: { items: 1, tokens: 8, budget: 2000 },
+  });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
+
+  await ctx.runNextStep(runner);
+
+  const [turn] = ctx.guest.turns;
+  const input = turn?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(turn?.systemPrompt).toInclude('You are Pip.');
+  expect(input).toInclude('Keeps bees on the allotment');
+});
+
+test("it searches memory for the brief of a task that reads memory, on the task's first turn", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+
+  const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
+
+  await ctx.runNextStep(runner);
+
+  const queries = memory.recall.mock.calls.map(([request]) => request.query);
+
+  expect(queries).toStrictEqual(['Find the high tides for Saturday.']);
+});
+
+test('it searches memory for the body of a task message to a task that reads memory', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+
+  const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
+
+  await ctx.runNextStep(runner);
+  await ctx.writeTaskMessage(taskID, 'Only the morning tide at the harbour.');
+  await ctx.runNextStep(runner);
+
+  const queries = memory.recall.mock.calls.map(([request]) => request.query);
+
+  expect(queries.at(-1)).toBe('Only the morning tide at the harbour.');
+});
+
+test('it purges and invalidates the session of a task that reads memory on a forget, so its next turn opens a new one', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+
+  const [, second] = ctx.guest.turns;
+
+  expect(invalidated.map((record) => record.thread)).toStrictEqual([taskID]);
+  expect(ctx.guest.purged).toHaveLength(1);
+  expect(second?.resume).toBeNull();
+});
+
+test("it shreds the summary and removes the web fetch links of a task that reads memory on a forget, and keeps another thread's links", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  await seedWebFetchLinks(ctx.context.log, {
+    sessionKey: 'session-tides',
+    thread: taskID,
+    urls: ['https://harbour.test/tides'],
+  });
+
+  await seedWebFetchLinks(ctx.context.log, {
+    sessionKey: 'session-ferry',
+    thread: 'conversation',
+    urls: ['https://harbour.test/ferry'],
+  });
+
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+
+  const summaries = await ctx.readKinds('model.session_summarized');
+
+  const taskLink = await readLinkTarget(ctx.context.log, {
+    sessionKey: 'session-tides',
+    number: 1,
+  });
+
+  const otherLink = await readLinkTarget(ctx.context.log, {
+    sessionKey: 'session-ferry',
+    number: 1,
+  });
+
+  expect(summaries.map((record) => [record.thread, record.erasable.status])).toStrictEqual([
+    [taskID, 'shredded'],
+  ]);
+
+  expect(taskLink).toBeNull();
+  expect(otherLink).toBe('https://harbour.test/ferry');
+});
+
+test('it runs the brief of a task that reads memory when a forget comes before its first session', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+
+  const runner = await ctx.startRunner();
+
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+  await ctx.runNextStep(runner);
+
+  const [turn] = ctx.guest.turns;
+  const input = turn?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(input).toInclude('Your task starts now');
+});
+
+test('it purges the guest of a task that reads memory when a forget aborts its first turn', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+
+  const runner = await ctx.startRunner();
+
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Checking the tides.', gate: () => held.promise });
+
+  const step = ctx.runNextStepWithNoRetryDelay(runner);
+
+  await waitForCondition(() => ctx.guest.turns.length === 1);
+
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+
+  await step;
+
+  expect(ctx.guest.purged).toHaveLength(1);
+});
+
+test('it leaves the session of a task that reads no memory as it is on a forget', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { memory: 'none' });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+
+  expect(invalidated).toStrictEqual([]);
+  expect(ctx.guest.purged).toStrictEqual([]);
+});
+
+test('it pauses a task at its turn limit with no turn, and tells its starter in a limit notice', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { limits: { turns: 1, dollars: 2 } });
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const paused = await ctx.readKinds('task.paused');
+  const notices = await ctx.readKinds('task.limit_notice');
+
+  expect(ctx.guest.turns).toHaveLength(1);
+  expect(paused.map((record) => record.thread)).toStrictEqual([taskID]);
+
+  expect(
+    notices.map((record) => ({ thread: record.thread, payload: record.payload })),
+  ).toStrictEqual([
+    {
+      thread: 'conversation',
+      payload: { taskID, used: { turns: 1, dollars: 0 }, limits: { turns: 1, dollars: 2 } },
+    },
+  ]);
+});
+
+test('it sleeps the awake imp of a task that pauses at its limit after a turn with work left', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { limits: { turns: 1, dollars: 2 } });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+
+  expect(ctx.guest.turns).toHaveLength(1);
+  expect(slept).toHaveLength(1);
+});
+
+test("it pauses a task at its dollar limit, priced on its model's profile", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 1e-6 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(ctx.guest.turns).toHaveLength(1);
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 1, dollars: expect.toBePositive() },
+    limits: { turns: 25, dollars: 1e-6 },
+  });
+});
+
+test('it runs the next turn of a task paused at its turn limit once the limit is raised', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { limits: { turns: 1, dollars: 2 } });
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { turns: 2 } });
+
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(ctx.guest.turns).toHaveLength(2);
+  expect(input).toInclude('Only the morning tide, please.');
 });

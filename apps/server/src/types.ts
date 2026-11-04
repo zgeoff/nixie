@@ -92,6 +92,9 @@ export interface CLIFlags {
   readonly to?: string;
   readonly from?: string;
 
+  readonly turns?: number;
+  readonly dollars?: number;
+
   readonly taskID?: string;
 }
 

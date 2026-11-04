@@ -235,6 +235,10 @@ record it ran for. The cleanup runs in order:
    CLI's whole state directory, every transcript and fork included.
 6. It commits a session-cleanup-completed record.
 
+The cleanup then runs the same steps on the thread and in the sandbox of each open
+[started task](../core/started-tasks.md) that reads memory, one task at a time. A task that reads no
+memory never received an item, so the cleanup leaves its session as it is.
+
 A turn and a cleanup never overlap: a turn that starts while a cleanup runs waits for it, and each
 cleanup waits for the one before it. Turns never wait for each other, because a runner that took a
 step over after its lease expired must not wait on the turn the stale runner still holds. Every step

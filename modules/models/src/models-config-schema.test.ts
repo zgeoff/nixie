@@ -34,6 +34,10 @@ test('it reads a direct profile with its context tokens, cache lifetime and pric
       },
     },
     roles: { conversation: 'chat-direct' },
+    selectable: [],
+    limits: {
+      taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+    },
   });
 });
 
@@ -68,6 +72,10 @@ test('it reads an aggregator profile with its provider pin and the role map into
       },
     },
     roles: { conversation: 'background-aggregator', 'memory-writer': 'background-aggregator' },
+    selectable: [],
+    limits: {
+      taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+    },
   });
 });
 
@@ -257,6 +265,115 @@ test('it reads the profile the memory consolidator role names', () => {
   expect(result.data?.roles).toStrictEqual({
     conversation: 'chat-direct',
     'memory-consolidator': 'chat-direct',
+  });
+});
+
+test('it reads the selectable models and the task run limits into their typed shape', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+      'router-b': {
+        base_url: 'https://router.example/anthropic',
+        credential: 'deployment:router',
+        auth_header: 'bearer',
+        model: 'other-family-test-3',
+        effort: 'low',
+        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 },
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    selectable: {
+      'deep-think': { profile: 'chat-direct', description: 'Most capable, slow', ask: true },
+      'second-look': { profile: 'router-b', description: 'Another family' },
+    },
+    limits: { taskRun: { default: { dollars: 1 }, max: { turns: 60 } } },
+  });
+
+  expect({ selectable: result.data?.selectable, limits: result.data?.limits }).toStrictEqual({
+    selectable: [
+      {
+        name: 'deep-think',
+        profile: 'chat-direct',
+        description: 'Most capable, slow',
+        isAsked: true,
+      },
+      { name: 'second-look', profile: 'router-b', description: 'Another family', isAsked: false },
+    ],
+    limits: {
+      taskRun: { default: { turns: 25, dollars: 1 }, max: { turns: 60, dollars: 10 } },
+    },
+  });
+});
+
+test('it refuses a selectable model that names an undefined profile', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    selectable: { 'second-look': { profile: 'router-b', description: 'Another family' } },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['selectable', 'second-look', 'profile'],
+    message: 'the selectable model second-look names the profile router-b, which is not defined',
+  });
+});
+
+test('it refuses a selectable model whose profile sets no prices', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    selectable: { 'second-look': { profile: 'chat-direct', description: 'Another family' } },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['selectable', 'second-look', 'profile'],
+    message: 'the selectable model second-look names the profile chat-direct, which sets no prices',
+  });
+});
+
+test.each([
+  ['turns', { default: { turns: 30 }, max: { turns: 20 } }],
+  ['dollars', { default: { dollars: 12 } }],
+])('it refuses a default task run limit of %s above its max', (key, taskRun) => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    limits: { taskRun },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['limits', 'taskRun', 'default', key],
   });
 });
 

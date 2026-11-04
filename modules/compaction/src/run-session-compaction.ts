@@ -71,6 +71,7 @@ export async function runSessionCompaction(
           ...(request.contextSize === null ? {} : { contextSize: request.contextSize }),
           summaryTokens: summary.tokens,
           isCut: summary.isCut,
+          usage: summary.usage,
         },
         text: summary.text,
       }),
@@ -100,6 +101,8 @@ interface SessionSummary {
   readonly tokens: number;
 
   readonly isCut: boolean;
+
+  readonly usage: GuestSummary['usage'];
 }
 
 async function runSummaryCalls(
@@ -122,7 +125,7 @@ async function runSummaryCalls(
   const tokens = countTextTokens(first.text);
 
   if (tokens <= cap) {
-    return { text: first.text, tokens, isCut: false };
+    return { text: first.text, tokens, isCut: false, usage: first.usage };
   }
 
   const cut = await runSummaryCall(run, request, {
@@ -131,10 +134,24 @@ async function runSummaryCalls(
   }).catch(() => {
     request.signal.throwIfAborted();
 
-    return first;
+    return null;
   });
 
-  return { text: cut.text, tokens: countTextTokens(cut.text), isCut: true };
+  if (cut === null) {
+    return {
+      text: first.text,
+      tokens: countTextTokens(first.text),
+      isCut: true,
+      usage: first.usage,
+    };
+  }
+
+  return {
+    text: cut.text,
+    tokens: countTextTokens(cut.text),
+    isCut: true,
+    usage: buildUsageSum(first.usage, cut.usage),
+  };
 }
 
 interface SummaryCall {
@@ -159,6 +176,18 @@ function runSummaryCall(
     },
     signal: request.signal,
   });
+}
+
+function buildUsageSum(
+  left: GuestSummary['usage'],
+  right: GuestSummary['usage'],
+): GuestSummary['usage'] {
+  return {
+    inputTokens: left.inputTokens + right.inputTokens,
+    outputTokens: left.outputTokens + right.outputTokens,
+    cacheReadTokens: left.cacheReadTokens + right.cacheReadTokens,
+    cacheWriteTokens: left.cacheWriteTokens + right.cacheWriteTokens,
+  };
 }
 
 function buildFailedRecord(

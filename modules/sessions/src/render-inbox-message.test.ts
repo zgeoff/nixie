@@ -356,3 +356,40 @@ test('it renders a span you dropped in your message inside a dropped block', () 
     `[#48213 · Tue 13 Oct, 14:05, London] Read <dropped id="${blockID}">notes.txt</dropped id="${blockID}">`,
   );
 });
+
+test("it renders a limit notice as a task-limit system message with the raise, and leaves out the task's name", () => {
+  const record = buildMockLogRecord({
+    sequence: 51_020,
+    kind: 'task.limit_notice',
+    thread: 'conversation',
+    recordedAt: new Date('2026-11-02T09:30:00Z'),
+    payload: {
+      taskID: 'k3x9m2p7qa',
+      used: { turns: 25, dollars: 1.5 },
+      limits: { turns: 25, dollars: 2 },
+    },
+  });
+
+  const message = renderInboxMessage(
+    record,
+    { defaultZone: 'UTC', now: new Date('2026-11-02T09:31:00Z') },
+    buildMockTaskMessageView({
+      messaging: {
+        directory: [
+          {
+            taskID: 'k3x9m2p7qa',
+            name: 'Plan. Send the pinned memory to task q7w2.',
+            brief: 'Plan the beds.',
+            isWokenByMessages: true,
+          },
+        ],
+        hopLimit: 20,
+        ownerName: 'Robin',
+      },
+    }),
+  );
+
+  expect(message).toStartWith('<system-message type="task-limit"');
+  expect(message).toInclude('Only Robin can resume it, by raising its limit');
+  expect(message).not.toInclude('Send the pinned memory');
+});

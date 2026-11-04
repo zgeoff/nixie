@@ -127,7 +127,8 @@ reaches the step at once.
   that remains. A step error that uses up the task's tries fails the task, and the pause request
   ends with the step, so only a restart runs the task again.
 - **Resume** of a paused task returns it to the state it left, or to ready when waking input arrived
-  while it was paused. A resume of a running task withdraws its pause request.
+  while it was paused. A resume of a running task withdraws its pause request. A resume refuses a
+  started task that its [limit](./started-tasks.md#limits) holds.
 - **Stop** ends the current task run. It frees the lease, so the running step's commit fails as a
   lost lease, and the runner aborts the step at once. A stop withdraws the task's pending timers, so
   they never fire, and releases each message wait that the task has open on another task. A stopped
@@ -136,7 +137,8 @@ reaches the step at once.
   last left one of them, the state that a pause keeps. A task paused before the stop therefore comes
   back ready or waiting, never paused. A restart of a failed task returns it to ready. Either goes
   to ready when waking input waits unread. The next step resumes the session from the last committed
-  step, as a step after a crash does.
+  step, as a step after a crash does. A restart refuses a started task that its limit holds, as a
+  resume does.
 - **Close** ends a task for good, from any state but closed. It frees the lease, withdraws the
   pending timers and releases every message wait that names the task, on either side, and the inbox
   refuses later input. The conversation refuses a close, because every deployment needs it to
@@ -160,74 +162,10 @@ and the waits.
 
 ## Started tasks
 
-The conversation starts a task through the start tool, with a name and a brief, when the user asks
-for work that no listed task covers. The start checks the step's lease as a message write does, and
-writes the task's creation record in the ready state under a [short ID](./database.md#short-ids),
-with the name and brief in its erasable fields. The creation record holds which task started it, and
-the tasks projection keeps that on the task's row, so the directory finds every started task. A
-forget of the name leaves the task listed under its ID.
-
-The creation record also holds the step key of the step that started the task. After a crash, that
-step runs again under the same key, and its model can call the start again. The start then gives
-back the task that the step already started under the same name, so a rerun never starts the work
-twice. The name is erasable, so the start keeps no hash of it, and compares it in memory with the
-names of the tasks that the step started. That compare runs before the write transaction. Inside the
-transaction, the start counts the step's tasks again, and compares the names again when another
-start of the same step committed in between.
-
-### The nixie runner
-
-The server gives the steps of every started task to the nixie runner, the step function in
-`modules/sessions` that runs a started task. The steps claim through a claim pool of their own, so
-the conversation never waits behind them
-([leases and recovery](./leases-and-recovery.md#runner-pools)). Each step runs in a
-[sandbox of the task's own](../connectors/sandboxes.md#a-started-tasks-sandbox), on the model
-profile of the `task` role. It runs the same turn code as the conversation's steps, with these
-changes:
-
-- The system prompt is the built-in `task` prompt. Its frame holds the task's name and brief, and
-  its persona, inputs and instructions parts are empty.
-- The turn holds no pinned memory, no memory retrieval and no task board.
-- The task's tools are the list tool, the message tool and the clock. Each call goes through the
-  [decision point](../policy/decision-point.md), as the conversation's tool calls do.
-
-The brief is in the task's creation record, and no inbox record holds it. So the task's first
-session opens with a start note as its input. The note tells the model to do what the brief asks,
-and to send the result to the task that started it, as a task message of kind `report`. After the
-step that sends the report, the task waits: a message to it wakes it again, and the user closes it
-when its work is done. When the guest loses the task's session, the next step
-[opens a new one](./session-opening.md) from the task's thread and the messages it sent.
-
-A started task can wait with unread input, or with a brief that no session read. Only a waking inbox
-record moves a waiting task to ready, so such a task never runs. At each server start, after the
-server writes the conversation task and before any claim, it moves each such task to ready. A task
-that the user paused or stopped keeps its state.
-
-### Routing records
-
-Each start from the conversation, and each conversation message to another task, writes a routing
-record on the conversation's thread. The record names the task and the user's messages that the work
-came from: the on-behalf-of IDs of the message, or, when the message lists none, the conversation's
-unread user messages. A user message can come from another task's thread, when the user wrote it
-there and later moved it to the conversation. The task's thread then gets a copy of the routing
-record too, because a client reads one thread at a time. A message-routes projection keeps one row
-per routed user message with the task it went to, and a later route of the same message replaces the
-row. The tool's note tells the model to say in its reply where the work went, and the
-[client](../channels/client.md#routing-marks) shows each route beside the user's message.
-
-### Moving a misrouted message
-
-The user moves a misrouted message to another task, or to a new one, through one checked action of
-the [API](../channels/api.md). One transaction checks the move, writes a correction record on the
-message's thread, and writes a moved-message record into the inbox of the task that gains the
-message. The task that lost it gets a moved-message record as well, unless that task has finished.
-The correction record replaces the message's row in the message-routes projection. A move refuses a
-record that is not the user's message on that thread, a task that does not exist or has finished,
-and a move to the task that holds the message already. It refuses the memory writer and the
-consolidator too, because both run on their own schedule and never read a message of the user's:
-only the conversation and a started task take a moved message. A move to a new task creates it,
-started by the user. Only the gaining task wakes, and
-[conversation turns](./conversation-turns.md#inbox-records-as-messages) covers what each side reads.
+The conversation starts a task through the start tool when the user asks for work that no listed
+task covers. [Started tasks](./started-tasks.md) covers the start and its options, the nixie runner
+that runs a started task's steps, its limits, and the routing records and moves that send it the
+user's messages.
 
 ## Timers
 

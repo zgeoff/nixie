@@ -148,14 +148,14 @@ cleanup again too, so a cleanup that failed finishes on the retry.
 ## Moving a message
 
 A move hands one of the user's messages to another task, as
-[moving a misrouted message](../core/tasks.md#moving-a-misrouted-message) describes. It is a checked
-action bound to the message's thread and sequence and to the target task. For a new task, the input
-hash holds only that the target is new and leaves out the name and brief, because both are free
-text. The move and the action's result commit in one transaction, so a retry never moves the message
-twice. The API answers `RECORD_NOT_FOUND` for a sequence that is not the user's message on that
-thread, `TASK_NOT_FOUND` for a task that does not exist or has finished, `TASK_TAKES_NO_MESSAGES`
-for a task that runs on its own schedule, and `ALREADY_THERE` for the task that holds the message
-already. A client action whose write fails rolls the whole move back.
+[moving a misrouted message](../core/started-tasks.md#moving-a-misrouted-message) describes. It is a
+checked action bound to the message's thread and sequence and to the target task. For a new task,
+the input hash holds only that the target is new and leaves out the name and brief, because both are
+free text. The move and the action's result commit in one transaction, so a retry never moves the
+message twice. The API answers `RECORD_NOT_FOUND` for a sequence that is not the user's message on
+that thread, `TASK_NOT_FOUND` for a task that does not exist or has finished,
+`TASK_TAKES_NO_MESSAGES` for a task that runs on its own schedule, and `ALREADY_THERE` for the task
+that holds the message already. A client action whose write fails rolls the whole move back.
 
 A task list read returns the most recently active tasks up to a cap, each with its name, brief,
 state, last activity, whether it takes a message of the user's, the task it waits on, the controls

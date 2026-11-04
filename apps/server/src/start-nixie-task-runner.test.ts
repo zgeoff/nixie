@@ -3,12 +3,17 @@ import type { ReceivedFrame } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { createApprovedItems } from './test-utils/create-approved-items';
 import { createTestClient } from './test-utils/create-test-client';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
-  const nixie = await startInProcessNixie({ roleModelURLs: { task: 'http://127.0.0.1:4040' } });
+  const nixie = await startInProcessNixie({
+    roleModelURLs: { task: 'http://127.0.0.1:4040' },
+    selectableModelURLs: { 'second-look': 'http://127.0.0.1:4060' },
+  });
+
   const api = await createTestClient(nixie);
 
   const findTurns = (isOwner: (owner: string) => boolean) =>
@@ -94,7 +99,7 @@ test("it runs the task that the conversation starts in a worker imp it owns, and
   );
 });
 
-test("it gives a started task's tool run the task tools and the clock alone, under the task prompt with no persona or memory", async () => {
+test("it gives a stranger's tool run the task tools and the clock alone, under the task prompt with no persona or memory", async () => {
   const held = Promise.withResolvers<void>();
 
   onTestFinished(() => {
@@ -108,7 +113,11 @@ test("it gives a started task's tool run the task tools and the clock alone, und
     {
       toolUse: {
         name: 'task.start',
-        input: { name: 'Tide tables', brief: 'Find the high tides at Bramble Quay on Saturday.' },
+        input: {
+          name: 'Tide tables',
+          brief: 'Find the high tides at Bramble Quay on Saturday.',
+          persona: 'none',
+        },
       },
     },
     { text: 'Passed to the Tide tables task.' },
@@ -146,6 +155,148 @@ test("it gives a started task's tool run the task tools and the clock alone, und
   expect(taskTurn.frame.systemPrompt).not.toInclude('You are nixie.');
   expect(input).not.toInclude('type="pinned-memory"');
   expect(input).not.toInclude('type="retrieved-memory"');
+});
+
+test('it runs a stranger that the conversation starts on another model, and its report returns as a task message', async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: {
+          name: 'Second look',
+          brief: 'Find the weak points in the four-bed garden plan.',
+          model: 'second-look',
+          persona: 'none',
+          memory: 'none',
+          tools: ['time.now'],
+        },
+      },
+    },
+    { text: 'Passed to the Second look task.' },
+    { text: 'The second look found one weak point.' },
+  );
+
+  ctx.nixie.guest.addKindReplies(
+    'worker',
+    {
+      toolUse: {
+        name: 'task.message',
+        input: {
+          to: 'conversation',
+          kind: 'report',
+          body: 'The north bed gets no afternoon sun.',
+        },
+      },
+    },
+    { text: 'Reported.' },
+  );
+
+  await sendClientMessage(
+    ctx.api.client,
+    { text: 'Get a second opinion on the garden plan.' },
+    'Passed to the Second look task.',
+  );
+
+  await waitForCondition(() =>
+    ctx
+      .readConversationTurns()
+      .some((turn) =>
+        turn.frame.input.some((message) => message.text.includes('no afternoon sun')),
+      ),
+  );
+
+  const [taskTurn] = ctx.readTaskTurns();
+  const report = ctx.readConversationTurns().at(-1)?.frame.input.at(-1)?.text ?? '';
+
+  invariant(taskTurn);
+
+  expect(taskTurn.frame.profile).toStrictEqual({
+    model: 'second-look-test-model',
+    baseURL: 'http://127.0.0.1:4060',
+    authHeader: 'bearer',
+    effort: 'low',
+    contextTokens: null,
+    cacheTTL: '5m',
+  });
+
+  expect(taskTurn.frame.systemPrompt).not.toInclude('You are nixie.');
+
+  expect(report).toMatch(
+    /<task-message id="\w+" from="\w+" name="Second look" kind="report"[^>]*>\nThis message is from another task, not from the owner\.\nThe north bed gets no afternoon sun\./u,
+  );
+});
+
+test("it purges the session of a started task that reads memory when the user forgets an item, and the task's next turn opens a new session", async () => {
+  const ctx = await setupTest();
+
+  // BM25 ranks nothing in an index of 1 or 2 items, so per-turn retrieval needs 3 to place one
+  const [key] = await createApprovedItems(ctx.nixie, ctx.api.client, [
+    'The spare key sits under the blue flowerpot',
+    'Allergic to hazelnuts',
+    'Prefers window seats on trains',
+  ]);
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: {
+          name: 'Key check',
+          brief: 'Check where the spare key is kept.',
+          persona: 'default',
+          memory: 'read',
+        },
+      },
+    },
+    { text: 'Passed to the Key check task.' },
+  );
+
+  ctx.nixie.guest.addKindReplies('worker', { text: 'Checked.' }, { text: 'Checked again.' });
+
+  await sendClientMessage(
+    ctx.api.client,
+    { text: 'Where is the spare key kept?' },
+    'Passed to the Key check task.',
+  );
+
+  await waitForCondition(() => ctx.readTaskTurns().length === 1);
+
+  const taskID = ctx.readStartedTaskID();
+
+  const [sandbox] = await ctx.nixie.guest.adapter.list(taskID);
+
+  invariant(sandbox);
+
+  await ctx.api.client.memory.forget({ clientActionID: crypto.randomUUID(), ...key, version: 1 });
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.message',
+        input: { to: taskID, kind: 'request', body: 'Check the key once more.' },
+      },
+    },
+    { text: 'Asked the Key check task again.' },
+  );
+
+  await sendClientMessage(
+    ctx.api.client,
+    { text: 'Ask it to check again.' },
+    'Asked the Key check task again.',
+  );
+
+  await waitForCondition(() => ctx.readTaskTurns().length === 2);
+
+  const [first, second] = ctx.readTaskTurns();
+
+  expect(ctx.nixie.guest.purged).toContain(sandbox.id);
+  expect(first?.frame.resume).toBeNull();
+  expect(second?.frame.resume).toBeNull();
 });
 
 test('it claims and answers a message to the conversation while every claim loop of the started tasks is busy', async () => {

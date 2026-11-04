@@ -29,6 +29,8 @@ export type {
   ModelsConfig,
   ReasoningEffort,
   ResolvedProfile,
+  SelectableModel,
+  TaskRunLimits,
 } from './types';
 
 export type { ModelsRecordKind } from './models-record-kind';

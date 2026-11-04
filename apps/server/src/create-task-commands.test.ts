@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createTask } from '@heynixie/tasks';
+import { seedConversationStep, seedHeldTask } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { createTaskCommands } from './create-task-commands';
 import { readCLIArgs } from './read-cli-args';
@@ -28,7 +29,74 @@ test('it offers one command for each task control', () => {
     'task-restart',
     'task-close',
     'task-interrupt',
+    'task-raise',
   ]);
+});
+
+test('it raises the limit of the task it names, which resumes it, and prints its state and limits', async () => {
+  const ctx = await setupTest();
+  const api = await startTestControlSocket({ path: ctx.socketPath });
+  const starter = await seedConversationStep(api.context);
+
+  const taskID = await seedHeldTask(api.context, {
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  const host = buildRecordingHostTransport(ctx.socketPath);
+
+  const commands = new Map(createTaskCommands(host.transport));
+
+  const parsed = await readCLIArgs(
+    ['task-raise', taskID, '--turns', '12', '--dollars', '2.5'],
+    [...commands.keys()],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
+
+  expect(exitCode).toBe(0);
+
+  expect(io.print).toHaveBeenCalledExactlyOnceWith(
+    JSON.stringify({ taskID, state: 'ready', isPauseRequested: false, turns: 12, dollars: 2.5 }),
+  );
+});
+
+test('it fails a raise of a task that its limit does not hold, with the reason', async () => {
+  const ctx = await setupTest();
+  const api = await startTestControlSocket({ path: ctx.socketPath });
+  const taskID = await createTask(api.context, 'sort the receipts');
+
+  const host = buildRecordingHostTransport(ctx.socketPath);
+
+  const commands = new Map(createTaskCommands(host.transport));
+
+  const parsed = await readCLIArgs(
+    ['task-raise', taskID, '--turns', '12'],
+    [...commands.keys()],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+  const raised = run(parsed.flags, io, parsed.args);
+
+  await raised.catch(() => {});
+
+  expect(raised).rejects.toThrow('the task is not paused at its limit');
 });
 
 test('it stops the task it names over the host transport and prints the task state', async () => {

@@ -4,7 +4,9 @@ import { z } from 'zod';
 import { conversationTaskID } from './conversation-task-id';
 import { getTaskName } from './get-task-name';
 import type { TaskMessageRefusal } from './plan-task-message';
+import { planTaskReport } from './plan-task-report';
 import { readTaskDirectory } from './read-task-directory';
+import { readTaskSetup } from './read-task-setup';
 import { renderHeldNote } from './render-held-note';
 import { taskMessageKindSchema } from './task-message-kind-schema';
 import type { TaskMessaging, TasksContext } from './types';
@@ -89,6 +91,16 @@ export function buildTaskMessageTool(
 
       const directory = await readTaskDirectory(context, messaging);
 
+      const setup = input.kind === 'report' ? await readTaskSetup(context, tool.run.thread) : null;
+      const report = planTaskReport(setup, { to: input.to, kind: input.kind, wake: input.wake });
+
+      if (report.status === 'refused') {
+        return {
+          status: 'error',
+          message: `you were started to send ${getTaskName(directory, input.to)} no report, so nixie sent nothing`,
+        };
+      }
+
       const outcome = await writeTaskMessage(context, directory, {
         from: tool.run.thread,
         to: input.to,
@@ -96,7 +108,7 @@ export function buildTaskMessageTool(
         body: input.body,
         replyTo: input.replyTo ?? null,
         onBehalfOf: input.onBehalfOf ?? [],
-        wake: input.wake ?? true,
+        wake: report.wake,
         stepRunID: tool.run.stepRunID ?? null,
       });
 

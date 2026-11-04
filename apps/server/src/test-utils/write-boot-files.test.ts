@@ -56,6 +56,40 @@ test('it gives each role the model it names', async () => {
   expect(config.models.profiles['scripted-checker']?.baseURL).toBe('http://127.0.0.1:4030');
 });
 
+test('it gives each selectable model a priced profile of its own at the URL it names', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    selectableModelURLs: { 'second-look': 'http://127.0.0.1:4050' },
+  });
+
+  const config = await loadDeploymentConfig(files.configPath);
+
+  expect(config.models.selectable).toStrictEqual([
+    {
+      name: 'second-look',
+      profile: 'selectable-second-look',
+      description: 'The second-look test model',
+      isAsked: false,
+    },
+  ]);
+
+  expect(config.models.profiles['selectable-second-look']).toStrictEqual({
+    id: 'selectable-second-look',
+    baseURL: 'http://127.0.0.1:4050',
+    credential: 'deployment:scripted',
+    authHeader: 'bearer',
+    model: 'second-look-test-model',
+    effort: 'low',
+    contextTokens: null,
+    cacheTTL: '5m',
+    providerPin: null,
+    prices: { input: 1, cacheWrite: 1, cacheWrite1h: 1, cachedInput: 0.1, output: 4 },
+  });
+});
+
 test('it writes secrets that its sops stand-in decrypts, with the key it returns', async () => {
   const ctx = await setupTest();
 

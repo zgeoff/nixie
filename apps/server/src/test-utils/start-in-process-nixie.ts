@@ -32,6 +32,8 @@ export interface InProcessNixieOptions {
 
   readonly roleModelURLs?: NonNullable<BootFileExtras['roleModelURLs']>;
 
+  readonly selectableModelURLs?: NonNullable<BootFileExtras['selectableModelURLs']>;
+
   readonly modelCredential?: NonNullable<BootFileExtras['modelCredential']>;
 
   // Runs on the migrated data before the first start, so a test seeds state without a restart.
@@ -147,6 +149,9 @@ async function startFirstRun(
     definitions: options.extraDefinitions ?? [],
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
     ...(options.roleModelURLs === undefined ? {} : { roleModelURLs: options.roleModelURLs }),
+    ...(options.selectableModelURLs === undefined
+      ? {}
+      : { selectableModelURLs: options.selectableModelURLs }),
     ...(options.modelCredential === undefined ? {} : { modelCredential: options.modelCredential }),
   });
 

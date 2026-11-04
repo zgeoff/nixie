@@ -6,6 +6,7 @@ import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
+import { readLimitRecords } from './read-limit-records';
 import { taskClosedCodec } from './task-closed-codec';
 import { taskInterruptedCodec } from './task-interrupted-codec';
 import { taskPauseRequestedCodec } from './task-pause-requested-codec';
@@ -55,12 +56,15 @@ export async function writeTaskControlInTransaction(
     return { status: 'refused', refusal: { reason: 'unknown_task' } };
   }
 
+  const limitRecords = await readLimitRecords(tx, task.task_id);
+
   const plan = planTaskControl(request.control, {
     state: task.state,
     isConversation: task.is_conversation === 1,
     isPauseRequested: task.pause_requested === 1,
     hasUnread: task.last_inbox_sequence > task.read_cursor,
     resumeState: task.resume_state,
+    isLimitHeld: limitRecords.heldAt !== null,
   });
 
   if ('reason' in plan) {

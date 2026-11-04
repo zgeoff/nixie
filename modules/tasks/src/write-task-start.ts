@@ -5,13 +5,14 @@ import type { StepRunRef } from './parse-step-run-id';
 import { parseStepRunID } from './parse-step-run-id';
 import { readLeasedStepHop } from './read-leased-step-hop';
 import { taskCreatedCodec } from './task-created-codec';
-import type { TasksContext, TasksTables } from './types';
+import type { TaskRunOptions, TasksContext, TasksTables } from './types';
 import { writeTaskRouteInTransaction } from './write-task-route-in-transaction';
 
 export interface TaskStartRequest {
   readonly from: string;
   readonly name: string;
   readonly brief: string;
+  readonly options: TaskRunOptions;
   readonly stepRunID: string | null;
 }
 
@@ -95,6 +96,7 @@ async function writeStartAttempt(
             state: 'ready',
             startedBy: request.from,
             startStep: step.stepKey,
+            options: request.options,
           }),
           erasable: { name: request.name, brief: request.brief },
         },

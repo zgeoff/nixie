@@ -21,6 +21,10 @@ test('it builds a default models config', () => {
       },
     },
     roles: { conversation: id },
+    selectable: [],
+    limits: {
+      taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+    },
   });
 });
 

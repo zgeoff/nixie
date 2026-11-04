@@ -246,7 +246,7 @@ test("it renders a started task's first turn with the task prompt, a start note,
   const context = await readTurnContext(
     {
       context: ctx.tasks.context,
-      frame: { kind: 'task', startedBy: 'conversation' },
+      frame: { kind: 'task', startedBy: 'conversation', report: 'wake' },
       memorySettings: { ...ctx.memorySettings, ownerName: 'Robin' },
       messaging: {
         directory: [
@@ -290,13 +290,43 @@ test("it renders a started task's first turn with the task prompt, a start note,
   });
 });
 
+test('it tells a task started with no report to send its starter none', async () => {
+  const ctx = await setupTest();
+
+  const context = await readTurnContext(
+    {
+      context: ctx.tasks.context,
+      frame: { kind: 'task', startedBy: 'conversation', report: 'none' },
+      memorySettings: ctx.memorySettings,
+      messaging: { directory: [], hopLimit: 20, ownerName: null },
+      defaultZone: 'UTC',
+    },
+    {
+      taskID: 'k3x9m2p7qa',
+      persona: '',
+      prompts: {},
+      skillCatalog: null,
+      batch: [],
+      previousCore: null,
+      isNewSession: true,
+      isFirstSession: true,
+    },
+  );
+
+  expect(context.preamble).toStrictEqual([
+    expect.stringMatching(
+      /^<system-message type="task-start" [^>]+>\nYour task starts now: do what the brief in your instructions asks\. The task that started you, conversation, asked for no report, so send it none\.\n<\/system-message/u,
+    ),
+  ]);
+});
+
 test("it gives a started task's rebuilt session no start note", async () => {
   const ctx = await setupTest();
 
   const context = await readTurnContext(
     {
       context: ctx.tasks.context,
-      frame: { kind: 'task', startedBy: 'conversation' },
+      frame: { kind: 'task', startedBy: 'conversation', report: 'wake' },
       memorySettings: ctx.memorySettings,
       messaging: { directory: [], hopLimit: 20, ownerName: null },
       defaultZone: 'UTC',

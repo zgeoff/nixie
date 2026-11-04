@@ -50,6 +50,10 @@ test('it uses the secret impd holds under the fixed name of a profile with no cr
         },
       },
       roles: { conversation: 'opus' },
+      selectable: [],
+      limits: {
+        taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+      },
     },
     {},
   );
@@ -85,6 +89,10 @@ test('it refuses the fixed-name secret of a profile with no credential in the se
         },
       },
       roles: { conversation: 'opus' },
+      selectable: [],
+      limits: {
+        taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+      },
     },
     {},
   );

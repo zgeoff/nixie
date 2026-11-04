@@ -5,22 +5,25 @@
 
 nixie reaches every model through a model profile: a named route to one model on one
 Anthropic-compatible endpoint, with its credential and its prices. The profile, the role map, the
-credential reference and the model on each record are built, and
-[model profiles](../../../architecture/core/model-profiles.md) covers them. This design keeps what
-the roles beyond the conversation use, the provider pin, the credential store's part and cost.
+selectable models a started task can run on, the task run limits, the credential reference and the
+model on each record are built, and [model profiles](../../../architecture/core/model-profiles.md)
+covers them. This design keeps what the roles beyond the conversation use, the provider pin, the
+credential store's part and cost.
 
 ## Roles
 
 | Role            | Uses its profile for                                              |
 | --------------- | ----------------------------------------------------------------- |
 | `conversation`  | The conversation's turns                                          |
-| `task`          | Every other task's turns, job runs included                       |
+| `task`          | Every other task's turns, unless its start chose a model          |
 | `worker`        | Each worker run, unless the tool sets a role of its own           |
 | `checker`       | The consent checker and the memory checker, which share one model |
 | `memory-writer` | Batched capture in [memory writes](../memory/writes.md)           |
 
-Each sandbox that runs a model loop gets its role's profile when nixie creates it, and keeps that
-profile for its life. A role change reaches a worker at its next worker run.
+Each sandbox that runs a model loop gets its role's profile when nixie creates it, or the profile of
+the [selectable model](../../../architecture/core/model-profiles.md#selectable-models) that a
+started task chose, and keeps that profile for its life. A role change reaches a worker at its next
+worker run.
 
 ## The provider pin
 

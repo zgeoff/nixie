@@ -76,6 +76,11 @@ jobs:
             web.cache-from=type=gha,scope=web
             web.cache-to=type=gha,mode=max,scope=web
 
+      # the builder keeps a second copy of each layer it loaded into Docker, on the disk that holds
+      # the data volume, and nixie reports unready once that disk is 90% full
+      - name: Free the builder's cache
+        run: docker buildx prune --all --force
+
       - name: Start the preview
         run: docker compose up --wait --wait-timeout 300
 

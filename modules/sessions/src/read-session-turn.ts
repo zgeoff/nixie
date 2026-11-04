@@ -16,7 +16,9 @@ export async function readSessionTurn(
     batch: step.input.inbox.slice(0, inboxBatchLimit),
     previousCore: step.marks.previousCore,
     isNewSession,
-    isFirstSession: step.position.state === 'fresh',
+
+    // A forget can invalidate a task before its first session opens, and the task still starts.
+    isFirstSession: step.marks.sessionKey === null,
   });
 
   return {

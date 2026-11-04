@@ -24,6 +24,23 @@ that names a profile the file does not define.
 The server reads the file once, at start. Every part then runs on one version of the settings, and a
 change reaches nixie at its next start.
 
+## Selectable models
+
+The models section can also name selectable models: the models that a started task can run on in
+place of the `task` role's profile. Each entry has a name, the profile it runs on, a description,
+and an optional `ask: true`. The start tool shows the conversation the names as the choices of its
+`model` option, each with its description, so the model chooses a name and never sees a profile, an
+endpoint or a credential. An entry with `ask: true` stays out of the choices until the decision
+point can ask before such a start
+([GEO-1803](https://linear.app/zgeoff/issue/GEO-1803/nixie-policy-the-full-decision-point-with-destination-limits-known)).
+
+The schema refuses an entry whose profile the file does not define, and an entry whose profile has
+no price table, because a task counts the cost of its turns against its dollar limit
+([started tasks](./started-tasks.md#limits)).
+
+The section's `limits.taskRun` sets the default and the max of a started task's limits, each as a
+count of turns and an amount of dollars. The schema refuses a default above its max.
+
 ## The context cap
 
 A profile's context cap sets the window nixie's compactor measures a session against

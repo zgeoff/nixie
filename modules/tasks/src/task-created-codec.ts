@@ -1,5 +1,6 @@
 import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
+import { taskRunOptionsSchema } from './task-run-options-schema';
 import { taskStateSchema } from './task-state-schema';
 
 export const taskCreatedCodec = defineRecordCodec(
@@ -10,5 +11,6 @@ export const taskCreatedCodec = defineRecordCodec(
     state: taskStateSchema,
     startedBy: z.string().exactOptional(),
     startStep: z.string().exactOptional(),
+    options: taskRunOptionsSchema.exactOptional(),
   }),
 );

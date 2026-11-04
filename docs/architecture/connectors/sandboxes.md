@@ -64,8 +64,8 @@ placeholders and never its credential, so a sandbox record never holds a credent
 
 Each task that the conversation starts runs in a worker sandbox of its own, on the conversation
 image, with the limits of a system task's sandbox. The task's ID is the sandbox's owner. The
-[nixie runner](../core/tasks.md#the-nixie-runner), which runs the steps of started tasks, creates
-the sandbox at the task's first step. Its life follows the task:
+[nixie runner](../core/started-tasks.md#the-nixie-runner), which runs the steps of started tasks,
+creates the sandbox at the task's first step. Its life follows the task:
 
 1. When a step leaves the task waiting, the runner puts the sandbox to sleep, if its adapter can. A
    task that waits for days then holds no host memory. A sleep that fails leaves the sandbox awake,

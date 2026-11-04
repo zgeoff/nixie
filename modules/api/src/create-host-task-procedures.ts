@@ -1,6 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import type { TaskControl } from '@heynixie/tasks';
-import { writeTaskControl } from '@heynixie/tasks';
+import { writeTaskControl, writeTaskLimitRaise } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import { hostImplementer } from './host-implementer';
 import type { APIContext } from './types';
@@ -14,6 +14,31 @@ export function createHostTaskProcedures(context: APIContext) {
     stop: tasks.stop.handler((options) => runHostControl(context, 'stop', options)),
     restart: tasks.restart.handler((options) => runHostControl(context, 'restart', options)),
     interrupt: tasks.interrupt.handler((options) => runHostControl(context, 'interrupt', options)),
+
+    raise: tasks.raise.handler(async (options) => {
+      const { taskID, ...limits } = options.input;
+
+      const outcome = await writeTaskLimitRaise(context, { taskID, limits });
+
+      return match(outcome)
+        .with({ status: 'raised' }, (raised) => ({
+          taskID,
+          state: raised.state,
+          isPauseRequested: raised.isPauseRequested,
+          turns: raised.limits.turns,
+          dollars: raised.limits.dollars,
+        }))
+        .with({ reason: 'unknown_task' }, () => {
+          throw options.errors.TASK_NOT_FOUND();
+        })
+        .with({ reason: 'not_held' }, () => {
+          throw options.errors.TASK_NOT_AT_LIMIT();
+        })
+        .with({ reason: 'not_raised' }, () => {
+          throw options.errors.LIMIT_NOT_RAISED();
+        })
+        .exhaustive();
+    }),
 
     close: tasks.close.handler(async (options) => {
       const outcome = await writeTaskControl(context, {
@@ -60,6 +85,11 @@ function toHostControlled(
     .with({ reason: 'not_allowed' }, (refusal) =>
       errors.TASK_STATE_REFUSED({
         message: `task ${taskID} is ${refusal.isPauseRequested ? 'running with a pause asked' : refusal.state}, which does not take this control`,
+      }),
+    )
+    .with({ reason: 'at_limit' }, () =>
+      errors.TASK_STATE_REFUSED({
+        message: `task ${taskID} reached its limit, and only a raise of the limit resumes it`,
       }),
     )
     .with({ reason: 'conversation_never_closes' }, () => {

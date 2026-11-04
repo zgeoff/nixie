@@ -16,6 +16,11 @@ export type TaskControlRefusal =
   | { readonly reason: 'unknown_task' }
   | { readonly reason: 'conversation_never_closes' }
   | {
+      readonly reason: 'at_limit';
+      readonly state: TaskState;
+      readonly isPauseRequested: boolean;
+    }
+  | {
       readonly reason: 'not_allowed';
       readonly state: TaskState;
       readonly isPauseRequested: boolean;
@@ -27,6 +32,8 @@ export interface TaskControlFacts {
   readonly isPauseRequested: boolean;
   readonly hasUnread: boolean;
   readonly resumeState: ResumeState | null;
+
+  readonly isLimitHeld: boolean;
 }
 
 export type TaskControlPlan =

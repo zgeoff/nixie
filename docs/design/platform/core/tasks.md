@@ -47,7 +47,9 @@ the work around it.
 You control a task with 3 checked actions in the client, each with its own record:
 
 - **Pause** freezes the task once the current step commits. Its proposals keep waiting, its queued
-  actions hold, and no runner claims it. Resume returns it to `ready` or `waiting`.
+  actions hold, and no runner claims it. Resume returns it to `ready` or `waiting`. A started task
+  that its limit paused resumes only when you raise the limit
+  ([limits](../../../architecture/core/started-tasks.md#limits)).
 - **Stop** ends the current task run. nixie aborts a running step, withdraws the task's open
   proposals and cancels its actions that have not started an attempt. An action with a started
   attempt runs to an outcome, which still reaches the record. Restart resumes the task from its last
@@ -122,7 +124,9 @@ The conversation receives the task board in its newest turn, after the stable pa
 the prompt cache holds. It routes with 2 tools: one passes a message to an existing task, and one
 starts a task with a brief. Each call writes a routing record, and the conversation's reply names
 where it sent the message, as [0018](../../../decisions/0018-the-conversation-and-tasks.md)
-requires.
+requires. A start also chooses the task's model, persona, memory, tools, report mode and limits,
+within bounds that code checks, as
+[start options](../../../architecture/core/started-tasks.md#start-options) covers.
 
 Moving a misrouted message is one checked action in the client, which writes a correction record and
 updates both tasks' inboxes in one transaction.

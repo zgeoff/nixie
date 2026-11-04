@@ -258,6 +258,112 @@
           "required": [
             "conversation"
           ]
+        },
+        "selectable": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "profile": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "ask": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "profile",
+              "description"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "limits": {
+          "default": {
+            "taskRun": {
+              "default": {
+                "turns": 25,
+                "dollars": 2
+              },
+              "max": {
+                "turns": 100,
+                "dollars": 10
+              }
+            }
+          },
+          "type": "object",
+          "properties": {
+            "taskRun": {
+              "default": {
+                "default": {
+                  "turns": 25,
+                  "dollars": 2
+                },
+                "max": {
+                  "turns": 100,
+                  "dollars": 10
+                }
+              },
+              "type": "object",
+              "properties": {
+                "default": {
+                  "default": {
+                    "turns": 25,
+                    "dollars": 2
+                  },
+                  "type": "object",
+                  "properties": {
+                    "turns": {
+                      "default": 25,
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "dollars": {
+                      "default": 2,
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "max": {
+                  "default": {
+                    "turns": 100,
+                    "dollars": 10
+                  },
+                  "type": "object",
+                  "properties": {
+                    "turns": {
+                      "default": 100,
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "dollars": {
+                      "default": 10,
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [

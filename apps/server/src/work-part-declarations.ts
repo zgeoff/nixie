@@ -53,7 +53,10 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'nixie_runner',
     needs: ['server_parts', 'add_images'],
-    start: makeRetriedStart('nixie_runner', (parts) => startNixieTaskRunner(parts)),
+    uses: ['memory'],
+    start: makeRetriedStart('nixie_runner', (parts, reader) =>
+      startNixieTaskRunner(parts, () => reader.get('memory')),
+    ),
   },
   {
     name: 'runners',

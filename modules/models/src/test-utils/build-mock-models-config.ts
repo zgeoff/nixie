@@ -5,6 +5,7 @@ import { buildMockModelProfile } from './build-mock-model-profile';
 interface ModelsConfigOverrides {
   readonly profiles?: Readonly<Record<string, Partial<ModelProfile>>>;
   readonly roles?: Partial<ModelsConfig['roles']>;
+  readonly selectable?: ModelsConfig['selectable'];
 }
 
 export function buildMockModelsConfig(overrides: ModelsConfigOverrides = {}): ModelsConfig {
@@ -21,5 +22,12 @@ export function buildMockModelsConfig(overrides: ModelsConfigOverrides = {}): Mo
 
   const [first = ''] = Object.keys(profiles);
 
-  return { profiles, roles: { conversation: first, ...overrides.roles } };
+  return {
+    profiles,
+    roles: { conversation: first, ...overrides.roles },
+    selectable: overrides.selectable ?? [],
+    limits: {
+      taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+    },
+  };
 }

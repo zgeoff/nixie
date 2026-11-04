@@ -1,5 +1,6 @@
 export { buildTimeTool } from './build-time-tool';
 export { buildWebFetchTool } from './build-web-fetch-tool';
+export { readLinkTarget } from './read-link-target';
 export { readMessageTimeZone } from './read-message-time-zone';
 export { removeThreadLinks } from './remove-thread-links';
 export type { FetchSandbox, FetchSandboxOptions } from './start-fetch-sandbox';

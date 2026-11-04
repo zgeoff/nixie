@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { getCLIContextWindow } from './get-cli-context-window';
 import { modelPricesSchema } from './model-prices-schema';
-import type { ModelProfile, ModelsConfig } from './types';
+import type { ModelProfile, ModelsConfig, SelectableModel } from './types';
 
 const profileIDSchema = z
   .string()
@@ -50,8 +50,45 @@ const rolesSchema = z.strictObject({
   'memory-consolidator': profileIDSchema.optional(),
 });
 
+const selectableSchema = z.strictObject({
+  profile: profileIDSchema,
+  description: z.string().trim().min(1).max(200),
+  ask: z.boolean().optional(),
+});
+
+const turnsSchema = z.int().positive();
+const dollarsSchema = z.number().positive();
+
+const taskRunSchema = z
+  .strictObject({
+    default: z
+      .strictObject({ turns: turnsSchema.default(25), dollars: dollarsSchema.default(2) })
+      .default({ turns: 25, dollars: 2 }),
+    max: z
+      .strictObject({ turns: turnsSchema.default(100), dollars: dollarsSchema.default(10) })
+      .default({ turns: 100, dollars: 10 }),
+  })
+  .superRefine((limits, issues) => {
+    for (const key of ['turns', 'dollars'] as const) {
+      if (limits.default[key] > limits.max[key]) {
+        issues.addIssue({
+          code: 'custom',
+          path: ['default', key],
+          message: `the default task run limit of ${String(limits.default[key])} ${key} is above its max of ${String(limits.max[key])}`,
+        });
+      }
+    }
+  });
+
+const limitsSchema = z.strictObject({ taskRun: taskRunSchema.default(taskRunSchema.parse({})) });
+
 export const modelsConfigSchema = z
-  .strictObject({ profiles: z.record(profileIDSchema, profileSchema), roles: rolesSchema })
+  .strictObject({
+    profiles: z.record(profileIDSchema, profileSchema),
+    roles: rolesSchema,
+    selectable: z.record(profileIDSchema, selectableSchema).default({}),
+    limits: limitsSchema.default(limitsSchema.parse({})),
+  })
   .superRefine((config, issues) => {
     if (config.roles.conversation === undefined) {
       issues.addIssue({
@@ -70,6 +107,26 @@ export const modelsConfigSchema = z
         });
       }
     }
+
+    // A task on a selectable model counts its cost against its dollar limit, so its profile needs
+    // a price table.
+    for (const [name, entry] of Object.entries(config.selectable)) {
+      const profile = config.profiles[entry.profile];
+
+      if (profile === undefined) {
+        issues.addIssue({
+          code: 'custom',
+          path: ['selectable', name, 'profile'],
+          message: `the selectable model ${name} names the profile ${entry.profile}, which is not defined`,
+        });
+      } else if (profile.prices === undefined) {
+        issues.addIssue({
+          code: 'custom',
+          path: ['selectable', name, 'profile'],
+          message: `the selectable model ${name} names the profile ${entry.profile}, which sets no prices`,
+        });
+      }
+    }
   })
   .transform((config): ModelsConfig => ({
     profiles: Object.fromEntries(
@@ -81,6 +138,13 @@ export const modelsConfigSchema = z
       ),
       conversation: config.roles.conversation ?? '',
     },
+    selectable: Object.entries(config.selectable).map(([name, entry]): SelectableModel => ({
+      name,
+      profile: entry.profile,
+      description: entry.description,
+      isAsked: entry.ask ?? false,
+    })),
+    limits: config.limits,
   }));
 
 function toProfile(id: string, input: z.infer<typeof profileSchema>): ModelProfile {

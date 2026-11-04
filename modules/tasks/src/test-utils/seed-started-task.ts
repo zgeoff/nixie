@@ -1,12 +1,14 @@
 import invariant from 'tiny-invariant';
 import { buildStepRunID } from '../build-step-run-id';
-import type { StartedClaim, TasksContext } from '../types';
+import { startedTaskDefaultTools } from '../started-task-default-tools';
+import type { StartedClaim, TaskRunOptions, TasksContext } from '../types';
 import { writeTaskStart } from '../write-task-start';
 
 export interface StartedTaskSeed {
   readonly starter: StartedClaim;
   readonly name: string;
   readonly brief: string;
+  readonly options?: Partial<TaskRunOptions>;
 }
 
 export async function seedStartedTask(
@@ -17,6 +19,16 @@ export async function seedStartedTask(
     from: seed.starter.lease.workID,
     name: seed.name,
     brief: seed.brief,
+    options: {
+      model: null,
+      profile: null,
+      persona: 'none',
+      memory: 'none',
+      tools: startedTaskDefaultTools,
+      report: 'wake',
+      limits: { turns: 25, dollars: 2 },
+      ...seed.options,
+    },
     stepRunID: buildStepRunID(seed.starter),
   });
 
