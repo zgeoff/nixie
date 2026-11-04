@@ -41,8 +41,10 @@ const threadResult = z.object({ thread: z.object({ id: z.string() }) });
 const turnResult = z.object({ turn: z.object({ id: z.string() }) });
 const turnStarted = z.object({ threadId: z.string(), turn: z.object({ id: z.string() }) });
 const turnCompleted = z.object({
-  turn: z.object({ id: z.string(), status: z.string() }),
+  turn: z.object({ id: z.string(), status: z.string(), error: z.unknown() }),
 });
+
+type TurnStatus = 'completed' | 'interrupted';
 const itemEvent = z.object({
   turnId: z.string(),
   item: z.object({ type: z.string(), id: z.string(), text: z.string().optional() }),
@@ -237,7 +239,13 @@ async function runFirstProcess(
   );
   const threadId = started.thread.id;
   const ask = (step: string, text: string, extra: object = {}): Promise<TurnRecord> =>
-    runTurn(server, proxy, { step, threadId, input: [buildText(text)], extra });
+    runTurn(server, proxy, {
+      step,
+      threadId,
+      input: [buildText(text)],
+      extra,
+      expectedStatus: 'completed',
+    });
 
   turns.push(
     await ask(
@@ -261,6 +269,7 @@ async function runFirstProcess(
       threadId,
       input: [buildText('Find the note on slow and tell me what it says.')],
       extra: {},
+      expectedStatus: 'completed',
       onToolCall: async (turnId) => {
         await server.request('turn/steer', {
           threadId,
@@ -276,6 +285,7 @@ async function runFirstProcess(
       threadId,
       input: [buildText('Find the note on slow and tell me what it says.')],
       extra: {},
+      expectedStatus: 'interrupted',
       onToolCall: async (turnId) => {
         await server.request('turn/interrupt', { threadId, turnId });
       },
@@ -293,6 +303,7 @@ async function runFirstProcess(
         { type: 'localImage', path: imagePath },
       ],
       extra: {},
+      expectedStatus: 'completed',
     }),
   );
   turns.push(await runCompaction(server, proxy, threadId));
@@ -322,10 +333,11 @@ async function runCompaction(
     turnId: started.turn.id,
     logStart,
     proxyStart,
+    expectedStatus: 'completed',
   });
 
-  if (compaction.status !== 'completed' || !compaction.itemTypes.includes('contextCompaction')) {
-    throw new Error(`the compaction turn ended ${compaction.status}`);
+  if (!compaction.itemTypes.includes('contextCompaction')) {
+    throw new Error('the compaction turn completed with no contextCompaction item');
   }
   return compaction;
 }
@@ -348,6 +360,7 @@ async function runSecondProcess(
       threadId: first.threadId,
       input: [buildText('Which topics did you look up notes on before? Name only the topics.')],
       extra: {},
+      expectedStatus: 'completed',
     }),
   );
   const forked = threadResult.parse(
@@ -368,6 +381,7 @@ async function runSecondProcess(
         ),
       ],
       extra: {},
+      expectedStatus: 'completed',
     }),
   );
 }
@@ -392,6 +406,7 @@ async function runWebsocketCheck(
       threadId: started.thread.id,
       input: [buildText('Say hello in two words.')],
       extra: {},
+      expectedStatus: 'completed',
     }),
   );
 }
@@ -401,6 +416,7 @@ interface TurnPlan {
   readonly threadId: string;
   readonly input: readonly object[];
   readonly extra: object;
+  readonly expectedStatus: TurnStatus;
 
   // runs once the turn's first MCP tool call starts
   readonly onToolCall?: (turnId: string) => Promise<void>;
@@ -438,6 +454,7 @@ async function runTurn(
     turnId,
     logStart,
     proxyStart,
+    expectedStatus: plan.expectedStatus,
   });
 }
 
@@ -447,6 +464,7 @@ interface StartedTurn {
   readonly turnId: string;
   readonly logStart: number;
   readonly proxyStart: number;
+  readonly expectedStatus: TurnStatus;
 }
 
 // Waits for a started turn to end, and gathers what the server and the proxy saw of it.
@@ -462,6 +480,8 @@ async function readTurnRecord(
   });
   const done = turnCompleted.parse(completed.params);
 
+  console.log(`${step}: ${done.turn.status}`);
+  assertTurnStatus(step, started.expectedStatus, done.turn);
   await proxy.waitForCounts();
   const events = server.log.slice(logStart).flatMap((entry) => {
     const parsed = z.object({ method: z.string(), params: z.unknown() }).safeParse(entry);
@@ -473,7 +493,6 @@ async function readTurnRecord(
     return event.method === 'item/completed' && parsed.success ? [parsed.data.item] : [];
   });
 
-  console.log(`${step}: ${done.turn.status}`);
   return {
     step,
     threadId,
@@ -489,6 +508,18 @@ async function readTurnRecord(
     rawResponseEvents: events.filter((event) => event.method === 'rawResponse/completed').length,
     proxyCalls: proxy.calls.length - proxyStart,
   };
+}
+
+function assertTurnStatus(
+  step: string,
+  expected: TurnStatus,
+  turn: { readonly status: string; readonly error: unknown },
+): void {
+  if (turn.status !== expected) {
+    throw new Error(
+      `${step} ended ${turn.status}, not ${expected}: ${JSON.stringify(turn.error)}`,
+    );
+  }
 }
 
 function buildText(text: string): object {
