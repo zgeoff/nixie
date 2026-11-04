@@ -16,7 +16,7 @@ export interface AppServer {
   readonly waitFor: (
     method: string,
     since: number,
-    test?: (params: unknown) => boolean,
+    test: (params: unknown) => boolean,
   ) => Promise<Notification>;
   readonly stop: () => Promise<void>;
 }
@@ -112,7 +112,7 @@ export function startAppServer(env: Record<string, string>, cwd: string): AppSer
     notify: (method) => {
       send({ method });
     },
-    waitFor: async (method, since, test = () => true) => {
+    waitFor: async (method, since, test) => {
       const earlier = notifications.find(
         (entry) =>
           entry.position >= since &&
