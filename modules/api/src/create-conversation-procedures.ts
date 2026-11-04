@@ -6,6 +6,7 @@ import { readOwnerImages } from './read-owner-images';
 import { readThreadPage } from './read-thread-page';
 import { requireCaller } from './require-caller';
 import type { APIContext } from './types';
+import { writeConversationRetry } from './write-conversation-retry';
 import { writeMessageMove } from './write-message-move';
 import { writeOwnerMessage } from './write-owner-message';
 import { writeRecordForget } from './write-record-forget';
@@ -46,6 +47,26 @@ export function createConversationProcedures(context: APIContext) {
       }
 
       return { forgottenAt: new Date(result.forgottenAt) };
+    }),
+
+    retry: apiImplementer.conversation.retry.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      const result = await writeConversationRetry(context, caller, options.input);
+
+      if (result.status !== 'retried') {
+        throw {
+          nothing_to_retry: options.errors.NOTHING_TO_RETRY,
+          reused: options.errors.CLIENT_ACTION_ID_REUSED,
+          unauthorized: options.errors.UNAUTHORIZED,
+        }[result.status]();
+      }
+
+      return { retriedAt: new Date(result.retriedAt) };
     }),
 
     move: createMoveProcedure(context),

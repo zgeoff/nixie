@@ -219,6 +219,34 @@ test('it carries the errors in a row, the error limit and the retry time of a fa
   });
 });
 
+test('it carries the reason of a failed step that waits for a retry, and no retry time', () => {
+  const record = buildMockLogRecord({
+    sequence: 15,
+    recordedAt: new Date('2026-10-10T12:00:04Z'),
+    kind: 'task.step_errored',
+    thread: 'conversation',
+    payload: {
+      taskID: 'conversation',
+      stepKey: 'conversation:5',
+      nextState: 'waiting',
+      errors: 1,
+      errorLimit: 3,
+      reason: 'model_api.quota',
+      claimableAt: Date.parse('2026-10-10T12:00:04Z'),
+    },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(toContractRecord(record)?.task).toStrictEqual({
+    errorLimit: 3,
+    errors: 1,
+    isWaitingForRetry: true,
+    reason: 'model_api.quota',
+    stepKey: 'conversation:5',
+    taskID: 'conversation',
+  });
+});
+
 test('it keeps a failed step whose error is forgotten with its task and step', () => {
   const record = buildMockLogRecord({
     sequence: 12,
