@@ -64,3 +64,36 @@ test('it uses the secret impd holds under the fixed name of a profile with no cr
 
   expect(secrets.map((secret) => secret.name)).toStrictEqual(['nixie-model-528d8dae09a6d4f1e0e']);
 });
+
+test('it refuses the fixed-name secret of a profile with no credential in the secrets file when impd lacks it', async () => {
+  const ctx = await setupTest();
+
+  const resolved = resolveModelCredentials(
+    {
+      profiles: {
+        opus: {
+          id: 'opus',
+          baseURL: 'https://api.anthropic.com',
+          credential: 'deployment:anthropic',
+          authHeader: 'bearer',
+          model: 'claude-opus-5-5',
+          effort: 'high',
+          providerPin: null,
+          contextTokens: null,
+          cacheTTL: '5m',
+          prices: null,
+        },
+      },
+      roles: { conversation: 'opus' },
+    },
+    {},
+  );
+
+  const opus = resolved['opus'];
+
+  invariant(opus);
+
+  expect(ctx.adapter.addSecret(deriveModelSecret(opus))).rejects.toThrow(
+    'impd holds no secret nixie-model-528d8dae09a6d4f1e0e, and nixie holds no credential to add it under that name',
+  );
+});

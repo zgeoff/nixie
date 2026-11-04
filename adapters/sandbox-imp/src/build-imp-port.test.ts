@@ -1,14 +1,9 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import {
-  buildMockGrantSpec,
-  buildMockSandboxSpec,
-  setupTestRecorder,
-} from '@heynixie/sandbox/test-utils';
+import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { TEST_TOKEN, startTestImpd } from '@impz/testing';
 import invariant from 'tiny-invariant';
 import { buildImpPort } from './build-imp-port';
-import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
 import { attachTestGuests } from './test-utils/attach-test-guests';
 import { setupIsolationAdapter } from './test-utils/setup-isolation-adapter';
 import { startStubImpd } from './test-utils/start-stub-impd';
@@ -635,30 +630,4 @@ test('it adds a secret as the custom kind with no field beyond its name, value a
       },
     },
   ]);
-});
-
-test('it refuses a secret a real impd lacks when nixie holds no value for it', async () => {
-  const impd = await startTestImpd();
-
-  onTestFinished(impd.stop);
-
-  const recorder = await setupTestRecorder();
-
-  const adapter = buildImpSandboxAdapter({
-    port: buildImpPort({ url: impd.url, token: TEST_TOKEN }),
-    recorder: recorder.recorder,
-    config: { publicEgress: null },
-    toolTarget: () => ({ path: '/nonexistent/tools.sock' }),
-  });
-
-  const added = adapter.addSecret({
-    name: 'nixie-model-missing',
-    value: null,
-    host: 'api.anthropic.com',
-    header: 'bearer',
-  });
-
-  expect(added).rejects.toThrow(
-    'impd holds no secret nixie-model-missing, and nixie holds no credential to add it under that name',
-  );
 });
