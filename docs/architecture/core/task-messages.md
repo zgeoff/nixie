@@ -6,17 +6,17 @@ schedule, its sender sent it with no wake, or the hop limit held it back. A ques
 can open a message wait, in which the sender waits on the receiver until a reply answers it. The
 tasks module owns the message tool, the list tool, the hop count and the waits.
 
-[Tasks](./tasks.md) covers the inbox, steps and started tasks.
-[Conversation turns](./conversation-turns.md) covers the block that shows a task message to the
-model, and [memory writes](../memory/writes.md) covers why the content gate never takes its body as
-the user's words.
+[Tasks](./tasks.md) covers the inbox and steps, and [started tasks](./started-tasks.md) covers the
+tasks that the conversation starts. [Conversation turns](./conversation-turns.md) covers the block
+that shows a task message to the model, and [memory writes](../memory/writes.md) covers why the
+content gate never takes its body as the user's words.
 
 ## Sending a message
 
 The list tool shows a task the directory: each task it can message, with its brief and whether a
 message wakes it. The server builds the directory's built-in tasks from the deployment config, and
-each tool call and each conversation step adds the [started tasks](./tasks.md#started-tasks) from
-the log, so a task the conversation started a moment ago takes messages at once.
+each tool call and each conversation step adds the [started tasks](./started-tasks.md) from the log,
+so a task the conversation started a moment ago takes messages at once.
 
 The conversation wakes for a message. The [memory writer](../memory/writer.md) and the
 [consolidator](../memory/consolidation.md) run on their own schedule, so a message to either waits

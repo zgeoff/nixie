@@ -170,3 +170,9 @@ The task host commands pause, resume, stop, restart, close or interrupt one task
 the same transition table as the [API](../channels/api.md#controlling-a-task), and print the task's
 state after the control. A control the task's state refuses changes nothing and fails the command
 with the state it met, as does a close of the conversation.
+
+The `task-raise` command raises the limit of a started task that its
+[limit](../core/started-tasks.md#limits) paused, and resumes the task. It takes the task ID and
+`--turns`, `--dollars` or both, such as `nixie task-raise k3x9m2p7qa --turns 40`, and prints the
+task's state and its new limits. It fails, and changes nothing, for a task that no limit holds and
+for a value that raises nothing.

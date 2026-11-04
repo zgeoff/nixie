@@ -48,6 +48,8 @@ below, and planned work lives in Linear.
   the database, and forgetting by destroying a key
 - [Tasks](architecture/core/tasks.md) — task states, the inbox and its read cursor, steps and their
   commit, and durable timers
+- [Started tasks](architecture/core/started-tasks.md) — the start and its options, the nixie runner,
+  limits and their raise, routing records and moved messages
 - [Task messages](architecture/core/task-messages.md) — messages between tasks, the hop limit and
   message waits
 - [Leases and recovery](architecture/core/leases-and-recovery.md) — the one claim path, lease
