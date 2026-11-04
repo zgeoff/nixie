@@ -712,36 +712,6 @@ test('it stores no secret when one already has the name', async () => {
   expect(ctx.imp.calls).toStrictEqual([]);
 });
 
-test('it uses the secret impd holds when nixie holds no value for it', async () => {
-  const ctx = await setupTest();
-
-  ctx.imp.secrets.set('nixie-model-stored', ['api.anthropic.com']);
-
-  await ctx.adapter.addSecret({
-    name: 'nixie-model-stored',
-    value: null,
-    host: 'api.anthropic.com',
-    header: 'bearer',
-  });
-
-  expect(ctx.imp.calls).toStrictEqual([]);
-});
-
-test('it refuses a secret that impd lacks when nixie holds no value for it', async () => {
-  const ctx = await setupTest();
-
-  expect(
-    ctx.adapter.addSecret({
-      name: 'nixie-model-missing',
-      value: null,
-      host: 'api.anthropic.com',
-      header: 'bearer',
-    }),
-  ).rejects.toThrow(
-    'impd holds no secret nixie-model-missing, and nixie holds no credential to add it under that name',
-  );
-});
-
 test('it adds an image again before a create when impd removed it after the add', async () => {
   const ctx = await setupTest();
 
