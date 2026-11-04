@@ -12,6 +12,7 @@ import { match } from 'ts-pattern';
 import type { ContractClient, ContractOutputs } from '../../libs/contract/src/index.ts';
 import { createSpikeClient } from './create-spike-client.ts';
 import { isStepEnded } from './is-step-ended.ts';
+import { isTaskStepEnded } from './is-task-step-ended.ts';
 import { pickTaskFollowUp } from './pick-task-follow-up.ts';
 
 export interface SpikeTarget {
@@ -72,7 +73,9 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
   const plain = await deps.client.conversation.send(
     buildTypedMessage('What is two plus two? Answer in one short sentence.'),
   );
-  const plainPage = await waitForStepEnd(deps, 'conversation', plain.sequence, 'the plain turn');
+  const plainPage = await waitForStepEnd(deps, 'conversation', 'the plain turn', (page) =>
+    isStepEnded(page, plain.sequence),
+  );
   await deps.writeOutput('plain.jsonl', formatRecords(plainPage, plain.sequence));
   await writeCount('count-1.json', 'after the plain turn');
 
@@ -82,11 +85,8 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
       "Start a task named 'tide note' whose brief is: write one sentence on why the sea has tides. Then tell me you started it.",
     ),
   );
-  const taskTurnPage = await waitForStepEnd(
-    deps,
-    'conversation',
-    taskTurn.sequence,
-    'the task turn',
+  const taskTurnPage = await waitForStepEnd(deps, 'conversation', 'the task turn', (page) =>
+    isStepEnded(page, taskTurn.sequence),
   );
   await deps.writeOutput('task.jsonl', formatRecords(taskTurnPage, taskTurn.sequence));
 
@@ -96,7 +96,7 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
       deps.log('== the conversation started no task; task.jsonl holds its turn');
     })
     .with({ kind: 'wait-for-task' }, async ({ taskID }) => {
-      const taskPage = await waitForStepEnd(deps, taskID, 0, "the task's step");
+      const taskPage = await waitForStepEnd(deps, taskID, "the task's step", isTaskStepEnded);
       await deps.writeOutput('task-thread.jsonl', formatRecords(taskPage, 0));
     })
     .exhaustive();
@@ -140,13 +140,13 @@ type ThreadPage = ContractOutputs['conversation']['read'];
 async function waitForStepEnd(
   deps: SpikeDeps,
   thread: string,
-  afterSequence: number,
   label: string,
+  isEnded: (page: ThreadPage) => boolean,
 ): Promise<ThreadPage> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const page = await deps.client.conversation.read({ thread, limit: 200 });
 
-    if (isStepEnded(page, afterSequence)) {
+    if (isEnded(page)) {
       return page;
     }
 
