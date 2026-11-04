@@ -3,11 +3,7 @@ import { runSpike } from './run-spike.ts';
 
 // stand-ins for the preview's API, the host and the scratch directory: the API answers every
 // thread with a step that replied and committed, and the turn starts no task
-function setupTest(probes: {
-  readonly exitCode: number;
-  readonly output: string;
-  readonly errors: string;
-}) {
+function setupTest() {
   const outputs = new Map<string, string>();
 
   return {
@@ -41,7 +37,6 @@ function setupTest(probes: {
       },
       host: async () => '{"dollars":0,"tokens":0}\n',
       readTurnUsage: async () => '{"thread":"all","turns":0,"tokens":0}\n',
-      runGuestProbes: async () => probes,
       writeOutput: async (file: string, text: string) => {
         outputs.set(file, text);
       },
@@ -52,17 +47,25 @@ function setupTest(probes: {
 }
 
 test('it fails with the guest probes\' stderr when they exit 1', () => {
-  const ctx = setupTest({ exitCode: 1, output: '', errors: 'sh: curl: not found\n' });
+  const ctx = setupTest();
 
-  expect(runSpike(ctx.target, ctx.deps)).rejects.toThrow(
+  expect(
+    runSpike(ctx.target, {
+      ...ctx.deps,
+      runGuestProbes: async () => ({ exitCode: 1, output: '', errors: 'sh: curl: not found\n' }),
+    }),
+  ).rejects.toThrow(
     'the guest probes exited 1: sh: curl: not found',
   );
 });
 
 test('it writes the output of each step when the guest probes pass', async () => {
-  const ctx = setupTest({ exitCode: 0, output: 'own-route\t429\t{}\n', errors: '' });
+  const ctx = setupTest();
 
-  await runSpike(ctx.target, ctx.deps);
+  await runSpike(ctx.target, {
+    ...ctx.deps,
+    runGuestProbes: async () => ({ exitCode: 0, output: 'own-route\t429\t{}\n', errors: '' }),
+  });
 
   expect([...ctx.outputs.keys()]).toStrictEqual([
     'route.txt',
