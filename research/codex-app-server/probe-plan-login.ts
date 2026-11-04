@@ -69,7 +69,7 @@ interface CaseResult {
 
   // the params of each `account/chatgptAuthTokens/refresh` request Codex sent the client
   readonly refreshServerRequests: readonly unknown[];
-  readonly authFileChanged: boolean | null;
+  readonly authFileChanged: boolean;
   readonly otherPaths: readonly string[];
 }
 
@@ -241,29 +241,54 @@ async function runCase(
     }
     const account = await server.request('account/read', {});
     const turn = await runPlainTurn(server, workDir);
-    const authAfter = readFileOrNull(authPath);
-    const otherPaths = mock.requests
-      .filter((request) => !request.path.endsWith('/responses') && request.path !== '/oauth/token')
-      .map((request) => `${request.status} ${request.path}`);
 
-    return {
+    return buildCaseResult({
       name: probeCase.name,
       account,
       turn,
-      modelBearers: mock.requests
-        .filter((request) => request.path.endsWith('/responses'))
-        .map((request) => `${request.status} ${readJWTTag(request.authorization)}`),
-      refreshGrants: mock.requests
-        .filter((request) => request.path === '/oauth/token')
-        .map((request) => request.grantType),
+      requests: mock.requests,
       refreshServerRequests,
-      authFileChanged: authBefore === null ? authAfter !== null : authAfter !== authBefore,
-      otherPaths: [...new Set(otherPaths)].toSorted(),
-    };
+      authBefore,
+      authAfter: readFileOrNull(authPath),
+    });
   } finally {
     await server?.stop();
     await mock.stop();
   }
+}
+
+interface CaseObservations {
+  readonly name: string;
+  readonly account: unknown;
+  readonly turn: TurnOutcome;
+  readonly requests: readonly MockRequest[];
+  readonly refreshServerRequests: readonly unknown[];
+
+  // the auth.json text before and after the case, or null where no file existed
+  readonly authBefore: string | null;
+  readonly authAfter: string | null;
+}
+
+function buildCaseResult(observed: CaseObservations): CaseResult {
+  const { requests, authBefore, authAfter } = observed;
+  const otherPaths = requests
+    .filter((request) => !request.path.endsWith('/responses') && request.path !== '/oauth/token')
+    .map((request) => `${request.status} ${request.path}`);
+
+  return {
+    name: observed.name,
+    account: observed.account,
+    turn: observed.turn,
+    modelBearers: requests
+      .filter((request) => request.path.endsWith('/responses'))
+      .map((request) => `${request.status} ${parseJWTTag(request.authorization)}`),
+    refreshGrants: requests
+      .filter((request) => request.path === '/oauth/token')
+      .map((request) => request.grantType),
+    refreshServerRequests: observed.refreshServerRequests,
+    authFileChanged: authBefore === null ? authAfter !== null : authAfter !== authBefore,
+    otherPaths: [...new Set(otherPaths)].toSorted(),
+  };
 }
 
 // A placeholder auth.json in the CLI's own format, with a refresh token the mock never honours.
@@ -290,7 +315,7 @@ function buildJWT(claims: object, expiryMs: number): string {
   return `${encode({ alg: 'none', typ: 'JWT' })}.${encode(payload)}.placeholder`;
 }
 
-function readJWTTag(authorization: string | null): string {
+function parseJWTTag(authorization: string | null): string {
   const payload = authorization?.replace(/^Bearer /u, '').split('.')[1] ?? '';
   const claims = z
     .object({ tag: z.string().optional() })
