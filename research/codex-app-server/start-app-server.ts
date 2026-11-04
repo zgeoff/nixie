@@ -106,8 +106,10 @@ export function startAppServer(env: Record<string, string>, cwd: string): AppSer
 
       nextID += 1;
       pending.set(id, call);
-      send({ id, method, params });
-      return withDeadline(call.promise, `${method} response`);
+      return withDeadline(`${method} response`, async () => {
+        send({ id, method, params });
+        return call.promise;
+      });
     },
     notify: (method) => {
       send({ method });
@@ -126,8 +128,10 @@ export function startAppServer(env: Record<string, string>, cwd: string): AppSer
       const found = Promise.withResolvers<Notification>();
       const waiter = { method, test, resolve: found.resolve };
 
-      waiters.add(waiter);
-      return withDeadline(found.promise, method).finally(() => {
+      return withDeadline(method, async () => {
+        waiters.add(waiter);
+        return found.promise;
+      }).finally(() => {
         waiters.delete(waiter);
       });
     },
@@ -158,13 +162,13 @@ async function readLines(
   }
 }
 
-async function withDeadline<T>(promise: Promise<T>, label: string): Promise<T> {
+async function withDeadline<T>(label: string, start: () => Promise<T>): Promise<T> {
   const deadline = Promise.withResolvers<never>();
   const timer = setTimeout(() => {
     deadline.reject(new Error(`no ${label} within ${waitMs} ms`));
   }, waitMs);
 
-  return Promise.race([promise, deadline.promise]).finally(() => {
+  return Promise.race([start(), deadline.promise]).finally(() => {
     clearTimeout(timer);
   });
 }
