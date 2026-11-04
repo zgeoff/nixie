@@ -531,10 +531,10 @@ test('it runs the brief of a task that reads memory when a forget comes before i
   await runner.cleanupSessions({ itemID: 'item-bees' });
   await ctx.runNextStep(runner);
 
-  const invalidated = await ctx.readKinds('model.session_invalidated');
+  const [turn] = ctx.guest.turns;
+  const input = turn?.input.map((message) => message.text).join('\n') ?? '';
 
-  expect(invalidated).toStrictEqual([]);
-  expect(ctx.guest.turns).toHaveLength(1);
+  expect(input).toInclude('Your task starts now');
 });
 
 test('it purges the guest of a task that reads memory when a forget aborts its first turn', async () => {

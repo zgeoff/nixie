@@ -43,8 +43,6 @@ import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
-import { planTaskSessionCleanup } from './plan-task-session-cleanup';
-import { readSessionMarks } from './read-session-marks';
 import { readTaskUsage } from './read-task-usage';
 import { runConversationStep } from './run-conversation-step';
 import { runGuestPurge } from './run-guest-purge';
@@ -492,8 +490,8 @@ async function runTaskSessionCleanup(
   }
 }
 
-// The guard has ended every turn of the task before this runs, so a first turn that the cleanup
-// aborted has left its transcript in the guest and no opening on the thread.
+// The invalidation goes in even before the task's first session opens, because a step that ended
+// before the forget can still commit that session after the cleanup returns.
 async function cleanTaskSession(
   runner: TaskRunner,
   taskID: string,
@@ -501,42 +499,32 @@ async function cleanTaskSession(
 ): Promise<void> {
   const context = runner.options.context;
 
-  const marks = await readSessionMarks(context, taskID);
-  const sandboxes = await runner.options.sandboxes.list(taskID);
-
-  const plan = planTaskSessionCleanup({
-    isOpened: marks.sessionKey !== null,
-    hasSandbox: sandboxes.length > 0,
-  });
-
-  if (plan.isInvalidated) {
-    await writeRecords(context.log, [
-      {
-        kind: modelSessionInvalidatedCodec.kind,
-        definitions: context.definitions(),
-        thread: taskID,
-        payload: modelSessionInvalidatedCodec.encode(cause),
-      },
-    ]);
-  }
+  await writeRecords(context.log, [
+    {
+      kind: modelSessionInvalidatedCodec.kind,
+      definitions: context.definitions(),
+      thread: taskID,
+      payload: modelSessionInvalidatedCodec.encode(cause),
+    },
+  ]);
 
   await removeSummaryKeys(context.log, taskID);
   await removeThreadLinks(context.log, taskID);
 
-  if (plan.isPurged) {
+  const sandboxes = await runner.options.sandboxes.list(taskID);
+
+  if (sandboxes.length > 0) {
     await runTaskGuestPurge(runner, taskID);
   }
 
-  if (plan.isInvalidated) {
-    await writeRecords(context.log, [
-      {
-        kind: modelSessionCleanupCompletedCodec.kind,
-        definitions: context.definitions(),
-        thread: taskID,
-        payload: modelSessionCleanupCompletedCodec.encode(cause),
-      },
-    ]);
-  }
+  await writeRecords(context.log, [
+    {
+      kind: modelSessionCleanupCompletedCodec.kind,
+      definitions: context.definitions(),
+      thread: taskID,
+      payload: modelSessionCleanupCompletedCodec.encode(cause),
+    },
+  ]);
 }
 
 async function runTaskGuestPurge(runner: TaskRunner, taskID: string): Promise<void> {

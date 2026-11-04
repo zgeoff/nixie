@@ -4,10 +4,11 @@ import { canSessionTake } from './can-session-take';
 import { isSessionLive } from './is-session-live';
 import { parseSessionBoundary } from './parse-session-boundary';
 import { pickSessionPosition } from './pick-session-position';
+import type { SessionMarks } from './read-session-marks';
 import { readSessionMarks } from './read-session-marks';
 import { runCompactionStep } from './run-compaction-step';
 import { runInboxStep } from './run-inbox-step';
-import type { ConversationRun, SessionFrame, SessionPosition } from './types';
+import type { ConversationRun, SessionFrame } from './types';
 
 export function runConversationStep(
   conversation: ConversationRun,
@@ -40,7 +41,7 @@ export function runConversationStep(
       return runCompactionStep(step, position.boundary);
     }
 
-    if (input.inbox.length === 0 && !isTaskStart(run.frame, position)) {
+    if (input.inbox.length === 0 && !isTaskStart(run.frame, marks)) {
       return {
         next: 'wait',
         records: [],
@@ -53,7 +54,8 @@ export function runConversationStep(
   });
 }
 
-// A started task's brief is its first piece of work, and it arrives in no inbox record.
-function isTaskStart(frame: SessionFrame, position: SessionPosition): boolean {
-  return frame.kind === 'task' && position.state === 'fresh';
+// A started task's brief is its first piece of work, and it arrives in no inbox record. A forget can
+// invalidate the task before its first session opens, so the test is the opening and not the state.
+function isTaskStart(frame: SessionFrame, marks: SessionMarks): boolean {
+  return frame.kind === 'task' && marks.sessionKey === null;
 }
