@@ -140,6 +140,28 @@ test('it refuses a forget without its client action ID', () => {
   ).toPartiallyContain({ path: ['clientActionID'] });
 });
 
+test('it declares a missing device session, a reused action ID and nothing to retry for a retry', () => {
+  expect(contract.conversation.retry['~orpc'].errorMap).toContainAllKeys([
+    'UNAUTHORIZED',
+    'CLIENT_ACTION_ID_REUSED',
+    'NOTHING_TO_RETRY',
+  ]);
+});
+
+test.each([
+  ['UNAUTHORIZED', 401],
+  ['CLIENT_ACTION_ID_REUSED', 409],
+  ['NOTHING_TO_RETRY', 409],
+] as const)('it answers %s with %i on a retry', (code, status) => {
+  expect(contract.conversation.retry['~orpc'].errorMap[code]?.status).toBe(status);
+});
+
+test('it refuses a retry without its client action ID', () => {
+  expect(
+    contract.conversation.retry['~orpc'].inputSchema?.safeParse({}).error?.issues,
+  ).toPartiallyContain({ path: ['clientActionID'] });
+});
+
 test('it declares a missing device session and an unknown thread for a read', () => {
   expect(contract.conversation.read['~orpc'].errorMap).toContainAllKeys([
     'UNAUTHORIZED',
