@@ -735,21 +735,62 @@ test('#conversation.retry answers a repeat of the same action with its first ans
   expect(repeat).toStrictEqual(first);
 });
 
-test('#conversation.retry refuses a conversation whose last turn did not fail', async () => {
-  const ctx = await setupTest();
+test.each([
+  ['NOTHING_TO_RETRY', 'whose last turn did not fail', async () => {}],
+  [
+    'CLIENT_ACTION_ID_REUSED',
+    'with an action ID that a forget used',
+    async (client: ReturnType<typeof buildTestClient>) => {
+      const sent = await client.conversation.send({
+        clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+        thread: 'conversation',
+        text: 'Is the pool heated?',
+        spans: [],
+      });
 
-  await createConversationTask(ctx.context);
+      await client.conversation.forget({
+        clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+        sequence: sent.sequence,
+        thread: 'conversation',
+      });
+    },
+  ],
+  [
+    'UNAUTHORIZED',
+    'from a session that was revoked',
+    async (client: ReturnType<typeof buildTestClient>, sessionID: string) => {
+      await client.sessions.revoke({
+        clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+        sessionID,
+      });
+    },
+  ],
+] as const)(
+  '#conversation.retry answers %s to a retry %s, and revives nothing',
+  async (code, _, seed) => {
+    const ctx = await setupTest();
 
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+    await createConversationTask(ctx.context);
 
-  const result = await safe(
-    buildTestClient(ctx.url, laptop.token).conversation.retry({
-      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-    }),
-  );
+    const laptop = await createDeviceSession(ctx.context, 'laptop');
 
-  expect(result.error).toMatchObject({ code: 'NOTHING_TO_RETRY' });
-});
+    const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+    await seed(laptopClient, laptop.sessionID);
+
+    const result = await safe(
+      laptopClient.conversation.retry({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85' }),
+    );
+
+    const revivals = await ctx.db
+      .selectFrom('records')
+      .select('kind')
+      .where('kind', '=', 'task.revived')
+      .execute();
+
+    expect({ error: result.error, revivals }).toMatchObject({ error: { code }, revivals: [] });
+  },
+);
 
 test('#conversation.forget forgets a message, which the thread then shows with no text', async () => {
   const ctx = await setupTest();
