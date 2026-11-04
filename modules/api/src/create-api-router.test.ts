@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { ActionsTables } from '@heynixie/actions';
 import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
-import { writeRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import { claimTask, createConversationTask, createTask, runTaskStep } from '@heynixie/tasks';
 import { isDefinedError, safe } from '@orpc/client';
 import invariant from 'tiny-invariant';
@@ -782,13 +782,13 @@ test.each([
       laptopClient.conversation.retry({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85' }),
     );
 
-    const revivals = await ctx.db
-      .selectFrom('records')
-      .select('kind')
-      .where('kind', '=', 'task.revived')
-      .execute();
+    const revivals = await readRecords(ctx.context.log, {
+      afterSequence: 0,
+      kinds: ['task.revived'],
+    });
 
-    expect({ error: result.error, revivals }).toMatchObject({ error: { code }, revivals: [] });
+    expect(result.error).toMatchObject({ code });
+    expect(revivals).toStrictEqual([]);
   },
 );
 

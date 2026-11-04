@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { StepFailedError } from './step-failed-error';
@@ -122,11 +122,10 @@ test.each([
 
   const outcome = await ctx.retry();
 
-  const revivals = await ctx.db
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', '=', 'task.revived')
-    .execute();
+  const revivals = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.revived'],
+  });
 
   expect({ outcome, revivals }).toStrictEqual({ outcome: { status: 'refused' }, revivals: [] });
 });
