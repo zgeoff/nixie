@@ -846,6 +846,14 @@
         "zod": "4.6.7",
       },
     },
+    "research/spend-proxy-imp": {
+      "name": "@heynixie/spike-spend-proxy-imp",
+      "version": "0.0.0",
+      "dependencies": {
+        "@orpc/client": "1.16.1",
+        "ts-pattern": "5.9.2",
+      },
+    },
     "research/start-session-forwarding": {
       "name": "@heynixie/spike-start-session-forwarding",
       "version": "0.0.0",
@@ -1221,6 +1229,8 @@
     "@heynixie/spike-replica-encryption": ["@heynixie/spike-replica-encryption@workspace:research/replica-encryption"],
 
     "@heynixie/spike-sandbox-under-load": ["@heynixie/spike-sandbox-under-load@workspace:research/sandbox-under-load"],
+
+    "@heynixie/spike-spend-proxy-imp": ["@heynixie/spike-spend-proxy-imp@workspace:research/spend-proxy-imp"],
 
     "@heynixie/spike-start-session-forwarding": ["@heynixie/spike-start-session-forwarding@workspace:research/start-session-forwarding"],
 
