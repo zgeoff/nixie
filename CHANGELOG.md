@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.63.0](https://github.com/zgeoff/nixie/compare/v0.62.0...v0.63.0) (2026-11-04)
+
+
+### Features
+
+* **tasks:** start a task on its own model, persona and memory ([#829](https://github.com/zgeoff/nixie/issues/829)) ([e9f6fc5](https://github.com/zgeoff/nixie/commit/e9f6fc56b09407ca9395bd3fd20a8a0d7c145156))
+
+
+### Bug Fixes
+
+* **deps:** update @zgeoff/std to v0.4.1 ([#848](https://github.com/zgeoff/nixie/issues/848)) ([3f49e99](https://github.com/zgeoff/nixie/commit/3f49e998166f0cfdb27d49ae95cea221eb03dd1f))
+
 ## [0.62.0](https://github.com/zgeoff/nixie/compare/v0.61.0...v0.62.0) (2026-11-04)
 
 
