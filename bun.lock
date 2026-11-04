@@ -936,7 +936,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "@zgeoff/kysely-bun-sqlite": "0.3.0",
-    "@zgeoff/std": "0.3.2",
+    "@zgeoff/std": "0.4.0",
     "ajv": "8.20.0",
     "babel-plugin-react-compiler": "1.0.0",
     "elysia": "1.4.30",
@@ -2058,7 +2058,7 @@
 
     "@zgeoff/skill-gate": ["@zgeoff/skill-gate@0.2.15", "", { "dependencies": { "@zgeoff/agent-hooks": "0.1.5" } }, "sha512-SxoReaR+N2YgplaENePsAdl8GfJPdakdhHrvzlkyycvMF8nIhhwx4bOLOrHANWW+0QgpQCLgDP904PBWJ77P4Q=="],
 
-    "@zgeoff/std": ["@zgeoff/std@0.3.2", "", {}, "sha512-nllamYZnSOFvEl6+E9eKYwt+vCIXxxv2hXKBEnlrBd2ay9+liqhcxp0pvNQihefmbMmwRPh8AHmaDuJh2l2u5w=="],
+    "@zgeoff/std": ["@zgeoff/std@0.4.0", "", {}, "sha512-7X+ACZXphdPz/HBzC2BHT7/bzNMNRfER2JcN/+kgz0NKHRoNc3ojQBMGd61US1+VFcmq9Sh6+VhVJOxtHvLW3g=="],
 
     "abbrev": ["abbrev@4.0.0", "", {}, "sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA=="],
 
