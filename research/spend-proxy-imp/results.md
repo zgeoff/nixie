@@ -65,19 +65,21 @@ cache tokens [read in the code]. The spike sums them to set beside the count.
 
 ### Versions
 
-| Component      | Version or value                                               |
-| -------------- | -------------------------------------------------------------- |
-| imp            | 6.4.0, impd and CLI                                            |
-| Counting proxy | `counting-proxy-linux-x64` from the nixie 0.42.0 release       |
-| nixie          | commit `3e2d0d4` of pull request #834, as a preview test build |
-| Model          | `claude-haiku-5-5`, the preview's one model profile            |
-| Count limit    | $2 for the life of the pull request                            |
-| Proxy upstream | `https://api.anthropic.com`                                    |
+| Component      | Version or value                                                |
+| -------------- | --------------------------------------------------------------- |
+| imp            | 6.4.0, impd and CLI                                             |
+| Counting proxy | `counting-proxy-linux-x64` from the nixie 0.42.0 release        |
+| nixie          | commit `3e2d0d4` of pull request #834, as a preview test build  |
+| Model          | `claude-haiku-5-5`, the preview's one model profile             |
+| Count limit    | $2 for the life of the pull request                             |
+| Proxy upstream | `https://api.anthropic.com`                                     |
+| Spike script   | `run.sh` at commit `523a22e7`, the shell form of `run-spike.ts` |
 
 ### Run it
 
-[`run.sh`](run.sh) runs from a machine with SSH access to the host as root. It writes each step's
-output to `SPIKE_WORK`, and changes nothing on the host. Its header lists each variable:
+[`run-spike.ts`](run-spike.ts) runs from a machine with SSH access to the host as root. It calls the
+preview's API through nixie's typed client, writes each step's output to `SPIKE_WORK`, and changes
+nothing on the host. It needs each of these variables:
 
 ```bash
 cd research/spend-proxy-imp
@@ -86,6 +88,9 @@ PREVIEW_SSH=root@<preview_host> IMP_CLI='<command that runs impz as impd root>' 
   SPEND_DIR=<spend_directory_on_the_host> ROUTE_LISTENER=http://<listener_address> \
   SPIKE_WORK=<scratch_dir> bun run spike
 ```
+
+The results below came from `run.sh`, which does the same steps. `run-spike.ts` has run only against
+a stub of the preview's API and host.
 
 The script does these steps:
 

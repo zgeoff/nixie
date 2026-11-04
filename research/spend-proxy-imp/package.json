@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "spike": "bash run.sh",
+    "spike": "bun run-spike.ts",
     "typecheck": "tsrs --noEmit",
     "test": "bun test"
+  },
+  "dependencies": {
+    "@orpc/client": "1.16.1"
   }
 }

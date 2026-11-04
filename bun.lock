@@ -849,6 +849,9 @@
     "research/spend-proxy-imp": {
       "name": "@heynixie/spike-spend-proxy-imp",
       "version": "0.0.0",
+      "dependencies": {
+        "@orpc/client": "1.16.1",
+      },
     },
     "research/start-session-forwarding": {
       "name": "@heynixie/spike-start-session-forwarding",

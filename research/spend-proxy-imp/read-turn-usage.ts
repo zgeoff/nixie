@@ -1,8 +1,9 @@
-// Runs in the preview's nixie container, which holds no package for it, so it parses by hand.
 // Prints one JSON line per thread with the tokens its turn-ended records hold, summed the way the
-// counting proxy counts them, and a last line with the totals.
-// Usage: bun read-turn-usage.ts [database]
+// counting proxy counts them, and a last line with the totals. It runs in the preview's nixie
+// container, which holds no package for it, so run-spike.ts sends it there as one bundled file.
 import { Database } from 'bun:sqlite';
+// @boundaries-ignore a spike imports the code it measures
+import { modelTurnEndedCodec } from '../../modules/models/src/model-turn-ended-codec.ts';
 
 export interface TurnUsage {
   readonly thread: string;
@@ -47,28 +48,15 @@ function collectThreadUsage(
   return [...threads.values()];
 }
 
-const tokenFields = ['inputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens'] as const;
-
 function parseTurnTokens(payload: string): number {
-  const parsed: unknown = JSON.parse(payload);
+  const stored: unknown = JSON.parse(payload);
+  const turn = modelTurnEndedCodec.parse(stored);
 
-  if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error('a model.turn_ended payload is not an object');
-  }
-
-  return tokenFields.reduce((sum, field) => {
-    const value: unknown = Reflect.get(parsed, field);
-
-    if (typeof value !== 'number') {
-      throw new Error(`a model.turn_ended payload has no number in ${field}`);
-    }
-
-    return sum + value;
-  }, 0);
+  return turn.inputTokens + turn.outputTokens + turn.cacheReadTokens + turn.cacheWriteTokens;
 }
 
 if (import.meta.main) {
-  const db = new Database(process.argv[2] ?? '/data/nixie.db', { readonly: true });
+  const db = new Database('/data/nixie.db', { readonly: true });
 
   for (const usage of readTurnUsage(db)) {
     console.log(JSON.stringify(usage));
