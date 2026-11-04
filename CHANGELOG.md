@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.62.0](https://github.com/zgeoff/nixie/compare/v0.61.0...v0.62.0) (2026-11-04)
+
+
+### Features
+
+* **models:** keep a model secret's name when impd holds the key ([#824](https://github.com/zgeoff/nixie/issues/824)) ([aba36ce](https://github.com/zgeoff/nixie/commit/aba36cebba7caf2acf59c414530c2ee0b131c5b9))
+
+
+### Bug Fixes
+
+* **deps:** update @anthropic-ai/claude-agent-sdk to v0.3.312 ([#809](https://github.com/zgeoff/nixie/issues/809)) ([fa81f48](https://github.com/zgeoff/nixie/commit/fa81f4835e40c988e40e760128f06a0fa9290dca))
+* **deps:** update @zgeoff/std to v0.4.0 ([#845](https://github.com/zgeoff/nixie/issues/845)) ([c6ab41f](https://github.com/zgeoff/nixie/commit/c6ab41f7ae3b1a1528d6e8e1208f20e305738ae7))
+
 ## [0.61.0](https://github.com/zgeoff/nixie/compare/v0.60.0...v0.61.0) (2026-11-03)
 
 
