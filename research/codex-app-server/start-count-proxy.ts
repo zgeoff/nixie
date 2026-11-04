@@ -43,33 +43,25 @@ export function startCountProxy(upstream: string): CountProxy {
   });
 
   async function answerRequest(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    const upgrade = request.headers.get('upgrade');
+    const forward = buildForward(request, upstream);
 
-    if (upgrade) {
-      calls.push({ method: request.method, path: url.pathname, upgrade, status: 426, usage: null, error: null });
-      return new Response('the counting proxy reads HTTP only', { status: 426 });
+    if (forward.upgrade) {
+      calls.push({ ...forward.call, status: refusedUpgradeStatus, usage: null, error: null });
+      return new Response('the counting proxy reads HTTP only', { status: refusedUpgradeStatus });
     }
-    const headers = new Headers(request.headers);
-
-    headers.delete('host');
-    headers.set('accept-encoding', 'identity');
-    const body = request.method === 'GET' ? undefined : await request.arrayBuffer();
-    const response = await fetch(`${upstream}${url.pathname}${url.search}`, {
+    const response = await fetch(forward.target, {
       method: request.method,
-      headers,
-      body,
+      headers: forward.headers,
+      body: forward.hasBody ? await request.arrayBuffer() : undefined,
     });
-    const outHeaders = new Headers(response.headers);
+    const reply = { status: response.status, headers: buildClientHeaders(response.headers) };
 
-    outHeaders.delete('content-encoding');
-    outHeaders.delete('content-length');
     if (!response.body) {
-      calls.push({ method: request.method, path: url.pathname, upgrade, status: response.status, usage: null, error: null });
-      return new Response(null, { status: response.status, headers: outHeaders });
+      calls.push({ ...forward.call, status: response.status, usage: null, error: null });
+      return new Response(null, reply);
     }
     const [toClient, toCount] = response.body.tee();
-    const call = { method: request.method, path: url.pathname, upgrade, status: response.status };
+    const call = { ...forward.call, status: response.status };
     const counted = readUsage(toCount)
       .then((usage) => {
         calls.push({ ...call, usage, error: null });
@@ -83,7 +75,7 @@ export function startCountProxy(upstream: string): CountProxy {
       });
 
     counting.add(counted);
-    return new Response(toClient, { status: response.status, headers: outHeaders });
+    return new Response(toClient, reply);
   }
 
   return {
@@ -99,6 +91,43 @@ export function startCountProxy(upstream: string): CountProxy {
       await server.stop(true);
     },
   };
+}
+
+const refusedUpgradeStatus = 426;
+
+interface Forward {
+  readonly call: Pick<ProxyCall, 'method' | 'path' | 'upgrade'>;
+  readonly upgrade: boolean;
+  readonly target: string;
+  readonly headers: Headers;
+  readonly hasBody: boolean;
+}
+
+// Decides what the proxy does with a request: refuse it as an upgrade, or forward it to
+// `upstream` with an uncompressed reply, so the proxy can read the usage as it passes.
+function buildForward(request: Request, upstream: string): Forward {
+  const url = new URL(request.url);
+  const upgrade = request.headers.get('upgrade');
+  const headers = new Headers(request.headers);
+
+  headers.delete('host');
+  headers.set('accept-encoding', 'identity');
+  return {
+    call: { method: request.method, path: url.pathname, upgrade },
+    upgrade: upgrade !== null,
+    target: `${upstream}${url.pathname}${url.search}`,
+    headers,
+    hasBody: request.method !== 'GET' && request.method !== 'HEAD',
+  };
+}
+
+// The client gets the body as the proxy read it: decoded, and with a length that no longer holds.
+function buildClientHeaders(upstreamHeaders: Headers): Headers {
+  const headers = new Headers(upstreamHeaders);
+
+  headers.delete('content-encoding');
+  headers.delete('content-length');
+  return headers;
 }
 
 async function readUsage(stream: ReadableStream<Uint8Array>): Promise<unknown> {
