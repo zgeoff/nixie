@@ -229,7 +229,7 @@ async function runFirstProcess(
   );
   const threadId = started.thread.id;
   const ask = (step: string, text: string, extra: object = {}): Promise<TurnRecord> =>
-    runTurn(server, proxy,{ step, threadId, input: [buildText(text)], extra });
+    runTurn(server, proxy, { step, threadId, input: [buildText(text)], extra });
 
   turns.push(
     await ask(
@@ -248,7 +248,7 @@ async function runFirstProcess(
     }),
   );
   turns.push(
-    await runTurn(server, proxy,{
+    await runTurn(server, proxy, {
       step: 'steer',
       threadId,
       input: [buildText('Find the note on slow and tell me what it says.')],
@@ -263,7 +263,7 @@ async function runFirstProcess(
     }),
   );
   turns.push(
-    await runTurn(server, proxy,{
+    await runTurn(server, proxy, {
       step: 'interrupt',
       threadId,
       input: [buildText('Find the note on slow and tell me what it says.')],
@@ -277,7 +277,7 @@ async function runFirstProcess(
 
   writeFileSync(imagePath, buildSquarePNG());
   turns.push(
-    await runTurn(server, proxy,{
+    await runTurn(server, proxy, {
       step: 'image',
       threadId,
       input: [
@@ -335,7 +335,7 @@ async function runSecondProcess(
   }
   await server.request('thread/resume', { threadId: first.threadId, model: runState.model });
   turns.push(
-    await runTurn(server, proxy,{
+    await runTurn(server, proxy, {
       step: 'resume in a new process',
       threadId: first.threadId,
       input: [buildText('Which topics did you look up notes on before? Name only the topics.')],
@@ -351,7 +351,7 @@ async function runSecondProcess(
   );
 
   turns.push(
-    await runTurn(server, proxy,{
+    await runTurn(server, proxy, {
       step: 'fork after the first turn',
       threadId: forked.thread.id,
       input: [
@@ -379,7 +379,7 @@ async function runWebsocketCheck(
   );
 
   turns.push(
-    await runTurn(server, proxy,{
+    await runTurn(server, proxy, {
       step: 'supports_websockets = true',
       threadId: started.thread.id,
       input: [buildText('Say hello in two words.')],
