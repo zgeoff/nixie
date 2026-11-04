@@ -363,8 +363,11 @@ async function runPlainTurn(server: AppServer, workDir: string): Promise<TurnOut
 function readFileOrNull(path: string): string | null {
   try {
     return readFileSync(path, 'utf8');
-  } catch {
-    return null;
+  } catch (error) {
+    if (z.object({ code: z.literal('ENOENT') }).safeParse(error).success) {
+      return null;
+    }
+    throw error;
   }
 }
 
