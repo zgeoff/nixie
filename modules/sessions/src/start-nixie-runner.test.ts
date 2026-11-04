@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { modelsConfigSchema } from '@heynixie/models';
 import {
   claimTask,
@@ -535,6 +535,33 @@ test('it runs the brief of a task that reads memory when a forget comes before i
 
   expect(invalidated).toStrictEqual([]);
   expect(ctx.guest.turns).toHaveLength(1);
+});
+
+test('it purges the guest of a task that reads memory when a forget aborts its first turn', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+
+  const runner = await ctx.startRunner();
+
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Checking the tides.', gate: () => held.promise });
+
+  const step = ctx.runNextStepWithNoRetryDelay(runner);
+
+  await waitForCondition(() => ctx.guest.turns.length === 1);
+
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+
+  await step;
+
+  expect(ctx.guest.purged).toHaveLength(1);
 });
 
 test('it leaves the session of a task that reads no memory as it is on a forget', async () => {

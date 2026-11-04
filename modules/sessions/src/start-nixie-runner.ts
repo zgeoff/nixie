@@ -43,6 +43,7 @@ import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
+import { planTaskSessionCleanup } from './plan-task-session-cleanup';
 import { readSessionMarks } from './read-session-marks';
 import { readTaskUsage } from './read-task-usage';
 import { runConversationStep } from './run-conversation-step';
@@ -477,19 +478,12 @@ async function runTaskSessionCleanup(
 
   const open = await readStartedTaskIDs(context, { end: 'open' });
 
-  const tasks = await Promise.all(
-    open.map(async (taskID) => ({
-      taskID,
-      setup: await readTaskSetup(context, taskID),
-      marks: await readSessionMarks(context, taskID),
-    })),
+  const setups = await Promise.all(
+    open.map(async (taskID) => ({ taskID, setup: await readTaskSetup(context, taskID) })),
   );
 
-  // Only a task that reads memory and opened a session can hold a forgotten item. One that never
-  // opened a session keeps its first start, which an invalidation would turn into a wait.
-  const readers = tasks.filter(
-    (entry) => entry.setup?.options?.memory === 'read' && entry.marks.sessionKey !== null,
-  );
+  // Only a task that reads memory can hold a forgotten item in its session.
+  const readers = setups.filter((entry) => entry.setup?.options?.memory === 'read');
 
   for (const entry of readers) {
     await resolveTaskGuard(runner, entry.taskID).withInvalidation(() =>
@@ -498,6 +492,8 @@ async function runTaskSessionCleanup(
   }
 }
 
+// The guard has ended every turn of the task before this runs, so a first turn that the cleanup
+// aborted has left its transcript in the guest and no opening on the thread.
 async function cleanTaskSession(
   runner: TaskRunner,
   taskID: string,
@@ -505,32 +501,42 @@ async function cleanTaskSession(
 ): Promise<void> {
   const context = runner.options.context;
 
-  await writeRecords(context.log, [
-    {
-      kind: modelSessionInvalidatedCodec.kind,
-      definitions: context.definitions(),
-      thread: taskID,
-      payload: modelSessionInvalidatedCodec.encode(cause),
-    },
-  ]);
+  const marks = await readSessionMarks(context, taskID);
+  const sandboxes = await runner.options.sandboxes.list(taskID);
+
+  const plan = planTaskSessionCleanup({
+    isOpened: marks.sessionKey !== null,
+    hasSandbox: sandboxes.length > 0,
+  });
+
+  if (plan.isInvalidated) {
+    await writeRecords(context.log, [
+      {
+        kind: modelSessionInvalidatedCodec.kind,
+        definitions: context.definitions(),
+        thread: taskID,
+        payload: modelSessionInvalidatedCodec.encode(cause),
+      },
+    ]);
+  }
 
   await removeSummaryKeys(context.log, taskID);
   await removeThreadLinks(context.log, taskID);
 
-  const sandboxes = await runner.options.sandboxes.list(taskID);
-
-  if (sandboxes.length > 0) {
+  if (plan.isPurged) {
     await runTaskGuestPurge(runner, taskID);
   }
 
-  await writeRecords(context.log, [
-    {
-      kind: modelSessionCleanupCompletedCodec.kind,
-      definitions: context.definitions(),
-      thread: taskID,
-      payload: modelSessionCleanupCompletedCodec.encode(cause),
-    },
-  ]);
+  if (plan.isInvalidated) {
+    await writeRecords(context.log, [
+      {
+        kind: modelSessionCleanupCompletedCodec.kind,
+        definitions: context.definitions(),
+        thread: taskID,
+        payload: modelSessionCleanupCompletedCodec.encode(cause),
+      },
+    ]);
+  }
 }
 
 async function runTaskGuestPurge(runner: TaskRunner, taskID: string): Promise<void> {
