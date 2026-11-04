@@ -5,6 +5,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { homedir, hostname } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { parseArgs } from 'node:util';
 import { z } from 'zod';
 import { type AppServer, startAppServer } from './start-app-server.ts';
 import { type CountProxy, startCountProxy } from './start-count-proxy.ts';
@@ -53,13 +54,13 @@ const itemEvent = z.object({
 });
 const turnEvent = z.object({ turnId: z.string() });
 
-async function run(argv: string[]): Promise<void> {
-  const [name, model] = argv;
-  const apiKey = process.env.OPENAI_API_KEY;
+interface RunArgs {
+  readonly name: string;
+  readonly model: string;
+  readonly apiKey: string;
+}
 
-  if (!name || !model || !apiKey) {
-    throw new Error('usage: OPENAI_API_KEY=<key> bun run.ts <run_name> <model>');
-  }
+async function run({ name, model, apiKey }: RunArgs): Promise<void> {
   const outDir = findChildDir(resolve(import.meta.dir, 'runs'), name);
   const stateDir = findChildDir(resolve(import.meta.dir, '.state'), name);
 
@@ -470,4 +471,14 @@ function formatScrubbed(value: unknown, stateDir: string, token: string): string
     .replaceAll(token, '<token>')}\n`;
 }
 
-await run(process.argv.slice(2));
+function parseRunArgs(argv: string[], apiKey: string | undefined): RunArgs {
+  const { positionals } = parseArgs({ args: argv, allowPositionals: true, options: {} });
+  const [name, model] = positionals;
+
+  if (positionals.length !== 2 || !name || !model || !apiKey) {
+    throw new Error('usage: OPENAI_API_KEY=<key> bun run.ts <run_name> <model>');
+  }
+  return { name, model, apiKey };
+}
+
+await run(parseRunArgs(process.argv.slice(2), process.env.OPENAI_API_KEY));
