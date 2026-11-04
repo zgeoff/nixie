@@ -15,6 +15,7 @@ import invariant from 'tiny-invariant';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
 import { buildStubLiveTurnScript } from './test-utils/build-stub-live-turn-script';
+import { buildStubSessionScript } from './test-utils/build-stub-session-script';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { buildStubTurnScript } from './test-utils/build-stub-turn-script';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
@@ -1943,15 +1944,14 @@ test.each([
       toolNames: ['notes_read'],
     });
 
-    ctx.sandboxes.setGuestScript(() => [
-      { type: 'failed', reason: 'model_api', error: kind, detail },
-    ]);
+    ctx.sandboxes.setGuestScript(
+      buildStubSessionScript([{ refusal: kind, detail }, { reply: 'You need milk.' }]),
+    );
 
     const [message] = await ctx.writeMessage('What do I need?');
 
     await ctx.runNextStep(runner);
 
-    ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'You need milk.' })));
     ctx.clock.advance(30_000);
 
     await ctx.runNextStep(runner);
