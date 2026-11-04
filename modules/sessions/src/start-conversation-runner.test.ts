@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readLinkTarget } from '@heynixie/connectors';
 import { seedWebFetchLinks } from '@heynixie/connectors/test-utils';
+import { withWriteTransaction } from '@heynixie/log';
 import { resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
@@ -8,6 +9,7 @@ import {
   claimTask,
   createConversationTask,
   createSystemTask,
+  writeConversationRetryInTransaction,
   writeInboxRecords,
 } from '@heynixie/tasks';
 import { readTestTaskProgress, writeTestTaskMessage } from '@heynixie/tasks/test-utils';
@@ -2019,6 +2021,49 @@ test.each([
     });
   },
 );
+
+test('it answers the message that waited for the owner once the owner retries the turn', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'quota',
+      detail: 'API Error: Request rejected (429) · Weekly allowance used up',
+    },
+  ]);
+
+  const [message] = await ctx.writeMessage('What do I need?');
+
+  await ctx.runNextStep(runner);
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'You need milk.' })));
+
+  await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    writeConversationRetryInTransaction(tx, ctx.context),
+  );
+
+  await ctx.runNextStep(runner);
+
+  const [replies, task] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.db.selectFrom('tasks').select(['state', 'read_cursor']).executeTakeFirstOrThrow(),
+  ]);
+
+  expect({ replies, task }).toMatchObject({
+    replies: [{ erasable: { fields: { text: 'You need milk.' } } }],
+    task: { state: 'waiting', read_cursor: message?.sequence },
+  });
+});
 
 test('it runs the turn after a refused call from the boundary before it, with no error text in what it sends', async () => {
   const ctx = await setupTest();
