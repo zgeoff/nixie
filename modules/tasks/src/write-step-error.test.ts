@@ -329,6 +329,31 @@ test('it pauses a task whose pause waited on the step that threw', async () => {
   expect(task).toStrictEqual({ state: 'paused', resume_state: 'ready' });
 });
 
+test('it pauses the conversation to resume waiting when its pause waited on a step that failed for a reason that waits for the owner', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'what is on today?');
+
+  await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'pause' });
+
+  await writeStepError(ctx.context, claim, {
+    error: new StepFailedError('the weekly allowance is used up', {
+      reason: 'quota',
+      isWaitingForOwner: true,
+      records: [],
+    }),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'resume_state'])
+    .executeTakeFirstOrThrow();
+
+  expect(task).toStrictEqual({ state: 'paused', resume_state: 'waiting' });
+});
+
 test('it fails a task whose pause waited on the step that used its last try', async () => {
   const ctx = await setupTest();
   const claim = await createTestClaim(ctx.context, 'tidy the inbox');
