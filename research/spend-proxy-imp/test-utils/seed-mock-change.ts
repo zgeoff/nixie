@@ -10,6 +10,7 @@ export interface MockChange {
     readonly thread?: string;
     readonly text?: string;
     readonly readCursor?: number;
+    readonly stepKey?: string;
   }[];
 }
 
@@ -25,9 +26,15 @@ export async function seedMockChange(change: MockChange): Promise<void> {
       kind: record.kind,
       thread,
       ...(record.text === undefined ? {} : { message: { text: record.text } }),
-      ...(record.readCursor === undefined
+      ...(record.readCursor === undefined && record.stepKey === undefined
         ? {}
-        : { task: { readCursor: record.readCursor, taskID: thread } }),
+        : {
+            task: {
+              ...(record.readCursor === undefined ? {} : { readCursor: record.readCursor }),
+              ...(record.stepKey === undefined ? {} : { stepKey: record.stepKey }),
+              taskID: thread,
+            },
+          }),
     });
   }
 }

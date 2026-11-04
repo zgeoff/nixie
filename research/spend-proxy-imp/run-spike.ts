@@ -73,8 +73,10 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
   const plain = await deps.client.conversation.send(
     buildTypedMessage('What is two plus two? Answer in one short sentence.'),
   );
-  const plainPage = await waitForStepEnd(deps, 'conversation', 'the plain turn', (page) =>
-    isStepEnded(page, plain.sequence),
+  const plainPage = await waitForStepEnd(
+    deps,
+    { thread: 'conversation', sinceSequence: plain.sequence, label: 'the plain turn' },
+    (page) => isStepEnded(page, plain.sequence),
   );
   await deps.writeOutput('plain.jsonl', formatRecords(plainPage, plain.sequence));
   await writeCount('count-1.json', 'after the plain turn');
@@ -85,8 +87,10 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
       "Start a task named 'tide note' whose brief is: write one sentence on why the sea has tides. Then tell me you started it.",
     ),
   );
-  const taskTurnPage = await waitForStepEnd(deps, 'conversation', 'the task turn', (page) =>
-    isStepEnded(page, taskTurn.sequence),
+  const taskTurnPage = await waitForStepEnd(
+    deps,
+    { thread: 'conversation', sinceSequence: taskTurn.sequence, label: 'the task turn' },
+    (page) => isStepEnded(page, taskTurn.sequence),
   );
   await deps.writeOutput('task.jsonl', formatRecords(taskTurnPage, taskTurn.sequence));
 
@@ -96,7 +100,11 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
       deps.log('== the conversation started no task; task.jsonl holds its turn');
     })
     .with({ kind: 'wait-for-task' }, async ({ taskID }) => {
-      const taskPage = await waitForStepEnd(deps, taskID, "the task's step", isTaskStepEnded);
+      const taskPage = await waitForStepEnd(
+        deps,
+        { thread: taskID, sinceSequence: 0, label: "the task's step" },
+        isTaskStepEnded,
+      );
       await deps.writeOutput('task-thread.jsonl', formatRecords(taskPage, 0));
     })
     .exhaustive();
@@ -135,16 +143,21 @@ function buildTypedMessage(text: string) {
 
 type ThreadPage = ContractOutputs['conversation']['read'];
 
+interface StepWait {
+  readonly thread: string;
+  readonly sinceSequence: number;
+  readonly label: string;
+}
+
 // a step's model calls take seconds, and the memory writer retries a failed one at doubling gaps,
 // so 5 minutes covers a step that ends at all
 async function waitForStepEnd(
   deps: SpikeDeps,
-  thread: string,
-  label: string,
+  wait: StepWait,
   isEnded: (page: ThreadPage) => boolean,
 ): Promise<ThreadPage> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
-    const page = await deps.client.conversation.read({ thread, limit: 200 });
+    const page = await readThreadSince(deps.client, wait.thread, wait.sinceSequence);
 
     if (isEnded(page)) {
       return page;
@@ -153,7 +166,31 @@ async function waitForStepEnd(
     await deps.sleep(5000);
   }
 
-  throw new Error(`${label} did not end in 5 minutes`);
+  throw new Error(`${wait.label} did not end in 5 minutes`);
+}
+
+// A failed step's start can sit more than one page back, so the page reaches back to the message.
+async function readThreadSince(
+  client: SpikeClient,
+  thread: string,
+  sinceSequence: number,
+): Promise<ThreadPage> {
+  const newest = await client.conversation.read({ thread, limit: 200 });
+  let records = newest.records;
+  let hasEarlier = newest.hasEarlier;
+
+  while (hasEarlier && (records[0]?.sequence ?? 0) > sinceSequence) {
+    const earlier = await client.conversation.read({
+      thread,
+      beforeSequence: records[0]?.sequence,
+      limit: 200,
+    });
+
+    records = [...earlier.records, ...records];
+    hasEarlier = earlier.hasEarlier;
+  }
+
+  return { ...newest, records };
 }
 
 function formatRecords(page: ThreadPage, fromSequence: number): string {

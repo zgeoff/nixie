@@ -217,6 +217,38 @@ test("it waits for the new task's step and writes its thread", async () => {
   );
 });
 
+test('it takes a failed step whose start is more than one page back', async () => {
+  const ctx = setupTest();
+  await store.sessions.create({ token: 'spike-token' });
+  const nextChange = makeAnswerQueue<MockChange>([
+    {
+      records: [
+        { kind: 'task.step_started', stepKey: 'conversation:1' },
+        ...Array.from({ length: 200 }, () => ({ kind: 'tool_called' })),
+        { kind: 'task.step_errored', stepKey: 'conversation:1' },
+      ],
+    },
+    {
+      records: [
+        { kind: 'model.reply', text: 'No task.' },
+        { kind: 'task.step_committed', readCursor: 204 },
+      ],
+    },
+  ]);
+
+  await runSpike(ctx.target, {
+    ...ctx.deps,
+    sleep: async () => {
+      await seedMockChange(nextChange());
+    },
+    runGuestProbes: async () => ({ exitCode: 0, output: '', errors: '' }),
+  });
+
+  expect(ctx.outputs.get('plain.jsonl')).toEndWith(
+    '{"sequence":202,"kind":"tool_called"}\n{"sequence":203,"kind":"task.step_errored"}\n',
+  );
+});
+
 test('it fails when the step never ends in 60 reads', async () => {
   const ctx = setupTest();
   await store.sessions.create({ token: 'spike-token' });

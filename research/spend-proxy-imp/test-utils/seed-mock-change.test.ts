@@ -49,3 +49,11 @@ test("it gives a record's read cursor to the task of its thread", async () => {
     { readCursor: 6, taskID: 'task-tide' },
   ]);
 });
+
+test("it gives a record's step key to the task of its thread", async () => {
+  await seedMockChange({ records: [{ kind: 'task.step_started', stepKey: 'conversation:2' }] });
+
+  expect(store.records.all().map((record) => record.task)).toStrictEqual([
+    { stepKey: 'conversation:2', taskID: 'conversation' },
+  ]);
+});
