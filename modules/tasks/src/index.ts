@@ -41,7 +41,7 @@ export type { StartedTasksQuery } from './read-started-task-ids';
 export { readStartedTaskIDs } from './read-started-task-ids';
 export type { TaskSetup } from './read-task-setup';
 export { readTaskSetup } from './read-task-setup';
-export { startedTaskDefaultTools } from './started-task-tools';
+export { startedTaskDefaultTools } from './started-task-default-tools';
 export { taskLimitNoticeCodec } from './task-limit-notice-codec';
 export { taskLimitReachedCodec } from './task-limit-reached-codec';
 export { taskLimitsRaisedCodec } from './task-limits-raised-codec';

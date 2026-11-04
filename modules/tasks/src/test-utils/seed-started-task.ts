@@ -1,6 +1,6 @@
 import invariant from 'tiny-invariant';
 import { buildStepRunID } from '../build-step-run-id';
-import { startedTaskDefaultTools } from '../started-task-tools';
+import { startedTaskDefaultTools } from '../started-task-default-tools';
 import type { StartedClaim, TaskRunOptions, TasksContext } from '../types';
 import { writeTaskStart } from '../write-task-start';
 

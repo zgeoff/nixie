@@ -1,4 +1,4 @@
-import { startedTaskBaseTools, startedTaskDefaultTools } from './started-task-tools';
+import { startedTaskBaseTools, startedTaskDefaultTools } from './started-task-default-tools';
 import type {
   TaskLimits,
   TaskMemory,

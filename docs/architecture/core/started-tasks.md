@@ -74,7 +74,8 @@ step runs the same turn code as the conversation's steps, with these changes:
   persona part holds the persona unless the start set `persona: none`, and its inputs and
   instructions parts are empty.
 - A task started with `memory: read` gets the pinned memory and memory retrieval in its turn, as the
-  conversation does. Any other task gets neither. No task gets the task board.
+  conversation does. Its retrieval searches for its brief on its first turn, and for the body of
+  each task message it receives. Any other task gets neither. No task gets the task board.
 - The task's tools are the ones its start recorded. Each call goes through the
   [decision point](../policy/decision-point.md), as the conversation's tool calls do.
 
@@ -101,7 +102,8 @@ profile with no price table counts no dollars, so only its turns limit holds. A 
 calls, and the per-call usage that the model API reports leaves out thinking tokens, so the count
 prices each record as one call. It therefore prices every cache write at the longer lifetime's
 price, and a turn whose calls together pass a profile's long-prompt size at the long-prompt prices.
-The count can run above the spend, and never below it.
+The count can run above the spend. One exception: a summary recorded by an earlier release kept no
+token counts, so it adds no dollars, and the count of a task that has one can fall below its spend.
 
 Before each step runs a turn, the runner counts the task's turns and dollars. When either count has
 reached its limit, the step runs no turn. In one transaction it asks for a pause, writes a

@@ -22,14 +22,20 @@ import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
 import { runNextStep } from './test-utils/run-next-step';
 import { startTestSessionHost } from './test-utils/start-test-session-host';
+import type { MemoryItem } from './types';
 
 async function setupTest() {
   const host = await startTestSessionHost();
 
   const tools = buildStubToolEndpoint();
   const events: string[] = [];
+  const recalls: string[] = [];
 
-  const startRunner = async (parts: Partial<Pick<NixieRunnerOptions, 'tools'>> = {}) => {
+  const startRunner = async (
+    parts: Partial<Pick<NixieRunnerOptions, 'tools'>> & {
+      readonly pinned?: readonly MemoryItem[];
+    } = {},
+  ) => {
     const runner = await startNixieRunner({
       context: host.context,
       models: modelsConfigSchema.parse({
@@ -68,24 +74,14 @@ async function setupTest() {
       image: 'nixie-conversation-0123456789ab',
       tools: parts.tools ?? tools.endpoint,
       memory: () => ({
-        readPinnedCore: () =>
-          Promise.resolve([
-            {
-              itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
-              version: 1,
-              shortID: 'm4k2p8w1qz',
-              subject: 'owner',
-              text: 'Keeps bees on the allotment',
-              origin: 'owner',
-              source: 'owner',
-              model: null,
-              recordedAt: Date.UTC(2026, 9, 1),
-              evidenceQuote: null,
-              approval: null,
-            },
-          ]),
-        readPinnedCoreUse: () => Promise.resolve({ items: 1, tokens: 8, budget: 2000 }),
-        recall: () => Promise.resolve({ items: [] }),
+        readPinnedCore: () => Promise.resolve(parts.pinned ?? []),
+        readPinnedCoreUse: () =>
+          Promise.resolve({ items: parts.pinned?.length ?? 0, tokens: 8, budget: 2000 }),
+        recall: (query) => {
+          recalls.push(query.query);
+
+          return Promise.resolve({ items: [] });
+        },
         recallMessages: () => Promise.resolve({ messages: [] }),
         readShortIDs: () => Promise.resolve(new Map()),
       }),
@@ -122,6 +118,7 @@ async function setupTest() {
     ...host,
     runs: tools.runs,
     events,
+    recalls,
     startRunner,
     seedConversationStep: () => seedConversationStep(host.context),
     seedTask: (starter: ConversationStep, options: StartedTaskSeed['options'] = {}) =>
@@ -138,6 +135,28 @@ async function setupTest() {
           definitions: host.context.definitions(),
           thread: taskID,
           erasable: { text },
+        },
+      ]),
+    writeTaskMessage: (taskID: string, body: string) =>
+      writeInboxRecords(host.context, [
+        {
+          kind: 'task_message',
+          definitions: host.context.definitions(),
+          thread: taskID,
+          payload: {
+            messageID: 'q8v3m1x7ka',
+            from: 'conversation',
+            to: taskID,
+            kind: 'request',
+            replyTo: null,
+            onBehalfOf: [],
+            hop: 1,
+            hopLimit: 20,
+            wake: true,
+            woke: true,
+            source: 'task:conversation',
+          },
+          erasable: { body },
         },
       ]),
     runNextStep: (runner: Awaited<ReturnType<typeof startRunner>>) =>
@@ -471,7 +490,23 @@ test('it gives a stranger no persona text and no memory item', async () => {
 
   await ctx.seedTask(starter, { model: 'second-look', profile: 'router-b', persona: 'none' });
 
-  const runner = await ctx.startRunner();
+  const runner = await ctx.startRunner({
+    pinned: [
+      {
+        itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
+        version: 1,
+        shortID: 'm4k2p8w1qz',
+        subject: 'owner',
+        text: 'Keeps bees on the allotment',
+        origin: 'owner',
+        source: 'owner',
+        model: null,
+        recordedAt: Date.UTC(2026, 9, 1),
+        evidenceQuote: null,
+        approval: null,
+      },
+    ],
+  });
 
   await ctx.runNextStep(runner);
 
@@ -489,7 +524,23 @@ test('it gives another me the persona and the pinned memory', async () => {
 
   await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
 
-  const runner = await ctx.startRunner();
+  const runner = await ctx.startRunner({
+    pinned: [
+      {
+        itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
+        version: 1,
+        shortID: 'm4k2p8w1qz',
+        subject: 'owner',
+        text: 'Keeps bees on the allotment',
+        origin: 'owner',
+        source: 'owner',
+        model: null,
+        recordedAt: Date.UTC(2026, 9, 1),
+        evidenceQuote: null,
+        approval: null,
+      },
+    ],
+  });
 
   await ctx.runNextStep(runner);
 
@@ -498,6 +549,32 @@ test('it gives another me the persona and the pinned memory', async () => {
 
   expect(turn?.systemPrompt).toInclude('You are Pip.');
   expect(input).toInclude('Keeps bees on the allotment');
+});
+
+test("it searches memory for the brief of a task that reads memory, on the task's first turn", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.recalls).toStrictEqual(['Find the high tides for Saturday.']);
+});
+
+test('it searches memory for the body of a task message to a task that reads memory', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeTaskMessage(taskID, 'Only the morning tide at the harbour.');
+  await ctx.runNextStep(runner);
+
+  expect(ctx.recalls.at(-1)).toBe('Only the morning tide at the harbour.');
 });
 
 test('it purges and invalidates the session of a task that reads memory on a forget, so its next turn opens a new one', async () => {

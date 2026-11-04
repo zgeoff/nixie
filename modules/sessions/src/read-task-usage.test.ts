@@ -60,6 +60,43 @@ test("it counts a task's turns, and prices both its turns and the summaries of i
   expect(used).toStrictEqual({ turns: 1, dollars: 4.5 });
 });
 
+test("it prices a turn's cache reads at the cached rate and its cache writes at the longer lifetime's rate", async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: modelTurnEndedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      payload: modelTurnEndedCodec.encode({
+        model: 'claude-test',
+        profile: 'task-direct',
+        stopReason: 'end_turn',
+        turns: 1,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 1_000_000,
+        cacheWriteTokens: 1_000_000,
+        pinnedCore: [],
+        retrieved: [],
+        invalidatedThrough: 0,
+        sessionImageBytes: 0,
+        sessionImageCount: 0,
+      }),
+    },
+  ]);
+
+  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+    input: 3,
+    cacheWrite: 3.75,
+    cacheWrite1h: 6,
+    cachedInput: 0.3,
+    output: 15,
+  });
+
+  expect(used).toStrictEqual({ turns: 1, dollars: 6.3 });
+});
+
 test('it counts and prices a turn recorded before turns kept their image count', async () => {
   const ctx = await setupTest();
 
