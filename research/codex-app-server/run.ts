@@ -112,26 +112,29 @@ async function run({ name, model, apiKey }: RunArgs, host: Host): Promise<void> 
     await runWebsocketCheck(runState, servers['websocket-process'], proxy, turns);
   } finally {
     await Promise.all(Object.values(servers).map((server) => server.stop()));
-    await proxy.waitForCounts();
-    await proxy.stop();
-    await tools.stop();
-    const write = (file: string, value: unknown): void => {
-      writeFileSync(
-        join(outDir, file),
-        formatScrubbed(value, [
-          [stateDir, '<state>'],
-          [host.home, '<home>'],
-          [host.name, '<host>'],
-          [mcpToken, '<token>'],
-        ]),
-      );
-    };
+    try {
+      await proxy.waitForCounts();
+    } finally {
+      await proxy.stop();
+      await tools.stop();
+      const write = (file: string, value: unknown): void => {
+        writeFileSync(
+          join(outDir, file),
+          formatScrubbed(value, [
+            [stateDir, '<state>'],
+            [host.home, '<home>'],
+            [host.name, '<host>'],
+            [mcpToken, '<token>'],
+          ]),
+        );
+      };
 
-    write('turns.json', turns);
-    write('proxy.json', proxy.calls);
-    write('mcp.json', tools.requests);
-    for (const [label, server] of Object.entries(servers)) {
-      write(`rpc-${label}.json`, server.log);
+      write('turns.json', turns);
+      write('proxy.json', proxy.calls);
+      write('mcp.json', tools.requests);
+      for (const [label, server] of Object.entries(servers)) {
+        write(`rpc-${label}.json`, server.log);
+      }
     }
   }
 }
