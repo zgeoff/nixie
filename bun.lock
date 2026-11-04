@@ -12,6 +12,7 @@
         "@types/bun": "1.4.4",
         "@zgeoff/bun-test-extended": "0.2.3",
         "@zgeoff/bun-test-react": "0.2.3",
+        "@zgeoff/commitlint-config": "0.1.0",
         "@zgeoff/format-codemod": "0.3.5",
         "@zgeoff/oxlint-config": "0.7.7",
         "@zgeoff/skill-gate": "0.2.15",
@@ -2048,6 +2049,8 @@
     "@zgeoff/bun-test-extended": ["@zgeoff/bun-test-extended@0.2.3", "", { "dependencies": { "jest-extended": "7.0.0", "jest-matcher-utils": "30.5.2" } }, "sha512-4ZNPft3LunVKp+s2esoJXSe64EaEywsu3z6Cg5/s/MJcdygmrQeAyfECioePCo5RuAIcaPfgF3lhYsPKcmVJ4w=="],
 
     "@zgeoff/bun-test-react": ["@zgeoff/bun-test-react@0.2.3", "", { "dependencies": { "@happy-dom/global-registrator": "21.0.4", "@testing-library/jest-dom": "7.0.1", "happy-dom": "21.0.4" }, "peerDependencies": { "@testing-library/react": ">=16.0.0", "react": ">=19.0.0", "react-dom": ">=19.0.0", "zustand": ">=5.0.0" }, "optionalPeers": ["zustand"] }, "sha512-rs/N4DUx8Xed9nHSQhH9i2nfJZpTpA8duEA639ClMfKstt/3srm8d6+H53jxhGoD56mMdX/NPW/uIgnOpdIufg=="],
+
+    "@zgeoff/commitlint-config": ["@zgeoff/commitlint-config@0.1.0", "", { "peerDependencies": { "@commitlint/cli": ">=21.0.0" } }, "sha512-HEx06TxSmccoaQDNH8Honuv/pxp6I4GU8XpBvWGnibPLf3EKTskc9gJVdKMy43dox4t2i288vTC/mWHmWufUkg=="],
 
     "@zgeoff/format-codemod": ["@zgeoff/format-codemod@0.3.5", "", { "dependencies": { "gunshi": "1.0.0-rc.1", "oxc-parser": "0.155.0" }, "bin": { "format-codemod": "dist/cli.js" } }, "sha512-aVHu3c5pYTISM68OL5fPjo2Go5DwemqB70chqFLsOnjlDJsEYBB2jdzyufv8QxrOwtTishnMV/v7EexmLZhIyQ=="],
 
