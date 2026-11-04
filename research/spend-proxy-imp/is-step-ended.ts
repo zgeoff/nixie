@@ -1,6 +1,9 @@
 interface ThreadRecord {
   readonly sequence: number;
   readonly kind: string;
+  readonly task?:
+    | { readonly readCursor?: number | undefined; readonly stepKey?: string | undefined }
+    | undefined;
 }
 
 interface ThreadPage {
@@ -8,22 +11,37 @@ interface ThreadPage {
   readonly lastStepEnd?: ThreadRecord | null;
 }
 
-// The API's records hold no step's read cursor, so a step that started before the sent message and
-// ended after it can still pass. A failed model call ends its step with an error and no reply.
-export function isStepEnded(page: ThreadPage, afterSequence: number): boolean {
+export function isStepEnded(page: ThreadPage, sentSequence: number): boolean {
   const stepEnd = page.lastStepEnd;
 
-  if (stepEnd === null || stepEnd === undefined || stepEnd.sequence <= afterSequence) {
+  if (stepEnd === null || stepEnd === undefined) {
     return false;
   }
 
-  return (
-    stepEnd.kind === 'task.step_errored' ||
-    page.records.some(
-      (record) =>
-        record.kind === 'model.reply' &&
-        record.sequence > afterSequence &&
-        record.sequence < stepEnd.sequence,
-    )
+  if (stepEnd.kind === 'task.step_errored') {
+    return isStartedAfter(page.records, stepEnd, sentSequence);
+  }
+
+  const readCursor = stepEnd.task?.readCursor;
+
+  return readCursor !== undefined && readCursor >= sentSequence;
+}
+
+// A failed step's record holds no read cursor, and a step reads every message written before it
+// starts, so the step answers the message when its start comes after it.
+function isStartedAfter(
+  records: readonly ThreadRecord[],
+  stepEnd: ThreadRecord,
+  sentSequence: number,
+): boolean {
+  const stepKey = stepEnd.task?.stepKey;
+
+  return records.some(
+    (record) =>
+      record.kind === 'task.step_started' &&
+      stepKey !== undefined &&
+      record.task?.stepKey === stepKey &&
+      record.sequence > sentSequence &&
+      record.sequence < stepEnd.sequence,
   );
 }

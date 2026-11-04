@@ -130,7 +130,7 @@ test('it names the task and the step of a step record', () => {
   });
 });
 
-test('it names the step of a commit from the step key of the record', () => {
+test('it names the step of a commit and the last record the step read', () => {
   expect(
     toContractRecord({
       sequence: 9,
@@ -157,7 +157,7 @@ test('it names the step of a commit from the step key of the record', () => {
     kind: 'task.step_committed',
     recordedAt: new Date('2026-10-10T12:00:03Z'),
     sequence: 9,
-    task: { stepKey: 'step-2', taskID: 'conversation' },
+    task: { readCursor: 8, stepKey: 'step-2', taskID: 'conversation' },
     thread: 'conversation',
   });
 });

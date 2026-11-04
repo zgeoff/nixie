@@ -5,6 +5,7 @@ export const taskSchema = z.object({
   errorLimit: z.int().positive().optional(),
   errors: z.int().positive().optional(),
   isWaitingForRetry: z.boolean().optional(),
+  readCursor: z.int().nonnegative().optional(),
   reason: z.string().optional(),
   retryAt: z.date().optional(),
   stepKey: z.string().optional(),

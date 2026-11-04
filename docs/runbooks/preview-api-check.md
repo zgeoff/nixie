@@ -65,13 +65,17 @@ HTTP 403 with the text `the client header is missing`. The commands below use `c
 6. Check whether the turn has ended:
 
    ```bash
-   jq --argjson sent "$sent" '.json.lastStepEnd | select(.sequence > $sent) | {kind, task}' page.json
+   jq --argjson sent "$sent" '.json.lastStepEnd
+     | select(.sequence > $sent and (.kind == "task.step_errored" or .task.readCursor >= $sent))
+     | {kind, task}' page.json
    ```
 
    The turn has ended when the command prints a record. If it prints nothing, repeat step 5.
-   `lastStepEnd` holds the thread's newest record that ended a step, and the turn's step ends after
-   its message. Expect `task.step_committed`. A `task.step_errored` record means the turn failed:
-   its `task.error` holds the reason, and its `task.retryAt` holds the time the step runs again.
+   `lastStepEnd` holds the thread's newest record that ended a step. Expect `task.step_committed`,
+   whose `task.readCursor` is at or after your message, so the step read it. A `task.step_errored`
+   record means the turn failed: its `task.error` holds the reason, and its `task.retryAt` holds the
+   time the step runs again. A failed step's record holds no read cursor, so the command prints it
+   when its sequence comes after your message.
 
 7. List the turn's records:
 

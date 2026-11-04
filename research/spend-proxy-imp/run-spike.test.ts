@@ -34,8 +34,18 @@ test("it fails with the guest probes' stderr when they exit 1", async () => {
   const ctx = setupTest();
   await store.sessions.create({ token: 'spike-token' });
   const nextChange = makeAnswerQueue<MockChange>([
-    { records: [{ kind: 'model.reply', text: 'Four.' }, { kind: 'task.step_committed' }] },
-    { records: [{ kind: 'model.reply', text: 'No task.' }, { kind: 'task.step_committed' }] },
+    {
+      records: [
+        { kind: 'model.reply', text: 'Four.' },
+        { kind: 'task.step_committed', readCursor: 1 },
+      ],
+    },
+    {
+      records: [
+        { kind: 'model.reply', text: 'No task.' },
+        { kind: 'task.step_committed', readCursor: 4 },
+      ],
+    },
   ]);
 
   expect(
@@ -53,8 +63,18 @@ test('it writes the output of each step when the guest probes pass', async () =>
   const ctx = setupTest();
   await store.sessions.create({ token: 'spike-token' });
   const nextChange = makeAnswerQueue<MockChange>([
-    { records: [{ kind: 'model.reply', text: 'Four.' }, { kind: 'task.step_committed' }] },
-    { records: [{ kind: 'model.reply', text: 'No task.' }, { kind: 'task.step_committed' }] },
+    {
+      records: [
+        { kind: 'model.reply', text: 'Four.' },
+        { kind: 'task.step_committed', readCursor: 1 },
+      ],
+    },
+    {
+      records: [
+        { kind: 'model.reply', text: 'No task.' },
+        { kind: 'task.step_committed', readCursor: 4 },
+      ],
+    },
   ]);
 
   const nextHostAnswer = makeAnswerQueue([
@@ -121,8 +141,18 @@ test('it reads the thread again until the step ends', async () => {
   await store.sessions.create({ token: 'spike-token' });
   const nextChange = makeAnswerQueue<MockChange>([
     {},
-    { records: [{ kind: 'model.reply', text: 'Four.' }, { kind: 'task.step_committed' }] },
-    { records: [{ kind: 'model.reply', text: 'No task.' }, { kind: 'task.step_committed' }] },
+    {
+      records: [
+        { kind: 'model.reply', text: 'Four.' },
+        { kind: 'task.step_committed', readCursor: 1 },
+      ],
+    },
+    {
+      records: [
+        { kind: 'model.reply', text: 'No task.' },
+        { kind: 'task.step_committed', readCursor: 4 },
+      ],
+    },
   ]);
 
   await runSpike(ctx.target, {
@@ -148,10 +178,18 @@ test("it waits for the new task's step and writes its thread", async () => {
   await store.sessions.create({ token: 'spike-token' });
   await store.tasks.create({ taskID: 'task-harbour', name: 'harbour note' });
   const nextChange = makeAnswerQueue<MockChange>([
-    { records: [{ kind: 'model.reply', text: 'Four.' }, { kind: 'task.step_committed' }] },
+    {
+      records: [
+        { kind: 'model.reply', text: 'Four.' },
+        { kind: 'task.step_committed', readCursor: 1 },
+      ],
+    },
     {
       tasks: [{ taskID: 'task-tide', name: 'tide note' }],
-      records: [{ kind: 'model.reply', text: 'Started it.' }, { kind: 'task.step_committed' }],
+      records: [
+        { kind: 'model.reply', text: 'Started it.' },
+        { kind: 'task.step_committed', readCursor: 4 },
+      ],
     },
     {},
     {
@@ -176,6 +214,38 @@ test("it waits for the new task's step and writes its thread", async () => {
       '{"sequence":8,"kind":"task.step_committed"}',
       '',
     ].join('\n'),
+  );
+});
+
+test('it takes a failed step whose start is more than one page back', async () => {
+  const ctx = setupTest();
+  await store.sessions.create({ token: 'spike-token' });
+  const nextChange = makeAnswerQueue<MockChange>([
+    {
+      records: [
+        { kind: 'task.step_started', stepKey: 'conversation:1' },
+        ...Array.from({ length: 200 }, () => ({ kind: 'tool_called' })),
+        { kind: 'task.step_errored', stepKey: 'conversation:1' },
+      ],
+    },
+    {
+      records: [
+        { kind: 'model.reply', text: 'No task.' },
+        { kind: 'task.step_committed', readCursor: 204 },
+      ],
+    },
+  ]);
+
+  await runSpike(ctx.target, {
+    ...ctx.deps,
+    sleep: async () => {
+      await seedMockChange(nextChange());
+    },
+    runGuestProbes: async () => ({ exitCode: 0, output: '', errors: '' }),
+  });
+
+  expect(ctx.outputs.get('plain.jsonl')).toEndWith(
+    '{"sequence":202,"kind":"tool_called"}\n{"sequence":203,"kind":"task.step_errored"}\n',
   );
 });
 
