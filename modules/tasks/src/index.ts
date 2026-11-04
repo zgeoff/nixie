@@ -66,6 +66,8 @@ export { startRunnerPool } from './start-runner-pool';
 export type { TaskRunnersOptions } from './start-task-runners';
 export { startTaskRunners } from './start-task-runners';
 export { StepAlreadyCommittedError } from './step-already-committed-error';
+export type { StepFailure } from './step-failed-error';
+export { StepFailedError } from './step-failed-error';
 export { taskCreatedCodec } from './task-created-codec';
 export { taskLeaseExpiredCodec } from './task-lease-expired-codec';
 export { taskRevivedCodec } from './task-revived-codec';

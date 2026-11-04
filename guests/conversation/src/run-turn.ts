@@ -1,6 +1,7 @@
 import type { SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, SessionPoint } from '@heynixie/wire';
+import { buildModelFailure } from './build-model-failure';
 import type { TurnFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
 import { checkToolServer } from './check-tool-server';
@@ -22,6 +23,9 @@ interface TurnState extends TurnInputState {
   readonly compactWindow: number;
 
   isInterrupted: boolean;
+
+  // The CLI retried the model call that the next main-chain message answers.
+  isRetried: boolean;
 }
 
 export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<void> {
@@ -36,6 +40,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
     contextSize: null,
     compactWindow: getCompactWindow(turn.profile),
     isInterrupted: false,
+    isRetried: false,
     toolsReady: Promise.withResolvers(),
     inputFailed: Promise.withResolvers(),
     ended: Promise.withResolvers(),
@@ -172,6 +177,12 @@ function emitSystem(
     return emitInit(message, deps);
   }
 
+  if (message.subtype === 'api_retry') {
+    state.isRetried = true;
+
+    return Promise.resolve('continue');
+  }
+
   return emitCommandRead(message, deps, state);
 }
 
@@ -227,11 +238,6 @@ async function emitReads(
 
 type AssistantMessage = Extract<SDKMessage, { type: 'assistant' }>;
 
-const refusedCredentialErrors: ReadonlySet<string> = new Set([
-  'authentication_failed',
-  'oauth_org_not_allowed',
-]);
-
 async function emitAssistant(
   message: AssistantMessage,
   deps: TurnDependencies,
@@ -241,12 +247,21 @@ async function emitAssistant(
     return 'continue';
   }
 
-  if (message.error !== undefined && refusedCredentialErrors.has(message.error)) {
-    await deps.emit({
-      type: 'failed',
-      reason: 'model_auth',
-      detail: collectText(message.message.content),
-    });
+  const isRetried = state.isRetried;
+
+  state.isRetried = false;
+
+  const failure =
+    message.error === undefined
+      ? null
+      : buildModelFailure({
+          error: message.error,
+          isRetried,
+          detail: collectText(message.message.content),
+        });
+
+  if (failure !== null) {
+    await deps.emit(failure);
 
     return 'stop';
   }

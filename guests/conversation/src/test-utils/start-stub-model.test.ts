@@ -311,6 +311,61 @@ test('it refuses a request with the scripted credential failure as a 401 the CLI
   });
 });
 
+test('it refuses a request with the scripted API error, its wait and its retry header', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({
+    apiError: {
+      status: 429,
+      type: 'rate_limit_error',
+      message: 'Weekly allowance used up',
+      retryAfterSeconds: 3600,
+      shouldRetry: false,
+    },
+  });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  const body = await response.json();
+
+  expect({
+    status: response.status,
+    retryAfter: response.headers.get('retry-after'),
+    shouldRetry: response.headers.get('x-should-retry'),
+    body,
+  }).toStrictEqual({
+    status: 429,
+    retryAfter: '3600',
+    shouldRetry: 'false',
+    body: {
+      type: 'error',
+      error: { type: 'rate_limit_error', message: 'Weekly allowance used up' },
+    },
+  });
+});
+
+test('it sends no wait and no retry header for an API error that scripts neither', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({
+    apiError: { status: 500, type: 'api_error', message: 'Internal server error' },
+  });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  expect({
+    status: response.status,
+    retryAfter: response.headers.get('retry-after'),
+    shouldRetry: response.headers.get('x-should-retry'),
+  }).toStrictEqual({ status: 500, retryAfter: null, shouldRetry: null });
+});
+
 test('it refuses a request with the scripted missing resource as a 404', async () => {
   const ctx = setupTest();
 

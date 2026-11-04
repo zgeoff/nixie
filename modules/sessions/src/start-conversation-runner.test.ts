@@ -1874,6 +1874,232 @@ test('it fails the step with a credential error and records no reply when the mo
   ]);
 });
 
+test('it fails the step, records no reply and leaves the message unread when the model API refuses the call with a rate limit', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'rate_limit',
+      detail: 'API Error: Request rejected (429) · Too many requests this minute',
+    },
+  ]);
+
+  await ctx.sendMessage(runner, 'What do I need?');
+
+  const [replies, errored, task] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('task.step_errored'),
+    ctx.db
+      .selectFrom('tasks')
+      .select(['state', 'step_errors', 'read_cursor', 'session_boundary'])
+      .executeTakeFirstOrThrow(),
+  ]);
+
+  expect(replies).toStrictEqual([]);
+
+  expect(task).toStrictEqual({
+    state: 'ready',
+    step_errors: 1,
+    read_cursor: 0,
+    session_boundary: null,
+  });
+
+  expect(errored).toMatchObject([
+    {
+      payload: { errors: 1, nextState: 'ready', reason: 'model_api.rate_limit' },
+      erasable: {
+        fields: {
+          message:
+            'the conversation turn failed: the model API refused the call with rate_limit: API Error: Request rejected (429) · Too many requests this minute',
+        },
+      },
+    },
+  ]);
+});
+
+test.each([
+  ['overloaded', 'API Error: 529 Overloaded'],
+  ['server_error', 'API Error: 500 Internal server error'],
+] as const)(
+  'it answers the message on its own after the backoff when the model API refused the call with %s',
+  async (kind, detail) => {
+    const ctx = await setupTest();
+
+    await createConversationTask(ctx.context);
+
+    const runner = await ctx.startRunner({
+      models: buildMockModelsConfig(),
+      credential: 'not-a-real-key',
+      toolNames: ['notes_read'],
+    });
+
+    ctx.sandboxes.setGuestScript(() => [
+      { type: 'failed', reason: 'model_api', error: kind, detail },
+    ]);
+
+    const [message] = await ctx.writeMessage('What do I need?');
+
+    await ctx.runNextStep(runner);
+
+    ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'You need milk.' })));
+    ctx.clock.advance(30_000);
+
+    await ctx.runNextStep(runner);
+
+    const [replies, task] = await Promise.all([
+      ctx.readKinds('model.reply'),
+      ctx.db.selectFrom('tasks').select(['state', 'read_cursor']).executeTakeFirstOrThrow(),
+    ]);
+
+    expect({ replies, task }).toMatchObject({
+      replies: [{ erasable: { fields: { text: 'You need milk.' } } }],
+      task: { state: 'waiting', read_cursor: message?.sequence },
+    });
+  },
+);
+
+test.each([
+  ['quota', 'API Error: Request rejected (429) · Weekly allowance used up'],
+  ['billing', 'Credit balance is too low'],
+  ['account', 'Your account is on hold'],
+  ['model_not_found', 'API Error: 404 model: claude-gone-1'],
+] as const)(
+  'it leaves the message for the owner to retry when the model API refused the call with %s',
+  async (kind, detail) => {
+    const ctx = await setupTest();
+
+    await createConversationTask(ctx.context);
+
+    const runner = await ctx.startRunner({
+      models: buildMockModelsConfig(),
+      credential: 'not-a-real-key',
+      toolNames: ['notes_read'],
+    });
+
+    ctx.sandboxes.setGuestScript(() => [
+      { type: 'failed', reason: 'model_api', error: kind, detail },
+    ]);
+
+    await ctx.sendMessage(runner, 'What do I need?');
+
+    ctx.clock.advance(86_400_000);
+
+    const [claim, task] = await Promise.all([
+      claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 }),
+      ctx.db
+        .selectFrom('tasks')
+        .select(['state', 'step_errors', 'read_cursor'])
+        .executeTakeFirstOrThrow(),
+    ]);
+
+    expect({ claim, task }).toStrictEqual({
+      claim: null,
+      task: { state: 'waiting', step_errors: 1, read_cursor: 0 },
+    });
+  },
+);
+
+test('it runs the turn after a refused call from the boundary before it, with no error text in what it sends', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  const before = {
+    sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+    messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+  };
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ boundary: before, reply: 'Hello.' })));
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'overloaded',
+      detail: 'API Error: 529 Overloaded',
+    },
+  ]);
+
+  await ctx.sendMessage(runner, 'What do I need?');
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'You need milk.' })));
+  ctx.clock.advance(30_000);
+
+  await ctx.runNextStep(runner);
+
+  const retried = ctx.sandboxes.turns.at(-1);
+
+  expect({
+    resume: retried?.resume,
+    hasError: JSON.stringify(retried).includes('Overloaded'),
+    texts: retried?.input.map((message) => message.text.includes('What do I need?')),
+  }).toStrictEqual({ resume: before, hasError: false, texts: [true] });
+});
+
+test('it records the replies the model gave before the model API refused the call, and leaves the message unread', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    {
+      type: 'assistant',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      text: 'Let me check the calendar.',
+      toolUses: [{ id: 'toolu_01', name: 'mcp__nixie__calendar_read' }],
+    },
+    {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'quota',
+      detail: 'API Error: Request rejected (429) · Weekly allowance used up',
+    },
+  ]);
+
+  await ctx.sendMessage(runner, 'What is on today?');
+
+  const [replies, task] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.db.selectFrom('tasks').select(['state', 'read_cursor']).executeTakeFirstOrThrow(),
+  ]);
+
+  expect({ replies, task }).toMatchObject({
+    replies: [
+      {
+        thread: 'conversation',
+        payload: { messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002' },
+        erasable: { fields: { text: 'Let me check the calendar.' } },
+      },
+    ],
+    task: { state: 'waiting', read_cursor: 0 },
+  });
+});
+
 test('it answers your next message after 4 turns failed in a row, past the error limit of 3', async () => {
   const ctx = await setupTest();
 

@@ -3,6 +3,7 @@ import { planBackoffDelay } from '@heynixie/retry';
 import { buildPausedRecord } from './build-paused-record';
 import { requireLease } from './require-lease';
 import { resetLease } from './reset-lease';
+import { StepFailedError } from './step-failed-error';
 import { taskStepErroredCodec } from './task-step-errored-codec';
 import type { StepErrored, TaskClaim, TasksContext, TasksTables } from './types';
 
@@ -33,10 +34,23 @@ export function writeStepError(
       .executeTakeFirstOrThrow();
 
     const errors = task.step_errors + 1;
-    const retry = planRetry(task.is_conversation === 1, errors, failure);
+    const stepFailure = failure.error instanceof StepFailedError ? failure.error : null;
+
+    const retry = planRetry(
+      {
+        isConversation: task.is_conversation === 1,
+        isWaitingForOwner: stepFailure?.isWaitingForOwner === true,
+      },
+      errors,
+      failure,
+    );
+
     const retryAt = now + retry.delayMs;
 
     await writeRecordsInTransaction(tx, context.log, [
+      ...(stepFailure === null
+        ? []
+        : stepFailure.records.map((record) => ({ ...record, thread: taskID }))),
       {
         kind: 'task.step_errored',
         definitions: context.definitions(),
@@ -47,12 +61,13 @@ export function writeStepError(
           nextState: retry.nextState,
           errors,
           errorLimit: failure.maxStepErrors,
+          ...(stepFailure === null ? {} : { reason: stepFailure.reason }),
           claimableAt: retryAt,
         }),
         erasable: { message: formatError(failure.error) },
       },
-      ...(retry.nextState === 'ready' && task.pause_requested === 1
-        ? [buildPausedRecord(taskID, 'ready', context.definitions())]
+      ...(retry.nextState !== 'failed' && task.pause_requested === 1
+        ? [buildPausedRecord(taskID, retry.nextState, context.definitions())]
         : []),
     ]);
 
@@ -70,12 +85,24 @@ export function writeStepError(
   });
 }
 
+interface RetryFacts {
+  readonly isConversation: boolean;
+
+  readonly isWaitingForOwner: boolean;
+}
+
+// A conversation that waits for its owner takes its next step from a message or a retry, both of
+// which move it to ready.
 function planRetry(
-  isConversation: boolean,
+  facts: RetryFacts,
   errors: number,
   options: StepErrorOptions,
-): { readonly nextState: 'ready' | 'failed'; readonly delayMs: number } {
-  if (isConversation) {
+): { readonly nextState: 'ready' | 'waiting' | 'failed'; readonly delayMs: number } {
+  if (facts.isConversation && facts.isWaitingForOwner) {
+    return { nextState: 'waiting', delayMs: 0 };
+  }
+
+  if (facts.isConversation) {
     return {
       nextState: 'ready',
       delayMs: planBackoffDelay(errors, {

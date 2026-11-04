@@ -14,7 +14,7 @@ export type { FetchReply } from './fetch-reply';
 export type { FetchLimits, FetchRequest } from './fetch-request';
 export { frameHeaderBytes } from './frame-header-bytes';
 export { FrameTooLargeError } from './frame-too-large-error';
-export type { GuestFrame } from './guest-frame';
+export type { GuestFrame, ModelAPIErrorKind } from './guest-frame';
 export { guestFrameSchema } from './guest-frame';
 export type { HostFrame, InboxImage, InboxMessage, SessionPoint, TurnProfile } from './host-frame';
 export { hostFrameLimitBytes } from './host-frame-limit-bytes';

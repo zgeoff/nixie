@@ -458,7 +458,7 @@ test('it keeps a resumed session working under the summarized display', async ()
   expect(rerun.sessionID).not.toBe(first.sessionID);
 });
 
-test('it marks the turn end as an error when the model API refuses the request', async () => {
+test('it fails the turn with no assistant frame when the model API refuses the request', async () => {
   const ctx = await setupTest();
 
   await runTurn(
@@ -469,29 +469,12 @@ test('it marks the turn end as an error when the model API refuses the request',
     ctx.deps,
   );
 
-  const reply = ctx.frames.at(1);
-
-  if (reply?.type !== 'assistant') {
-    throw new Error('the second frame is not an assistant frame');
-  }
-
   expect(ctx.frames).toStrictEqual([
-    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
     {
-      type: 'assistant',
-      messageID: expect.toBeString(),
-      text: 'API Error: 400 the stub model has no reply left',
-      toolUses: [],
-    },
-    {
-      type: 'ended',
-      boundary: { sessionID: expect.toBeString(), messageID: reply.messageID },
-      subtype: 'success',
-      stopReason: 'stop_sequence',
-      isError: true,
-      terminalReason: 'api_error',
-      turns: 1,
-      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      type: 'failed',
+      reason: 'model_api',
+      error: 'unknown',
+      detail: 'API Error: 400 the stub model has no reply left',
     },
   ]);
 });
@@ -537,6 +520,227 @@ test('it fails the turn with no assistant frame when the model API refuses an OA
         'Your organization has disabled Claude subscription access for Claude Code · Use an Anthropic API key instead, or ask your admin to enable access',
     },
   ]);
+});
+
+test('it fails the turn with no assistant frame when the model API refuses the call with a wait too long to retry', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({
+    apiError: {
+      status: 429,
+      type: 'rate_limit_error',
+      message: 'Weekly allowance used up',
+      retryAfterSeconds: 3600,
+    },
+  });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  expect(ctx.frames).toStrictEqual([
+    {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'quota',
+      detail: 'API Error: Request rejected (429) · Weekly allowance used up',
+    },
+  ]);
+});
+
+test('it fails the turn as a rate limit when the CLI retried the refused call before it gave up', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    {
+      apiError: {
+        status: 429,
+        type: 'rate_limit_error',
+        message: 'Too many requests this minute',
+        retryAfterSeconds: 1,
+      },
+    },
+    {
+      apiError: {
+        status: 429,
+        type: 'rate_limit_error',
+        message: 'Too many requests this minute',
+        shouldRetry: false,
+      },
+    },
+  );
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  expect(ctx.frames).toStrictEqual([
+    {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'rate_limit',
+      detail: 'API Error: Request rejected (429) · Too many requests this minute',
+    },
+  ]);
+});
+
+test.each([
+  [529, 'overloaded_error', 'Overloaded'],
+  [500, 'api_error', 'Internal server error'],
+])(
+  'it fails the turn with no assistant frame when the model API answers %d',
+  async (status, type, message) => {
+    const ctx = await setupTest();
+
+    ctx.model.addReplies({ apiError: { status, type, message, shouldRetry: false } });
+
+    await runTurn(
+      buildMockTurnFrame({
+        profile: { baseURL: ctx.model.url },
+        input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+      }),
+      ctx.deps,
+    );
+
+    expect(ctx.frames).toStrictEqual([
+      {
+        type: 'failed',
+        reason: 'model_api',
+        error: 'server_error',
+        detail: expect.toStartWith(`API Error: ${status} ${message}.`),
+      },
+    ]);
+  },
+);
+
+test('it fails the turn on a credit balance the model API refuses as a billing error', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({
+    apiError: {
+      status: 400,
+      type: 'invalid_request_error',
+      message: 'Your credit balance is too low to access the Anthropic API.',
+    },
+  });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  expect(ctx.frames).toStrictEqual([
+    {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'billing',
+      detail: 'Credit balance is too low',
+    },
+  ]);
+});
+
+test('it reports the replies before a refused call, then fails the turn with no turn end', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_read', input: { name: 'groceries' } } },
+    {
+      apiError: {
+        status: 429,
+        type: 'rate_limit_error',
+        message: 'Weekly allowance used up',
+        retryAfterSeconds: 3600,
+      },
+    },
+  );
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  expect(ctx.frames).toStrictEqual([
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
+    {
+      type: 'assistant',
+      messageID: expect.toBeString(),
+      text: '',
+      toolUses: [{ id: expect.toBeString(), name: 'mcp__nixie__note_read' }],
+    },
+    {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'quota',
+      detail: 'API Error: Request rejected (429) · Weekly allowance used up',
+    },
+  ]);
+});
+
+test('it sends the model no error text on the turn that resumes before a refused call', async () => {
+  const ctx = await setupTest();
+
+  const runTurnAt = (text: string, resume: SessionPoint | null) =>
+    runTurn(
+      buildMockTurnFrame({
+        profile: { baseURL: ctx.model.url },
+        resume,
+        input: [{ uuid: crypto.randomUUID(), text }],
+      }),
+      { ...ctx.deps, toolServer: createStubToolServer().config },
+    );
+
+  ctx.model.addReplies(
+    { text: 'Hello.' },
+    {
+      apiError: {
+        status: 429,
+        type: 'rate_limit_error',
+        message: 'Weekly allowance used up',
+        retryAfterSeconds: 3600,
+      },
+    },
+    { text: 'You need milk.' },
+  );
+
+  await runTurnAt('Hi.', null);
+
+  const first = ctx.frames.at(-1);
+
+  invariant(first?.type === 'ended');
+
+  await runTurnAt('What do I need?', first.boundary);
+  await runTurnAt('What do I need?', first.boundary);
+
+  const messages = JSON.stringify(ctx.model.requests.at(-1)?.body?.messages);
+
+  expect({
+    hasError: messages.includes('API Error'),
+    hasReason: messages.includes('Weekly allowance'),
+    last: ctx.frames.findLast((frame) => frame.type === 'assistant'),
+  }).toStrictEqual({
+    hasError: false,
+    hasReason: false,
+    last: {
+      type: 'assistant',
+      messageID: expect.toBeString(),
+      text: 'You need milk.',
+      toolUses: [],
+    },
+  });
 });
 
 test('it ends the turn with the overflow reason when the model API refuses a prompt past its window', async () => {

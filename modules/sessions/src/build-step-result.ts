@@ -4,6 +4,7 @@ import { buildModelRecord, modelReplyCodec, modelTurnEndedCodec } from '@heynixi
 import type { StepResult } from '@heynixie/tasks';
 import { decodeInboxUUID } from './decode-inbox-uuid';
 import { isContextOverflow } from './is-context-overflow';
+import { ModelAPIError } from './model-api-error';
 import { ModelAuthError } from './model-auth-error';
 import type { GuestTurn } from './run-guest-turn';
 import type { ImageTally, MemoryRef } from './types';
@@ -46,6 +47,14 @@ export function buildStepResult(
     throw new ModelAuthError(failure.detail);
   }
 
+  if (failure?.reason === 'model_api') {
+    throw new ModelAPIError(
+      failure.error,
+      failure.detail,
+      buildReplyRecords(source, completed.turn),
+    );
+  }
+
   if (failure !== null || last === undefined) {
     throw new Error(
       `the conversation turn failed: ${failure?.reason ?? 'no result'}: ${failure?.detail ?? ''}`,
@@ -68,43 +77,26 @@ export function buildStepResult(
   };
 }
 
-function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
-  const replies = completed.turn.assistants.filter((assistant) => assistant.text !== '');
-  const reasoning = buildTurnReasoning(completed.turn);
+function buildReplyRecords(source: ModelRecordSource, turn: GuestTurn): readonly RecordInput[] {
+  const replies = turn.assistants.filter((assistant) => assistant.text !== '');
+  const reasoning = buildTurnReasoning(turn);
 
-  return [
-    ...replies.map((assistant, index) => {
-      // The SDK's summarized display sends the reasoning as its own message and reports thinking
-      // tokens once per turn, so the joined summary and the total sit on the last reply.
-      const isLast = index === replies.length - 1;
+  return replies.map((assistant, index) => {
+    // The SDK's summarized display sends the reasoning as its own message and reports thinking
+    // tokens once per turn, so the joined summary and the total sit on the last reply.
+    const isLast = index === replies.length - 1;
 
-      return buildModelRecord(source, modelReplyCodec, {
-        payload: {
-          messageID: assistant.messageID,
-          ...(isLast && reasoning.thinkingTokens > 0
-            ? { thinkingTokens: reasoning.thinkingTokens }
-            : {}),
-        },
-        text: assistant.text,
-        ...(isLast && reasoning.summary !== '' ? { summary: reasoning.summary } : {}),
-      });
-    }),
-    buildModelRecord(source, modelTurnEndedCodec, {
+    return buildModelRecord(source, modelReplyCodec, {
       payload: {
-        ...buildTurnSummary(completed.turn),
-        pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
-        retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
-        retrievedMessages: [...completed.memory.retrievedMessages],
-        invalidatedThrough: completed.memory.invalidatedThrough,
-        sessionImageBytes: completed.images.bytes,
-        sessionImageCount: completed.images.count,
-        ...(completed.turn.endedMark === undefined
-          ? {}
-          : { recalledThrough: completed.turn.endedMark }),
-        ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
+        messageID: assistant.messageID,
+        ...(isLast && reasoning.thinkingTokens > 0
+          ? { thinkingTokens: reasoning.thinkingTokens }
+          : {}),
       },
-    }),
-  ];
+      text: assistant.text,
+      ...(isLast && reasoning.summary !== '' ? { summary: reasoning.summary } : {}),
+    });
+  });
 }
 
 interface TurnReasoning {
@@ -123,6 +115,27 @@ function buildTurnReasoning(turn: GuestTurn): TurnReasoning {
   );
 
   return { summary, thinkingTokens };
+}
+
+function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
+  return [
+    ...buildReplyRecords(source, completed.turn),
+    buildModelRecord(source, modelTurnEndedCodec, {
+      payload: {
+        ...buildTurnSummary(completed.turn),
+        pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
+        retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
+        retrievedMessages: [...completed.memory.retrievedMessages],
+        invalidatedThrough: completed.memory.invalidatedThrough,
+        sessionImageBytes: completed.images.bytes,
+        sessionImageCount: completed.images.count,
+        ...(completed.turn.endedMark === undefined
+          ? {}
+          : { recalledThrough: completed.turn.endedMark }),
+        ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
+      },
+    }),
+  ];
 }
 
 type EndedFrame = GuestTurn['ended'][number];

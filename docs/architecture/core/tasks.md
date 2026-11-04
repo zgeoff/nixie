@@ -110,6 +110,13 @@ to answer. That part of the report is advisory, so a deployment never stops send
 nixie for it. The next turn that commits clears both. A server start makes a conversation in the
 failed state ready again with its errors cleared, because a failed task never wakes.
 
+A step can throw an error that names its reason, holds records and says whether its retry waits for
+the user. The error record keeps the reason, and the error's records commit in the same transaction,
+before it. The conversation's turn uses it for
+[a call the model API refuses](./conversation-turns.md#a-call-the-model-api-refuses). When the error
+waits for the user, the conversation waits instead of retrying, and its next step runs once a waking
+record arrives. Any other task retries such an error after its delay, as it retries every error.
+
 ## Pause, stop and close
 
 The user controls a task with 6 [checked actions](../channels/api.md) of the API: pause, resume,

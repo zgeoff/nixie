@@ -1,6 +1,7 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { conversationTaskID, taskStepErroredCodec } from '@heynixie/tasks';
+import { modelAPIReasonPrefix } from './model-api-reason-prefix';
 import type { EventKind, NotedEvent } from './types';
 
 export interface RetriedTurn {
@@ -23,11 +24,13 @@ export function buildRetriedTurnKind(
         limit: readLimit,
       });
 
-      return records.flatMap((entry) =>
-        taskStepErroredCodec.tryDecodePartial(entry.record.payload)?.nextState === 'ready'
-          ? [buildRetriedTurn(entry.record)]
-          : [],
-      );
+      return records.flatMap((entry) => {
+        const payload = taskStepErroredCodec.tryDecodePartial(entry.record.payload);
+
+        return payload?.nextState === 'ready'
+          ? [buildRetriedTurn(entry.record, isModelAPIReason(payload.reason))]
+          : [];
+      });
     },
     render: (detail) =>
       detail.message === null
@@ -36,13 +39,21 @@ export function buildRetriedTurnKind(
   };
 }
 
-function buildRetriedTurn(record: LogRecord): NotedEvent<RetriedTurn> {
+function buildRetriedTurn(record: LogRecord, isTextHidden: boolean): NotedEvent<RetriedTurn> {
   const message =
-    record.erasable.status === 'readable' ? record.erasable.fields['message'] : undefined;
+    record.erasable.status === 'readable' && !isTextHidden
+      ? record.erasable.fields['message']
+      : undefined;
 
   return {
     sequence: record.sequence,
     at: record.recordedAt.getTime(),
     detail: { message: typeof message === 'string' ? message : null },
   };
+}
+
+// The model API's own error text would read to the model as if the conversation had said it, so a
+// turn the model API refused is noted without its text.
+function isModelAPIReason(reason: string | undefined): boolean {
+  return reason?.startsWith(modelAPIReasonPrefix) === true;
 }
