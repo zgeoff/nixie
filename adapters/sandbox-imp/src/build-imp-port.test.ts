@@ -639,9 +639,10 @@ test('it adds a secret as the custom kind with no field beyond its name, value a
 
 test('it uses the secret a real impd holds when nixie holds no value for it', async () => {
   const impd = await startTestImpd();
-  const recorder = await setupTestRecorder();
 
   onTestFinished(impd.stop);
+
+  const recorder = await setupTestRecorder();
 
   await impd.client.secrets.add({
     name: 'nixie-model-harbor',
@@ -671,9 +672,10 @@ test('it uses the secret a real impd holds when nixie holds no value for it', as
 
 test('it refuses a secret a real impd lacks when nixie holds no value for it, and adds none', async () => {
   const impd = await startTestImpd();
-  const recorder = await setupTestRecorder();
 
   onTestFinished(impd.stop);
+
+  const recorder = await setupTestRecorder();
 
   const adapter = buildImpSandboxAdapter({
     port: buildImpPort({ url: impd.url, token: TEST_TOKEN }),
