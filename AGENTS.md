@@ -18,6 +18,20 @@ The rules a task needs are not repeated here. Load the skill for the work before
 | `project-docs-writing` | the same, beside `docs-writing` — nixie's own prose rules                          |
 | `ci-design`            | adding or changing a workflow, a job or a step                                     |
 | `project-ci-design`    | the same, beside `ci-design` — nixie's test budget and required checks             |
+| `skill-writing`        | writing or editing a skill                                                         |
+| `cold-read`            | checking a skill you wrote or changed, before its PR                               |
+| `deslop`               | editing the prose of a skill you wrote or changed, before its PR                   |
+
+When you write or edit a skill:
+
+1. Load the `skill-writing`, `cold-read` and `deslop` skills from `.claude/skills/`. repo-sync
+   delivers them there at the `zgeoff/skills` commit that `zgeoff/tools` pins, so install none of
+   them yourself.
+2. Do every step in the "Check it" section of `.claude/skills/skill-writing/SKILL.md`.
+3. In the PR description, after the sections of the repo's PR template, add three `##` headings:
+   - "Skill checks": the check output.
+   - "Cold read": each cold-read finding, and how you answered it.
+   - "Deslop": each change deslop made, or "none".
 
 ## Repo structure
 
