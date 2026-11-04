@@ -62,14 +62,19 @@ export async function startAppServer(
 ): Promise<AppServer> {
   const server = spawnAppServer(env, cwd, answerServerRequest);
 
-  await server.request('initialize', {
-    clientInfo: { name: 'nixie-spike', title: null, version: '0.0.0' },
-    capabilities: {
-      experimentalApi: true,
-      requestAttestation: false,
-      optOutNotificationMethods: quietNotifications,
-    },
-  });
+  try {
+    await server.request('initialize', {
+      clientInfo: { name: 'nixie-spike', title: null, version: '0.0.0' },
+      capabilities: {
+        experimentalApi: true,
+        requestAttestation: false,
+        optOutNotificationMethods: quietNotifications,
+      },
+    });
+  } catch (error) {
+    await server.stop();
+    throw error;
+  }
   server.notify('initialized');
   return server;
 }
