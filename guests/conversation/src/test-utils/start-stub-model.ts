@@ -21,6 +21,16 @@ type ScriptedMessage = (
   };
 };
 
+interface StubAPIError {
+  readonly status: number;
+  readonly type: string;
+  readonly message: string;
+
+  readonly retryAfterSeconds?: number;
+
+  readonly shouldRetry?: boolean;
+}
+
 type ScriptedReply =
   | ScriptedMessage
   | {
@@ -31,6 +41,9 @@ type ScriptedReply =
     }
   | {
       readonly notFound: string;
+    }
+  | {
+      readonly apiError: StubAPIError;
     };
 
 const stubMessageSchema = z.looseObject({ role: z.string(), content: z.unknown() });
@@ -137,6 +150,10 @@ function renderResponse(request: StubModelRequest, script: StubScript): Response
     return renderNotFound(reply.notFound);
   }
 
+  if ('apiError' in reply) {
+    return renderAPIError(reply.apiError);
+  }
+
   const model = request.body.model ?? 'stub';
 
   return request.body.stream === true ? renderStream(reply, model) : renderWhole(reply, model);
@@ -168,6 +185,20 @@ function renderNotFound(message: string): Response {
   return Response.json(
     { type: 'error', error: { type: 'not_found_error', message } },
     { status: 404 },
+  );
+}
+
+function renderAPIError(error: StubAPIError): Response {
+  const headers = {
+    ...(error.retryAfterSeconds === undefined
+      ? {}
+      : { 'retry-after': String(error.retryAfterSeconds) }),
+    ...(error.shouldRetry === undefined ? {} : { 'x-should-retry': String(error.shouldRetry) }),
+  };
+
+  return Response.json(
+    { type: 'error', error: { type: error.type, message: error.message } },
+    { status: error.status, headers },
   );
 }
 

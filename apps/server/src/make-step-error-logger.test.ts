@@ -4,6 +4,7 @@ import { makeLogger, startLineLog } from '@heynixie/logger';
 import { SandboxHostError } from '@heynixie/sandbox';
 import { buildImpPort } from '@heynixie/sandbox-imp';
 import { startStubImpd } from '@heynixie/sandbox-imp/test-utils';
+import { ModelAPIError } from '@heynixie/sessions';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { makeStepErrorLogger } from './make-step-error-logger';
@@ -204,5 +205,49 @@ test('it logs the type of a thrown value that is not an error', () => {
         error: 'string',
       },
     ],
+  ]);
+});
+
+test('it logs the kind and the text of a refused model call', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const lines: string[] = [];
+
+  const lineLog = await startLineLog((line) => {
+    lines.push(line);
+  });
+
+  onTestFinished(lineLog.stop);
+
+  const errored = await sendTestMessage(
+    ctx.context,
+    () => {
+      throw new ModelAPIError(
+        'quota',
+        'API Error: Request rejected (429) · Monthly limit reached',
+        [],
+      );
+    },
+    'Is the ferry running on Sunday?',
+  );
+
+  invariant(errored);
+  makeStepErrorLogger(makeLogger())(errored);
+
+  expect(lines.map((line): unknown => JSON.parse(line))).toStrictEqual([
+    {
+      time: expect.toBeString(),
+      event: 'task.step_errored',
+      taskID: 'conversation',
+      stepKey: errored.stepKey,
+      errors: 1,
+      nextState: 'waiting',
+      retryAt: errored.retryAt,
+      error: 'ModelAPIError',
+      apiError: 'quota',
+      apiMessage: 'API Error: Request rejected (429) · Monthly limit reached',
+    },
   ]);
 });

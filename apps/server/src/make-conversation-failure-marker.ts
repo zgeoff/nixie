@@ -1,5 +1,5 @@
 import { SandboxHostError } from '@heynixie/sandbox';
-import { ModelAuthError } from '@heynixie/sessions';
+import { ModelAPIError, ModelAuthError } from '@heynixie/sessions';
 import type { StepErrored } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { StartState } from './build-start-state';
@@ -13,7 +13,11 @@ export function makeConversationFailureMarker(
       return;
     }
 
-    if (errored.errors >= errored.errorLimit || errored.error instanceof ModelAuthError) {
+    if (
+      errored.errors >= errored.errorLimit ||
+      errored.error instanceof ModelAuthError ||
+      errored.nextState === 'waiting'
+    ) {
       state.update({
         turns: {
           isReady: false,
@@ -29,6 +33,10 @@ function formatFailureReason(errored: StepErrored): string {
 
   if (errored.error instanceof ModelAuthError) {
     return `${count}, the last because the model API refused the credential`;
+  }
+
+  if (errored.error instanceof ModelAPIError) {
+    return `${count}, the last because the model API refused the call with ${errored.error.kind}`;
   }
 
   return errored.error instanceof SandboxHostError

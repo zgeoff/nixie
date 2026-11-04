@@ -275,11 +275,35 @@ model ID and the profile's ID from the profile nixie gave the turn, never from t
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool
 server, throws, so the tasks module records the error and retries the step after a delay that grows
-with each failure in a row. The conversation never fails ([tasks](./tasks.md#steps)). When the model
-API refuses the profile's credential, the CLI writes its own message about the refusal, and the
-guest fails the turn with a reason of its own instead of reporting that message as a reply. The step
-then throws an error that names the credential, so the server can mark the turns as failing at once
-([server](../deployment/server.md#health)).
+with each failure in a row. The conversation never fails ([tasks](./tasks.md#steps)).
+
+### A call the model API refuses
+
+When the model API refuses a call, the CLI writes its own message about the refusal as an assistant
+message. The guest fails the turn instead of reporting that message as a reply, so the message never
+reaches the event log or a session that a later turn resumes. The step commits no boundary and no
+read, so the user's message stays unread, and the next turn forks the session before the refused
+call. The step's error record and the server's log keep the CLI's message. The events block lists a
+retried turn that the model API refused without that message.
+
+The step's error depends on the kind of refusal:
+
+- A refused credential throws an error that names the credential, so the server marks the turns as
+  failing at once ([server](../deployment/server.md#health)).
+- A rate limit that the CLI retried, an overloaded or failing model API, and a refusal the SDK names
+  as unknown retry with the conversation's backoff.
+- A quota, a billing or account refusal, and a model that the API lacks wait for the user, because
+  each retry fails the same way until the user changes something outside nixie. The conversation's
+  next step runs once the user sends a message.
+
+The CLI retries a rate limit within the call unless the model API asks for a wait past the CLI's own
+limit, so the guest reads a rate limit that the CLI never retried as a quota. The CLI passes no
+reset time on to the SDK, so nixie knows none. The step records the replies that the model gave
+before the refused call with the error, and the next try runs the whole turn again.
+
+Two exceptions: a request the model API refused as invalid, and a reply cut at the output cap, end
+the turn with its error message, because the host tells a context overflow from them only at the
+turn's end.
 
 ## The events block
 
@@ -320,9 +344,10 @@ reads.
   because a version number alone tells the conversation nothing it can act on. The server finds
   those changes by comparing what each start gives the conversation, so a release that changes
   nothing the conversation is given adds no line.
-- **A retried turn** reads each failure of a conversation step that the task retries, and quotes the
-  error when the log still holds its text. A failure that ended the task is not a retry, so the
-  block leaves it out.
+- **A retried turn** reads each failure of a conversation step that the task retries on its own, and
+  quotes the error when the log still holds its text. One exception: a turn the model API refused is
+  listed without the error, which [a refused call](#a-call-the-model-api-refuses) keeps out of the
+  conversation. A failure that waits for the user is not a retry, so the block leaves it out.
 - **A compaction heads-up** reads the first turn of a session that ended near the compaction
   threshold, and gives the tokens left, as [compaction](./compaction.md#the-heads-up) describes.
 

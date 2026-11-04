@@ -20,7 +20,7 @@ stateDiagram-v2
   [*] --> waiting: the conversation is created
   ready --> running: a runner claims a step
   running --> ready: the step commits with work left, or throws
-  running --> waiting: the step commits with nothing unread
+  running --> waiting: the step commits with nothing unread, or the conversation's step throws an error that waits for the user
   running --> done: the step commits as done
   running --> failed: 3 steps in a row throw
   failed --> ready: a restart, or a server start for the conversation
@@ -109,6 +109,15 @@ conversation's turns as failing in its readiness report, and the web UI says tha
 to answer. That part of the report is advisory, so a deployment never stops sending requests to
 nixie for it. The next turn that commits clears both. A server start makes a conversation in the
 failed state ready again with its errors cleared, because a failed task never wakes.
+
+A step can throw an error that names its reason, holds records and says whether its retry waits for
+the user. The error record keeps the reason, and the error's records commit in the same transaction,
+before it. The conversation's turn uses it for
+[a call the model API refuses](./conversation-turns.md#a-call-the-model-api-refuses). When the error
+waits for the user, the conversation waits instead of retrying, and its next step runs once a waking
+record arrives. A waking record that arrived while the step ran makes the conversation ready at
+once, because the record could not wake a running task. Any other task retries such an error after
+its delay, as it retries every error.
 
 ## Pause, stop and close
 

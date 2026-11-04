@@ -151,6 +151,27 @@ test('it refuses a summarized frame with no chain entry', () => {
   expect(result.error?.issues).toPartiallyContain({ path: ['boundary'] });
 });
 
+test('it accepts a failed frame for a call the model API refused, with the kind of error', () => {
+  const frame: GuestFrame = {
+    type: 'failed',
+    reason: 'model_api',
+    error: 'quota',
+    detail: 'API Error: Request rejected (429) · Weekly allowance used up',
+  };
+
+  expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test('it refuses a model API failure with no kind of error', () => {
+  const result = guestFrameSchema.safeParse({
+    type: 'failed',
+    reason: 'model_api',
+    detail: 'API Error: 500 Internal server error',
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['error'] });
+});
+
 test('it accepts a failed frame for a credential the model API refused', () => {
   const frame: GuestFrame = {
     type: 'failed',

@@ -167,7 +167,9 @@ async function readTurn(stream: ExecStream, readRecallMark: MarkReader): Promise
   requireTurnEnd(turn, exit);
 
   return {
-    assistants: turn.assistants.slice(0, turn.settled.assistants),
+    // A failed turn resumes no session, so it keeps every reply the model gave before it failed.
+    assistants:
+      turn.failure === null ? turn.assistants.slice(0, turn.settled.assistants) : turn.assistants,
     read: turn.read.slice(0, turn.settled.read),
     ended: turn.ended,
     failure: turn.failure,

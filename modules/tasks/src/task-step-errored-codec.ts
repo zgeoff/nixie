@@ -10,6 +10,7 @@ export const taskStepErroredCodec = defineRecordCodec(
     nextState: taskStateSchema,
     errors: z.int(),
     errorLimit: z.int().exactOptional(),
+    reason: z.string().exactOptional(),
     claimableAt: z.number(),
   }),
 );

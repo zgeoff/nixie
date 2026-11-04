@@ -72,6 +72,10 @@ test('it ends an interrupted turn, and the message the turn left unread starts t
   ctx.nixie.model.addReplies(
     { toolUse: { name: 'mcp__nixie__time_now', input: {} } },
     { text: 'It is noon.', gate: heldReply.promise },
+
+    // The CLI sends the first request of a session resumed after an interrupt twice, and answers
+    // from the second.
+    { text: 'It is the ninth.' },
     { text: 'It is the ninth.' },
   );
 

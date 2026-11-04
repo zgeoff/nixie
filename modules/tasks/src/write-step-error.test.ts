@@ -2,10 +2,12 @@ import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
+import { StepFailedError } from './step-failed-error';
 import { createTestClaim } from './test-utils/create-test-claim';
 import { createTestConversationClaim } from './test-utils/create-test-conversation-claim';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
+import { writeInboxRecords } from './write-inbox-records';
 import { writeStepError } from './write-step-error';
 import { writeTaskControl } from './write-task-control';
 
@@ -155,6 +157,188 @@ test("it doubles the conversation's retry delay with each error until the delay 
   ).toStrictEqual([1_030_000, 1_090_000, 1_190_000, 1_290_000, 1_390_000]);
 });
 
+test('it leaves the conversation waiting, with no claim, when its step failed for a reason that waits for the owner', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'what is on today?');
+
+  await writeStepError(ctx.context, claim, {
+    error: new StepFailedError('the weekly allowance is used up', {
+      reason: 'quota',
+      isWaitingForOwner: true,
+      records: [],
+    }),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  ctx.clock.advance(86_400_000);
+
+  const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+  const task = await ctx.db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
+
+  expect({ next, state: task.state }).toStrictEqual({ next: null, state: 'waiting' });
+});
+
+test('it claims a conversation that waits for its owner once a message arrives', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'what is on today?');
+
+  await writeStepError(ctx.context, claim, {
+    error: new StepFailedError('the weekly allowance is used up', {
+      reason: 'quota',
+      isWaitingForOwner: true,
+      records: [],
+    }),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      erasable: { text: 'and tomorrow?' },
+    },
+  ]);
+
+  const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(next?.lease.workID).toBe('conversation');
+});
+
+test('it claims a conversation at once when a message arrived while its step failed for a reason that waits for the owner', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'what is on today?');
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      erasable: { text: 'and tomorrow?' },
+    },
+  ]);
+
+  await writeStepError(ctx.context, claim, {
+    error: new StepFailedError('the weekly allowance is used up', {
+      reason: 'quota',
+      isWaitingForOwner: true,
+      records: [],
+    }),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(next?.lease.workID).toBe('conversation');
+});
+
+test('it retries the conversation after its backoff when its step failed for a reason that retries on its own', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'what is on today?');
+
+  const errored = await writeStepError(ctx.context, claim, {
+    error: new StepFailedError('the provider is overloaded', {
+      reason: 'overloaded',
+      isWaitingForOwner: false,
+      records: [],
+    }),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  expect(errored).toStrictEqual({
+    taskID: claim.lease.workID,
+    stepKey: claim.stepKey,
+    errors: 1,
+    errorLimit: 3,
+    nextState: 'ready',
+    retryAt: 1_030_000,
+    error: expect.any(StepFailedError),
+  });
+});
+
+test('it retries a task that is not the conversation after its delay, even for a reason that waits for the owner', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  const errored = await writeStepError(ctx.context, claim, {
+    error: new StepFailedError('the weekly allowance is used up', {
+      reason: 'quota',
+      isWaitingForOwner: true,
+      records: [],
+    }),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  expect(errored).toStrictEqual({
+    taskID: claim.lease.workID,
+    stepKey: claim.stepKey,
+    errors: 1,
+    errorLimit: 3,
+    nextState: 'ready',
+    retryAt: 1_030_000,
+    error: expect.any(StepFailedError),
+  });
+});
+
+test("it writes a failed step's records and its reason on the task's thread, before the error", async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'what is on today?');
+
+  await writeStepError(ctx.context, claim, {
+    error: new StepFailedError('the weekly allowance is used up', {
+      reason: 'quota',
+      isWaitingForOwner: true,
+      records: [
+        {
+          kind: 'turn_finished',
+          definitions: ctx.context.definitions(),
+          payload: { note: 'checked the calendar' },
+        },
+      ],
+    }),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const entries = await readRecords(ctx.context.log, { afterSequence: claim.startSequence });
+
+  expect(
+    entries.map((entry) => [
+      entry.record.kind,
+      entry.record.thread,
+      entry.record.payload,
+      entry.record.erasable,
+    ]),
+  ).toStrictEqual([
+    ['turn_finished', 'conversation', { note: 'checked the calendar' }, { status: 'none' }],
+    [
+      'task.step_errored',
+      'conversation',
+      {
+        taskID: 'conversation',
+        stepKey: claim.stepKey,
+        nextState: 'waiting',
+        errors: 1,
+        errorLimit: 3,
+        reason: 'quota',
+        claimableAt: 1_000_000,
+      },
+      { status: 'readable', fields: { message: 'the weekly allowance is used up' } },
+    ],
+  ]);
+});
+
 test('it pauses a task whose pause waited on the step that threw', async () => {
   const ctx = await setupTest();
   const claim = await createTestClaim(ctx.context, 'tidy the inbox');
@@ -174,6 +358,31 @@ test('it pauses a task whose pause waited on the step that threw', async () => {
     .executeTakeFirstOrThrow();
 
   expect(task).toStrictEqual({ state: 'paused', resume_state: 'ready' });
+});
+
+test('it pauses the conversation to resume waiting when its pause waited on a step that failed for a reason that waits for the owner', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'what is on today?');
+
+  await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'pause' });
+
+  await writeStepError(ctx.context, claim, {
+    error: new StepFailedError('the weekly allowance is used up', {
+      reason: 'quota',
+      isWaitingForOwner: true,
+      records: [],
+    }),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'resume_state'])
+    .executeTakeFirstOrThrow();
+
+  expect(task).toStrictEqual({ state: 'paused', resume_state: 'waiting' });
 });
 
 test('it fails a task whose pause waited on the step that used its last try', async () => {

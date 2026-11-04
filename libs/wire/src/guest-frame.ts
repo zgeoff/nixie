@@ -73,13 +73,42 @@ const purgedFrameSchema = z.object({ type: z.literal('purged') }).readonly();
 
 // A model_auth failure means the model API refused the credential, so every retry fails the same
 // way until the credential changes.
-const failedFrameSchema = z
+const turnFailedFrameSchema = z
   .object({
     type: z.literal('failed'),
     reason: z.enum(['tools_not_connected', 'session_missing', 'model_auth', 'error']),
     detail: z.string(),
   })
   .readonly();
+
+// A quota is a rate limit whose wait the model API set too long for the CLI to retry within the
+// call.
+const modelAPIErrorSchema = z.enum([
+  'rate_limit',
+  'quota',
+  'overloaded',
+  'server_error',
+  'billing',
+  'account',
+  'model_not_found',
+  'unknown',
+]);
+
+export type ModelAPIErrorKind = z.infer<typeof modelAPIErrorSchema>;
+
+const modelAPIFailedFrameSchema = z
+  .object({
+    type: z.literal('failed'),
+    reason: z.literal('model_api'),
+    error: modelAPIErrorSchema,
+    detail: z.string(),
+  })
+  .readonly();
+
+const failedFrameSchema = z.discriminatedUnion('reason', [
+  turnFailedFrameSchema,
+  modelAPIFailedFrameSchema,
+]);
 
 export const guestFrameSchema = z.discriminatedUnion('type', [
   assistantFrameSchema,

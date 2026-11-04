@@ -22,6 +22,7 @@ export { formatMessageTime } from './format-message-time';
 export type { CheckerOptions } from './make-checker';
 export { makeChecker } from './make-checker';
 export { memoryRecalledCodec } from './memory-recalled-codec';
+export { ModelAPIError } from './model-api-error';
 export { ModelAuthError } from './model-auth-error';
 export { checkerOwner } from './start-checker-runner';
 export { agentConfigSchema } from './agent-config-schema';

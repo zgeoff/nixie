@@ -75,6 +75,57 @@ test('it drops the reads and replies a guest sent after its last result when it 
   });
 });
 
+test('it keeps every reply of a turn that failed after its last result', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  ctx.stub.setGuestScript(() => [
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000002'] },
+    {
+      type: 'assistant',
+      messageID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01',
+      text: 'Let me check the calendar.',
+      toolUses: [],
+    },
+    {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'quota',
+      detail: 'API Error: Request rejected (429) · Weekly allowance used up',
+    },
+  ]);
+
+  const turn = await runGuestTurn({
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
+    }),
+    messages: [],
+    signal: new AbortController().signal,
+  });
+
+  expect(turn).toStrictEqual({
+    assistants: [
+      {
+        type: 'assistant',
+        messageID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01',
+        text: 'Let me check the calendar.',
+        toolUses: [],
+      },
+    ],
+    read: [],
+    ended: [],
+    failure: {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'quota',
+      detail: 'API Error: Request rejected (429) · Weekly allowance used up',
+    },
+  });
+});
+
 test('it reports the mark it read at the last result, before a guest that died sent more', async () => {
   const ctx = setupTest();
 

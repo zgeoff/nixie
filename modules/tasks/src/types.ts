@@ -107,7 +107,7 @@ export interface StepErrored {
   readonly stepKey: string;
   readonly errors: number;
   readonly errorLimit: number;
-  readonly nextState: 'ready' | 'failed';
+  readonly nextState: 'ready' | 'waiting' | 'failed';
 
   readonly retryAt: number;
   readonly error: unknown;

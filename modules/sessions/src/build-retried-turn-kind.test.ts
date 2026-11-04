@@ -94,6 +94,40 @@ test('it reads a retried turn with its sequence and time', async () => {
   ]);
 });
 
+test("it reads a turn the model API refused without the model API's error text", async () => {
+  const ctx = await setupTest();
+
+  const [failure] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.step_errored',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        taskID: 'conversation',
+        nextState: 'ready',
+        errors: 1,
+        reason: 'model_api.overloaded',
+        claimableAt: 1_000_000,
+      },
+      erasable: {
+        message:
+          'the conversation turn failed: the model API refused the call with overloaded: API Error: 529 Overloaded',
+      },
+    },
+  ]);
+
+  invariant(failure);
+
+  const events = await buildRetriedTurnKind(ctx.tasks.context.log).read({
+    after: 0,
+    through: failure.sequence,
+  });
+
+  expect(events).toStrictEqual([
+    { sequence: failure.sequence, at: failure.recordedAt.getTime(), detail: { message: null } },
+  ]);
+});
+
 test('it leaves out a failure that ended the task, which no retry follows', async () => {
   const ctx = await setupTest();
 

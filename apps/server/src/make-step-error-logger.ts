@@ -1,5 +1,6 @@
 import type { LogFields, Logger } from '@heynixie/logger';
 import { SandboxHostError } from '@heynixie/sandbox';
+import { ModelAPIError } from '@heynixie/sessions';
 import type { StepErrored } from '@heynixie/tasks';
 
 export function makeStepErrorLogger(log: Logger): (errored: StepErrored) => void {
@@ -12,6 +13,7 @@ export function makeStepErrorLogger(log: Logger): (errored: StepErrored) => void
       retryAt: errored.retryAt,
       error: errored.error instanceof Error ? errored.error.name : typeof errored.error,
       ...buildHostFields(errored.error),
+      ...buildModelAPIFields(errored.error),
     });
   };
 }
@@ -20,4 +22,8 @@ function buildHostFields(error: unknown): LogFields {
   return error instanceof SandboxHostError
     ? { call: error.call, code: error.code, hostMessage: error.hostMessage }
     : {};
+}
+
+function buildModelAPIFields(error: unknown): LogFields {
+  return error instanceof ModelAPIError ? { apiError: error.kind, apiMessage: error.detail } : {};
 }
