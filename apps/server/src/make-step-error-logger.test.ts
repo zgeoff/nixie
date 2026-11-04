@@ -213,7 +213,13 @@ test('it logs the kind and the text of a refused model call', async () => {
 
   await createConversationTask(ctx.context);
 
-  const log = mock<Logger>();
+  const lines: string[] = [];
+
+  const lineLog = await startLineLog((line) => {
+    lines.push(line);
+  });
+
+  onTestFinished(lineLog.stop);
 
   const errored = await sendTestMessage(
     ctx.context,
@@ -228,21 +234,20 @@ test('it logs the kind and the text of a refused model call', async () => {
   );
 
   invariant(errored);
-  makeStepErrorLogger(log)(errored);
+  makeStepErrorLogger(makeLogger())(errored);
 
-  expect(log.mock.calls).toStrictEqual([
-    [
-      'task.step_errored',
-      {
-        taskID: 'conversation',
-        stepKey: errored.stepKey,
-        errors: 1,
-        nextState: 'waiting',
-        retryAt: errored.retryAt,
-        error: 'ModelAPIError',
-        apiError: 'quota',
-        apiMessage: 'API Error: Request rejected (429) · Monthly limit reached',
-      },
-    ],
+  expect(lines.map((line): unknown => JSON.parse(line))).toStrictEqual([
+    {
+      time: expect.toBeString(),
+      event: 'task.step_errored',
+      taskID: 'conversation',
+      stepKey: errored.stepKey,
+      errors: 1,
+      nextState: 'waiting',
+      retryAt: errored.retryAt,
+      error: 'ModelAPIError',
+      apiError: 'quota',
+      apiMessage: 'API Error: Request rejected (429) · Monthly limit reached',
+    },
   ]);
 });
