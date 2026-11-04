@@ -20,24 +20,24 @@ import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import type { NixieRunnerOptions } from './start-nixie-runner';
 import { startNixieRunner } from './start-nixie-runner';
+import { buildStubMemory } from './test-utils/build-stub-memory';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
 import { runNextStep } from './test-utils/run-next-step';
 import { startTestSessionHost } from './test-utils/start-test-session-host';
-import type { MemoryItem } from './types';
 
 async function setupTest() {
   const host = await startTestSessionHost();
 
   const tools = buildStubToolEndpoint();
   const events: string[] = [];
-  const recalls: string[] = [];
 
-  const startRunner = async (
-    parts: Partial<Pick<NixieRunnerOptions, 'tools'>> & {
-      readonly pinned?: readonly MemoryItem[];
-    } = {},
-  ) => {
+  const noMemory = buildStubMemory({
+    pinned: [],
+    pinnedUse: { items: 0, tokens: 0, budget: 2000 },
+  });
+
+  const startRunner = async (parts: Partial<Pick<NixieRunnerOptions, 'tools' | 'memory'>> = {}) => {
     const runner = await startNixieRunner({
       context: host.context,
       models: modelsConfigSchema.parse({
@@ -75,18 +75,7 @@ async function setupTest() {
       sandboxes: host.sandboxes,
       image: 'nixie-conversation-0123456789ab',
       tools: parts.tools ?? tools.endpoint,
-      memory: () => ({
-        readPinnedCore: () => Promise.resolve(parts.pinned ?? []),
-        readPinnedCoreUse: () =>
-          Promise.resolve({ items: parts.pinned?.length ?? 0, tokens: 8, budget: 2000 }),
-        recall: (query) => {
-          recalls.push(query.query);
-
-          return Promise.resolve({ items: [] });
-        },
-        recallMessages: () => Promise.resolve({ messages: [] }),
-        readShortIDs: () => Promise.resolve(new Map()),
-      }),
+      memory: parts.memory ?? (() => noMemory),
       getDefinitions: () => ({
         persona: 'You are Pip.',
         prompts: {},
@@ -120,7 +109,6 @@ async function setupTest() {
     ...host,
     runs: tools.runs,
     events,
-    recalls,
     startRunner,
     seedConversationStep: () => seedConversationStep(host.context),
     seedTask: (starter: ConversationStep, options: StartedTaskSeed['options'] = {}) =>
@@ -492,7 +480,7 @@ test('it gives a stranger no persona text and no memory item', async () => {
 
   await ctx.seedTask(starter, { model: 'second-look', profile: 'router-b', persona: 'none' });
 
-  const runner = await ctx.startRunner({
+  const memory = buildStubMemory({
     pinned: [
       {
         itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
@@ -508,7 +496,10 @@ test('it gives a stranger no persona text and no memory item', async () => {
         approval: null,
       },
     ],
+    pinnedUse: { items: 1, tokens: 8, budget: 2000 },
   });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
 
   await ctx.runNextStep(runner);
 
@@ -529,7 +520,7 @@ test('it gives another me the persona and the pinned memory', async () => {
 
   await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
 
-  const runner = await ctx.startRunner({
+  const memory = buildStubMemory({
     pinned: [
       {
         itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
@@ -545,7 +536,10 @@ test('it gives another me the persona and the pinned memory', async () => {
         approval: null,
       },
     ],
+    pinnedUse: { items: 1, tokens: 8, budget: 2000 },
   });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
 
   await ctx.runNextStep(runner);
 
@@ -562,24 +556,33 @@ test("it searches memory for the brief of a task that reads memory, on the task'
 
   await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
 
-  const runner = await ctx.startRunner();
+  const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
 
   await ctx.runNextStep(runner);
 
-  expect(ctx.recalls).toStrictEqual(['Find the high tides for Saturday.']);
+  const queries = memory.recall.mock.calls.map(([request]) => request.query);
+
+  expect(queries).toStrictEqual(['Find the high tides for Saturday.']);
 });
 
 test('it searches memory for the body of a task message to a task that reads memory', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
   const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
-  const runner = await ctx.startRunner();
+
+  const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
 
   await ctx.runNextStep(runner);
   await ctx.writeTaskMessage(taskID, 'Only the morning tide at the harbour.');
   await ctx.runNextStep(runner);
 
-  expect(ctx.recalls.at(-1)).toBe('Only the morning tide at the harbour.');
+  const queries = memory.recall.mock.calls.map(([request]) => request.query);
+
+  expect(queries.at(-1)).toBe('Only the morning tide at the harbour.');
 });
 
 test('it purges and invalidates the session of a task that reads memory on a forget, so its next turn opens a new one', async () => {
