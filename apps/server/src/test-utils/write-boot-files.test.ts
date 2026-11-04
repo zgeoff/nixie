@@ -75,6 +75,23 @@ test('it writes secrets that its sops stand-in decrypts, with the key it returns
   expect(text).toInclude(`deployment_key: ${files.deploymentKey}`);
 });
 
+test('it leaves the model credential out of the secrets file when the sandbox backend holds it', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    modelCredential: 'sandbox-backend',
+  });
+
+  const secrets = await loadSecrets({
+    path: join(ctx.directory, 'secrets.yaml'),
+    sopsArgv: [files.sopsPath],
+  });
+
+  expect(secrets.models).toStrictEqual({ model_credentials: {} });
+});
+
 test('it writes a sandbox manifest that loads', async () => {
   const ctx = await setupTest();
 

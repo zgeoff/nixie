@@ -22,7 +22,7 @@ import { startTestTasks } from './test-utils/start-test-tasks';
 
 interface RunnerConfig {
   readonly models: ReturnType<typeof buildMockModelsConfig>;
-  readonly credential: string;
+  readonly credential: string | null;
   readonly toolNames: readonly string[];
   readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote' | 'loadOrPinSkillCatalog'>;
 
@@ -1997,6 +1997,39 @@ test('it stores the profile credential and grants it to the conversation sandbox
           env: { ANTHROPIC_API_KEY: 'nixie-broker-placeholder' },
         },
       ],
+    },
+  ]);
+});
+
+test('it grants the secret the sandbox backend holds when the secrets file has no credential for the profile', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await ctx.startRunner({
+    models: buildMockModelsConfig({
+      profiles: {
+        'chat-direct': { baseURL: 'https://api.anthropic.com', authHeader: 'bearer' },
+      },
+    }),
+    credential: null,
+    toolNames: ['notes_read'],
+  });
+
+  expect(ctx.sandboxes.secrets).toStrictEqual([
+    {
+      name: 'nixie-model-5954bac4248961e3907',
+      value: null,
+      host: 'api.anthropic.com',
+      header: 'bearer',
+    },
+  ]);
+
+  expect(ctx.sandboxes.created[0]?.grants).toStrictEqual([
+    {
+      secret: 'nixie-model-5954bac4248961e3907',
+      host: 'api.anthropic.com',
+      env: { ANTHROPIC_AUTH_TOKEN: 'nixie-broker-placeholder' },
     },
   ]);
 });

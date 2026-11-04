@@ -24,6 +24,8 @@ export interface BootFileExtras {
 
   readonly isBackupOn?: boolean;
 
+  readonly modelCredential?: 'secrets-file' | 'sandbox-backend';
+
   readonly roleModelURLs?: Readonly<Partial<Record<'memory-writer' | 'checker' | 'task', string>>>;
 }
 
@@ -37,7 +39,7 @@ export async function writeBootFiles(
 
   await mkdir(dataDir);
   await writeDefinitions(join(directory, 'definitions'));
-  await writeSecrets(join(directory, 'secrets.yaml'), deploymentKey, extras.secrets);
+  await writeSecrets(join(directory, 'secrets.yaml'), deploymentKey, extras);
   await writeManifest(join(directory, 'sandbox-manifest.json'));
   await writeStubSops(join(directory, 'sops'));
 
@@ -72,14 +74,15 @@ async function writeDefinitions(definitionsDir: string): Promise<void> {
 async function writeSecrets(
   path: string,
   deploymentKey: string,
-  extraSecrets: readonly string[],
+  extras: BootFileExtras,
 ): Promise<void> {
   const lines = [
     `deployment_key: ${deploymentKey}`,
     'impd_token: impd-test-token',
-    'model_credentials:',
-    '  scripted: scripted-model-key',
-    ...extraSecrets,
+    ...(extras.modelCredential === 'sandbox-backend'
+      ? []
+      : ['model_credentials:', '  scripted: scripted-model-key']),
+    ...extras.secrets,
   ];
 
   await writeFile(path, `${lines.join('\n')}\n`);

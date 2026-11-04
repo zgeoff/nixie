@@ -56,5 +56,6 @@ export interface ModelSecrets {
 
 export interface ResolvedProfile {
   readonly profile: ModelProfile;
-  readonly credential: string;
+
+  readonly credential: string | null;
 }

@@ -7,15 +7,8 @@ export function resolveModelCredentials(
   return Object.fromEntries(
     Object.values(config.profiles).map((profile) => {
       const name = profile.credential.slice('deployment:'.length);
-      const credential = secrets.model_credentials?.[name];
 
-      if (credential === undefined || credential === '') {
-        throw new Error(
-          `the profile ${profile.id} names the credential ${profile.credential}, and the secrets file has no model_credentials entry ${name}`,
-        );
-      }
-
-      return [profile.id, { profile, credential }];
+      return [profile.id, { profile, credential: secrets.model_credentials?.[name] ?? null }];
     }),
   );
 }

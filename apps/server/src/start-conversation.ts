@@ -49,7 +49,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
   const profile = resolveRoleProfile(options.models, 'conversation');
   const resolved = credentials[profile.id];
 
-  invariant(resolved, `the conversation profile ${profile.id} has no credential`);
+  invariant(resolved, `the conversation profile ${profile.id} was never resolved`);
 
   return startConversationRunner({
     context: options.context,

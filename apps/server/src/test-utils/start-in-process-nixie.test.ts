@@ -122,6 +122,28 @@ test('it answers a turn through the stub guest, which receives the turn frame', 
   ]);
 });
 
+test('it answers a turn when the secrets file holds no model credential', async () => {
+  const nixie = await startInProcessNixie({ modelCredential: 'sandbox-backend' });
+  const api = await createTestClient(nixie);
+
+  nixie.guest.addReplies({ text: 'The ferry leaves at six.' });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'When does the ferry leave?',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(async () => {
+    const page = await api.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'The ferry leaves at six.');
+  });
+
+  expect(nixie.guest.turns).toHaveLength(1);
+});
+
 test('it reads the names of the tools a turn frame offers while its turn runs', async () => {
   const nixie = await startInProcessNixie();
   const api = await createTestClient(nixie);
