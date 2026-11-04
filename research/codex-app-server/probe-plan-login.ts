@@ -8,7 +8,8 @@ import { homedir, hostname } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseJSONOrNull } from '@heynixie/wire';
 import { z } from 'zod';
-import { pickMockStatus } from './pick-mock-status.ts';
+import { match } from 'ts-pattern';
+import { pickMockResponse } from './pick-mock-response.ts';
 import { runCodexAppServer } from './run-codex-app-server.ts';
 import {
   type AppServer,
@@ -358,26 +359,25 @@ function startMock(tls: Certificate): Mock {
   async function answerRequest(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
     const body = request.method === 'POST' ? await request.text() : '';
-    const status = pickMockStatus(path, failures);
-    const record = {
+    const { status, reply, grantType, failuresLeft } = pickMockResponse({ path, body, failures });
+
+    failures = failuresLeft;
+    requests.push({
       path,
       authorization: request.headers.get('authorization'),
       accountHeader: request.headers.get('chatgpt-account-id'),
-      grantType: path === '/oauth/token' ? readGrantType(body) : null,
+      grantType,
       status,
-    };
-
-    requests.push(record);
-    if (path.endsWith('/responses') && status === 401) {
-      failures -= 1;
-    }
-    if (status !== 200) {
-      return Response.json({ error: { code: 'invalid_grant' } }, { status });
-    }
-    if (path.endsWith('/accounts/check')) {
-      return Response.json(accountsCheck);
-    }
-    return new Response(buildReplyStream(), { headers: { 'content-type': 'text/event-stream' } });
+    });
+    return match(reply)
+      .with('error', () => Response.json({ error: { code: 'invalid_grant' } }, { status }))
+      .with('accounts', () => Response.json(accountsCheck))
+      .with('stream', () => {
+        return new Response(buildReplyStream(), {
+          headers: { 'content-type': 'text/event-stream' },
+        });
+      })
+      .exhaustive();
   }
 
   return {
@@ -402,12 +402,6 @@ const accountsCheck = {
     },
   ],
 };
-
-function readGrantType(body: string): string | null {
-  const parsed = z.object({ grant_type: z.string() }).safeParse(parseJSONOrNull(body));
-
-  return parsed.success ? parsed.data.grant_type : new URLSearchParams(body).get('grant_type');
-}
 
 function buildReplyStream(): string {
   const events = [
