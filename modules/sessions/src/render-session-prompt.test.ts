@@ -26,7 +26,7 @@ test('it renders the session prompt with the persona and the skill catalog for t
 
 test("it renders the task prompt with the task's name and brief from the directory", () => {
   const prompt = renderSessionPrompt(
-    { kind: 'task', startedBy: 'conversation' },
+    { kind: 'task', startedBy: 'conversation', report: 'wake' },
     {
       taskID: 'k3vq8m2xpa',
       persona: '',
@@ -61,7 +61,7 @@ test("it renders the task prompt with the task's name and brief from the directo
 
 test('it names a task missing from the directory by its ID, with an empty brief', () => {
   const prompt = renderSessionPrompt(
-    { kind: 'task', startedBy: 'conversation' },
+    { kind: 'task', startedBy: 'conversation', report: 'wake' },
     {
       taskID: 'k3vq8m2xpa',
       persona: '',

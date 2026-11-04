@@ -312,6 +312,32 @@ export const hostContract = {
       CONVERSATION_NEVER_CLOSES: { message: 'the conversation is never closed', status: 409 },
     }),
     interrupt: taskControl,
+    raise: oc
+      .errors({
+        TASK_NOT_FOUND: { message: 'no task has that ID', status: 404 },
+        TASK_NOT_AT_LIMIT: { message: 'the task is not paused at its limit', status: 409 },
+        LIMIT_NOT_RAISED: { message: 'the new limits are not above the old ones', status: 409 },
+      })
+      .input(
+        z
+          .strictObject({
+            taskID: z.string().min(1),
+            turns: z.int().positive().optional(),
+            dollars: z.number().positive().optional(),
+          })
+          .refine((input) => input.turns !== undefined || input.dollars !== undefined, {
+            message: 'a raise sets turns, dollars or both',
+          }),
+      )
+      .output(
+        z.object({
+          taskID: z.string(),
+          state: hostTaskStateSchema,
+          isPauseRequested: z.boolean(),
+          turns: z.int().positive(),
+          dollars: z.number().positive(),
+        }),
+      ),
   },
   sessions: {
     issueCode: oc.output(z.object({ code: z.string(), expiresAt: z.date() })),

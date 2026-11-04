@@ -27,6 +27,8 @@ export interface BootFileExtras {
   readonly modelCredential?: 'secrets-file' | 'sandbox-backend';
 
   readonly roleModelURLs?: Readonly<Partial<Record<'memory-writer' | 'checker' | 'task', string>>>;
+
+  readonly selectableModelURLs?: Readonly<Record<string, string>>;
 }
 
 export async function writeBootFiles(
@@ -114,6 +116,7 @@ function buildConfigLines(
   extras: BootFileExtras,
 ): readonly string[] {
   const roleModels = Object.entries(extras.roleModelURLs ?? {});
+  const selectableModels = Object.entries(extras.selectableModelURLs ?? {});
 
   return [
     'server:',
@@ -138,9 +141,23 @@ function buildConfigLines(
       '      model: claude-test-1',
       '      effort: low',
     ]),
+    ...selectableModels.flatMap(([name, url]) => [
+      `    selectable-${name}:`,
+      `      base_url: ${url}`,
+      '      credential: deployment:scripted',
+      '      auth_header: bearer',
+      `      model: ${name}-test-model`,
+      '      effort: low',
+      '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
+    ]),
     '  roles:',
     '    conversation: scripted',
     ...roleModels.map(([role]) => `    ${role}: scripted-${role}`),
+    ...(selectableModels.length === 0 ? [] : ['  selectable:']),
+    ...selectableModels.map(
+      ([name]) =>
+        `    ${name}: { profile: selectable-${name}, description: "The ${name} test model" }`,
+    ),
     'imp:',
     '  url: http://127.0.0.1:7070',
     'definitions:',

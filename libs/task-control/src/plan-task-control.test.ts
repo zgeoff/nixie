@@ -70,6 +70,7 @@ test.each([
       isConversation: false,
       isPauseRequested: pause.isPauseRequested,
       hasUnread: false,
+      isLimitHeld: false,
       resumeState: pause.resumeState,
     }),
   ).toStrictEqual(expected);
@@ -92,6 +93,7 @@ test.each([
       isConversation: false,
       isPauseRequested,
       hasUnread: false,
+      isLimitHeld: false,
       resumeState: null,
     }),
   ).toStrictEqual({ reason: 'not_allowed', state, isPauseRequested });
@@ -104,6 +106,7 @@ test('it resumes a paused task to ready when input waits unread', () => {
       isConversation: false,
       isPauseRequested: false,
       hasUnread: true,
+      isLimitHeld: false,
       resumeState: 'waiting',
     }),
   ).toStrictEqual({ kind: 'task.resumed', nextState: 'ready' });
@@ -116,7 +119,37 @@ test('it refuses to close the conversation', () => {
       isConversation: true,
       isPauseRequested: false,
       hasUnread: false,
+      isLimitHeld: false,
       resumeState: null,
     }),
   ).toStrictEqual({ reason: 'conversation_never_closes' });
+});
+
+test.each([
+  ['resume', 'paused'],
+  ['restart', 'stopped'],
+] as const)('it refuses a %s of a %s task that its limit holds', (control, state) => {
+  expect(
+    planTaskControl(control, {
+      state,
+      isConversation: false,
+      isPauseRequested: false,
+      hasUnread: false,
+      resumeState: 'ready',
+      isLimitHeld: true,
+    }),
+  ).toStrictEqual({ reason: 'at_limit', state, isPauseRequested: false });
+});
+
+test('it stops a task that its limit holds', () => {
+  expect(
+    planTaskControl('stop', {
+      state: 'paused',
+      isConversation: false,
+      isPauseRequested: false,
+      hasUnread: false,
+      resumeState: 'ready',
+      isLimitHeld: true,
+    }),
+  ).toStrictEqual({ kind: 'task.stopped', resumeState: 'ready' });
 });

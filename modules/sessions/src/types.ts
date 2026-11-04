@@ -3,7 +3,7 @@ import type { ContentSource, RecordInput } from '@heynixie/log';
 import type { ResolvedProfile } from '@heynixie/models';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
-import type { StepInput, TaskMessaging, TasksContext } from '@heynixie/tasks';
+import type { StepInput, TaskMessaging, TaskReport, TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
 import type { SessionPoint, TurnProfile } from '@heynixie/wire';
 import type { StatusRegistry } from './build-status-registry';
@@ -138,7 +138,7 @@ export interface SessionDefinitions {
 
 export type SessionFrame =
   | { readonly kind: 'conversation' }
-  | { readonly kind: 'task'; readonly startedBy: string };
+  | { readonly kind: 'task'; readonly startedBy: string; readonly report: TaskReport };
 
 export interface ConversationRun {
   readonly context: TasksContext;

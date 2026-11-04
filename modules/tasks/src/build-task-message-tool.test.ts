@@ -8,6 +8,8 @@ import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { createSystemTask } from './create-system-task';
 import { createTestConversationClaim } from './test-utils/create-test-conversation-claim';
+import { seedConversationStep } from './test-utils/seed-conversation-step';
+import { seedStartedTask } from './test-utils/seed-started-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 
@@ -333,4 +335,86 @@ test('it records no route for a message between two other tasks', async () => {
   const routes = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['task.routed'] });
 
   expect(routes).toStrictEqual([]);
+});
+
+test.each([
+  ['wake', 'report', true],
+  ['next_turn', 'report', false],
+  ['next_turn', 'progress', true],
+] as const)(
+  'it sends a task started with report %s a %s to its starter with woke %s',
+  async (report, kind, woke) => {
+    const ctx = await setupTest();
+    const starter = await seedConversationStep(ctx.context);
+
+    const taskID = await seedStartedTask(ctx.context, {
+      starter: starter.claim,
+      name: 'Tide tables',
+      brief: 'Find the high tides for Saturday.',
+      options: { report },
+    });
+
+    const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+    invariant(claim);
+
+    const tool = buildTaskMessageTool(ctx.context, {
+      directory: [
+        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      ],
+      hopLimit: 20,
+      ownerName: 'Robin',
+    });
+
+    const outcome = await tool.run(
+      buildMockToolCall({
+        tool: 'task.message',
+        input: { to: 'conversation', kind, body: 'High tide is at 06:42.' },
+      }),
+      buildMockToolContext({ run: { thread: taskID, stepRunID: buildStepRunID(claim) } }),
+    );
+
+    expect(outcome).toMatchObject({ status: 'ok', result: { woke } });
+  },
+);
+
+test('it sends no report to the starter of a task started with no report', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { report: 'none' },
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  const tool = buildTaskMessageTool(ctx.context, {
+    directory: [
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+  });
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.message',
+      input: { to: 'conversation', kind: 'report', body: 'High tide is at 06:42.' },
+    }),
+    buildMockToolContext({ run: { thread: taskID, stepRunID: buildStepRunID(claim) } }),
+  );
+
+  const sent = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['task_message'] });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'you were started to send Conversation no report, so nixie sent nothing',
+  });
+
+  expect(sent).toStrictEqual([]);
 });

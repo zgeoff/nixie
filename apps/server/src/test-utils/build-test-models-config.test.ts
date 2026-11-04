@@ -18,6 +18,10 @@ test('it builds a conversation role on one profile at the model URL, with no con
       },
     },
     roles: { conversation: 'chat-direct' },
+    selectable: [],
+    limits: {
+      taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+    },
   });
 });
 

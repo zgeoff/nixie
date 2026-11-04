@@ -57,13 +57,15 @@ export async function writeMockTaskControl(
     return { status: 'task_not_found' };
   }
 
-  // The mock holds no inbox, so no message waits unread when a task resumes or restarts.
+  // The mock holds no inbox and no task limits, so no message waits unread when a task resumes or
+  // restarts, and no limit holds it.
   const plan = planTaskControl(control, {
     state: task.state,
     isConversation: task.taskID === 'conversation',
     isPauseRequested: task.isPauseRequested,
     hasUnread: false,
     resumeState: task.resumeState,
+    isLimitHeld: false,
   });
 
   if ('reason' in plan) {

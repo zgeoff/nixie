@@ -2,34 +2,62 @@ import type { CompactionSettings } from '@heynixie/compaction';
 import { subscribeToRecordCommits } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import { buildModelGrant, deriveModelSecret, toTurnProfile } from '@heynixie/models';
+import type { ResolvedProfile } from '@heynixie/models';
+import {
+  buildModelGrant,
+  deriveModelSecret,
+  resolveModelCredentials,
+  toTurnProfile,
+} from '@heynixie/models';
 import type { GrantSpec, Sandbox } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
-import type { RunStep, StepInput, StepResult, TaskMessaging, TasksContext } from '@heynixie/tasks';
-import { readStartedTaskIDs, readTaskStarter, startRunnerPool } from '@heynixie/tasks';
+import type {
+  RunStep,
+  StepInput,
+  StepResult,
+  TaskLimits,
+  TaskMessaging,
+  TaskRunOptions,
+  TaskSetup,
+  TasksContext,
+} from '@heynixie/tasks';
+import {
+  readStartedTaskIDs,
+  readTaskSetup,
+  startRunnerPool,
+  startedTaskDefaultTools,
+  writeTaskLimitPause,
+} from '@heynixie/tasks';
 import type { RunEndpoint, ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { Actor } from 'xstate';
 import { createActor } from 'xstate';
 import { buildDefaultStatus } from './build-default-status';
 import { createWorkerSandbox } from './create-worker-sandbox';
+import { isAtTaskLimit } from './is-at-task-limit';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
+import { readTaskUsage } from './read-task-usage';
 import { runConversationStep } from './run-conversation-step';
 import { sessionImageBudget } from './session-image-budget';
 import type { TaskImp, TaskImpParts } from './task-imp-machine';
 import { taskImpMachine } from './task-imp-machine';
-import type { ConversationMemorySettings, ConversationRun, SessionDefinitions } from './types';
+import type {
+  ConversationMemory,
+  ConversationMemorySettings,
+  ConversationRun,
+  SessionDefinitions,
+} from './types';
 
 export interface NixieRunnerOptions extends SystemTaskOptions {
   readonly context: TasksContext;
 
   readonly tools: Pick<ToolEndpoint, 'startRun'>;
-  readonly toolNames: readonly string[];
 
   readonly getDefinitions: () => SessionDefinitions;
 
+  readonly memory: () => ConversationMemory;
   readonly memorySettings: ConversationMemorySettings;
   readonly compaction: CompactionSettings;
   readonly defaultZone: string;
@@ -47,9 +75,9 @@ type TaskImpActor = Actor<typeof taskImpMachine>;
 interface TaskRunner {
   readonly options: NixieRunnerOptions;
   readonly session: SystemTaskSession;
-  readonly grant: GrantSpec;
-  readonly model: ToolRunModel;
+  readonly profiles: Readonly<Record<string, ResolvedProfile>>;
 
+  readonly grants: Map<string, Promise<GrantSpec>>;
   readonly imps: Map<string, TaskImpActor>;
 }
 
@@ -57,17 +85,17 @@ export const startNixieRunner = makeSystemTaskRunner<NixieRunnerOptions, NixieRu
   role: 'task',
   entry: 'main',
   start: async (options, session) => {
-    const secret = deriveModelSecret(session.profile);
-
-    await options.sandboxes.addSecret(secret);
-
     const runner: TaskRunner = {
       options,
       session,
-      grant: buildModelGrant(secret),
-      model: { model: session.profile.profile.model, profile: session.profile.profile.id },
+      profiles: resolveModelCredentials(options.models, options.secrets),
+      grants: new Map(),
       imps: new Map(),
     };
+
+    // The task role's secret goes in at start, so a deployment that lacks it fails here and not at
+    // the first started task.
+    await resolveModelGrant(runner, session.profile);
 
     session.defer(() => stopTaskImps(runner));
 
@@ -78,6 +106,34 @@ export const startNixieRunner = makeSystemTaskRunner<NixieRunnerOptions, NixieRu
     return { runStep: (input) => runStartedStep(runner, input) };
   },
 });
+
+function resolveModelGrant(runner: TaskRunner, profile: ResolvedProfile): Promise<GrantSpec> {
+  const held = runner.grants.get(profile.profile.id);
+
+  if (held !== undefined) {
+    return held;
+  }
+
+  const granted = createModelGrant(runner, profile);
+
+  runner.grants.set(profile.profile.id, granted);
+
+  return granted;
+}
+
+// A failed add leaves no grant behind, so the next step that needs the profile tries again.
+async function createModelGrant(runner: TaskRunner, profile: ResolvedProfile): Promise<GrantSpec> {
+  const secret = deriveModelSecret(profile);
+
+  try {
+    await runner.options.sandboxes.addSecret(secret);
+  } catch (error) {
+    runner.grants.delete(profile.profile.id);
+    throw error;
+  }
+
+  return buildModelGrant(secret);
+}
 
 async function stopTaskImps(runner: TaskRunner): Promise<void> {
   const imps = [...runner.imps.values()];
@@ -181,26 +237,49 @@ function resolveTaskImp(runner: TaskRunner, taskID: string): TaskImpActor {
   return imp;
 }
 
+interface StartedRun {
+  readonly startedBy: string;
+  readonly options: TaskRunOptions;
+  readonly limits: TaskLimits;
+  readonly profile: ResolvedProfile;
+  readonly model: ToolRunModel;
+}
+
+// The sweep makes an imp only to remove its sandboxes, so the imp reads its task's run when a step
+// first needs it.
 function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
   const options = runner.options;
+  let started: Promise<StartedRun> | null = null;
+
+  const readRun = (): Promise<StartedRun> => {
+    started ??= readStartedRun(runner, taskID);
+
+    return started;
+  };
 
   return {
-    startEndpoint: () =>
-      options.tools.startRun({
+    startEndpoint: async () => {
+      const run = await readRun();
+
+      return options.tools.startRun({
         runID: taskID,
         thread: taskID,
-        tools: options.toolNames,
-        model: runner.model,
-      }),
+        tools: run.options.tools,
+        model: run.model,
+      });
+    },
     readSandbox: (id) => options.sandboxes.read(id),
-    createSandbox: () =>
-      createWorkerSandbox({
+    createSandbox: async () => {
+      const run = await readRun();
+
+      return createWorkerSandbox({
         sandboxes: options.sandboxes,
         image: options.image,
         owner: taskID,
         limits: runner.session.limits,
-        modelGrant: runner.grant,
-      }),
+        modelGrant: await resolveModelGrant(runner, run.profile),
+      });
+    },
     removeSandboxes: async () => {
       const sandboxes = await options.sandboxes.list(taskID);
 
@@ -214,10 +293,66 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
   };
 }
 
-async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<StepResult> {
-  const startedBy = await readTaskStarter(runner.options.context, input.taskID);
+async function readStartedRun(runner: TaskRunner, taskID: string): Promise<StartedRun> {
+  const setup = await readTaskSetup(runner.options.context, taskID);
 
-  invariant(startedBy !== null, `the nixie runner runs started tasks only, not ${input.taskID}`);
+  invariant(setup !== null, `the nixie runner runs started tasks only, not ${taskID}`);
+
+  return buildStartedRun(runner, setup);
+}
+
+function buildStartedRun(runner: TaskRunner, setup: TaskSetup): StartedRun {
+  const defaultLimits = runner.options.models.limits.taskRun.default;
+
+  // A task that the user started by moving a message to it holds no options, so it runs with no
+  // persona, no memory and the default tools.
+  const options: TaskRunOptions = setup.options ?? {
+    model: null,
+    profile: null,
+    persona: 'none',
+    memory: 'none',
+    tools: startedTaskDefaultTools,
+    report: 'wake',
+    limits: defaultLimits,
+  };
+
+  const profile =
+    options.profile === null ? runner.session.profile : runner.profiles[options.profile];
+
+  invariant(profile, `the task's profile ${options.profile ?? ''} is not defined`);
+
+  return {
+    startedBy: setup.startedBy,
+    options,
+    limits: setup.limits ?? options.limits,
+    profile,
+    model: { model: profile.profile.model, profile: profile.profile.id },
+  };
+}
+
+async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<StepResult> {
+  const context = runner.options.context;
+
+  const run = await readStartedRun(runner, input.taskID);
+  const used = await readTaskUsage(context, input.taskID, run.profile.profile.prices);
+
+  if (isAtTaskLimit(used, run.limits)) {
+    await writeTaskLimitPause(context, {
+      lease: input.lease,
+      stepKey: input.stepKey,
+      startedBy: run.startedBy,
+      used,
+      limits: run.limits,
+    });
+
+    // The step had work when its runner claimed it, so the task keeps that work for the raise.
+    return {
+      next: 'continue',
+      records: [],
+      acknowledged: [],
+      sessionBoundary: input.sessionBoundary,
+    };
+  }
 
   const imp = resolveTaskImp(runner, input.taskID);
   const acquired = Promise.withResolvers<TaskImp>();
@@ -225,7 +360,7 @@ async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<Ste
   imp.send({ type: 'acquire', reply: acquired });
 
   const held = await acquired.promise;
-  const result = await runConversationStep(buildTaskRun(runner, { startedBy, ...held }), input);
+  const result = await runConversationStep(buildTaskRun(runner, { run, ...held }), input);
 
   if (result.next === 'wait') {
     const released = Promise.withResolvers<void>();
@@ -239,26 +374,30 @@ async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<Ste
 }
 
 interface TaskRunParts {
-  readonly startedBy: string;
+  readonly run: StartedRun;
   readonly endpoint: RunEndpoint;
   readonly sandbox: Sandbox;
 }
 
 function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun {
   const options = runner.options;
-  const profile = runner.session.profile;
+  const run = parts.run;
 
   return {
     context: options.context,
-    frame: { kind: 'task', startedBy: parts.startedBy },
-    profile,
-    turnProfile: toTurnProfile(profile.profile),
+    frame: { kind: 'task', startedBy: run.startedBy, report: run.options.report },
+    profile: run.profile,
+    turnProfile: toTurnProfile(run.profile.profile),
     sandbox: parts.sandbox,
     endpoint: parts.endpoint,
-    model: runner.model,
+    model: run.model,
     command: runner.session.command,
-    getDefinitions: () => ({ ...options.getDefinitions(), persona: '', personaHash: '' }),
+    getDefinitions: () =>
+      run.options.persona === 'default'
+        ? options.getDefinitions()
+        : { ...options.getDefinitions(), persona: '', personaHash: '' },
     status: buildDefaultStatus(),
+    ...(run.options.memory === 'read' ? { memory: options.memory } : {}),
     memorySettings: options.memorySettings,
     compaction: options.compaction,
     defaultZone: options.defaultZone,

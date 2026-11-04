@@ -174,7 +174,7 @@ function toControlledTask(result: CheckedTaskControlResult, errors: ControlOptio
     .with({ status: 'refused' }, (refused) => {
       throw match(refused.refusal)
         .with({ reason: 'unknown_task' }, () => errors.TASK_NOT_FOUND())
-        .with({ reason: 'not_allowed' }, (refusal) =>
+        .with({ reason: 'not_allowed' }, { reason: 'at_limit' }, (refusal) =>
           errors.TASK_STATE_REFUSED({
             data: { isPauseRequested: refusal.isPauseRequested, state: refusal.state },
           }),

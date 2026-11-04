@@ -10,9 +10,11 @@ import type { SkillVendorContext } from '@heynixie/skills';
 import { buildTaskMessageTool, buildTaskStartTool, buildTasksListTool } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { buildConversationMemoryTools } from './build-conversation-memory-tools';
 import { buildConversationSkillTools } from './build-conversation-skill-tools';
 import { buildConversationTools } from './build-conversation-tools';
 import { buildTaskMessaging } from './build-task-messaging';
+import { buildTaskStartBounds } from './build-task-start-bounds';
 import type { ServerParts } from './types';
 
 export interface ConversationEndpointTools {
@@ -75,21 +77,25 @@ export async function startConversationEndpoint(
 
   const messaging = buildTaskMessaging(options.config);
 
+  const memory = {
+    readStore: tools.readStore,
+    clock: options.context.clock,
+    ownerName: options.config.owner.name,
+    agentName: options.config.agent.names[0] ?? null,
+    defaultZone: options.config.time.default_zone,
+  };
+
+  const bounds = buildTaskStartBounds(options.config.models, buildConversationMemoryTools(memory));
+
   const tasks = [
     buildTasksListTool(options.context, messaging),
     buildTaskMessageTool(options.context, messaging),
-    buildTaskStartTool(options.context, messaging),
+    buildTaskStartTool(options.context, messaging, bounds),
   ];
 
   const definitions = buildConversationTools(
     { webFetch: tools.webFetch, time, logReaders, skills, prompts, tasks },
-    {
-      readStore: tools.readStore,
-      clock: options.context.clock,
-      ownerName: options.config.owner.name,
-      agentName: options.config.agent.names[0] ?? null,
-      defaultZone: options.config.time.default_zone,
-    },
+    memory,
   );
 
   const registry = buildToolRegistry([...definitions, ...tools.testTools]);

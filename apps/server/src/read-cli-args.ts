@@ -36,6 +36,8 @@ const CLI_OPTIONS = {
   database: { type: 'string' },
   to: { type: 'string' },
   from: { type: 'string' },
+  turns: { type: 'number' },
+  dollars: { type: 'number' },
 } as const;
 
 interface CLIParams {

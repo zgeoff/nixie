@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { createConversationTask, createTask } from '@heynixie/tasks';
+import { seedConversationStep, seedHeldTask } from '@heynixie/tasks/test-utils';
 import { createRouterClient } from '@orpc/server';
 import { createHostTaskProcedures } from './create-host-task-procedures';
 import { startTestAPI } from './test-utils/start-test-api';
@@ -87,4 +88,84 @@ test('#interrupt refuses a task with no running step', async () => {
     code: 'TASK_STATE_REFUSED',
     message: `task ${taskID} is ready, which does not take this control`,
   });
+});
+
+test('#resume refuses a task that its limit paused, naming the raise', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedHeldTask(ctx.context, {
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  const refused = await ctx.client.resume({ taskID }).then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  expect(refused).toMatchObject({
+    code: 'TASK_STATE_REFUSED',
+    message: `task ${taskID} reached its limit, and only a raise of the limit resumes it`,
+  });
+});
+
+test('#raise resumes a task that its limit paused, under the raised limits', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedHeldTask(ctx.context, {
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  const raised = await ctx.client.raise({ taskID, dollars: 3 });
+
+  expect(raised).toStrictEqual({
+    taskID,
+    state: 'ready',
+    isPauseRequested: false,
+    turns: 3,
+    dollars: 3,
+  });
+});
+
+test('#raise refuses a task that its limit does not hold', async () => {
+  const ctx = await setupTest();
+  const taskID = await createTask(ctx.context, 'sort the receipts');
+
+  const refused = await ctx.client.raise({ taskID, turns: 9 }).then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  expect(refused).toMatchObject({ code: 'TASK_NOT_AT_LIMIT' });
+});
+
+test('#raise refuses limits that are not above the old ones', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedHeldTask(ctx.context, {
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  const refused = await ctx.client.raise({ taskID, turns: 3 }).then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  expect(refused).toMatchObject({ code: 'LIMIT_NOT_RAISED' });
+});
+
+test('#raise refuses a task that does not exist', async () => {
+  const ctx = await setupTest();
+
+  const refused = await ctx.client.raise({ taskID: 'k3vq8m2xpa', turns: 9 }).then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  expect(refused).toMatchObject({ code: 'TASK_NOT_FOUND' });
 });

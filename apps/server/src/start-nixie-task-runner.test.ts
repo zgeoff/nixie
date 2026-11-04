@@ -8,7 +8,11 @@ import { sendClientMessage } from './test-utils/send-client-message';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
-  const nixie = await startInProcessNixie({ roleModelURLs: { task: 'http://127.0.0.1:4040' } });
+  const nixie = await startInProcessNixie({
+    roleModelURLs: { task: 'http://127.0.0.1:4040' },
+    selectableModelURLs: { 'second-look': 'http://127.0.0.1:4060' },
+  });
+
   const api = await createTestClient(nixie);
 
   const findTurns = (isOwner: (owner: string) => boolean) =>
@@ -94,7 +98,7 @@ test("it runs the task that the conversation starts in a worker imp it owns, and
   );
 });
 
-test("it gives a started task's tool run the task tools and the clock alone, under the task prompt with no persona or memory", async () => {
+test("it gives a stranger's tool run the task tools and the clock alone, under the task prompt with no persona or memory", async () => {
   const held = Promise.withResolvers<void>();
 
   onTestFinished(() => {
@@ -108,7 +112,11 @@ test("it gives a started task's tool run the task tools and the clock alone, und
     {
       toolUse: {
         name: 'task.start',
-        input: { name: 'Tide tables', brief: 'Find the high tides at Bramble Quay on Saturday.' },
+        input: {
+          name: 'Tide tables',
+          brief: 'Find the high tides at Bramble Quay on Saturday.',
+          persona: 'none',
+        },
       },
     },
     { text: 'Passed to the Tide tables task.' },
@@ -146,6 +154,72 @@ test("it gives a started task's tool run the task tools and the clock alone, und
   expect(taskTurn.frame.systemPrompt).not.toInclude('You are nixie.');
   expect(input).not.toInclude('type="pinned-memory"');
   expect(input).not.toInclude('type="retrieved-memory"');
+});
+
+test('it runs a stranger that the conversation starts on another model, and its report returns as a task message', async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: {
+          name: 'Second look',
+          brief: 'Find the weak points in the four-bed garden plan.',
+          model: 'second-look',
+          persona: 'none',
+          memory: 'none',
+          tools: ['time.now'],
+        },
+      },
+    },
+    { text: 'Passed to the Second look task.' },
+    { text: 'The second look found one weak point.' },
+  );
+
+  ctx.nixie.guest.addKindReplies(
+    'worker',
+    {
+      toolUse: {
+        name: 'task.message',
+        input: {
+          to: 'conversation',
+          kind: 'report',
+          body: 'The north bed gets no afternoon sun.',
+        },
+      },
+    },
+    { text: 'Reported.' },
+  );
+
+  await sendClientMessage(
+    ctx.api.client,
+    { text: 'Get a second opinion on the garden plan.' },
+    'Passed to the Second look task.',
+  );
+
+  await waitForCondition(() =>
+    ctx
+      .readConversationTurns()
+      .some((turn) =>
+        turn.frame.input.some((message) => message.text.includes('no afternoon sun')),
+      ),
+  );
+
+  const [taskTurn] = ctx.readTaskTurns();
+  const report = ctx.readConversationTurns().at(-1)?.frame.input.at(-1)?.text ?? '';
+
+  expect(taskTurn?.frame.profile).toMatchObject({
+    model: 'second-look-test-model',
+    baseURL: 'http://127.0.0.1:4060',
+  });
+
+  expect(taskTurn?.frame.systemPrompt).not.toInclude('You are nixie.');
+
+  expect(report).toMatch(
+    /<task-message id="\w+" from="\w+" name="Second look" kind="report"[^>]*>\nThis message is from another task, not from the owner\.\nThe north bed gets no afternoon sun\./u,
+  );
 });
 
 test('it claims and answers a message to the conversation while every claim loop of the started tasks is busy', async () => {

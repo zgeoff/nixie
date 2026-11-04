@@ -1,5 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
+import type { TaskReport } from '@heynixie/tasks';
 import { readTaskList } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import { formatMessageTime } from './format-message-time';
@@ -139,9 +140,25 @@ function pickStartNote(frame: SessionFrame, query: TurnContextQuery): string | n
   return match(frame)
     .with({ kind: 'conversation' }, () => null)
     .with({ kind: 'task' }, (task) =>
-      query.isFirstSession
-        ? `Your task starts now: do what the brief in your instructions asks. When you have the result, send it with task.message to ${task.startedBy}, the task that started you, with the kind report.`
-        : null,
+      query.isFirstSession ? renderTaskStartNote(task.startedBy, task.report) : null,
+    )
+    .exhaustive();
+}
+
+function renderTaskStartNote(startedBy: string, report: TaskReport): string {
+  const start = 'Your task starts now: do what the brief in your instructions asks.';
+
+  return match(report)
+    .with(
+      'wake',
+      'next_turn',
+      () =>
+        `${start} When you have the result, send it with task.message to ${startedBy}, the task that started you, with the kind report.`,
+    )
+    .with(
+      'none',
+      () =>
+        `${start} The task that started you, ${startedBy}, asked for no report, so send it none.`,
     )
     .exhaustive();
 }

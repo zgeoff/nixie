@@ -20,6 +20,10 @@ export function planTaskControl(
     return { reason: 'not_allowed', state: facts.state, isPauseRequested: facts.isPauseRequested };
   }
 
+  if ((control === 'resume' || control === 'restart') && facts.isLimitHeld) {
+    return { reason: 'at_limit', state: facts.state, isPauseRequested: facts.isPauseRequested };
+  }
+
   return match(control)
     .returnType<TaskControlPlan>()
     .with('pause', () =>

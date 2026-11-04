@@ -45,9 +45,26 @@ export interface ModelProfile {
   readonly prices: ModelPrices | null;
 }
 
+export interface SelectableModel {
+  readonly name: string;
+  readonly profile: string;
+  readonly description: string;
+
+  readonly isAsked: boolean;
+}
+
+export interface TaskRunLimits {
+  readonly turns: number;
+  readonly dollars: number;
+}
+
 export interface ModelsConfig {
   readonly profiles: Readonly<Record<string, ModelProfile>>;
   readonly roles: Readonly<Partial<Record<ModelRole, string>>> & { readonly conversation: string };
+  readonly selectable: readonly SelectableModel[];
+  readonly limits: {
+    readonly taskRun: { readonly default: TaskRunLimits; readonly max: TaskRunLimits };
+  };
 }
 
 export interface ModelSecrets {

@@ -39,7 +39,16 @@ export { readInbox } from './read-inbox';
 export { readSentTaskMessages } from './read-sent-task-messages';
 export type { StartedTasksQuery } from './read-started-task-ids';
 export { readStartedTaskIDs } from './read-started-task-ids';
-export { readTaskStarter } from './read-task-starter';
+export type { TaskSetup } from './read-task-setup';
+export { readTaskSetup } from './read-task-setup';
+export { startedTaskDefaultTools } from './started-task-tools';
+export { taskLimitNoticeCodec } from './task-limit-notice-codec';
+export { taskLimitReachedCodec } from './task-limit-reached-codec';
+export { taskLimitsRaisedCodec } from './task-limits-raised-codec';
+export type { TaskLimitPause } from './write-task-limit-pause';
+export { writeTaskLimitPause } from './write-task-limit-pause';
+export type { TaskLimitRaise, TaskLimitRaiseOutcome } from './write-task-limit-raise';
+export { writeTaskLimitRaise } from './write-task-limit-raise';
 export { readSessionBoundary } from './read-session-boundary';
 export { requireLease } from './require-lease';
 export { resetLease } from './reset-lease';
@@ -88,7 +97,14 @@ export type {
   TaskClaim,
   TaskControl,
   TaskControlRefusal,
+  TaskLimits,
+  TaskMemory,
   TaskMessageKind,
+  TaskModelChoice,
+  TaskPersona,
+  TaskReport,
+  TaskRunOptions,
+  TaskStartBounds,
   TaskMessaging,
   TaskProfile,
   TaskRow,
