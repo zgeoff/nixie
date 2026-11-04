@@ -90,7 +90,7 @@ test('it names a secret the sandbox backend holds from the profile, header and h
 
 test('it gives a secret the sandbox backend holds a name apart from one nixie holds', () => {
   const profile = buildMockModelProfile();
-  const held = deriveModelSecret({ profile, credential: 'key-one' });
+  const held = deriveModelSecret({ profile, credential: 'null' });
   const stored = deriveModelSecret({ profile, credential: null });
 
   expect(stored.name).not.toBe(held.name);
