@@ -37,25 +37,25 @@ export async function readTaskUsage(
   return used;
 }
 
+// A record from an earlier release can lack a field that a later one added, so each read takes
+// only the token counts, and a count the record lacks prices as nothing.
 function buildRecordUsage(record: LogRecord, prices: ModelPrices | null): TaskLimits {
   if (record.kind === modelTurnEndedCodec.kind) {
-    return {
-      turns: 1,
-      dollars: buildTokensCost(modelTurnEndedCodec.decode(record.payload), prices),
-    };
+    const turn = modelTurnEndedCodec.tryDecodePartial(record.payload);
+
+    return { turns: 1, dollars: buildTokensCost(turn ?? {}, prices) };
   }
 
-  // A summary recorded before summaries kept their usage counts nothing, as nothing priced it.
-  const usage = modelSessionSummarizedCodec.decode(record.payload).usage;
+  const usage = modelSessionSummarizedCodec.tryDecodePartial(record.payload)?.usage;
 
-  return { turns: 0, dollars: usage === undefined ? 0 : buildTokensCost(usage, prices) };
+  return { turns: 0, dollars: buildTokensCost(usage ?? {}, prices) };
 }
 
 interface CallTokens {
-  readonly inputTokens: number;
-  readonly outputTokens: number;
-  readonly cacheReadTokens: number;
-  readonly cacheWriteTokens: number;
+  readonly inputTokens?: number | undefined;
+  readonly outputTokens?: number | undefined;
+  readonly cacheReadTokens?: number | undefined;
+  readonly cacheWriteTokens?: number | undefined;
 }
 
 // The records sum their calls and leave out the split of cache writes by lifetime, so the cost
@@ -67,10 +67,10 @@ function buildTokensCost(tokens: CallTokens, prices: ModelPrices | null): number
 
   return buildCallCost(
     {
-      input_tokens: tokens.inputTokens,
-      output_tokens: tokens.outputTokens,
-      cache_read_input_tokens: tokens.cacheReadTokens,
-      cache_creation_input_tokens: tokens.cacheWriteTokens,
+      input_tokens: tokens.inputTokens ?? 0,
+      output_tokens: tokens.outputTokens ?? 0,
+      cache_read_input_tokens: tokens.cacheReadTokens ?? 0,
+      cache_creation_input_tokens: tokens.cacheWriteTokens ?? 0,
     },
     prices,
   );
