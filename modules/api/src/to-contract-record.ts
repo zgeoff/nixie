@@ -158,7 +158,6 @@ function toTask(record: LogRecord): Task | undefined {
 
 type TaskRetry = Pick<Task, 'errorLimit' | 'errors' | 'isWaitingForRetry' | 'reason' | 'retryAt'>;
 
-// A task that waits for a retry runs again only when the user acts, so it has no retry time.
 function toRetry(payload: JSONObject): TaskRetry {
   const retry = taskStepErroredCodec.tryDecodePartial(payload);
   const isWaitingForRetry = retry?.nextState === 'waiting';
@@ -168,9 +167,7 @@ function toRetry(payload: JSONObject): TaskRetry {
     ...(retry?.errors === undefined ? {} : { errors: retry.errors }),
     ...(isWaitingForRetry ? { isWaitingForRetry } : {}),
     ...(retry?.reason === undefined ? {} : { reason: retry.reason }),
-    ...(retry?.claimableAt === undefined || isWaitingForRetry
-      ? {}
-      : { retryAt: new Date(retry.claimableAt) }),
+    ...(retry?.claimableAt === undefined ? {} : { retryAt: new Date(retry.claimableAt) }),
   };
 }
 

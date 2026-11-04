@@ -429,6 +429,13 @@ const forgetActions = new Collection({
   }),
 });
 
+const retryActions = new Collection({
+  schema: z.object({
+    clientActionID: z.uuid(),
+    retriedAt: z.date(),
+  }),
+});
+
 export const store = {
   enrolmentCodes,
   forgetActions,
@@ -443,6 +450,7 @@ export const store = {
   moveActions,
   ratingNotes,
   records,
+  retryActions,
 
   // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
@@ -450,6 +458,7 @@ export const store = {
       records,
       forgetActions,
       moveActions,
+      retryActions,
       taskControlActions,
       taskActions,
       tasks,

@@ -1,5 +1,9 @@
 import { store } from './store';
 
+interface RetryInput {
+  readonly clientActionID: string;
+}
+
 type RetryResult =
   | { readonly status: 'retried'; readonly retriedAt: Date }
   | { readonly status: 'nothing_to_retry' };
@@ -10,7 +14,15 @@ const stepEnds: ReadonlySet<string> = new Set([
   'task.revived',
 ]);
 
-export async function writeMockRetry(): Promise<RetryResult> {
+export async function writeMockRetry(input: RetryInput): Promise<RetryResult> {
+  const earlier = store.retryActions.findFirst((query) =>
+    query.where({ clientActionID: input.clientActionID }),
+  );
+
+  if (earlier !== undefined) {
+    return { status: 'retried', retriedAt: earlier.retriedAt };
+  }
+
   const last = store.records
     .findMany((query) =>
       query.where((record) => record.thread === 'conversation' && stepEnds.has(record.kind)),
@@ -26,6 +38,11 @@ export async function writeMockRetry(): Promise<RetryResult> {
     kind: 'task.revived',
     task: { taskID: 'conversation' },
     thread: 'conversation',
+  });
+
+  await store.retryActions.create({
+    clientActionID: input.clientActionID,
+    retriedAt: retried.recordedAt,
   });
 
   return { status: 'retried', retriedAt: retried.recordedAt };

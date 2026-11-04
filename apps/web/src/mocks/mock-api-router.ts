@@ -126,7 +126,7 @@ export const mockAPIRouter = os.router({
     retry: os.conversation.retry.handler(async (options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      const result = await writeMockRetry();
+      const result = await writeMockRetry(options.input);
 
       if (result.status !== 'retried') {
         throw options.errors.NOTHING_TO_RETRY();

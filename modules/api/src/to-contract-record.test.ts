@@ -219,7 +219,7 @@ test('it carries the errors in a row, the error limit and the retry time of a fa
   });
 });
 
-test('it carries the reason of a failed step that waits for a retry, and no retry time', () => {
+test('it carries the reason of a failed step that waits for a retry', () => {
   const record = buildMockLogRecord({
     sequence: 15,
     recordedAt: new Date('2026-10-10T12:00:04Z'),
@@ -242,6 +242,7 @@ test('it carries the reason of a failed step that waits for a retry, and no retr
     errors: 1,
     isWaitingForRetry: true,
     reason: 'model_api.quota',
+    retryAt: new Date('2026-10-10T12:00:04Z'),
     stepKey: 'conversation:5',
     taskID: 'conversation',
   });
