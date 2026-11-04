@@ -9,9 +9,21 @@ import type { TasksTables } from './types';
 import { writeConversationRetryInTransaction } from './write-conversation-retry-in-transaction';
 import { writeStepCommit } from './write-step-commit';
 import { writeStepError } from './write-step-error';
+import { writeTaskControl } from './write-task-control';
 
 async function setupTest() {
   const tasks = await startTestTasks();
+
+  const seedFailedStep = async () => {
+    const failed = await createTestConversationClaim(tasks.context, 'what is on today?');
+
+    await writeStepError(tasks.context, failed, {
+      error: new Error('the provider is overloaded'),
+      maxStepErrors: 3,
+      retryDelayMs: 30_000,
+      maxRetryDelayMs: 300_000,
+    });
+  };
 
   return {
     ...tasks,
@@ -20,6 +32,35 @@ async function setupTest() {
       withWriteTransaction(tasks.context.log.writer, (tx) =>
         writeConversationRetryInTransaction(tx, tasks.context),
       ),
+    seed: {
+      committedStep: async () => {
+        const claim = await createTestConversationClaim(tasks.context, 'what is on today?');
+
+        await writeStepCommit(tasks.context, claim, {
+          next: 'wait',
+          records: [],
+          acknowledged: [],
+        });
+      },
+      rerunningStep: async () => {
+        await seedFailedStep();
+
+        tasks.clock.advance(30_000);
+
+        await claimTask(tasks.context, { holder: 'runner-a', leaseMs: 60_000 });
+      },
+      newConversation: async () => {
+        await createConversationTask(tasks.context);
+      },
+      pausedAfterFailure: async () => {
+        await seedFailedStep();
+        await writeTaskControl(tasks.context, { taskID: 'conversation', control: 'pause' });
+      },
+      stoppedAfterFailure: async () => {
+        await seedFailedStep();
+        await writeTaskControl(tasks.context, { taskID: 'conversation', control: 'stop' });
+      },
+    },
   };
 }
 
@@ -68,43 +109,24 @@ test('it ends the backoff of a conversation whose step failed, so its next step 
   expect(task).toStrictEqual({ state: 'ready', step_errors: 0, claimable_at: 0 });
 });
 
-test('it refuses to retry a conversation whose last step committed', async () => {
+test.each([
+  ['whose last step committed', 'committedStep'],
+  ['whose failed step runs again already', 'rerunningStep'],
+  ['that never ran a step', 'newConversation'],
+  ['that the user paused after a failed step', 'pausedAfterFailure'],
+  ['that the user stopped after a failed step', 'stoppedAfterFailure'],
+] as const)('it refuses to retry a conversation %s, and writes no revival', async (_, state) => {
   const ctx = await setupTest();
-  const claim = await createTestConversationClaim(ctx.context, 'what is on today?');
 
-  await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [] });
+  await ctx.seed[state]();
 
   const outcome = await ctx.retry();
 
-  expect(outcome).toStrictEqual({ status: 'refused' });
-});
+  const revivals = await ctx.db
+    .selectFrom('records')
+    .select('kind')
+    .where('kind', '=', 'task.revived')
+    .execute();
 
-test('it refuses to retry a conversation whose failed step runs again already', async () => {
-  const ctx = await setupTest();
-  const failed = await createTestConversationClaim(ctx.context, 'what is on today?');
-
-  await writeStepError(ctx.context, failed, {
-    error: new Error('the provider is overloaded'),
-    maxStepErrors: 3,
-    retryDelayMs: 30_000,
-    maxRetryDelayMs: 300_000,
-  });
-
-  ctx.clock.advance(30_000);
-
-  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
-
-  const outcome = await ctx.retry();
-
-  expect(outcome).toStrictEqual({ status: 'refused' });
-});
-
-test('it refuses to retry a conversation that never ran a step', async () => {
-  const ctx = await setupTest();
-
-  await createConversationTask(ctx.context);
-
-  const outcome = await ctx.retry();
-
-  expect(outcome).toStrictEqual({ status: 'refused' });
+  expect({ outcome, revivals }).toStrictEqual({ outcome: { status: 'refused' }, revivals: [] });
 });
