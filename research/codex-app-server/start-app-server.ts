@@ -91,9 +91,11 @@ function openClient(
   const pending = new Map<number, PromiseWithResolvers<unknown>>();
   const waiters = new Set<Waiter>();
   const notifications: LoggedNotification[] = [];
-  const diagnostics = new Response(child.stderr).text();
+  const diagnostics = new Response(child.stderr)
+    .text()
+    .catch((error: unknown) => `stderr could not be read: ${String(error)}`);
   let nextID = 1;
-  let exitError: Error | null = null;
+  let failure: Error | null = null;
 
   function send(value: object): void {
     log.push({ from: 'client', ...value });
@@ -134,28 +136,32 @@ function openClient(
     }
   }
 
-  async function failOpenCalls(exitCode: number): Promise<void> {
-    const error = new Error(formatExit(exitCode, await diagnostics));
-
-    exitError = error;
+  function failOpenCalls(error: Error): void {
+    failure ??= error;
     for (const call of pending.values()) {
-      call.reject(error);
+      call.reject(failure);
     }
     pending.clear();
     for (const waiter of waiters) {
-      waiter.reject(error);
+      waiter.reject(failure);
     }
     waiters.clear();
   }
 
-  const reading = readLines(child.stdout, handleMessage);
-  const exiting = child.exited.then(failOpenCalls);
+  const reading = readLines(child.stdout, handleMessage).catch((error: unknown) => {
+    const message = `the app-server client failed on stdout: ${String(error)}`;
+
+    failOpenCalls(new Error(message, { cause: error }));
+  });
+  const exiting = child.exited.then(async (exitCode) => {
+    failOpenCalls(new Error(formatExit(exitCode, await diagnostics)));
+  });
 
   return {
     log,
     request: async (method, params) => {
-      if (exitError) {
-        throw exitError;
+      if (failure) {
+        throw failure;
       }
       const id = nextID;
       const call = Promise.withResolvers<unknown>();
@@ -181,8 +187,8 @@ function openClient(
       if (earlier) {
         return earlier.notification;
       }
-      if (exitError) {
-        throw exitError;
+      if (failure) {
+        throw failure;
       }
       const found = Promise.withResolvers<Notification>();
       const waiter = { method, test, resolve: found.resolve, reject: found.reject };
