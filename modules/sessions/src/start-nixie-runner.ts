@@ -38,11 +38,12 @@ import type { Actor } from 'xstate';
 import { createActor } from 'xstate';
 import { buildDefaultStatus } from './build-default-status';
 import { createWorkerSandbox } from './create-worker-sandbox';
-import { isAtTaskLimit } from './is-at-task-limit';
 import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
+import { isGuestPurged, pickCleanedTaskIDs } from './plan-task-session-cleanup';
+import { isImpReleasedAfterStep, planTaskStep } from './plan-task-step';
 import { readTaskUsage } from './read-task-usage';
 import { runConversationStep } from './run-conversation-step';
 import { runGuestPurge } from './run-guest-purge';
@@ -370,7 +371,15 @@ async function runGuardedStep(
   const run = await readStartedRun(runner, input.taskID);
   const used = await readTaskUsage(context, input.taskID, run.profile.profile.prices);
 
-  if (isAtTaskLimit(used, run.limits)) {
+  const held = runner.imps.get(input.taskID);
+
+  const plan = planTaskStep({
+    used,
+    limits: run.limits,
+    isImpAwake: held?.getSnapshot().matches('awake') === true,
+  });
+
+  if (plan.kind === 'pause') {
     await writeTaskLimitPause(context, {
       lease: input.lease,
       stepKey: input.stepKey,
@@ -379,12 +388,8 @@ async function runGuardedStep(
       limits: run.limits,
     });
 
-    const awake = runner.imps.get(input.taskID);
-
-    // A turn that stopped at the compaction threshold leaves its imp awake, and a held task may
-    // wait long for its raise.
-    if (awake?.getSnapshot().matches('awake') === true) {
-      await releaseTaskImp(awake);
+    if (plan.isImpReleased && held !== undefined) {
+      await releaseTaskImp(held);
     }
 
     // The step had work when its runner claimed it, so the task keeps that work for the raise.
@@ -396,23 +401,7 @@ async function runGuardedStep(
     };
   }
 
-  const imp = resolveTaskImp(runner, input.taskID);
-  const acquired = Promise.withResolvers<TaskImp>();
-
-  imp.send({ type: 'acquire', reply: acquired });
-
-  const held = await acquired.promise;
-
-  const result = await runConversationStep(
-    buildTaskRun(runner, { run, ...held, invalidated }),
-    input,
-  );
-
-  if (result.next === 'wait') {
-    await releaseTaskImp(imp);
-  }
-
-  return result;
+  return runTaskTurn(runner, input, { run, invalidated });
 }
 
 async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
@@ -421,6 +410,31 @@ async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
   imp.send({ type: 'release', reply: released });
 
   await released.promise;
+}
+
+interface TaskTurnParts {
+  readonly run: StartedRun;
+  readonly invalidated: AbortSignal;
+}
+
+async function runTaskTurn(
+  runner: TaskRunner,
+  input: StepInput,
+  parts: TaskTurnParts,
+): Promise<StepResult> {
+  const imp = resolveTaskImp(runner, input.taskID);
+  const acquired = Promise.withResolvers<TaskImp>();
+
+  imp.send({ type: 'acquire', reply: acquired });
+
+  const held = await acquired.promise;
+  const result = await runConversationStep(buildTaskRun(runner, { ...parts, ...held }), input);
+
+  if (isImpReleasedAfterStep(result)) {
+    await releaseTaskImp(imp);
+  }
+
+  return result;
 }
 
 interface TaskRunParts {
@@ -476,16 +490,13 @@ async function runTaskSessionCleanup(
 
   const open = await readStartedTaskIDs(context, { end: 'open' });
 
-  const setups = await Promise.all(
+  const candidates = await Promise.all(
     open.map(async (taskID) => ({ taskID, setup: await readTaskSetup(context, taskID) })),
   );
 
-  // Only a task that reads memory can hold a forgotten item in its session.
-  const readers = setups.filter((entry) => entry.setup?.options?.memory === 'read');
-
-  for (const entry of readers) {
-    await resolveTaskGuard(runner, entry.taskID).withInvalidation(() =>
-      cleanTaskSession(runner, entry.taskID, cause),
+  for (const taskID of pickCleanedTaskIDs(candidates)) {
+    await resolveTaskGuard(runner, taskID).withInvalidation(() =>
+      cleanTaskSession(runner, taskID, cause),
     );
   }
 }
@@ -513,7 +524,7 @@ async function cleanTaskSession(
 
   const sandboxes = await runner.options.sandboxes.list(taskID);
 
-  if (sandboxes.length > 0) {
+  if (isGuestPurged(sandboxes.length)) {
     await runTaskGuestPurge(runner, taskID);
   }
 

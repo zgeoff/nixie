@@ -2,7 +2,7 @@ import { withWriteTransaction } from '@heynixie/log';
 import { isFinishedState } from '@heynixie/task-control';
 import { requireLease } from './require-lease';
 import { taskLimitNoticeCodec } from './task-limit-notice-codec';
-import type { Lease, TaskLimits, TasksContext, TasksTables } from './types';
+import type { Lease, TaskLimits, TaskState, TasksContext, TasksTables } from './types';
 import { writeInboxRecordsInTransaction } from './write-inbox-records-in-transaction';
 import { writeTaskControlInTransaction } from './write-task-control-in-transaction';
 import { writeTaskLimitHoldInTransaction } from './write-task-limit-hold-in-transaction';
@@ -41,7 +41,7 @@ export async function writeTaskLimitPause(
       .where('task_id', '=', pause.startedBy)
       .executeTakeFirst();
 
-    if (starter !== undefined && !isFinishedState(starter.state)) {
+    if (isStarterNotified(starter?.state ?? null)) {
       await writeInboxRecordsInTransaction(tx, context, [
         {
           kind: 'task.limit_notice',
@@ -52,4 +52,9 @@ export async function writeTaskLimitPause(
       ]);
     }
   });
+}
+
+// A starter that is gone or finished reads no inbox, which refuses its input.
+function isStarterNotified(starterState: TaskState | null): boolean {
+  return starterState !== null && !isFinishedState(starterState);
 }

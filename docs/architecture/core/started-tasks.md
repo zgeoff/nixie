@@ -52,7 +52,8 @@ decision point that can ask, so until then the start refuses that combination
 The report mode decides how the task's result reaches its starter. Under `wake` a report wakes the
 starter unless the task sends it with `wake: false`, under `next_turn` the message tool sends each
 report to the starter with no wake, and under `none` the message tool refuses a report to the
-starter.
+starter. A report under `wake` stays subject to the [hop limit](./task-messages.md#the-hop-limit),
+so a report past that limit reaches the starter with no wake.
 
 A task that the user starts by [moving a message](#moving-a-misrouted-message) to a new task holds
 no options. It runs with no persona and no memory, on the `task` role's profile, with the list tool,

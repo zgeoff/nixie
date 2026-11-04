@@ -511,9 +511,12 @@ test('it gives a stranger no persona text and no memory item', async () => {
   await ctx.runNextStep(runner);
 
   const [turn] = ctx.guest.turns;
-  const input = turn?.input.map((message) => message.text).join('\n') ?? '';
 
-  expect(turn?.systemPrompt).not.toInclude('You are Pip.');
+  invariant(turn);
+
+  const input = turn.input.map((message) => message.text).join('\n');
+
+  expect(turn.systemPrompt).not.toInclude('You are Pip.');
   expect(input).not.toInclude('Keeps bees on the allotment');
   expect(input).not.toInclude('pinned-memory');
 });
