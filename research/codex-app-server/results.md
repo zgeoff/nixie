@@ -35,7 +35,7 @@ The script makes 3 app-server processes in turn:
 The logs in [`runs/luna-low/`](runs/luna-low/) hold every message in both directions, with the state
 path, home path, host name and MCP token replaced by placeholders. The 14 model calls read 43,483
 input tokens, 30,606 of them from the cache, and wrote 629 output tokens [measured]. Run each
-command below from `runs/luna-low/`.
+command below from `runs/luna-low/`, except those in [a ChatGPT plan login](#a-chatgpt-plan-login).
 
 ## Method and parameter names
 
@@ -280,6 +280,8 @@ refresh grant with 401. Codex reaches the mock through `chatgpt_base_url`,
 `CODEX_REFRESH_TOKEN_URL_OVERRIDE` and `CODEX_CA_CERTIFICATE`. Each managed case writes a
 placeholder `auth.json` whose tokens are unsigned JWTs. The external case writes none, and logs in
 with `account/login/start` and `type: 'chatgptAuthTokens'`.
+
+Run each command in this section from `research/codex-app-server/`, not from `runs/luna-low/`.
 
 ```bash
 timeout 600 bun probe-plan-login.ts
