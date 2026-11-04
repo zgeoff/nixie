@@ -85,7 +85,12 @@ export async function startConversationEndpoint(
     defaultZone: options.config.time.default_zone,
   };
 
-  const bounds = buildTaskStartBounds(options.config.models, buildConversationMemoryTools(memory));
+  // A started task's thread has no skill list, so a skill tool would refuse its every call.
+  const bounds = buildTaskStartBounds(
+    options.config.models,
+    buildConversationMemoryTools(memory),
+    skills,
+  );
 
   const tasks = [
     buildTasksListTool(options.context, messaging),

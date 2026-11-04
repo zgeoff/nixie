@@ -139,6 +139,19 @@ test('it refuses a memory tool for a task with no memory', () => {
   });
 });
 
+test('it refuses a tool that only the conversation can use, though the starter holds it', () => {
+  expect(
+    planTaskStart(
+      { tools: ['skill_read'] },
+      ['tasks.list', 'task.message', 'skill_read'],
+      buildMockTaskStartBounds(),
+    ),
+  ).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'conversation_tools', tools: ['skill_read'] },
+  });
+});
+
 test('it refuses a memory write tool for a task that reads memory', () => {
   expect(
     planTaskStart(

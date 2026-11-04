@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildMockTaskStartBounds } from './build-mock-task-start-bounds';
 
-test('it builds bounds with no selectable model, the default limits and two memory tools of each kind', () => {
+test('it builds bounds with no selectable model, the default limits, two memory tools of each kind and one conversation tool', () => {
   expect(buildMockTaskStartBounds()).toStrictEqual({
     models: [],
     limits: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
@@ -9,6 +9,7 @@ test('it builds bounds with no selectable model, the default limits and two memo
       read: ['memory.recall', 'moment.read'],
       write: ['memory.remember', 'moment.keep'],
     },
+    conversationTools: ['skill_read'],
   });
 });
 

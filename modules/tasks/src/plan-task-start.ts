@@ -24,7 +24,8 @@ export type TaskStartChoiceRefusal =
   | { readonly reason: 'stranger_with_memory' }
   | { readonly reason: 'over_limit'; readonly limit: keyof TaskLimits; readonly max: number }
   | { readonly reason: 'wider_tools'; readonly tools: readonly string[] }
-  | { readonly reason: 'memory_tools'; readonly tools: readonly string[] };
+  | { readonly reason: 'memory_tools'; readonly tools: readonly string[] }
+  | { readonly reason: 'conversation_tools'; readonly tools: readonly string[] };
 
 export type TaskStartPlan =
   | { readonly status: 'planned'; readonly options: TaskRunOptions }
@@ -71,6 +72,12 @@ export function planTaskStart(
 
   if (wider.length > 0) {
     return refuse({ reason: 'wider_tools', tools: wider });
+  }
+
+  const conversationOnly = asked.filter((tool) => bounds.conversationTools.includes(tool));
+
+  if (conversationOnly.length > 0) {
+    return refuse({ reason: 'conversation_tools', tools: conversationOnly });
   }
 
   const memoryTools = memory === 'read' ? bounds.memoryTools.read : [];

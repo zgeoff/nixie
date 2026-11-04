@@ -367,6 +367,11 @@ test.each([
     { persona: 'none', memory: 'read' },
     'a task with persona none cannot read memory, so nixie started nothing',
   ],
+  [
+    'a tool that only the conversation can use',
+    { tools: ['skill_read'] },
+    'only the conversation can use skill_read, so nixie started nothing',
+  ],
 ])('it starts nothing for %s', async (_case, options, message) => {
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Check the plan with fresh eyes.');
@@ -388,7 +393,7 @@ test.each([
       run: {
         thread: 'conversation',
         stepRunID: buildStepRunID(claim),
-        tools: ['tasks.list', 'task.message', 'task.start', 'web_fetch'],
+        tools: ['tasks.list', 'task.message', 'task.start', 'web_fetch', 'skill_read'],
       },
     }),
   );

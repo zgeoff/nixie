@@ -42,8 +42,10 @@ the tool's input schema lists with their descriptions. The tools a task holds ar
 tools that the start named, plus the list tool and the message tool, and so never more than its
 starter holds. A start with `memory: read` also gives the task each memory tool that only reads and
 that its starter holds, and a start may name no memory tool that writes. A start with `memory: none`
-may name no memory tool at all. The starter rule that asks before a stranger reads memory needs a
-decision point that can ask, so until then the start refuses that combination
+may name no memory tool at all. A start may name no skill tool either, because only the
+conversation's thread has a skill list, so a skill tool would refuse every call of the task. The
+starter rule that asks before a stranger reads memory needs a decision point that can ask, so until
+then the start refuses that combination
 ([GEO-1803](https://linear.app/zgeoff/issue/GEO-1803/nixie-policy-the-full-decision-point-with-destination-limits-known)).
 
 The report mode decides how the task's result reaches its starter. Under `wake` a report wakes the

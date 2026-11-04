@@ -5,6 +5,7 @@ import type { ToolDefinition } from '@heynixie/tools';
 export function buildTaskStartBounds(
   models: ModelsConfig,
   memoryTools: readonly ToolDefinition[],
+  conversationTools: readonly ToolDefinition[],
 ): TaskStartBounds {
   return {
     // An entry that asks needs a decision point that can ask, so until then no task runs on it.
@@ -20,6 +21,7 @@ export function buildTaskStartBounds(
       read: memoryTools.filter((tool) => isReadOnlyTool(tool)).map((tool) => tool.name),
       write: memoryTools.filter((tool) => !isReadOnlyTool(tool)).map((tool) => tool.name),
     },
+    conversationTools: conversationTools.map((tool) => tool.name),
   };
 }
 

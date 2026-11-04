@@ -93,6 +93,7 @@ export interface TaskStartBounds {
   readonly limits: { readonly default: TaskLimits; readonly max: TaskLimits };
 
   readonly memoryTools: { readonly read: readonly string[]; readonly write: readonly string[] };
+  readonly conversationTools: readonly string[];
 }
 
 export interface TaskMessaging {

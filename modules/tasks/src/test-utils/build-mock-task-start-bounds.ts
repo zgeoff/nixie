@@ -10,6 +10,7 @@ export function buildMockTaskStartBounds(
       read: ['memory.recall', 'moment.read'],
       write: ['memory.remember', 'moment.keep'],
     },
+    conversationTools: ['skill_read'],
     ...overrides,
   };
 }

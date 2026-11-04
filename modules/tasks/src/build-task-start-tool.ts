@@ -179,6 +179,11 @@ function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
       (memory) =>
         `the task's memory setting leaves out ${memory.tools.join(', ')}, so nixie started nothing`,
     )
+    .with(
+      { reason: 'conversation_tools' },
+      (conversation) =>
+        `only the conversation can use ${conversation.tools.join(', ')}, so nixie started nothing`,
+    )
     .exhaustive();
 }
 
