@@ -9,6 +9,7 @@ import { join, resolve } from 'node:path';
 import { parseJSONOrNull } from '@heynixie/wire';
 import { z } from 'zod';
 import { pickMockStatus } from './pick-mock-status.ts';
+import { runCodexAppServer } from './run-codex-app-server.ts';
 import { type AppServer, type ServerRequestReply, startAppServer } from './start-app-server.ts';
 
 const codexVersion = 'codex-cli 0.166.0';
@@ -199,14 +200,16 @@ async function runCase(
 
   try {
     server = await startAppServer(
-      {
-        CODEX_HOME: codexHome,
-        HOME: join(stateDir, 'home'),
-        PATH: process.env.PATH ?? '',
-        CODEX_REFRESH_TOKEN_URL_OVERRIDE: `${mock.url}/oauth/token`,
-        CODEX_CA_CERTIFICATE: tls.caPath,
-      },
-      workDir,
+      runCodexAppServer(
+        {
+          CODEX_HOME: codexHome,
+          HOME: join(stateDir, 'home'),
+          PATH: process.env.PATH ?? '',
+          CODEX_REFRESH_TOKEN_URL_OVERRIDE: `${mock.url}/oauth/token`,
+          CODEX_CA_CERTIFICATE: tls.caPath,
+        },
+        workDir,
+      ),
       answerServerRequest,
     );
     if (!probeCase.authFile) {

@@ -7,6 +7,7 @@ import { homedir, hostname } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
+import { runCodexAppServer } from './run-codex-app-server.ts';
 import { type AppServer, startAppServer } from './start-app-server.ts';
 import { type CountProxy, type HTTPClient, startCountProxy } from './start-count-proxy.ts';
 import { startToolServer } from './start-tool-server.ts';
@@ -215,7 +216,7 @@ enabled = false
 }
 
 async function openServer(runState: Run): Promise<AppServer> {
-  return startAppServer(runState.env, runState.workDir, () => ({
+  return startAppServer(runCodexAppServer(runState.env, runState.workDir), () => ({
     error: { code: -32601, message: 'the spike answers no server request' },
   }));
 }

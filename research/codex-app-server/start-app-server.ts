@@ -39,9 +39,17 @@ const waitMs = 180_000;
 
 const logFields = z.record(z.string(), z.unknown());
 
-// Starts `codex app-server` on stdio and speaks its JSON-RPC: one JSON message per line.
 // The reply to a request the server sends the client, such as an approval or a token refresh.
 export type ServerRequestReply = { readonly result: unknown } | { readonly error: unknown };
+
+// A running `codex app-server`, which speaks JSON-RPC on stdio: one JSON message per line.
+export interface AppServerProcess {
+  readonly stdin: { readonly write: (text: string) => unknown; readonly end: () => unknown };
+  readonly stdout: ReadableStream<Uint8Array>;
+  readonly stderr: ReadableStream<Uint8Array>;
+  readonly exited: Promise<number>;
+  readonly kill: () => void;
+}
 
 // Codex reports these as they stream; the spike reads the completed items instead.
 const quietNotifications = [
@@ -51,13 +59,12 @@ const quietNotifications = [
   'item/reasoning/textDelta',
 ];
 
-// Starts app-server and runs the `initialize` handshake, opted in to the experimental API.
+// Opens a client on `child` and runs the `initialize` handshake, opted in to the experimental API.
 export async function startAppServer(
-  env: Record<string, string>,
-  cwd: string,
+  child: AppServerProcess,
   answerServerRequest: (method: string, params: unknown) => ServerRequestReply,
 ): Promise<AppServer> {
-  const server = spawnAppServer(env, cwd, answerServerRequest);
+  const server = openClient(child, answerServerRequest);
 
   try {
     await server.request('initialize', {
@@ -76,22 +83,14 @@ export async function startAppServer(
   return server;
 }
 
-function spawnAppServer(
-  env: Record<string, string>,
-  cwd: string,
+function openClient(
+  child: AppServerProcess,
   answerServerRequest: (method: string, params: unknown) => ServerRequestReply,
 ): AppServer {
   const log: unknown[] = [];
   const pending = new Map<number, PromiseWithResolvers<unknown>>();
   const waiters = new Set<Waiter>();
   const notifications: LoggedNotification[] = [];
-  const child = Bun.spawn(['codex', 'app-server', '--strict-config'], {
-    cwd,
-    env,
-    stdin: 'pipe',
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
   const diagnostics = new Response(child.stderr).text();
   let nextID = 1;
   let exitError: Error | null = null;
