@@ -3,6 +3,7 @@ import type { ReceivedFrame } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { createApprovedItems } from './test-utils/create-approved-items';
 import { createTestClient } from './test-utils/create-test-client';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
@@ -220,6 +221,76 @@ test('it runs a stranger that the conversation starts on another model, and its 
   expect(report).toMatch(
     /<task-message id="\w+" from="\w+" name="Second look" kind="report"[^>]*>\nThis message is from another task, not from the owner\.\nThe north bed gets no afternoon sun\./u,
   );
+});
+
+test("it purges the session of a started task that reads memory when the user forgets an item, and the task's next turn opens a new session", async () => {
+  const ctx = await setupTest();
+
+  // BM25 ranks nothing in an index of 1 or 2 items, so per-turn retrieval needs 3 to place one
+  const [key] = await createApprovedItems(ctx.nixie, ctx.api.client, [
+    'The spare key sits under the blue flowerpot',
+    'Allergic to hazelnuts',
+    'Prefers window seats on trains',
+  ]);
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: {
+          name: 'Key check',
+          brief: 'Check where the spare key is kept.',
+          persona: 'default',
+          memory: 'read',
+        },
+      },
+    },
+    { text: 'Passed to the Key check task.' },
+  );
+
+  ctx.nixie.guest.addKindReplies('worker', { text: 'Checked.' }, { text: 'Checked again.' });
+
+  await sendClientMessage(
+    ctx.api.client,
+    { text: 'Where is the spare key kept?' },
+    'Passed to the Key check task.',
+  );
+
+  await waitForCondition(() => ctx.readTaskTurns().length === 1);
+
+  const taskID = ctx.readStartedTaskID();
+
+  const [sandbox] = await ctx.nixie.guest.adapter.list(taskID);
+
+  invariant(sandbox);
+
+  await ctx.api.client.memory.forget({ clientActionID: crypto.randomUUID(), ...key, version: 1 });
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.message',
+        input: { to: taskID, kind: 'request', body: 'Check the key once more.' },
+      },
+    },
+    { text: 'Asked the Key check task again.' },
+  );
+
+  await sendClientMessage(
+    ctx.api.client,
+    { text: 'Ask it to check again.' },
+    'Asked the Key check task again.',
+  );
+
+  await waitForCondition(() => ctx.readTaskTurns().length === 2);
+
+  const [first, second] = ctx.readTaskTurns();
+
+  expect(ctx.nixie.guest.purged).toContain(sandbox.id);
+  expect(first?.frame.resume).toBeNull();
+  expect(second?.frame.resume).toBeNull();
 });
 
 test('it claims and answers a message to the conversation while every claim loop of the started tasks is busy', async () => {

@@ -139,7 +139,7 @@ test('#raise refuses a task that its limit does not hold', async () => {
     (error: unknown) => error,
   );
 
-  expect(refused).toMatchObject({ code: 'TASK_NOT_AT_LIMIT' });
+  expect(refused).toMatchObject({ code: 'TASK_NOT_AT_LIMIT', status: 409 });
 });
 
 test('#raise refuses limits that are not above the old ones', async () => {
@@ -156,7 +156,7 @@ test('#raise refuses limits that are not above the old ones', async () => {
     (error: unknown) => error,
   );
 
-  expect(refused).toMatchObject({ code: 'LIMIT_NOT_RAISED' });
+  expect(refused).toMatchObject({ code: 'LIMIT_NOT_RAISED', status: 409 });
 });
 
 test('#raise refuses a task that does not exist', async () => {
@@ -167,5 +167,5 @@ test('#raise refuses a task that does not exist', async () => {
     (error: unknown) => error,
   );
 
-  expect(refused).toMatchObject({ code: 'TASK_NOT_FOUND' });
+  expect(refused).toMatchObject({ code: 'TASK_NOT_FOUND', status: 404 });
 });

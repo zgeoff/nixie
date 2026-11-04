@@ -6,7 +6,14 @@ import { conversationTaskID } from './conversation-task-id';
 import type { TaskStartChoiceRefusal } from './plan-task-start';
 import { planTaskStart } from './plan-task-start';
 import { readTaskSetup } from './read-task-setup';
-import type { TaskMemory, TaskMessaging, TaskReport, TaskStartBounds, TasksContext } from './types';
+import type {
+  TaskMemory,
+  TaskMessaging,
+  TaskPersona,
+  TaskReport,
+  TaskStartBounds,
+  TasksContext,
+} from './types';
 import type { TaskStartRefusal } from './write-task-start';
 import { writeTaskStart } from './write-task-start';
 
@@ -63,9 +70,9 @@ export function buildTaskStartTool(
     run: async (call, tool): Promise<ToolOutcome> => {
       const input = startArguments.parse(call.input);
 
-      const memory = await readStarterMemory(context, tool.run.thread);
+      const access = await readStarterAccess(context, tool.run.thread);
 
-      const plan = planTaskStart(input, { tools: tool.run.tools, memory }, bounds);
+      const plan = planTaskStart(input, { tools: tool.run.tools, ...access }, bounds);
 
       if (plan.status === 'refused') {
         return { status: 'error', message: renderChoiceRefusal(plan.refusal) };
@@ -160,17 +167,24 @@ function buildStartInput(bounds: TaskStartBounds): JSONObject {
 }
 
 // The conversation reads memory. Any other starter reads it only when its own start said so.
-async function readStarterMemory(
+interface StarterAccess {
+  readonly memory: TaskMemory;
+  readonly persona: TaskPersona;
+}
+
+// The conversation has the persona and reads memory. Any other starter has each only when its own
+// start gave it, and a task that the user started holds no options, so it has neither.
+async function readStarterAccess(
   context: Pick<TasksContext, 'log'>,
   thread: string,
-): Promise<TaskMemory> {
+): Promise<StarterAccess> {
   if (thread === conversationTaskID) {
-    return 'read';
+    return { memory: 'read', persona: 'default' };
   }
 
   const setup = await readTaskSetup(context, thread);
 
-  return setup?.options?.memory ?? 'none';
+  return { memory: setup?.options?.memory ?? 'none', persona: setup?.options?.persona ?? 'none' };
 }
 
 function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
@@ -186,6 +200,11 @@ function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
     .with(
       { reason: 'wider_memory' },
       () => 'you do not read memory, so a task you start cannot either, and nixie started nothing',
+    )
+    .with(
+      { reason: 'wider_persona' },
+      () =>
+        'you run with no persona, so a task you start cannot have one, and nixie started nothing',
     )
     .with(
       { reason: 'over_limit' },

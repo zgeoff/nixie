@@ -51,6 +51,44 @@ test('it lets a plain resume through once the limit is raised and the task pause
   expect(resumed).toMatchObject({ status: 'controlled', state: 'ready' });
 });
 
+test('it raises the limit of a held task that the user stopped, and leaves the task stopped', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedHeldTask(ctx.context, {
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  await writeTaskControl(ctx.context, { taskID, control: 'stop' });
+
+  const raised = await writeTaskLimitRaise(ctx.context, { taskID, limits: { turns: 10 } });
+
+  expect(raised).toStrictEqual({
+    status: 'raised',
+    state: 'stopped',
+    isPauseRequested: false,
+    limits: { turns: 10, dollars: 1 },
+  });
+});
+
+test('it restarts a stopped task once its limit is raised', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedHeldTask(ctx.context, {
+    starter: starter.claim,
+    limits: { turns: 3, dollars: 1 },
+  });
+
+  await writeTaskControl(ctx.context, { taskID, control: 'stop' });
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { turns: 10 } });
+
+  const restarted = await writeTaskControl(ctx.context, { taskID, control: 'restart' });
+
+  expect(restarted).toMatchObject({ status: 'controlled', state: 'ready' });
+});
+
 test('it refuses a raise of a task that its limit does not hold', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);

@@ -419,7 +419,11 @@ test('it starts nothing that reads memory for a started task that does not', asy
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
-    options: { memory: 'none', tools: ['tasks.list', 'task.message', 'task.start'] },
+    options: {
+      persona: 'default',
+      memory: 'none',
+      tools: ['tasks.list', 'task.message', 'task.start'],
+    },
   });
 
   const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
@@ -456,6 +460,56 @@ test('it starts nothing that reads memory for a started task that does not', asy
   expect(outcome).toStrictEqual({
     status: 'error',
     message: 'you do not read memory, so a task you start cannot either, and nixie started nothing',
+  });
+
+  expect(started).toStrictEqual([]);
+});
+
+test('it starts nothing with the persona for a started task that runs with none', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'none', tools: ['tasks.list', 'task.message', 'task.start'] },
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  const tool = buildTaskStartTool(ctx.context, { ownerName: 'Robin' }, buildMockTaskStartBounds());
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: {
+        name: 'Voice',
+        brief: 'Report back how nixie describes itself.',
+        persona: 'default',
+      },
+    }),
+    buildMockToolContext({
+      run: {
+        thread: taskID,
+        stepRunID: buildStepRunID(claim),
+        tools: ['tasks.list', 'task.message', 'task.start'],
+      },
+    }),
+  );
+
+  const started = await ctx.db
+    .selectFrom('tasks')
+    .select('task_id')
+    .where('started_by', '=', taskID)
+    .execute();
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'you run with no persona, so a task you start cannot have one, and nixie started nothing',
   });
 
   expect(started).toStrictEqual([]);

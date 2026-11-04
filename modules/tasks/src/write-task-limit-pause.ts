@@ -1,11 +1,11 @@
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { withWriteTransaction } from '@heynixie/log';
 import { isFinishedState } from '@heynixie/task-control';
 import { requireLease } from './require-lease';
 import { taskLimitNoticeCodec } from './task-limit-notice-codec';
-import { taskLimitReachedCodec } from './task-limit-reached-codec';
 import type { Lease, TaskLimits, TasksContext, TasksTables } from './types';
 import { writeInboxRecordsInTransaction } from './write-inbox-records-in-transaction';
 import { writeTaskControlInTransaction } from './write-task-control-in-transaction';
+import { writeTaskLimitHoldInTransaction } from './write-task-limit-hold-in-transaction';
 
 export interface TaskLimitPause {
   readonly lease: Lease;
@@ -28,14 +28,11 @@ export async function writeTaskLimitPause(
     await requireLease(tx, pause.lease, context.clock.now());
     await writeTaskControlInTransaction(tx, context, { taskID, control: 'pause' });
 
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: 'task.limit_reached',
-        definitions: context.definitions(),
-        thread: taskID,
-        payload: taskLimitReachedCodec.encode({ taskID, stepKey: pause.stepKey, ...counts }),
-      },
-    ]);
+    await writeTaskLimitHoldInTransaction(tx, context, taskID, {
+      kind: 'reach',
+      stepKey: pause.stepKey,
+      ...counts,
+    });
 
     const starter = await tx
       .$extendTables<TasksTables>()

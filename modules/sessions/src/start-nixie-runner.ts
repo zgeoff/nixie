@@ -43,6 +43,7 @@ import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
+import { readSessionMarks } from './read-session-marks';
 import { readTaskUsage } from './read-task-usage';
 import { runConversationStep } from './run-conversation-step';
 import { runGuestPurge } from './run-guest-purge';
@@ -252,29 +253,14 @@ function resolveTaskImp(runner: TaskRunner, taskID: string): TaskImpActor {
   return imp;
 }
 
-interface StartedRun {
-  readonly startedBy: string;
-  readonly options: TaskRunOptions;
-  readonly limits: TaskLimits;
-  readonly profile: ResolvedProfile;
-  readonly model: ToolRunModel;
-}
-
 // The sweep makes an imp only to remove its sandboxes, so the imp reads its task's run when a step
-// first needs it.
+// needs it. Each call reads it again, so a read that failed never sticks to the imp.
 function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
   const options = runner.options;
-  let started: Promise<StartedRun> | null = null;
-
-  const readRun = (): Promise<StartedRun> => {
-    started ??= readStartedRun(runner, taskID);
-
-    return started;
-  };
 
   return {
     startEndpoint: async () => {
-      const run = await readRun();
+      const run = await readStartedRun(runner, taskID);
 
       return options.tools.startRun({
         runID: taskID,
@@ -285,7 +271,7 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
     },
     readSandbox: (id) => options.sandboxes.read(id),
     createSandbox: async () => {
-      const run = await readRun();
+      const run = await readStartedRun(runner, taskID);
 
       return createWorkerSandbox({
         sandboxes: options.sandboxes,
@@ -306,6 +292,14 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
       options.log('nixie_runner.sleep_failed', { taskID, ...toErrorFields(error) }, 'error');
     },
   };
+}
+
+interface StartedRun {
+  readonly startedBy: string;
+  readonly options: TaskRunOptions;
+  readonly limits: TaskLimits;
+  readonly profile: ResolvedProfile;
+  readonly model: ToolRunModel;
 }
 
 async function readStartedRun(runner: TaskRunner, taskID: string): Promise<StartedRun> {
@@ -483,12 +477,19 @@ async function runTaskSessionCleanup(
 
   const open = await readStartedTaskIDs(context, { end: 'open' });
 
-  const setups = await Promise.all(
-    open.map(async (taskID) => ({ taskID, setup: await readTaskSetup(context, taskID) })),
+  const tasks = await Promise.all(
+    open.map(async (taskID) => ({
+      taskID,
+      setup: await readTaskSetup(context, taskID),
+      marks: await readSessionMarks(context, taskID),
+    })),
   );
 
-  // Only a task that reads memory can hold a forgotten item in its session.
-  const readers = setups.filter((entry) => entry.setup?.options?.memory === 'read');
+  // Only a task that reads memory and opened a session can hold a forgotten item. One that never
+  // opened a session keeps its first start, which an invalidation would turn into a wait.
+  const readers = tasks.filter(
+    (entry) => entry.setup?.options?.memory === 'read' && entry.marks.sessionKey !== null,
+  );
 
   for (const entry of readers) {
     await resolveTaskGuard(runner, entry.taskID).withInvalidation(() =>

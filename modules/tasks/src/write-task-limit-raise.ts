@@ -1,10 +1,10 @@
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { withWriteTransaction } from '@heynixie/log';
 import type { AskedLimits, TaskLimitRaiseRefusal } from './plan-task-limit-raise';
 import { planTaskLimitRaise } from './plan-task-limit-raise';
 import { readLimitRecords } from './read-limit-records';
-import { taskLimitsRaisedCodec } from './task-limits-raised-codec';
 import type { TaskLimits, TaskState, TasksContext, TasksTables } from './types';
 import { writeTaskControlInTransaction } from './write-task-control-in-transaction';
+import { writeTaskLimitHoldInTransaction } from './write-task-limit-hold-in-transaction';
 
 export interface TaskLimitRaise {
   readonly taskID: string;
@@ -43,14 +43,10 @@ export function writeTaskLimitRaise(
       return plan;
     }
 
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: 'task.limits_raised',
-        definitions: context.definitions(),
-        thread: raise.taskID,
-        payload: taskLimitsRaisedCodec.encode({ taskID: raise.taskID, limits: plan.limits }),
-      },
-    ]);
+    await writeTaskLimitHoldInTransaction(tx, context, raise.taskID, {
+      kind: 'raise',
+      limits: plan.limits,
+    });
 
     // A raise of a task that the user stopped meanwhile leaves it stopped, for a restart to resume.
     await writeTaskControlInTransaction(tx, context, {

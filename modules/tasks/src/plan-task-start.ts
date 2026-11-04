@@ -23,6 +23,7 @@ export type TaskStartChoiceRefusal =
   | { readonly reason: 'unknown_model'; readonly model: string }
   | { readonly reason: 'stranger_with_memory' }
   | { readonly reason: 'wider_memory' }
+  | { readonly reason: 'wider_persona' }
   | { readonly reason: 'over_limit'; readonly limit: keyof TaskLimits; readonly max: number }
   | { readonly reason: 'wider_tools'; readonly tools: readonly string[] }
   | { readonly reason: 'memory_tools'; readonly tools: readonly string[] }
@@ -35,6 +36,7 @@ export type TaskStartPlan =
 export interface TaskStarter {
   readonly tools: readonly string[];
   readonly memory: TaskMemory;
+  readonly persona: TaskPersona;
 }
 
 export function planTaskStart(
@@ -53,8 +55,13 @@ export function planTaskStart(
     return refuse({ reason: 'unknown_model', model: choice.model });
   }
 
-  const persona = choice.persona ?? 'default';
+  // A task gets the persona only when its starter has it, so a stranger's tasks are strangers too.
+  const persona = choice.persona ?? starter.persona;
   const memory = choice.memory ?? 'none';
+
+  if (persona === 'default' && starter.persona === 'none') {
+    return refuse({ reason: 'wider_persona' });
+  }
 
   // The starter rule that asks before this combination needs a decision point that can ask, so
   // until then code refuses it.

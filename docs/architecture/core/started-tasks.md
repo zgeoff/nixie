@@ -28,29 +28,31 @@ start of the same step committed in between.
 The start tool takes these options beside the name and the brief. The start checks each one in code,
 writes nothing when one fails, and tells the model why:
 
-| Option    | Values                       | When the start leaves it out            | The start refuses                                |
-| --------- | ---------------------------- | --------------------------------------- | ------------------------------------------------ |
-| `model`   | a name of a selectable model | the `task` role's profile               | a name that is not a choice                      |
-| `persona` | `default` or `none`          | `default`                               | `none` together with `memory: read`              |
-| `memory`  | `none` or `read`             | `none`                                  | a memory tool that the value leaves out          |
-| `tools`   | names of tools               | the clock                               | a tool that the starter does not hold            |
-| `report`  | `wake`, `next_turn`, `none`  | `wake`                                  | nothing                                          |
-| `limits`  | turns, dollars or both       | the defaults of `models.limits.taskRun` | a value above the max of `models.limits.taskRun` |
+| Option    | Values                       | When the start leaves it out            | The start refuses                                                                 |
+| --------- | ---------------------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
+| `model`   | a name of a selectable model | the `task` role's profile               | a name that is not a choice                                                       |
+| `persona` | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                 |
+| `memory`  | `none` or `read`             | `none`                                  | a memory tool that the value leaves out, or `read` from a starter that reads none |
+| `tools`   | names of tools               | the clock                               | a tool that the starter does not hold                                             |
+| `report`  | `wake`, `next_turn`, `none`  | `wake`                                  | nothing                                                                           |
+| `limits`  | turns, dollars or both       | the defaults of `models.limits.taskRun` | a value above the max of `models.limits.taskRun`                                  |
 
 The [selectable models](./model-profiles.md#selectable-models) give the choices of `model`, which
-the tool's input schema lists with their descriptions. The tools a task holds are its starter's
-tools that the start named, plus the list tool and the message tool, and so never more than its
-starter holds. A start with `memory: read` also gives the task each memory tool that only reads and
-that its starter holds, and a start may name no memory tool that writes. A start with `memory: none`
-may name no memory tool at all. A start may name no skill tool either, because only the
-conversation's thread has a skill list, so a skill tool would refuse every call of the task. The
-starter rule that asks before a stranger reads memory needs a decision point that can ask, so until
-then the start refuses that combination
+the tool's input schema lists with their descriptions. The conversation has the persona and reads
+memory, and a started task has each only when its own start gave it, so a task it starts never has
+more. The tools a task holds are its starter's tools that the start named, plus the list tool and
+the message tool, and so never more than its starter holds. A start with `memory: read` also gives
+the task each memory tool that only reads and that its starter holds, and a start may name no memory
+tool that writes. A start with `memory: none` may name no memory tool at all. A start may name no
+skill tool either, because only the conversation's thread has a skill list, so a skill tool would
+refuse every call of the task. The starter rule that asks before a stranger reads memory needs a
+decision point that can ask, so until then the start refuses that combination
 ([GEO-1803](https://linear.app/zgeoff/issue/GEO-1803/nixie-policy-the-full-decision-point-with-destination-limits-known)).
 
 The report mode decides how the task's result reaches its starter. Under `wake` a report wakes the
-starter, under `next_turn` the message tool sends each report to the starter with no wake, and under
-`none` the message tool refuses a report to the starter.
+starter unless the task sends it with `wake: false`, under `next_turn` the message tool sends each
+report to the starter with no wake, and under `none` the message tool refuses a report to the
+starter.
 
 A task that the user starts by [moving a message](#moving-a-misrouted-message) to a new task holds
 no options. It runs with no persona and no memory, on the `task` role's profile, with the list tool,
@@ -96,8 +98,10 @@ A started task has a limit of turns and of dollars, which its start set or took 
 token counts, priced with the task's profile, count as its dollars. Each summary of the task's
 session records the token counts of its calls too, and they count as dollars and as no turn. A
 profile with no price table counts no dollars, so only its turns limit holds. A record sums its
-calls and leaves out the split of the cache writes by lifetime, so the count prices every cache
-write at the longer lifetime's price, and the count never falls below the spend.
+calls, and the per-call usage that the model API reports leaves out thinking tokens, so the count
+prices each record as one call. It therefore prices every cache write at the longer lifetime's
+price, and a turn whose calls together pass a profile's long-prompt size at the long-prompt prices.
+The count can run above the spend, and never below it.
 
 Before each step runs a turn, the runner counts the task's turns and dollars. When either count has
 reached its limit, the step runs no turn. In one transaction it asks for a pause, writes a

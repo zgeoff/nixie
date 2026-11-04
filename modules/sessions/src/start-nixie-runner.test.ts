@@ -520,6 +520,23 @@ test('it purges and invalidates the session of a task that reads memory on a for
   expect(second?.resume).toBeNull();
 });
 
+test('it runs the brief of a task that reads memory when a forget comes before its first session', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+
+  const runner = await ctx.startRunner();
+
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+  await ctx.runNextStep(runner);
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+
+  expect(invalidated).toStrictEqual([]);
+  expect(ctx.guest.turns).toHaveLength(1);
+});
+
 test('it leaves the session of a task that reads no memory as it is on a forget', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
