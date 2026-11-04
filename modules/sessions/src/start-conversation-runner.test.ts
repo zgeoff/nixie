@@ -1912,16 +1912,25 @@ test('it fails the step, records no reply and leaves the message unread when the
     sessionBoundary: null,
   });
 
-  expect(errored).toMatchObject([
-    {
-      payload: { errors: 1, nextState: 'ready', reason: 'model_api.rate_limit' },
-      erasable: {
+  expect(errored.map((record) => [record.payload, record.erasable])).toStrictEqual([
+    [
+      {
+        taskID: 'conversation',
+        stepKey: expect.toBeString(),
+        nextState: 'ready',
+        errors: 1,
+        errorLimit: 3,
+        reason: 'model_api.rate_limit',
+        claimableAt: expect.toBeNumber(),
+      },
+      {
+        status: 'readable',
         fields: {
           message:
             'the conversation turn failed: the model API refused the call with rate_limit: API Error: Request rejected (429) · Too many requests this minute',
         },
       },
-    },
+    ],
   ]);
 });
 
@@ -1947,6 +1956,8 @@ test.each([
 
     const [message] = await ctx.writeMessage('What do I need?');
 
+    invariant(message);
+
     await ctx.runNextStep(runner);
 
     ctx.clock.advance(30_000);
@@ -1958,9 +1969,15 @@ test.each([
       readTestTaskProgress(ctx.context, 'conversation'),
     ]);
 
-    expect({ replies, task }).toMatchObject({
-      replies: [{ erasable: { fields: { text: 'You need milk.' } } }],
-      task: { state: 'waiting', readCursor: message?.sequence },
+    expect(replies.map((reply) => reply.erasable)).toStrictEqual([
+      { status: 'readable', fields: { text: 'You need milk.' } },
+    ]);
+
+    expect(task).toStrictEqual({
+      state: 'waiting',
+      stepErrors: 0,
+      readCursor: message.sequence,
+      sessionBoundary: expect.toBeString(),
     });
   },
 );
@@ -2082,15 +2099,23 @@ test('it records the replies the model gave before the model API refused the cal
     readTestTaskProgress(ctx.context, 'conversation'),
   ]);
 
-  expect({ replies, task }).toMatchObject({
-    replies: [
+  expect(replies.map((reply) => [reply.thread, reply.payload, reply.erasable])).toStrictEqual([
+    [
+      'conversation',
       {
-        thread: 'conversation',
-        payload: { messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002' },
-        erasable: { fields: { text: 'Let me check the calendar.' } },
+        model: expect.toBeString(),
+        profile: expect.toBeString(),
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
+      { status: 'readable', fields: { text: 'Let me check the calendar.' } },
     ],
-    task: { state: 'waiting', readCursor: 0 },
+  ]);
+
+  expect(task).toStrictEqual({
+    state: 'waiting',
+    stepErrors: 1,
+    readCursor: 0,
+    sessionBoundary: null,
   });
 });
 

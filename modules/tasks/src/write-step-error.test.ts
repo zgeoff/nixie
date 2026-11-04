@@ -253,7 +253,15 @@ test('it retries the conversation after its backoff when its step failed for a r
     maxRetryDelayMs: 300_000,
   });
 
-  expect(errored).toMatchObject({ nextState: 'ready', retryAt: 1_030_000 });
+  expect(errored).toStrictEqual({
+    taskID: claim.lease.workID,
+    stepKey: claim.stepKey,
+    errors: 1,
+    errorLimit: 3,
+    nextState: 'ready',
+    retryAt: 1_030_000,
+    error: expect.any(StepFailedError),
+  });
 });
 
 test('it retries a task that is not the conversation after its delay, even for a reason that waits for the owner', async () => {
@@ -271,7 +279,15 @@ test('it retries a task that is not the conversation after its delay, even for a
     maxRetryDelayMs: 300_000,
   });
 
-  expect(errored).toMatchObject({ nextState: 'ready', retryAt: 1_030_000 });
+  expect(errored).toStrictEqual({
+    taskID: claim.lease.workID,
+    stepKey: claim.stepKey,
+    errors: 1,
+    errorLimit: 3,
+    nextState: 'ready',
+    retryAt: 1_030_000,
+    error: expect.any(StepFailedError),
+  });
 });
 
 test("it writes a failed step's records and its reason on the task's thread, before the error", async () => {
@@ -297,14 +313,29 @@ test("it writes a failed step's records and its reason on the task's thread, bef
 
   const entries = await readRecords(ctx.context.log, { afterSequence: claim.startSequence });
 
-  expect(entries.map((entry) => entry.record)).toMatchObject([
-    { kind: 'turn_finished', thread: 'conversation', payload: { note: 'checked the calendar' } },
-    {
-      kind: 'task.step_errored',
-      thread: 'conversation',
-      payload: { nextState: 'waiting', reason: 'quota', errors: 1 },
-      erasable: { status: 'readable', fields: { message: 'the weekly allowance is used up' } },
-    },
+  expect(
+    entries.map((entry) => [
+      entry.record.kind,
+      entry.record.thread,
+      entry.record.payload,
+      entry.record.erasable,
+    ]),
+  ).toStrictEqual([
+    ['turn_finished', 'conversation', { note: 'checked the calendar' }, { status: 'none' }],
+    [
+      'task.step_errored',
+      'conversation',
+      {
+        taskID: 'conversation',
+        stepKey: claim.stepKey,
+        nextState: 'waiting',
+        errors: 1,
+        errorLimit: 3,
+        reason: 'quota',
+        claimableAt: 1_000_000,
+      },
+      { status: 'readable', fields: { message: 'the weekly allowance is used up' } },
+    ],
   ]);
 });
 
