@@ -23,6 +23,9 @@ function setupTest() {
 
   return {
     child,
+    exit: (exitCode: number) => {
+      exited.resolve(exitCode);
+    },
     writeStdout: (text: string) => writer.write(new TextEncoder().encode(text)),
     readSent: (): unknown[] =>
       written
@@ -64,6 +67,30 @@ test('it answers a token refresh request with the reply under the same ID', asyn
       },
     },
   ]);
+});
+
+test('it fails an open request with the exit status when app-server exits', async () => {
+  const ctx = setupTest();
+  const starting = startAppServer(ctx.child, () => ({ result: null }));
+
+  await ctx.writeStdout(`${JSON.stringify({ id: 1, result: {} })}\n`);
+  const server = await starting;
+
+  onTestFinished(() => server.stop());
+  const request = server.request('thread/start', {});
+
+  ctx.exit(1);
+
+  expect(request).rejects.toThrow('codex app-server exited with status 1');
+});
+
+test('it fails the handshake with the exit status when app-server exits before it', async () => {
+  const ctx = setupTest();
+  const starting = startAppServer(ctx.child, () => ({ result: null }));
+
+  ctx.exit(2);
+
+  expect(starting).rejects.toThrow('codex app-server exited with status 2');
 });
 
 test('it fails an open request when stdout carries a line that is not JSON', async () => {
