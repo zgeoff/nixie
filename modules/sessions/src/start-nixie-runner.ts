@@ -345,6 +345,14 @@ async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<Ste
       limits: run.limits,
     });
 
+    const awake = runner.imps.get(input.taskID);
+
+    // A turn that stopped at the compaction threshold leaves its imp awake, and a held task may
+    // wait long for its raise.
+    if (awake?.getSnapshot().matches('awake') === true) {
+      await releaseTaskImp(awake);
+    }
+
     // The step had work when its runner claimed it, so the task keeps that work for the raise.
     return {
       next: 'continue',
@@ -363,14 +371,18 @@ async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<Ste
   const result = await runConversationStep(buildTaskRun(runner, { run, ...held }), input);
 
   if (result.next === 'wait') {
-    const released = Promise.withResolvers<void>();
-
-    imp.send({ type: 'release', reply: released });
-
-    await released.promise;
+    await releaseTaskImp(imp);
   }
 
   return result;
+}
+
+async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
+  const released = Promise.withResolvers<void>();
+
+  imp.send({ type: 'release', reply: released });
+
+  await released.promise;
 }
 
 interface TaskRunParts {

@@ -524,6 +524,25 @@ test('it pauses a task at its turn limit with no turn, and tells its starter in 
   ]);
 });
 
+test('it sleeps the awake imp of a task that pauses at its limit after a turn with work left', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { limits: { turns: 1, dollars: 2 } });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+
+  expect(ctx.guest.turns).toHaveLength(1);
+  expect(slept).toHaveLength(1);
+});
+
 test("it pauses a task at its dollar limit, priced on its model's profile", async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
