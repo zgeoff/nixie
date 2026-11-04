@@ -33,6 +33,39 @@ function setupTest() {
   };
 }
 
+test('it answers a token refresh request with the reply under the same ID', async () => {
+  const ctx = setupTest();
+  const starting = startAppServer(ctx.child, (method, params) => ({
+    result: { answered: method, params, accessToken: 'token-from-client' },
+  }));
+
+  await ctx.writeStdout(`${JSON.stringify({ id: 1, result: {} })}\n`);
+  const server = await starting;
+
+  onTestFinished(() => server.stop());
+  await ctx.writeStdout(
+    `${JSON.stringify({
+      id: 'refresh-1',
+      method: 'account/chatgptAuthTokens/refresh',
+      params: { reason: 'unauthorized', previousAccountId: 'acct-a' },
+    })}\n`,
+  );
+  await waitForCondition(() => ctx.readSent().length === 3);
+
+  expect(ctx.readSent()).toStrictEqual([
+    { id: 1, method: 'initialize', params: expect.any(Object) },
+    { method: 'initialized' },
+    {
+      id: 'refresh-1',
+      result: {
+        answered: 'account/chatgptAuthTokens/refresh',
+        params: { reason: 'unauthorized', previousAccountId: 'acct-a' },
+        accessToken: 'token-from-client',
+      },
+    },
+  ]);
+});
+
 test('it fails an open request when stdout carries a line that is not JSON', async () => {
   const ctx = setupTest();
   const starting = startAppServer(ctx.child, () => ({ result: null }));
