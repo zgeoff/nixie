@@ -324,6 +324,35 @@ test('it clears the failure notice once a turn succeeds', async () => {
   });
 });
 
+test('it clears the failure notice once you retry the turn', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is it raining?' } });
+
+  await store.records.create({
+    kind: 'task.step_errored',
+    task: {
+      errorLimit: 3,
+      errors: 1,
+      isWaitingForRetry: true,
+      reason: 'model_api.quota',
+      stepKey: 'conversation:1',
+      taskID: 'conversation',
+    },
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  await rendered.findByRole('alert');
+  await ctx.user.click(rendered.getByRole('button', { name: 'Retry' }));
+
+  await waitFor(() => {
+    expect(rendered.queryByRole('alert')).toBeNull();
+  });
+});
+
 test('it drops the failure notice of a step a reset removed while the read after the reset fails', async () => {
   await createDeviceSession();
 

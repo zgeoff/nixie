@@ -109,12 +109,17 @@ blocker, a down server or a revoked session stops fails visibly. The notice goes
 opens again.
 
 The page also says when nixie is failing to answer: the conversation's last step failed and its
-errors in a row reached the limit at which another task would fail. The notice gives the time of the
-next try, and goes once a step commits. The page reads all of it from the failed step's record,
-which holds the errors in a row, the limit and the retry time. A long step can push that record off
-the newest page, so the page read also returns the thread's newest step end, and the notice reads it
-beside the records. A failed compaction gets a notice of its own, with the count of failures in a
-row, because turns go on while it fails and the conversation stops only once the context is full
+errors in a row reached the limit at which another task would fail. A turn that
+[the model API refused](../core/conversation-turns.md#a-call-the-model-api-refuses) shows the notice
+at its first failure, with the cause in plain words, such as "Claude quota reached". The notice
+gives the time of the next try, or says that the turn waits for the user's retry. It sits below the
+conversation, next to the newest message, with a Retry button that runs the failed turn again at
+once. The notice goes once a step commits or the user retries. The page reads all of it from the
+failed step's record, which holds the errors in a row, the limit, the reason and the retry time, or
+that the step waits for a retry. A long step can push that record off the newest page, so the page
+read also returns the thread's newest step end, and the notice reads it beside the records. A failed
+compaction gets a notice of its own, with the count of failures in a row, because turns go on while
+it fails and the conversation stops only once the context is full
 ([compaction](../core/compaction.md#failure-and-overflow)). The notice goes once a summary commits,
 a forget invalidates the session or a new session opens.
 

@@ -154,7 +154,6 @@ export function Conversation(props: ConversationProps): ReactNode {
           </button>
         </p>
       ) : null}
-      <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
       <CompactionFailureNotice records={records} />
       {notices.isFailed ? <MemoryNoticesFailure onRetry={notices.retry} /> : null}
       <ConversationScroller
@@ -170,6 +169,7 @@ export function Conversation(props: ConversationProps): ReactNode {
           records={records}
         />
       </ConversationScroller>
+      <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
       <div className={composerBar}>
         {props.composerNotice === undefined ? (
           <Composer

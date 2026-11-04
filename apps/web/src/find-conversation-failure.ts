@@ -1,8 +1,12 @@
+import { formatFailureCause } from './format-failure-cause';
 import type { LiveRecord } from './use-live-records';
 
 export interface ConversationFailure {
   readonly errors: number;
-  readonly retryAt: Date;
+
+  readonly cause: string | null;
+
+  readonly retryAt: Date | null;
 }
 
 const stepEnds: ReadonlySet<string> = new Set([
@@ -11,6 +15,8 @@ const stepEnds: ReadonlySet<string> = new Set([
   'task.revived',
 ]);
 
+// A refused model call shows at once, because its cause is known and a retry may need the user; any
+// other failure shows only once it repeats past the error limit.
 export function findConversationFailure(
   records: readonly LiveRecord[],
 ): ConversationFailure | null {
@@ -19,15 +25,18 @@ export function findConversationFailure(
   );
 
   const task = last?.kind === 'task.step_errored' ? last.task : undefined;
+  const isWaitingForRetry = task?.isWaitingForRetry === true;
 
-  if (
-    task?.errors === undefined ||
-    task.errorLimit === undefined ||
-    task.retryAt === undefined ||
-    task.errors < task.errorLimit
-  ) {
+  if (task?.errors === undefined || (task.retryAt === undefined && !isWaitingForRetry)) {
     return null;
   }
 
-  return { errors: task.errors, retryAt: task.retryAt };
+  const cause = formatFailureCause(task.reason);
+  const isPastLimit = task.errorLimit !== undefined && task.errors >= task.errorLimit;
+
+  if (cause === null && !isPastLimit) {
+    return null;
+  }
+
+  return { errors: task.errors, cause, retryAt: isWaitingForRetry ? null : (task.retryAt ?? null) };
 }
