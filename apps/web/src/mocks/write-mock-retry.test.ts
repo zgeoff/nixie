@@ -62,3 +62,19 @@ test('it refuses a conversation whose next step started after the failed one', a
 
   expect(result).toStrictEqual({ status: 'nothing_to_retry' });
 });
+
+test.each(['paused', 'stopped'] as const)(
+  'it refuses a conversation that the user %s after its failed step',
+  async (state) => {
+    await store.tasks.create({ taskID: 'conversation', state });
+
+    await store.records.create({
+      kind: 'task.step_errored',
+      task: { taskID: 'conversation', errors: 1 },
+    });
+
+    const result = await writeMockRetry({ clientActionID: '8a4c1e6f-2b9d-4f37-a5e0-3d7b9c1f6a24' });
+
+    expect(result).toStrictEqual({ status: 'nothing_to_retry' });
+  },
+);

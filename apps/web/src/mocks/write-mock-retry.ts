@@ -15,6 +15,8 @@ const stepEvents: ReadonlySet<string> = new Set([
   'task.revived',
 ]);
 
+const retriableStates: ReadonlySet<string> = new Set(['ready', 'waiting']);
+
 export async function writeMockRetry(input: RetryInput): Promise<RetryResult> {
   const earlier = store.retryActions.findFirst((query) =>
     query.where({ clientActionID: input.clientActionID }),
@@ -31,7 +33,12 @@ export async function writeMockRetry(input: RetryInput): Promise<RetryResult> {
     .toSorted((first, second) => first.sequence - second.sequence)
     .at(-1);
 
-  if (last?.kind !== 'task.step_errored') {
+  const conversation = store.tasks.findFirst((query) => query.where({ taskID: 'conversation' }));
+
+  if (
+    last?.kind !== 'task.step_errored' ||
+    (conversation !== undefined && !retriableStates.has(conversation.state))
+  ) {
     return { status: 'nothing_to_retry' };
   }
 
