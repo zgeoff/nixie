@@ -1,0 +1,2702 @@
+[
+  {
+    "from": "client",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "clientInfo": {
+        "name": "nixie-spike",
+        "title": null,
+        "version": "0.0.0"
+      },
+      "capabilities": {
+        "experimentalApi": true,
+        "requestAttestation": false,
+        "optOutNotificationMethods": [
+          "item/agentMessage/delta",
+          "item/reasoning/summaryTextDelta",
+          "item/reasoning/summaryPartAdded",
+          "item/reasoning/textDelta"
+        ]
+      }
+    }
+  },
+  {
+    "from": "server",
+    "id": 1,
+    "result": {
+      "userAgent": "nixie-spike/0.166.0 (Arch Linux Unknown; x86_64) unknown (nixie-spike; 0.0.0)",
+      "codexHome": "<state>/codex",
+      "platformFamily": "unix",
+      "platformOs": "linux"
+    }
+  },
+  {
+    "from": "client",
+    "method": "initialized"
+  },
+  {
+    "from": "client",
+    "id": 2,
+    "method": "model/list",
+    "params": {}
+  },
+  {
+    "from": "server",
+    "method": "remoteControl/status/changed",
+    "params": {
+      "status": "disabled",
+      "serverName": "<host>",
+      "installationId": "de12c0b8-1d88-429e-8f4e-d43a3d1dfae2",
+      "environmentId": null
+    },
+    "emittedAtMs": 1793779998819
+  },
+  {
+    "from": "server",
+    "id": 2,
+    "result": {
+      "data": [
+        {
+          "id": "gpt-6.1-sol",
+          "model": "gpt-6.1-sol",
+          "upgrade": null,
+          "upgradeInfo": null,
+          "availabilityNux": {
+            "message": "Maximize usage with GPT-6.1 Sol. Try it on complex work for near-Astra performance at a lower cost."
+          },
+          "displayName": "GPT-6.1-Sol",
+          "description": "Latest workhorse model for coding and everyday work.",
+          "modelSpecialty": null,
+          "hidden": false,
+          "supportedReasoningEfforts": [
+            {
+              "reasoningEffort": "low",
+              "description": "Fast responses with lighter reasoning"
+            },
+            {
+              "reasoningEffort": "medium",
+              "description": "Balances speed and reasoning depth for everyday tasks"
+            },
+            {
+              "reasoningEffort": "high",
+              "description": "Greater reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "xhigh",
+              "description": "Extra high reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "max",
+              "description": "Maximum reasoning depth for the hardest problems"
+            },
+            {
+              "reasoningEffort": "ultra",
+              "description": "Maximum reasoning with automatic task delegation"
+            }
+          ],
+          "defaultReasoningEffort": "low",
+          "inputModalities": [
+            "text",
+            "image"
+          ],
+          "supportsPersonality": false,
+          "multiAgentVersion": "v2",
+          "additionalSpeedTiers": [
+            "fast"
+          ],
+          "serviceTiers": [
+            {
+              "id": "priority",
+              "name": "Fast",
+              "description": "2x speed, increased usage"
+            }
+          ],
+          "defaultServiceTier": null,
+          "availableAccessPrograms": null,
+          "isDefault": true
+        },
+        {
+          "id": "gpt-6-astra",
+          "model": "gpt-6-astra",
+          "upgrade": null,
+          "upgradeInfo": null,
+          "availabilityNux": null,
+          "displayName": "GPT-6-Astra",
+          "description": "Frontier intelligence for the most demanding work.",
+          "modelSpecialty": null,
+          "hidden": false,
+          "supportedReasoningEfforts": [
+            {
+              "reasoningEffort": "low",
+              "description": "Fast responses with lighter reasoning"
+            },
+            {
+              "reasoningEffort": "medium",
+              "description": "Balances speed and reasoning depth for everyday tasks"
+            },
+            {
+              "reasoningEffort": "high",
+              "description": "Greater reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "xhigh",
+              "description": "Extra high reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "max",
+              "description": "Maximum reasoning depth for the hardest problems"
+            },
+            {
+              "reasoningEffort": "ultra",
+              "description": "Maximum reasoning with automatic task delegation"
+            }
+          ],
+          "defaultReasoningEffort": "low",
+          "inputModalities": [
+            "text",
+            "image"
+          ],
+          "supportsPersonality": false,
+          "multiAgentVersion": "v2",
+          "additionalSpeedTiers": [
+            "fast"
+          ],
+          "serviceTiers": [
+            {
+              "id": "priority",
+              "name": "Fast",
+              "description": "2x speed, increased usage"
+            }
+          ],
+          "defaultServiceTier": null,
+          "availableAccessPrograms": null,
+          "isDefault": false
+        },
+        {
+          "id": "gpt-6-sol",
+          "model": "gpt-6-sol",
+          "upgrade": null,
+          "upgradeInfo": null,
+          "availabilityNux": null,
+          "displayName": "GPT-6-Sol",
+          "description": "Previous generation workhorse model.",
+          "modelSpecialty": null,
+          "hidden": false,
+          "supportedReasoningEfforts": [
+            {
+              "reasoningEffort": "low",
+              "description": "Fast responses with lighter reasoning"
+            },
+            {
+              "reasoningEffort": "medium",
+              "description": "Balances speed and reasoning depth for everyday tasks"
+            },
+            {
+              "reasoningEffort": "high",
+              "description": "Greater reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "xhigh",
+              "description": "Extra high reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "max",
+              "description": "Maximum reasoning depth for the hardest problems"
+            },
+            {
+              "reasoningEffort": "ultra",
+              "description": "Maximum reasoning with automatic task delegation"
+            }
+          ],
+          "defaultReasoningEffort": "medium",
+          "inputModalities": [
+            "text",
+            "image"
+          ],
+          "supportsPersonality": false,
+          "multiAgentVersion": "v2",
+          "additionalSpeedTiers": [
+            "fast"
+          ],
+          "serviceTiers": [
+            {
+              "id": "priority",
+              "name": "Fast",
+              "description": "1.5x speed"
+            }
+          ],
+          "defaultServiceTier": "priority",
+          "availableAccessPrograms": null,
+          "isDefault": false
+        },
+        {
+          "id": "gpt-6-luna",
+          "model": "gpt-6-luna",
+          "upgrade": null,
+          "upgradeInfo": null,
+          "availabilityNux": null,
+          "displayName": "GPT-6-Luna",
+          "description": "Fast and affordable model for easier tasks.",
+          "modelSpecialty": null,
+          "hidden": false,
+          "supportedReasoningEfforts": [
+            {
+              "reasoningEffort": "low",
+              "description": "Fast responses with lighter reasoning"
+            },
+            {
+              "reasoningEffort": "medium",
+              "description": "Balances speed and reasoning depth for everyday tasks"
+            },
+            {
+              "reasoningEffort": "high",
+              "description": "Greater reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "xhigh",
+              "description": "Extra high reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "max",
+              "description": "Maximum reasoning depth for the hardest problems"
+            }
+          ],
+          "defaultReasoningEffort": "medium",
+          "inputModalities": [
+            "text",
+            "image"
+          ],
+          "supportsPersonality": false,
+          "multiAgentVersion": "v2",
+          "additionalSpeedTiers": [
+            "fast"
+          ],
+          "serviceTiers": [
+            {
+              "id": "priority",
+              "name": "Fast",
+              "description": "1.5x speed"
+            }
+          ],
+          "defaultServiceTier": "priority",
+          "availableAccessPrograms": null,
+          "isDefault": false
+        },
+        {
+          "id": "gpt-5.6-sol",
+          "model": "gpt-5.6-sol",
+          "upgrade": "gpt-6-sol",
+          "upgradeInfo": {
+            "model": "gpt-6-sol",
+            "upgradeCopy": null,
+            "modelLink": null,
+            "migrationMarkdown": "Meet GPT-6 Sol\n\nOur latest Sol is more intelligent and more efficient so your usage limits go further. This model is a great daily driver for complex tasks, especially coding.\n",
+            "retirementAt": null
+          },
+          "availabilityNux": null,
+          "displayName": "GPT-5.6-Sol",
+          "description": "Older generation workhorse model.",
+          "modelSpecialty": null,
+          "hidden": false,
+          "supportedReasoningEfforts": [
+            {
+              "reasoningEffort": "low",
+              "description": "Fast responses with lighter reasoning"
+            },
+            {
+              "reasoningEffort": "medium",
+              "description": "Balances speed and reasoning depth for everyday tasks"
+            },
+            {
+              "reasoningEffort": "high",
+              "description": "Greater reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "xhigh",
+              "description": "Extra high reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "max",
+              "description": "Maximum reasoning depth for the hardest problems"
+            },
+            {
+              "reasoningEffort": "ultra",
+              "description": "Maximum reasoning with automatic task delegation"
+            }
+          ],
+          "defaultReasoningEffort": "low",
+          "inputModalities": [
+            "text",
+            "image"
+          ],
+          "supportsPersonality": false,
+          "multiAgentVersion": "v2",
+          "additionalSpeedTiers": [
+            "fast"
+          ],
+          "serviceTiers": [
+            {
+              "id": "priority",
+              "name": "Fast",
+              "description": "1.5x speed, increased usage"
+            }
+          ],
+          "defaultServiceTier": null,
+          "availableAccessPrograms": null,
+          "isDefault": false
+        },
+        {
+          "id": "gpt-6.1-terra",
+          "model": "gpt-6.1-terra",
+          "upgrade": null,
+          "upgradeInfo": null,
+          "availabilityNux": null,
+          "displayName": "GPT-6.1 Terra",
+          "description": "GPT-6.1 Terra Codex model.",
+          "modelSpecialty": null,
+          "hidden": false,
+          "supportedReasoningEfforts": [
+            {
+              "reasoningEffort": "low",
+              "description": "Fast responses with lighter reasoning"
+            },
+            {
+              "reasoningEffort": "medium",
+              "description": "Balances speed and reasoning depth for everyday tasks"
+            },
+            {
+              "reasoningEffort": "high",
+              "description": "Greater reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "xhigh",
+              "description": "Extra high reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "max",
+              "description": "Maximum reasoning depth for the hardest problems"
+            },
+            {
+              "reasoningEffort": "ultra",
+              "description": "Maximum reasoning with automatic task delegation"
+            }
+          ],
+          "defaultReasoningEffort": "low",
+          "inputModalities": [
+            "text",
+            "image"
+          ],
+          "supportsPersonality": false,
+          "multiAgentVersion": "v2",
+          "additionalSpeedTiers": [
+            "fast"
+          ],
+          "serviceTiers": [
+            {
+              "id": "priority",
+              "name": "Fast",
+              "description": "1.5x speed"
+            }
+          ],
+          "defaultServiceTier": null,
+          "availableAccessPrograms": null,
+          "isDefault": false
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "model": "gpt-5.6-terra",
+          "upgrade": "gpt-6-sol",
+          "upgradeInfo": {
+            "model": "gpt-6-sol",
+            "upgradeCopy": null,
+            "modelLink": null,
+            "migrationMarkdown": "Meet GPT-6 Sol\n\nOur latest Sol is more intelligent and more efficient so your usage limits go further. This model is a great daily driver for complex tasks, especially coding.\n",
+            "retirementAt": null
+          },
+          "availabilityNux": null,
+          "displayName": "GPT-5.6-Terra",
+          "description": "Older balanced model for straightforward work.",
+          "modelSpecialty": null,
+          "hidden": false,
+          "supportedReasoningEfforts": [
+            {
+              "reasoningEffort": "low",
+              "description": "Fast responses with lighter reasoning"
+            },
+            {
+              "reasoningEffort": "medium",
+              "description": "Balances speed and reasoning depth for everyday tasks"
+            },
+            {
+              "reasoningEffort": "high",
+              "description": "Greater reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "xhigh",
+              "description": "Extra high reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "max",
+              "description": "Maximum reasoning depth for the hardest problems"
+            },
+            {
+              "reasoningEffort": "ultra",
+              "description": "Maximum reasoning with automatic task delegation"
+            }
+          ],
+          "defaultReasoningEffort": "medium",
+          "inputModalities": [
+            "text",
+            "image"
+          ],
+          "supportsPersonality": false,
+          "multiAgentVersion": "v2",
+          "additionalSpeedTiers": [
+            "fast"
+          ],
+          "serviceTiers": [
+            {
+              "id": "priority",
+              "name": "Fast",
+              "description": "1.5x speed, increased usage"
+            }
+          ],
+          "defaultServiceTier": null,
+          "availableAccessPrograms": null,
+          "isDefault": false
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "model": "gpt-5.6-luna",
+          "upgrade": "gpt-6-luna",
+          "upgradeInfo": {
+            "model": "gpt-6-luna",
+            "upgradeCopy": null,
+            "modelLink": null,
+            "migrationMarkdown": "Meet GPT-6 Luna\n\nOur latest Luna is significantly more efficient, so your usage limits go even further. Reach for it for any job that doesn't require frontier intelligence.\n",
+            "retirementAt": null
+          },
+          "availabilityNux": null,
+          "displayName": "GPT-5.6-Luna",
+          "description": "Older fast and efficient model.",
+          "modelSpecialty": null,
+          "hidden": false,
+          "supportedReasoningEfforts": [
+            {
+              "reasoningEffort": "low",
+              "description": "Fast responses with lighter reasoning"
+            },
+            {
+              "reasoningEffort": "medium",
+              "description": "Balances speed and reasoning depth for everyday tasks"
+            },
+            {
+              "reasoningEffort": "high",
+              "description": "Greater reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "xhigh",
+              "description": "Extra high reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "max",
+              "description": "Maximum reasoning depth for the hardest problems"
+            }
+          ],
+          "defaultReasoningEffort": "medium",
+          "inputModalities": [
+            "text",
+            "image"
+          ],
+          "supportsPersonality": false,
+          "multiAgentVersion": "v1",
+          "additionalSpeedTiers": [
+            "fast"
+          ],
+          "serviceTiers": [
+            {
+              "id": "priority",
+              "name": "Fast",
+              "description": "1.5x speed, increased usage"
+            }
+          ],
+          "defaultServiceTier": null,
+          "availableAccessPrograms": null,
+          "isDefault": false
+        },
+        {
+          "id": "gpt-5.5",
+          "model": "gpt-5.5",
+          "upgrade": "gpt-6-sol",
+          "upgradeInfo": {
+            "model": "gpt-6-sol",
+            "upgradeCopy": null,
+            "modelLink": null,
+            "migrationMarkdown": "Meet GPT-6 Sol\n\nOur latest Sol is more intelligent and more efficient so your usage limits go further. This model is a great daily driver for complex tasks, especially coding.\n",
+            "retirementAt": null
+          },
+          "availabilityNux": null,
+          "displayName": "GPT-5.5",
+          "description": "Legacy coding model.",
+          "modelSpecialty": null,
+          "hidden": false,
+          "supportedReasoningEfforts": [
+            {
+              "reasoningEffort": "low",
+              "description": "Fast responses with lighter reasoning"
+            },
+            {
+              "reasoningEffort": "medium",
+              "description": "Balances speed and reasoning depth for everyday tasks"
+            },
+            {
+              "reasoningEffort": "high",
+              "description": "Greater reasoning depth for complex problems"
+            },
+            {
+              "reasoningEffort": "xhigh",
+              "description": "Extra high reasoning depth for complex problems"
+            }
+          ],
+          "defaultReasoningEffort": "medium",
+          "inputModalities": [
+            "text",
+            "image"
+          ],
+          "supportsPersonality": false,
+          "multiAgentVersion": null,
+          "additionalSpeedTiers": [
+            "fast"
+          ],
+          "serviceTiers": [
+            {
+              "id": "priority",
+              "name": "Fast",
+              "description": "1.5x speed, increased usage"
+            }
+          ],
+          "defaultServiceTier": null,
+          "availableAccessPrograms": null,
+          "isDefault": false
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "from": "client",
+    "id": 3,
+    "method": "thread/start",
+    "params": {
+      "model": "gpt-6-luna",
+      "cwd": "<state>/work",
+      "baseInstructions": "You are a terse assistant. Read notes only through the find_note tool."
+    }
+  },
+  {
+    "from": "server",
+    "id": 3,
+    "result": {
+      "thread": {
+        "id": "01a1a59e-a06d-78c2-aba7-522047584191",
+        "environments": [
+          {
+            "environmentId": "local",
+            "cwd": "<state>/work",
+            "runtimeWorkspaceRoots": [
+              "<state>/work"
+            ]
+          }
+        ],
+        "extra": null,
+        "sessionId": "01a1a59e-a06d-78c2-aba7-522047584191",
+        "forkedFromId": null,
+        "parentThreadId": null,
+        "preview": "",
+        "ephemeral": false,
+        "section": null,
+        "sectionEnteredAt": null,
+        "projectId": null,
+        "historyMode": "paginated",
+        "modelProvider": "counted",
+        "model": "gpt-6-luna",
+        "reasoningEffort": "low",
+        "createdAt": 1793779998,
+        "updatedAt": 1793779998,
+        "recencyAt": 1793779998,
+        "status": {
+          "type": "idle"
+        },
+        "path": "<state>/codex/sessions/2026/11/04/rollout-2026-11-04T19-13-18-01a1a59e-a06d-78c2-aba7-522047584191.jsonl",
+        "cwd": "<state>/work",
+        "cliVersion": "0.166.0",
+        "originator": "nixie-spike",
+        "source": "vscode",
+        "canAcceptDirectInput": true,
+        "threadSource": null,
+        "agentNickname": null,
+        "agentRole": null,
+        "gitInfo": null,
+        "name": null,
+        "daybreakEnabled": null,
+        "turns": []
+      },
+      "model": "gpt-6-luna",
+      "modelProvider": "counted",
+      "serviceTier": null,
+      "disabledPluginIds": [],
+      "cwd": "<state>/work",
+      "runtimeWorkspaceRoots": [
+        "<state>/work"
+      ],
+      "instructionSources": [],
+      "approvalPolicy": "never",
+      "approvalsReviewer": "user",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      },
+      "activePermissionProfile": null,
+      "reasoningEffort": "low",
+      "multiAgentMode": "explicitRequestOnly"
+    }
+  },
+  {
+    "from": "client",
+    "id": 4,
+    "method": "turn/start",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "input": [
+        {
+          "type": "text",
+          "text": "Find the notes on garden and on boat, then give me both in one sentence.",
+          "text_elements": []
+        }
+      ]
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/started",
+    "params": {
+      "thread": {
+        "id": "01a1a59e-a06d-78c2-aba7-522047584191",
+        "environments": [
+          {
+            "environmentId": "local",
+            "cwd": "<state>/work",
+            "runtimeWorkspaceRoots": [
+              "<state>/work"
+            ]
+          }
+        ],
+        "extra": null,
+        "sessionId": "01a1a59e-a06d-78c2-aba7-522047584191",
+        "forkedFromId": null,
+        "parentThreadId": null,
+        "preview": "",
+        "ephemeral": false,
+        "section": null,
+        "sectionEnteredAt": null,
+        "projectId": null,
+        "historyMode": "paginated",
+        "modelProvider": "counted",
+        "model": "gpt-6-luna",
+        "reasoningEffort": "low",
+        "createdAt": 1793779998,
+        "updatedAt": 1793779998,
+        "recencyAt": 1793779998,
+        "status": {
+          "type": "idle"
+        },
+        "path": "<state>/codex/sessions/2026/11/04/rollout-2026-11-04T19-13-18-01a1a59e-a06d-78c2-aba7-522047584191.jsonl",
+        "cwd": "<state>/work",
+        "cliVersion": "0.166.0",
+        "originator": "nixie-spike",
+        "source": "vscode",
+        "canAcceptDirectInput": true,
+        "threadSource": null,
+        "agentNickname": null,
+        "agentRole": null,
+        "gitInfo": null,
+        "name": null,
+        "daybreakEnabled": null,
+        "turns": []
+      }
+    },
+    "emittedAtMs": 1793779998874
+  },
+  {
+    "from": "server",
+    "method": "mcpServer/startupStatus/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "name": "nixie",
+      "status": "starting",
+      "error": null,
+      "failureReason": null
+    },
+    "emittedAtMs": 1793779998874
+  },
+  {
+    "from": "server",
+    "method": "mcpServer/startupStatus/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "name": "nixie",
+      "status": "ready",
+      "error": null,
+      "failureReason": null
+    },
+    "emittedAtMs": 1793779998874
+  },
+  {
+    "from": "server",
+    "id": 4,
+    "result": {
+      "turn": {
+        "id": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+        "rootTurnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": null,
+        "completedAt": null,
+        "durationMs": null
+      }
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "active",
+        "activeFlags": []
+      }
+    },
+    "emittedAtMs": 1793779998943
+  },
+  {
+    "from": "server",
+    "method": "turn/started",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+        "rootTurnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": 1793779998,
+        "completedAt": null,
+        "durationMs": null
+      }
+    },
+    "emittedAtMs": 1793779998943
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-a0e9-7223-a94d-0133c1373984",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Find the notes on garden and on boat, then give me both in one sentence.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793779998954,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "startedAtMs": 1793779998954
+    },
+    "emittedAtMs": 1793779998954
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-a0e9-7223-a94d-0133c1373984",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Find the notes on garden and on boat, then give me both in one sentence.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793779998954,
+        "completedAtMs": 1793779998954
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "completedAtMs": 1793779998954
+    },
+    "emittedAtMs": 1793779998957
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 2792,
+          "inputTokens": 2767,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 2764,
+          "outputTokens": 25,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 2792,
+          "inputTokens": 2767,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 2764,
+          "outputTokens": 25,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780000589
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780000589
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "mcpToolCall",
+        "id": "exec-8392e365-c61a-42ee-abe0-b2256183f674",
+        "server": "nixie",
+        "tool": "find_note",
+        "status": "inProgress",
+        "arguments": {
+          "topic": "garden"
+        },
+        "appContext": null,
+        "mcpAppUi": null,
+        "pluginId": null,
+        "readOnlyHint": null,
+        "result": null,
+        "error": null,
+        "durationMs": null,
+        "startedAtMs": 1793780001929,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "startedAtMs": 1793780001929
+    },
+    "emittedAtMs": 1793780001930
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "mcpToolCall",
+        "id": "exec-8392e365-c61a-42ee-abe0-b2256183f674",
+        "server": "nixie",
+        "tool": "find_note",
+        "status": "completed",
+        "arguments": {
+          "topic": "garden"
+        },
+        "appContext": null,
+        "mcpAppUi": null,
+        "pluginId": null,
+        "readOnlyHint": null,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "The tomato bed needs water on Thursdays."
+            }
+          ],
+          "structuredContent": null,
+          "_meta": null
+        },
+        "error": null,
+        "durationMs": 3,
+        "startedAtMs": 1793780001929,
+        "completedAtMs": 1793780001933
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "completedAtMs": 1793780001933
+    },
+    "emittedAtMs": 1793780001935
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "mcpToolCall",
+        "id": "exec-79b69c5e-8e21-47f8-b4c5-1632443a7228",
+        "server": "nixie",
+        "tool": "find_note",
+        "status": "inProgress",
+        "arguments": {
+          "topic": "boat"
+        },
+        "appContext": null,
+        "mcpAppUi": null,
+        "pluginId": null,
+        "readOnlyHint": null,
+        "result": null,
+        "error": null,
+        "durationMs": null,
+        "startedAtMs": 1793780001938,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "startedAtMs": 1793780001938
+    },
+    "emittedAtMs": 1793780001938
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "mcpToolCall",
+        "id": "exec-79b69c5e-8e21-47f8-b4c5-1632443a7228",
+        "server": "nixie",
+        "tool": "find_note",
+        "status": "completed",
+        "arguments": {
+          "topic": "boat"
+        },
+        "appContext": null,
+        "mcpAppUi": null,
+        "pluginId": null,
+        "readOnlyHint": null,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "The blue rowing boat is moored at the north jetty."
+            }
+          ],
+          "structuredContent": null,
+          "_meta": null
+        },
+        "error": null,
+        "durationMs": 1,
+        "startedAtMs": 1793780001938,
+        "completedAtMs": 1793780001939
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "completedAtMs": 1793780001939
+    },
+    "emittedAtMs": 1793780001941
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 5724,
+          "inputTokens": 5651,
+          "cachedInputTokens": 2764,
+          "cacheWriteInputTokens": 2881,
+          "outputTokens": 73,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 2932,
+          "inputTokens": 2884,
+          "cachedInputTokens": 2764,
+          "cacheWriteInputTokens": 117,
+          "outputTokens": 48,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780001947
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780001947
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_07f431fd19568aed016aeae9228e4c87d0a6c06db2182bba58",
+        "text": "",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793780002877,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "startedAtMs": 1793780002877
+    },
+    "emittedAtMs": 1793780002877
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_07f431fd19568aed016aeae9228e4c87d0a6c06db2182bba58",
+        "text": "The tomato bed needs water on Thursdays, and the blue rowing boat is moored at the north jetty.",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793780002877,
+        "completedAtMs": 1793780003097
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "completedAtMs": 1793780003097
+    },
+    "emittedAtMs": 1793780003099
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 8750,
+          "inputTokens": 8651,
+          "cachedInputTokens": 5645,
+          "cacheWriteInputTokens": 2997,
+          "outputTokens": 99,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3026,
+          "inputTokens": 3000,
+          "cachedInputTokens": 2881,
+          "cacheWriteInputTokens": 116,
+          "outputTokens": 26,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780003133
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780003133
+  },
+  {
+    "from": "server",
+    "method": "thread/readState/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "readState": {
+        "firstUnread": {
+          "type": "turn",
+          "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61"
+        },
+        "revision": "8d890947-03ba-4298-9f10-146bb7dbdf9e"
+      }
+    },
+    "emittedAtMs": 1793780003140
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "idle"
+      }
+    },
+    "emittedAtMs": 1793780003140
+  },
+  {
+    "from": "server",
+    "method": "turn/completed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+        "rootTurnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+        "items": [
+          {
+            "type": "agentMessage",
+            "id": "msg_07f431fd19568aed016aeae9228e4c87d0a6c06db2182bba58",
+            "text": "The tomato bed needs water on Thursdays, and the blue rowing boat is moored at the north jetty.",
+            "phase": "final_answer",
+            "memoryCitation": null,
+            "delivery": null,
+            "questions": null,
+            "startedAtMs": 1793780002877,
+            "completedAtMs": 1793780003097
+          }
+        ],
+        "itemsView": "summary",
+        "status": "completed",
+        "error": null,
+        "startedAt": 1793779998,
+        "completedAt": 1793780003,
+        "durationMs": 4250
+      }
+    },
+    "emittedAtMs": 1793780003140
+  },
+  {
+    "from": "client",
+    "id": 5,
+    "method": "turn/start",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "input": [
+        {
+          "type": "text",
+          "text": "Give the boat note as JSON.",
+          "text_elements": []
+        }
+      ],
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "from": "server",
+    "id": 5,
+    "result": {
+      "turn": {
+        "id": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+        "rootTurnId": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": null,
+        "completedAt": null,
+        "durationMs": null
+      }
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "active",
+        "activeFlags": []
+      }
+    },
+    "emittedAtMs": 1793780003220
+  },
+  {
+    "from": "server",
+    "method": "turn/started",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+        "rootTurnId": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": 1793780003,
+        "completedAt": null,
+        "durationMs": null
+      }
+    },
+    "emittedAtMs": 1793780003220
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-b198-7090-985a-b27a6dc6853b",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Give the boat note as JSON.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793780003225,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+      "startedAtMs": 1793780003225
+    },
+    "emittedAtMs": 1793780003226
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-b198-7090-985a-b27a6dc6853b",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Give the boat note as JSON.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793780003225,
+        "completedAtMs": 1793780003225
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+      "completedAtMs": 1793780003225
+    },
+    "emittedAtMs": 1793780003228
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_07f431fd19568aed016aeae9242f0887d0804936cf804282ce",
+        "text": "",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793780004395,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+      "startedAtMs": 1793780004395
+    },
+    "emittedAtMs": 1793780004395
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_07f431fd19568aed016aeae9242f0887d0804936cf804282ce",
+        "text": "{\"note\":\"The blue rowing boat is moored at the north jetty.\"}",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793780004395,
+        "completedAtMs": 1793780004565
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+      "completedAtMs": 1793780004565
+    },
+    "emittedAtMs": 1793780004567
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 11840,
+          "inputTokens": 11714,
+          "cachedInputTokens": 5645,
+          "cacheWriteInputTokens": 6057,
+          "outputTokens": 126,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3090,
+          "inputTokens": 3063,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 3060,
+          "outputTokens": 27,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780004595
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780004595
+  },
+  {
+    "from": "server",
+    "method": "thread/readState/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "readState": {
+        "firstUnread": {
+          "type": "turn",
+          "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61"
+        },
+        "revision": "87e817d1-cf00-4e5a-bc3d-1353450a5c73"
+      }
+    },
+    "emittedAtMs": 1793780004601
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "idle"
+      }
+    },
+    "emittedAtMs": 1793780004601
+  },
+  {
+    "from": "server",
+    "method": "turn/completed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+        "rootTurnId": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+        "items": [
+          {
+            "type": "agentMessage",
+            "id": "msg_07f431fd19568aed016aeae9242f0887d0804936cf804282ce",
+            "text": "{\"note\":\"The blue rowing boat is moored at the north jetty.\"}",
+            "phase": "final_answer",
+            "memoryCitation": null,
+            "delivery": null,
+            "questions": null,
+            "startedAtMs": 1793780004395,
+            "completedAtMs": 1793780004565
+          }
+        ],
+        "itemsView": "summary",
+        "status": "completed",
+        "error": null,
+        "startedAt": 1793780003,
+        "completedAt": 1793780004,
+        "durationMs": 1418
+      }
+    },
+    "emittedAtMs": 1793780004601
+  },
+  {
+    "from": "client",
+    "id": 6,
+    "method": "turn/start",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "input": [
+        {
+          "type": "text",
+          "text": "Find the note on slow and tell me what it says.",
+          "text_elements": []
+        }
+      ]
+    }
+  },
+  {
+    "from": "server",
+    "id": 6,
+    "result": {
+      "turn": {
+        "id": "01a1a59e-b708-7241-980d-9a870480cb02",
+        "rootTurnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": null,
+        "completedAt": null,
+        "durationMs": null
+      }
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "active",
+        "activeFlags": []
+      }
+    },
+    "emittedAtMs": 1793780004621
+  },
+  {
+    "from": "server",
+    "method": "turn/started",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-b708-7241-980d-9a870480cb02",
+        "rootTurnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": 1793780004,
+        "completedAt": null,
+        "durationMs": null
+      }
+    },
+    "emittedAtMs": 1793780004621
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-b711-72c2-b0b3-061e6b09863f",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Find the note on slow and tell me what it says.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793780004626,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "startedAtMs": 1793780004626
+    },
+    "emittedAtMs": 1793780004626
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-b711-72c2-b0b3-061e6b09863f",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Find the note on slow and tell me what it says.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793780004626,
+        "completedAtMs": 1793780004626
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "completedAtMs": 1793780004626
+    },
+    "emittedAtMs": 1793780004629
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "mcpToolCall",
+        "id": "exec-8fc3fa88-7abc-4854-aa68-f7855291300e",
+        "server": "nixie",
+        "tool": "find_note",
+        "status": "inProgress",
+        "arguments": {
+          "topic": "slow"
+        },
+        "appContext": null,
+        "mcpAppUi": null,
+        "pluginId": null,
+        "readOnlyHint": null,
+        "result": null,
+        "error": null,
+        "durationMs": null,
+        "startedAtMs": 1793780005701,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "startedAtMs": 1793780005701
+    },
+    "emittedAtMs": 1793780005701
+  },
+  {
+    "from": "client",
+    "id": 7,
+    "method": "turn/steer",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "expectedTurnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "input": [
+        {
+          "type": "text",
+          "text": "Also end your reply with the word kiwi.",
+          "text_elements": []
+        }
+      ]
+    }
+  },
+  {
+    "from": "server",
+    "id": 7,
+    "result": {
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02"
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 14951,
+          "inputTokens": 14792,
+          "cachedInputTokens": 8642,
+          "cacheWriteInputTokens": 6135,
+          "outputTokens": 159,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3111,
+          "inputTokens": 3078,
+          "cachedInputTokens": 2997,
+          "cacheWriteInputTokens": 78,
+          "outputTokens": 33,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780005711
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780005711
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-bb50-7ce2-9d84-3777856e5a55",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Also end your reply with the word kiwi.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793780005713,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "startedAtMs": 1793780005713
+    },
+    "emittedAtMs": 1793780005714
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-bb50-7ce2-9d84-3777856e5a55",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Also end your reply with the word kiwi.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793780005713,
+        "completedAtMs": 1793780005713
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "completedAtMs": 1793780005713
+    },
+    "emittedAtMs": 1793780005716
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "mcpToolCall",
+        "id": "exec-8fc3fa88-7abc-4854-aa68-f7855291300e",
+        "server": "nixie",
+        "tool": "find_note",
+        "status": "completed",
+        "arguments": {
+          "topic": "slow"
+        },
+        "appContext": null,
+        "mcpAppUi": null,
+        "pluginId": null,
+        "readOnlyHint": null,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "The slow note arrived after a long wait."
+            }
+          ],
+          "structuredContent": null,
+          "_meta": null
+        },
+        "error": null,
+        "durationMs": 8006,
+        "startedAtMs": 1793780005701,
+        "completedAtMs": 1793780013708
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "completedAtMs": 1793780013708
+    },
+    "emittedAtMs": 1793780013713
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 18128,
+          "inputTokens": 17944,
+          "cachedInputTokens": 11717,
+          "cacheWriteInputTokens": 6209,
+          "outputTokens": 184,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3177,
+          "inputTokens": 3152,
+          "cachedInputTokens": 3075,
+          "cacheWriteInputTokens": 74,
+          "outputTokens": 25,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780013722
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780013722
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_07f431fd19568aed016aeae92e43a487d08891636f7d444105",
+        "text": "",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793780014463,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "startedAtMs": 1793780014463
+    },
+    "emittedAtMs": 1793780014463
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_07f431fd19568aed016aeae92e43a487d08891636f7d444105",
+        "text": "The slow note says: “The slow note arrived after a long wait.” kiwi",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793780014463,
+        "completedAtMs": 1793780014674
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "completedAtMs": 1793780014674
+    },
+    "emittedAtMs": 1793780014676
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 21369,
+          "inputTokens": 21165,
+          "cachedInputTokens": 14866,
+          "cacheWriteInputTokens": 6278,
+          "outputTokens": 204,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3241,
+          "inputTokens": 3221,
+          "cachedInputTokens": 3149,
+          "cacheWriteInputTokens": 69,
+          "outputTokens": 20,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780014681
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780014681
+  },
+  {
+    "from": "server",
+    "method": "thread/readState/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "readState": {
+        "firstUnread": {
+          "type": "turn",
+          "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61"
+        },
+        "revision": "749e4402-ce0e-486d-8135-5d843491537f"
+      }
+    },
+    "emittedAtMs": 1793780014687
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "idle"
+      }
+    },
+    "emittedAtMs": 1793780014687
+  },
+  {
+    "from": "server",
+    "method": "turn/completed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-b708-7241-980d-9a870480cb02",
+        "rootTurnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+        "items": [
+          {
+            "type": "agentMessage",
+            "id": "msg_07f431fd19568aed016aeae92e43a487d08891636f7d444105",
+            "text": "The slow note says: “The slow note arrived after a long wait.” kiwi",
+            "phase": "final_answer",
+            "memoryCitation": null,
+            "delivery": null,
+            "questions": null,
+            "startedAtMs": 1793780014463,
+            "completedAtMs": 1793780014674
+          }
+        ],
+        "itemsView": "summary",
+        "status": "completed",
+        "error": null,
+        "startedAt": 1793780004,
+        "completedAt": 1793780014,
+        "durationMs": 10066
+      }
+    },
+    "emittedAtMs": 1793780014687
+  },
+  {
+    "from": "client",
+    "id": 8,
+    "method": "turn/start",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "input": [
+        {
+          "type": "text",
+          "text": "Find the note on slow and tell me what it says.",
+          "text_elements": []
+        }
+      ]
+    }
+  },
+  {
+    "from": "server",
+    "id": 8,
+    "result": {
+      "turn": {
+        "id": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+        "rootTurnId": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": null,
+        "completedAt": null,
+        "durationMs": null
+      }
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "active",
+        "activeFlags": []
+      }
+    },
+    "emittedAtMs": 1793780014725
+  },
+  {
+    "from": "server",
+    "method": "turn/started",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+        "rootTurnId": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": 1793780014,
+        "completedAt": null,
+        "durationMs": null
+      }
+    },
+    "emittedAtMs": 1793780014725
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-de89-7e33-8807-011f38dbd6c7",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Find the note on slow and tell me what it says.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793780014730,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+      "startedAtMs": 1793780014730
+    },
+    "emittedAtMs": 1793780014730
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-de89-7e33-8807-011f38dbd6c7",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Find the note on slow and tell me what it says.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793780014730,
+        "completedAtMs": 1793780014730
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+      "completedAtMs": 1793780014730
+    },
+    "emittedAtMs": 1793780014732
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "mcpToolCall",
+        "id": "exec-d2550038-9a30-4e2f-96c8-d2d9b6684125",
+        "server": "nixie",
+        "tool": "find_note",
+        "status": "inProgress",
+        "arguments": {
+          "topic": "slow"
+        },
+        "appContext": null,
+        "mcpAppUi": null,
+        "pluginId": null,
+        "readOnlyHint": null,
+        "result": null,
+        "error": null,
+        "durationMs": null,
+        "startedAtMs": 1793780015731,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+      "startedAtMs": 1793780015731
+    },
+    "emittedAtMs": 1793780015731
+  },
+  {
+    "from": "client",
+    "id": 9,
+    "method": "turn/interrupt",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-de80-7741-8d76-187ad2a5e9f6"
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 24661,
+          "inputTokens": 24424,
+          "cachedInputTokens": 18084,
+          "cacheWriteInputTokens": 6316,
+          "outputTokens": 237,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3292,
+          "inputTokens": 3259,
+          "cachedInputTokens": 3218,
+          "cacheWriteInputTokens": 38,
+          "outputTokens": 33,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780015735
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780015735
+  },
+  {
+    "from": "server",
+    "id": 9,
+    "result": {}
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "idle"
+      }
+    },
+    "emittedAtMs": 1793780015741
+  },
+  {
+    "from": "server",
+    "method": "turn/completed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+        "rootTurnId": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "interrupted",
+        "error": null,
+        "startedAt": 1793780014,
+        "completedAt": 1793780015,
+        "durationMs": 1017
+      }
+    },
+    "emittedAtMs": 1793780015741
+  },
+  {
+    "from": "client",
+    "id": 10,
+    "method": "turn/start",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "input": [
+        {
+          "type": "text",
+          "text": "What colour fills this image? Answer in one word.",
+          "text_elements": []
+        },
+        {
+          "type": "localImage",
+          "path": "<state>/work/square.png"
+        }
+      ]
+    }
+  },
+  {
+    "from": "server",
+    "id": 10,
+    "result": {
+      "turn": {
+        "id": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+        "rootTurnId": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": null,
+        "completedAt": null,
+        "durationMs": null
+      }
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "active",
+        "activeFlags": []
+      }
+    },
+    "emittedAtMs": 1793780015771
+  },
+  {
+    "from": "server",
+    "method": "turn/started",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+        "rootTurnId": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": 1793780015,
+        "completedAt": null,
+        "durationMs": null
+      }
+    },
+    "emittedAtMs": 1793780015771
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-e29f-7d50-823e-c38039762585",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "What colour fills this image? Answer in one word.",
+            "text_elements": []
+          },
+          {
+            "type": "localImage",
+            "detail": null,
+            "path": "<state>/work/square.png"
+          }
+        ],
+        "startedAtMs": 1793780015777,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+      "startedAtMs": 1793780015777
+    },
+    "emittedAtMs": 1793780015777
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-e29f-7d50-823e-c38039762585",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "What colour fills this image? Answer in one word.",
+            "text_elements": []
+          },
+          {
+            "type": "localImage",
+            "detail": null,
+            "path": "<state>/work/square.png"
+          }
+        ],
+        "startedAtMs": 1793780015777,
+        "completedAtMs": 1793780015777
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+      "completedAtMs": 1793780015777
+    },
+    "emittedAtMs": 1793780015779
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_07f431fd19568aed016aeae930753087d0a4c936631f40b7bd",
+        "text": "",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793780016669,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+      "startedAtMs": 1793780016669
+    },
+    "emittedAtMs": 1793780016669
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_07f431fd19568aed016aeae930753087d0a4c936631f40b7bd",
+        "text": "Red",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793780016669,
+        "completedAtMs": 1793780016742
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+      "completedAtMs": 1793780016742
+    },
+    "emittedAtMs": 1793780016744
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 28101,
+          "inputTokens": 27859,
+          "cachedInputTokens": 21340,
+          "cacheWriteInputTokens": 6492,
+          "outputTokens": 242,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3440,
+          "inputTokens": 3435,
+          "cachedInputTokens": 3256,
+          "cacheWriteInputTokens": 176,
+          "outputTokens": 5,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780016749
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780016749
+  },
+  {
+    "from": "server",
+    "method": "thread/readState/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "readState": {
+        "firstUnread": {
+          "type": "turn",
+          "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61"
+        },
+        "revision": "c3a4590e-b484-42ae-b465-e595cb03090c"
+      }
+    },
+    "emittedAtMs": 1793780016755
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "idle"
+      }
+    },
+    "emittedAtMs": 1793780016755
+  },
+  {
+    "from": "server",
+    "method": "turn/completed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+        "rootTurnId": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+        "items": [
+          {
+            "type": "agentMessage",
+            "id": "msg_07f431fd19568aed016aeae930753087d0a4c936631f40b7bd",
+            "text": "Red",
+            "phase": "final_answer",
+            "memoryCitation": null,
+            "delivery": null,
+            "questions": null,
+            "startedAtMs": 1793780016669,
+            "completedAtMs": 1793780016742
+          }
+        ],
+        "itemsView": "summary",
+        "status": "completed",
+        "error": null,
+        "startedAt": 1793780015,
+        "completedAt": 1793780016,
+        "durationMs": 982
+      }
+    },
+    "emittedAtMs": 1793780016755
+  },
+  {
+    "from": "client",
+    "id": 11,
+    "method": "thread/compact/start",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191"
+    }
+  },
+  {
+    "from": "server",
+    "id": 11,
+    "result": {}
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "status": {
+        "type": "active",
+        "activeFlags": []
+      }
+    },
+    "emittedAtMs": 1793780016823
+  },
+  {
+    "from": "server",
+    "method": "turn/started",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turn": {
+        "id": "01a1a59e-e6b2-7a42-ab01-e28db77d4f24",
+        "rootTurnId": "01a1a59e-e6b2-7a42-ab01-e28db77d4f24",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": 1793780016,
+        "completedAt": null,
+        "durationMs": null
+      }
+    },
+    "emittedAtMs": 1793780016823
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "contextCompaction",
+        "id": "01a1a59e-e6b8-7b03-ad51-4653e0c6834f",
+        "startedAtMs": 1793780016824,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-e6b2-7a42-ab01-e28db77d4f24",
+      "startedAtMs": 1793780016824
+    },
+    "emittedAtMs": 1793780016825
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-e6b2-7a42-ab01-e28db77d4f24",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 28101,
+          "inputTokens": 27859,
+          "cachedInputTokens": 21340,
+          "cacheWriteInputTokens": 6492,
+          "outputTokens": 242,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3440,
+          "inputTokens": 3435,
+          "cachedInputTokens": 3256,
+          "cacheWriteInputTokens": 176,
+          "outputTokens": 5,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780017398
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780017398
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-e6b2-7a42-ab01-e28db77d4f24",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 31807,
+          "inputTokens": 31394,
+          "cachedInputTokens": 24772,
+          "cacheWriteInputTokens": 6592,
+          "outputTokens": 413,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3706,
+          "inputTokens": 3535,
+          "cachedInputTokens": 3432,
+          "cacheWriteInputTokens": 100,
+          "outputTokens": 171,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780018925
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780018925
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-e6b2-7a42-ab01-e28db77d4f24",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 31807,
+          "inputTokens": 31394,
+          "cachedInputTokens": 24772,
+          "cacheWriteInputTokens": 6592,
+          "outputTokens": 413,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3554,
+          "inputTokens": 0,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 0,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780018939
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780018939
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "contextCompaction",
+        "id": "01a1a59e-e6b8-7b03-ad51-4653e0c6834f",
+        "startedAtMs": 1793780016824,
+        "completedAtMs": 1793780018939
+      },
+      "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+      "turnId": "01a1a59e-e6b2-7a42-ab01-e28db77d4f24",
+      "completedAtMs": 1793780018939
+    },
+    "emittedAtMs": 1793780018940
+  }
+]

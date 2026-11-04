@@ -1,0 +1,459 @@
+[
+  {
+    "from": "client",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "clientInfo": {
+        "name": "nixie-spike",
+        "title": null,
+        "version": "0.0.0"
+      },
+      "capabilities": {
+        "experimentalApi": true,
+        "requestAttestation": false,
+        "optOutNotificationMethods": [
+          "item/agentMessage/delta",
+          "item/reasoning/summaryTextDelta",
+          "item/reasoning/summaryPartAdded",
+          "item/reasoning/textDelta"
+        ]
+      }
+    }
+  },
+  {
+    "from": "server",
+    "id": 1,
+    "result": {
+      "userAgent": "nixie-spike/0.166.0 (Arch Linux Unknown; x86_64) unknown (nixie-spike; 0.0.0)",
+      "codexHome": "<state>/codex",
+      "platformFamily": "unix",
+      "platformOs": "linux"
+    }
+  },
+  {
+    "from": "client",
+    "method": "initialized"
+  },
+  {
+    "from": "client",
+    "id": 2,
+    "method": "thread/start",
+    "params": {
+      "model": "gpt-6-luna",
+      "cwd": "<state>/work",
+      "baseInstructions": "You are a terse assistant. Read notes only through the find_note tool."
+    }
+  },
+  {
+    "from": "server",
+    "method": "remoteControl/status/changed",
+    "params": {
+      "status": "disabled",
+      "serverName": "<host>",
+      "installationId": "de12c0b8-1d88-429e-8f4e-d43a3d1dfae2",
+      "environmentId": null
+    },
+    "emittedAtMs": 1793780021264
+  },
+  {
+    "from": "server",
+    "id": 2,
+    "result": {
+      "thread": {
+        "id": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+        "environments": [
+          {
+            "environmentId": "local",
+            "cwd": "<state>/work",
+            "runtimeWorkspaceRoots": [
+              "<state>/work"
+            ]
+          }
+        ],
+        "extra": null,
+        "sessionId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+        "forkedFromId": null,
+        "parentThreadId": null,
+        "preview": "",
+        "ephemeral": false,
+        "section": null,
+        "sectionEnteredAt": null,
+        "projectId": null,
+        "historyMode": "paginated",
+        "modelProvider": "counted",
+        "model": "gpt-6-luna",
+        "reasoningEffort": "low",
+        "createdAt": 1793780021,
+        "updatedAt": 1793780021,
+        "recencyAt": 1793780021,
+        "status": {
+          "type": "idle"
+        },
+        "path": "<state>/codex/sessions/2026/11/04/rollout-2026-11-04T19-13-41-01a1a59e-f815-7143-9a1c-77bf6a98c597.jsonl",
+        "cwd": "<state>/work",
+        "cliVersion": "0.166.0",
+        "originator": "nixie-spike",
+        "source": "vscode",
+        "canAcceptDirectInput": true,
+        "threadSource": null,
+        "agentNickname": null,
+        "agentRole": null,
+        "gitInfo": null,
+        "name": null,
+        "daybreakEnabled": null,
+        "turns": []
+      },
+      "model": "gpt-6-luna",
+      "modelProvider": "counted",
+      "serviceTier": null,
+      "disabledPluginIds": [],
+      "cwd": "<state>/work",
+      "runtimeWorkspaceRoots": [
+        "<state>/work"
+      ],
+      "instructionSources": [],
+      "approvalPolicy": "never",
+      "approvalsReviewer": "user",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      },
+      "activePermissionProfile": null,
+      "reasoningEffort": "low",
+      "multiAgentMode": "explicitRequestOnly"
+    }
+  },
+  {
+    "from": "client",
+    "id": 3,
+    "method": "turn/start",
+    "params": {
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "input": [
+        {
+          "type": "text",
+          "text": "Say hello in two words.",
+          "text_elements": []
+        }
+      ]
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/started",
+    "params": {
+      "thread": {
+        "id": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+        "environments": [
+          {
+            "environmentId": "local",
+            "cwd": "<state>/work",
+            "runtimeWorkspaceRoots": [
+              "<state>/work"
+            ]
+          }
+        ],
+        "extra": null,
+        "sessionId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+        "forkedFromId": null,
+        "parentThreadId": null,
+        "preview": "",
+        "ephemeral": false,
+        "section": null,
+        "sectionEnteredAt": null,
+        "projectId": null,
+        "historyMode": "paginated",
+        "modelProvider": "counted",
+        "model": "gpt-6-luna",
+        "reasoningEffort": "low",
+        "createdAt": 1793780021,
+        "updatedAt": 1793780021,
+        "recencyAt": 1793780021,
+        "status": {
+          "type": "idle"
+        },
+        "path": "<state>/codex/sessions/2026/11/04/rollout-2026-11-04T19-13-41-01a1a59e-f815-7143-9a1c-77bf6a98c597.jsonl",
+        "cwd": "<state>/work",
+        "cliVersion": "0.166.0",
+        "originator": "nixie-spike",
+        "source": "vscode",
+        "canAcceptDirectInput": true,
+        "threadSource": null,
+        "agentNickname": null,
+        "agentRole": null,
+        "gitInfo": null,
+        "name": null,
+        "daybreakEnabled": null,
+        "turns": []
+      }
+    },
+    "emittedAtMs": 1793780021292
+  },
+  {
+    "from": "server",
+    "method": "mcpServer/startupStatus/updated",
+    "params": {
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "name": "nixie",
+      "status": "starting",
+      "error": null,
+      "failureReason": null
+    },
+    "emittedAtMs": 1793780021292
+  },
+  {
+    "from": "server",
+    "method": "mcpServer/startupStatus/updated",
+    "params": {
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "name": "nixie",
+      "status": "ready",
+      "error": null,
+      "failureReason": null
+    },
+    "emittedAtMs": 1793780021293
+  },
+  {
+    "from": "server",
+    "id": 3,
+    "result": {
+      "turn": {
+        "id": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+        "rootTurnId": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": null,
+        "completedAt": null,
+        "durationMs": null
+      }
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "status": {
+        "type": "active",
+        "activeFlags": []
+      }
+    },
+    "emittedAtMs": 1793780021309
+  },
+  {
+    "from": "server",
+    "method": "turn/started",
+    "params": {
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "turn": {
+        "id": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+        "rootTurnId": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": 1793780021,
+        "completedAt": null,
+        "durationMs": null
+      }
+    },
+    "emittedAtMs": 1793780021309
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-f845-78c3-9a5d-ecc4b81f951a",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Say hello in two words.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793780021318,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "turnId": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+      "startedAtMs": 1793780021318
+    },
+    "emittedAtMs": 1793780021318
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a59e-f845-78c3-9a5d-ecc4b81f951a",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Say hello in two words.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793780021318,
+        "completedAtMs": 1793780021318
+      },
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "turnId": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+      "completedAtMs": 1793780021318
+    },
+    "emittedAtMs": 1793780021321
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_069046e4e7c520b1016aeae935e14487d083fd362e5f8a9ac7",
+        "text": "",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793780022080,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "turnId": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+      "startedAtMs": 1793780022080
+    },
+    "emittedAtMs": 1793780022080
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_069046e4e7c520b1016aeae935e14487d083fd362e5f8a9ac7",
+        "text": "Hello there.",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793780022080,
+        "completedAtMs": 1793780022191
+      },
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "turnId": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+      "completedAtMs": 1793780022191
+    },
+    "emittedAtMs": 1793780022193
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "turnId": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 2763,
+          "inputTokens": 2756,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 2753,
+          "outputTokens": 7,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 2763,
+          "inputTokens": 2756,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 2753,
+          "outputTokens": 7,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793780022201
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793780022201
+  },
+  {
+    "from": "server",
+    "method": "thread/readState/changed",
+    "params": {
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "readState": {
+        "firstUnread": {
+          "type": "turn",
+          "turnId": "01a1a59e-f831-7253-9396-e75c1c53f7ac"
+        },
+        "revision": "b459c482-7762-44a4-9d9a-e39ab7ec7b99"
+      }
+    },
+    "emittedAtMs": 1793780022207
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "status": {
+        "type": "idle"
+      }
+    },
+    "emittedAtMs": 1793780022207
+  },
+  {
+    "from": "server",
+    "method": "turn/completed",
+    "params": {
+      "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+      "turn": {
+        "id": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+        "rootTurnId": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+        "items": [
+          {
+            "type": "agentMessage",
+            "id": "msg_069046e4e7c520b1016aeae935e14487d083fd362e5f8a9ac7",
+            "text": "Hello there.",
+            "phase": "final_answer",
+            "memoryCitation": null,
+            "delivery": null,
+            "questions": null,
+            "startedAtMs": 1793780022080,
+            "completedAtMs": 1793780022191
+          }
+        ],
+        "itemsView": "summary",
+        "status": "completed",
+        "error": null,
+        "startedAt": 1793780021,
+        "completedAt": 1793780022,
+        "durationMs": 903
+      }
+    },
+    "emittedAtMs": 1793780022207
+  }
+]

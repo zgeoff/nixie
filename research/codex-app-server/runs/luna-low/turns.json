@@ -1,0 +1,95 @@
+[
+  {
+    "step": "tool turn",
+    "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+    "turnId": "01a1a59e-a0a2-7f80-8a87-ec0e4a17dc61",
+    "status": "completed",
+    "reply": "The tomato bed needs water on Thursdays, and the blue rowing boat is moored at the north jetty.",
+    "toolCallItemIds": [
+      "exec-8392e365-c61a-42ee-abe0-b2256183f674",
+      "exec-79b69c5e-8e21-47f8-b4c5-1632443a7228"
+    ],
+    "tokenUsageEvents": 3,
+    "rawResponseEvents": 0,
+    "proxyCalls": 3
+  },
+  {
+    "step": "structured output",
+    "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+    "turnId": "01a1a59e-b169-7c23-a431-c7a57c4674de",
+    "status": "completed",
+    "reply": "{\"note\":\"The blue rowing boat is moored at the north jetty.\"}",
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 1
+  },
+  {
+    "step": "steer",
+    "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+    "turnId": "01a1a59e-b708-7241-980d-9a870480cb02",
+    "status": "completed",
+    "reply": "The slow note says: “The slow note arrived after a long wait.” kiwi",
+    "toolCallItemIds": [
+      "exec-8fc3fa88-7abc-4854-aa68-f7855291300e"
+    ],
+    "tokenUsageEvents": 3,
+    "rawResponseEvents": 0,
+    "proxyCalls": 3
+  },
+  {
+    "step": "interrupt",
+    "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+    "turnId": "01a1a59e-de80-7741-8d76-187ad2a5e9f6",
+    "status": "interrupted",
+    "reply": "",
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 1
+  },
+  {
+    "step": "image",
+    "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+    "turnId": "01a1a59e-e296-7d62-9e3a-345e05d6b25d",
+    "status": "completed",
+    "reply": "Red",
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 1
+  },
+  {
+    "step": "resume in a new process",
+    "threadId": "01a1a59e-a06d-78c2-aba7-522047584191",
+    "turnId": "01a1a59e-ef9d-7300-a057-39bc9c87e169",
+    "status": "completed",
+    "reply": "garden, boat, slow",
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 1
+  },
+  {
+    "step": "fork after the first turn",
+    "threadId": "01a1a59e-f2f2-70f1-b471-aff95e3ab27b",
+    "turnId": "01a1a59e-f331-7f11-8f35-b424531d1ed1",
+    "status": "completed",
+    "reply": "Find the notes on garden and on boat, then give me both in one sentence.\nList every message I have sent you in this conversation, word for word, one per line.",
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 1
+  },
+  {
+    "step": "supports_websockets = true",
+    "threadId": "01a1a59e-f815-7143-9a1c-77bf6a98c597",
+    "turnId": "01a1a59e-f831-7253-9396-e75c1c53f7ac",
+    "status": "completed",
+    "reply": "Hello there.",
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 2
+  }
+]
