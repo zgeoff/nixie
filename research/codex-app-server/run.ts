@@ -60,7 +60,13 @@ interface RunArgs {
   readonly apiKey: string;
 }
 
-async function run({ name, model, apiKey }: RunArgs): Promise<void> {
+// the facts about this machine that the logs must not hold
+interface Host {
+  readonly home: string;
+  readonly name: string;
+}
+
+async function run({ name, model, apiKey }: RunArgs, host: Host): Promise<void> {
   const outDir = findChildDir(resolve(import.meta.dir, 'runs'), name);
   const stateDir = findChildDir(resolve(import.meta.dir, '.state'), name);
 
@@ -116,7 +122,15 @@ async function run({ name, model, apiKey }: RunArgs): Promise<void> {
     await proxy.stop();
     await tools.stop();
     const write = (file: string, value: unknown): void => {
-      writeFileSync(join(outDir, file), formatScrubbed(value, stateDir, mcpToken));
+      writeFileSync(
+        join(outDir, file),
+        formatScrubbed(value, [
+          [stateDir, '<state>'],
+          [host.home, '<home>'],
+          [host.name, '<host>'],
+          [mcpToken, '<token>'],
+        ]),
+      );
     };
 
     write('turns.json', turns);
@@ -463,12 +477,13 @@ function buildChunk(type: string, data: Uint8Array): Buffer {
 }
 
 // The logs go into the repo, so they hold no local path, host name or token.
-function formatScrubbed(value: unknown, stateDir: string, token: string): string {
-  return `${JSON.stringify(value, null, 2)
-    .replaceAll(stateDir, '<state>')
-    .replaceAll(homedir(), '<home>')
-    .replaceAll(hostname(), '<host>')
-    .replaceAll(token, '<token>')}\n`;
+function formatScrubbed(
+  value: unknown,
+  replacements: readonly (readonly [text: string, placeholder: string])[],
+): string {
+  const text = JSON.stringify(value, null, 2);
+
+  return `${replacements.reduce((scrubbed, [from, to]) => scrubbed.replaceAll(from, to), text)}\n`;
 }
 
 function parseRunArgs(argv: string[], apiKey: string | undefined): RunArgs {
@@ -481,4 +496,7 @@ function parseRunArgs(argv: string[], apiKey: string | undefined): RunArgs {
   return { name, model, apiKey };
 }
 
-await run(parseRunArgs(process.argv.slice(2), process.env.OPENAI_API_KEY));
+await run(parseRunArgs(process.argv.slice(2), process.env.OPENAI_API_KEY), {
+  home: homedir(),
+  name: hostname(),
+});
