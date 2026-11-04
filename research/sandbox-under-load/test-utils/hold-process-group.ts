@@ -5,5 +5,9 @@ const group = startProcessGroup(
   { stdout: 'ignore', stderr: 'ignore' },
 );
 
+process.once('SIGUSR1', () => {
+  void group.stop();
+});
+
 console.log(group.child.pid);
 await group.child.exited;
