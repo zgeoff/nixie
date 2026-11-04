@@ -316,7 +316,7 @@ async function runCompaction(
       })
     ).params,
   );
-  const compaction = await collectTurn(server, proxy, {
+  const compaction = await readTurnRecord(server, proxy, {
     step: 'compaction',
     threadId,
     turnId: started.turn.id,
@@ -432,7 +432,7 @@ async function runTurn(
     });
     await plan.onToolCall(turnId);
   }
-  return collectTurn(server, proxy, {
+  return readTurnRecord(server, proxy, {
     step: plan.step,
     threadId: plan.threadId,
     turnId,
@@ -450,7 +450,7 @@ interface StartedTurn {
 }
 
 // Waits for a started turn to end, and gathers what the server and the proxy saw of it.
-async function collectTurn(
+async function readTurnRecord(
   server: AppServer,
   proxy: CountProxy,
   started: StartedTurn,
