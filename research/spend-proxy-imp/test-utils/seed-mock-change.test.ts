@@ -39,3 +39,13 @@ test('it writes nothing for an empty change', async () => {
 
   expect([store.records.all().length, store.tasks.all().length]).toStrictEqual([0, 0]);
 });
+
+test("it gives a record's read cursor to the task of its thread", async () => {
+  await seedMockChange({
+    records: [{ kind: 'task.step_committed', thread: 'task-tide', readCursor: 6 }],
+  });
+
+  expect(store.records.all().map((record) => record.task)).toStrictEqual([
+    { readCursor: 6, taskID: 'task-tide' },
+  ]);
+});
