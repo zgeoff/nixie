@@ -467,7 +467,7 @@ interface StartedTurn {
   readonly expectedStatus: TurnStatus;
 }
 
-// Waits for a started turn to end, and gathers what the server and the proxy saw of it.
+// Waits for a started turn to end, and for the proxy to count its calls.
 async function readTurnRecord(
   server: AppServer,
   proxy: CountProxy,
@@ -483,7 +483,30 @@ async function readTurnRecord(
   console.log(`${step}: ${done.turn.status}`);
   assertTurnStatus(step, started.expectedStatus, done.turn);
   await proxy.waitForCounts();
-  const events = server.log.slice(logStart).flatMap((entry) => {
+  return buildTurnRecord({
+    step,
+    threadId,
+    turnId,
+    status: done.turn.status,
+    log: server.log.slice(logStart),
+    proxyCalls: proxy.calls.length - proxyStart,
+  });
+}
+
+interface EndedTurn {
+  readonly step: string;
+  readonly threadId: string;
+  readonly turnId: string;
+  readonly status: string;
+
+  // the server log from the turn's start on, which can hold other threads' events
+  readonly log: readonly unknown[];
+  readonly proxyCalls: number;
+}
+
+function buildTurnRecord(turn: EndedTurn): TurnRecord {
+  const { step, threadId, turnId, status, log, proxyCalls } = turn;
+  const events = log.flatMap((entry) => {
     const parsed = z.object({ method: z.string(), params: z.unknown() }).safeParse(entry);
     const forTurn = parsed.success && turnEvent.safeParse(parsed.data.params).data?.turnId === turnId;
     return parsed.success && forTurn ? [parsed.data] : [];
@@ -497,7 +520,7 @@ async function readTurnRecord(
     step,
     threadId,
     turnId,
-    status: done.turn.status,
+    status,
     reply: items
       .filter((item) => item.type === 'agentMessage')
       .map((item) => item.text ?? '')
@@ -506,7 +529,7 @@ async function readTurnRecord(
     toolCallItemIds: items.filter((item) => item.type === 'mcpToolCall').map((item) => item.id),
     tokenUsageEvents: events.filter((event) => event.method === 'thread/tokenUsage/updated').length,
     rawResponseEvents: events.filter((event) => event.method === 'rawResponse/completed').length,
-    proxyCalls: proxy.calls.length - proxyStart,
+    proxyCalls,
   };
 }
 
