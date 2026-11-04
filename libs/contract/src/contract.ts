@@ -269,6 +269,16 @@ export const contract = {
       )
       .output(z.object({ duplicate: z.boolean(), sequence: sequenceSchema })),
 
+    retry: checkedAction
+      .errors({
+        NOTHING_TO_RETRY: {
+          message: 'The last turn of the conversation did not fail, or it runs again already',
+          status: 409,
+        },
+      })
+      .input(z.object({ clientActionID: clientActionIDSchema }))
+      .output(z.object({ retriedAt: z.date() })),
+
     readImage: signedIn
       .errors({ IMAGE_NOT_FOUND: imageNotFoundError })
       .input(imageRefSchema)

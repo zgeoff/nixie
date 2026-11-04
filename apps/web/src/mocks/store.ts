@@ -48,6 +48,8 @@ const jsonObjectSchema = z.record(z.string(), z.unknown());
 const taskSchema = z.object({
   errorLimit: z.int().optional(),
   errors: z.int().optional(),
+  isWaitingForRetry: z.boolean().optional(),
+  reason: z.string().optional(),
   retryAt: z.date().optional(),
   stepKey: z.string().optional(),
   taskID: z.string().default(() => faker.string.uuid()),
@@ -427,6 +429,13 @@ const forgetActions = new Collection({
   }),
 });
 
+const retryActions = new Collection({
+  schema: z.object({
+    clientActionID: z.uuid(),
+    retriedAt: z.date(),
+  }),
+});
+
 export const store = {
   enrolmentCodes,
   forgetActions,
@@ -441,6 +450,7 @@ export const store = {
   moveActions,
   ratingNotes,
   records,
+  retryActions,
 
   // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
@@ -448,6 +458,7 @@ export const store = {
       records,
       forgetActions,
       moveActions,
+      retryActions,
       taskControlActions,
       taskActions,
       tasks,

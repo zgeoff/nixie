@@ -24,7 +24,7 @@ stateDiagram-v2
   running --> done: the step commits as done
   running --> failed: 3 steps in a row throw
   failed --> ready: a restart, or a server start for the conversation
-  waiting --> ready: a record lands in the inbox, or a server start revives a started task with work left
+  waiting --> ready: a record lands in the inbox, a server start revives a started task with work left, or the user retries the conversation's failed turn
   running --> paused: the step ends after a pause
   ready --> paused: a pause
   waiting --> paused: a pause
@@ -115,9 +115,17 @@ the user. The error record keeps the reason, and the error's records commit in t
 before it. The conversation's turn uses it for
 [a call the model API refuses](./conversation-turns.md#a-call-the-model-api-refuses). When the error
 waits for the user, the conversation waits instead of retrying, and its next step runs once a waking
-record arrives. A waking record that arrived while the step ran makes the conversation ready at
-once, because the record could not wake a running task. Any other task retries such an error after
-its delay, as it retries every error.
+record arrives or the user retries it. A waking record that arrived while the step ran makes the
+conversation ready at once, because the record could not wake a running task. Any other task retries
+such an error after its delay, as it retries every error.
+
+### Retrying the conversation's failed turn
+
+The user can retry the conversation's failed turn. The retry writes a revival record, which makes
+the conversation ready with its errors cleared, so its next step runs at once, whether the failed
+step waited for the user or for its backoff. The commit wakes the runners, as an inbox record does.
+nixie refuses a retry unless the conversation's last step failed and no step of it runs, so a retry
+never runs a turn twice.
 
 ## Pause, stop and close
 

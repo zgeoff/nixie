@@ -12,6 +12,7 @@ import { store } from './store';
 import { toLogRecord } from './to-log-record';
 import { writeMockForget } from './write-mock-forget';
 import { writeMockMove } from './write-mock-move';
+import { writeMockRetry } from './write-mock-retry';
 import type { MockTaskControl } from './write-mock-task-control';
 import { writeMockTaskControl } from './write-mock-task-control';
 
@@ -120,6 +121,18 @@ export const mockAPIRouter = os.router({
       }
 
       return { forgottenAt: result.forgottenAt };
+    }),
+
+    retry: os.conversation.retry.handler(async (options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const result = await writeMockRetry(options.input);
+
+      if (result.status !== 'retried') {
+        throw options.errors.NOTHING_TO_RETRY();
+      }
+
+      return { retriedAt: result.retriedAt };
     }),
 
     move: os.conversation.move.handler(async (options) => {

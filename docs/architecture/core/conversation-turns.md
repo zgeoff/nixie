@@ -294,7 +294,10 @@ The step's error depends on the kind of refusal:
   as unknown retry with the conversation's backoff.
 - A quota, a billing or account refusal, and a model that the API lacks wait for the user, because
   each retry fails the same way until the user changes something outside nixie. The conversation's
-  next step runs once the user sends a message.
+  next step runs once the user sends a message or retries the turn.
+
+A retry of the failed turn runs it at once, whether the turn waited for the user or for its backoff
+([tasks](./tasks.md#retrying-the-conversations-failed-turn)).
 
 The CLI retries a rate limit within the call unless the model API asks for a wait past the CLI's own
 limit, so the guest reads a rate limit that the CLI never retried as a quota. The CLI passes no

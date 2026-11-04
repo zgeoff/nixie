@@ -452,6 +452,12 @@
                                 "maximum": 9007199254740991,
                                 "exclusiveMinimum": 0
                               },
+                              "isWaitingForRetry": {
+                                "type": "boolean"
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
                               "retryAt": {
                                 "type": "string",
                                 "format": "date-time",
@@ -952,6 +958,12 @@
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
                                   "exclusiveMinimum": 0
+                                },
+                                "isWaitingForRetry": {
+                                  "type": "boolean"
+                                },
+                                "reason": {
+                                  "type": "string"
                                 },
                                 "retryAt": {
                                   "type": "string",
@@ -1616,6 +1628,197 @@
                         "status",
                         "message",
                         "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conversation/retry": {
+      "post": {
+        "operationId": "conversation.retry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "clientActionID": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "clientActionID"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "retriedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    }
+                  },
+                  "required": [
+                    "retriedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "CLIENT_ACTION_ID_REUSED"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The client action ID belongs to a different action"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "NOTHING_TO_RETRY"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The last turn of the conversation did not fail, or it runs again already"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
                       ]
                     },
                     {
@@ -16342,6 +16545,12 @@
                                       "maximum": 9007199254740991,
                                       "exclusiveMinimum": 0
                                     },
+                                    "isWaitingForRetry": {
+                                      "type": "boolean"
+                                    },
+                                    "reason": {
+                                      "type": "string"
+                                    },
                                     "retryAt": {
                                       "type": "string",
                                       "format": "date-time",
@@ -17004,6 +17213,12 @@
                                       "minimum": -9007199254740991,
                                       "maximum": 9007199254740991,
                                       "exclusiveMinimum": 0
+                                    },
+                                    "isWaitingForRetry": {
+                                      "type": "boolean"
+                                    },
+                                    "reason": {
+                                      "type": "string"
                                     },
                                     "retryAt": {
                                       "type": "string",

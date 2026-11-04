@@ -156,12 +156,17 @@ function toTask(record: LogRecord): Task | undefined {
   };
 }
 
-function toRetry(payload: JSONObject): Pick<Task, 'errorLimit' | 'errors' | 'retryAt'> {
+type TaskRetry = Pick<Task, 'errorLimit' | 'errors' | 'isWaitingForRetry' | 'reason' | 'retryAt'>;
+
+function toRetry(payload: JSONObject): TaskRetry {
   const retry = taskStepErroredCodec.tryDecodePartial(payload);
+  const isWaitingForRetry = retry?.nextState === 'waiting';
 
   return {
     ...(retry?.errorLimit === undefined ? {} : { errorLimit: retry.errorLimit }),
     ...(retry?.errors === undefined ? {} : { errors: retry.errors }),
+    ...(isWaitingForRetry ? { isWaitingForRetry } : {}),
+    ...(retry?.reason === undefined ? {} : { reason: retry.reason }),
     ...(retry?.claimableAt === undefined ? {} : { retryAt: new Date(retry.claimableAt) }),
   };
 }

@@ -12,6 +12,8 @@ export { taskRouteCorrectedCodec } from './task-route-corrected-codec';
 export { taskRoutedCodec } from './task-routed-codec';
 export type { MessageMoveOutcome } from './write-message-move-in-transaction';
 export { writeMessageMoveInTransaction } from './write-message-move-in-transaction';
+export type { ConversationRetryOutcome } from './write-conversation-retry-in-transaction';
+export { writeConversationRetryInTransaction } from './write-conversation-retry-in-transaction';
 export { canReplyWake } from './can-reply-wake';
 export { getTaskName } from './get-task-name';
 export { renderExchangeNotice } from './render-exchange-notice';
