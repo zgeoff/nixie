@@ -132,6 +132,7 @@ const taskCodecs = [
 interface TaskFields {
   readonly taskID?: string | undefined;
   readonly stepKey?: string | undefined;
+  readonly readCursor?: number | undefined;
 }
 
 function toTask(record: LogRecord): Task | undefined {
@@ -151,6 +152,7 @@ function toTask(record: LogRecord): Task | undefined {
   return {
     ...(typeof error === 'string' ? { error } : {}),
     ...(record.kind === 'task.step_errored' ? toRetry(record.payload) : {}),
+    ...(fields.readCursor === undefined ? {} : { readCursor: fields.readCursor }),
     ...(stepKey === null ? {} : { stepKey }),
     taskID: fields.taskID,
   };

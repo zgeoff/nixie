@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import type { ActionsTables } from '@heynixie/actions';
 import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
 import { writeRecords } from '@heynixie/log';
-import { claimTask, createConversationTask, createTask } from '@heynixie/tasks';
+import { claimTask, createConversationTask, createTask, writeStepCommit } from '@heynixie/tasks';
 import { isDefinedError, safe } from '@orpc/client';
 import invariant from 'tiny-invariant';
 import { createEnrolmentCode } from './create-enrolment-code';
@@ -794,6 +794,43 @@ test('#conversation.read returns a page of the thread and the sequence it read a
       },
     ],
     lastStepEnd: null,
+  });
+});
+
+test('#conversation.read gives the read cursor of the newest committed step', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const sent = await laptopClient.conversation.send({
+    clientMessageId: '4a7c2e91-3d5b-4f08-b6e2-8c1d9f0a3b57',
+    thread: 'conversation',
+    text: 'Water the ferns.',
+    spans: [{ start: 0, end: 16, source: 'typed' }],
+  });
+
+  const step = await claimTask(ctx.context, { holder: 'step-runner', leaseMs: 60_000 });
+
+  invariant(step);
+
+  await writeStepCommit(ctx.context, step, {
+    next: 'wait',
+    records: [],
+    acknowledged: [sent.sequence],
+  });
+
+  const page = await laptopClient.conversation.read({ thread: 'conversation' });
+
+  expect(page.lastStepEnd).toStrictEqual({
+    kind: 'task.step_committed',
+    recordedAt: expect.toBeValidDate(),
+    sequence: expect.any(Number),
+    task: { readCursor: sent.sequence, stepKey: step.stepKey, taskID: 'conversation' },
+    thread: 'conversation',
   });
 });
 

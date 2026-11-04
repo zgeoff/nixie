@@ -455,6 +455,11 @@
                               "isWaitingForRetry": {
                                 "type": "boolean"
                               },
+                              "readCursor": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
                               "reason": {
                                 "type": "string"
                               },
@@ -961,6 +966,11 @@
                                 },
                                 "isWaitingForRetry": {
                                   "type": "boolean"
+                                },
+                                "readCursor": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
                                 },
                                 "reason": {
                                   "type": "string"
@@ -16548,6 +16558,11 @@
                                     "isWaitingForRetry": {
                                       "type": "boolean"
                                     },
+                                    "readCursor": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
                                     "reason": {
                                       "type": "string"
                                     },
@@ -17216,6 +17231,11 @@
                                     },
                                     "isWaitingForRetry": {
                                       "type": "boolean"
+                                    },
+                                    "readCursor": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
                                     },
                                     "reason": {
                                       "type": "string"
