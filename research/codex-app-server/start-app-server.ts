@@ -173,6 +173,8 @@ function openClient(
       return withDeadline(`${method} response`, async () => {
         send({ id, method, params });
         return call.promise;
+      }).finally(() => {
+        pending.delete(id);
       });
     },
     notify: (method) => {
