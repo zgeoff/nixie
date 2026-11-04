@@ -11,13 +11,21 @@ body='{"model":"claude-haiku-5-5","max_tokens":16,"messages":[{"role":"user","co
 answer=$(mktemp)
 trap 'rm -f "$answer"' EXIT
 
-# probe <name> <curl arguments>
+failed=0
+
+# probe <name> <curl arguments>: a probe whose request gets no HTTP answer prints status 000 and
+# curl's exit code, and the script exits 1 after the last probe
 probe() {
   name=$1
   shift
-  status=$(curl -s --max-time 30 -o "$answer" -w '%{http_code}' "$@" \
-    -H 'content-type: application/json' -H 'anthropic-version: 2023-06-01' -d "$body")
-  printf '%s\t%s\t%s\n' "$name" "$status" "$(head -c 200 "$answer" | tr '\n' ' ')"
+  : > "$answer"
+  if status=$(curl -s --max-time 30 -o "$answer" -w '%{http_code}' "$@" \
+    -H 'content-type: application/json' -H 'anthropic-version: 2023-06-01' -d "$body"); then
+    printf '%s\t%s\t%s\n' "$name" "$status" "$(head -c 200 "$answer" | tr '\n' ' ')"
+  else
+    printf '%s\t000\tcurl exit %s\n' "$name" "$?"
+    failed=1
+  fi
 }
 
 # the imp's own route, where the broker adds the credential and the counting proxy counts the reply
@@ -37,3 +45,5 @@ probe batches "https://api.anthropic.com/$imp/v1/messages/batches"
 # around the broker: the guest's open egress reaches the API, with no credential on the request
 probe direct-no-broker --noproxy '*' https://api.anthropic.com/v1/messages
 probe route-listener --noproxy '*' --connect-timeout 5 "$listener/$imp/v1/messages"
+
+exit "$failed"
