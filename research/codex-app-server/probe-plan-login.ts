@@ -87,10 +87,20 @@ interface TurnOutcome {
 // the outside systems the probe reaches, which only the entry point builds
 interface ProbeDeps {
   readonly host: { readonly home: string; readonly name: string };
-  readonly launchAppServer: AppServerLauncher;
+  readonly caseIO: CaseIO;
 }
 
-async function run({ host, launchAppServer }: ProbeDeps): Promise<void> {
+// what a probe case reaches outside the process
+interface CaseIO {
+  readonly startMock: (tls: Certificate) => Mock;
+  readonly launchAppServer: AppServerLauncher;
+  readonly makeDir: (path: string) => void;
+  readonly writeText: (path: string, text: string) => void;
+  readonly readTextOrNull: (path: string) => string | null;
+  readonly runCommand: (command: readonly string[], cwd: string) => Promise<void>;
+}
+
+async function run({ host, caseIO }: ProbeDeps): Promise<void> {
   const version = (await Bun.$`codex --version`.text()).trim();
 
   if (version !== codexVersion) {
@@ -131,7 +141,7 @@ async function run({ host, launchAppServer }: ProbeDeps): Promise<void> {
   for (const probeCase of cases) {
     const stateDir = join(stateRoot, String(results.length));
 
-    results.push(await runCase(probeCase, { stateDir, now, tls, launchAppServer }));
+    results.push(await runCase(probeCase, { stateDir, now, tls, io: caseIO }));
   }
   const outDir = resolve(import.meta.dir, 'runs', 'plan-login');
 
@@ -176,14 +186,14 @@ interface CaseContext {
   readonly stateDir: string;
   readonly now: number;
   readonly tls: Certificate;
-  readonly launchAppServer: AppServerLauncher;
+  readonly io: CaseIO;
 }
 
 async function runCase(
   probeCase: ProbeCase,
-  { stateDir, now, tls, launchAppServer }: CaseContext,
+  { stateDir, now, tls, io }: CaseContext,
 ): Promise<CaseResult> {
-  const mock = startMock(tls);
+  const mock = io.startMock(tls);
   const codexHome = join(stateDir, 'codex');
   const workDir = join(stateDir, 'work');
   const authPath = join(codexHome, 'auth.json');
@@ -191,14 +201,14 @@ async function runCase(
   let server: AppServer | undefined;
 
   for (const dir of [codexHome, join(stateDir, 'home'), workDir]) {
-    mkdirSync(dir, { recursive: true });
+    io.makeDir(dir);
   }
-  await Bun.$`git init -q`.cwd(workDir);
-  writeFileSync(join(codexHome, 'config.toml'), buildConfig(mock.url));
+  await io.runCommand(['git', 'init', '-q'], workDir);
+  io.writeText(join(codexHome, 'config.toml'), buildConfig(mock.url));
   const authBefore = probeCase.authFile ? JSON.stringify(probeCase.authFile, null, 2) : null;
 
   if (authBefore) {
-    writeFileSync(authPath, authBefore);
+    io.writeText(authPath, authBefore);
   }
   mock.refuseModelRequests(probeCase.modelFailures);
 
@@ -219,7 +229,7 @@ async function runCase(
 
   try {
     server = await startAppServer(
-      launchAppServer(
+      io.launchAppServer(
         {
           CODEX_HOME: codexHome,
           HOME: join(stateDir, 'home'),
@@ -249,7 +259,7 @@ async function runCase(
       requests: mock.requests,
       refreshServerRequests,
       authBefore,
-      authAfter: readFileOrNull(authPath),
+      authAfter: io.readTextOrNull(authPath),
     });
   } finally {
     await server?.stop();
@@ -461,4 +471,20 @@ function buildReplyStream(): string {
   return events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join('');
 }
 
-await run({ host: { home: homedir(), name: hostname() }, launchAppServer: runCodexAppServer });
+await run({
+  host: { home: homedir(), name: hostname() },
+  caseIO: {
+    startMock,
+    launchAppServer: runCodexAppServer,
+    makeDir: (path) => {
+      mkdirSync(path, { recursive: true });
+    },
+    writeText: (path, text) => {
+      writeFileSync(path, text);
+    },
+    readTextOrNull: readFileOrNull,
+    runCommand: async (command, cwd) => {
+      await Bun.$`${command}`.cwd(cwd).quiet();
+    },
+  },
+});
