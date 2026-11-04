@@ -15,7 +15,8 @@
         "reasoning_tokens": 0
       },
       "total_tokens": 2792
-    }
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -33,7 +34,8 @@
         "reasoning_tokens": 0
       },
       "total_tokens": 2932
-    }
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -51,7 +53,8 @@
         "reasoning_tokens": 0
       },
       "total_tokens": 3026
-    }
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -69,7 +72,8 @@
         "reasoning_tokens": 0
       },
       "total_tokens": 3090
-    }
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -87,7 +91,8 @@
         "reasoning_tokens": 0
       },
       "total_tokens": 3111
-    }
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -100,12 +105,13 @@
         "cache_write_tokens": 74,
         "cached_tokens": 3075
       },
-      "output_tokens": 25,
+      "output_tokens": 18,
       "output_tokens_details": {
         "reasoning_tokens": 0
       },
-      "total_tokens": 3177
-    }
+      "total_tokens": 3170
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -113,17 +119,18 @@
     "upgrade": null,
     "status": 200,
     "usage": {
-      "input_tokens": 3221,
+      "input_tokens": 3214,
       "input_tokens_details": {
-        "cache_write_tokens": 69,
+        "cache_write_tokens": 62,
         "cached_tokens": 3149
       },
       "output_tokens": 20,
       "output_tokens_details": {
         "reasoning_tokens": 0
       },
-      "total_tokens": 3241
-    }
+      "total_tokens": 3234
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -131,17 +138,18 @@
     "upgrade": null,
     "status": 200,
     "usage": {
-      "input_tokens": 3259,
+      "input_tokens": 3252,
       "input_tokens_details": {
         "cache_write_tokens": 38,
-        "cached_tokens": 3218
+        "cached_tokens": 3211
       },
       "output_tokens": 33,
       "output_tokens_details": {
         "reasoning_tokens": 0
       },
-      "total_tokens": 3292
-    }
+      "total_tokens": 3285
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -149,17 +157,18 @@
     "upgrade": null,
     "status": 200,
     "usage": {
-      "input_tokens": 3435,
+      "input_tokens": 3428,
       "input_tokens_details": {
         "cache_write_tokens": 176,
-        "cached_tokens": 3256
+        "cached_tokens": 3249
       },
       "output_tokens": 5,
       "output_tokens_details": {
         "reasoning_tokens": 0
       },
-      "total_tokens": 3440
-    }
+      "total_tokens": 3433
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -167,17 +176,18 @@
     "upgrade": null,
     "status": 200,
     "usage": {
-      "input_tokens": 3535,
+      "input_tokens": 3528,
       "input_tokens_details": {
-        "cached_tokens": 3432,
-        "cache_write_tokens": 100
+        "cache_write_tokens": 100,
+        "cached_tokens": 3425
       },
-      "output_tokens": 171,
+      "output_tokens": 243,
       "output_tokens_details": {
-        "reasoning_tokens": 0
+        "reasoning_tokens": 81
       },
-      "total_tokens": 3706
-    }
+      "total_tokens": 3771
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -185,17 +195,37 @@
     "upgrade": null,
     "status": 200,
     "usage": {
-      "input_tokens": 3155,
+      "input_tokens": 3094,
       "input_tokens_details": {
-        "cache_write_tokens": 388,
+        "cache_write_tokens": 327,
         "cached_tokens": 2764
       },
-      "output_tokens": 9,
+      "output_tokens": 30,
       "output_tokens_details": {
         "reasoning_tokens": 0
       },
-      "total_tokens": 3164
-    }
+      "total_tokens": 3124
+    },
+    "error": null
+  },
+  {
+    "method": "POST",
+    "path": "/v1/responses",
+    "upgrade": null,
+    "status": 200,
+    "usage": {
+      "input_tokens": 3216,
+      "input_tokens_details": {
+        "cache_write_tokens": 122,
+        "cached_tokens": 3091
+      },
+      "output_tokens": 51,
+      "output_tokens_details": {
+        "reasoning_tokens": 40
+      },
+      "total_tokens": 3267
+    },
+    "error": null
   },
   {
     "method": "POST",
@@ -208,19 +238,21 @@
         "cache_write_tokens": 3048,
         "cached_tokens": 0
       },
-      "output_tokens": 40,
+      "output_tokens": 63,
       "output_tokens_details": {
-        "reasoning_tokens": 0
+        "reasoning_tokens": 21
       },
-      "total_tokens": 3091
-    }
+      "total_tokens": 3114
+    },
+    "error": null
   },
   {
     "method": "GET",
     "path": "/v1/responses",
     "upgrade": "websocket",
     "status": 426,
-    "usage": null
+    "usage": null,
+    "error": null
   },
   {
     "method": "POST",
@@ -238,6 +270,7 @@
         "reasoning_tokens": 0
       },
       "total_tokens": 2763
-    }
+    },
+    "error": null
   }
 ]

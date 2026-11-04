@@ -33,8 +33,8 @@ The script makes 3 app-server processes in turn:
 3. The third process sets `supports_websockets = true` on the provider and runs 1 turn.
 
 The logs in [`runs/luna-low/`](runs/luna-low/) hold every message in both directions, with the state
-path, home path, host name and MCP token replaced by placeholders. The 13 model calls read 40,325
-input tokens, 27,488 of them from the cache, and wrote 589 output tokens [measured]. Run each
+path, home path, host name and MCP token replaced by placeholders. The 14 model calls read 43,483
+input tokens, 30,606 of them from the cache, and wrote 629 output tokens [measured]. Run each
 command below from `runs/luna-low/`.
 
 ## Method and parameter names
@@ -86,10 +86,10 @@ Decision it informs: whether the Codex guest can send a `call` frame for each mo
 how it fills `modelCallUsageSchema`.
 
 `thread/tokenUsage/updated` arrives once for each model call, and its `tokenUsage.last` equals the
-usage that the model API's `response.completed` event held for that call [measured]. Each turn saw
-as many of these notifications for its own `turnId` as the proxy saw model requests [measured]. The
-websocket turn counts 2 proxy requests for 1 model call, because 1 of them is the refused upgrade
-[measured].
+usage that the model API's `response.completed` event held for that call [measured]. Each turn
+except the compaction saw as many of these notifications for its own `turnId` as the proxy saw model
+requests [measured]. The websocket turn counts 2 proxy requests for 1 model call, because 1 of them
+is the refused upgrade [measured].
 
 Codex also sends the notification when no model call happened: once after `thread/resume`, once
 after `thread/fork`, and twice around the compaction's own call [measured]. The resume and fork
@@ -97,7 +97,7 @@ replays arrive before the new turn's `turn/started`, with the `turnId` of the th
 which the second process never started [measured]. The 2 compaction extras keep the compaction's
 `turnId`, and their `tokenUsage.total` doesn't grow by `tokenUsage.last` [measured].
 
-A guest that counts a call only when both of these hold gets the proxy's 13 usages, and no others
+A guest that counts a call only when both of these hold gets the proxy's 14 usages, and no others
 [measured]:
 
 1. The event's `turnId` names a turn that this process saw in `turn/started`.
@@ -125,8 +125,8 @@ jq -c '[.[] | select(.usage) | .usage.total_tokens] | sort' proxy.json
 ```
 
 ```text
-[2763,2792,2932,3026,3090,3091,3111,3164,3177,3241,3292,3440,3706]
-[2763,2792,2932,3026,3090,3091,3111,3164,3177,3241,3292,3440,3706]
+[2763,2792,2932,3026,3090,3111,3114,3124,3170,3234,3267,3285,3433,3771]
+[2763,2792,2932,3026,3090,3111,3114,3124,3170,3234,3267,3285,3433,3771]
 ```
 
 ```bash
@@ -139,7 +139,8 @@ jq -c '.[] | {step, tokenUsageEvents, rawResponseEvents, proxyCalls}' turns.json
 {"step":"steer","tokenUsageEvents":3,"rawResponseEvents":0,"proxyCalls":3}
 {"step":"interrupt","tokenUsageEvents":1,"rawResponseEvents":0,"proxyCalls":1}
 {"step":"image","tokenUsageEvents":1,"rawResponseEvents":0,"proxyCalls":1}
-{"step":"resume in a new process","tokenUsageEvents":1,"rawResponseEvents":0,"proxyCalls":1}
+{"step":"compaction","tokenUsageEvents":3,"rawResponseEvents":0,"proxyCalls":1}
+{"step":"resume in a new process","tokenUsageEvents":2,"rawResponseEvents":0,"proxyCalls":2}
 {"step":"fork after the first turn","tokenUsageEvents":1,"rawResponseEvents":0,"proxyCalls":1}
 {"step":"supports_websockets = true","tokenUsageEvents":1,"rawResponseEvents":0,"proxyCalls":2}
 ```
@@ -192,14 +193,14 @@ jq -c '.[] | select(.method == "item/started" and .params.item.type == "mcpToolC
 ```
 
 ```text
-{"callId":"exec-8392e365-c61a-42ee-abe0-b2256183f674","itemId":"ctc_07f431fd19568aed016aeae921623487d081d25a158dbd5b34"}
-{"callId":"exec-79b69c5e-8e21-47f8-b4c5-1632443a7228","itemId":"ctc_07f431fd19568aed016aeae921623487d081d25a158dbd5b34"}
-{"callId":"exec-8fc3fa88-7abc-4854-aa68-f7855291300e","itemId":"ctc_07f431fd19568aed016aeae925450487d0871a1ce7a522cc61"}
-{"callId":"exec-d2550038-9a30-4e2f-96c8-d2d9b6684125","itemId":"ctc_07f431fd19568aed016aeae92f59d487d09b0ca3f892c31901"}
-"exec-8392e365-c61a-42ee-abe0-b2256183f674"
-"exec-79b69c5e-8e21-47f8-b4c5-1632443a7228"
-"exec-8fc3fa88-7abc-4854-aa68-f7855291300e"
-"exec-d2550038-9a30-4e2f-96c8-d2d9b6684125"
+{"callId":"exec-be9ae149-380b-44b4-ae5e-789942992aed","itemId":"ctc_090a8b3c2535a33f016aeb0076727887d085dd11032d108eea"}
+{"callId":"exec-596ed792-7f52-42ab-8f62-c8d0c0c4dda1","itemId":"ctc_090a8b3c2535a33f016aeb0076727887d085dd11032d108eea"}
+{"callId":"exec-15154488-0da1-4a4d-91dc-958b0fec2f50","itemId":"ctc_090a8b3c2535a33f016aeb007ba4f487d092c777adabce4bd5"}
+{"callId":"exec-75cc0b6b-b215-459c-9075-7a2b04523956","itemId":"ctc_090a8b3c2535a33f016aeb0085fd9087d0b0aafdc0f6cb22c9"}
+"exec-be9ae149-380b-44b4-ae5e-789942992aed"
+"exec-596ed792-7f52-42ab-8f62-c8d0c0c4dda1"
+"exec-15154488-0da1-4a4d-91dc-958b0fec2f50"
+"exec-75cc0b6b-b215-459c-9075-7a2b04523956"
 ```
 
 The same `_meta` holds `x-codex-turn-metadata`: the thread, turn, model and sandbox mode, and for
@@ -226,7 +227,7 @@ jq -c '.[] | {path, upgrade, status}' proxy.json | sort | uniq -c
 
 ```text
       1 {"path":"/v1/responses","upgrade":"websocket","status":426}
-     13 {"path":"/v1/responses","upgrade":null,"status":200}
+     14 {"path":"/v1/responses","upgrade":null,"status":200}
 ```
 
 ## The config keys
@@ -239,6 +240,33 @@ Decision it informs: the `config.toml` the Codex guest writes.
 the key at the top level, and it accepts `url`, `bearer_token_env_var`, `required` and
 `default_tools_approval_mode = "approve"` under `[mcp_servers.nixie]` [measured]. The MCP server
 received each request with an `authorization` header, from `bearer_token_env_var` [measured].
+
+## Resume and fork at a chosen turn
+
+Decision it informs: whether the `codex` entry can declare `resume` and `resume-at-entry`.
+
+`thread/fork` cuts a thread at a chosen turn: `lastTurnId` keeps that turn and drops every later
+one, and the fork gets a new thread ID [read in the code]. The second process forked the first
+thread after its first turn, and asked for every message it had sent. The reply held only the first
+turn's message and the new one, though the first thread had 5 turns and a compaction [measured].
+
+`thread/resume` takes no turn to cut at: it loads the whole thread by `threadId`, or from a
+`history` or a `path` [read in the code]. The resumed thread, compacted at the end of the first
+process, still named the 3 topics that the first process had looked up [measured]. `thread/revert`
+with `beforeTurnId` rewrites a thread's stored history to the turns before that one [read in the
+code], and no process called it.
+
+```bash
+jq -c '.[] | select(.from == "client" and (.method == "thread/resume" or .method == "thread/fork")) | {method, keys: (.params | keys)}' rpc-second-process.json
+jq -c '.[] | select(.step | test("resume|fork")) | {step, reply}' turns.json
+```
+
+```text
+{"method":"thread/resume","keys":["model","threadId"]}
+{"method":"thread/fork","keys":["lastTurnId","model","threadId"]}
+{"step":"resume in a new process","reply":"garden, boat, slow"}
+{"step":"fork after the first turn","reply":"Find the notes on garden and on boat, then give me both in one sentence.\nList every message I have sent you in this conversation, word for word, one per line."}
+```
 
 ## A ChatGPT plan login
 
@@ -342,13 +370,17 @@ notification that this spike used, except `turn-limit`, which the guest counts i
 | `codex app-server` (recommended) | all 12                                                                          | a JSON-RPC client over stdio, about 150 lines in this spike    | the CLI labels app-server experimental, so a release can rename a method; the pin and `generate-ts` show it |
 | `codex exec --json`, once a turn | `tools`, `fresh-session`, `resume`, `images`, `structured-output`, `turn-limit` | one process and one JSON line parser a turn, as model-eval has | no usage per call, so no `call` frame; a resumed session reports a running total                            |
 
-The Codex guest needs 4 things from this spike:
+The Codex guest needs 5 things from this spike:
 
 1. Set `supports_websockets = false` on its model provider, so no call leaves as a websocket.
 2. Put `tool_output_token_limit` at the top level of `config.toml`.
-3. Run Codex in a working directory outside any git repo, so `_meta` carries no remote or commit.
+3. Run Codex in a working directory with its own `git init` and no remote, so `_meta` carries no
+   remote or commit of a repo around it.
 4. Send a `call` frame only for a `thread/tokenUsage/updated` that passes the
    [2 conditions](#usage-for-each-model-call).
+5. For a ChatGPT plan login, log in with `chatgptAuthTokens` and answer
+   `account/chatgptAuthTokens/refresh` from the broker, so the CLI never holds or spends a refresh
+   token ([a ChatGPT plan login](#a-chatgpt-plan-login)).
 
 These would change the pick:
 
@@ -367,3 +399,5 @@ These would change the pick:
 - Reasoning effort above `low`, and models other than `gpt-6-luna`.
 - An MCP server that refuses the bearer token, and an MCP server that is down at `required = true`.
 - Codex inside an imp sandbox, behind the real counting proxy.
+- A plan login against the real ChatGPT backend and token endpoint, and an external-mode login whose
+  model calls answer 401 twice.

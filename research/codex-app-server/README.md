@@ -19,13 +19,15 @@ login, does the CLI refresh its own token? Should the Codex guest use app-server
 - A turn is `thread/start`, then `turn/start` with `threadId` and `input`, then `turn/completed`.
   `turn/interrupt` takes `threadId` and `turnId`, and `turn/steer` takes `expectedTurnId`.
 - `thread/tokenUsage/updated` arrives once for each model call, with `tokenUsage.last` equal to the
-  model API's usage on all 13 calls. It also repeats a stored figure after a resume, a fork and a
+  model API's usage on all 14 calls. It also repeats a stored figure after a resume, a fork and a
   compaction. An event is a new call only when its turn started in this process and its `total`
   grows by its `last`.
 - Codex sends `_meta.callId` on each `tools/call`, equal to the app-server item ID of that call.
 - With `supports_websockets = true`, Codex tried a websocket first; with `false`, it sent HTTP only.
 - `tool_output_token_limit` is a top-level key: strict config refuses it under
   `[mcp_servers.nixie]`.
+- `thread/fork` with `lastTurnId` cuts a thread after a chosen turn. `thread/resume` takes no turn
+  to cut at, and loads the whole thread.
 - With a ChatGPT plan login in its own mode, the CLI refreshes the token itself when the access
   token is 5 minutes from expiry or the model API answers 401 twice. In external mode
   (`chatgptAuthTokens`), it asks the client for a new token and never refreshes one itself.
@@ -53,5 +55,6 @@ and its output, and the [capability table](results.md#capabilities).
 
 ## Untested
 
-`thread/revert`, the built-in `openai` provider, automatic compaction, failed model calls, and Codex
-inside an imp sandbox. The [untested list](results.md#untested) gives the rest.
+`thread/revert`, the built-in `openai` provider, automatic compaction, failed model calls, a plan
+login against the real ChatGPT backend, and Codex inside an imp sandbox. The
+[untested list](results.md#untested) gives the rest.
