@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseJSONOrNull } from '@heynixie/wire';
 
 // One request the CLI sent to the model API, with the usage that the response's last event held.
 export interface ProxyCall {
@@ -95,16 +96,8 @@ async function readUsage(stream: ReadableStream<Uint8Array>): Promise<unknown> {
     .split('\n')
     .filter((line) => line.startsWith('data: '))
     .flatMap((line) => {
-      const parsed = completedEvent.safeParse(parseJSON(line.slice('data: '.length)));
+      const parsed = completedEvent.safeParse(parseJSONOrNull(line.slice('data: '.length)));
       return parsed.success ? [parsed.data.response.usage] : [];
     });
   return usages.at(-1) ?? null;
-}
-
-function parseJSON(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
 }
