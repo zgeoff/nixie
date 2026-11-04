@@ -1,4 +1,6 @@
+import { match } from 'ts-pattern';
 import { z } from 'zod';
+import { parseServerMessage } from './parse-server-message.ts';
 
 export interface Notification {
   readonly method: string;
@@ -34,13 +36,7 @@ interface Waiter {
 
 const waitMs = 180_000;
 
-const message = z.object({
-  id: z.union([z.number(), z.string()]).optional(),
-  method: z.string().optional(),
-  params: z.unknown().optional(),
-  result: z.unknown().optional(),
-  error: z.unknown().optional(),
-});
+const logFields = z.record(z.string(), z.unknown());
 
 // Starts `codex app-server` on stdio and speaks its JSON-RPC: one JSON message per line.
 // The reply to a request the server sends the client, such as an approval or a token refresh.
@@ -104,33 +100,34 @@ function spawnAppServer(
 
   function handleMessage(line: string): void {
     const raw: unknown = JSON.parse(line);
-    const parsed = message.parse(raw);
+    const fields = logFields.safeParse(raw);
 
-    log.push({ from: 'server', ...message.passthrough().parse(raw) });
-    if (parsed.method && parsed.id !== undefined) {
-      send({ id: parsed.id, ...answerServerRequest(parsed.method, parsed.params) });
-      return;
-    }
-    if (parsed.method) {
-      const notification = { method: parsed.method, params: parsed.params };
+    log.push(fields.success ? { from: 'server', ...fields.data } : { from: 'server', raw });
+    match(parseServerMessage(raw))
+      .with({ kind: 'request' }, (request) => {
+        send({ id: request.id, ...answerServerRequest(request.method, request.params) });
+      })
+      .with({ kind: 'notification' }, ({ method, params }) => {
+        deliverNotification({ method, params });
+      })
+      .with({ kind: 'result' }, (reply) => {
+        pending.get(reply.id)?.resolve(reply.result);
+        pending.delete(reply.id);
+      })
+      .with({ kind: 'error' }, (reply) => {
+        pending.get(reply.id)?.reject(new Error(JSON.stringify(reply.error)));
+        pending.delete(reply.id);
+      })
+      .with({ kind: 'unmatched' }, () => {})
+      .exhaustive();
+  }
 
-      notifications.push({ position: log.length - 1, notification });
-      for (const waiter of waiters) {
-        if (waiter.method === notification.method && waiter.test(notification.params)) {
-          waiters.delete(waiter);
-          waiter.resolve(notification);
-        }
-      }
-      return;
-    }
-    const call = typeof parsed.id === 'number' ? pending.get(parsed.id) : undefined;
-
-    if (call) {
-      pending.delete(Number(parsed.id));
-      if (parsed.error) {
-        call.reject(new Error(JSON.stringify(parsed.error)));
-      } else {
-        call.resolve(parsed.result);
+  function deliverNotification(notification: Notification): void {
+    notifications.push({ position: log.length - 1, notification });
+    for (const waiter of waiters) {
+      if (waiter.method === notification.method && waiter.test(notification.params)) {
+        waiters.delete(waiter);
+        waiter.resolve(notification);
       }
     }
   }
