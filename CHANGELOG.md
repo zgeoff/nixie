@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.64.0](https://github.com/zgeoff/nixie/compare/v0.63.0...v0.64.0) (2026-11-04)
+
+
+### Features
+
+* **api:** retry the conversation's failed turn ([#839](https://github.com/zgeoff/nixie/issues/839)) ([1742218](https://github.com/zgeoff/nixie/commit/1742218af2687f6a30c20e6d00f1ac1c2c766a79))
+* **web:** name the cause of a failed turn and offer a retry ([#840](https://github.com/zgeoff/nixie/issues/840)) ([33cc9a5](https://github.com/zgeoff/nixie/commit/33cc9a5e6331ec1f9f36154c6044b042a1ce02e2))
+
+
+### Bug Fixes
+
+* **sessions:** fail a conversation turn on a refused model call ([#838](https://github.com/zgeoff/nixie/issues/838)) ([4dc1d86](https://github.com/zgeoff/nixie/commit/4dc1d8619ccf61eda49cc4245145cf452a40940b))
+
 ## [0.63.0](https://github.com/zgeoff/nixie/compare/v0.62.0...v0.63.0) (2026-11-04)
 
 
