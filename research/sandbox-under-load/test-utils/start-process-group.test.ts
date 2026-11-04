@@ -11,10 +11,10 @@ import { waitForCondition } from '../../../libs/testing/src/wait-for-condition';
 import { startProcessGroup } from './start-process-group';
 
 test('it stops the leader and the child the leader started', async () => {
-  const group = startProcessGroup(['sh', '-c', 'sleep 60 & wait'], {
-    stdout: 'ignore',
-    stderr: 'ignore',
-  });
+  const group = startProcessGroup(
+    ['sh', '-c', `while kill -0 ${process.pid} 2> /dev/null; do sleep 0.05; done & wait`],
+    { stdout: 'ignore', stderr: 'ignore' },
+  );
 
   onTestFinished(group.stop);
 
@@ -33,16 +33,17 @@ test('it stops the leader and the child the leader started', async () => {
 test.each([['SIGINT'], ['SIGTERM']] as const)(
   'it stops each live group when the process that started it gets %s',
   async (signal) => {
-    const holder = Bun.spawn(['bun', join(import.meta.dir, 'hold-process-group.ts')], {
+    const holder = startProcessGroup(['bun', join(import.meta.dir, 'hold-process-group.ts')], {
       stdout: 'pipe',
       stderr: 'ignore',
     });
 
-    onTestFinished(() => {
-      stopProcesses([holder.pid]);
-    });
+    onTestFinished(holder.stop);
 
-    const printed = await holder.stdout.pipeThrough(new TextDecoderStream()).getReader().read();
+    const printed = await holder.child.stdout
+      .pipeThrough(new TextDecoderStream())
+      .getReader()
+      .read();
     const leaderPID = Number(printed.value?.trim());
 
     onTestFinished(() => {
@@ -53,29 +54,30 @@ test.each([['SIGINT'], ['SIGTERM']] as const)(
 
     const [memberPID] = readDescendants(leaderPID);
 
-    holder.kill(signal);
+    holder.child.kill(signal);
 
-    await holder.exited;
+    await holder.child.exited;
     await waitForCondition(
       () => probeProcessGone(leaderPID) && probeProcessGone(Number(memberPID)),
       { timeoutMs: 2000 },
     );
 
-    expect(holder.signalCode).toBe(signal);
+    expect(holder.child.signalCode).toBe(signal);
   },
 );
 
 test('it stops the leader when the process that started it gets SIGKILL', async () => {
-  const holder = Bun.spawn(['bun', join(import.meta.dir, 'hold-process-group.ts')], {
+  const holder = startProcessGroup(['bun', join(import.meta.dir, 'hold-process-group.ts')], {
     stdout: 'pipe',
     stderr: 'ignore',
   });
 
-  onTestFinished(() => {
-    stopProcesses([holder.pid]);
-  });
+  onTestFinished(holder.stop);
 
-  const printed = await holder.stdout.pipeThrough(new TextDecoderStream()).getReader().read();
+  const printed = await holder.child.stdout
+    .pipeThrough(new TextDecoderStream())
+    .getReader()
+    .read();
   const leaderPID = Number(printed.value?.trim());
 
   onTestFinished(() => {
@@ -84,10 +86,10 @@ test('it stops the leader when the process that started it gets SIGKILL', async 
 
   await waitForCondition(() => readDescendants(leaderPID).length > 0, { timeoutMs: 2000 });
 
-  holder.kill('SIGKILL');
+  holder.child.kill('SIGKILL');
 
-  await holder.exited;
+  await holder.child.exited;
   await waitForCondition(() => probeProcessGone(leaderPID), { timeoutMs: 2000 });
 
-  expect(holder.signalCode).toBe('SIGKILL');
+  expect(holder.child.signalCode).toBe('SIGKILL');
 });
