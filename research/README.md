@@ -46,6 +46,7 @@ lists the variable.
 | [sdk-long-hold](sdk-long-hold/)                         | hook time limits, long holds, and `defer` across processes                                                                          |
 | [sdk-reasoning](sdk-reasoning/)                         | what nixie receives of the model's reasoning under its options, and its storage cost                                                |
 | [sdk-skills](sdk-skills/)                               | which skills and slash commands reach the model under nixie's options                                                               |
+| [spend-proxy-imp](spend-proxy-imp/)                     | whether a preview's model calls reach the model API only through imp's broker and the host's counting proxy                         |
 | [start-session-forwarding](start-session-forwarding/)   | a separate Start server that forwards the device session to the API and holds none itself                                           |
 | [tools-reverse-forward](tools-reverse-forward/)         | relay overhead, streamed responses, egress isolation and reopening after wake                                                       |
 | [turn-tokens](turn-tokens/)                             | the tokens of a turn for each model role, and the budget defaults they set                                                          |

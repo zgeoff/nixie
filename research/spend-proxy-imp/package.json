@@ -1,0 +1,10 @@
+{
+  "name": "@heynixie/spike-spend-proxy-imp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "spike": "bash run.sh",
+    "typecheck": "tsrs --noEmit"
+  }
+}
