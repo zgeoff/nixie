@@ -325,7 +325,11 @@ test('it starts a stranger on a selectable model with the tools it asks for, and
 
   invariant(outcome.status === 'ok');
 
-  const setup = await readTaskSetup(ctx.context, String(outcome.result['taskID']));
+  const taskID = outcome.result['taskID'];
+
+  invariant(typeof taskID === 'string');
+
+  const setup = await readTaskSetup(ctx.context, taskID);
 
   expect(setup).toStrictEqual({
     startedBy: 'conversation',
