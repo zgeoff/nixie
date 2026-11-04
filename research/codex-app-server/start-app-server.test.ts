@@ -69,6 +69,53 @@ test('it answers a token refresh request with the reply under the same ID', asyn
   ]);
 });
 
+test('it resolves a wait with a notification that arrived before the wait', async () => {
+  const ctx = setupTest();
+  const starting = startAppServer(ctx.child, () => ({ result: null }));
+
+  await ctx.writeStdout(`${JSON.stringify({ id: 1, result: {} })}\n`);
+  const server = await starting;
+
+  onTestFinished(() => server.stop());
+  const since = server.log.length;
+
+  await ctx.writeStdout(
+    `${JSON.stringify({ method: 'turn/completed', params: { turn: { id: 'turn-a' } } })}\n`,
+  );
+  await waitForCondition(() => server.log.length === since + 1);
+
+  expect(await server.waitFor('turn/completed', since, () => true)).toStrictEqual({
+    method: 'turn/completed',
+    params: { turn: { id: 'turn-a' } },
+  });
+});
+
+test('it skips a notification logged before the wait position', async () => {
+  const ctx = setupTest();
+  const starting = startAppServer(ctx.child, () => ({ result: null }));
+
+  await ctx.writeStdout(`${JSON.stringify({ id: 1, result: {} })}\n`);
+  const server = await starting;
+
+  onTestFinished(() => server.stop());
+  const before = server.log.length;
+
+  await ctx.writeStdout(
+    `${JSON.stringify({ method: 'turn/completed', params: { turn: { id: 'turn-old' } } })}\n`,
+  );
+  await waitForCondition(() => server.log.length === before + 1);
+  const waiting = server.waitFor('turn/completed', server.log.length, () => true);
+
+  await ctx.writeStdout(
+    `${JSON.stringify({ method: 'turn/completed', params: { turn: { id: 'turn-new' } } })}\n`,
+  );
+
+  expect(await waiting).toStrictEqual({
+    method: 'turn/completed',
+    params: { turn: { id: 'turn-new' } },
+  });
+});
+
 test('it fails an open request with the exit status when app-server exits', async () => {
   const ctx = setupTest();
   const starting = startAppServer(ctx.child, () => ({ result: null }));
