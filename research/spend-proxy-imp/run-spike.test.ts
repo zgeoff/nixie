@@ -6,10 +6,12 @@ import { webOrigin } from '../../apps/web/src/mocks/web-origin.ts';
 import { createSpikeClient } from './create-spike-client.ts';
 import { runSpike } from './run-spike.ts';
 import { makeAnswerQueue } from './test-utils/make-answer-queue.ts';
+import type { MockChange } from './test-utils/seed-mock-change.ts';
+import { seedMockChange } from './test-utils/seed-mock-change.ts';
 
 // The web client's mock of nixie's API answers the real client from its store, which each test
-// seeds. The runner sleeps between reads of a thread, so each sleep takes the next change to the
-// store from the test's queue: the part the model plays on a real preview.
+// seeds. The runner sleeps between reads of a thread, so each sleep writes the next change from the
+// test's queue to the store: the part the model plays on a real preview.
 function setupTest() {
   const outputs = new Map<string, string>();
 
@@ -31,22 +33,16 @@ function setupTest() {
 test("it fails with the guest probes' stderr when they exit 1", async () => {
   const ctx = setupTest();
   await store.sessions.create({ token: 'spike-token' });
-  const nextChange = makeAnswerQueue([
-    async () => {
-      await store.records.create({ kind: 'model.reply', message: { text: 'Four.' } });
-      await store.records.create({ kind: 'task.step_committed' });
-    },
-    async () => {
-      await store.records.create({ kind: 'model.reply', message: { text: 'No task.' } });
-      await store.records.create({ kind: 'task.step_committed' });
-    },
+  const nextChange = makeAnswerQueue<MockChange>([
+    { records: [{ kind: 'model.reply', text: 'Four.' }, { kind: 'task.step_committed' }] },
+    { records: [{ kind: 'model.reply', text: 'No task.' }, { kind: 'task.step_committed' }] },
   ]);
 
   expect(
     runSpike(ctx.target, {
       ...ctx.deps,
       sleep: async () => {
-        await nextChange()();
+        await seedMockChange(nextChange());
       },
       runGuestProbes: async () => ({ exitCode: 1, output: '', errors: 'sh: curl: not found\n' }),
     }),
@@ -56,15 +52,9 @@ test("it fails with the guest probes' stderr when they exit 1", async () => {
 test('it writes the output of each step when the guest probes pass', async () => {
   const ctx = setupTest();
   await store.sessions.create({ token: 'spike-token' });
-  const nextChange = makeAnswerQueue([
-    async () => {
-      await store.records.create({ kind: 'model.reply', message: { text: 'Four.' } });
-      await store.records.create({ kind: 'task.step_committed' });
-    },
-    async () => {
-      await store.records.create({ kind: 'model.reply', message: { text: 'No task.' } });
-      await store.records.create({ kind: 'task.step_committed' });
-    },
+  const nextChange = makeAnswerQueue<MockChange>([
+    { records: [{ kind: 'model.reply', text: 'Four.' }, { kind: 'task.step_committed' }] },
+    { records: [{ kind: 'model.reply', text: 'No task.' }, { kind: 'task.step_committed' }] },
   ]);
 
   const nextHostAnswer = makeAnswerQueue([
@@ -84,7 +74,7 @@ test('it writes the output of each step when the guest probes pass', async () =>
     host: async () => nextHostAnswer(),
     readTurnUsage: async () => '{"thread":"all","turns":2,"tokens":240}\n',
     sleep: async () => {
-      await nextChange()();
+      await seedMockChange(nextChange());
     },
     runGuestProbes: async () => ({ exitCode: 0, output: 'own-route\t429\t{}\n', errors: '' }),
   });
@@ -129,22 +119,16 @@ test('it writes the output of each step when the guest probes pass', async () =>
 test('it reads the thread again until the step ends', async () => {
   const ctx = setupTest();
   await store.sessions.create({ token: 'spike-token' });
-  const nextChange = makeAnswerQueue([
-    async () => {},
-    async () => {
-      await store.records.create({ kind: 'model.reply', message: { text: 'Four.' } });
-      await store.records.create({ kind: 'task.step_committed' });
-    },
-    async () => {
-      await store.records.create({ kind: 'model.reply', message: { text: 'No task.' } });
-      await store.records.create({ kind: 'task.step_committed' });
-    },
+  const nextChange = makeAnswerQueue<MockChange>([
+    {},
+    { records: [{ kind: 'model.reply', text: 'Four.' }, { kind: 'task.step_committed' }] },
+    { records: [{ kind: 'model.reply', text: 'No task.' }, { kind: 'task.step_committed' }] },
   ]);
 
   await runSpike(ctx.target, {
     ...ctx.deps,
     sleep: async () => {
-      await nextChange()();
+      await seedMockChange(nextChange());
     },
     runGuestProbes: async () => ({ exitCode: 0, output: '', errors: '' }),
   });
@@ -163,27 +147,25 @@ test("it waits for the new task's step and writes its thread", async () => {
   const ctx = setupTest();
   await store.sessions.create({ token: 'spike-token' });
   await store.tasks.create({ taskID: 'task-harbour', name: 'harbour note' });
-  const nextChange = makeAnswerQueue([
-    async () => {
-      await store.records.create({ kind: 'model.reply', message: { text: 'Four.' } });
-      await store.records.create({ kind: 'task.step_committed' });
+  const nextChange = makeAnswerQueue<MockChange>([
+    { records: [{ kind: 'model.reply', text: 'Four.' }, { kind: 'task.step_committed' }] },
+    {
+      tasks: [{ taskID: 'task-tide', name: 'tide note' }],
+      records: [{ kind: 'model.reply', text: 'Started it.' }, { kind: 'task.step_committed' }],
     },
-    async () => {
-      await store.tasks.create({ taskID: 'task-tide', name: 'tide note' });
-      await store.records.create({ kind: 'model.reply', message: { text: 'Started it.' } });
-      await store.records.create({ kind: 'task.step_committed' });
-    },
-    async () => {},
-    async () => {
-      await store.records.create({ kind: 'task.message', thread: 'task-tide' });
-      await store.records.create({ kind: 'task.step_committed', thread: 'task-tide' });
+    {},
+    {
+      records: [
+        { kind: 'task.message', thread: 'task-tide' },
+        { kind: 'task.step_committed', thread: 'task-tide' },
+      ],
     },
   ]);
 
   await runSpike(ctx.target, {
     ...ctx.deps,
     sleep: async () => {
-      await nextChange()();
+      await seedMockChange(nextChange());
     },
     runGuestProbes: async () => ({ exitCode: 0, output: '', errors: '' }),
   });
