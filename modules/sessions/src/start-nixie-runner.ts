@@ -1,11 +1,15 @@
 import type { CompactionSettings } from '@heynixie/compaction';
-import { subscribeToRecordCommits } from '@heynixie/log';
+import { removeSummaryKeys } from '@heynixie/compaction';
+import { removeThreadLinks } from '@heynixie/connectors';
+import { subscribeToRecordCommits, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import type { ResolvedProfile } from '@heynixie/models';
 import {
   buildModelGrant,
   deriveModelSecret,
+  modelSessionCleanupCompletedCodec,
+  modelSessionInvalidatedCodec,
   resolveModelCredentials,
   toTurnProfile,
 } from '@heynixie/models';
@@ -35,11 +39,13 @@ import { createActor } from 'xstate';
 import { buildDefaultStatus } from './build-default-status';
 import { createWorkerSandbox } from './create-worker-sandbox';
 import { isAtTaskLimit } from './is-at-task-limit';
+import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
 import { readTaskUsage } from './read-task-usage';
 import { runConversationStep } from './run-conversation-step';
+import { runGuestPurge } from './run-guest-purge';
 import { sessionImageBudget } from './session-image-budget';
 import type { TaskImp, TaskImpParts } from './task-imp-machine';
 import { taskImpMachine } from './task-imp-machine';
@@ -47,6 +53,7 @@ import type {
   ConversationMemory,
   ConversationMemorySettings,
   ConversationRun,
+  SessionCleanupCause,
   SessionDefinitions,
 } from './types';
 
@@ -68,6 +75,8 @@ export interface NixieRunnerOptions extends SystemTaskOptions {
 
 export interface NixieRunner {
   readonly runStep: RunStep;
+
+  readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
 }
 
 type TaskImpActor = Actor<typeof taskImpMachine>;
@@ -79,6 +88,7 @@ interface TaskRunner {
 
   readonly grants: Map<string, Promise<GrantSpec>>;
   readonly imps: Map<string, TaskImpActor>;
+  readonly guards: Map<string, SessionGuard>;
 }
 
 export const startNixieRunner = makeSystemTaskRunner<NixieRunnerOptions, NixieRunner>({
@@ -91,6 +101,7 @@ export const startNixieRunner = makeSystemTaskRunner<NixieRunnerOptions, NixieRu
       profiles: resolveModelCredentials(options.models, options.secrets),
       grants: new Map(),
       imps: new Map(),
+      guards: new Map(),
     };
 
     // The task role's secret goes in at start, so a deployment that lacks it fails here and not at
@@ -103,7 +114,10 @@ export const startNixieRunner = makeSystemTaskRunner<NixieRunnerOptions, NixieRu
 
     session.defer(() => watch.stop());
 
-    return { runStep: (input) => runStartedStep(runner, input) };
+    return {
+      runStep: (input) => runStartedStep(runner, input),
+      cleanupSessions: (cause) => runTaskSessionCleanup(runner, cause),
+    };
   },
 });
 
@@ -218,6 +232,7 @@ async function removeEndedTask(runner: TaskRunner, taskID: string): Promise<void
   const sandboxes = await removed.promise;
 
   runner.imps.delete(taskID);
+  runner.guards.delete(taskID);
   imp.stop();
   runner.options.log('nixie_runner.task_removed', { taskID, sandboxes });
 }
@@ -330,7 +345,33 @@ function buildStartedRun(runner: TaskRunner, setup: TaskSetup): StartedRun {
   };
 }
 
-async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<StepResult> {
+// A forget's cleanup waits for the whole step, the imp's acquire and release included, so its purge
+// never meets the imp part way through a change.
+function runStartedStep(runner: TaskRunner, input: StepInput): Promise<StepResult> {
+  return resolveTaskGuard(runner, input.taskID).withTurn((invalidated) =>
+    runGuardedStep(runner, input, invalidated),
+  );
+}
+
+function resolveTaskGuard(runner: TaskRunner, taskID: string): SessionGuard {
+  const held = runner.guards.get(taskID);
+
+  if (held !== undefined) {
+    return held;
+  }
+
+  const guard = makeSessionGuard();
+
+  runner.guards.set(taskID, guard);
+
+  return guard;
+}
+
+async function runGuardedStep(
+  runner: TaskRunner,
+  input: StepInput,
+  invalidated: AbortSignal,
+): Promise<StepResult> {
   const context = runner.options.context;
 
   const run = await readStartedRun(runner, input.taskID);
@@ -368,7 +409,11 @@ async function runStartedStep(runner: TaskRunner, input: StepInput): Promise<Ste
   imp.send({ type: 'acquire', reply: acquired });
 
   const held = await acquired.promise;
-  const result = await runConversationStep(buildTaskRun(runner, { run, ...held }), input);
+
+  const result = await runConversationStep(
+    buildTaskRun(runner, { run, ...held, invalidated }),
+    input,
+  );
 
   if (result.next === 'wait') {
     await releaseTaskImp(imp);
@@ -389,6 +434,7 @@ interface TaskRunParts {
   readonly run: StartedRun;
   readonly endpoint: RunEndpoint;
   readonly sandbox: Sandbox;
+  readonly invalidated: AbortSignal;
 }
 
 function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun {
@@ -415,6 +461,88 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     defaultZone: options.defaultZone,
     messaging: options.messaging,
     imageBudget: sessionImageBudget,
-    session: makeSessionGuard(),
+    session: buildHeldSessionGuard(parts.invalidated),
   };
+}
+
+// The step already holds the task's own guard, so the turn takes the signal that guard gave it.
+function buildHeldSessionGuard(invalidated: AbortSignal): SessionGuard {
+  return {
+    withTurn: (run) => run(invalidated),
+    withInvalidation: () => {
+      invariant(false, "a started task's cleanup goes through the task's own guard");
+    },
+  };
+}
+
+async function runTaskSessionCleanup(
+  runner: TaskRunner,
+  cause: SessionCleanupCause,
+): Promise<void> {
+  const context = runner.options.context;
+
+  const open = await readStartedTaskIDs(context, { end: 'open' });
+
+  const setups = await Promise.all(
+    open.map(async (taskID) => ({ taskID, setup: await readTaskSetup(context, taskID) })),
+  );
+
+  // Only a task that reads memory can hold a forgotten item in its session.
+  const readers = setups.filter((entry) => entry.setup?.options?.memory === 'read');
+
+  for (const entry of readers) {
+    await resolveTaskGuard(runner, entry.taskID).withInvalidation(() =>
+      cleanTaskSession(runner, entry.taskID, cause),
+    );
+  }
+}
+
+async function cleanTaskSession(
+  runner: TaskRunner,
+  taskID: string,
+  cause: SessionCleanupCause,
+): Promise<void> {
+  const context = runner.options.context;
+
+  await writeRecords(context.log, [
+    {
+      kind: modelSessionInvalidatedCodec.kind,
+      definitions: context.definitions(),
+      thread: taskID,
+      payload: modelSessionInvalidatedCodec.encode(cause),
+    },
+  ]);
+
+  await removeSummaryKeys(context.log, taskID);
+  await removeThreadLinks(context.log, taskID);
+
+  const sandboxes = await runner.options.sandboxes.list(taskID);
+
+  if (sandboxes.length > 0) {
+    await runTaskGuestPurge(runner, taskID);
+  }
+
+  await writeRecords(context.log, [
+    {
+      kind: modelSessionCleanupCompletedCodec.kind,
+      definitions: context.definitions(),
+      thread: taskID,
+      payload: modelSessionCleanupCompletedCodec.encode(cause),
+    },
+  ]);
+}
+
+async function runTaskGuestPurge(runner: TaskRunner, taskID: string): Promise<void> {
+  const imp = resolveTaskImp(runner, taskID);
+  const acquired = Promise.withResolvers<TaskImp>();
+
+  imp.send({ type: 'acquire', reply: acquired });
+
+  const held = await acquired.promise;
+
+  try {
+    await runGuestPurge({ sandbox: held.sandbox, command: runner.session.command });
+  } finally {
+    await releaseTaskImp(imp);
+  }
 }

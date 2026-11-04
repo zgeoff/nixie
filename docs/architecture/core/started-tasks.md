@@ -93,23 +93,27 @@ that the user paused or stopped keeps its state.
 
 A started task has a limit of turns and of dollars, which its start set or took from
 `models.limits.taskRun`. Each model turn record on the task's thread counts as one turn, and its
-token counts, priced with the task's profile, count as its dollars. A profile with no price table
-counts no dollars, so only its turns limit holds. A turn record sums its calls and leaves out the
-split of the cache writes by lifetime, so the count prices every cache write at the longer
-lifetime's price, and the count never falls below the spend.
+token counts, priced with the task's profile, count as its dollars. Each summary of the task's
+session records the token counts of its calls too, and they count as dollars and as no turn. A
+profile with no price table counts no dollars, so only its turns limit holds. A record sums its
+calls and leaves out the split of the cache writes by lifetime, so the count prices every cache
+write at the longer lifetime's price, and the count never falls below the spend.
 
 Before each step runs a turn, the runner counts the task's turns and dollars. When either count has
 reached its limit, the step runs no turn. In one transaction it asks for a pause, writes a
 `task.limit_reached` record on the task's thread, and writes a `task.limit_notice` record into the
 inbox of the task that started it, unless that task has finished. The step then commits with its
 work left, so the task pauses in the ready state. The notice wakes the starter, and its model reads
-the task's name and counts in a system message that says only the user can resume the task.
+the task's ID and counts in a system message that says only the user can resume the task. The
+message leaves out the task's name, because a model wrote that name, and the model trusts a system
+message as nixie's own text.
 
 While the newest limit record on the task's thread is `task.limit_reached`, a resume or a restart of
 the task refuses. The user raises the limit with the `task-raise` host command
 ([host commands](../deployment/host-commands.md#tasks)), which writes a `task.limits_raised` record
-and resumes the task in one transaction. A raise names turns, dollars or both, and refuses when no
-value goes above the limit the task reached or one falls below it. The max of
+and resumes a paused task in one transaction. A task that the user stopped after the pause stays
+stopped, and a restart runs it under the raised limit. A raise names turns, dollars or both, and
+refuses when no value goes above the limit the task reached or one falls below it. The max of
 `models.limits.taskRun` never caps a raise, because it bounds only what a start asks for.
 
 ## Routing records

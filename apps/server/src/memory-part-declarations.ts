@@ -15,25 +15,33 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
   },
   {
     name: 'memory',
-    needs: ['server_parts', 'conversation_imp', 'checker'],
-    start: makeRetriedStart('memory', (parts, reader) =>
-      startMemory(
+    needs: ['server_parts', 'conversation_imp', 'nixie_runner', 'checker'],
+    start: makeRetriedStart('memory', (parts, reader) => {
+      const conversation = reader.get('conversation_imp');
+      const tasks = reader.get('nixie_runner');
+
+      return startMemory(
         parts,
-        reader.get('conversation_imp').cleanupSessions,
+        async (cause) => {
+          await conversation.cleanupSessions(cause);
+          await tasks.cleanupSessions(cause);
+        },
         reader.get('checker').check,
-      ),
-    ),
+      );
+    }),
   },
   {
     name: 'session_cleanup',
-    needs: ['conversation_imp', 'memory'],
+    needs: ['conversation_imp', 'nixie_runner', 'memory'],
     start: (reader) => {
       const store = reader.get('memory');
       const conversation = reader.get('conversation_imp');
+      const tasks = reader.get('nixie_runner');
 
       return Promise.resolve(async (cause) => {
         await store.removeMessages([cause.recordSequence]);
         await conversation.cleanupSessions(cause);
+        await tasks.cleanupSessions(cause);
       });
     },
   },

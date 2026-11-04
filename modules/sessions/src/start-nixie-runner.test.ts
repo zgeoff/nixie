@@ -500,6 +500,43 @@ test('it gives another me the persona and the pinned memory', async () => {
   expect(input).toInclude('Keeps bees on the allotment');
 });
 
+test('it purges and invalidates the session of a task that reads memory on a forget, so its next turn opens a new one', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+
+  const [, second] = ctx.guest.turns;
+
+  expect(invalidated.map((record) => record.thread)).toStrictEqual([taskID]);
+  expect(ctx.guest.purged).toHaveLength(1);
+  expect(second?.resume).toBeNull();
+});
+
+test('it leaves the session of a task that reads no memory as it is on a forget', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, { memory: 'none' });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+
+  expect(invalidated).toStrictEqual([]);
+  expect(ctx.guest.purged).toStrictEqual([]);
+});
+
 test('it pauses a task at its turn limit with no turn, and tells its starter in a limit notice', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();

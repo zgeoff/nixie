@@ -4,9 +4,12 @@ import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-ut
 import invariant from 'tiny-invariant';
 import { buildStepRunID } from './build-step-run-id';
 import { buildTaskStartTool } from './build-task-start-tool';
+import { claimTask } from './claim-task';
 import { readTaskSetup } from './read-task-setup';
 import { buildMockTaskStartBounds } from './test-utils/build-mock-task-start-bounds';
 import { createTestConversationClaim } from './test-utils/create-test-conversation-claim';
+import { seedConversationStep } from './test-utils/seed-conversation-step';
+import { seedStartedTask } from './test-utils/seed-started-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 
@@ -405,6 +408,56 @@ test.each([
     .execute();
 
   expect(outcome).toStrictEqual({ status: 'error', message });
+  expect(started).toStrictEqual([]);
+});
+
+test('it starts nothing that reads memory for a started task that does not', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { memory: 'none', tools: ['tasks.list', 'task.message', 'task.start'] },
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  const tool = buildTaskStartTool(ctx.context, { ownerName: 'Robin' }, buildMockTaskStartBounds());
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: {
+        name: 'Recall',
+        brief: 'Report back what the pinned memory says.',
+        persona: 'default',
+        memory: 'read',
+      },
+    }),
+    buildMockToolContext({
+      run: {
+        thread: taskID,
+        stepRunID: buildStepRunID(claim),
+        tools: ['tasks.list', 'task.message', 'task.start'],
+      },
+    }),
+  );
+
+  const started = await ctx.db
+    .selectFrom('tasks')
+    .select('task_id')
+    .where('started_by', '=', taskID)
+    .execute();
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'you do not read memory, so a task you start cannot either, and nixie started nothing',
+  });
+
   expect(started).toStrictEqual([]);
 });
 

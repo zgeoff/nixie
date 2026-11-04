@@ -22,6 +22,7 @@ export interface TaskStartChoice {
 export type TaskStartChoiceRefusal =
   | { readonly reason: 'unknown_model'; readonly model: string }
   | { readonly reason: 'stranger_with_memory' }
+  | { readonly reason: 'wider_memory' }
   | { readonly reason: 'over_limit'; readonly limit: keyof TaskLimits; readonly max: number }
   | { readonly reason: 'wider_tools'; readonly tools: readonly string[] }
   | { readonly reason: 'memory_tools'; readonly tools: readonly string[] }
@@ -31,11 +32,18 @@ export type TaskStartPlan =
   | { readonly status: 'planned'; readonly options: TaskRunOptions }
   | { readonly status: 'refused'; readonly refusal: TaskStartChoiceRefusal };
 
+export interface TaskStarter {
+  readonly tools: readonly string[];
+  readonly memory: TaskMemory;
+}
+
 export function planTaskStart(
   choice: TaskStartChoice,
-  starterTools: readonly string[],
+  starter: TaskStarter,
   bounds: TaskStartBounds,
 ): TaskStartPlan {
+  const starterTools = starter.tools;
+
   const model =
     choice.model === undefined
       ? null
@@ -52,6 +60,11 @@ export function planTaskStart(
   // until then code refuses it.
   if (persona === 'none' && memory === 'read') {
     return refuse({ reason: 'stranger_with_memory' });
+  }
+
+  // Memory reaches a task's turn through its options and no tool, so the tool check misses it.
+  if (memory === 'read' && starter.memory === 'none') {
+    return refuse({ reason: 'wider_memory' });
   }
 
   const limits = {

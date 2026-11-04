@@ -1,4 +1,6 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { AskedLimits, TaskLimitRaiseRefusal } from './plan-task-limit-raise';
+import { planTaskLimitRaise } from './plan-task-limit-raise';
 import { readLimitRecords } from './read-limit-records';
 import { taskLimitsRaisedCodec } from './task-limits-raised-codec';
 import type { TaskLimits, TaskState, TasksContext, TasksTables } from './types';
@@ -6,10 +8,7 @@ import { writeTaskControlInTransaction } from './write-task-control-in-transacti
 
 export interface TaskLimitRaise {
   readonly taskID: string;
-  readonly limits: {
-    readonly turns?: number | undefined;
-    readonly dollars?: number | undefined;
-  };
+  readonly limits: AskedLimits;
 }
 
 export type TaskLimitRaiseOutcome =
@@ -19,7 +18,7 @@ export type TaskLimitRaiseOutcome =
       readonly isPauseRequested: boolean;
       readonly limits: TaskLimits;
     }
-  | { readonly status: 'refused'; readonly reason: 'unknown_task' | 'not_held' | 'not_raised' };
+  | { readonly status: 'refused'; readonly reason: TaskLimitRaiseRefusal };
 
 export function writeTaskLimitRaise(
   context: Pick<TasksContext, 'definitions' | 'log'>,
@@ -33,25 +32,15 @@ export function writeTaskLimitRaise(
       .where('task_id', '=', raise.taskID)
       .executeTakeFirst();
 
-    if (task === undefined) {
-      return { status: 'refused', reason: 'unknown_task' };
-    }
-
     const limitRecords = await readLimitRecords(tx, raise.taskID);
 
-    const held = limitRecords.heldAt;
+    const plan = planTaskLimitRaise(
+      { isKnown: task !== undefined, heldAt: limitRecords.heldAt },
+      raise.limits,
+    );
 
-    if (held === null) {
-      return { status: 'refused', reason: 'not_held' };
-    }
-
-    const limits = {
-      turns: raise.limits.turns ?? held.turns,
-      dollars: raise.limits.dollars ?? held.dollars,
-    };
-
-    if (limits.turns < held.turns || limits.dollars < held.dollars || isSameLimits(limits, held)) {
-      return { status: 'refused', reason: 'not_raised' };
+    if (plan.status === 'refused') {
+      return plan;
     }
 
     await writeRecordsInTransaction(tx, context.log, [
@@ -59,7 +48,7 @@ export function writeTaskLimitRaise(
         kind: 'task.limits_raised',
         definitions: context.definitions(),
         thread: raise.taskID,
-        payload: taskLimitsRaisedCodec.encode({ taskID: raise.taskID, limits }),
+        payload: taskLimitsRaisedCodec.encode({ taskID: raise.taskID, limits: plan.limits }),
       },
     ]);
 
@@ -80,11 +69,7 @@ export function writeTaskLimitRaise(
       status: 'raised',
       state: row.state,
       isPauseRequested: row.pause_requested === 1,
-      limits,
+      limits: plan.limits,
     };
   });
-}
-
-function isSameLimits(left: TaskLimits, right: TaskLimits): boolean {
-  return left.turns === right.turns && left.dollars === right.dollars;
 }

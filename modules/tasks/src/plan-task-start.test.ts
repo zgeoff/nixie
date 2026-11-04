@@ -6,7 +6,10 @@ test('it plans a start with no options as the persona, no memory, the default to
   expect(
     planTaskStart(
       {},
-      ['tasks.list', 'task.message', 'task.start', 'time.now', 'web_fetch'],
+      {
+        tools: ['tasks.list', 'task.message', 'task.start', 'time.now', 'web_fetch'],
+        memory: 'read',
+      },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({
@@ -34,7 +37,7 @@ test('it plans a stranger on a selectable model with the tools asked for and the
         report: 'next_turn',
         limits: { turns: 8 },
       },
-      ['tasks.list', 'task.message', 'time.now', 'web_fetch'],
+      { tools: ['tasks.list', 'task.message', 'time.now', 'web_fetch'], memory: 'read' },
       buildMockTaskStartBounds({
         models: [{ name: 'second-look', profile: 'router-b', description: 'Another family' }],
       }),
@@ -56,7 +59,7 @@ test('it plans a stranger on a selectable model with the tools asked for and the
 test('it gives a task that reads memory the memory read tools that its starter holds', () => {
   const plan = planTaskStart(
     { memory: 'read', tools: [] },
-    ['tasks.list', 'task.message', 'memory.recall', 'memory.remember'],
+    { tools: ['tasks.list', 'task.message', 'memory.recall', 'memory.remember'], memory: 'read' },
     buildMockTaskStartBounds(),
   );
 
@@ -67,7 +70,11 @@ test('it gives a task that reads memory the memory read tools that its starter h
 });
 
 test('it leaves out each base tool that its starter lacks', () => {
-  const plan = planTaskStart({ tools: [] }, ['task.message'], buildMockTaskStartBounds());
+  const plan = planTaskStart(
+    { tools: [] },
+    { tools: ['task.message'], memory: 'read' },
+    buildMockTaskStartBounds(),
+  );
 
   expect(plan).toMatchObject({ status: 'planned', options: { tools: ['task.message'] } });
 });
@@ -76,7 +83,7 @@ test('it refuses a model that is not selectable', () => {
   expect(
     planTaskStart(
       { model: 'opus-high' },
-      ['tasks.list', 'task.message'],
+      { tools: ['tasks.list', 'task.message'], memory: 'read' },
       buildMockTaskStartBounds({
         models: [{ name: 'second-look', profile: 'router-b', description: 'Another family' }],
       }),
@@ -88,7 +95,7 @@ test('it refuses a tool list wider than its starter holds', () => {
   expect(
     planTaskStart(
       { tools: ['web_fetch', 'memory.remember', 'time.now'] },
-      ['tasks.list', 'task.message', 'time.now'],
+      { tools: ['tasks.list', 'task.message', 'time.now'], memory: 'read' },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({
@@ -102,7 +109,11 @@ test.each([
   ['dollars', { dollars: 10.5 }, 10],
 ] as const)('it refuses %s above the max', (limit, limits, max) => {
   expect(
-    planTaskStart({ limits }, ['tasks.list', 'task.message'], buildMockTaskStartBounds()),
+    planTaskStart(
+      { limits },
+      { tools: ['tasks.list', 'task.message'], memory: 'read' },
+      buildMockTaskStartBounds(),
+    ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'over_limit', limit, max } });
 });
 
@@ -110,7 +121,7 @@ test('it plans limits at the max', () => {
   expect(
     planTaskStart(
       { limits: { turns: 100, dollars: 10 } },
-      ['tasks.list', 'task.message'],
+      { tools: ['tasks.list', 'task.message'], memory: 'read' },
       buildMockTaskStartBounds(),
     ),
   ).toMatchObject({ status: 'planned', options: { limits: { turns: 100, dollars: 10 } } });
@@ -120,17 +131,27 @@ test('it refuses a stranger that reads memory', () => {
   expect(
     planTaskStart(
       { persona: 'none', memory: 'read' },
-      ['tasks.list', 'task.message'],
+      { tools: ['tasks.list', 'task.message'], memory: 'read' },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'stranger_with_memory' } });
+});
+
+test('it refuses a task that reads memory for a starter that does not', () => {
+  expect(
+    planTaskStart(
+      { persona: 'default', memory: 'read' },
+      { tools: ['tasks.list', 'task.message', 'task.start'], memory: 'none' },
+      buildMockTaskStartBounds(),
+    ),
+  ).toStrictEqual({ status: 'refused', refusal: { reason: 'wider_memory' } });
 });
 
 test('it refuses a memory tool for a task with no memory', () => {
   expect(
     planTaskStart(
       { memory: 'none', tools: ['memory.recall'] },
-      ['tasks.list', 'task.message', 'memory.recall'],
+      { tools: ['tasks.list', 'task.message', 'memory.recall'], memory: 'read' },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({
@@ -143,7 +164,7 @@ test('it refuses a tool that only the conversation can use, though the starter h
   expect(
     planTaskStart(
       { tools: ['skill_read'] },
-      ['tasks.list', 'task.message', 'skill_read'],
+      { tools: ['tasks.list', 'task.message', 'skill_read'], memory: 'read' },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({
@@ -156,7 +177,7 @@ test('it refuses a memory write tool for a task that reads memory', () => {
   expect(
     planTaskStart(
       { memory: 'read', tools: ['memory.remember'] },
-      ['tasks.list', 'task.message', 'memory.remember'],
+      { tools: ['tasks.list', 'task.message', 'memory.remember'], memory: 'read' },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({

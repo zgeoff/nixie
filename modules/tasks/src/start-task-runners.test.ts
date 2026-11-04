@@ -292,8 +292,13 @@ test('it claims a message to the conversation while every claim loop of the star
 
   const started = new Set<string>();
 
-  const conversation = mock<RunStep>(() =>
-    Promise.resolve<StepResult>({ next: 'wait', records: [], acknowledged: [] }),
+  // A step that left the message unread would leave the conversation ready, and it would run again.
+  const conversation = mock<RunStep>((input) =>
+    Promise.resolve<StepResult>({
+      next: 'wait',
+      records: [],
+      acknowledged: input.inbox.map((record) => record.sequence),
+    }),
   );
 
   const runners = startTaskRunners(ctx.context, {

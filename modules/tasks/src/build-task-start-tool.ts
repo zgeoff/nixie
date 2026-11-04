@@ -2,9 +2,11 @@ import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
+import { conversationTaskID } from './conversation-task-id';
 import type { TaskStartChoiceRefusal } from './plan-task-start';
 import { planTaskStart } from './plan-task-start';
-import type { TaskMessaging, TaskReport, TaskStartBounds, TasksContext } from './types';
+import { readTaskSetup } from './read-task-setup';
+import type { TaskMemory, TaskMessaging, TaskReport, TaskStartBounds, TasksContext } from './types';
 import type { TaskStartRefusal } from './write-task-start';
 import { writeTaskStart } from './write-task-start';
 
@@ -60,7 +62,10 @@ export function buildTaskStartTool(
     execution: 'direct',
     run: async (call, tool): Promise<ToolOutcome> => {
       const input = startArguments.parse(call.input);
-      const plan = planTaskStart(input, tool.run.tools, bounds);
+
+      const memory = await readStarterMemory(context, tool.run.thread);
+
+      const plan = planTaskStart(input, { tools: tool.run.tools, memory }, bounds);
 
       if (plan.status === 'refused') {
         return { status: 'error', message: renderChoiceRefusal(plan.refusal) };
@@ -154,6 +159,20 @@ function buildStartInput(bounds: TaskStartBounds): JSONObject {
   };
 }
 
+// The conversation reads memory. Any other starter reads it only when its own start said so.
+async function readStarterMemory(
+  context: Pick<TasksContext, 'log'>,
+  thread: string,
+): Promise<TaskMemory> {
+  if (thread === conversationTaskID) {
+    return 'read';
+  }
+
+  const setup = await readTaskSetup(context, thread);
+
+  return setup?.options?.memory ?? 'none';
+}
+
 function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
   return match(refusal)
     .with(
@@ -163,6 +182,10 @@ function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
     .with(
       { reason: 'stranger_with_memory' },
       () => 'a task with persona none cannot read memory, so nixie started nothing',
+    )
+    .with(
+      { reason: 'wider_memory' },
+      () => 'you do not read memory, so a task you start cannot either, and nixie started nothing',
     )
     .with(
       { reason: 'over_limit' },

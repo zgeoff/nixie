@@ -31,7 +31,7 @@ export function renderInboxMessage(
   }
 
   if (record.kind === 'task.limit_notice') {
-    return renderLimitNotice(record, times, view.messaging);
+    return renderLimitNotice(record, times, view.messaging.ownerName);
   }
 
   return `A ${record.kind} record arrived: ${JSON.stringify(record.payload)}`;
