@@ -58,19 +58,22 @@ export function startCountProxy(upstream: string, httpClient: HTTPClient): Count
     });
     const reply = { status: response.status, headers: buildClientHeaders(response.headers) };
 
+    const call = { ...forward.call, status: response.status };
+    const missingUsage = new Error(
+      `the ${response.status} response to ${call.method} ${call.path} held no usage`,
+    );
+
     if (!response.body) {
-      calls.push({ ...forward.call, status: response.status, usage: null, error: null });
+      recordCall(call, null, response.ok ? missingUsage : null);
       return new Response(null, reply);
     }
     const [toClient, toCount] = response.body.tee();
-    const call = { ...forward.call, status: response.status };
     const counted = readUsage(toCount)
       .then((usage) => {
-        calls.push({ ...call, usage, error: null });
+        recordCall(call, usage, usage === null && response.ok ? missingUsage : null);
       })
       .catch((error: unknown) => {
-        failures.push(error);
-        calls.push({ ...call, usage: null, error: String(error) });
+        recordCall(call, null, error);
       })
       .finally(() => {
         counting.delete(counted);
@@ -78,6 +81,13 @@ export function startCountProxy(upstream: string, httpClient: HTTPClient): Count
 
     counting.add(counted);
     return new Response(toClient, reply);
+  }
+
+  function recordCall(call: Omit<ProxyCall, 'usage' | 'error'>, usage: unknown, error: unknown): void {
+    if (error !== null) {
+      failures.push(error);
+    }
+    calls.push({ ...call, usage, error: error === null ? null : String(error) });
   }
 
   return {
