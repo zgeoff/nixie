@@ -36,7 +36,6 @@ const completedEvent = z.object({
 export function startCountProxy(upstream: string, httpClient: HTTPClient): CountProxy {
   const calls: ProxyCall[] = [];
   const counting = new Set<Promise<void>>();
-  const failures: unknown[] = [];
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -48,7 +47,7 @@ export function startCountProxy(upstream: string, httpClient: HTTPClient): Count
     const forward = buildForward(request, upstream);
 
     if (forward.upgrade) {
-      calls.push({ ...forward.call, status: refusedUpgradeStatus, usage: null, error: null });
+      calls.push(buildRefusedCall(forward.call));
       return new Response('the counting proxy reads HTTP only', { status: refusedUpgradeStatus });
     }
     const response = await httpClient(forward.target, {
@@ -57,23 +56,21 @@ export function startCountProxy(upstream: string, httpClient: HTTPClient): Count
       body: forward.hasBody ? await request.arrayBuffer() : undefined,
     });
     const reply = { status: response.status, headers: buildClientHeaders(response.headers) };
-
-    const call = { ...forward.call, status: response.status };
-    const missingUsage = new Error(
-      `the ${response.status} response to ${call.method} ${call.path} held no usage`,
-    );
+    const answered = { ...forward.call, status: response.status, ok: response.ok };
 
     if (!response.body) {
-      recordCall(call, null, response.ok ? missingUsage : null);
+      calls.push(buildCountedCall(answered, ''));
       return new Response(null, reply);
     }
     const [toClient, toCount] = response.body.tee();
-    const counted = readUsage(toCount)
-      .then((usage) => {
-        recordCall(call, usage, usage === null && response.ok ? missingUsage : null);
-      })
-      .catch((error: unknown) => {
-        recordCall(call, null, error);
+    const counted = new Response(toCount)
+      .text()
+      .then(
+        (text) => buildCountedCall(answered, text),
+        (error: unknown) => buildUnreadCall(answered, error),
+      )
+      .then((call) => {
+        calls.push(call);
       })
       .finally(() => {
         counting.delete(counted);
@@ -83,20 +80,15 @@ export function startCountProxy(upstream: string, httpClient: HTTPClient): Count
     return new Response(toClient, reply);
   }
 
-  function recordCall(call: Omit<ProxyCall, 'usage' | 'error'>, usage: unknown, error: unknown): void {
-    if (error !== null) {
-      failures.push(error);
-    }
-    calls.push({ ...call, usage, error: error === null ? null : String(error) });
-  }
-
   return {
     url: `http://127.0.0.1:${server.port}`,
     calls,
     waitForCounts: async () => {
       await Promise.all(counting);
-      if (failures.length > 0) {
-        throw new AggregateError(failures, `the proxy could not read ${failures.length} usage`);
+      const errors = calls.flatMap((call) => (call.error === null ? [] : [new Error(call.error)]));
+
+      if (errors.length > 0) {
+        throw new AggregateError(errors, `the proxy could not read ${errors.length} usage`);
       }
     },
     stop: async () => {
@@ -142,8 +134,40 @@ function buildClientHeaders(upstreamHeaders: Headers): Headers {
   return headers;
 }
 
-async function readUsage(stream: ReadableStream<Uint8Array>): Promise<unknown> {
-  const text = await new Response(stream).text();
+type CallFacts = Pick<ProxyCall, 'method' | 'path' | 'upgrade'>;
+type AnsweredCall = CallFacts & { readonly status: number; readonly ok: boolean };
+
+function buildRefusedCall(call: CallFacts): ProxyCall {
+  return { ...call, status: refusedUpgradeStatus, usage: null, error: null };
+}
+
+// All 14 successful model responses in the spike's logs ended with their usage, so a successful
+// response without one is a count failure, not a call that cost nothing.
+function buildCountedCall({ ok, ...call }: AnsweredCall, body: string): ProxyCall {
+  const usage = parseUsage(body);
+  const missing = usage === null && ok;
+
+  return {
+    ...call,
+    usage,
+    error: missing ? `the ${call.status} response to ${call.method} ${call.path} held no usage` : null,
+  };
+}
+
+function buildUnreadCall(call: AnsweredCall, error: unknown): ProxyCall {
+  const { method, path, upgrade, status } = call;
+
+  return {
+    method,
+    path,
+    upgrade,
+    status,
+    usage: null,
+    error: `the proxy could not read the response: ${String(error)}`,
+  };
+}
+
+function parseUsage(text: string): unknown {
   const usages = text
     .split('\n')
     .filter((line) => line.startsWith('data: '))
