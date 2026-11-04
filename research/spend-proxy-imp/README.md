@@ -24,13 +24,15 @@ Each line ends with [measured]: the spike made the request or the read that show
 - The broker adds the credential only under the URL path `/<imp>/`, which leads to the proxy. It
   refused the 6 other paths that the spike tried, dot segments and encoded slashes included
   [measured].
-- Code in the imp reached the model API with its HTTPS proxy turned off, so the broker never saw the
-  request and added no credential. The model API answered 401 [measured].
+- A direct path from the imp exists, and it carries no credential. With its HTTPS proxy turned off,
+  code in the imp reached the model API and the host's model route listener, which sits in front of
+  the proxy. The broker never saw either request, and the model API answered both with 401
+  [measured].
 - The model API answered every model call with a 429, because the credential was at its account's
   rate limit during the spike. The count stayed at 0 tokens and $0 [measured].
 
-No request with the credential skips the proxy, so the hard stop can sit on the host. The spike
-never saw the proxy count a reply with usage, which the
+No request that carries the credential skips the proxy, so the hard stop can sit on the host. The
+spike never saw the proxy count a reply with usage, which the
 [issue](https://linear.app/zgeoff/issue/GEO-248) keeps open.
 
 ## Run it

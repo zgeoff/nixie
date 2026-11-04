@@ -111,7 +111,7 @@ name [measured]. The guest's environment held no model credential [measured].
 
 ### The model calls
 
-The broker's audit lists each model call from the guest between 12:55 and 13:15 UTC. Each one got
+The broker's audit lists each model call from the guest between 12:55 and 13:29 UTC. Each one got
 the credential from `preview-model-counted` on the path `/<imp>/v1/messages` [measured]. The model
 API answered each one with a 429 and this body [measured]:
 
@@ -121,12 +121,12 @@ API answered each one with a 429 and this body [measured]:
 
 | Calls | Request size | Sender                                                                   |
 | ----- | ------------ | ------------------------------------------------------------------------ |
-| 8     | 33 to 41 KB  | the conversation, one call for each message the spike sent               |
-| 5     | 15 KB        | the memory writer, a system task that retried at doubling gaps from 30 s |
-| 4     | 93 bytes     | the spike's one-line message request, by hand and as a probe             |
+| 10    | 33 to 44 KB  | the conversation, one call for each message the spike sent               |
+| 6     | 15 KB        | the memory writer, a system task that retried at doubling gaps from 30 s |
+| 6     | 93 bytes     | the spike's one-line message request, by hand and as a probe             |
 
-The conversation's 8 `model.turn_ended` records match its 8 calls [measured]. The memory writer's 5
-`memory.writer_failed` records match its 5 calls to the second [measured]. The message that asked
+The conversation's 10 `model.turn_ended` records match its 10 calls [measured]. The memory writer's
+6 `memory.writer_failed` records match its 6 calls to the second [measured]. The message that asked
 nixie to start a task got the same 429, so the conversation started no task [measured].
 
 The preview service logged `proxy.started` for the imp at 12:55:24, a second before the first call
