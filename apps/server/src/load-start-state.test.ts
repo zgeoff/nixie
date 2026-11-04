@@ -3,7 +3,7 @@ import { mkdtemp, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
-import { createConversationTask } from '@heynixie/tasks';
+import { StepFailedError, createConversationTask } from '@heynixie/tasks';
 import { buildReadinessChecks } from './build-readiness-checks';
 import { loadStartState } from './load-start-state';
 import { sendTestMessage } from './test-utils/send-test-message';
@@ -88,6 +88,32 @@ test('it reports the conversation turns as passing after a restart with the stor
   expect(report).toStrictEqual({
     isReady: true,
     reason: null,
+  });
+});
+
+test('it reports the conversation turns as failing after a restart while a failed turn waits for a retry', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runStep = mock(() =>
+    Promise.reject(
+      new StepFailedError('the weekly allowance is used up', {
+        reason: 'model_api.quota',
+        isWaitingForOwner: true,
+        records: [],
+      }),
+    ),
+  );
+
+  await sendTestMessage(ctx.context, runStep, 'Name a river.');
+
+  const restarted = await ctx.restart();
+  const state = await loadStartState(restarted);
+
+  expect(state.read().turns).toStrictEqual({
+    isReady: false,
+    reason: 'the last turn failed, the last waiting for a retry',
   });
 });
 

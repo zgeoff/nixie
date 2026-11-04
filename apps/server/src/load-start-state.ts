@@ -18,10 +18,17 @@ export async function loadStartState(writer: Pick<Writer, 'db'>): Promise<StartS
     return state;
   }
 
-  const errors = await readConversationErrors(writer.db);
+  const conversation = await readConversationErrors(writer.db);
 
-  if (errors >= DEFAULT_MAX_STEP_ERRORS) {
-    state.update({ turns: { isReady: false, reason: formatFailedTurns(errors) } });
+  if (conversation.isWaitingForRetry) {
+    state.update({
+      turns: {
+        isReady: false,
+        reason: `${formatFailedTurns(conversation.errors)}, the last waiting for a retry`,
+      },
+    });
+  } else if (conversation.errors >= DEFAULT_MAX_STEP_ERRORS) {
+    state.update({ turns: { isReady: false, reason: formatFailedTurns(conversation.errors) } });
   }
 
   return state;

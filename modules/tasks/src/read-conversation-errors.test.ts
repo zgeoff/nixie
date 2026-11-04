@@ -3,6 +3,7 @@ import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { readConversationErrors } from './read-conversation-errors';
+import { StepFailedError } from './step-failed-error';
 import { createTestClaim } from './test-utils/create-test-claim';
 import { createTestConversationClaim } from './test-utils/create-test-conversation-claim';
 import { startTestTasks } from './test-utils/start-test-tasks';
@@ -17,7 +18,7 @@ test('it reads no errors before the conversation exists', async () => {
   const ctx = await setupTest();
   const errors = await readConversationErrors(ctx.writer.db);
 
-  expect(errors).toBe(0);
+  expect(errors).toStrictEqual({ errors: 0, isWaitingForRetry: false });
 });
 
 test('it reads no errors for a conversation whose steps have not thrown', async () => {
@@ -27,7 +28,7 @@ test('it reads no errors for a conversation whose steps have not thrown', async 
 
   const errors = await readConversationErrors(ctx.writer.db);
 
-  expect(errors).toBe(0);
+  expect(errors).toStrictEqual({ errors: 0, isWaitingForRetry: false });
 });
 
 test("it reads the conversation's failed steps in a row", async () => {
@@ -63,7 +64,27 @@ test("it reads the conversation's failed steps in a row", async () => {
 
   const errors = await readConversationErrors(ctx.writer.db);
 
-  expect(errors).toBe(2);
+  expect(errors).toStrictEqual({ errors: 2, isWaitingForRetry: false });
+});
+
+test('it reads a conversation whose failed step waits for a retry', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Name a river.');
+
+  await writeStepError(ctx.context, claim, {
+    error: new StepFailedError('the weekly allowance is used up', {
+      reason: 'quota',
+      isWaitingForOwner: true,
+      records: [],
+    }),
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const errors = await readConversationErrors(ctx.writer.db);
+
+  expect(errors).toStrictEqual({ errors: 1, isWaitingForRetry: true });
 });
 
 test("it leaves out another task's failed steps", async () => {
@@ -81,5 +102,5 @@ test("it leaves out another task's failed steps", async () => {
 
   const errors = await readConversationErrors(ctx.writer.db);
 
-  expect(errors).toBe(0);
+  expect(errors).toStrictEqual({ errors: 0, isWaitingForRetry: false });
 });
