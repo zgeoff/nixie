@@ -15,8 +15,8 @@ export class StepFailedError extends Error {
 
   readonly records: readonly RecordInput[];
 
-  constructor(message: string, failure: StepFailure, options?: Readonly<ErrorOptions>) {
-    super(message, options);
+  constructor(message: string, failure: StepFailure) {
+    super(message);
 
     this.name = 'StepFailedError';
     this.reason = failure.reason;
