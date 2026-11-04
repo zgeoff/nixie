@@ -23,6 +23,8 @@ export interface CountProxy {
   readonly stop: () => Promise<void>;
 }
 
+export type HTTPClient = (url: string, init: RequestInit) => Promise<Response>;
+
 const completedEvent = z.object({
   type: z.literal('response.completed'),
   response: z.object({ usage: z.unknown() }),
@@ -31,7 +33,7 @@ const completedEvent = z.object({
 // A local stand-in for the counting proxy: it reads HTTP requests only, as the real proxy does,
 // forwards each one to `upstream`, the model API's origin, and keeps the usage of each response. It
 // refuses a websocket upgrade, so a CLI that tries one shows in `calls` with its `upgrade` header.
-export function startCountProxy(upstream: string): CountProxy {
+export function startCountProxy(upstream: string, httpClient: HTTPClient): CountProxy {
   const calls: ProxyCall[] = [];
   const counting = new Set<Promise<void>>();
   const failures: unknown[] = [];
@@ -49,7 +51,7 @@ export function startCountProxy(upstream: string): CountProxy {
       calls.push({ ...forward.call, status: refusedUpgradeStatus, usage: null, error: null });
       return new Response('the counting proxy reads HTTP only', { status: refusedUpgradeStatus });
     }
-    const response = await fetch(forward.target, {
+    const response = await httpClient(forward.target, {
       method: request.method,
       headers: forward.headers,
       body: forward.hasBody ? await request.arrayBuffer() : undefined,

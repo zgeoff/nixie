@@ -8,7 +8,7 @@ import { dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
 import { type AppServer, startAppServer } from './start-app-server.ts';
-import { type CountProxy, startCountProxy } from './start-count-proxy.ts';
+import { type CountProxy, type HTTPClient, startCountProxy } from './start-count-proxy.ts';
 import { startToolServer } from './start-tool-server.ts';
 
 const codexVersion = 'codex-cli 0.166.0';
@@ -60,7 +60,11 @@ interface Host {
   readonly name: string;
 }
 
-async function run({ name, model, apiKey }: RunArgs, host: Host): Promise<void> {
+async function run(
+  { name, model, apiKey }: RunArgs,
+  host: Host,
+  httpClient: HTTPClient,
+): Promise<void> {
   const outDir = findChildDir(resolve(import.meta.dir, 'runs'), name);
   const stateDir = findChildDir(resolve(import.meta.dir, '.state'), name);
 
@@ -77,7 +81,7 @@ async function run({ name, model, apiKey }: RunArgs, host: Host): Promise<void> 
   // Codex puts the git remote and path of the repo around its working directory in each tool
   // call's `_meta`; a repo of its own keeps this checkout's out of the logs
   await Bun.$`git init -q`.cwd(join(stateDir, 'work'));
-  const proxy = startCountProxy('https://api.openai.com');
+  const proxy = startCountProxy('https://api.openai.com', httpClient);
   const tools = startToolServer(slowToolMs);
   const codexHome = join(stateDir, 'codex');
   const mcpToken = crypto.randomUUID();
@@ -535,7 +539,8 @@ function parseRunArgs(argv: string[], apiKey: string | undefined): RunArgs {
   return { name, model, apiKey };
 }
 
-await run(parseRunArgs(process.argv.slice(2), process.env.OPENAI_API_KEY), {
-  home: homedir(),
-  name: hostname(),
-});
+await run(
+  parseRunArgs(process.argv.slice(2), process.env.OPENAI_API_KEY),
+  { home: homedir(), name: hostname() },
+  fetch,
+);
