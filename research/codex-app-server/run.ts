@@ -4,7 +4,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { homedir, hostname } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { z } from 'zod';
 import { type AppServer, startAppServer } from './start-app-server.ts';
 import { type CountProxy, startCountProxy } from './start-count-proxy.ts';
@@ -60,10 +60,13 @@ async function run(argv: string[]): Promise<void> {
   if (!name || !model || !apiKey) {
     throw new Error('usage: OPENAI_API_KEY=<key> bun run.ts <run_name> <model>');
   }
-  await checkVersion();
-  const outDir = resolve(import.meta.dir, 'runs', name);
-  const stateDir = resolve(import.meta.dir, '.state', name);
+  const outDir = findChildDir(resolve(import.meta.dir, 'runs'), name);
+  const stateDir = findChildDir(resolve(import.meta.dir, '.state'), name);
 
+  if (!outDir || !stateDir) {
+    throw new Error(`the run name ${JSON.stringify(name)} must be one plain folder name`);
+  }
+  await checkVersion();
   rmSync(stateDir, { force: true, recursive: true });
   for (const dir of ['codex', 'home', 'work']) {
     mkdirSync(join(stateDir, dir), { recursive: true });
@@ -122,6 +125,12 @@ async function run(argv: string[]): Promise<void> {
       write(`rpc-${label}.json`, server.log);
     }
   }
+}
+
+function findChildDir(root: string, name: string): string | null {
+  const dir = resolve(root, name);
+
+  return dirname(dir) === root && dir !== root ? dir : null;
 }
 
 async function checkVersion(): Promise<void> {
