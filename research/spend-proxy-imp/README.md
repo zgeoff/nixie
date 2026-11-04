@@ -1,44 +1,56 @@
 # Spike: the counting proxy behind imp's broker
 
-This spike sends a nixie preview's model calls from its imp, through imp's broker, to a counting
-proxy on the host, and probes the guest for a way to the model API around it. It informs the
-[hard spending stop](../../docs/design/platform/policy/budgets.md#the-hard-spending-stop), which
-relies on the broker to send every model request through the proxy.
+This spike checks whether every model call from an [imp](../../docs/glossary.md) reaches the model
+API through the host's [counting proxy](../../docs/architecture/policy/counting-proxy.md), which
+adds each reply's tokens and dollars to a count. It informs the
+[hard spending stop](../../docs/design/platform/policy/budgets.md#the-hard-spending-stop). Code in
+an imp holds no model credential: imp's broker, the imp's HTTPS proxy on the host, adds the
+credential to each request that the imp's grant covers. The spike ran on a nixie pull request's
+preview, a throwaway nixie in an imp of its own, on a host that gives each preview its own counting
+proxy.
 
 ## Question
 
-Do a worker's model requests pass from imp's broker through the counting proxy on the host and get
-counted, so that budgets can count spend at the host? Does the broker give the guest any second
-route to the model API, which would let a worker get past the hard spending stop?
+Does the broker send each model call from an imp through the counting proxy, and does the proxy
+count it, so that the hard stop can count spend on the host? Can code in the imp get a request to
+the model API with the credential on it by any way that skips the proxy?
 
 ## Answer
 
-- Every model call from the preview took the imp's counted grant and reached the model API through
-  the imp's own counting proxy [measured].
-- The model API refused every call with a 429, because the preview's credential was at its rate
-  limit, so the count stayed at 0 and the spike never saw a reply counted [measured].
-- The broker refused all 6 paths outside the imp's route, dot segments and encoded slashes included,
-  and the proxy refused the batch endpoint [measured].
-- Requests that went around the broker reached the model API with no credential, and got a 401
-  [measured].
+Each line ends with [measured]: the spike made the request or the read that shows it.
 
-The broker opens no second route, so the hard stop can sit on the host; the count needs a run with a
-credential under its rate limit.
+- The broker added the credential to every model call from the preview, and sent each one through
+  the preview's counting proxy to the model API [measured].
+- The broker adds the credential only under the URL path `/<imp>/`, which leads to the proxy. It
+  refused the 6 other paths that the spike tried, dot segments and encoded slashes included
+  [measured].
+- Code in the imp reached the model API with its HTTPS proxy turned off, so the broker never saw the
+  request and added no credential. The model API answered 401 [measured].
+- The model API answered every model call with a 429, because the credential was at its account's
+  rate limit during the spike. The count stayed at 0 tokens and $0 [measured].
+
+No request with the credential skips the proxy, so the hard stop can sit on the host. The spike
+never saw the proxy count a reply with usage, which the
+[issue](https://linear.app/zgeoff/issue/GEO-248) keeps open.
 
 ## Run it
 
-```bash
-cd research/spend-proxy-imp
-bun run spike
-```
+1. Set the variables that the [setup](results.md#setup) lists: the preview host's SSH target, the
+   preview's imp and origin, and a scratch directory.
+2. Run the spike from a machine with SSH access to the preview host as root:
 
-The [setup](results.md#setup) lists the environment the run needs and each of its steps.
+   ```bash
+   cd research/spend-proxy-imp
+   bun run spike
+   ```
+
+   Expect exit 0, and the output of each of the script's 5 steps in the scratch directory.
 
 ## Results
 
-The [results](results.md) hold the route, the counted calls, the probes and the follow-ups.
+[results.md](results.md) gives the setup, the model calls and the probes.
 
 ## Untested
 
-A reply with usage on the counted route, a started task's own calls, and a worker in an imp of its
-own. The [untested list](results.md#untested) gives the rest.
+The spike did not test a reply with usage, or a worker in an imp that the sandbox adapter creates.
+The [untested list](results.md#untested) gives the rest.

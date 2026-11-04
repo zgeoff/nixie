@@ -20,6 +20,9 @@ probe() {
   printf '%s\t%s\t%s\n' "$name" "$status" "$(head -c 200 "$answer" | tr '\n' ' ')"
 }
 
+# the imp's own route, where the broker adds the credential and the counting proxy counts the reply
+probe own-route "https://api.anthropic.com/$imp/v1/messages"
+
 # the broker's grant covers only /<imp>/**, so each of these needs a refusal from the broker
 probe unrouted https://api.anthropic.com/v1/messages
 probe other-route https://api.anthropic.com/pv-00000000-1/v1/messages
