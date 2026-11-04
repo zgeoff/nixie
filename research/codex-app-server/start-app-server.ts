@@ -32,6 +32,7 @@ interface Waiter {
   readonly method: string;
   readonly test: (params: unknown) => boolean;
   readonly resolve: (notification: Notification) => void;
+  readonly reject: (error: Error) => void;
 }
 
 const waitMs = 180_000;
@@ -89,9 +90,11 @@ function spawnAppServer(
     env,
     stdin: 'pipe',
     stdout: 'pipe',
-    stderr: 'ignore',
+    stderr: 'pipe',
   });
+  const diagnostics = new Response(child.stderr).text();
   let nextID = 1;
+  let exitError: Error | null = null;
 
   function send(value: object): void {
     log.push({ from: 'client', ...value });
@@ -132,11 +135,29 @@ function spawnAppServer(
     }
   }
 
+  async function failOpenCalls(exitCode: number): Promise<void> {
+    const error = new Error(formatExit(exitCode, await diagnostics));
+
+    exitError = error;
+    for (const call of pending.values()) {
+      call.reject(error);
+    }
+    pending.clear();
+    for (const waiter of waiters) {
+      waiter.reject(error);
+    }
+    waiters.clear();
+  }
+
   const reading = readLines(child.stdout, handleMessage);
+  const exiting = child.exited.then(failOpenCalls);
 
   return {
     log,
     request: async (method, params) => {
+      if (exitError) {
+        throw exitError;
+      }
       const id = nextID;
       const call = Promise.withResolvers<unknown>();
 
@@ -161,8 +182,11 @@ function spawnAppServer(
       if (earlier) {
         return earlier.notification;
       }
+      if (exitError) {
+        throw exitError;
+      }
       const found = Promise.withResolvers<Notification>();
-      const waiter = { method, test, resolve: found.resolve };
+      const waiter = { method, test, resolve: found.resolve, reject: found.reject };
 
       return withDeadline(method, async () => {
         waiters.add(waiter);
@@ -174,10 +198,18 @@ function spawnAppServer(
     stop: async () => {
       child.stdin.end();
       child.kill();
-      await child.exited;
+      await exiting;
       await reading;
     },
   };
+}
+
+const diagnosticsChars = 2000;
+
+function formatExit(exitCode: number, diagnostics: string): string {
+  const tail = diagnostics.trim().slice(-diagnosticsChars);
+
+  return `codex app-server exited with status ${exitCode}${tail === '' ? '' : `: ${tail}`}`;
 }
 
 async function readLines(
