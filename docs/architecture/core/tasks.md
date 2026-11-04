@@ -20,7 +20,7 @@ stateDiagram-v2
   [*] --> waiting: the conversation is created
   ready --> running: a runner claims a step
   running --> ready: the step commits with work left, or throws
-  running --> waiting: the step commits with nothing unread
+  running --> waiting: the step commits with nothing unread, or the conversation's step throws an error that waits for the user
   running --> done: the step commits as done
   running --> failed: 3 steps in a row throw
   failed --> ready: a restart, or a server start for the conversation
