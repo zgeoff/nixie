@@ -1,0 +1,146 @@
+[
+  {
+    "step": "tool turn",
+    "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+    "turnId": "01a1a5f9-c1ec-7283-a4df-1664eef5c672",
+    "status": "completed",
+    "reply": "The tomato bed needs water on Thursdays, and the blue rowing boat is moored at the north jetty.",
+    "itemTypes": [
+      "userMessage",
+      "mcpToolCall",
+      "mcpToolCall",
+      "agentMessage"
+    ],
+    "toolCallItemIds": [
+      "exec-be9ae149-380b-44b4-ae5e-789942992aed",
+      "exec-596ed792-7f52-42ab-8f62-c8d0c0c4dda1"
+    ],
+    "tokenUsageEvents": 3,
+    "rawResponseEvents": 0,
+    "proxyCalls": 3
+  },
+  {
+    "step": "structured output",
+    "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+    "turnId": "01a1a5f9-d80a-7bc0-8934-6239c76f08e3",
+    "status": "completed",
+    "reply": "{\"note\":\"The blue rowing boat is moored at the north jetty.\"}",
+    "itemTypes": [
+      "userMessage",
+      "agentMessage"
+    ],
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 1
+  },
+  {
+    "step": "steer",
+    "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+    "turnId": "01a1a5f9-ddac-7010-9831-e5d2463f4b69",
+    "status": "completed",
+    "reply": "The slow note says: “The slow note arrived after a long wait.” kiwi",
+    "itemTypes": [
+      "userMessage",
+      "userMessage",
+      "mcpToolCall",
+      "agentMessage"
+    ],
+    "toolCallItemIds": [
+      "exec-15154488-0da1-4a4d-91dc-958b0fec2f50"
+    ],
+    "tokenUsageEvents": 3,
+    "rawResponseEvents": 0,
+    "proxyCalls": 3
+  },
+  {
+    "step": "interrupt",
+    "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+    "turnId": "01a1a5fa-0915-74a3-b5db-1d0b83fc4192",
+    "status": "interrupted",
+    "reply": "",
+    "itemTypes": [
+      "userMessage"
+    ],
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 1
+  },
+  {
+    "step": "image",
+    "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+    "turnId": "01a1a5fa-0cff-7ce3-9f67-5b0690c20801",
+    "status": "completed",
+    "reply": "Red",
+    "itemTypes": [
+      "userMessage",
+      "agentMessage"
+    ],
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 1
+  },
+  {
+    "step": "compaction",
+    "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+    "turnId": "01a1a5fa-146c-7181-a017-e26a1643a4ba",
+    "status": "completed",
+    "reply": "",
+    "itemTypes": [
+      "contextCompaction"
+    ],
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 3,
+    "rawResponseEvents": 0,
+    "proxyCalls": 1
+  },
+  {
+    "step": "resume in a new process",
+    "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+    "turnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+    "status": "completed",
+    "reply": "garden, boat, slow",
+    "itemTypes": [
+      "userMessage",
+      "reasoning",
+      "agentMessage"
+    ],
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 2,
+    "rawResponseEvents": 0,
+    "proxyCalls": 2
+  },
+  {
+    "step": "fork after the first turn",
+    "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+    "turnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+    "status": "completed",
+    "reply": "Find the notes on garden and on boat, then give me both in one sentence.\nList every message I have sent you in this conversation, word for word, one per line.",
+    "itemTypes": [
+      "userMessage",
+      "reasoning",
+      "agentMessage"
+    ],
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 1
+  },
+  {
+    "step": "supports_websockets = true",
+    "threadId": "01a1a5fa-3372-7221-a17a-cf0e8c60cf16",
+    "turnId": "01a1a5fa-3399-7660-aa4b-1acba00efdd1",
+    "status": "completed",
+    "reply": "Hello there.",
+    "itemTypes": [
+      "userMessage",
+      "agentMessage"
+    ],
+    "toolCallItemIds": [],
+    "tokenUsageEvents": 1,
+    "rawResponseEvents": 0,
+    "proxyCalls": 2
+  }
+]

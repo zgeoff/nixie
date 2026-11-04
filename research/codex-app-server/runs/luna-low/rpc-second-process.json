@@ -1,0 +1,1422 @@
+[
+  {
+    "from": "client",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "clientInfo": {
+        "name": "nixie-spike",
+        "title": null,
+        "version": "0.0.0"
+      },
+      "capabilities": {
+        "experimentalApi": true,
+        "requestAttestation": false,
+        "optOutNotificationMethods": [
+          "item/agentMessage/delta",
+          "item/reasoning/summaryTextDelta",
+          "item/reasoning/summaryPartAdded",
+          "item/reasoning/textDelta"
+        ]
+      }
+    }
+  },
+  {
+    "from": "server",
+    "id": 1,
+    "result": {
+      "userAgent": "nixie-spike/0.166.0 (Arch Linux Unknown; x86_64) unknown (nixie-spike; 0.0.0)",
+      "codexHome": "<state>/codex",
+      "platformFamily": "unix",
+      "platformOs": "linux"
+    }
+  },
+  {
+    "from": "client",
+    "method": "initialized"
+  },
+  {
+    "from": "client",
+    "id": 2,
+    "method": "thread/resume",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "model": "gpt-6-luna"
+    }
+  },
+  {
+    "from": "server",
+    "method": "remoteControl/status/changed",
+    "params": {
+      "status": "disabled",
+      "serverName": "<host>",
+      "installationId": "8fcf033a-f8c9-4bd1-af59-11db1df73f4c",
+      "environmentId": null
+    },
+    "emittedAtMs": 1793785996027
+  },
+  {
+    "from": "server",
+    "method": "deprecationNotice",
+    "params": {
+      "summary": "Full-history hydration is deprecated for paginated threads; use `excludeTurns: true`, then page with `thread/turns/list` and `thread/items/list`.",
+      "details": null
+    },
+    "emittedAtMs": 1793785996034
+  },
+  {
+    "from": "server",
+    "method": "mcpServer/startupStatus/updated",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "name": "nixie",
+      "status": "starting",
+      "error": null,
+      "failureReason": null
+    },
+    "emittedAtMs": 1793785996135
+  },
+  {
+    "from": "server",
+    "method": "mcpServer/startupStatus/updated",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "name": "nixie",
+      "status": "ready",
+      "error": null,
+      "failureReason": null
+    },
+    "emittedAtMs": 1793785996135
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "status": {
+        "type": "idle"
+      }
+    },
+    "emittedAtMs": 1793785996137
+  },
+  {
+    "from": "server",
+    "id": 2,
+    "result": {
+      "thread": {
+        "id": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+        "environments": [
+          {
+            "environmentId": "local",
+            "cwd": "<state>/work",
+            "runtimeWorkspaceRoots": [
+              "<state>/work"
+            ]
+          }
+        ],
+        "extra": null,
+        "sessionId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+        "forkedFromId": null,
+        "parentThreadId": null,
+        "preview": "Find the notes on garden and on boat, then give me both in one sentence.",
+        "ephemeral": false,
+        "section": null,
+        "sectionEnteredAt": null,
+        "projectId": null,
+        "historyMode": "paginated",
+        "modelProvider": "counted",
+        "model": "gpt-6-luna",
+        "reasoningEffort": "low",
+        "createdAt": 1793785971,
+        "updatedAt": 1793785995,
+        "recencyAt": 1793785992,
+        "status": {
+          "type": "idle"
+        },
+        "path": "<state>/codex/sessions/2026/11/04/rollout-2026-11-04T20-52-51-01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0.jsonl",
+        "cwd": "<state>/work",
+        "cliVersion": "0.166.0",
+        "originator": "nixie-spike",
+        "source": "vscode",
+        "canAcceptDirectInput": true,
+        "threadSource": null,
+        "agentNickname": null,
+        "agentRole": null,
+        "gitInfo": null,
+        "name": null,
+        "daybreakEnabled": null,
+        "turns": [
+          {
+            "id": "01a1a5f9-c1ec-7283-a4df-1664eef5c672",
+            "rootTurnId": "01a1a5f9-c1ec-7283-a4df-1664eef5c672",
+            "items": [
+              {
+                "type": "userMessage",
+                "id": "01a1a5f9-c228-70d2-8053-19ac1e8f1789",
+                "clientId": null,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find the notes on garden and on boat, then give me both in one sentence.",
+                    "text_elements": []
+                  }
+                ],
+                "startedAtMs": 1793785971241,
+                "completedAtMs": 1793785971241
+              },
+              {
+                "type": "mcpToolCall",
+                "id": "exec-be9ae149-380b-44b4-ae5e-789942992aed",
+                "server": "nixie",
+                "tool": "find_note",
+                "status": "completed",
+                "arguments": {
+                  "topic": "garden"
+                },
+                "appContext": null,
+                "mcpAppUi": null,
+                "pluginId": null,
+                "readOnlyHint": null,
+                "result": {
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "The tomato bed needs water on Thursdays."
+                    }
+                  ],
+                  "structuredContent": null,
+                  "_meta": null
+                },
+                "error": null,
+                "durationMs": 5,
+                "startedAtMs": 1793785975239,
+                "completedAtMs": 1793785975244
+              },
+              {
+                "type": "mcpToolCall",
+                "id": "exec-596ed792-7f52-42ab-8f62-c8d0c0c4dda1",
+                "server": "nixie",
+                "tool": "find_note",
+                "status": "completed",
+                "arguments": {
+                  "topic": "boat"
+                },
+                "appContext": null,
+                "mcpAppUi": null,
+                "pluginId": null,
+                "readOnlyHint": null,
+                "result": {
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "The blue rowing boat is moored at the north jetty."
+                    }
+                  ],
+                  "structuredContent": null,
+                  "_meta": null
+                },
+                "error": null,
+                "durationMs": 1,
+                "startedAtMs": 1793785975249,
+                "completedAtMs": 1793785975250
+              },
+              {
+                "type": "agentMessage",
+                "id": "msg_090a8b3c2535a33f016aeb0078685887d0af7e3452e8c844ec",
+                "text": "The tomato bed needs water on Thursdays, and the blue rowing boat is moored at the north jetty.",
+                "phase": "final_answer",
+                "memoryCitation": null,
+                "delivery": null,
+                "questions": null,
+                "startedAtMs": 1793785976578,
+                "completedAtMs": 1793785976803
+              }
+            ],
+            "itemsView": "full",
+            "status": "completed",
+            "error": null,
+            "startedAt": 1793785971,
+            "completedAt": 1793785976,
+            "durationMs": 5630
+          },
+          {
+            "id": "01a1a5f9-d80a-7bc0-8934-6239c76f08e3",
+            "rootTurnId": "01a1a5f9-d80a-7bc0-8934-6239c76f08e3",
+            "items": [
+              {
+                "type": "userMessage",
+                "id": "01a1a5f9-d812-7972-a889-c2cf575aa04b",
+                "clientId": null,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Give the boat note as JSON.",
+                    "text_elements": []
+                  }
+                ],
+                "startedAtMs": 1793785976852,
+                "completedAtMs": 1793785976852
+              },
+              {
+                "type": "agentMessage",
+                "id": "msg_090a8b3c2535a33f016aeb0079e65087d097b6f985cc71d711",
+                "text": "{\"note\":\"The blue rowing boat is moored at the north jetty.\"}",
+                "phase": "final_answer",
+                "memoryCitation": null,
+                "delivery": null,
+                "questions": null,
+                "startedAtMs": 1793785978061,
+                "completedAtMs": 1793785978236
+              }
+            ],
+            "itemsView": "full",
+            "status": "completed",
+            "error": null,
+            "startedAt": 1793785976,
+            "completedAt": 1793785978,
+            "durationMs": 1402
+          },
+          {
+            "id": "01a1a5f9-ddac-7010-9831-e5d2463f4b69",
+            "rootTurnId": "01a1a5f9-ddac-7010-9831-e5d2463f4b69",
+            "items": [
+              {
+                "type": "userMessage",
+                "id": "01a1a5f9-ddb5-7562-97fa-c90343d54e35",
+                "clientId": null,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find the note on slow and tell me what it says.",
+                    "text_elements": []
+                  }
+                ],
+                "startedAtMs": 1793785978294,
+                "completedAtMs": 1793785978294
+              },
+              {
+                "type": "userMessage",
+                "id": "01a1a5f9-e4d2-70e0-a11c-d1ca8f733041",
+                "clientId": null,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Also end your reply with the word kiwi.",
+                    "text_elements": []
+                  }
+                ],
+                "startedAtMs": 1793785980116,
+                "completedAtMs": 1793785980116
+              },
+              {
+                "type": "mcpToolCall",
+                "id": "exec-15154488-0da1-4a4d-91dc-958b0fec2f50",
+                "server": "nixie",
+                "tool": "find_note",
+                "status": "completed",
+                "arguments": {
+                  "topic": "slow"
+                },
+                "appContext": null,
+                "mcpAppUi": null,
+                "pluginId": null,
+                "readOnlyHint": null,
+                "result": {
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "The slow note arrived after a long wait."
+                    }
+                  ],
+                  "structuredContent": null,
+                  "_meta": null
+                },
+                "error": null,
+                "durationMs": 8006,
+                "startedAtMs": 1793785980100,
+                "completedAtMs": 1793785988107
+              },
+              {
+                "type": "agentMessage",
+                "id": "msg_090a8b3c2535a33f016aeb0084fa8487d0b7adb3373a47f933",
+                "text": "The slow note says: “The slow note arrived after a long wait.” kiwi",
+                "phase": "final_answer",
+                "memoryCitation": null,
+                "delivery": null,
+                "questions": null,
+                "startedAtMs": 1793785989131,
+                "completedAtMs": 1793785989351
+              }
+            ],
+            "itemsView": "full",
+            "status": "completed",
+            "error": null,
+            "startedAt": 1793785978,
+            "completedAt": 1793785989,
+            "durationMs": 11082
+          },
+          {
+            "id": "01a1a5fa-0915-74a3-b5db-1d0b83fc4192",
+            "rootTurnId": "01a1a5fa-0915-74a3-b5db-1d0b83fc4192",
+            "items": [
+              {
+                "type": "userMessage",
+                "id": "01a1a5fa-091f-7033-982c-c8ae9ed39b42",
+                "clientId": null,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find the note on slow and tell me what it says.",
+                    "text_elements": []
+                  }
+                ],
+                "startedAtMs": 1793785989409,
+                "completedAtMs": 1793785989409
+              }
+            ],
+            "itemsView": "full",
+            "status": "interrupted",
+            "error": null,
+            "startedAt": 1793785989,
+            "completedAt": 1793785990,
+            "durationMs": 976
+          },
+          {
+            "id": "01a1a5fa-0cff-7ce3-9f67-5b0690c20801",
+            "rootTurnId": "01a1a5fa-0cff-7ce3-9f67-5b0690c20801",
+            "items": [
+              {
+                "type": "userMessage",
+                "id": "01a1a5fa-0d0d-79d1-888b-a00399508172",
+                "clientId": null,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What colour fills this image? Answer in one word.",
+                    "text_elements": []
+                  },
+                  {
+                    "type": "localImage",
+                    "detail": null,
+                    "path": "<state>/work/square.png"
+                  }
+                ],
+                "startedAtMs": 1793785990414,
+                "completedAtMs": 1793785990414
+              },
+              {
+                "type": "agentMessage",
+                "id": "msg_090a8b3c2535a33f016aeb0087f1d487d088c4f7b89768d1d6",
+                "text": "Red",
+                "phase": "final_answer",
+                "memoryCitation": null,
+                "delivery": null,
+                "questions": null,
+                "startedAtMs": 1793785992107,
+                "completedAtMs": 1793785992221
+              }
+            ],
+            "itemsView": "full",
+            "status": "completed",
+            "error": null,
+            "startedAt": 1793785990,
+            "completedAt": 1793785992,
+            "durationMs": 1881
+          },
+          {
+            "id": "01a1a5fa-146c-7181-a017-e26a1643a4ba",
+            "rootTurnId": "01a1a5fa-146c-7181-a017-e26a1643a4ba",
+            "items": [
+              {
+                "type": "contextCompaction",
+                "id": "01a1a5fa-1485-7710-b445-ff3ff312f6df",
+                "startedAtMs": 1793785992325,
+                "completedAtMs": 1793785995835
+              }
+            ],
+            "itemsView": "full",
+            "status": "completed",
+            "error": null,
+            "startedAt": 1793785992,
+            "completedAt": 1793785995,
+            "durationMs": 3535
+          }
+        ]
+      },
+      "model": "gpt-6-luna",
+      "modelProvider": "counted",
+      "serviceTier": null,
+      "disabledPluginIds": [],
+      "cwd": "<state>/work",
+      "runtimeWorkspaceRoots": [
+        "<state>/work"
+      ],
+      "instructionSources": [],
+      "approvalPolicy": "never",
+      "approvalsReviewer": "user",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      },
+      "activePermissionProfile": null,
+      "reasoningEffort": "low",
+      "collaborationMode": {
+        "mode": "default",
+        "settings": {
+          "model": "gpt-6-luna",
+          "reasoning_effort": "low",
+          "developer_instructions": null
+        }
+      },
+      "multiAgentMode": "explicitRequestOnly",
+      "initialTurnsPage": null,
+      "turnsBackwardsCursor": "{\"requestedThreadId\":\"01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0\",\"rolloutOrdinal\":72,\"includeAnchor\":true,\"scope\":{\"kind\":\"turns\"}}",
+      "itemsBackwardsCursor": "{\"requestedThreadId\":\"01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0\",\"rolloutOrdinal\":83,\"includeAnchor\":true,\"scope\":{\"kind\":\"itemsByCreatedAtOrdinal\"}}"
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turnId": "01a1a5f9-c1ec-7283-a4df-1664eef5c672",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 31844,
+          "inputTokens": 31366,
+          "cachedInputTokens": 24751,
+          "cacheWriteInputTokens": 6585,
+          "outputTokens": 478,
+          "reasoningOutputTokens": 81
+        },
+        "last": {
+          "totalTokens": 3531,
+          "inputTokens": 0,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 0,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793785996139
+  },
+  {
+    "from": "client",
+    "id": 3,
+    "method": "turn/start",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "input": [
+        {
+          "type": "text",
+          "text": "Which topics did you look up notes on before? Name only the topics.",
+          "text_elements": []
+        }
+      ]
+    }
+  },
+  {
+    "from": "server",
+    "id": 3,
+    "result": {
+      "turn": {
+        "id": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+        "rootTurnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": null,
+        "completedAt": null,
+        "durationMs": null
+      }
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "status": {
+        "type": "active",
+        "activeFlags": []
+      }
+    },
+    "emittedAtMs": 1793785996160
+  },
+  {
+    "from": "server",
+    "method": "turn/started",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turn": {
+        "id": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+        "rootTurnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": 1793785996,
+        "completedAt": null,
+        "durationMs": null
+      }
+    },
+    "emittedAtMs": 1793785996160
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a5fa-2384-7641-9d45-eb63ada89cab",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Which topics did you look up notes on before? Name only the topics.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793785996167,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+      "startedAtMs": 1793785996167
+    },
+    "emittedAtMs": 1793785996167
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a5fa-2384-7641-9d45-eb63ada89cab",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Which topics did you look up notes on before? Name only the topics.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793785996167,
+        "completedAtMs": 1793785996167
+      },
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+      "completedAtMs": 1793785996167
+    },
+    "emittedAtMs": 1793785996175
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 34968,
+          "inputTokens": 34460,
+          "cachedInputTokens": 27515,
+          "cacheWriteInputTokens": 6912,
+          "outputTokens": 508,
+          "reasoningOutputTokens": 81
+        },
+        "last": {
+          "totalTokens": 3124,
+          "inputTokens": 3094,
+          "cachedInputTokens": 2764,
+          "cacheWriteInputTokens": 327,
+          "outputTokens": 30,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793785997255
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793785997255
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "reasoning",
+        "id": "rs_0af4c29b8c8a4651016aeb008dcdbc87d08b8950a78305cbc9",
+        "summary": [],
+        "content": [],
+        "startedAtMs": 1793785997956,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+      "startedAtMs": 1793785997956
+    },
+    "emittedAtMs": 1793785997957
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "reasoning",
+        "id": "rs_0af4c29b8c8a4651016aeb008dcdbc87d08b8950a78305cbc9",
+        "summary": [],
+        "content": [],
+        "startedAtMs": 1793785997956,
+        "completedAtMs": 1793785998367
+      },
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+      "completedAtMs": 1793785998367
+    },
+    "emittedAtMs": 1793785998369
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_0af4c29b8c8a4651016aeb008e36cc87d0a7e735fa86fd4aab",
+        "text": "",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793785998370,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+      "startedAtMs": 1793785998370
+    },
+    "emittedAtMs": 1793785998370
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_0af4c29b8c8a4651016aeb008e36cc87d0a7e735fa86fd4aab",
+        "text": "garden, boat, slow",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793785998370,
+        "completedAtMs": 1793785998522
+      },
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+      "completedAtMs": 1793785998522
+    },
+    "emittedAtMs": 1793785998524
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 38235,
+          "inputTokens": 37676,
+          "cachedInputTokens": 30606,
+          "cacheWriteInputTokens": 7034,
+          "outputTokens": 559,
+          "reasoningOutputTokens": 121
+        },
+        "last": {
+          "totalTokens": 3267,
+          "inputTokens": 3216,
+          "cachedInputTokens": 3091,
+          "cacheWriteInputTokens": 122,
+          "outputTokens": 51,
+          "reasoningOutputTokens": 40
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793785998537
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793785998537
+  },
+  {
+    "from": "server",
+    "method": "thread/readState/changed",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "readState": {
+        "firstUnread": {
+          "type": "turn",
+          "turnId": "01a1a5f9-c1ec-7283-a4df-1664eef5c672"
+        },
+        "revision": "8100e6fb-7ca6-42ce-9edb-17326afda8ea"
+      }
+    },
+    "emittedAtMs": 1793785998543
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "status": {
+        "type": "idle"
+      }
+    },
+    "emittedAtMs": 1793785998544
+  },
+  {
+    "from": "server",
+    "method": "turn/completed",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "turn": {
+        "id": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+        "rootTurnId": "01a1a5fa-2376-7180-9034-cc08fc4692e4",
+        "items": [
+          {
+            "type": "agentMessage",
+            "id": "msg_0af4c29b8c8a4651016aeb008e36cc87d0a7e735fa86fd4aab",
+            "text": "garden, boat, slow",
+            "phase": "final_answer",
+            "memoryCitation": null,
+            "delivery": null,
+            "questions": null,
+            "startedAtMs": 1793785998370,
+            "completedAtMs": 1793785998522
+          }
+        ],
+        "itemsView": "summary",
+        "status": "completed",
+        "error": null,
+        "startedAt": 1793785996,
+        "completedAt": 1793785998,
+        "durationMs": 2383
+      }
+    },
+    "emittedAtMs": 1793785998544
+  },
+  {
+    "from": "client",
+    "id": 4,
+    "method": "thread/fork",
+    "params": {
+      "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+      "lastTurnId": "01a1a5f9-c1ec-7283-a4df-1664eef5c672",
+      "model": "gpt-6-luna"
+    }
+  },
+  {
+    "from": "server",
+    "method": "deprecationNotice",
+    "params": {
+      "summary": "Full-history hydration is deprecated for paginated threads; use `excludeTurns: true`, then page with `thread/turns/list` and `thread/items/list`.",
+      "details": null
+    },
+    "emittedAtMs": 1793785998561
+  },
+  {
+    "from": "server",
+    "method": "mcpServer/startupStatus/updated",
+    "params": {
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "name": "nixie",
+      "status": "starting",
+      "error": null,
+      "failureReason": null
+    },
+    "emittedAtMs": 1793785998658
+  },
+  {
+    "from": "server",
+    "method": "mcpServer/startupStatus/updated",
+    "params": {
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "name": "nixie",
+      "status": "ready",
+      "error": null,
+      "failureReason": null
+    },
+    "emittedAtMs": 1793785998658
+  },
+  {
+    "from": "server",
+    "id": 4,
+    "result": {
+      "thread": {
+        "id": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+        "environments": [
+          {
+            "environmentId": "local",
+            "cwd": "<state>/work",
+            "runtimeWorkspaceRoots": [
+              "<state>/work"
+            ]
+          }
+        ],
+        "extra": null,
+        "sessionId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+        "forkedFromId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+        "parentThreadId": null,
+        "preview": "",
+        "ephemeral": false,
+        "section": null,
+        "sectionEnteredAt": null,
+        "projectId": null,
+        "historyMode": "paginated",
+        "modelProvider": "counted",
+        "model": "gpt-6-luna",
+        "reasoningEffort": "low",
+        "createdAt": 1793785998,
+        "updatedAt": 1793785998,
+        "recencyAt": 1793785998,
+        "status": {
+          "type": "idle"
+        },
+        "path": "<state>/codex/sessions/2026/11/04/rollout-2026-11-04T20-53-18-01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d.jsonl",
+        "cwd": "<state>/work",
+        "cliVersion": "0.166.0",
+        "originator": "nixie-spike",
+        "source": "vscode",
+        "canAcceptDirectInput": true,
+        "threadSource": null,
+        "agentNickname": null,
+        "agentRole": null,
+        "gitInfo": null,
+        "name": null,
+        "daybreakEnabled": null,
+        "turns": [
+          {
+            "id": "01a1a5f9-c1ec-7283-a4df-1664eef5c672",
+            "rootTurnId": "01a1a5f9-c1ec-7283-a4df-1664eef5c672",
+            "items": [
+              {
+                "type": "userMessage",
+                "id": "01a1a5f9-c228-70d2-8053-19ac1e8f1789",
+                "clientId": null,
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Find the notes on garden and on boat, then give me both in one sentence.",
+                    "text_elements": []
+                  }
+                ],
+                "startedAtMs": 1793785971241,
+                "completedAtMs": 1793785971241
+              },
+              {
+                "type": "mcpToolCall",
+                "id": "exec-be9ae149-380b-44b4-ae5e-789942992aed",
+                "server": "nixie",
+                "tool": "find_note",
+                "status": "completed",
+                "arguments": {
+                  "topic": "garden"
+                },
+                "appContext": null,
+                "mcpAppUi": null,
+                "pluginId": null,
+                "readOnlyHint": null,
+                "result": {
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "The tomato bed needs water on Thursdays."
+                    }
+                  ],
+                  "structuredContent": null,
+                  "_meta": null
+                },
+                "error": null,
+                "durationMs": 5,
+                "startedAtMs": 1793785975239,
+                "completedAtMs": 1793785975244
+              },
+              {
+                "type": "mcpToolCall",
+                "id": "exec-596ed792-7f52-42ab-8f62-c8d0c0c4dda1",
+                "server": "nixie",
+                "tool": "find_note",
+                "status": "completed",
+                "arguments": {
+                  "topic": "boat"
+                },
+                "appContext": null,
+                "mcpAppUi": null,
+                "pluginId": null,
+                "readOnlyHint": null,
+                "result": {
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "The blue rowing boat is moored at the north jetty."
+                    }
+                  ],
+                  "structuredContent": null,
+                  "_meta": null
+                },
+                "error": null,
+                "durationMs": 1,
+                "startedAtMs": 1793785975249,
+                "completedAtMs": 1793785975250
+              },
+              {
+                "type": "agentMessage",
+                "id": "msg_090a8b3c2535a33f016aeb0078685887d0af7e3452e8c844ec",
+                "text": "The tomato bed needs water on Thursdays, and the blue rowing boat is moored at the north jetty.",
+                "phase": "final_answer",
+                "memoryCitation": null,
+                "delivery": null,
+                "questions": null,
+                "startedAtMs": 1793785976578,
+                "completedAtMs": 1793785976803
+              }
+            ],
+            "itemsView": "full",
+            "status": "completed",
+            "error": null,
+            "startedAt": 1793785971,
+            "completedAt": 1793785976,
+            "durationMs": 5630
+          }
+        ]
+      },
+      "model": "gpt-6-luna",
+      "modelProvider": "counted",
+      "serviceTier": null,
+      "disabledPluginIds": [],
+      "cwd": "<state>/work",
+      "runtimeWorkspaceRoots": [
+        "<state>/work"
+      ],
+      "instructionSources": [],
+      "approvalPolicy": "never",
+      "approvalsReviewer": "user",
+      "sandbox": {
+        "type": "readOnly",
+        "networkAccess": false
+      },
+      "activePermissionProfile": null,
+      "reasoningEffort": "low",
+      "multiAgentMode": "explicitRequestOnly"
+    }
+  },
+  {
+    "from": "client",
+    "id": 5,
+    "method": "turn/start",
+    "params": {
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "input": [
+        {
+          "type": "text",
+          "text": "List every message I have sent you in this conversation, word for word, one per line.",
+          "text_elements": []
+        }
+      ]
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "turnId": "01a1a5f9-c1ec-7283-a4df-1664eef5c672",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 8750,
+          "inputTokens": 8651,
+          "cachedInputTokens": 5645,
+          "cacheWriteInputTokens": 2997,
+          "outputTokens": 99,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 3026,
+          "inputTokens": 3000,
+          "cachedInputTokens": 2881,
+          "cacheWriteInputTokens": 116,
+          "outputTokens": 26,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793785998662
+  },
+  {
+    "from": "server",
+    "method": "thread/started",
+    "params": {
+      "thread": {
+        "id": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+        "environments": [
+          {
+            "environmentId": "local",
+            "cwd": "<state>/work",
+            "runtimeWorkspaceRoots": [
+              "<state>/work"
+            ]
+          }
+        ],
+        "extra": null,
+        "sessionId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+        "forkedFromId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+        "parentThreadId": null,
+        "preview": "",
+        "ephemeral": false,
+        "section": null,
+        "sectionEnteredAt": null,
+        "projectId": null,
+        "historyMode": "paginated",
+        "modelProvider": "counted",
+        "model": "gpt-6-luna",
+        "reasoningEffort": "low",
+        "createdAt": 1793785998,
+        "updatedAt": 1793785998,
+        "recencyAt": 1793785998,
+        "status": {
+          "type": "idle"
+        },
+        "path": "<state>/codex/sessions/2026/11/04/rollout-2026-11-04T20-53-18-01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d.jsonl",
+        "cwd": "<state>/work",
+        "cliVersion": "0.166.0",
+        "originator": "nixie-spike",
+        "source": "vscode",
+        "canAcceptDirectInput": true,
+        "threadSource": null,
+        "agentNickname": null,
+        "agentRole": null,
+        "gitInfo": null,
+        "name": null,
+        "daybreakEnabled": null,
+        "turns": []
+      }
+    },
+    "emittedAtMs": 1793785998662
+  },
+  {
+    "from": "server",
+    "id": 5,
+    "result": {
+      "turn": {
+        "id": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+        "rootTurnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": null,
+        "completedAt": null,
+        "durationMs": null
+      }
+    }
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "status": {
+        "type": "active",
+        "activeFlags": []
+      }
+    },
+    "emittedAtMs": 1793785998673
+  },
+  {
+    "from": "server",
+    "method": "turn/started",
+    "params": {
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "turn": {
+        "id": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+        "rootTurnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+        "items": [],
+        "itemsView": "notLoaded",
+        "status": "inProgress",
+        "error": null,
+        "startedAt": 1793785998,
+        "completedAt": null,
+        "durationMs": null
+      }
+    },
+    "emittedAtMs": 1793785998673
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a5fa-2d56-7202-87d5-7d8ca7eebbce",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "List every message I have sent you in this conversation, word for word, one per line.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793785998679,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "turnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+      "startedAtMs": 1793785998679
+    },
+    "emittedAtMs": 1793785998680
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "userMessage",
+        "id": "01a1a5fa-2d56-7202-87d5-7d8ca7eebbce",
+        "clientId": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "List every message I have sent you in this conversation, word for word, one per line.",
+            "text_elements": []
+          }
+        ],
+        "startedAtMs": 1793785998679,
+        "completedAtMs": 1793785998679
+      },
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "turnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+      "completedAtMs": 1793785998679
+    },
+    "emittedAtMs": 1793785998682
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "reasoning",
+        "id": "rs_090a8b3c2535a33f016aeb008f727087d091d2866f6b93d026",
+        "summary": [],
+        "content": [],
+        "startedAtMs": 1793785999601,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "turnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+      "startedAtMs": 1793785999601
+    },
+    "emittedAtMs": 1793785999601
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "reasoning",
+        "id": "rs_090a8b3c2535a33f016aeb008f727087d091d2866f6b93d026",
+        "summary": [],
+        "content": [],
+        "startedAtMs": 1793785999601,
+        "completedAtMs": 1793785999786
+      },
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "turnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+      "completedAtMs": 1793785999786
+    },
+    "emittedAtMs": 1793785999788
+  },
+  {
+    "from": "server",
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_090a8b3c2535a33f016aeb008fa14c87d0b811726b876a2cdd",
+        "text": "",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793785999789,
+        "completedAtMs": null
+      },
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "turnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+      "startedAtMs": 1793785999789
+    },
+    "emittedAtMs": 1793785999789
+  },
+  {
+    "from": "server",
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg_090a8b3c2535a33f016aeb008fa14c87d0b811726b876a2cdd",
+        "text": "Find the notes on garden and on boat, then give me both in one sentence.\nList every message I have sent you in this conversation, word for word, one per line.",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null,
+        "startedAtMs": 1793785999789,
+        "completedAtMs": 1793786000078
+      },
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "turnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+      "completedAtMs": 1793786000078
+    },
+    "emittedAtMs": 1793786000080
+  },
+  {
+    "from": "server",
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "turnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 11864,
+          "inputTokens": 11702,
+          "cachedInputTokens": 5645,
+          "cacheWriteInputTokens": 6045,
+          "outputTokens": 162,
+          "reasoningOutputTokens": 21
+        },
+        "last": {
+          "totalTokens": 3114,
+          "inputTokens": 3051,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 3048,
+          "outputTokens": 63,
+          "reasoningOutputTokens": 21
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 1793786000086
+  },
+  {
+    "from": "server",
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "limitName": null,
+        "normalModelSlug": null,
+        "primary": null,
+        "secondary": null,
+        "credits": null,
+        "individualLimit": null,
+        "spendControlReached": null,
+        "planType": null,
+        "rateLimitReachedType": null
+      }
+    },
+    "emittedAtMs": 1793786000086
+  },
+  {
+    "from": "server",
+    "method": "thread/readState/changed",
+    "params": {
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "readState": {
+        "firstUnread": {
+          "type": "turn",
+          "turnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf"
+        },
+        "revision": "761eb5a8-4cdf-4e31-b788-5eca155e78fb"
+      }
+    },
+    "emittedAtMs": 1793786000092
+  },
+  {
+    "from": "server",
+    "method": "thread/status/changed",
+    "params": {
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "status": {
+        "type": "idle"
+      }
+    },
+    "emittedAtMs": 1793786000092
+  },
+  {
+    "from": "server",
+    "method": "turn/completed",
+    "params": {
+      "threadId": "01a1a5fa-2cea-7d61-8968-1fc6e0dfe27d",
+      "turn": {
+        "id": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+        "rootTurnId": "01a1a5fa-2d4c-7f00-9d14-1996dbb1e6bf",
+        "items": [
+          {
+            "type": "agentMessage",
+            "id": "msg_090a8b3c2535a33f016aeb008fa14c87d0b811726b876a2cdd",
+            "text": "Find the notes on garden and on boat, then give me both in one sentence.\nList every message I have sent you in this conversation, word for word, one per line.",
+            "phase": "final_answer",
+            "memoryCitation": null,
+            "delivery": null,
+            "questions": null,
+            "startedAtMs": 1793785999789,
+            "completedAtMs": 1793786000078
+          }
+        ],
+        "itemsView": "summary",
+        "status": "completed",
+        "error": null,
+        "startedAt": 1793785998,
+        "completedAt": 1793786000,
+        "durationMs": 1418
+      }
+    },
+    "emittedAtMs": 1793786000092
+  }
+]

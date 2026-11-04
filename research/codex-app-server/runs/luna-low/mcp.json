@@ -1,0 +1,345 @@
+[
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 0,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.166.0"
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "method": "notifications/initialized"
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "tools/list",
+      "params": {
+        "_meta": {
+          "progressToken": 0
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params": {
+        "_meta": {
+          "callId": "exec-be9ae149-380b-44b4-ae5e-789942992aed",
+          "x-codex-turn-metadata": {
+            "session_id": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+            "thread_id": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+            "reasoning_effort": "low",
+            "turn_id": "01a1a5f9-c1ec-7283-a4df-1664eef5c672",
+            "model": "gpt-6-luna",
+            "sandbox": "seccomp",
+            "sandbox_mode": "read-only",
+            "auto_review_enabled": false,
+            "node_repl_auto_review_required": false,
+            "node_repl_disabled": false,
+            "workspaces": {
+              "<state>/work": {
+                "has_changes": false
+              }
+            },
+            "turn_started_at_unix_ms": 1793785971181,
+            "codex_version": "0.166.0"
+          },
+          "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+          "sessionId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+          "windowId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0:0",
+          "itemId": "ctc_090a8b3c2535a33f016aeb0076727887d085dd11032d108eea",
+          "progressToken": 1
+        },
+        "name": "find_note",
+        "arguments": {
+          "topic": "garden"
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params": {
+        "_meta": {
+          "callId": "exec-596ed792-7f52-42ab-8f62-c8d0c0c4dda1",
+          "x-codex-turn-metadata": {
+            "session_id": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+            "thread_id": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+            "reasoning_effort": "low",
+            "turn_id": "01a1a5f9-c1ec-7283-a4df-1664eef5c672",
+            "model": "gpt-6-luna",
+            "sandbox": "seccomp",
+            "sandbox_mode": "read-only",
+            "auto_review_enabled": false,
+            "node_repl_auto_review_required": false,
+            "node_repl_disabled": false,
+            "workspaces": {
+              "<state>/work": {
+                "has_changes": false
+              }
+            },
+            "turn_started_at_unix_ms": 1793785971181,
+            "codex_version": "0.166.0"
+          },
+          "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+          "sessionId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+          "windowId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0:0",
+          "itemId": "ctc_090a8b3c2535a33f016aeb0076727887d085dd11032d108eea",
+          "progressToken": 2
+        },
+        "name": "find_note",
+        "arguments": {
+          "topic": "boat"
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "method": "tools/call",
+      "params": {
+        "_meta": {
+          "callId": "exec-15154488-0da1-4a4d-91dc-958b0fec2f50",
+          "x-codex-turn-metadata": {
+            "session_id": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+            "thread_id": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+            "reasoning_effort": "low",
+            "turn_id": "01a1a5f9-ddac-7010-9831-e5d2463f4b69",
+            "model": "gpt-6-luna",
+            "sandbox": "seccomp",
+            "sandbox_mode": "read-only",
+            "auto_review_enabled": false,
+            "node_repl_auto_review_required": false,
+            "node_repl_disabled": false,
+            "workspaces": {
+              "<state>/work": {
+                "has_changes": false
+              }
+            },
+            "turn_started_at_unix_ms": 1793785978286,
+            "codex_version": "0.166.0"
+          },
+          "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+          "sessionId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+          "windowId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0:0",
+          "itemId": "ctc_090a8b3c2535a33f016aeb007ba4f487d092c777adabce4bd5",
+          "progressToken": 3
+        },
+        "name": "find_note",
+        "arguments": {
+          "topic": "slow"
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "method": "tools/call",
+      "params": {
+        "_meta": {
+          "callId": "exec-75cc0b6b-b215-459c-9075-7a2b04523956",
+          "x-codex-turn-metadata": {
+            "session_id": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+            "thread_id": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+            "reasoning_effort": "low",
+            "turn_id": "01a1a5fa-0915-74a3-b5db-1d0b83fc4192",
+            "model": "gpt-6-luna",
+            "sandbox": "seccomp",
+            "sandbox_mode": "read-only",
+            "auto_review_enabled": false,
+            "node_repl_auto_review_required": false,
+            "node_repl_disabled": false,
+            "workspaces": {
+              "<state>/work": {
+                "has_changes": false
+              }
+            },
+            "turn_started_at_unix_ms": 1793785989399,
+            "codex_version": "0.166.0"
+          },
+          "threadId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+          "sessionId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0",
+          "windowId": "01a1a5f9-c1c2-7000-bd61-aa03b4c96dc0:0",
+          "itemId": "ctc_090a8b3c2535a33f016aeb0085fd9087d0b0aafdc0f6cb22c9",
+          "progressToken": 4
+        },
+        "name": "find_note",
+        "arguments": {
+          "topic": "slow"
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "method": "notifications/cancelled",
+      "params": {
+        "requestId": 5,
+        "reason": "MCP response future dropped"
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 0,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.166.0"
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "method": "notifications/initialized"
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "tools/list",
+      "params": {
+        "_meta": {
+          "progressToken": 0
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 0,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.166.0"
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "method": "notifications/initialized"
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "tools/list",
+      "params": {
+        "_meta": {
+          "progressToken": 0
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 0,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.166.0"
+        }
+      }
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "method": "notifications/initialized"
+    }
+  },
+  {
+    "authorization": "present",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "tools/list",
+      "params": {
+        "_meta": {
+          "progressToken": 0
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,236 @@
+[
+  {
+    "name": "managed, fresh",
+    "account": {
+      "account": {
+        "type": "chatgpt",
+        "email": "someone@example.com",
+        "planType": "plus",
+        "workspaceName": null
+      },
+      "requiresOpenaiAuth": true,
+      "workspaceRouting": {
+        "chatgptAccountId": "acct-placeholder",
+        "backendOrigin": "https://127.0.0.1:40643",
+        "accountRoutingOverride": "NO_CONSTRAINT"
+      }
+    },
+    "turn": {
+      "status": "completed",
+      "error": null
+    },
+    "modelBearers": [
+      "200 placeholder"
+    ],
+    "refreshGrants": [],
+    "refreshServerRequests": [],
+    "authFileChanged": false,
+    "otherPaths": [
+      "200 /backend-api/wham/accounts/check",
+      "404 /backend-api/codex/analytics-events/events",
+      "404 /backend-api/codex/models",
+      "404 /backend-api/plugins/featured",
+      "404 /backend-api/ps/mcp",
+      "404 /backend-api/ps/plugins/installed",
+      "404 /backend-api/ps/plugins/list",
+      "404 /backend-api/ps/plugins/suggested/codex",
+      "404 /backend-api/wham/settings/user"
+    ]
+  },
+  {
+    "name": "managed, last refresh 30 days ago",
+    "account": {
+      "account": {
+        "type": "chatgpt",
+        "email": "someone@example.com",
+        "planType": "plus",
+        "workspaceName": null
+      },
+      "requiresOpenaiAuth": true,
+      "workspaceRouting": {
+        "chatgptAccountId": "acct-placeholder",
+        "backendOrigin": "https://127.0.0.1:41341",
+        "accountRoutingOverride": "NO_CONSTRAINT"
+      }
+    },
+    "turn": {
+      "status": "completed",
+      "error": null
+    },
+    "modelBearers": [
+      "200 placeholder"
+    ],
+    "refreshGrants": [],
+    "refreshServerRequests": [],
+    "authFileChanged": false,
+    "otherPaths": [
+      "200 /backend-api/wham/accounts/check",
+      "404 /backend-api/codex/analytics-events/events",
+      "404 /backend-api/codex/models",
+      "404 /backend-api/plugins/featured",
+      "404 /backend-api/ps/mcp",
+      "404 /backend-api/ps/plugins/installed",
+      "404 /backend-api/ps/plugins/list",
+      "404 /backend-api/ps/plugins/suggested/codex",
+      "404 /backend-api/wham/settings/user"
+    ]
+  },
+  {
+    "name": "managed, access token expired",
+    "account": {
+      "account": null,
+      "requiresOpenaiAuth": true,
+      "workspaceRouting": null
+    },
+    "turn": {
+      "status": "completed",
+      "error": null
+    },
+    "modelBearers": [
+      "200 placeholder"
+    ],
+    "refreshGrants": [
+      "refresh_token",
+      "refresh_token"
+    ],
+    "refreshServerRequests": [],
+    "authFileChanged": false,
+    "otherPaths": [
+      "404 /backend-api/codex/analytics-events/events",
+      "404 /backend-api/codex/models",
+      "404 /backend-api/plugins/featured",
+      "404 /backend-api/ps/mcp",
+      "404 /backend-api/ps/plugins/installed",
+      "404 /backend-api/ps/plugins/list",
+      "404 /backend-api/ps/plugins/suggested/codex",
+      "404 /backend-api/wham/settings/user"
+    ]
+  },
+  {
+    "name": "managed, model answers 401 once",
+    "account": {
+      "account": {
+        "type": "chatgpt",
+        "email": "someone@example.com",
+        "planType": "plus",
+        "workspaceName": null
+      },
+      "requiresOpenaiAuth": true,
+      "workspaceRouting": {
+        "chatgptAccountId": "acct-placeholder",
+        "backendOrigin": "https://127.0.0.1:38689",
+        "accountRoutingOverride": "NO_CONSTRAINT"
+      }
+    },
+    "turn": {
+      "status": "completed",
+      "error": null
+    },
+    "modelBearers": [
+      "401 placeholder",
+      "200 placeholder"
+    ],
+    "refreshGrants": [],
+    "refreshServerRequests": [],
+    "authFileChanged": false,
+    "otherPaths": [
+      "200 /backend-api/wham/accounts/check",
+      "404 /backend-api/codex/analytics-events/events",
+      "404 /backend-api/codex/models",
+      "404 /backend-api/plugins/featured",
+      "404 /backend-api/ps/mcp",
+      "404 /backend-api/ps/plugins/installed",
+      "404 /backend-api/ps/plugins/list",
+      "404 /backend-api/ps/plugins/suggested/codex",
+      "404 /backend-api/wham/settings/user"
+    ]
+  },
+  {
+    "name": "managed, model answers 401 twice",
+    "account": {
+      "account": {
+        "type": "chatgpt",
+        "email": "someone@example.com",
+        "planType": "plus",
+        "workspaceName": null
+      },
+      "requiresOpenaiAuth": true,
+      "workspaceRouting": {
+        "chatgptAccountId": "acct-placeholder",
+        "backendOrigin": "https://127.0.0.1:33439",
+        "accountRoutingOverride": "NO_CONSTRAINT"
+      }
+    },
+    "turn": {
+      "status": "failed",
+      "error": {
+        "message": "Your access token could not be refreshed. Please log out and sign in again.",
+        "codexErrorInfo": "unauthorized",
+        "additionalDetails": null,
+        "misalignment": null
+      }
+    },
+    "modelBearers": [
+      "401 placeholder",
+      "401 placeholder"
+    ],
+    "refreshGrants": [
+      "refresh_token"
+    ],
+    "refreshServerRequests": [],
+    "authFileChanged": false,
+    "otherPaths": [
+      "200 /backend-api/wham/accounts/check",
+      "404 /backend-api/codex/analytics-events/events",
+      "404 /backend-api/codex/models",
+      "404 /backend-api/plugins/featured",
+      "404 /backend-api/ps/mcp",
+      "404 /backend-api/ps/plugins/installed",
+      "404 /backend-api/ps/plugins/list",
+      "404 /backend-api/ps/plugins/suggested/codex",
+      "404 /backend-api/wham/settings/user"
+    ]
+  },
+  {
+    "name": "external, model answers 401 once",
+    "account": {
+      "account": {
+        "type": "chatgpt",
+        "email": null,
+        "planType": "plus",
+        "workspaceName": null
+      },
+      "requiresOpenaiAuth": true,
+      "workspaceRouting": {
+        "chatgptAccountId": "acct-placeholder",
+        "backendOrigin": "https://127.0.0.1:42543",
+        "accountRoutingOverride": "NO_CONSTRAINT"
+      }
+    },
+    "turn": {
+      "status": "completed",
+      "error": null
+    },
+    "modelBearers": [
+      "401 login",
+      "200 from-client"
+    ],
+    "refreshGrants": [],
+    "refreshServerRequests": [
+      {
+        "reason": "unauthorized",
+        "previousAccountId": "acct-placeholder"
+      }
+    ],
+    "authFileChanged": false,
+    "otherPaths": [
+      "200 /backend-api/wham/accounts/check",
+      "404 /backend-api/codex/analytics-events/events",
+      "404 /backend-api/codex/models",
+      "404 /backend-api/ps/mcp",
+      "404 /backend-api/ps/plugins/installed",
+      "404 /backend-api/ps/plugins/suggested/codex",
+      "404 /backend-api/wham/settings/user"
+    ]
+  }
+]
