@@ -123,6 +123,44 @@ test('it reads the thread again until the step ends', async () => {
   );
 });
 
+test("it waits for the new task's step and writes its thread", async () => {
+  const ctx = setupTest();
+  await store.sessions.create({ token: 'spike-token' });
+  await store.tasks.create({ taskID: 'task-harbour', name: 'harbour note' });
+  const nextChange = makeAnswerQueue([
+    async () => {
+      await store.records.create({ kind: 'model.reply', message: { text: 'Four.' } });
+      await store.records.create({ kind: 'task.step_committed' });
+    },
+    async () => {
+      await store.tasks.create({ taskID: 'task-tide', name: 'tide note' });
+      await store.records.create({ kind: 'model.reply', message: { text: 'Started it.' } });
+      await store.records.create({ kind: 'task.step_committed' });
+    },
+    async () => {},
+    async () => {
+      await store.records.create({ kind: 'task.message', thread: 'task-tide' });
+      await store.records.create({ kind: 'task.step_committed', thread: 'task-tide' });
+    },
+  ]);
+
+  await runSpike(ctx.target, {
+    ...ctx.deps,
+    sleep: async () => {
+      await nextChange()();
+    },
+    runGuestProbes: async () => ({ exitCode: 0, output: '', errors: '' }),
+  });
+
+  expect(ctx.outputs.get('task-thread.jsonl')).toBe(
+    [
+      '{"sequence":7,"kind":"task.message"}',
+      '{"sequence":8,"kind":"task.step_committed"}',
+      '',
+    ].join('\n'),
+  );
+});
+
 test('it fails when the step never ends in 60 reads', async () => {
   const ctx = setupTest();
   await store.sessions.create({ token: 'spike-token' });
