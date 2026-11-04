@@ -94,3 +94,70 @@ test('it writes the output of each step when the guest probes pass', async () =>
     'audit.txt',
   ]);
 });
+
+test('it reads the thread again until the step ends', async () => {
+  const ctx = setupTest();
+  let reads = 0;
+  mockServer.use(
+    http.post('http://preview.test/rpc/conversation/send', () =>
+      HttpResponse.json({ json: { duplicate: false, sequence: 10 } }),
+    ),
+    http.post('http://preview.test/rpc/conversation/read', () => {
+      reads += 1;
+
+      return HttpResponse.json({
+        json:
+          reads < 3
+            ? {
+                hasEarlier: false,
+                readAtSequence: 10,
+                records: [{ kind: 'conversation.message', sequence: 10, thread: 'conversation' }],
+                lastStepEnd: null,
+              }
+            : {
+                hasEarlier: false,
+                readAtSequence: 12,
+                records: [{ kind: 'model.reply', sequence: 11, thread: 'conversation' }],
+                lastStepEnd: { kind: 'task.step_committed', sequence: 12, thread: 'conversation' },
+              },
+      });
+    }),
+    http.post('http://preview.test/rpc/tasks/list', () =>
+      HttpResponse.json({ json: { readAtSequence: 12, tasks: [] } }),
+    ),
+  );
+
+  await runSpike(ctx.target, {
+    ...ctx.deps,
+    runGuestProbes: async () => ({ exitCode: 0, output: 'own-route\t429\t{}\n', errors: '' }),
+  });
+
+  // the plain turn ends on its 3rd read, and the task turn on its 1st
+  expect(reads).toBe(4);
+});
+
+test('it fails when the step never ends in 60 reads', () => {
+  const ctx = setupTest();
+  mockServer.use(
+    http.post('http://preview.test/rpc/conversation/send', () =>
+      HttpResponse.json({ json: { duplicate: false, sequence: 10 } }),
+    ),
+    http.post('http://preview.test/rpc/conversation/read', () =>
+      HttpResponse.json({
+        json: {
+          hasEarlier: false,
+          readAtSequence: 10,
+          records: [{ kind: 'conversation.message', sequence: 10, thread: 'conversation' }],
+          lastStepEnd: null,
+        },
+      }),
+    ),
+  );
+
+  expect(
+    runSpike(ctx.target, {
+      ...ctx.deps,
+      runGuestProbes: async () => ({ exitCode: 0, output: '', errors: '' }),
+    }),
+  ).rejects.toThrow('the plain turn did not end in 5 minutes');
+});
