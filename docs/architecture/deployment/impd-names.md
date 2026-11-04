@@ -44,13 +44,34 @@ release fails its pull check until the package is public
 
 ## Model secrets
 
-A sandbox reaches its model through a secret that impd's broker injects, named
-`nixie-model-<19 hex>`. The hex digits are the first 19 of the SHA-256 of the model profile's ID,
-its auth header (`bearer` or `x-api-key`), the model host and the credential, each on its own line.
-The name holds the profile only through the digest, because impd caps a name at 31 characters and a
-profile ID has no cap. A rotated credential therefore gets a new name, and a sandbox granted the old
-secret keeps working until it is replaced.
+A sandbox reaches its model through a secret that impd's broker adds to each request to the model
+host. nixie names the secret `nixie-model-<19 hex>`, where the hex digits are the first 19 of the
+SHA-256 of these lines, joined by newlines with none after the last:
 
-A token scoped to `nixie-*` cannot store a secret, because a secret is host-wide in impd. The
-deployment stores each model secret under its derived name and lists those names as the secrets
-nixie's token may grant.
+1. the model profile's ID;
+2. its auth header, `bearer` or `x-api-key`;
+3. the model host;
+4. the credential, only when nixie's secrets file holds it.
+
+impd caps a name at 31 characters, and a profile ID has no cap, so the profile goes into the digest
+instead of the name. [Model profiles](../core/model-profiles.md#credentials) covers who holds the
+credential in each case.
+
+A secret in impd belongs to the whole host, so a token scoped to the imps `nixie-*` cannot add a
+secret. A deployment whose token has that scope holds each credential itself, and leaves it out of
+nixie's secrets file. Its operator adds each model secret with impd's root access, under the name
+whose digest leaves out the credential, and puts those names in the token's list of secrets it can
+grant. To rotate a credential, the operator replaces each secret's value under the same name, and
+changes nothing in nixie or its token.
+
+When impd lacks one of those secrets, nixie refuses to create the sandbox that needs it, and names
+the missing secret in the error.
+
+This command prints the name of the secret for the profile `opus` on Anthropic's endpoint with a
+bearer header, when the deployment holds the credential:
+
+```bash
+printf 'opus\nbearer\napi.anthropic.com' | sha256sum | cut -c1-19 | sed 's/^/nixie-model-/'
+```
+
+Expect: `nixie-model-528d8dae09a6d4f1e0e`.

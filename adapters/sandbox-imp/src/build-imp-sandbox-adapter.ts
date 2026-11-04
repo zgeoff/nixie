@@ -232,6 +232,12 @@ function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
       return;
     }
 
+    if (secret.value === null) {
+      throw new Error(
+        `impd holds no secret ${secret.name}, and nixie holds no credential to add it under that name`,
+      );
+    }
+
     await port.addSecret({
       name: secret.name,
       value: secret.value,

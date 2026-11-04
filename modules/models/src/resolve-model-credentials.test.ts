@@ -14,15 +14,24 @@ test('it resolves each profile credential from the model_credentials entry its r
   expect(resolved['chat']?.credential).toBe('not-a-real-key');
 });
 
-test('it refuses a profile whose entry the secrets file lacks', () => {
+test('it resolves a profile whose entry the secrets file lacks to no credential', () => {
   const config = buildMockModelsConfig({
     profiles: { chat: { credential: 'deployment:anthropic' } },
   });
 
-  expect(() =>
-    resolveModelCredentials(config, { model_credentials: { gateway: 'not-a-real-token' } }),
-  ).toThrowWithMessage(
-    Error,
-    'the profile chat names the credential deployment:anthropic, and the secrets file has no model_credentials entry anthropic',
-  );
+  const resolved = resolveModelCredentials(config, {
+    model_credentials: { gateway: 'not-a-real-token' },
+  });
+
+  expect(resolved['chat']?.credential).toBeNull();
+});
+
+test('it resolves every profile to no credential when the secrets file has no model_credentials', () => {
+  const config = buildMockModelsConfig({
+    profiles: { chat: { credential: 'deployment:anthropic' } },
+  });
+
+  const resolved = resolveModelCredentials(config, {});
+
+  expect(resolved['chat']?.credential).toBeNull();
 });

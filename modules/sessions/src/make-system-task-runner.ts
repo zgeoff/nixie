@@ -61,7 +61,7 @@ function resolveRoleCredential(options: SystemTaskOptions, role: ModelRole): Res
   const profile = resolveRoleProfile(options.models, role);
   const resolved = credentials[profile.id];
 
-  invariant(resolved, `the ${role} profile ${profile.id} has no credential`);
+  invariant(resolved, `the ${role} profile ${profile.id} was never resolved`);
 
   return resolved;
 }

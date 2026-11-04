@@ -53,10 +53,45 @@ test('it gives two profiles that share a credential and host different names', (
   expect(checkerSecret.name).not.toBe(chatSecret.name);
 });
 
-test('it gives a changed credential a new name', () => {
+test('it gives a changed credential that nixie holds a new name', () => {
   const profile = buildMockModelProfile();
   const first = deriveModelSecret({ profile, credential: 'key-one' });
   const rotated = deriveModelSecret({ profile, credential: 'key-two' });
 
   expect(rotated.name).not.toBe(first.name);
+});
+
+test('it names a secret the sandbox backend holds from the profile, header and host alone', () => {
+  const secret = deriveModelSecret({
+    profile: {
+      id: 'chat',
+      baseURL: 'https://gateway.example:8443/anthropic',
+      credential: 'deployment:gateway',
+      authHeader: 'bearer',
+      model: 'glm-5.3',
+      effort: 'low',
+      providerPin: null,
+      contextTokens: null,
+      cacheTTL: '5m',
+      prices: null,
+    },
+    credential: null,
+  });
+
+  expect(secret).toMatchInlineSnapshot(`
+    {
+      "header": "bearer",
+      "host": "gateway.example",
+      "name": "nixie-model-c0d52ebd28ac2aac838",
+      "value": null,
+    }
+  `);
+});
+
+test('it gives a secret the sandbox backend holds a name apart from one nixie holds', () => {
+  const profile = buildMockModelProfile();
+  const held = deriveModelSecret({ profile, credential: 'null' });
+  const stored = deriveModelSecret({ profile, credential: null });
+
+  expect(stored.name).not.toBe(held.name);
 });

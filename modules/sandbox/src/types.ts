@@ -15,7 +15,8 @@ export interface GrantSpec {
 
 export interface SecretSpec {
   readonly name: string;
-  readonly value: string;
+
+  readonly value: string | null;
   readonly host: string;
   readonly header: 'bearer' | 'x-api-key';
 }
