@@ -39,7 +39,10 @@ spike never saw the proxy count a reply with usage, which the
 
 1. Set the variables that the [setup](results.md#setup) lists: the preview host's SSH target, the
    preview's imp and origin, and a scratch directory.
-2. Run the spike from a machine with SSH access to the preview host as root:
+2. Run one spike at a time on a preview. nixie's API shows no step's read cursor, so the spike
+   cannot tell its own step from one that started earlier and ended after its message. Another
+   spike's step can then end the wait, and the counts come too early.
+3. Run the spike from a machine with SSH access to the preview host as root:
 
    ```bash
    cd research/spend-proxy-imp
