@@ -29,7 +29,10 @@ mkdir -p "$SPIKE_WORK"
 # host <command>: one command on the preview host, with nothing on its standard input
 host() { ssh "$PREVIEW_SSH" "$1" < /dev/null; }
 host_imp() { host "$IMP_CLI $1"; }
-read_count() { host "cat $SPEND_DIR/$IMP.count.json 2> /dev/null || echo none"; }
+# a preview whose proxy never started has no count file, and any other read error stops the spike
+read_count() {
+  host "if [ -e $SPEND_DIR/$IMP.count.json ]; then cat $SPEND_DIR/$IMP.count.json; else echo none; fi"
+}
 
 # rpc <procedure> <input>: one call to the preview's API with the enrolled device's token
 rpc() {
