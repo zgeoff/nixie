@@ -33,7 +33,11 @@ export interface SpikeDeps {
   readonly client: SpikeClient;
   readonly host: (command: string) => Promise<string>;
   readonly readTurnUsage: () => Promise<string>;
-  readonly runGuestProbes: () => Promise<{ readonly exitCode: number; readonly output: string }>;
+  readonly runGuestProbes: () => Promise<{
+    readonly exitCode: number;
+    readonly output: string;
+    readonly errors: string;
+  }>;
   readonly writeOutput: (file: string, text: string) => Promise<void>;
   readonly sleep: (durationMs: number) => Promise<void>;
   readonly log: (line: string) => void;
@@ -107,8 +111,11 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
   deps.log('== the guest probes');
   const probes = await deps.runGuestProbes();
   await writeStep('probes.tsv', probes.output);
+  await deps.writeOutput('probes-stderr.txt', probes.errors);
   if (probes.exitCode !== 0) {
-    throw new Error(`the guest probes exited ${String(probes.exitCode)}`);
+    throw new Error(
+      `the guest probes exited ${String(probes.exitCode)}: ${probes.errors.trim() || 'no stderr'}`,
+    );
   }
   await writeCount('count-3.json', 'after the probes');
 
@@ -256,7 +263,11 @@ if (import.meta.main) {
           .quiet()
           .nothrow();
 
-      return { exitCode: probes.exitCode, output: probes.stdout.toString() };
+      return {
+        exitCode: probes.exitCode,
+        output: probes.stdout.toString(),
+        errors: probes.stderr.toString(),
+      };
     },
     writeOutput: async (file, text) => {
       await Bun.write(join(env.work, file), text);
