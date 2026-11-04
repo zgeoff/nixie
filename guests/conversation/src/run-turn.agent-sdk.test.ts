@@ -743,6 +743,50 @@ test('it sends the model no error text on the turn that resumes before a refused
   });
 });
 
+test('it fails a resumed turn with only its failure frame when the model API refuses the call', async () => {
+  const ctx = await setupTest();
+
+  const runTurnAt = (text: string, resume: SessionPoint | null) =>
+    runTurn(
+      buildMockTurnFrame({
+        profile: { baseURL: ctx.model.url },
+        resume,
+        input: [{ uuid: crypto.randomUUID(), text }],
+      }),
+      { ...ctx.deps, toolServer: createStubToolServer().config },
+    );
+
+  ctx.model.addReplies(
+    { text: 'Hello.' },
+    {
+      apiError: {
+        status: 429,
+        type: 'rate_limit_error',
+        message: 'Weekly allowance used up',
+        retryAfterSeconds: 3600,
+      },
+    },
+  );
+
+  await runTurnAt('Hi.', null);
+
+  const first = ctx.frames.at(-1);
+  const firstCount = ctx.frames.length;
+
+  invariant(first?.type === 'ended');
+
+  await runTurnAt('What do I need?', first.boundary);
+
+  expect(ctx.frames.slice(firstCount)).toStrictEqual([
+    {
+      type: 'failed',
+      reason: 'model_api',
+      error: 'quota',
+      detail: 'API Error: Request rejected (429) · Weekly allowance used up',
+    },
+  ]);
+});
+
 test('it ends the turn with the overflow reason when the model API refuses a prompt past its window', async () => {
   const ctx = await setupTest();
 
