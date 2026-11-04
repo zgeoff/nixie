@@ -2033,20 +2033,16 @@ test('it answers the message that waited for the owner once the owner retries th
     toolNames: ['notes_read'],
   });
 
-  ctx.sandboxes.setGuestScript(() => [
-    {
-      type: 'failed',
-      reason: 'model_api',
-      error: 'quota',
-      detail: 'API Error: Request rejected (429) · Weekly allowance used up',
-    },
-  ]);
+  ctx.sandboxes.setGuestScript(
+    buildStubSessionScript([
+      { refusal: 'quota', detail: 'API Error: Request rejected (429) · Weekly allowance used up' },
+      { reply: 'You need milk.' },
+    ]),
+  );
 
   const [message] = await ctx.writeMessage('What do I need?');
 
   await ctx.runNextStep(runner);
-
-  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'You need milk.' })));
 
   await withWriteTransaction(ctx.context.log.writer, (tx) =>
     writeConversationRetryInTransaction(tx, ctx.context),
@@ -2056,12 +2052,12 @@ test('it answers the message that waited for the owner once the owner retries th
 
   const [replies, task] = await Promise.all([
     ctx.readKinds('model.reply'),
-    ctx.db.selectFrom('tasks').select(['state', 'read_cursor']).executeTakeFirstOrThrow(),
+    readTestTaskProgress(ctx.context, 'conversation'),
   ]);
 
   expect({ replies, task }).toMatchObject({
     replies: [{ erasable: { fields: { text: 'You need milk.' } } }],
-    task: { state: 'waiting', read_cursor: message?.sequence },
+    task: { state: 'waiting', readCursor: message?.sequence },
   });
 });
 
