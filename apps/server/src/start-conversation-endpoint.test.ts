@@ -101,7 +101,8 @@ test('it starts a task from the conversation, routes the message to it, and the 
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  ctx.guest.addReplies(
+  ctx.guest.addKindReplies(
+    'conversation',
     {
       toolUse: {
         name: 'task.start',
@@ -142,7 +143,8 @@ test('it holds a started task waiting with its message unread, and never fails i
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  ctx.guest.addReplies(
+  ctx.guest.addKindReplies(
+    'conversation',
     {
       toolUse: {
         name: 'task.start',
@@ -160,7 +162,8 @@ test('it holds a started task waiting with its message unread, and never fails i
 
   invariant(garden);
 
-  ctx.guest.addReplies(
+  ctx.guest.addKindReplies(
+    'conversation',
     {
       toolUse: {
         name: 'task.message',
