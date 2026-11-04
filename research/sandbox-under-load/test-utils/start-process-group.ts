@@ -18,11 +18,17 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 }
 
 // A kill of the leader alone leaves the processes it started running, so the stop kills the group.
+// No handler runs when the runner gets SIGKILL, so the kernel kills the leader then, through
+// setpriv's parent-death signal.
 export function startProcessGroup<
   const Out extends Bun.Spawn.Readable,
   const Err extends Bun.Spawn.Readable,
 >(argv: string[], options: Bun.Spawn.SpawnOptions<'ignore', Out, Err>): ProcessGroup<Out, Err> {
-  const child = Bun.spawn(argv, { ...options, stdin: 'ignore', detached: true });
+  const child = Bun.spawn(['setpriv', '--pdeathsig', 'KILL', ...argv], {
+    ...options,
+    stdin: 'ignore',
+    detached: true,
+  });
 
   liveLeaderPIDs.add(child.pid);
 

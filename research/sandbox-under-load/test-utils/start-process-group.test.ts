@@ -64,3 +64,30 @@ test.each([['SIGINT'], ['SIGTERM']] as const)(
     expect(holder.signalCode).toBe(signal);
   },
 );
+
+test('it stops the leader when the process that started it gets SIGKILL', async () => {
+  const holder = Bun.spawn(['bun', join(import.meta.dir, 'hold-process-group.ts')], {
+    stdout: 'pipe',
+    stderr: 'ignore',
+  });
+
+  onTestFinished(() => {
+    stopProcesses([holder.pid]);
+  });
+
+  const printed = await holder.stdout.pipeThrough(new TextDecoderStream()).getReader().read();
+  const leaderPID = Number(printed.value?.trim());
+
+  onTestFinished(() => {
+    stopProcesses([leaderPID]);
+  });
+
+  await waitForCondition(() => readDescendants(leaderPID).length > 0, { timeoutMs: 2000 });
+
+  holder.kill('SIGKILL');
+
+  await holder.exited;
+  await waitForCondition(() => probeProcessGone(leaderPID), { timeoutMs: 2000 });
+
+  expect(holder.signalCode).toBe('SIGKILL');
+});

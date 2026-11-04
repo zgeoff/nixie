@@ -18,7 +18,8 @@ import { startProcessGroup } from './test-utils/start-process-group';
 // `impz rm` when STUB_RM_FAILS is set, holds `impz new` for STUB_NEW_SECONDS, prints STUB_AUDIT as
 // the audit log, and prints one guest event for each turn. With STUB_READY_HOLD set, it writes the
 // proxy's and the ready check's arguments beside the calls and holds the ready check until the
-// test's folder is gone, so the tool server stays up for the test to call.
+// test's folder is gone, so the tool server stays up for the test to call. The proxy and the held
+// ready check end once the script that started them is gone, so a killed test runner leaves neither.
 function setupTest() {
   const dir = mkdtempSync(join(tmpdir(), 'nixie-spike-run-'));
 
@@ -36,9 +37,9 @@ function setupTest() {
       '  secret) [ "$2" = ls ] || cat > /dev/null; exit 0 ;;',
       '  new) sleep "${STUB_NEW_SECONDS:-0}"; exit 0 ;;',
       '  audit) printf "%s" "$STUB_AUDIT" ;;',
-      '  proxy) echo "$@" > "$STUB_CALLS.proxy"; exec sleep 30 ;;',
+      '  proxy) echo "$@" > "$STUB_CALLS.proxy"; while kill -0 "$PPID" 2> /dev/null; do sleep 0.05; done ;;',
       '  exec) for arg in "$@"; do [ "$arg" = /app/turn.ts ] && { echo \'{"event":"result"}\'; exit 0; }; done',
-      '    if [ -n "$STUB_READY_HOLD" ] && [[ "${*: -1}" == */ready ]]; then printf "%s\\n" "$@" > "$STUB_CALLS.ready"; while [ -d "${STUB_CALLS%/*}" ]; do sleep 0.05; done; fi',
+      '    if [ -n "$STUB_READY_HOLD" ] && [[ "${*: -1}" == */ready ]]; then printf "%s\\n" "$@" > "$STUB_CALLS.ready"; while [ -d "${STUB_CALLS%/*}" ] && kill -0 "$PPID" 2> /dev/null; do sleep 0.05; done; fi',
       '    printf 200 ;;',
       'esac',
       '',
