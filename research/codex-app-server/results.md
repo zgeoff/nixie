@@ -320,15 +320,25 @@ In external mode the client owns the token. On a 401, Codex sent the client the 
 returned, and never called the token endpoint or wrote `auth.json` [measured]. A guest that answers
 that request from the broker never puts a refresh token in the sandbox.
 
-With the plan login, Codex also calls the ChatGPT backend outside a model call:
-`/backend-api/wham/accounts/check` for workspace routing, which it needs before a turn, and the
-models, plugins, settings and analytics paths, which it ran without after the mock's 404 [measured].
+With the plan login, Codex also calls the ChatGPT backend outside a model call. In the 5 cases whose
+`account/read` returned an account, Codex called `/backend-api/wham/accounts/check` for workspace
+routing [measured]. In the expired-token case, the refresh failed, `account/read` returned no
+account and no workspace routing, and Codex never called that path, yet the turn completed
+[measured]. Codex also called the models, plugins, settings and analytics paths, and ran without
+them after the mock's 404 [measured].
 
 ```bash
+jq -c '.[] | {name, routing: (.account.workspaceRouting != null), accountsChecks: ([.otherPaths[] | select(test("accounts/check"))] | length), turn: .turn.status}' runs/plan-login/probe.json
 jq -c '[.[].otherPaths[]] | unique' runs/plan-login/probe.json
 ```
 
 ```text
+{"name":"managed, fresh","routing":true,"accountsChecks":1,"turn":"completed"}
+{"name":"managed, last refresh 30 days ago","routing":true,"accountsChecks":1,"turn":"completed"}
+{"name":"managed, access token expired","routing":false,"accountsChecks":0,"turn":"completed"}
+{"name":"managed, model answers 401 once","routing":true,"accountsChecks":1,"turn":"completed"}
+{"name":"managed, model answers 401 twice","routing":true,"accountsChecks":1,"turn":"failed"}
+{"name":"external, model answers 401 once","routing":true,"accountsChecks":1,"turn":"completed"}
 ["200 /backend-api/wham/accounts/check","404 /backend-api/codex/analytics-events/events","404 /backend-api/codex/models","404 /backend-api/plugins/featured","404 /backend-api/ps/mcp","404 /backend-api/ps/plugins/installed","404 /backend-api/ps/plugins/list","404 /backend-api/ps/plugins/suggested/codex","404 /backend-api/wham/settings/user"]
 ```
 
