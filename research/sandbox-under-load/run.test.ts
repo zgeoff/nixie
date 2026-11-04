@@ -12,12 +12,14 @@ import { join } from 'node:path';
 import { expect, onTestFinished, test } from 'bun:test';
 // @boundaries-ignore a spike imports the repo's condition wait by path
 import { waitForCondition } from '../../libs/testing/src/wait-for-condition';
+import { startProcessGroup } from './test-utils/start-process-group';
 
 // The stub stands in for impz: it records each call, answers the reads the script makes, fails
 // `impz rm` when STUB_RM_FAILS is set, holds `impz new` for STUB_NEW_SECONDS, prints STUB_AUDIT as
 // the audit log, and prints one guest event for each turn. With STUB_READY_HOLD set, it writes the
 // proxy's and the ready check's arguments beside the calls and holds the ready check until the
-// test's folder is gone, so the tool server stays up for the test to call.
+// test's folder is gone, so the tool server stays up for the test to call. The proxy and the held
+// ready check end once the script that started them is gone, so a killed test runner leaves neither.
 function setupTest() {
   const dir = mkdtempSync(join(tmpdir(), 'nixie-spike-run-'));
 
@@ -35,9 +37,9 @@ function setupTest() {
       '  secret) [ "$2" = ls ] || cat > /dev/null; exit 0 ;;',
       '  new) sleep "${STUB_NEW_SECONDS:-0}"; exit 0 ;;',
       '  audit) printf "%s" "$STUB_AUDIT" ;;',
-      '  proxy) echo "$@" > "$STUB_CALLS.proxy"; exec sleep 30 ;;',
+      '  proxy) echo "$@" > "$STUB_CALLS.proxy"; while kill -0 "$PPID" 2> /dev/null; do sleep 0.05; done ;;',
       '  exec) for arg in "$@"; do [ "$arg" = /app/turn.ts ] && { echo \'{"event":"result"}\'; exit 0; }; done',
-      '    if [ -n "$STUB_READY_HOLD" ] && [[ "${*: -1}" == */ready ]]; then printf "%s\\n" "$@" > "$STUB_CALLS.ready"; while [ -d "${STUB_CALLS%/*}" ]; do sleep 0.05; done; fi',
+      '    if [ -n "$STUB_READY_HOLD" ] && [[ "${*: -1}" == */ready ]]; then printf "%s\\n" "$@" > "$STUB_CALLS.ready"; while [ -d "${STUB_CALLS%/*}" ] && kill -0 "$PPID" 2> /dev/null; do sleep 0.05; done; fi',
       '    printf 200 ;;',
       'esac',
       '',
@@ -60,12 +62,18 @@ function setupTest() {
 test('it removes the secret when the imp removal fails, and exits with the failure', async () => {
   const ctx = setupTest();
 
-  const child = Bun.spawn(['bun', join(import.meta.dir, 'run.ts')], {
+  const run = startProcessGroup(['bun', join(import.meta.dir, 'run.ts')], {
     env: { ...ctx.env, STUB_RM_FAILS: '1' },
     stdout: 'ignore',
     stderr: 'pipe',
   });
-  const [stderr, code] = await Promise.all([new Response(child.stderr).text(), child.exited]);
+
+  onTestFinished(run.stop);
+
+  const [stderr, code] = await Promise.all([
+    new Response(run.child.stderr).text(),
+    run.child.exited,
+  ]);
 
   expect(code).toBe(1);
   expect(stderr).toInclude('cleanup left resources in impd:');
@@ -75,16 +83,19 @@ test('it removes the secret when the imp removal fails, and exits with the failu
 test('it removes the imp that a SIGTERM during its creation interrupts', async () => {
   const ctx = setupTest();
 
-  const child = Bun.spawn(['bun', join(import.meta.dir, 'run.ts')], {
+  const run = startProcessGroup(['bun', join(import.meta.dir, 'run.ts')], {
     env: { ...ctx.env, STUB_NEW_SECONDS: '1' },
     stdout: 'ignore',
     stderr: 'ignore',
   });
+
+  onTestFinished(run.stop);
+
   await waitForCondition(
     () => existsSync(ctx.calls) && readFileSync(ctx.calls, 'utf8').includes('new nixie-spike-load'),
   );
-  child.kill('SIGTERM');
-  const code = await child.exited;
+  run.child.kill('SIGTERM');
+  const code = await run.child.exited;
 
   expect(code).toBe(143);
   expect(readFileSync(ctx.calls, 'utf8')).toInclude('rm nixie-spike-load \n');
@@ -94,12 +105,18 @@ test('it removes the imp that a SIGTERM during its creation interrupts', async (
 test('it fails the run when the model token reaches a results file', async () => {
   const ctx = setupTest();
 
-  const child = Bun.spawn(['bun', join(import.meta.dir, 'run.ts')], {
+  const run = startProcessGroup(['bun', join(import.meta.dir, 'run.ts')], {
     env: { ...ctx.env, STUB_AUDIT: 'request carried invented-model-token' },
     stdout: 'pipe',
     stderr: 'ignore',
   });
-  const [stdout, code] = await Promise.all([new Response(child.stdout).text(), child.exited]);
+
+  onTestFinished(run.stop);
+
+  const [stdout, code] = await Promise.all([
+    new Response(run.child.stdout).text(),
+    run.child.exited,
+  ]);
 
   expect(code).toBe(1);
   expect(stdout).toInclude('token check: the token is in a results file');
@@ -108,12 +125,18 @@ test('it fails the run when the model token reaches a results file', async () =>
 test('it removes the imp and the secret after a run that succeeds', async () => {
   const ctx = setupTest();
 
-  const child = Bun.spawn(['bun', join(import.meta.dir, 'run.ts')], {
+  const run = startProcessGroup(['bun', join(import.meta.dir, 'run.ts')], {
     env: ctx.env,
     stdout: 'pipe',
     stderr: 'ignore',
   });
-  const [stdout, code] = await Promise.all([new Response(child.stdout).text(), child.exited]);
+
+  onTestFinished(run.stop);
+
+  const [stdout, code] = await Promise.all([
+    new Response(run.child.stdout).text(),
+    run.child.exited,
+  ]);
 
   expect(code).toBe(0);
   expect(stdout).toInclude('token check: clean');
@@ -134,16 +157,13 @@ test.each([
 ])('it refuses a tool server request with %s', async (_label, headers) => {
   const ctx = setupTest();
 
-  const child = Bun.spawn(['bun', join(import.meta.dir, 'run.ts')], {
+  const run = startProcessGroup(['bun', join(import.meta.dir, 'run.ts')], {
     env: { ...ctx.env, STUB_READY_HOLD: '1' },
     stdout: 'ignore',
     stderr: 'ignore',
   });
 
-  onTestFinished(async () => {
-    child.kill();
-    await child.exited;
-  });
+  onTestFinished(run.stop);
 
   await waitForCondition(
     () => existsSync(`${ctx.calls}.proxy`) && existsSync(`${ctx.calls}.ready`),
@@ -172,16 +192,13 @@ test.each([
 test('it answers a tool server request that carries the run token', async () => {
   const ctx = setupTest();
 
-  const child = Bun.spawn(['bun', join(import.meta.dir, 'run.ts')], {
+  const run = startProcessGroup(['bun', join(import.meta.dir, 'run.ts')], {
     env: { ...ctx.env, STUB_READY_HOLD: '1' },
     stdout: 'ignore',
     stderr: 'ignore',
   });
 
-  onTestFinished(async () => {
-    child.kill();
-    await child.exited;
-  });
+  onTestFinished(run.stop);
 
   await waitForCondition(
     () => existsSync(`${ctx.calls}.proxy`) && existsSync(`${ctx.calls}.ready`),
