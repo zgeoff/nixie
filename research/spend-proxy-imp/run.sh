@@ -83,18 +83,30 @@ fi
 send_turn plain 'What is two plus two? Answer in one short sentence.'
 echo "== the count after the plain turn: $(read_count | tee "$SPIKE_WORK/count-1.json")"
 
+# the task this turn starts is the one task that was not there before it, so an earlier run's
+# task never stands in for it
+known_tasks=$(rpc tasks/list '{}' | jq -c '[.json.tasks[].taskID]')
 send_turn task "Start a task named 'tide note' whose brief is: write one sentence on why the sea has tides. Then tell me you started it."
 task=$(rpc tasks/list '{}' |
-  jq -r '.json.tasks[] | select(.name | ascii_downcase | contains("tide")) | .taskID' | head -1)
+  jq -r --argjson known "$known_tasks" '.json.tasks[] | select(.taskID as $id | $known | index($id) | not) | .taskID' |
+  head -1)
 if [ -z "$task" ]; then
   # a failed model call ends the turn before the conversation can start the task
   echo "== the conversation started no task; $SPIKE_WORK/task.jsonl holds its turn"
 else
+  ended=''
   for _ in $(seq 1 60); do
     rpc conversation/read "$(jq -n --arg task "$task" '{thread: $task, limit: 200}')" > "$SPIKE_WORK/task-page.json"
-    jq -e '.json.lastStepEnd != null' "$SPIKE_WORK/task-page.json" > /dev/null && break
+    if jq -e '.json.lastStepEnd != null' "$SPIKE_WORK/task-page.json" > /dev/null; then
+      ended=yes
+      break
+    fi
     sleep 5
   done
+  if [ -z "$ended" ]; then
+    echo "run.sh: the task's step did not end in 5 minutes" >&2
+    exit 1
+  fi
   jq -c '.json.records[] | {sequence, kind, text: .message.text}' "$SPIKE_WORK/task-page.json" > "$SPIKE_WORK/task-thread.jsonl"
 fi
 echo "== the count after the task's step: $(read_count | tee "$SPIKE_WORK/count-2.json")"
