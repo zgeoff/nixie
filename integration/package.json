@@ -8,8 +8,12 @@
   },
   "dependencies": {
     "@heynixie/memory": "workspace:*",
+    "@heynixie/models": "workspace:*",
+    "@heynixie/sandbox": "workspace:*",
+    "@heynixie/sandbox-imp": "workspace:*",
     "@heynixie/server": "workspace:*",
     "@heynixie/tasks": "workspace:*",
+    "@impz/testing": "catalog:",
     "tiny-invariant": "catalog:"
   }
 }

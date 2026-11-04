@@ -637,40 +637,7 @@ test('it adds a secret as the custom kind with no field beyond its name, value a
   ]);
 });
 
-test('it uses the secret a real impd holds when nixie holds no value for it', async () => {
-  const impd = await startTestImpd();
-
-  onTestFinished(impd.stop);
-
-  const recorder = await setupTestRecorder();
-
-  await impd.client.secrets.add({
-    name: 'nixie-model-harbor',
-    kind: 'custom',
-    value: 'not-a-real-key',
-    rules: [{ host: 'api.anthropic.com', header: 'authorization', scheme: 'bearer' }],
-  });
-
-  const adapter = buildImpSandboxAdapter({
-    port: buildImpPort({ url: impd.url, token: TEST_TOKEN }),
-    recorder: recorder.recorder,
-    config: { publicEgress: null },
-    toolTarget: () => ({ path: '/nonexistent/tools.sock' }),
-  });
-
-  await adapter.addSecret({
-    name: 'nixie-model-harbor',
-    value: null,
-    host: 'api.anthropic.com',
-    header: 'bearer',
-  });
-
-  const secrets = await impd.client.secrets.list();
-
-  expect(secrets.map((secret) => secret.name)).toStrictEqual(['nixie-model-harbor']);
-});
-
-test('it refuses a secret a real impd lacks when nixie holds no value for it, and adds none', async () => {
+test('it refuses a secret a real impd lacks when nixie holds no value for it', async () => {
   const impd = await startTestImpd();
 
   onTestFinished(impd.stop);
