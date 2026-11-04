@@ -56,20 +56,28 @@ run, so their sessions write short entries on any profile. The checker passes no
 ## Credentials
 
 A profile holds a reference to its credential, never the credential. A reference reads
-`deployment:<name>` and names the entry `<name>` under `model_credentials` in nixie's decrypted
-secrets file, and the schema refuses a reference to any other backend. At start, nixie resolves the
-credential of every profile and refuses to start when the secrets file lacks one, so a missing
-credential never shows up as a failed turn.
+`deployment:<name>`, and the schema refuses a reference in any other form.
 
-A model loop's guest never holds the credential. nixie stores it with the sandbox adapter's
-injecting backend, which sends it to the profile's host alone, in the profile's auth header: a
-bearer header for a gateway or an aggregator, and an API key header for Anthropic's own endpoint.
-The sandbox's one grant names that secret, and the guest holds a placeholder in the variable the
-Agent SDK reads for that header ([sandboxes](../connectors/sandboxes.md)).
+A model loop's guest never holds the credential either. The sandbox host holds it as a secret, and
+adds it to each request to the profile's host, in the profile's auth header: a bearer header for a
+gateway or an aggregator, and an API key header for Anthropic's own endpoint. The guest holds a
+placeholder in the variable that the Agent SDK reads for that header
+([sandboxes](../connectors/sandboxes.md)).
 
-The secret's name holds the profile's ID and a digest of the credential, its host and its header. A
-rotated credential therefore gets a new secret beside the old one, and a sandbox granted the old one
-keeps working until nixie replaces it.
+nixie names each secret by a SHA-256 digest of the profile's ID, the auth header and the model host
+([names in impd](../deployment/impd-names.md#model-secrets)). The credential reaches the sandbox
+host in one of 2 ways:
+
+- **The deployment holds the credential.** nixie's decrypted secrets file has no entry `<name>`
+  under `model_credentials`, and the deployment adds the secret to the sandbox host under nixie's
+  name for it. To rotate the credential, the deployment replaces the secret's value under the same
+  name, so every grant of the secret stays valid. When the sandbox host lacks the secret, nixie
+  refuses to create the sandbox that needs it, and names the missing secret in the error.
+- **nixie holds the credential.** The secrets file has the entry, and nixie adds the secret before
+  it grants it. nixie adds a secret only when the sandbox host lacks its name, and never replaces a
+  secret's value, so it puts the credential into the digest as well. To rotate the credential, the
+  deployment changes the entry, and nixie adds a secret under the new name. A sandbox granted the
+  old secret keeps working until nixie replaces the sandbox.
 
 ## Records of model output
 
