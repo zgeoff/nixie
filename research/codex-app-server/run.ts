@@ -15,14 +15,6 @@ const codexVersion = 'codex-cli 0.166.0';
 const slowToolMs = 8000;
 const persona = 'You are a terse assistant. Read notes only through the find_note tool.';
 
-// Codex reports these as they stream; the spike reads the completed items instead.
-const quietNotifications = [
-  'item/agentMessage/delta',
-  'item/reasoning/summaryTextDelta',
-  'item/reasoning/summaryPartAdded',
-  'item/reasoning/textDelta',
-];
-
 interface Run {
   readonly env: Record<string, string>;
   readonly codexHome: string;
@@ -216,18 +208,9 @@ enabled = false
 }
 
 async function openServer(runState: Run): Promise<AppServer> {
-  const server = startAppServer(runState.env, runState.workDir);
-
-  await server.request('initialize', {
-    clientInfo: { name: 'nixie-spike', title: null, version: '0.0.0' },
-    capabilities: {
-      experimentalApi: true,
-      requestAttestation: false,
-      optOutNotificationMethods: quietNotifications,
-    },
-  });
-  server.notify('initialized');
-  return server;
+  return startAppServer(runState.env, runState.workDir, () => ({
+    error: { code: -32601, message: 'the spike answers no server request' },
+  }));
 }
 
 async function runFirstProcess(

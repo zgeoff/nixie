@@ -43,7 +43,42 @@ const message = z.object({
 });
 
 // Starts `codex app-server` on stdio and speaks its JSON-RPC: one JSON message per line.
-export function startAppServer(env: Record<string, string>, cwd: string): AppServer {
+// The reply to a request the server sends the client, such as an approval or a token refresh.
+export type ServerRequestReply = { readonly result: unknown } | { readonly error: unknown };
+
+// Codex reports these as they stream; the spike reads the completed items instead.
+const quietNotifications = [
+  'item/agentMessage/delta',
+  'item/reasoning/summaryTextDelta',
+  'item/reasoning/summaryPartAdded',
+  'item/reasoning/textDelta',
+];
+
+// Starts app-server and runs the `initialize` handshake, opted in to the experimental API.
+export async function startAppServer(
+  env: Record<string, string>,
+  cwd: string,
+  answerServerRequest: (method: string, params: unknown) => ServerRequestReply,
+): Promise<AppServer> {
+  const server = spawnAppServer(env, cwd, answerServerRequest);
+
+  await server.request('initialize', {
+    clientInfo: { name: 'nixie-spike', title: null, version: '0.0.0' },
+    capabilities: {
+      experimentalApi: true,
+      requestAttestation: false,
+      optOutNotificationMethods: quietNotifications,
+    },
+  });
+  server.notify('initialized');
+  return server;
+}
+
+function spawnAppServer(
+  env: Record<string, string>,
+  cwd: string,
+  answerServerRequest: (method: string, params: unknown) => ServerRequestReply,
+): AppServer {
   const log: unknown[] = [];
   const pending = new Map<number, PromiseWithResolvers<unknown>>();
   const waiters = new Set<Waiter>();
@@ -68,8 +103,7 @@ export function startAppServer(env: Record<string, string>, cwd: string): AppSer
 
     log.push({ from: 'server', ...message.passthrough().parse(raw) });
     if (parsed.method && parsed.id !== undefined) {
-      // a server request, such as an approval; the spike approves nothing
-      send({ id: parsed.id, error: { code: -32601, message: 'the spike answers no server request' } });
+      send({ id: parsed.id, ...answerServerRequest(parsed.method, parsed.params) });
       return;
     }
     if (parsed.method) {

@@ -240,6 +240,68 @@ the key at the top level, and it accepts `url`, `bearer_token_env_var`, `require
 `default_tools_approval_mode = "approve"` under `[mcp_servers.nixie]` [measured]. The MCP server
 received each request with an `authorization` header, from `bearer_token_env_var` [measured].
 
+## A ChatGPT plan login
+
+Decision it informs: how the plan login of [GEO-2238](https://linear.app/zgeoff/issue/GEO-2238)
+hands Codex its token, and whether a placeholder `auth.json` keeps the CLI from refreshing it.
+
+[`probe-plan-login.ts`](probe-plan-login.ts) runs 6 cases against a local TLS mock of the ChatGPT
+backend and the token endpoint, so it needs no account and sends nothing to OpenAI. The mock answers
+the model request with a short reply, or with 401 while a case's failures remain, and refuses every
+refresh grant with 401. Codex reaches the mock through `chatgpt_base_url`,
+`CODEX_REFRESH_TOKEN_URL_OVERRIDE` and `CODEX_CA_CERTIFICATE`. Each managed case writes a
+placeholder `auth.json` whose tokens are unsigned JWTs. The external case writes none, and logs in
+with `account/login/start` and `type: 'chatgptAuthTokens'`.
+
+```bash
+timeout 600 bun probe-plan-login.ts
+jq -c '.[] | {name, turn: .turn.status, modelBearers, refreshGrants, refreshServerRequests, authFileChanged}' runs/plan-login/probe.json
+```
+
+```text
+{"name":"managed, fresh","turn":"completed","modelBearers":["200 placeholder"],"refreshGrants":[],"refreshServerRequests":[],"authFileChanged":false}
+{"name":"managed, last refresh 30 days ago","turn":"completed","modelBearers":["200 placeholder"],"refreshGrants":[],"refreshServerRequests":[],"authFileChanged":false}
+{"name":"managed, access token expired","turn":"completed","modelBearers":["200 placeholder"],"refreshGrants":["refresh_token","refresh_token"],"refreshServerRequests":[],"authFileChanged":false}
+{"name":"managed, model answers 401 once","turn":"completed","modelBearers":["401 placeholder","200 placeholder"],"refreshGrants":[],"refreshServerRequests":[],"authFileChanged":false}
+{"name":"managed, model answers 401 twice","turn":"failed","modelBearers":["401 placeholder","401 placeholder"],"refreshGrants":["refresh_token"],"refreshServerRequests":[],"authFileChanged":false}
+{"name":"external, model answers 401 once","turn":"completed","modelBearers":["401 login","200 from-client"],"refreshGrants":[],"refreshServerRequests":[{"reason":"unauthorized","previousAccountId":"acct-placeholder"}],"authFileChanged":false}
+```
+
+In its own (managed) mode, the CLI refreshes the token in `auth.json` itself in 2 cases:
+
+- The access token's `exp` is 5 minutes away or less. Codex reads `exp` first, and falls back to a
+  `last_refresh` older than 8 days only when the token has no readable `exp`
+  ([`manager.rs`](https://github.com/openai/codex/blob/rust-v0.166.0/codex-rs/login/src/auth/manager.rs))
+  [read in the code]. The expired case sent 2 refresh grants, and the 30-day case sent none, because
+  its `exp` was an hour ahead [measured].
+- The model API answers 401 twice in a row. Codex retries once with the same token, then sends a
+  refresh grant, and fails the turn with
+  `Your access token could not be refreshed. Please log out and sign in again.` when the grant fails
+  [measured].
+
+A placeholder `auth.json` therefore stops the refresh only while its access token's `exp` stays more
+than 5 minutes ahead and the broker's token never earns 2 401s in a row [measured]. A placeholder
+refresh token keeps the real one inside the broker: the grant the CLI sends carries the placeholder,
+which the real token endpoint refuses [guess: the probe refused it at the mock; no real endpoint saw
+it]. No managed case rewrote `auth.json` [measured].
+
+In external mode the client owns the token. On a 401, Codex sent the client the server request
+`account/chatgptAuthTokens/refresh` with `reason: "unauthorized"`, retried with the token the client
+returned, and never called the token endpoint or wrote `auth.json` [measured]. A guest that answers
+that request from the broker never puts a refresh token in the sandbox.
+
+With the plan login, Codex also calls the ChatGPT backend outside a model call:
+`/backend-api/wham/accounts/check` for workspace routing, which it needs before a turn, and the
+models, plugins, settings and analytics paths, which it ran without after the mock's 404 [measured].
+
+```bash
+jq -c '[.[].otherPaths[]] | unique' runs/plan-login/probe.json
+```
+
+```text
+["200 /backend-api/wham/accounts/check","404 /backend-api/codex/analytics-events/events","404 /backend-api/codex/models","404 /backend-api/plugins/featured","404 /backend-api/ps/mcp","404 /backend-api/ps/plugins/installed","404 /backend-api/ps/plugins/list","404 /backend-api/ps/plugins/suggested/codex","404 /backend-api/wham/settings/user"]
+```
+
 ## Capabilities
 
 Decision it informs: the `codex` entry of `harnessCapabilities`.

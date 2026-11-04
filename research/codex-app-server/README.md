@@ -8,7 +8,9 @@ capabilities the `codex` harness declares ([GEO-2236](https://linear.app/zgeoff/
 
 Which app-server methods, parameters and notifications does a nixie turn use? Does Codex report
 usage for each model call, and send a tool-call ID in `_meta`? Can a model call bypass the counting
-proxy over a websocket? Should the Codex guest use app-server or `codex exec --json`?
+proxy over a websocket? Can a resume or a fork cut a thread at a chosen turn? With a ChatGPT plan
+login, does the CLI refresh its own token? Should the Codex guest use app-server or
+`codex exec --json`?
 
 ## Answer
 
@@ -24,6 +26,9 @@ proxy over a websocket? Should the Codex guest use app-server or `codex exec --j
 - With `supports_websockets = true`, Codex tried a websocket first; with `false`, it sent HTTP only.
 - `tool_output_token_limit` is a top-level key: strict config refuses it under
   `[mcp_servers.nixie]`.
+- With a ChatGPT plan login in its own mode, the CLI refreshes the token itself when the access
+  token is 5 minutes from expiry or the model API answers 401 twice. In external mode
+  (`chatgptAuthTokens`), it asks the client for a new token and never refreshes one itself.
 
 The [verdict](results.md#verdict) lists what the Codex guest needs from this spike, and what would
 change the pick.
