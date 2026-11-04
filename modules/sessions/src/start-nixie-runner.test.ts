@@ -15,6 +15,7 @@ import {
   writeTestTaskMessage,
 } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { NixieRunnerOptions } from './start-nixie-runner';
 import { startNixieRunner } from './start-nixie-runner';
@@ -598,6 +599,35 @@ test('it purges and invalidates the session of a task that reads memory on a for
   expect(invalidated.map((record) => record.thread)).toStrictEqual([taskID]);
   expect(ctx.guest.purged).toHaveLength(1);
   expect(second?.resume).toBeNull();
+});
+
+test("it shreds the summary and removes the web fetch links of a task that reads memory on a forget, and keeps another thread's links", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  await sql`insert into web_fetch_links (session_key, number, url, thread) values
+    ('session-tides', 1, 'https://harbour.test/tides', ${taskID}),
+    ('session-ferry', 1, 'https://harbour.test/ferry', 'conversation')`.execute(
+    ctx.context.log.writer.db,
+  );
+
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+
+  const summaries = await ctx.readKinds('model.session_summarized');
+  const links = await sql`select thread from web_fetch_links`.execute(ctx.context.log.writer.db);
+
+  expect(summaries.map((record) => [record.thread, record.erasable.status])).toStrictEqual([
+    [taskID, 'shredded'],
+  ]);
+
+  expect(links.rows).toStrictEqual([{ thread: 'conversation' }]);
 });
 
 test('it runs the brief of a task that reads memory when a forget comes before its first session', async () => {

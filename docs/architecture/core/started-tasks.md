@@ -71,9 +71,10 @@ profile's credential, and the turn goes to that profile's base URL, so a profile
 [counting proxy](../policy/counting-proxy.md#routes) route has its replies priced on that route. The
 step runs the same turn code as the conversation's steps, with these changes:
 
-- The system prompt is the built-in `task` prompt. Its frame holds the task's name and brief, its
-  persona part holds the persona unless the start set `persona: none`, and its inputs and
-  instructions parts are empty.
+- The system prompt is the `task` prompt. In its default parts, the frame holds the task's name and
+  brief, the persona part holds the persona unless the start set `persona: none`, and the inputs and
+  instructions parts are empty. A deployment can
+  [override any of these parts](./prompts.md#overrides-from-the-definitions).
 - A task started with `memory: read` gets the pinned memory and memory retrieval in its turn, as the
   conversation does. Its retrieval searches for its brief on its first turn, and for the body of
   each task message it receives. Any other task gets neither. No task gets the task board.
