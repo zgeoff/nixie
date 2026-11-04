@@ -8,7 +8,8 @@ type RetryResult =
   | { readonly status: 'retried'; readonly retriedAt: Date }
   | { readonly status: 'nothing_to_retry' };
 
-const stepEnds: ReadonlySet<string> = new Set([
+const stepEvents: ReadonlySet<string> = new Set([
+  'task.step_started',
   'task.step_committed',
   'task.step_errored',
   'task.revived',
@@ -25,7 +26,7 @@ export async function writeMockRetry(input: RetryInput): Promise<RetryResult> {
 
   const last = store.records
     .findMany((query) =>
-      query.where((record) => record.thread === 'conversation' && stepEnds.has(record.kind)),
+      query.where((record) => record.thread === 'conversation' && stepEvents.has(record.kind)),
     )
     .toSorted((first, second) => first.sequence - second.sequence)
     .at(-1);

@@ -46,3 +46,19 @@ test('it returns the first result again for a repeated retry', async () => {
 
   expect(repeated).toStrictEqual(first);
 });
+
+test('it refuses a conversation whose next step started after the failed one', async () => {
+  await store.records.create({
+    kind: 'task.step_errored',
+    task: { taskID: 'conversation', errors: 1 },
+  });
+
+  await store.records.create({
+    kind: 'task.step_started',
+    task: { taskID: 'conversation' },
+  });
+
+  const result = await writeMockRetry({ clientActionID: '5c2e8b14-7a3f-4d96-b0e1-9f4a6c3d2e85' });
+
+  expect(result).toStrictEqual({ status: 'nothing_to_retry' });
+});
