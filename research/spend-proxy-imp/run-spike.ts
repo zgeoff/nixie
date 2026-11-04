@@ -127,6 +127,18 @@ export async function runSpike(target: SpikeTarget, deps: SpikeDeps): Promise<vo
   );
 }
 
+export function createSpikeClient(origin: string, token: string | null): ContractClient {
+  return createORPCClient<ContractClient>(
+    new RPCLink({
+      url: `${origin}/rpc`,
+      headers:
+        token === null
+          ? { [clientHeaderName]: 'spike' }
+          : { [clientHeaderName]: 'spike', authorization: `Bearer ${token}` },
+    }),
+  );
+}
+
 function buildTypedMessage(text: string) {
   return {
     clientMessageId: crypto.randomUUID(),
@@ -230,16 +242,8 @@ if (import.meta.main) {
   await mkdir(env.work, { recursive: true });
 
   const host = (command: string) => $`ssh ${env.previewSSH} ${command} < /dev/null`.text();
-  const signedOut = createORPCClient<ContractClient>(
-    new RPCLink({ url: `${env.origin}/rpc`, headers: { [clientHeaderName]: 'spike' } }),
-  );
-  const token = await readDeviceToken(env, host, signedOut);
-  const client = createORPCClient<ContractClient>(
-    new RPCLink({
-      url: `${env.origin}/rpc`,
-      headers: { [clientHeaderName]: 'spike', authorization: `Bearer ${token}` },
-    }),
-  );
+  const token = await readDeviceToken(env, host, createSpikeClient(env.origin, null));
+  const client = createSpikeClient(env.origin, token);
 
   // the preview's nixie container holds no package for the reader, so it gets one bundled file
   const reader = await Bun.build({

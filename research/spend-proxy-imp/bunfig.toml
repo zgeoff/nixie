@@ -1,0 +1,3 @@
+# the root bunfig leaves research/ out of the test run, so the spike preloads the mock server itself
+[test]
+preload = ["../../libs/mock-server/src/start-mock-server.ts"]

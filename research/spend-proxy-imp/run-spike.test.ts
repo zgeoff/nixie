@@ -1,8 +1,11 @@
 import { expect, test } from 'bun:test';
-import { runSpike } from './run-spike.ts';
+import { http, HttpResponse } from 'msw';
+// @boundaries-ignore a spike imports the code it measures
+import { mockServer } from '../../libs/mock-server/src/index.ts';
+import { createSpikeClient, runSpike } from './run-spike.ts';
 
-// stand-ins for the preview's API, the host and the scratch directory: the API answers every
-// thread with a step that replied and committed, and the turn starts no task
+// MSW answers the preview's API on preview.test; the host, the reader and the scratch directory
+// are stand-ins
 function setupTest() {
   const outputs = new Map<string, string>();
 
@@ -10,31 +13,7 @@ function setupTest() {
     target: { impCLI: 'impz', imp: 'pv-1', composeFile: 'compose.yaml', spendDir: '/spend' },
     outputs,
     deps: {
-      client: {
-        conversation: {
-          send: async () => ({ duplicate: false, sequence: 10 }),
-          read: async () => ({
-            hasEarlier: false,
-            readAtSequence: 12,
-            records: [
-              {
-                kind: 'model.reply',
-                recordedAt: new Date('2026-11-05T09:00:00Z'),
-                sequence: 11,
-                thread: 'conversation',
-                message: { text: 'Four.' },
-              },
-            ],
-            lastStepEnd: {
-              kind: 'task.step_committed',
-              recordedAt: new Date('2026-11-05T09:00:01Z'),
-              sequence: 12,
-              thread: 'conversation',
-            },
-          }),
-        },
-        tasks: { list: async () => ({ readAtSequence: 12, tasks: [] }) },
-      },
+      client: createSpikeClient('http://preview.test', 'spike-token'),
       host: async () => '{"dollars":0,"tokens":0}\n',
       readTurnUsage: async () => '{"thread":"all","turns":0,"tokens":0}\n',
       writeOutput: async (file: string, text: string) => {
@@ -46,21 +25,55 @@ function setupTest() {
   };
 }
 
-test('it fails with the guest probes\' stderr when they exit 1', () => {
+test("it fails with the guest probes' stderr when they exit 1", () => {
   const ctx = setupTest();
+  mockServer.use(
+    http.post('http://preview.test/rpc/conversation/send', () =>
+      HttpResponse.json({ json: { duplicate: false, sequence: 10 } }),
+    ),
+    http.post('http://preview.test/rpc/conversation/read', () =>
+      HttpResponse.json({
+        json: {
+          hasEarlier: false,
+          readAtSequence: 12,
+          records: [{ kind: 'model.reply', sequence: 11, thread: 'conversation' }],
+          lastStepEnd: { kind: 'task.step_committed', sequence: 12, thread: 'conversation' },
+        },
+      }),
+    ),
+    http.post('http://preview.test/rpc/tasks/list', () =>
+      HttpResponse.json({ json: { readAtSequence: 12, tasks: [] } }),
+    ),
+  );
 
   expect(
     runSpike(ctx.target, {
       ...ctx.deps,
       runGuestProbes: async () => ({ exitCode: 1, output: '', errors: 'sh: curl: not found\n' }),
     }),
-  ).rejects.toThrow(
-    'the guest probes exited 1: sh: curl: not found',
-  );
+  ).rejects.toThrow('the guest probes exited 1: sh: curl: not found');
 });
 
 test('it writes the output of each step when the guest probes pass', async () => {
   const ctx = setupTest();
+  mockServer.use(
+    http.post('http://preview.test/rpc/conversation/send', () =>
+      HttpResponse.json({ json: { duplicate: false, sequence: 10 } }),
+    ),
+    http.post('http://preview.test/rpc/conversation/read', () =>
+      HttpResponse.json({
+        json: {
+          hasEarlier: false,
+          readAtSequence: 12,
+          records: [{ kind: 'model.reply', sequence: 11, thread: 'conversation' }],
+          lastStepEnd: { kind: 'task.step_committed', sequence: 12, thread: 'conversation' },
+        },
+      }),
+    ),
+    http.post('http://preview.test/rpc/tasks/list', () =>
+      HttpResponse.json({ json: { readAtSequence: 12, tasks: [] } }),
+    ),
+  );
 
   await runSpike(ctx.target, {
     ...ctx.deps,
