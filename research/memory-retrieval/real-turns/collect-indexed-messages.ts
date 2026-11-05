@@ -1,5 +1,4 @@
-// @boundaries-ignore a spike imports the code it measures
-import { findTypedText } from '../../../modules/memory/src/find-typed-text.ts';
+import { findTypedText } from './find-typed-text.ts';
 import type { PlainRecord } from './read-plain-export.ts';
 
 // Rebuilds the text past-message retrieval indexed for each of the user's messages: the typed

@@ -1,6 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { findTypedText } from './find-typed-text';
+import { z } from 'zod';
 import { readForgottenSequences } from './read-forgotten-sequences';
 import type { IndexEntry } from './start-memory-index';
 import type { MemoryContext } from './types';
@@ -47,11 +47,36 @@ async function readReadableEntries(
   );
 
   return records.flatMap((record) => {
-    const text =
-      record.erasable.status === 'readable' ? findTypedText(record.erasable.fields) : null;
+    const text = findTypedText(record);
 
     return text === null || forgotten.has(record.sequence)
       ? []
       : [{ itemID: String(record.sequence), text }];
   });
+}
+
+const messageSpans = z.array(z.object({ start: z.int(), end: z.int(), source: z.string() }));
+
+function findTypedText(record: LogRecord): string | null {
+  if (record.erasable.status !== 'readable') {
+    return null;
+  }
+
+  const fields = record.erasable.fields;
+  const text = fields['text'];
+
+  if (typeof text !== 'string') {
+    return null;
+  }
+
+  const spans = messageSpans.safeParse(fields['spans']);
+
+  const typed =
+    spans.success && spans.data.some((span) => span.source !== 'unknown')
+      ? spans.data
+          .map((span) => (span.source === 'typed' ? text.slice(span.start, span.end) : '\n'))
+          .join('')
+      : text;
+
+  return typed.trim() === '' ? null : typed;
 }

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { findTypedText } from './find-typed-text';
+import { findTypedText } from './find-typed-text.ts';
 
 test.each([
   {
