@@ -309,12 +309,11 @@ Every count in the table comes from a one-off script.
 - Fix 1 barely changes the remove option: 30 of its 31 shows pass the BM25 floor of 2 with a
   similarity below 0.46 [one-off script]. Fewer other items compete at fix 1's floors, which may
   lift a flagged item that a shipped turn ranked lower [guess].
-- The 1 needed show is on turn t12531, where the flagged item helped before its flag, at similarity
-  0.378 [one-off script]. A similarity bar hides it too, so narrowing gains nothing on this data
+- The 1 needed show came before the item's flag, at a similarity below the shipped floor, so a
+  similarity bar hides it too, and narrowing gains nothing on this data [one-off script].
+- Before their flags, the flagged items showed on 3 rated turns, and the rater marked 1 of those
+  shows needed [measured]. Most of what those shows brought was noise, and fix 1 does not remove it
   [one-off script].
-- Before its flag, the same item showed on 3 turns: needed on 1 and noise on 2 [measured]. Two
-  thirds of the problem that led to the flag was plain noise, and fix 1 does not remove it: with the
-  flag removed, the item shows on 7 turns under fix 1 [one-off script].
 - A planned per-task memory setting ([GEO-2357](https://linear.app/zgeoff/issue/GEO-2357)) gives a
   task started with memory none no pinned or retrieved memory, so a task on another model sees no
   flagged item [from a record]. It does not cover the conversation itself [read in the code].
