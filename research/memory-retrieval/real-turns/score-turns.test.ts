@@ -73,7 +73,7 @@ test('#scoreRanking gives recall at each depth and the reciprocal rank of the fi
           {
             relevant: new Set(['needed-a', 'needed-b']),
             best: 'needed-b',
-            messages: new Set<string>(), noise: new Set<string>(),
+            messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(),
             delivered: new Set<string>(),
             isLabelled: true,
           },
@@ -98,7 +98,7 @@ test('#scoreRanking counts a needed item at rank 11 toward the reciprocal rank',
           {
             relevant: new Set(['needed-a']),
             best: null,
-            messages: new Set<string>(), noise: new Set<string>(),
+            messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(),
             delivered: new Set<string>(),
             isLabelled: true,
           },
@@ -115,7 +115,7 @@ test('#scoreRanking leaves out the turns that need no item', () => {
       new Map([
         [
           't1',
-          { relevant: new Set<string>(), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set<string>(), best: null, messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
       ]),
     ),
@@ -126,7 +126,7 @@ test('#scoreServed scores what a served set covers, brings fresh and shows on tu
   expect(
     scoreServed(
       [
-        { caseID: 't1', ranking: { facts: ['needed-b', 'noise-a'], selves: [] } },
+        { caseID: 't1', ranking: { facts: ['needed-b', 'noise-a', 'held-a'], selves: [] } },
         { caseID: 't2', ranking: { facts: ['noise-a'], selves: ['self-a'] } },
       ],
       new Map([
@@ -135,14 +135,24 @@ test('#scoreServed scores what a served set covers, brings fresh and shows on tu
           {
             relevant: new Set(['needed-a', 'needed-b', 'needed-c']),
             best: null,
-            messages: new Set<string>(), noise: new Set(['noise-a']),
-            delivered: new Set(['needed-a']),
+            messages: new Set<string>(),
+            noise: new Set(['noise-a', 'held-a']),
+            misleading: new Set<string>(),
+            delivered: new Set(['needed-a', 'held-a']),
             isLabelled: true,
           },
         ],
         [
           't2',
-          { relevant: new Set<string>(), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          {
+            relevant: new Set<string>(),
+            best: null,
+            messages: new Set<string>(),
+            noise: new Set<string>(),
+            misleading: new Set(['noise-a']),
+            delivered: new Set<string>(),
+            isLabelled: true,
+          },
         ],
       ]),
     ),
@@ -155,7 +165,9 @@ test('#scoreServed scores what a served set covers, brings fresh and shows on tu
     shownOnEmpty: 2,
     emptyWithAny: 1,
     precision: 0.25,
+    alreadyHeld: 1,
     noiseServed: 1,
+    misleadingServed: 1,
   });
 });
 
@@ -172,11 +184,11 @@ test('#buildPairedDifference gives no difference for a run against itself', () =
       new Map([
         [
           't1',
-          { relevant: new Set(['needed-a']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set(['needed-a']), best: null, messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
         [
           't2',
-          { relevant: new Set(['needed-b']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set(['needed-b']), best: null, messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
       ]),
       'reciprocal',
@@ -198,11 +210,11 @@ test('#buildPairedDifference gives the same gain at every bound when a run gains
       new Map([
         [
           't1',
-          { relevant: new Set(['needed-a']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set(['needed-a']), best: null, messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
         [
           't2',
-          { relevant: new Set(['needed-b']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set(['needed-b']), best: null, messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
       ]),
       'reciprocal',
@@ -222,9 +234,9 @@ test('#buildPairedDifference gives the same interval on every call', () => {
     { caseID: 't3', ranking: { facts: ['needed-c'], selves: [] } },
   ];
   const gold = new Map([
-    ['t1', { relevant: new Set(['needed-a']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
-    ['t2', { relevant: new Set(['needed-b']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
-    ['t3', { relevant: new Set(['needed-c']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
+    ['t1', { relevant: new Set(['needed-a']), best: null, messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
+    ['t2', { relevant: new Set(['needed-b']), best: null, messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
+    ['t3', { relevant: new Set(['needed-c']), best: null, messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
   ]);
 
   expect(buildPairedDifference(run, base, gold, 'at5')).toStrictEqual(buildPairedDifference(run, base, gold, 'at5'));

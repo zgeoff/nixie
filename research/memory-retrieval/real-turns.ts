@@ -8,7 +8,8 @@
 //   bun real-turns.ts sample --plain <dir> --out <file> [--size <n>]
 //   bun real-turns.ts rating-sample --plain <dir> --out <dir> [--size <n>] [--names <file>]
 //   bun real-turns.ts cases  --plain <dir> --labels <file> --key <file> --sample <file> --out <file>
-//   bun real-turns.ts score  --plain <dir> [--labels <file> --key <file> --sample <file>] [--names <file>] [--encoders <a,b>] [--out <file>]
+//   bun real-turns.ts score  --plain <dir> [--labels <file> --key <file> --sample <file>] [--names <file>] [--encoders <a,b>]
+//                            [--exclude <ranges>] [--held <ranges>] [--missing <file>] [--out <file>]
 import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -33,7 +34,7 @@ import { readJSONLines } from './real-turns/read-json-lines.ts';
 import { buildScoreReport } from './real-turns/build-score-report.ts';
 import { pickScoredTurns } from './real-turns/pick-scored-turns.ts';
 import type { Gold, Label } from './real-turns/score-turns.ts';
-import { buildRuns, buildShortRuns, getShippedRun, labelSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
+import { buildRuns, buildShortRuns, getShippedRun, labelSchema, missingMapSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
 import { buildRatingSample } from './real-turns/build-rating-sample.ts';
 import { pickRatingTurns } from './real-turns/pick-rating-turns.ts';
 import { renderRatingParts } from './real-turns/render-rating-parts.ts';
@@ -42,6 +43,10 @@ import { parseLabelLines } from './real-turns/parse-label-lines.ts';
 import type { RatedMessage } from './real-turns/score-message-floors.ts';
 import { scoreMessageFloors } from './real-turns/score-message-floors.ts';
 import { buildSimilarity } from './real-turns/build-similarity.ts';
+import { collectItemShows } from './real-turns/collect-item-shows.ts';
+import { countMissedItems } from './real-turns/count-missed-items.ts';
+import { isMetaTurn } from './real-turns/is-meta-turn.ts';
+import { isInCaseRanges, parseCaseRanges } from './real-turns/parse-case-ranges.ts';
 import { messageKeyPrefix } from './real-turns/build-rating-sample.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { buildVectorQuery } from '../../modules/memory/src/build-vector-query.ts';
@@ -57,6 +62,9 @@ const { positionals, values } = parseArgs({
     sample: { type: 'string' },
     size: { type: 'string' },
     encoders: { type: 'string' },
+    exclude: { type: 'string' },
+    held: { type: 'string' },
+    missing: { type: 'string' },
   },
 });
 
@@ -221,8 +229,42 @@ async function runReplay(turns: TurnCase[]): Promise<void> {
 }
 
 async function runScore(turns: TurnCase[]): Promise<void> {
-  const { labels, keys } = values.labels === undefined ? { labels: [], keys: [] } : await readLabels(turns);
-  const gold = getGold(buildGold(turns, labels, keys));
+  const read = values.labels === undefined ? { labels: [], keys: [] } : await readLabels(turns);
+  const excludedRanges = readCaseRanges(values.exclude);
+  const turnsByCase = new Map(turns.map((turn) => [turn.caseID, turn]));
+  const isMeta = (caseID: string) => {
+    const turn = turnsByCase.get(caseID);
+
+    return turn !== undefined && isMetaTurn(turn);
+  };
+  const inRange = (caseID: string) => isInCaseRanges(caseID, excludedRanges);
+  const labels = read.labels.filter((label) => !inRange(label.caseID) && !isMeta(label.caseID));
+  const keys = read.keys;
+  const pooledByCase = new Map(
+    keys.map((entry) => [entry.caseID, new Set(Object.values(entry.refs).filter((key) => !key.startsWith(messageKeyPrefix)))]),
+  );
+  const heldRanges = readCaseRanges(values.held);
+  const missing = values.missing === undefined ? [] : await readJSONLines(resolve(values.missing), missingMapSchema);
+  const gold = getGold(
+    buildGold(turns, labels, keys, {
+      missing,
+      heldCases: new Set(labels.map((label) => label.caseID).filter((caseID) => isInCaseRanges(caseID, heldRanges))),
+    }),
+  );
+  const hybrid = turns.filter((turn) => turn.searchMode === 'hybrid');
+
+  console.log({
+    metaTurns: {
+      hybridFlagged: hybrid.filter((turn) => isMetaTurn(turn)).length,
+      labelsInRange: read.labels.filter((label) => inRange(label.caseID)).length,
+      labelsFlagged: read.labels.filter((label) => isMeta(label.caseID)).length,
+      labelsBoth: read.labels.filter((label) => inRange(label.caseID) && isMeta(label.caseID)).length,
+      labelsKept: labels.length,
+    },
+    missing: countMissedItems(turns, missing, pooledByCase),
+    descriptions: labels.reduce((sum, label) => sum + (label.missing?.length ?? 0), 0),
+    turnsWithDescriptions: labels.filter((label) => (label.missing?.length ?? 0) > 0).length,
+  });
   const encoders = parseEncoderNames(values.encoders ?? 'leaf-ir-q8');
 
   if ('unknown' in encoders) {
@@ -253,6 +295,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     ),
   };
 
+  const itemShows = collectItemShows(hybrid, gold, pooledByCase, [3, 5, 10]);
   const messageFloors = scoreMessageFloors(await readRatedMessages(chosen, gold), [0.38, 0.42, 0.46, 0.5, 0.55, 0.6]);
 
   console.log(`turns ${chosen.length}, labelled ${labels.length}, short ${shortIDs.size}\n`);
@@ -260,9 +303,10 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   console.log(`\nshort turns only\n\n${shortScored.lines.join('\n')}`);
   console.log(`\nshown blocks\n\n${JSON.stringify(blocks, null, 2)}`);
   console.log(`\npast-message similarity floors\n\n${JSON.stringify(messageFloors, null, 2)}`);
+  console.log(`\nitems by turns retrieved\n\n${JSON.stringify({ ...itemShows, items: itemShows.items.slice(0, 15) }, null, 2)}`);
 
   if (values.out !== undefined) {
-    const report = { turns: chosen.length, labelled: labels.length, ...scored.report, short: shortScored.report, blocks, messageFloors };
+    const report = { turns: chosen.length, labelled: labels.length, ...scored.report, short: shortScored.report, blocks, messageFloors, itemShows };
 
     await Bun.write(resolve(values.out), `${JSON.stringify(report, null, 2)}\n`);
   }
@@ -341,6 +385,16 @@ async function readLabelText(path: string): Promise<string> {
     : [path];
 
   return (await Promise.all(files.map((file) => Bun.file(file).text()))).join('\n');
+}
+
+function readCaseRanges(spec: string | undefined): { from: number; to: number }[] {
+  const parsed = parseCaseRanges(spec ?? '');
+
+  if ('invalid' in parsed) {
+    throw new Error(`pass case ranges such as t120-t180,t200, not ${parsed.invalid.join(', ')}`);
+  }
+
+  return parsed.ranges;
 }
 
 function getGold(built: BuiltGold): Map<string, Gold> {

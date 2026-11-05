@@ -6,6 +6,7 @@ export interface BlockScore {
   turnsShown: number;
   shown: number;
   helpful: number;
+  misleading: number;
   precision: number;
   turnsWithHelpful: number;
 }
@@ -19,7 +20,8 @@ export interface BlocksScore {
 
 // Scores what each block actually showed on the labelled turns: the items and self notes the turn's
 // retrieval logged, and the past messages its turn end recorded. A shown entry the rater named is
-// helpful, and every other shown entry is noise.
+// helpful, one the rater called misleading made the reply worse, and every other shown entry is
+// noise.
 export function scoreBlocks(turns: TurnCase[], gold: Map<string, Gold>): BlocksScore {
   const labelled = turns.flatMap((turn) => {
     const expected = gold.get(turn.caseID);
@@ -31,7 +33,11 @@ export function scoreBlocks(turns: TurnCase[], gold: Map<string, Gold>): BlocksS
     const perTurn = labelled.map(({ turn, expected }) => {
       const shown = pick(turn);
 
-      return { shown: shown.length, helpful: shown.filter((key) => isHelpful(key, expected)).length };
+      return {
+        shown: shown.length,
+        helpful: shown.filter((key) => isHelpful(key, expected)).length,
+        misleading: shown.filter((key) => expected.misleading.has(key)).length,
+      };
     });
 
     const shown = perTurn.reduce((sum, entry) => sum + entry.shown, 0);
@@ -41,6 +47,7 @@ export function scoreBlocks(turns: TurnCase[], gold: Map<string, Gold>): BlocksS
       turnsShown: perTurn.filter((entry) => entry.shown > 0).length,
       shown,
       helpful,
+      misleading: perTurn.reduce((sum, entry) => sum + entry.misleading, 0),
       precision: shown === 0 ? 0 : Math.round((helpful / shown) * 1000) / 1000,
       turnsWithHelpful: perTurn.filter((entry) => entry.helpful > 0).length,
     };

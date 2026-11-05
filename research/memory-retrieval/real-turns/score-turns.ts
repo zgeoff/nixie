@@ -19,7 +19,22 @@ export const labelSchema = z.object({
   relevant: z.array(z.string()),
   best: z.string().nullable(),
   by: z.enum(['assistant', 'owner', 'model']).exactOptional(),
+  // What the rater says would have helped but the list left out, in the rater's words. Only the
+  // count of these reaches a report: a mapping outside the repo turns each into item IDs.
+  missing: z.array(z.string()).exactOptional(),
+  // The references the rater says made the reply worse, a harder verdict than noise.
+  misleading: z.array(z.string()).exactOptional(),
 });
+
+// The items each turn's missing descriptions name, matched by hand outside the repo, and the count
+// of descriptions that named nothing in the store.
+export const missingMapSchema = z.object({
+  caseID: z.string(),
+  itemIDs: z.array(z.string()),
+  unmatched: z.int().nonnegative(),
+});
+
+export type MissingMap = z.infer<typeof missingMapSchema>;
 
 export type Label = z.infer<typeof labelSchema>;
 
@@ -308,7 +323,9 @@ export interface ServedScore {
   shownOnEmpty: number;
   emptyWithAny: number;
   precision: number;
+  alreadyHeld: number;
   noiseServed: number;
+  misleadingServed: number;
 }
 
 export interface Gold {
@@ -316,6 +333,7 @@ export interface Gold {
   messages: Set<string>;
   best: string | null;
   noise: Set<string>;
+  misleading: Set<string>;
   delivered: Set<string>;
   isLabelled: boolean;
 }
@@ -344,9 +362,21 @@ export function scoreServed(ranked: RankedTurn[], gold: Map<string, Gold>): Serv
     return unseen.length === 0 ? [] : [unseen.filter((itemID) => reached.has(itemID)).length / unseen.length];
   });
 
-  const served = labelled.flatMap((entry) => shown(entry).map((itemID) => gold.get(entry.caseID)?.relevant.has(itemID) === true));
+  // An item the session already holds is neither help nor noise, in line with the session exclusion,
+  // so precision counts only the items the turn brought anew.
+  const brought = labelled.flatMap((entry) => {
+    const expected = gold.get(entry.caseID);
 
-  const noise = ranked.flatMap((entry) => shown(entry).filter((itemID) => gold.get(entry.caseID)?.noise.has(itemID) === true));
+    return shown(entry)
+      .filter((itemID) => expected?.delivered.has(itemID) !== true)
+      .map((itemID) => expected?.relevant.has(itemID) === true);
+  });
+
+  const noise = ranked.flatMap((entry) =>
+    shown(entry).filter((itemID) => gold.get(entry.caseID)?.noise.has(itemID) === true && gold.get(entry.caseID)?.delivered.has(itemID) !== true),
+  );
+
+  const misleading = ranked.flatMap((entry) => shown(entry).filter((itemID) => gold.get(entry.caseID)?.misleading.has(itemID) === true));
 
   return {
     goldCases: withGold.length,
@@ -356,8 +386,10 @@ export function scoreServed(ranked: RankedTurn[], gold: Map<string, Gold>): Serv
     emptyCases: empty.length,
     shownOnEmpty: round(average(empty.map((entry) => shown(entry).length))),
     emptyWithAny: round(average(empty.map((entry) => (shown(entry).length > 0 ? 1 : 0)))),
-    precision: round(average(served.map((isGold) => (isGold ? 1 : 0)))),
+    precision: round(average(brought.map((isGold) => (isGold ? 1 : 0)))),
+    alreadyHeld: labelled.reduce((sum, entry) => sum + shown(entry).length, 0) - brought.length,
     noiseServed: noise.length,
+    misleadingServed: misleading.length,
   };
 }
 

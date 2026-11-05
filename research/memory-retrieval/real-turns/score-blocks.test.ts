@@ -42,6 +42,7 @@ test('it scores the items, self notes and past messages a labelled turn was show
           messages: new Set(['message:2']),
           best: 'item-a',
           noise: new Set<string>(),
+          misleading: new Set(['item-b', 'message:3']),
           delivered: new Set<string>(),
           isLabelled: true,
         },
@@ -51,9 +52,9 @@ test('it scores the items, self notes and past messages a labelled turn was show
 
   expect(score).toStrictEqual({
     turns: 1,
-    items: { turnsShown: 1, shown: 2, helpful: 1, precision: 0.5, turnsWithHelpful: 1 },
-    selfNotes: { turnsShown: 1, shown: 1, helpful: 0, precision: 0, turnsWithHelpful: 0 },
-    messages: { turnsShown: 1, shown: 2, helpful: 1, precision: 0.5, turnsWithHelpful: 1 },
+    items: { turnsShown: 1, shown: 2, helpful: 1, misleading: 1, precision: 0.5, turnsWithHelpful: 1 },
+    selfNotes: { turnsShown: 1, shown: 1, helpful: 0, misleading: 0, precision: 0, turnsWithHelpful: 0 },
+    messages: { turnsShown: 1, shown: 2, helpful: 1, misleading: 1, precision: 0.5, turnsWithHelpful: 1 },
   });
 });
 

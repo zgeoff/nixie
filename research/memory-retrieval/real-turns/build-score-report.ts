@@ -31,8 +31,8 @@ export function buildScoreReport(runs: Run[], results: Map<string, RankedTurn[]>
 
   lines.push(
     '',
-    '| Run | Gold cases | Covered recall | Fresh cases | Fresh recall | Empty cases | Shown on empty | Empty with any | Precision | Noise served | Shown per turn | Fresh change | Shown on empty change |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| Run | Gold cases | Covered recall | Fresh cases | Fresh recall | Empty cases | Shown on empty | Empty with any | Precision | Already held | Noise served | Misleading served | Shown per turn | Fresh change | Shown on empty change |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   );
 
   const servedBase = results.get(getShippedRun(runs, 'served').name) ?? [];
@@ -46,7 +46,7 @@ export function buildScoreReport(runs: Run[], results: Map<string, RankedTurn[]>
 
     report[run.name] = { ...score, shownPerTurn: shown, freshDifference: fresh, shownOnEmptyDifference: shownOnEmpty };
     lines.push(
-      `| ${run.name} | ${score.goldCases} | ${score.coveredRecall} | ${score.freshCases} | ${score.freshRecall} | ${score.emptyCases} | ${score.shownOnEmpty} | ${score.emptyWithAny} | ${score.precision} | ${score.noiseServed} | ${shown} | ${formatDifference(fresh)} | ${formatDifference(shownOnEmpty)} |`,
+      `| ${run.name} | ${score.goldCases} | ${score.coveredRecall} | ${score.freshCases} | ${score.freshRecall} | ${score.emptyCases} | ${score.shownOnEmpty} | ${score.emptyWithAny} | ${score.precision} | ${score.alreadyHeld} | ${score.noiseServed} | ${score.misleadingServed} | ${shown} | ${formatDifference(fresh)} | ${formatDifference(shownOnEmpty)} |`,
     );
   }
 
