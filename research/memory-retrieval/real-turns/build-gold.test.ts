@@ -59,7 +59,7 @@ test('it keeps a named past message apart from the needed items', () => {
         recordedAt: 0,
         query: 'what should I pack?',
         typedQuery: 'what should I pack?',
-        shownMessages: [{ sequence: 3, text: 'pack the blue coat', isCut: false }],
+        shownMessages: [{ sequence: 3, text: 'pack the blue coat', isCut: false, thread: 'conversation', recordedAt: 0 }],
         isSessionStart: false, sessionNumber: 0,
         isShredded: false,
         contextTokens: null,

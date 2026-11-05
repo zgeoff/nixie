@@ -4,7 +4,7 @@ import { buildVectorQuery } from '../../../modules/memory/src/build-vector-query
 import type { Encoder } from '../../../modules/memory/src/types.ts';
 import { messageKeyPrefix } from './build-rating-sample.ts';
 import { buildSimilarity } from './build-similarity.ts';
-import type { TurnCase } from './build-turn-cases.ts';
+import type { ShownMessage, TurnCase } from './build-turn-cases.ts';
 import { SHIPPED } from './rank-turn.ts';
 import type { RatedMessage } from './score-message-floors.ts';
 import type { Gold } from './score-turns.ts';
@@ -12,7 +12,7 @@ import type { Gold } from './score-turns.ts';
 // Encodes the indexed text of each past message a labelled turn was shown, and its query, because
 // the log keeps no score for a past message. A message the product never indexed is left out.
 export async function readRatedMessages(
-  turns: Pick<TurnCase, 'caseID' | 'query' | 'shownMessages'>[],
+  turns: (Pick<TurnCase, 'caseID' | 'query'> & { shownMessages: Pick<ShownMessage, 'sequence'>[] })[],
   gold: ReadonlyMap<string, Pick<Gold, 'isLabelled' | 'messages'>>,
   indexed: ReadonlyMap<number, string>,
   encoder: Encoder,

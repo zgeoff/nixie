@@ -122,8 +122,10 @@ opening, so it counts on the 8 turns that opened a session [read in the code].
 
 The past-message counts came from each message's text cut at 1,000 characters, without the tags the
 product puts around pasted or dropped text and without its image markers [read in the code]. They
-read low by about 13 tokens for each such span and 11 for each image [read in the code]. The
-snapshot is no longer at hand, so the counts stand as measured.
+read low by about 13 tokens for each such span and 11 for each image [read in the code]. Each
+message's line also carried the turn's own day and "this conversation", where the product writes the
+message's day and, for another thread, that thread's name, which moves a count by a few tokens
+either way [read in the code]. The snapshot is no longer at hand, so the counts stand as measured.
 
 A turn's model calls read a mean of 155,714 input tokens a call, cached or not, so the blocks a turn
 adds come to about 0.1% of one call [measured]. A block stays in the session once given, and a

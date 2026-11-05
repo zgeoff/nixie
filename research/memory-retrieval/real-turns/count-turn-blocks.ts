@@ -125,7 +125,7 @@ export function buildBlockTokens(turn: TurnCase, sources: BlockSources, options:
     messages: wrap(
       'retrieved-messages',
       renderRetrievedMessages(
-        turn.shownMessages.map((message) => ({ ...message, thread: 'conversation', recordedAt: turn.recordedAt })),
+        turn.shownMessages,
         { ...lines, thread: 'conversation' },
       ),
     ),

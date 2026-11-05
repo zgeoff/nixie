@@ -20,6 +20,8 @@ export interface Candidate {
 // A past message the turn was shown, cut and rendered as the product shows it.
 export interface ShownMessage {
   sequence: number;
+  thread: string | null;
+  recordedAt: number;
   text: string;
   isCut: boolean;
 }
@@ -128,7 +130,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
     const shown = record.kind === 'owner_message' ? renderShownMessage(record) : null;
 
     if (shown !== null) {
-      messages.set(record.sequence, shown);
+      messages.set(record.sequence, { ...shown, thread: record.thread, recordedAt: Date.parse(record.recordedAt) });
     }
 
     if (record.thread !== conversationThread) {

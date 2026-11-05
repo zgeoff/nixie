@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { collectIndexedMessages } from './collect-indexed-messages.ts';
 import { readRatedMessages } from './read-rated-messages.ts';
 
-test('it encodes the full typed text of a long past message with pasted text, not the text it showed with', async () => {
+test('it encodes the full typed text of a long past message with pasted text', async () => {
   const typed = `${'a'.repeat(700)} `;
   const pasted = 'b'.repeat(600);
   const indexed = collectIndexedMessages([
@@ -29,7 +29,7 @@ test('it encodes the full typed text of a long past message with pasted text, no
   const encoded: string[][] = [];
 
   await readRatedMessages(
-    [{ caseID: 't2', query: 'what did I pack?', shownMessages: [{ sequence: 1, text: `${typed}<pasted id="0a1b2c3d4e5f">bbb`, isCut: true }] }],
+    [{ caseID: 't2', query: 'what did I pack?', shownMessages: [{ sequence: 1 }] }],
     new Map([['t2', { isLabelled: true, messages: new Set<string>() }]]),
     indexed,
     {
@@ -57,8 +57,8 @@ test('it rates each indexed message by its stored similarity to the query and by
         caseID: 't2',
         query: 'when is the tide?',
         shownMessages: [
-          { sequence: 1, text: 'the tide turns at four', isCut: false },
-          { sequence: 2, text: 'bought new oars', isCut: false },
+          { sequence: 1 },
+          { sequence: 2 },
         ],
       },
     ],
@@ -81,7 +81,7 @@ test('it leaves out a shown message that the product never indexed', async () =>
   const encoded: string[][] = [];
 
   const rated = await readRatedMessages(
-    [{ caseID: 't2', query: 'what did I pack?', shownMessages: [{ sequence: 1, text: 'gone', isCut: false }] }],
+    [{ caseID: 't2', query: 'what did I pack?', shownMessages: [{ sequence: 1 }] }],
     new Map([['t2', { isLabelled: true, messages: new Set<string>() }]]),
     new Map(),
     {

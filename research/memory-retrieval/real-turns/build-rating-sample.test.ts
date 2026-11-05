@@ -12,7 +12,7 @@ test('it gives each turn its pooled items and its shown past messages, under ref
           recordedAt: 0,
           query: 'and the ferry?',
           typedQuery: 'and the ferry?',
-          shownMessages: [{ sequence: 2, text: 'the ferry leaves at nine', isCut: false }],
+          shownMessages: [{ sequence: 2, text: 'the ferry leaves at nine', isCut: false, thread: 'conversation', recordedAt: 0 }],
           isSessionStart: false, sessionNumber: 0,
           isShredded: false,
           contextTokens: null,

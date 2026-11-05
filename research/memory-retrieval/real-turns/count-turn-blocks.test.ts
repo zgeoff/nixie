@@ -40,7 +40,7 @@ test('#buildBlockTokens counts the pinned block and each retrieved block on a se
       recordedAt: Date.parse('2026-03-02T09:00:00Z'),
       query: 'what about the boat?',
       typedQuery: 'what about the boat?',
-      shownMessages: [{ sequence: 4, text: 'the boat needs new rope', isCut: false }],
+      shownMessages: [{ sequence: 4, thread: 'conversation', recordedAt: Date.parse('2026-03-02T09:00:00Z'), text: 'the boat needs new rope', isCut: false }],
       isSessionStart: true, sessionNumber: 1,
       isShredded: false,
       contextTokens: null,

@@ -823,7 +823,7 @@ test('it counts a session that opened on a step with no turn, so the next turn f
   ]);
 });
 
-test('it shows a past message as the product renders it, with its pasted text tagged and its images marked', () => {
+test('it shows a past message as the product renders it, with its own thread and time, its pasted text tagged and its images marked', () => {
   const cases = buildTurnCases({
     records: [
       {
@@ -897,6 +897,8 @@ test('it shows a past message as the product renders it, with its pasted text ta
     [
       {
         sequence: 1,
+        thread: 'trip-notes',
+        recordedAt: Date.parse('2026-03-01T18:00:00Z'),
         text: expect.stringMatching(/^pack this: <pasted id="(\w{12})">tent<\/pasted id="\1">\n<dropped-image id="\w{12}" n="1"\/>$/),
         isCut: false,
       },
