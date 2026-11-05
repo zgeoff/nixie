@@ -26,5 +26,24 @@ test('it gives each turn the pinned core of the latest conversation turn that en
         ended(40, 'conversation', null),
       ],
     ),
-  ).toStrictEqual([null, [{ itemID: 'item-a', version: 2 }], null]);
+  ).toStrictEqual([null, [{ itemID: 'item-a', version: 2 }], []]);
+});
+
+test('it gives null to a turn with no conversation turn ended before its step', () => {
+  expect(
+    collectPreviousPinned(
+      [{ stepSequence: 10, isSessionStart: false }],
+      [
+        {
+          sequence: 12,
+          recordedAt: '2026-03-02T08:00:00Z',
+          kind: 'model.turn_ended',
+          thread: 'conversation',
+          parent: null,
+          payload: { pinnedCore: [{ itemID: 'item-a', version: 1 }] },
+          erasable: { status: 'none' as const },
+        },
+      ],
+    ),
+  ).toStrictEqual([null]);
 });

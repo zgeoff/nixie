@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { buildRatingSampleFiles } from './build-rating-sample-files.ts';
+import { sampleTurnSchema } from './build-sample.ts';
 import { SHIPPED } from './rank-turn.ts';
+import { sampleKeySchema } from './score-turns.ts';
 
 test('it writes the sample, its key and one part per group of turns, with the pooled item under a key reference', () => {
   const turn = {
@@ -35,11 +37,13 @@ test('it writes the sample, its key and one part per group of turns, with the po
     new Map([['served', [{ caseID: 't4', ranking: { facts: ['item-a'], selves: [] } }]]]),
     { topPlaces: 5, turnsPerPart: 15 },
   );
-  const [sample, key] = built.files.slice(0, 2).map((file) => JSON.parse(file.text.trim()));
+  const [sampleText, keyText] = built.files.slice(0, 2).map((file): unknown => JSON.parse(file.text.trim()));
+  const sample = sampleTurnSchema.parse(sampleText);
+  const key = sampleKeySchema.parse(keyText);
 
   expect({
     names: built.files.map((file) => file.name),
-    items: sample.items.map((item: { text: string }) => item.text),
+    items: sample.items.map((item) => item.text),
     key: Object.values(key.refs),
     summary: built.summary,
   }).toStrictEqual({

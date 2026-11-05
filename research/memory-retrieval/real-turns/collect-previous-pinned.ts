@@ -8,15 +8,16 @@ const pinnedCoreSchema = z.object({ pinnedCore: z.array(z.object({ itemID: z.str
 
 // For each turn, the pinned core that the latest conversation turn-ended record before its step
 // lists, which the product compares against to write its change note. That record can come from
-// a turn with no retrieval case. A turn that opened its session gets null, because the opening
-// holds the current core and no note follows.
+// a turn with no retrieval case, and a record with no core counts as an empty core, as the product
+// reads it. A turn that opened its session, or has no earlier turn, gets null, because no note
+// follows.
 export function collectPreviousPinned(
   turns: readonly Pick<TurnCase, 'stepSequence' | 'isSessionStart'>[],
   records: readonly PlainRecord[],
 ): (MemoryRef[] | null)[] {
   const ended = records
     .filter((record) => record.kind === 'model.turn_ended' && record.thread === 'conversation')
-    .map((record) => ({ sequence: record.sequence, core: pinnedCoreSchema.parse(record.payload).pinnedCore ?? null }));
+    .map((record) => ({ sequence: record.sequence, core: pinnedCoreSchema.parse(record.payload).pinnedCore ?? [] }));
 
   return turns.map((turn) => (turn.isSessionStart ? null : (ended.findLast((entry) => entry.sequence < turn.stepSequence)?.core ?? null)));
 }
