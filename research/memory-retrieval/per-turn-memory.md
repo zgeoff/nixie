@@ -77,11 +77,12 @@ The rated list holds the items from 4 sources: the top 5 of the shipped ranking 
 what the shipped settings showed, what each short-message and pasted-text setting showed, and the
 items the turn logged [read in the code]. The other compared settings could show an item outside
 that list: the similarity and BM25 floors, the BM25 weights, the hub corrections, the query windows
-and the item counts. The scores count such an item as shown and not needed. For those settings,
-fresh recall and precision can read low, and a turn can count as needing none when an unrated item
-would have helped [read in the code]. The labels are no longer at hand, so the count of such items
-is unknown. The sample builder in the harness pools every compared served setting, so a sample it
-builds has no such gap [read in the code].
+and the item counts. Each ranking setting other than shipped could also place such an item in its
+top 5. The scores count such an item as shown and not needed. For those settings, fresh recall,
+precision and recall@5 can read low, and a turn can count as needing none when an unrated item would
+have helped [read in the code]. The labels are no longer at hand, so the count of such items is
+unknown. The sample builder in the harness pools every compared served setting, so a sample it
+builds closes the gap for them; the ranking settings other than shipped keep it [read in the code].
 
 - 285 labels matched the sample, and 1 named a turn outside it [measured].
 - 15 labels fall on turns about the memory work itself: a block of such turns, and turns the rater

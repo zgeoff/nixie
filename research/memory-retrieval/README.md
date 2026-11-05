@@ -28,7 +28,8 @@ add to a turn, and what does a short message bring?
   MRR 0.509. No alternative encoder, fusion setting, floor or item count was shown to be better, and
   BM25 alone scored about 0.1 lower beyond its 95% interval.
 - On a later snapshot, the memory blocks added about 170 tokens a turn, and the past messages showed
-  on 801 of 1,056 hybrid turns at a precision of 0.03.
+  on 801 of 1,056 hybrid turns. On the 266 labelled turns, the past messages scored a precision of
+  0.03.
 - On a held-out half of the 266 turns that the assistant labelled, similarity 0.46 with a BM25 floor
   of 2 showed 31% fewer items on turns that needed none, and lost no needed item on the 18 turns
   that needed an item the session lacked. The selection half agreed. A query window added noise, and
