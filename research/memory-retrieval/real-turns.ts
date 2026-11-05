@@ -36,6 +36,7 @@ import { pickScoredTurns } from './real-turns/pick-scored-turns.ts';
 import type { Gold, Label } from './real-turns/score-turns.ts';
 import { buildRuns, buildShortRuns, getShippedRun, labelSchema, missingMapSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
 import { buildRatingSample } from './real-turns/build-rating-sample.ts';
+import { collectRatingPools } from './real-turns/collect-rating-pools.ts';
 import { pickRatingTurns } from './real-turns/pick-rating-turns.ts';
 import { renderRatingParts } from './real-turns/render-rating-parts.ts';
 import { scoreBlocks } from './real-turns/score-blocks.ts';
@@ -512,21 +513,7 @@ async function writeRatingSample(turns: TurnCase[]): Promise<void> {
     excludedWords,
   );
 
-  const pools = new Map<string, string[]>();
-
-  for (const run of runs) {
-    for (const entry of results.get(run.name) ?? []) {
-      const shown = run.kind === 'ranking' ? entry.ranking.facts.slice(0, poolTopPlaces) : [...entry.ranking.facts, ...entry.ranking.selves];
-
-      pools.set(entry.caseID, [...new Set([...(pools.get(entry.caseID) ?? []), ...shown])]);
-    }
-  }
-
-  for (const turn of chosen.chosen) {
-    pools.set(turn.caseID, [...new Set([...(pools.get(turn.caseID) ?? []), ...turn.logged.map((item) => item.itemID)])]);
-  }
-
-  const sample = buildRatingSample(chosen, pools);
+  const sample = buildRatingSample(chosen, collectRatingPools(runs, results, chosen.chosen, poolTopPlaces));
   const out = resolve(values.out);
   const parts = renderRatingParts(sample.turns, turnsPerPart);
 
