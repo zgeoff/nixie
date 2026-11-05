@@ -29,11 +29,7 @@ function setupTest() {
         isWokenByMessages: true,
       }));
 
-      const listed = await readTaskList(
-        data.context,
-        { directory },
-        { callerID: null, state: 'all', limit: 10 },
-      );
+      const listed = await readTaskList(data.context, { directory }, { callerID: null, limit: 10 });
 
       const inboxes = await Promise.all(
         [held.heldID, held.pausedID].map((taskID) => readInbox(data.context, taskID)),
