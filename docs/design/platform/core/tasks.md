@@ -120,16 +120,13 @@ machine, leases and recovery. It lives in a long-lived imp that stays awake unde
 its inbox by default, and a message you send while a task is open in the client goes straight to
 that task.
 
-The conversation receives the task board in its newest turn, after the stable part of the prompt, so
-the prompt cache holds. It routes with 2 tools: one passes a message to an existing task, and one
-starts a task with a brief. Each call writes a routing record, and the conversation's reply names
-where it sent the message, as [0018](../../../decisions/0018-the-conversation-and-tasks.md)
-requires. A start also chooses the task's model, persona, memory, tools, report mode and limits,
-within bounds that code checks, as
-[start options](../../../architecture/core/started-tasks.md#start-options) covers.
-
-Moving a misrouted message is one checked action in the client, which writes a correction record and
-updates both tasks' inboxes in one transaction.
+The conversation works with tasks through 3 tools, as
+[0018](../../../decisions/0018-the-conversation-and-tasks.md) decides: `task.start` starts a task
+with a brief, `task.message` sends an existing task a message, and `tasks.list` lists the tasks.
+Each turn carries no task list, and nixie keeps no record of which task a message of yours went to.
+A start also chooses the task's model, persona, memory, tools, report mode and limits, within bounds
+that code checks, as [start options](../../../architecture/core/started-tasks.md#start-options)
+covers.
 
 ## Messages between tasks
 

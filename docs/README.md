@@ -49,7 +49,7 @@ below, and planned work lives in Linear.
 - [Tasks](architecture/core/tasks.md) — task states, the inbox and its read cursor, steps and their
   commit, and durable timers
 - [Started tasks](architecture/core/started-tasks.md) — the start and its options, the nixie runner,
-  limits and their raise, routing records and moved messages
+  limits and their raise
 - [Task messages](architecture/core/task-messages.md) — messages between tasks, the hop limit and
   message waits
 - [Leases and recovery](architecture/core/leases-and-recovery.md) — the one claim path, lease
@@ -177,7 +177,7 @@ rests on.
 - [The event log and records](design/platform/core/event-log.md) — what a record holds, append-only
   semantics, projections, the data behind the dashboard and the live view, export and retention
 - [Tasks](design/platform/core/tasks.md) — tasks as state machines with leases and an inbox, waits,
-  routing from the conversation, job runs, workers in imps, and crash recovery
+  the conversation's task tools, job runs, workers in imps, and crash recovery
 - [Actions](design/platform/core/actions.md) — the action queue, its outcomes, approval consumption,
   reconciliation per connector, and unknown outcomes
 - [Model profiles](design/platform/core/models.md) — the profile, model roles and their defaults,
@@ -219,7 +219,7 @@ rests on.
 - [Approvals in the client](design/platform/channels/approvals.md) — cards, your choices with Defer,
   the server's check, and the approval digest
 - [The dashboard and the live view](design/platform/channels/live-view.md) — the dashboard, a task
-  as a conversation, stepping in and routing marks
+  as a conversation and stepping in
 - [The trigger source](design/platform/channels/trigger-source.md) — schedules, polls, webhooks and
   streams
 

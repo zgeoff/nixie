@@ -181,8 +181,7 @@ and the waits.
 
 The conversation starts a task through the start tool when the user asks for work that no listed
 task covers. [Started tasks](./started-tasks.md) covers the start and its options, the nixie runner
-that runs a started task's steps, its limits, and the routing records and moves that send it the
-user's messages.
+that runs a started task's steps, and its limits.
 
 ## Timers
 

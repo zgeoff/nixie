@@ -3,8 +3,7 @@
 A started task is a task that the conversation starts through the start tool, for work that the user
 asks for and that no listed task covers. It runs on the same state machine, inbox and controls as
 every [task](./tasks.md), and this doc covers what only a started task has: the start and its
-options, the nixie runner that runs its steps, its limits, and the routing records and moves that
-send it the user's messages.
+options, the nixie runner that runs its steps, and its limits.
 
 ## The start
 
@@ -57,10 +56,6 @@ report to the starter with no wake, and under `none` the message tool refuses a 
 starter. A report under `wake` stays subject to the [hop limit](./task-messages.md#the-hop-limit),
 so a report past that limit reaches the starter with no wake.
 
-A task that the user starts by [moving a message](#moving-a-misrouted-message) to a new task holds
-no options. It runs with no persona and no memory, on the `task` role's profile, with the list tool,
-the message tool and the clock, under the default limits.
-
 ## The nixie runner
 
 The server gives the steps of every started task to the nixie runner, the step function in
@@ -79,7 +74,7 @@ step runs the same turn code as the conversation's steps, with these changes:
   [override any of these parts](./prompts.md#overrides-from-the-definitions).
 - A task started with `memory: read` gets the pinned memory and memory retrieval in its turn, as the
   conversation does. Its retrieval searches for its brief on its first turn, and for the body of
-  each task message it receives. Any other task gets neither. No task gets the task board.
+  each task message it receives. Any other task gets neither.
 - The task's tools are the ones its start recorded. Each call goes through the
   [decision point](../policy/decision-point.md), as the conversation's tool calls do.
 
@@ -125,29 +120,3 @@ and resumes a paused task in one transaction. A task that the user stopped after
 stopped, and a restart runs it under the raised limit. A raise names turns, dollars or both, and
 refuses when no value goes above the limit the task reached or one falls below it. The max of
 `models.limits.taskRun` never caps a raise, because it bounds only what a start asks for.
-
-## Routing records
-
-Each start from the conversation, and each conversation message to another task, writes a routing
-record on the conversation's thread. The record names the task and the user's messages that the work
-came from: the on-behalf-of IDs of the message, or, when the message lists none, the conversation's
-unread user messages. A user message can come from another task's thread, when the user wrote it
-there and later moved it to the conversation. The task's thread then gets a copy of the routing
-record too, because a client reads one thread at a time. A message-routes projection keeps one row
-per routed user message with the task it went to, and a later route of the same message replaces the
-row. The tool's note tells the model to say in its reply where the work went, and the
-[client](../channels/client.md#routing-marks) shows each route beside the user's message.
-
-## Moving a misrouted message
-
-The user moves a misrouted message to another task, or to a new one, through one checked action of
-the [API](../channels/api.md). One transaction checks the move, writes a correction record on the
-message's thread, and writes a moved-message record into the inbox of the task that gains the
-message. The task that lost it gets a moved-message record as well, unless that task has finished.
-The correction record replaces the message's row in the message-routes projection. A move refuses a
-record that is not the user's message on that thread, a task that does not exist or has finished,
-and a move to the task that holds the message already. It refuses the memory writer and the
-consolidator too, because both run on their own schedule and never read a message of the user's:
-only the conversation and a started task take a moved message. A move to a new task creates it,
-started by the user. Only the gaining task wakes, and
-[conversation turns](./conversation-turns.md#inbox-records-as-messages) covers what each side reads.

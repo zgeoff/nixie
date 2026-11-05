@@ -86,7 +86,7 @@ every path in its row and the parts listed before it.
 | `consolidator`       | `persona`, `nameRule`, `instruction`, `safety`         | `persona`, `owner.name`, `memory.maxChanges`                                                                      |
 | `content-checker`    | `nameRule`, `instruction`, `safety`                    | `owner.name`, `owner.nameAtSentenceStart`                                                                         |
 | `retirement-checker` | `instruction`, `safety`                                | none                                                                                                              |
-| `session`            | `skillCatalog`, `instruction`, `routing`, `safety`     | `persona`, `skillCatalog`, `owner.name`                                                                           |
+| `session`            | `skillCatalog`, `instruction`, `safety`                | `persona`, `skillCatalog`, `owner.name`                                                                           |
 | `compaction`         | `instruction`, `safety`                                | `owner.name`, `owner.nameAtSentenceStart`, `summary.words`                                                        |
 | `task`               | `persona`, `frame`, `inputs`, `instructions`, `safety` | `persona`, `owner.name`, `task.name`, `task.brief`                                                                |
 

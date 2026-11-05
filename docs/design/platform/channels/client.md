@@ -17,7 +17,7 @@ pasted. Its views are the conversation, a task, the [dashboard](live-view.md) an
 The client and the server share one oRPC contract in its own workspace package, which the server
 implements and both clients import as types only. The contract has 3 kinds of procedure:
 
-- **Reads**, such as the task board or one proposal, which TanStack Query caches.
+- **Reads**, such as the task list or one proposal, which TanStack Query caches.
 - **Checked actions**, one procedure per action with a typed input and typed errors. Each carries a
   client action ID, so a retried request runs once.
 - **The live stream**, server-sent events that follow the event log by sequence. Each event's ID is

@@ -1,7 +1,7 @@
 # 0018: The conversation and tasks
 
 - Date: 2026-10-08
-- Updated: 2026-10-15
+- Updated: 2026-11-05
 - Status: decided
 - Design: [tasks](../design/platform/core/tasks.md),
   [live view](../design/platform/channels/live-view.md)
@@ -34,17 +34,18 @@ is the one exception: it never fails. It retries with a backoff that stops growi
 each failure stays in the record. Once its failures in a row reach the limit at which a task would
 fail, nixie shows you that it is failing to answer, and the next turn that succeeds clears that.
 
-## Routing and views
+## Tasks from the conversation, and views
 
-The conversation routes your messages to the right task, and says in a few words where it sent each
-one, such as "passed to the backlog task". It works from a short structured list of every task with
-its status, last update and what it waits on, the `task_board` projection, instead of holding the
-tasks in its context.
+The conversation works with tasks through 3 tools: `task.start` starts a task with a brief,
+`task.message` sends a task a message, and `tasks.list` lists the tasks with their state, brief,
+last activity and the task each waits on. Tasks report back to the conversation with their own
+messages. No task list rides along in each turn, and nixie keeps no record of which task a message
+of yours went to. When the conversation needs to know whether a task already covers some work, it
+asks `tasks.list`.
 
-The dashboard and the live view read that same projection. The dashboard shows every task and its
-controls. The live view adds tasks that are finishing or finished, and what each did and why. Tasks
-are state machines over the event log from [0001](0001-durable-layer.md), so both views are
-projections of data nixie already keeps.
+The dashboard shows every task and its controls. The live view adds tasks that are finishing or
+finished, and what each did and why. Tasks are state machines over the event log from
+[0001](0001-durable-layer.md), so both views are projections of data nixie already keeps.
 
 ## Why
 
@@ -53,9 +54,10 @@ projections of data nixie already keeps.
 - Separate contexts keep the conversation small, so compaction does not discard what you care about,
   and let each task hold only the tools it needs under
   [0005](0005-effects-and-taint.md#where-taint-applies).
-- Naming where a message went keeps the conversation's handling visible without asking you to manage
-  it, and makes a misrouted message easy to catch.
-- One projection behind the conversation's list and both views stops them from disagreeing.
+- Tasks already message the conversation on their own, and the conversation can list them when it
+  needs to, so a task list in every turn only grows its context.
+- A routing record, a mark on each message and a move action guard against a misrouted message, a
+  failure no deployment has met. The 3 task tools cover the same need with less to build and run.
 - The conversation matters most, so it gets the durable machinery that is tested hardest, with no
   second loop to maintain.
 - Every deployment needs the conversation to answer, and a few transient failures in a row, such as
@@ -72,11 +74,15 @@ projections of data nixie already keeps.
   again, and its failure shows only as silence.
 - **A failed conversation waits for an operator.** nixie stops answering until someone resets the
   task by hand.
+- **A routing layer over the task tools.** A task board in each turn, a record of the task each
+  message went to, a mark beside each message, a move for a misrouted message and a reply that names
+  where each message went. It grows every turn's context and adds records, an API action and client
+  controls for a failure that has not happened.
 
 ## Consequences
 
-- Routing quality is on the critical path: a misrouted message fails quietly unless the conversation
-  names where it sent it.
+- The conversation decides alone which task gets a message of yours. To see where it went, you ask
+  the conversation or open the task.
 - The conversation and tasks report asynchronously, so the conversation never blocks on a task.
 - A supervised agent, such as a coding session started through atc, runs under its own rules.
   Managing atc sessions is a high priority. Showing supervised agents in the live view, labelled as
@@ -90,3 +96,6 @@ projections of data nixie already keeps.
   recovery as every task.
 - 2026-10-14: the conversation never fails; it retries with a capped backoff and shows you once its
   failures in a row reach the limit.
+- 2026-11-05: the conversation works with tasks through `task.start`, `task.message` and
+  `tasks.list` alone. The task board in each turn, the routing records, the routing marks, the move
+  of a misrouted message and the rule that the reply names where a message went are gone.
