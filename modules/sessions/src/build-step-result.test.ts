@@ -45,6 +45,7 @@ test('it sums the thinking tokens of every ended frame onto the last reply, and 
       hasMore: false,
       notedThrough: null,
       images: { bytes: 0, count: 0 },
+      isSilent: false,
       memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
     },
     [],
@@ -64,4 +65,46 @@ test('it sums the thinking tokens of every ended frame onto the last reply, and 
     messageID: 'message-2',
     thinkingTokens: 46,
   });
+});
+
+test('it records no reply for a silent turn, and marks its turn end silent', () => {
+  const result = buildStepResult(
+    {
+      definitions: () => ({ snapshotHash: 'sha256:test' }),
+      model: { model: 'claude-test-1', profile: 'chat-direct' },
+    },
+    {
+      turn: {
+        assistants: [
+          { type: 'assistant', messageID: 'message-1', text: 'Nothing to add.', toolUses: [] },
+        ],
+        read: [],
+        ended: [
+          {
+            type: 'ended',
+            boundary: { sessionID: 'session-1', messageID: 'message-1' },
+            subtype: 'success',
+            stopReason: 'end_turn',
+            turns: 2,
+            usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          },
+        ],
+        failure: null,
+      },
+      sent: new Set<number>(),
+      hasMore: false,
+      notedThrough: null,
+      images: { bytes: 0, count: 0 },
+      isSilent: true,
+      memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
+    },
+    [],
+  );
+
+  expect(result.records).toStrictEqual([
+    expect.objectContaining({
+      kind: 'model.turn_ended',
+      payload: expect.objectContaining({ isSilent: true }),
+    }),
+  ]);
 });

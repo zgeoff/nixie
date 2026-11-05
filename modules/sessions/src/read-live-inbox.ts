@@ -4,6 +4,7 @@ import type { TasksContext } from '@heynixie/tasks';
 import { isInboxRecord } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import type { TurnSilence } from './build-turn-silence';
 import { countImages } from './count-images';
 import { isPastImageBudget } from './is-past-image-budget';
 import { mergeImageTallies } from './merge-image-tallies';
@@ -26,6 +27,7 @@ export interface LiveInbox {
   readonly times: MessageTimeOptions;
   readonly view: TaskMessageView;
   readonly images: LiveImages;
+  readonly silence: TurnSilence;
 }
 
 export async function* readLiveInbox(
@@ -49,7 +51,14 @@ export async function* readLiveInbox(
         return;
       }
 
+      // A turn that ended silently passes no more messages in, so each one that lands from then
+      // on stays unread and wakes the next step, which can answer it.
+      if (live.silence.isSilent()) {
+        return;
+      }
+
       live.sent.add(entry.record.sequence);
+      live.silence.take(entry.record);
 
       live.images.spent = mergeImageTallies(live.images.spent, countImages(message));
       yield message;

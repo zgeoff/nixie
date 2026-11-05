@@ -4,6 +4,8 @@ import type { ToolSession } from '@heynixie/tools';
 import type { InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { CompletedTurn } from './build-step-result';
+import type { TurnSilence } from './build-turn-silence';
+import { buildTurnSilence } from './build-turn-silence';
 import { makeImageReserver } from './make-image-reserver';
 import { readLiveInbox } from './read-live-inbox';
 import type { OpeningBatch } from './read-opening-batch';
@@ -41,13 +43,16 @@ export async function runLiveTurn(
     imageBudget: run.imageBudget,
   });
 
+  const silence = buildTurnSilence(opening.batch.records);
+
   const stepToken = run.endpoint.startStep(buildStepRunID(input), {
     ...plan.session,
     reserveImages: makeImageReserver(opening.images),
+    endSilently: silence.end,
   });
 
   try {
-    return await runTokenTurn(run, input, { ...plan, token: stepToken.token, opening });
+    return await runTokenTurn(run, input, { ...plan, token: stepToken.token, opening, silence });
   } finally {
     await stepToken.stop();
   }
@@ -56,6 +61,7 @@ export async function runLiveTurn(
 interface TokenTurnPlan extends LiveTurnPlan {
   readonly token: string;
   readonly opening: OpeningBatch;
+  readonly silence: TurnSilence;
 }
 
 async function runTokenTurn(
@@ -101,6 +107,7 @@ async function runTokenTurn(
             times: plan.times,
             view: plan.view,
             images: opening.images,
+            silence: plan.silence,
           }),
       signal: plan.signal,
       interrupt: input.interrupt,
@@ -113,6 +120,7 @@ async function runTokenTurn(
       hasMore: hasMore || opening.images.isCapped,
       notedThrough: note?.throughSequence ?? null,
       images: opening.images.spent,
+      isSilent: plan.silence.isSilent(),
     };
   } finally {
     live.abort();

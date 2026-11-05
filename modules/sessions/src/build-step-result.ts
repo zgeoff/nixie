@@ -19,6 +19,8 @@ export interface CompletedTurn {
   readonly notedThrough: number | null;
 
   readonly images: ImageTally;
+
+  readonly isSilent: boolean;
 }
 
 interface TurnMemoryRefs {
@@ -119,10 +121,11 @@ function buildTurnReasoning(turn: GuestTurn): TurnReasoning {
 
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
   return [
-    ...buildReplyRecords(source, completed.turn),
+    ...(completed.isSilent ? [] : buildReplyRecords(source, completed.turn)),
     buildModelRecord(source, modelTurnEndedCodec, {
       payload: {
         ...buildTurnSummary(completed.turn),
+        ...(completed.isSilent ? { isSilent: true } : {}),
         pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
         retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
         retrievedMessages: [...completed.memory.retrievedMessages],

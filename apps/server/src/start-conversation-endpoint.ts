@@ -6,6 +6,7 @@ import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
+import { buildSilentEndTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
 import { buildTaskMessageTool, buildTaskStartTool, buildTasksListTool } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
@@ -98,10 +99,13 @@ export async function startConversationEndpoint(
     buildTaskStartTool(options.context, messaging, bounds),
   ];
 
-  const definitions = buildConversationTools(
-    { webFetch: tools.webFetch, time, logReaders, skills, prompts, tasks },
-    memory,
-  );
+  const definitions = [
+    ...buildConversationTools(
+      { webFetch: tools.webFetch, time, logReaders, skills, prompts, tasks },
+      memory,
+    ),
+    buildSilentEndTool(messaging),
+  ];
 
   const registry = buildToolRegistry([...definitions, ...tools.testTools]);
 

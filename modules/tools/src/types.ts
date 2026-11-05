@@ -89,7 +89,13 @@ export interface ToolSession {
   // The SDK repeats every image a session took in each later request, so an image a tool returns
   // counts against the session's image budget, and false refuses it.
   readonly reserveImages?: (images: readonly ToolImage[]) => boolean;
+
+  // A turn that holds a message from the owner refuses to end with nothing sent, so the model
+  // replies to it.
+  readonly endSilently?: () => SilentEnd;
 }
+
+export type SilentEnd = 'ended' | 'refused';
 
 export interface ToolRunModel {
   readonly model: string;

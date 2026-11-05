@@ -409,6 +409,7 @@ test("it gives each turn a step token of the step's run identity, and stops it o
         key: expect.toBeString(),
         invalidatedThrough: 0,
         reserveImages: expect.any(Function),
+        endSilently: expect.any(Function),
       },
       token: 'step-token-1',
       isStopped: true,
@@ -419,6 +420,7 @@ test("it gives each turn a step token of the step's run identity, and stops it o
         key: expect.toBeString(),
         invalidatedThrough: 0,
         reserveImages: expect.any(Function),
+        endSilently: expect.any(Function),
       },
       token: 'step-token-2',
       isStopped: true,
@@ -2574,6 +2576,175 @@ test('it records the sequence a turn with no memory changes covers and adds no m
   ]);
 
   expect(records).toMatchObject([{ payload: { memoryNotedThrough: 4 } }]);
+});
+
+test('it ends a turn that a task report alone woke with no reply, and records the turn end as silent', async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+  };
+
+  await createConversationTask(ctx.context);
+  await createSystemTask(ctx.context, 'memory-writer');
+  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['turn.end_silently'],
+    messaging,
+  });
+
+  const ends: (string | undefined)[] = [];
+
+  ctx.sandboxes.setGuestScript((turn) => {
+    ends.push(ctx.steps.at(-1)?.session?.endSilently?.());
+
+    return [
+      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+      {
+        type: 'assistant',
+        messageID: crypto.randomUUID(),
+        text: 'The writer saved two memories.',
+        toolUses: [],
+      },
+      {
+        type: 'ended',
+        boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+        subtype: 'success',
+        stopReason: 'end_turn',
+        turns: 2,
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+    ];
+  });
+
+  await writeTestTaskMessage(ctx.context, messaging, {
+    from: 'memory-writer',
+    to: 'conversation',
+    kind: 'report',
+    body: 'Two memories saved.',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  await ctx.runNextStep(runner);
+
+  const replies = await ctx.readKinds('model.reply');
+  const ended = await ctx.readKinds('model.turn_ended');
+
+  expect(ends).toStrictEqual(['ended']);
+  expect(replies).toStrictEqual([]);
+  expect(ended).toMatchObject([{ payload: { isSilent: true } }]);
+});
+
+test.each([
+  { name: 'a message from you', reports: [] },
+  { name: 'a task report and a message from you', reports: ['Two memories saved.'] },
+])('it refuses to end a turn that holds $name silently, and records its reply', async (row) => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+  };
+
+  await createConversationTask(ctx.context);
+  await createSystemTask(ctx.context, 'memory-writer');
+  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['turn.end_silently'],
+    messaging,
+  });
+
+  const ends: (string | undefined)[] = [];
+
+  ctx.sandboxes.setGuestScript((turn, guest) => {
+    ends.push(ctx.steps.at(-1)?.session?.endSilently?.());
+
+    return buildStubTurnScript(() => ({ reply: 'Yes, Thursday works.' }))(turn, guest);
+  });
+
+  for (const body of row.reports) {
+    await writeTestTaskMessage(ctx.context, messaging, {
+      from: 'memory-writer',
+      to: 'conversation',
+      kind: 'report',
+      body,
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    });
+  }
+
+  await ctx.writeMessage('Does Thursday work?');
+  await ctx.runNextStep(runner);
+
+  const replies = await ctx.readKinds('model.reply');
+  const ended = await ctx.readKinds('model.turn_ended');
+
+  expect(ends).toStrictEqual(['refused']);
+
+  expect(replies).toMatchObject([
+    { erasable: { status: 'readable', fields: { text: 'Yes, Thursday works.' } } },
+  ]);
+
+  expect(ended).toStrictEqual([
+    expect.objectContaining({
+      payload: expect.toSatisfy((payload: object) => !('isSilent' in payload)),
+    }),
+  ]);
+});
+
+test('it leaves a message from you that lands after a silent end unread, and answers it in the next turn', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['turn.end_silently'],
+  });
+
+  ctx.sandboxes.setGuestScript(async (turn, guest) => {
+    ctx.steps.at(-1)?.session?.endSilently?.();
+
+    await ctx.writeMessage('Are you there?');
+
+    return buildStubTurnScript(() => ({}))(turn, guest);
+  });
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'timer.fired',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { timerID: 'tide-check', taskID: 'conversation', dueAt: 1000, firedAt: 1000 },
+    },
+  ]);
+
+  await ctx.runNextStep(runner);
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Here.' })));
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.sandboxes.turns[1]?.input.at(-1)?.text).toEndWith('Are you there?');
 });
 
 test('it records no noted sequence on the turn end of a runner with no memory note', async () => {

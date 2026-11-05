@@ -115,6 +115,7 @@ test('it offers the memory tools, web fetch, the time tool and the log reader to
     'tasks.list',
     'task.message',
     'task.start',
+    'turn.end_silently',
   ]);
 });
 

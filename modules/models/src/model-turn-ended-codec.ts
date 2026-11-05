@@ -26,5 +26,6 @@ export const modelTurnEndedCodec = defineRecordCodec(
     sessionImageCount: mark,
     recalledThrough: mark.exactOptional(),
     memoryNotedThrough: mark.exactOptional(),
+    isSilent: z.literal(true).exactOptional(),
   }),
 );

@@ -1,5 +1,6 @@
 export { buildEventRegistry } from './build-event-registry';
 export { buildModelStatus } from './build-model-status';
+export { buildSilentEndTool } from './build-silent-end-tool';
 export { buildStartStatus } from './build-start-status';
 export { buildStartTimeStatus } from './build-start-time-status';
 
