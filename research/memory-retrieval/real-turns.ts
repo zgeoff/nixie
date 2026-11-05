@@ -43,9 +43,8 @@ import { pickRatingTurns } from './real-turns/pick-rating-turns.ts';
 import { renderRatingParts } from './real-turns/render-rating-parts.ts';
 import { scoreBlocks } from './real-turns/score-blocks.ts';
 import { parseLabelLines } from './real-turns/parse-label-lines.ts';
-import type { RatedMessage } from './real-turns/score-message-floors.ts';
 import { scoreMessageFloors } from './real-turns/score-message-floors.ts';
-import { buildSimilarity } from './real-turns/build-similarity.ts';
+import { readRatedMessages } from './real-turns/read-rated-messages.ts';
 import { collectExchangeItems } from './real-turns/collect-exchange-items.ts';
 import { collectItemShows } from './real-turns/collect-item-shows.ts';
 import { collectWritingTurns } from './real-turns/collect-writing-turns.ts';
@@ -343,7 +342,12 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   };
 
   const itemShows = collectItemShows(hybrid, gold, pooledByCase, [3, 5, 10]);
-  const messageFloors = scoreMessageFloors(await readRatedMessages(chosen, gold, collectIndexedMessages(exported.records)), [0.38, 0.42, 0.46, 0.5, 0.55, 0.6]);
+  const messageEncoder = await loadTurnEncoder('leaf-ir-q8', encoderDirs);
+  const ratedMessages = await readRatedMessages(chosen, gold, collectIndexedMessages(exported.records), messageEncoder, excludedWords);
+
+  await messageEncoder.stop();
+
+  const messageFloors = scoreMessageFloors(ratedMessages, [0.38, 0.42, 0.46, 0.5, 0.55, 0.6]);
 
   console.log(`turns ${chosen.length}, labelled ${labels.length}, short ${shortIDs.size}\n`);
   console.log(scored.lines.join('\n'));
@@ -371,41 +375,6 @@ function collectBackgroundMessages(hybrid: TurnCase[]): BackgroundMessage[] {
   return hybrid
     .map((turn) => ({ sequence: turn.recalledSequence, text: buildVectorQuery(turn.query, excludedWords) }))
     .filter((message) => message.text.trim() !== '');
-}
-
-// Encodes the indexed text of each past message a labelled turn was shown, and its query, through
-// the shipped encoder, because the log keeps no score for a past message.
-async function readRatedMessages(turns: TurnCase[], gold: Map<string, Gold>, indexed: ReadonlyMap<number, string>): Promise<RatedMessage[]> {
-  const encoder = await loadTurnEncoder('leaf-ir-q8', encoderDirs);
-  const rated: RatedMessage[] = [];
-
-  for (const turn of turns) {
-    const expected = gold.get(turn.caseID);
-    const queryText = buildVectorQuery(turn.query, excludedWords);
-
-    if (expected?.isLabelled !== true || turn.shownMessages.length === 0 || queryText.trim() === '') {
-      continue;
-    }
-
-    const [query, ...messages] = [
-      ...(await encoder.encode([queryText], 'query')),
-      ...(await encoder.encode(
-        turn.shownMessages.map((message) => indexed.get(message.sequence) ?? message.text),
-        'document',
-      )),
-    ];
-
-    for (const [position, message] of turn.shownMessages.entries()) {
-      rated.push({
-        similarity: buildSimilarity(query ?? new Float32Array(), messages[position] ?? new Float32Array(), SHIPPED),
-        isHelpful: expected.messages.has(`${messageKeyPrefix}${message.sequence}`),
-      });
-    }
-  }
-
-  await encoder.stop();
-
-  return rated;
 }
 
 // Reads the labels with the key and the sample they were made from, and drops each label whose
