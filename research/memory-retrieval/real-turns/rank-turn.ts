@@ -119,7 +119,8 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex, background: Ba
       encodedBackground.push(...background.map((message, position) => ({ sequence: message.sequence, vector: vectors[position] ?? new Float32Array() })));
     }
 
-    const cached = hubScores.get(itemID);
+    const key = `${itemID}/${config.width ?? 'full'}/${config.isInt8 ? 'int8' : 'float'}`;
+    const cached = hubScores.get(key);
 
     if (cached !== undefined) {
       return cached;
@@ -130,7 +131,7 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex, background: Ba
       hubNearest,
     );
 
-    hubScores.set(itemID, score);
+    hubScores.set(key, score);
 
     return score;
   };

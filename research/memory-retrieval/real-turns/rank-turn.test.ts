@@ -422,6 +422,49 @@ test('it leaves out the messages after the turn from the hub score', async () =>
   expect(ranking.facts).toStrictEqual(['item-vague', 'item-tomato']);
 });
 
+test('it scores the hub again for a ranking of the same turn at another vector width', async () => {
+  const index = await startMemoryIndex();
+
+  onTestFinished(() => index.stop());
+
+  const vectors: Record<string, Float32Array> = {
+    'harbour ferry': new Float32Array([1, 0, 0]),
+    'Takes the early ferry': new Float32Array([0.6, 0, 0.8]),
+    'all good': new Float32Array([0, 0, 1]),
+  };
+  const ranker = buildRanker(
+    { encode: async (texts) => texts.map((text) => vectors[text] ?? new Float32Array([0, 0, 0])) },
+    index,
+    [{ sequence: 1, text: 'all good' }],
+  );
+  const turn = {
+    caseID: 't5',
+    stepSequence: 4,
+    recalledSequence: 5,
+    recordedAt: 0,
+    query: 'harbour ferry',
+    typedQuery: 'harbour ferry',
+    shownMessages: [],
+    isSessionStart: false,
+    isShredded: false,
+    contextTokens: null,
+    reply: '',
+    earlier: [],
+    candidates: [{ itemID: 'item-ferry', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Takes the early ferry' }],
+    logged: [],
+    searchMode: 'hybrid' as const,
+    delivered: [],
+    ratings: [],
+  };
+  const config = { ...SHIPPED, mode: 'vector' as const, isInt8: false, hub: { kind: 'floor' as const, margin: 0.25 } };
+
+  await ranker.rankTurn(turn, { ...config, width: null }, []);
+
+  const ranking = await ranker.rankTurn(turn, { ...config, width: 2 }, []);
+
+  expect(ranking.facts).toStrictEqual(['item-ferry']);
+});
+
 test('it drops an item only BM25 found when BM25 has no weight', async () => {
   const ctx = await setupTest();
 
