@@ -160,6 +160,13 @@ the self-notes row, by one rank [read in the code]. The table also leaves out th
 resumed turn gets when its pinned core changed since the turn before it, which the harness counts as
 a block of its own [read in the code].
 
+Neither the table nor the harness renders 2 parts of an item's line, because the plain export holds
+neither [read in the code]. The first is the approval clause on an item you approved, which also
+writes "from a pasted page" in place of "unconfirmed" for a quote you pasted. The second is the
+model name on a self note. Each such item reads low by a few tokens, and the log holds 196 approval
+records [measured]. The pinned-memory, retrieved-items and self-notes rows are therefore lower
+bounds [read in the code].
+
 A turn's model calls read a mean of 155,714 input tokens a call, cached or not, so the blocks a turn
 adds come to about 0.1% of one call [measured]. A block stays in the session once given, and a
 session held a median of 19,142 memory tokens at a hybrid turn, with a maximum of 35,335 [measured].
