@@ -375,11 +375,16 @@ function toRoute(record: LogRecord): Route | undefined {
 
 type SessionFields = Pick<
   ContractRecord,
-  'compaction' | 'compactionFailure' | 'context' | 'summary'
+  'compaction' | 'compactionFailure' | 'context' | 'isSilentTurn' | 'summary'
 >;
 
 function toSessionFields(record: LogRecord): SessionFields {
-  const context = record.kind === 'model.turn_ended' ? toContext(record) : undefined;
+  const turn =
+    record.kind === 'model.turn_ended'
+      ? modelTurnEndedCodec.tryDecodePartial(record.payload)
+      : undefined;
+
+  const context = turn === undefined ? undefined : toContext(turn);
   const compaction = record.kind === 'model.compacted' ? toCompaction(record) : undefined;
   const summary = record.kind === 'model.session_summarized' ? toSummary(record) : undefined;
 
@@ -390,15 +395,16 @@ function toSessionFields(record: LogRecord): SessionFields {
     ...(compaction === undefined ? {} : { compaction }),
     ...(compactionFailure === undefined ? {} : { compactionFailure }),
     ...(context === undefined ? {} : { context }),
+    ...(turn?.isSilent === true ? { isSilentTurn: true } : {}),
     ...(summary === undefined ? {} : { summary }),
   };
 }
 
 type Context = NonNullable<ContractRecord['context']>;
 
-function toContext(record: LogRecord): Context | undefined {
-  const turn = modelTurnEndedCodec.tryDecodePartial(record.payload);
+type TurnEnd = ReturnType<typeof modelTurnEndedCodec.tryDecodePartial>;
 
+function toContext(turn: TurnEnd): Context | undefined {
   return turn?.contextSize === undefined || turn.contextWindow === undefined
     ? undefined
     : { size: turn.contextSize, window: turn.contextWindow };

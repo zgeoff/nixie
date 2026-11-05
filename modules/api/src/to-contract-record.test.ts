@@ -434,6 +434,24 @@ test('it carries the context a turn end recorded for its last model call', () =>
   });
 });
 
+test('it marks a turn end that ended silently', () => {
+  const record = buildMockLogRecord({
+    sequence: 22,
+    recordedAt: new Date('2026-10-10T12:00:06Z'),
+    kind: 'model.turn_ended',
+    thread: 'conversation',
+    payload: { model: 'claude-test-1', profile: 'chat-direct', inputTokens: 500, isSilent: true },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    isSilentTurn: true,
+    kind: 'model.turn_ended',
+    recordedAt: new Date('2026-10-10T12:00:06Z'),
+    sequence: 22,
+    thread: 'conversation',
+  });
+});
+
 test('it carries no context on a turn end recorded before the context was', () => {
   const record = buildMockLogRecord({
     sequence: 21,
