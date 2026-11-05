@@ -120,6 +120,11 @@ opening, so it counts on the 8 turns that opened a session [read in the code].
 | Self notes      | 60            | 308                 | 523             | 17              |
 | Past messages   | 801           | 124                 | 208             | 94              |
 
+The past-message counts came from each message's text cut at 1,000 characters, without the tags the
+product puts around pasted or dropped text and without its image markers [read in the code]. They
+read low by about 13 tokens for each such span and 11 for each image [read in the code]. The
+snapshot is no longer at hand, so the counts stand as measured.
+
 A turn's model calls read a mean of 155,714 input tokens a call, cached or not, so the blocks a turn
 adds come to about 0.1% of one call [measured]. A block stays in the session once given, and a
 session held a median of 19,142 memory tokens at a hybrid turn, with a maximum of 35,335 [measured].

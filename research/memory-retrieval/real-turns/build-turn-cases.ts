@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { findTypedText } from './find-typed-text.ts';
 import type { PlainExport, PlainRecord, PlainVersion } from './read-plain-export.ts';
 import { readErasableText } from './read-plain-export.ts';
+import { renderShownMessage } from './render-shown-message.ts';
 
 export interface Candidate {
   itemID: string;
@@ -16,7 +17,7 @@ export interface Candidate {
   text: string;
 }
 
-// A past message the turn was shown, cut where the product cuts it.
+// A past message the turn was shown, cut and rendered as the product shows it.
 export interface ShownMessage {
   sequence: number;
   text: string;
@@ -89,8 +90,6 @@ export interface TurnCase {
 
 const conversationThread = 'conversation';
 
-// The product cuts a past message it shows at this many characters.
-const messageTextLimit = 1000;
 const earlierExchanges = 2;
 
 // The record kinds the tasks module counts as a task's inbox, and the most records of it that the
@@ -110,7 +109,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
   const session: SessionFold = { delivered: new Map(), pending: [], isCompacted: false };
   const pinned = new Set<string>();
   const sensitive = new Map<string, boolean>();
-  const messages = new Map<number, string>();
+  const messages = new Map<number, Omit<ShownMessage, 'sequence'>>();
 
   let inbox: PlainRecord[] = [];
   let open: TurnCase | null = null;
@@ -123,10 +122,10 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
     foldSensitive(sensitive, record);
 
     // Past-message retrieval searches the user's messages in every thread.
-    const messageText = record.kind === 'owner_message' ? readErasableText(record) : null;
+    const shown = record.kind === 'owner_message' ? renderShownMessage(record) : null;
 
-    if (messageText !== null) {
-      messages.set(record.sequence, messageText);
+    if (shown !== null) {
+      messages.set(record.sequence, shown);
     }
 
     if (record.thread !== conversationThread) {
@@ -245,11 +244,9 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
       hasEnded = true;
       open.contextTokens = ended.contextSize ?? toCallContext(ended);
       open.shownMessages = (ended.retrievedMessages ?? []).flatMap((sequence) => {
-        const text = messages.get(sequence);
+        const shown = messages.get(sequence);
 
-        return text === undefined
-          ? []
-          : [{ sequence, text: text.slice(0, messageTextLimit), isCut: text.length > messageTextLimit }];
+        return shown === undefined ? [] : [{ sequence, ...shown }];
       });
     }
 
