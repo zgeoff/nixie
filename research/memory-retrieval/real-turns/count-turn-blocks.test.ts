@@ -63,7 +63,7 @@ test('#buildBlockTokens counts the pinned block and each retrieved block on a se
     { ownerName: null, defaultZone: 'UTC' },
   );
 
-  expect(Object.entries(tokens).filter(([, value]) => value === 0)).toStrictEqual([]);
+  expect(tokens).toStrictEqual({ pinned: 85, items: 75, selfNotes: 76, messages: 76 });
 });
 
 test('#collectBlockSources takes each version line from the export', () => {
