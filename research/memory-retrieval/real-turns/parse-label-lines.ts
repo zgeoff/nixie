@@ -43,5 +43,12 @@ export function parseLabelLines(text: string, sampled: ReadonlySet<string>): Par
 }
 
 function isSameLabel(first: Label, second: Label): boolean {
-  return first.best === second.best && first.relevant.toSorted().join(',') === second.relevant.toSorted().join(',');
+  const toKey = (values: string[] | undefined) => (values ?? []).toSorted().join('\n');
+
+  return (
+    first.best === second.best &&
+    toKey(first.relevant) === toKey(second.relevant) &&
+    toKey(first.missing) === toKey(second.missing) &&
+    toKey(first.misleading) === toKey(second.misleading)
+  );
 }
