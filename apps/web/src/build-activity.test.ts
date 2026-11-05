@@ -395,6 +395,31 @@ test('it takes the context of the last turn end in a step that recorded one', ()
   ]);
 });
 
+test('it marks a step whose turn ended silently', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+  const ended = buildMockLogRecord({ isSilentTurn: true, kind: 'model.turn_ended', sequence: 2 });
+
+  expect(buildActivity([started, ended])).toStrictEqual([
+    {
+      calls: [],
+      isSilent: true,
+      key: 1,
+      kind: 'step',
+      records: [started, ended],
+      status: 'running',
+    },
+  ]);
+});
+
+test('it leaves unmarked a step whose turn replied', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+  const ended = buildMockLogRecord({ kind: 'model.turn_ended', sequence: 2 });
+
+  expect(buildActivity([started, ended])).toStrictEqual([
+    { calls: [], key: 1, kind: 'step', records: [started, ended], status: 'running' },
+  ]);
+});
+
 test('it collects each compaction of a step with the sequence of its record, in order', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
 

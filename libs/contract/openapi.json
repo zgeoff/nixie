@@ -165,6 +165,9 @@
                               "window"
                             ]
                           },
+                          "isSilentTurn": {
+                            "const": true
+                          },
                           "kind": {
                             "type": "string"
                           },
@@ -676,6 +679,9 @@
                                 "size",
                                 "window"
                               ]
+                            },
+                            "isSilentTurn": {
+                              "const": true
                             },
                             "kind": {
                               "type": "string"
@@ -16268,6 +16274,9 @@
                                     "window"
                                   ]
                                 },
+                                "isSilentTurn": {
+                                  "const": true
+                                },
                                 "kind": {
                                   "type": "string"
                                 },
@@ -16941,6 +16950,9 @@
                                     "size",
                                     "window"
                                   ]
+                                },
+                                "isSilentTurn": {
+                                  "const": true
                                 },
                                 "kind": {
                                   "type": "string"

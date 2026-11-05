@@ -247,6 +247,18 @@ test('it clips a long error', () => {
   expect(formatStepSummary(step)).toBe(`task · failed: ${'e'.repeat(80)}… · no tools`);
 });
 
+test('it says a step whose turn ended silently ended with no reply', () => {
+  expect(
+    formatStepSummary(
+      buildMockStepActivity({
+        calls: [{ callID: 'a', input: {}, outcome: 'result', tool: 'turn.end_silently' }],
+        isSilent: true,
+        taskID: 'conversation',
+      }),
+    ),
+  ).toBe('conversation · ended with no reply · turn end silently');
+});
+
 test('it says a failed step with no readable error failed', () => {
   expect(formatStepSummary(buildMockStepActivity({ status: 'failed' }))).toBe(
     'task · failed · no tools',

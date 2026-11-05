@@ -49,6 +49,8 @@ export interface StepActivity {
 
   readonly error?: string;
 
+  readonly isSilent?: true;
+
   readonly key: number;
 
   readonly memories?: readonly RecalledMemory[];
@@ -206,6 +208,7 @@ function buildStep(
     ...(context === undefined ? {} : { context }),
     ...(durationMs === undefined ? {} : { durationMs }),
     ...(error === undefined ? {} : { error }),
+    ...(records.some((record) => record.isSilentTurn === true) ? { isSilent: true } : {}),
     key: records[0]?.sequence ?? 0,
     kind: 'step',
     ...(recalls.length === 0

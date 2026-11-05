@@ -277,6 +277,35 @@ next message. A turn that fails for any reason but a lost session, such as a dis
 server, throws, so the tasks module records the error and retries the step after a delay that grows
 with each failure in a row. The conversation never fails ([tasks](./tasks.md#steps)).
 
+### A turn that ends with nothing sent
+
+A silent turn is a turn whose step commits no reply record. The model makes a turn silent by calling
+`turn.end_silently`, a tool that the conversation and every
+[started task](./started-tasks.md#start-options) hold on every turn. The tool list therefore never
+changes, and the prompt cache holds. nixie wrote the tool's description to ask the model for the
+call only when a task message or a timer woke the turn and nothing needs saying. The call ends
+nothing by itself: the model's loop runs until the model stops, and every other tool call in the
+turn takes effect.
+
+The host answers the call from the inbox records that the turn holds. Those are the records that
+opened the turn, and the records that the host passed into it while it ran, as
+[inbox records as messages](#inbox-records-as-messages) describes. The host refuses the call when
+one of them is the user's own message, or the `message-moved` record of a message that the user
+moved to this task. The model reads the refusal as the tool's answer, and replies. The
+`message-moved` record on the task that lost the message never causes a refusal.
+
+When the host accepts the call, it stops passing records into the running turn. Any record that
+lands after the call stays unread, and a waking record, such as the user's message, starts the next
+step.
+
+The step that commits a silent turn writes no reply record, even for text the model wrote before or
+after the call. It writes the turn-ended record with `isSilent: true`, marks the read records and
+commits the session boundary, as every step does. One exception: when the model API refuses a later
+call, the step fails as [a call the model API refuses](#a-call-the-model-api-refuses) describes, and
+its error records hold no reply. The [API](../channels/api.md) names the mark `isSilentTurn` on its
+record, because one record type there covers every kind, and the [client](../channels/client.md)
+shows the step as ended with no reply.
+
 ### A call the model API refuses
 
 When the model API refuses a call, the CLI writes its own message about the refusal as an assistant

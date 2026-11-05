@@ -159,6 +159,30 @@ a note that says so. A scheduled task never finishes, so a wait on one would sta
 that may never come. A question or a request to one therefore marks no wait, and its note tells the
 sender that a reply, if any, arrives as a new message.
 
+### Silent turns
+
+The `turn.end_silently` tool lets a turn send nothing. The conversation and every
+[started task](../../../architecture/core/started-tasks.md) have it. The memory writer and the
+consolidator lack it, because they never reply.
+
+The model calls the tool when only a task message or a timer woke the turn and nothing needs saying,
+as the tool's description asks. nixie then keeps none of the turn's text: the text the model wrote
+before or after the call never reaches the log, and you get no reply. A task sends task messages
+only through `task.message`, so for a task the tool is the way to end a turn without one. Every
+other tool call in the turn takes effect, a `task.message` call included. **Why:** without the tool,
+a model with nothing to say still writes a reply or a task message, and your conversation fills with
+them.
+
+nixie refuses the call when the turn holds a message from you, and the model reads the refusal as
+the tool's answer and replies. A turn holds each message that opened it, and each message that nixie
+passed into it while it ran, as [Waits](#waits) describes. A message you moved to the task with the
+client's move action counts as yours. A message from you that lands after the call stays unread, and
+it wakes the conversation or the task for a turn that answers it.
+
+The tool stays in the tool list on every turn, so the list never changes and the prompt cache holds.
+The turn's `model.turn_ended` record marks the turn silent, and the client shows its step as ended
+with no reply.
+
 ### Hops
 
 Two tasks that answer each other would wake each other forever, so each step carries a hop count. A

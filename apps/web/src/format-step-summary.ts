@@ -6,6 +6,7 @@ export function formatStepSummary(step: StepActivity): string {
   const parts = [
     step.taskID ?? 'task',
     ...formatStatus(step),
+    ...(step.isSilent === true ? ['ended with no reply'] : []),
     ...(step.memories === undefined ? [] : [formatMemoryCount(step.memories)]),
     formatTools(step),
     ...(step.context === undefined ? [] : [formatContext(step.context)]),

@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import type { LogRecord } from '@heynixie/contract';
 import type { ReceivedFrame } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -99,7 +100,84 @@ test("it runs the task that the conversation starts in a worker imp it owns, and
   );
 });
 
-test("it gives a stranger's tool run the task tools and the clock alone, under the task prompt with no persona or memory", async () => {
+test("it ends the conversation's turn that the task's report woke with no reply, and the client reads the turn as silent", async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: { name: 'Tide tables', brief: 'Find the high tides at Bramble Quay on Saturday.' },
+      },
+    },
+    { text: 'Passed to the Tide tables task.' },
+    { toolUse: { name: 'turn.end_silently', input: {} } },
+    { text: 'The tide report is in.' },
+  );
+
+  ctx.nixie.guest.addKindReplies(
+    'worker',
+    {
+      toolUse: {
+        name: 'task.message',
+        input: {
+          to: 'conversation',
+          kind: 'report',
+          body: 'High tide at Bramble Quay on Saturday is at 06:42.',
+        },
+      },
+    },
+    { text: 'Reported.' },
+  );
+
+  await sendClientMessage(
+    ctx.api.client,
+    { text: 'When is high tide on Saturday?' },
+    'Passed to the Tide tables task.',
+  );
+
+  const page: { records: readonly LogRecord[] } = { records: [] };
+
+  await waitForCondition(async () => {
+    const read = await ctx.api.client.conversation.read({ thread: 'conversation' });
+
+    page.records = read.records;
+
+    return page.records.some((record) => record.isSilentTurn === true);
+  });
+
+  const ended = ctx.nixie.toolResults.find((result) => result.name === 'turn.end_silently');
+
+  expect(page.records.filter((record) => record.kind === 'model.reply')).toStrictEqual([
+    {
+      kind: 'model.reply',
+      message: { text: 'Passed to the Tide tables task.' },
+      recordedAt: expect.any(Date),
+      sequence: expect.any(Number),
+      thread: 'conversation',
+    },
+  ]);
+
+  expect(page.records.findLast((record) => record.kind === 'model.turn_ended')).toStrictEqual({
+    context: { size: expect.any(Number), window: 200_000 },
+    isSilentTurn: true,
+    kind: 'model.turn_ended',
+    recordedAt: expect.any(Date),
+    sequence: expect.any(Number),
+    thread: 'conversation',
+  });
+
+  expect(JSON.parse(ended?.result ?? '{}')).toStrictEqual({
+    _meta: { 'io.modelcontextprotocol/serverInfo': { name: 'nixie', version: expect.any(String) } },
+    content: [],
+    structuredContent: {
+      note: 'This turn ends with nothing sent. Write no more text: nixie keeps no reply from this turn.',
+    },
+  });
+});
+
+test("it gives a stranger's tool run the task tools, the clock and the silent end alone, under the task prompt with no persona or memory", async () => {
   const held = Promise.withResolvers<void>();
 
   onTestFinished(() => {
@@ -142,7 +220,12 @@ test("it gives a stranger's tool run the task tools and the clock alone, under t
 
   const input = taskTurn.frame.input.map((message) => message.text).join('\n');
 
-  expect(tools).toIncludeSameMembers(['tasks.list', 'task.message', 'time.now']);
+  expect(tools).toIncludeSameMembers([
+    'tasks.list',
+    'task.message',
+    'time.now',
+    'turn.end_silently',
+  ]);
 
   expect(taskTurn.frame.systemPrompt).toStartWith(
     'You are "Tide tables", one of the tasks that nixie runs for',

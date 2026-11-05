@@ -129,11 +129,11 @@ the task's creation, folds into the step that follows it. A page holds only the 
 records, so it can start partway through a step: a step's end with no start before it closes the
 records before it as one step, with the status its end records.
 
-A step shows as one collapsed line of short facts: its task, how many memories its recalls delivered
-with how many of them the model rated as noise, each tool it called with its targets, such as the
-host and path of the page each web fetch ended at, how full the context stood at its last model call
-against the window nixie compacts within, and how long it ran. A fact shows only once its record
-exists.
+A step shows as one collapsed line of short facts: its task, whether its turn ended with no reply,
+how many memories its recalls delivered with how many of them the model rated as noise, each tool it
+called with its targets, such as the host and path of the page each web fetch ended at, how full the
+context stood at its last model call against the window nixie compacts within, and how long it ran.
+A fact shows only once its record exists.
 
 Each compaction in the step adds a marker under that line with the context's tokens before and
 after, so the user can compare the turns on each side of it. A summary that closed the session shows

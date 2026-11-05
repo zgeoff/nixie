@@ -15,6 +15,7 @@ export type {
   ResultSources,
   RunEndpoint,
   SchemaCheck,
+  SilentEnd,
   ToolCall,
   ToolContext,
   ToolDefinition,

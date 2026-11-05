@@ -108,6 +108,7 @@ async function setupTest() {
   return {
     ...host,
     runs: tools.runs,
+    steps: tools.steps,
     events,
     startRunner,
     seedConversationStep: () => seedConversationStep(host.context),
@@ -168,6 +169,163 @@ async function setupTest() {
   };
 }
 
+test.each([
+  {
+    name: 'a task report',
+    kind: 'task_message',
+    buildPayload: (taskID: string) => ({
+      messageID: 'q8v3m1x7ka',
+      from: 'conversation',
+      to: taskID,
+      kind: 'report',
+      replyTo: null,
+      onBehalfOf: [],
+      hop: 1,
+      hopLimit: 20,
+      wake: true,
+      woke: true,
+      source: 'task:conversation',
+    }),
+    erasable: { body: 'The ferry runs at 09:25.' },
+  },
+  {
+    name: 'a timer',
+    kind: 'timer.fired',
+    buildPayload: (taskID: string) => ({
+      timerID: 'tide-check',
+      taskID,
+      dueAt: 1000,
+      firedAt: 1000,
+    }),
+    erasable: {},
+  },
+])(
+  'it ends a task turn that $name alone woke with no reply and no task message, and records the turn end as silent',
+  async (row) => {
+    const ctx = await setupTest();
+    const starter = await ctx.seedConversationStep();
+    const taskID = await ctx.seedTask(starter);
+    const runner = await ctx.startRunner();
+
+    await ctx.runNextStep(runner);
+
+    const repliesBefore = await ctx.readKinds('model.reply');
+
+    const ends: (string | undefined)[] = [];
+
+    ctx.guest.addReplies({
+      text: 'Nothing new on the tides.',
+      gate: () => {
+        ends.push(ctx.steps.at(-1)?.session?.endSilently?.());
+
+        return Promise.resolve();
+      },
+    });
+
+    await writeInboxRecords(ctx.context, [
+      {
+        kind: row.kind,
+        definitions: ctx.context.definitions(),
+        thread: taskID,
+        payload: row.buildPayload(taskID),
+        erasable: row.erasable,
+      },
+    ]);
+
+    await ctx.runNextStep(runner);
+
+    const replies = await ctx.readKinds('model.reply');
+    const sent = await ctx.readKinds('task_message');
+    const ended = await ctx.readKinds('model.turn_ended');
+
+    expect(ends).toStrictEqual(['ended']);
+    expect(replies).toStrictEqual(repliesBefore);
+    expect(sent.filter((record) => record.thread !== taskID)).toStrictEqual([]);
+
+    expect(ended.at(-1)).toStrictEqual({
+      sequence: expect.any(Number),
+      recordedAt: expect.any(Date),
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: taskID,
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: {
+        model: 'claude-test-errands',
+        profile: 'errands',
+        stopReason: 'end_turn',
+        turns: 1,
+        inputTokens: expect.any(Number),
+        outputTokens: expect.any(Number),
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        contextSize: expect.any(Number),
+        contextWindow: 200_000,
+        pinnedCore: [],
+        retrieved: [],
+        retrievedMessages: [],
+        invalidatedThrough: 0,
+        sessionImageBytes: 0,
+        sessionImageCount: 0,
+        recalledThrough: 0,
+        isSilent: true,
+      },
+      erasable: { status: 'none' },
+    });
+  },
+);
+
+test('it refuses to end a task turn that holds a message from you silently, and records its reply', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const ends: (string | undefined)[] = [];
+
+  ctx.guest.addReplies({
+    text: 'The morning tide is at 06:10.',
+    gate: () => {
+      ends.push(ctx.steps.at(-1)?.session?.endSilently?.());
+
+      return Promise.resolve();
+    },
+  });
+
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const replies = await ctx.readKinds('model.reply');
+
+  expect(ends).toStrictEqual(['refused']);
+
+  expect(replies.at(-1)).toStrictEqual({
+    sequence: expect.any(Number),
+    recordedAt: expect.any(Date),
+    kind: 'model.reply',
+    definitions: { snapshotHash: 'sha256:test' },
+    thread: taskID,
+    stepKey: null,
+    parent: null,
+    contentSource: null,
+    decision: null,
+    promptCause: null,
+    approval: null,
+    payload: {
+      model: 'claude-test-errands',
+      profile: 'errands',
+      messageID: expect.any(String),
+    },
+    erasable: { status: 'readable', fields: { text: 'The morning tide is at 06:10.' } },
+  });
+});
+
 test("it runs a started task's first step in a worker imp that the task owns", async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
@@ -191,7 +349,7 @@ test("it runs a started task's first step in a worker imp that the task owns", a
   ]);
 });
 
-test("it runs a started task's tool run on its own ID with the tools it is given and the task role's model", async () => {
+test("it runs a started task's tool run on its own ID with the tools it is given, the silent end and the task role's model", async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
   const taskID = await ctx.seedTask(starter);
@@ -203,7 +361,7 @@ test("it runs a started task's tool run on its own ID with the tools it is given
     {
       runID: taskID,
       thread: taskID,
-      tools: ['tasks.list', 'task.message', 'time.now'],
+      tools: ['tasks.list', 'task.message', 'time.now', 'turn.end_silently'],
       model: { model: 'claude-test-errands', profile: 'errands' },
     },
   ]);
@@ -471,7 +629,7 @@ test("it runs a task on its chosen model's profile, through that profile's host,
     {
       runID: taskID,
       thread: taskID,
-      tools: ['tasks.list', 'task.message', 'web_fetch'],
+      tools: ['tasks.list', 'task.message', 'web_fetch', 'turn.end_silently'],
       model: { model: 'other-family-test-3', profile: 'router-b' },
     },
   ]);

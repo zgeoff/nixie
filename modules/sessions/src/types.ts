@@ -1,5 +1,6 @@
 import type { CompactionSettings } from '@heynixie/compaction';
 import type { ContentSource, RecordInput } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import type { ResolvedProfile } from '@heynixie/models';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
@@ -171,6 +172,8 @@ export interface ConversationRun {
   readonly imageBudget: ImageTally;
 
   readonly session: SessionGuard;
+
+  readonly log: Logger;
 }
 
 export type SessionState =

@@ -37,6 +37,7 @@ import invariant from 'tiny-invariant';
 import type { Actor } from 'xstate';
 import { createActor } from 'xstate';
 import { buildDefaultStatus } from './build-default-status';
+import { silentEndToolName } from './build-silent-end-tool';
 import { createWorkerSandbox } from './create-worker-sandbox';
 import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
@@ -262,10 +263,12 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
     startEndpoint: async () => {
       const run = await readStartedRun(runner, taskID);
 
+      // The start's record lists only the tools that start named, and every task can end a turn
+      // silently, whatever its start named.
       return options.tools.startRun({
         runID: taskID,
         thread: taskID,
-        tools: run.options.tools,
+        tools: [...new Set([...run.options.tools, silentEndToolName])],
         model: run.model,
       });
     },
@@ -469,6 +472,7 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     messaging: options.messaging,
     imageBudget: sessionImageBudget,
     session: buildHeldSessionGuard(parts.invalidated),
+    log: options.log,
   };
 }
 

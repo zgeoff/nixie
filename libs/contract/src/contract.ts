@@ -110,6 +110,8 @@ const recordSchema = z.object({
 
   context: contextSchema.optional(),
 
+  isSilentTurn: z.literal(true).optional(),
+
   kind: z.string(),
 
   message: z
