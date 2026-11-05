@@ -14,8 +14,6 @@ export interface RatingSampleFiles {
   summary: Record<string, number>;
 }
 
-// Builds the sample a rater marks, its key, and the same turns as parts to read one at a time, from
-// the plan and the rankings its settings gave.
 export function buildRatingSampleFiles(
   plan: RatingSamplePlan,
   results: Map<string, RankedTurn[]>,

@@ -6,11 +6,8 @@ import type { PlainRecord } from './read-plain-export.ts';
 
 const pinnedCoreSchema = z.object({ pinnedCore: z.array(z.object({ itemID: z.string(), version: z.int().positive() })).nullish() });
 
-// For each turn, the pinned core that the latest conversation turn-ended record before its step
-// lists, which the product compares against to write its change note. That record can come from
-// a turn with no retrieval case, and a record with no core counts as an empty core, as the product
-// reads it. A turn that opened its session, or has no earlier turn, gets null, because no note
-// follows.
+// The product reads a turn-ended record with no pinned core as an empty core, and writes no change
+// note on a session opening or on a turn with no earlier turn.
 export function collectPreviousPinned(
   turns: readonly Pick<TurnCase, 'stepSequence' | 'isSessionStart'>[],
   records: readonly PlainRecord[],

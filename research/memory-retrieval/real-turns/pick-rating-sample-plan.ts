@@ -8,8 +8,6 @@ export interface RatingSamplePlan {
   runs: Run[];
 }
 
-// Picks the turns a rater marks and the settings whose rankings fill each turn's pool, before any
-// ranking runs.
 export function pickRatingSamplePlan(turns: TurnCase[], size: number, shortWords: number, runs: Run[]): RatingSamplePlan {
   return { chosen: pickRatingTurns(turns, size, shortWords), runs: pickPooledRuns(runs) };
 }

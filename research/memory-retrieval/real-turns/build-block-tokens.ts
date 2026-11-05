@@ -48,10 +48,8 @@ export interface BlockOptions {
 // The product's default pinned core budget, which the change note's last line states.
 const pinnedCoreBudget = 2000;
 
-// Pinned memory goes in a session's opening only, so it counts on the turn that opens a session. A
-// later turn of the session whose core differs from the previous turn's gets the change note
-// instead. `previousPinned` is the previous turn's core, or null when the turn has none in its
-// session. The other blocks repeat on every turn that has something for them.
+// The product shows pinned memory in a session's opening only, and on a later turn writes a change
+// note when the core differs from the previous turn's.
 export function buildBlockTokens(
   turn: TurnCase,
   sources: BlockSources,
