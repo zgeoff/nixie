@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.65.0](https://github.com/zgeoff/nixie/compare/v0.64.0...v0.65.0) (2026-11-05)
+
+
+### Features
+
+* **api:** give a committed step's read cursor to clients ([#852](https://github.com/zgeoff/nixie/issues/852)) ([a5b5b0c](https://github.com/zgeoff/nixie/commit/a5b5b0c94ee64ed8c8ebf9e30ae7906be6e09afc))
+* **sessions:** let a turn end with nothing sent ([#861](https://github.com/zgeoff/nixie/issues/861)) ([573f01e](https://github.com/zgeoff/nixie/commit/573f01e2ffcd86d2ba09521a78b4dfe8eefc912e))
+
+
+### Bug Fixes
+
+* **deps:** update @zgeoff/std to v0.4.2 ([#869](https://github.com/zgeoff/nixie/issues/869)) ([0778e3d](https://github.com/zgeoff/nixie/commit/0778e3d44de70bd697ea9bafc07cc9feb416933e))
+
 ## [0.64.0](https://github.com/zgeoff/nixie/compare/v0.63.0...v0.64.0) (2026-11-04)
 
 
