@@ -287,6 +287,50 @@ test("it sends the conversation's message to a started task, with no note for a 
   });
 });
 
+test("it writes only the task message for the conversation's message about an unread one", async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Add tulips to the garden plan.');
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'k3x9m2p7qa',
+      payload: {
+        taskID: 'k3x9m2p7qa',
+        isConversation: false,
+        state: 'waiting',
+        startedBy: 'conversation',
+      },
+      erasable: { name: 'Garden plan', brief: 'Plan the beds.' },
+    },
+  ]);
+
+  const before = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  const tool = buildTaskMessageTool(ctx.context, {
+    directory: [
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+  });
+
+  await tool.run(
+    buildMockToolCall({
+      tool: 'task.message',
+      input: { to: 'k3x9m2p7qa', kind: 'request', body: 'Robin wants tulips in bed two.' },
+    }),
+    buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  const written = await readRecords(ctx.context.log, {
+    afterSequence: before.at(-1)?.record.sequence ?? 0,
+  });
+
+  expect(written.map((entry) => entry.record.kind)).toStrictEqual(['task_message']);
+});
+
 test.each([
   ['wake', 'report', true],
   ['next_turn', 'report', false],

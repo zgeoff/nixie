@@ -81,6 +81,33 @@ test('it starts a task with its name and brief, and tells the model how its repo
   ]);
 });
 
+test("it writes only the task's creation record for a start from the conversation with an unread message", async () => {
+  const ctx = await setupTest();
+
+  const claim = await createTestConversationClaim(
+    ctx.context,
+    'Plan the vegetable beds for spring.',
+  );
+
+  const before = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  const tool = buildTaskStartTool(ctx.context, { ownerName: 'Robin' }, buildMockTaskStartBounds());
+
+  await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: { name: 'Garden plan', brief: 'Plan four raised beds for a spring sowing.' },
+    }),
+    buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  const written = await readRecords(ctx.context.log, {
+    afterSequence: before.at(-1)?.record.sequence ?? 0,
+  });
+
+  expect(written.map((entry) => entry.record.kind)).toStrictEqual(['task.created']);
+});
+
 test('it gives the started task a short ID', async () => {
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
