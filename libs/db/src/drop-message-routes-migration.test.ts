@@ -7,13 +7,15 @@ import { buildSqliteWorkerDialect } from './build-sqlite-worker-dialect';
 import { dropMessageRoutesMigration } from './drop-message-routes-migration';
 import { nixieSchema } from './nixie-schema';
 import { runMigrations } from './run-migrations';
+import { readRunPrefix } from './test-utils/read-run-prefix';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
 
-  const directory = await mkdtemp(join(tmpdir(), 'nixie-drop-message-routes-'));
+  const prefix = await readRunPrefix();
+  const directory = await mkdtemp(join(tmpdir(), `${prefix}nixie-drop-message-routes-`));
 
   stack.defer(() => rm(directory, { recursive: true, force: true }));
 
