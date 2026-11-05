@@ -324,9 +324,8 @@ without fix 1 [one-off script].
   the turn did not have [one-off script].
 - The missed-item descriptions on the scored turns matched 52 items: 38 the session already held, 7
   the store held and retrieval missed, 1 the sample pooled, and 6 with no active version at the turn
-  [measured]. 10 descriptions matched no item [measured]. The rated list holds the items that a
-  compared setting would show, the top 5 of the ranking of the whole store, and the items the turn
-  logged, not the whole store, so 7 needed items sat outside it [read in the code].
+  [measured]. 10 descriptions matched no item [measured]. The rated list is not the whole store, so
+  7 needed items sat outside it [read in the code].
 - Of 1,448 replies, 2 are shredded rather than blank, and the harness reads them as shredded
   [measured].
 
