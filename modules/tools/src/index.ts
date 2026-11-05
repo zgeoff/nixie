@@ -5,6 +5,7 @@ export type { ToolEndpointOptions } from './start-tool-endpoint';
 export { startToolEndpoint } from './start-tool-endpoint';
 export { toolCalledCodec } from './tool-called-codec';
 export { toolResultCodec } from './tool-result-codec';
+export { toSDKToolName } from './to-sdk-tool-name';
 
 export type {
   ActionOutcome,

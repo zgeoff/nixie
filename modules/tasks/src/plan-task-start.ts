@@ -1,3 +1,4 @@
+import { toSDKToolName } from '@heynixie/tools';
 import { startedTaskBaseTools, startedTaskDefaultTools } from './started-task-default-tools';
 import type {
   TaskLimits,
@@ -19,15 +20,25 @@ export interface TaskStartChoice {
     | undefined;
 }
 
+type ToolRefusalReason =
+  | 'wider_tools'
+  | 'conversation_tools'
+  | 'memory_tools'
+  | 'memory_write_tools';
+
+interface ToolRefusal {
+  readonly reason: ToolRefusalReason;
+  readonly tools: readonly string[];
+  readonly accepted: readonly string[];
+}
+
 export type TaskStartChoiceRefusal =
   | { readonly reason: 'unknown_model'; readonly model: string }
   | { readonly reason: 'stranger_with_memory' }
   | { readonly reason: 'wider_memory' }
   | { readonly reason: 'wider_persona' }
   | { readonly reason: 'over_limit'; readonly limit: keyof TaskLimits; readonly max: number }
-  | { readonly reason: 'wider_tools'; readonly tools: readonly string[] }
-  | { readonly reason: 'memory_tools'; readonly tools: readonly string[] }
-  | { readonly reason: 'conversation_tools'; readonly tools: readonly string[] };
+  | ToolRefusal;
 
 export type TaskStartPlan =
   | { readonly status: 'planned'; readonly options: TaskRunOptions }
@@ -86,30 +97,22 @@ export function planTaskStart(
   }
 
   const asked =
-    choice.tools ?? startedTaskDefaultTools.filter((tool) => starterTools.includes(tool));
-
-  const wider = asked.filter((tool) => !starterTools.includes(tool));
-
-  if (wider.length > 0) {
-    return refuse({ reason: 'wider_tools', tools: wider });
-  }
-
-  const conversationOnly = asked.filter((tool) => bounds.conversationTools.includes(tool));
-
-  if (conversationOnly.length > 0) {
-    return refuse({ reason: 'conversation_tools', tools: conversationOnly });
-  }
+    choice.tools?.map((name) => findHeldToolName(name, starterTools) ?? name) ??
+    startedTaskDefaultTools.filter((tool) => starterTools.includes(tool));
 
   const memoryTools = memory === 'read' ? bounds.memoryTools.read : [];
 
-  const leftOut = asked.filter(
+  const accepted = starterTools.filter(
     (tool) =>
-      !memoryTools.includes(tool) &&
-      [...bounds.memoryTools.read, ...bounds.memoryTools.write].includes(tool),
+      !bounds.conversationTools.includes(tool) &&
+      !bounds.memoryTools.write.includes(tool) &&
+      (memoryTools.includes(tool) || !bounds.memoryTools.read.includes(tool)),
   );
 
-  if (leftOut.length > 0) {
-    return refuse({ reason: 'memory_tools', tools: leftOut });
+  const refused = pickToolRefusal(asked, starterTools, bounds, memoryTools);
+
+  if (refused !== null) {
+    return refuse({ ...refused, accepted });
   }
 
   const tools = [
@@ -134,4 +137,40 @@ export function planTaskStart(
 
 function refuse(refusal: TaskStartChoiceRefusal): TaskStartPlan {
   return { status: 'refused', refusal };
+}
+
+// The model sees each tool by its SDK name, so a task accepts that name as well as nixie's own.
+function findHeldToolName(name: string, starterTools: readonly string[]): string | null {
+  if (starterTools.includes(name)) {
+    return name;
+  }
+
+  return starterTools.find((tool) => toSDKToolName(tool) === name) ?? null;
+}
+
+function pickToolRefusal(
+  asked: readonly string[],
+  starterTools: readonly string[],
+  bounds: TaskStartBounds,
+  memoryTools: readonly string[],
+): Omit<ToolRefusal, 'accepted'> | null {
+  const checks: readonly [ToolRefusalReason, (tool: string) => boolean][] = [
+    ['wider_tools', (tool) => !starterTools.includes(tool)],
+    ['conversation_tools', (tool) => bounds.conversationTools.includes(tool)],
+    ['memory_write_tools', (tool) => bounds.memoryTools.write.includes(tool)],
+    [
+      'memory_tools',
+      (tool) => bounds.memoryTools.read.includes(tool) && !memoryTools.includes(tool),
+    ],
+  ];
+
+  for (const [reason, isRefused] of checks) {
+    const tools = asked.filter((tool) => isRefused(tool));
+
+    if (tools.length > 0) {
+      return { reason, tools };
+    }
+  }
+
+  return null;
 }
