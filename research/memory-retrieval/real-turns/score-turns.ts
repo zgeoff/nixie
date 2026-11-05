@@ -154,6 +154,19 @@ export function buildRuns(encoders: EncoderName[]): Run[] {
     }),
   );
 
+  for (const floors of [
+    { name: 'shipped floors', minSimilarity: SHIPPED.minSimilarity, minScore: SHIPPED.minScore },
+    { name: 'similarity 0.46, BM25 2', minSimilarity: 0.46, minScore: 2 },
+    { name: 'similarity 0.46, BM25 4', minSimilarity: 0.46, minScore: 4 },
+  ]) {
+    const base = { ...SHIPPED, minSimilarity: floors.minSimilarity, minScore: floors.minScore, isSensitiveExcluded: false };
+
+    runs.push(
+      sweep(`served, ${floors.name}, sensitive shown`, 'served', base),
+      sweep(`served, ${floors.name}, sensitive shown, keyword-only items dropped`, 'served', { ...base, isKeywordOnlyDropped: true }),
+    );
+  }
+
   for (const messages of [1, 2]) {
     runs.push(sweep(`served, window ${messages}`, 'served', { ...SHIPPED, shortRule: { kind: 'window', messages } }));
   }

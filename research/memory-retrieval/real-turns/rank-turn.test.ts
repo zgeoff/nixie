@@ -203,6 +203,52 @@ test('it drops a keyword match under the similarity floor and keeps a vector mat
   expect(ranking.facts).toStrictEqual(['item-tomato']);
 });
 
+test('it shows an item marked sensitive when sensitive items are not excluded', async () => {
+  const index = await startMemoryIndex();
+
+  onTestFinished(() => index.stop());
+
+  const vectors: Record<string, Float32Array> = {
+    'garden beds': new Float32Array([1, 0]),
+    'Grows basil': new Float32Array([0.6, 0.8]),
+    'Grows tomatoes': new Float32Array([0.9, 0.436]),
+  };
+  const ranker = buildRanker(
+    { encode: async (texts) => texts.map((text) => vectors[text] ?? new Float32Array([0, 0])) },
+    index,
+  );
+
+  const ranking = await ranker.rankTurn(
+    {
+      caseID: 't1',
+      stepSequence: 1,
+      recalledSequence: 2,
+      recordedAt: 0,
+      query: 'garden beds',
+      typedQuery: 'garden beds',
+      shownMessages: [],
+      isSessionStart: false,
+      sessionNumber: 0,
+      isShredded: false,
+      contextTokens: null,
+      reply: '',
+      earlier: [],
+      candidates: [
+        { itemID: 'item-basil', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Grows basil' },
+        { itemID: 'item-tomato', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: true, text: 'Grows tomatoes' },
+      ],
+      logged: [],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    { ...SHIPPED, mode: 'vector', isInt8: false, isSensitiveExcluded: false },
+    [],
+  );
+
+  expect(ranking).toStrictEqual({ facts: ['item-tomato', 'item-basil'], selves: [] });
+});
+
 test('it leaves out an item marked sensitive', async () => {
   const index = await startMemoryIndex();
 

@@ -37,6 +37,8 @@ export interface RankConfig {
   hub: HubCorrection;
   // Leaves out an item the keyword list alone brings, unless it also clears the similarity floor.
   isKeywordOnlyDropped: boolean;
+  // Leaves out an item marked sensitive, as the product does.
+  isSensitiveExcluded: boolean;
 }
 
 // A hub correction lowers an item that sits near many earlier messages: the penalty subtracts a share
@@ -71,6 +73,7 @@ export const SHIPPED: RankConfig = {
   keywordWeight: 1,
   hub: { kind: 'none' },
   isKeywordOnlyDropped: false,
+  isSensitiveExcluded: true,
 };
 
 export interface TurnRanking {
@@ -191,7 +194,7 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex, background: Ba
       const [queryVector] = queryText.trim() === '' ? [] : await encoder.encode([queryText], 'query');
       const itemVectors = await encodeDocuments(turn.candidates.map((candidate) => candidate.text));
 
-      const excluded = collectExcludedIDs(turn, config.isDeliveredExcluded);
+      const excluded = collectExcludedIDs(turn, config.isDeliveredExcluded, config.isSensitiveExcluded);
 
       const rankVectors = async (entries: { candidate: Candidate; vector: Float32Array }[], queryVector: Float32Array, listLimit: number) => {
         const scored = [];
@@ -277,7 +280,7 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex, background: Ba
 
 // The store leaves out a pinned item, which the pinned core already shows, a lapsed one, a
 // sensitive one, and a version this session was already given.
-function collectExcludedIDs(turn: TurnCase, isDeliveredExcluded: boolean): Set<string> {
+function collectExcludedIDs(turn: TurnCase, isDeliveredExcluded: boolean, isSensitiveExcluded = true): Set<string> {
   const delivered = new Set(isDeliveredExcluded ? turn.delivered : []);
 
   return new Set(
@@ -286,7 +289,7 @@ function collectExcludedIDs(turn: TurnCase, isDeliveredExcluded: boolean): Set<s
         (candidate) =>
           candidate.isPinned ||
           candidate.isLapsed ||
-          candidate.isSensitive ||
+          (isSensitiveExcluded && candidate.isSensitive) ||
           delivered.has(`${candidate.itemID}@${candidate.version}`),
       )
       .map((candidate) => candidate.itemID),
