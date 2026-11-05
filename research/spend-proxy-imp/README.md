@@ -29,12 +29,12 @@ Each line ends with [measured]: the spike made the request or the read that show
   saw the request [measured].
 - The host refuses a connection from the imp to its model route listener, which sits in front of the
   proxy [measured].
-- The model API answered every model call of both runs with a 429 `rate_limit_error`, with no rate
-  limit header. The count stayed at 0 tokens and $0 [measured].
+- The proxy counted every reply. With a credential that the model API answered with 200, the count
+  reached 64405 tokens and $0.00345904. The tokens equal the sum of nixie's own turn records plus a
+  memory writer call, and the dollars equal those turns' tokens at the preview's prices [measured].
 
-No request that carries the credential skips the proxy, so the hard stop can sit on the host. The
-spike never saw the proxy count a reply with usage, which the
-[issue](https://linear.app/zgeoff/issue/GEO-248) keeps open.
+No request that carries the credential skips the proxy, and the proxy counts each reply, so the hard
+stop can count spend on the host.
 
 ## Run it
 
@@ -57,5 +57,5 @@ spike never saw the proxy count a reply with usage, which the
 
 ## Untested
 
-The spike did not test a reply with usage, or a worker in an imp that the sandbox adapter creates.
-The [untested list](results.md#untested) gives the rest.
+The spike did not test a worker in an imp that the sandbox adapter creates. The
+[untested list](results.md#untested) gives the rest.
