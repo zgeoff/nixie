@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import invariant from 'tiny-invariant';
 import { buildActivity } from './build-activity';
 import { buildMockLogRecord } from './test-utils/build-mock-log-record';
 
@@ -400,17 +399,25 @@ test('it marks a step whose turn ended silently', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
   const ended = buildMockLogRecord({ isSilentTurn: true, kind: 'model.turn_ended', sequence: 2 });
 
-  expect(buildActivity([started, ended])).toMatchObject([{ kind: 'step', isSilent: true }]);
+  expect(buildActivity([started, ended])).toStrictEqual([
+    {
+      calls: [],
+      isSilent: true,
+      key: 1,
+      kind: 'step',
+      records: [started, ended],
+      status: 'running',
+    },
+  ]);
 });
 
 test('it leaves unmarked a step whose turn replied', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
   const ended = buildMockLogRecord({ kind: 'model.turn_ended', sequence: 2 });
-  const [step] = buildActivity([started, ended]);
 
-  invariant(step?.kind === 'step', 'the records fold into one step');
-
-  expect(step.isSilent).toBeUndefined();
+  expect(buildActivity([started, ended])).toStrictEqual([
+    { calls: [], key: 1, kind: 'step', records: [started, ended], status: 'running' },
+  ]);
 });
 
 test('it collects each compaction of a step with the sequence of its record, in order', () => {

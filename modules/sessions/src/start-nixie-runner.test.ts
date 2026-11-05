@@ -239,9 +239,43 @@ test.each([
     const ended = await ctx.readKinds('model.turn_ended');
 
     expect(ends).toStrictEqual(['ended']);
-    expect(replies).toHaveLength(repliesBefore.length);
+    expect(replies).toStrictEqual(repliesBefore);
     expect(sent.filter((record) => record.thread !== taskID)).toStrictEqual([]);
-    expect(ended.at(-1)?.payload).toMatchObject({ isSilent: true });
+
+    expect(ended.at(-1)).toStrictEqual({
+      sequence: expect.any(Number),
+      recordedAt: expect.any(Date),
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: taskID,
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: {
+        model: 'claude-test-errands',
+        profile: 'errands',
+        stopReason: 'end_turn',
+        turns: 1,
+        inputTokens: expect.any(Number),
+        outputTokens: expect.any(Number),
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        contextSize: expect.any(Number),
+        contextWindow: 200_000,
+        pinnedCore: [],
+        retrieved: [],
+        retrievedMessages: [],
+        invalidatedThrough: 0,
+        sessionImageBytes: 0,
+        sessionImageCount: 0,
+        recalledThrough: 0,
+        isSilent: true,
+      },
+      erasable: { status: 'none' },
+    });
   },
 );
 
@@ -271,9 +305,24 @@ test('it refuses to end a task turn that holds a message from you silently, and 
 
   expect(ends).toStrictEqual(['refused']);
 
-  expect(replies.at(-1)?.erasable).toStrictEqual({
-    status: 'readable',
-    fields: { text: 'The morning tide is at 06:10.' },
+  expect(replies.at(-1)).toStrictEqual({
+    sequence: expect.any(Number),
+    recordedAt: expect.any(Date),
+    kind: 'model.reply',
+    definitions: { snapshotHash: 'sha256:test' },
+    thread: taskID,
+    stepKey: null,
+    parent: null,
+    contentSource: null,
+    decision: null,
+    promptCause: null,
+    approval: null,
+    payload: {
+      model: 'claude-test-errands',
+      profile: 'errands',
+      messageID: expect.any(String),
+    },
+    erasable: { status: 'readable', fields: { text: 'The morning tide is at 06:10.' } },
   });
 });
 

@@ -150,12 +150,27 @@ test("it ends the conversation's turn that the task's report woke with no reply,
   const ended = ctx.nixie.toolResults.find((result) => result.name === 'turn.end_silently');
 
   expect(page.records.filter((record) => record.kind === 'model.reply')).toStrictEqual([
-    expect.objectContaining({
-      message: expect.objectContaining({ text: 'Passed to the Tide tables task.' }),
-    }),
+    {
+      kind: 'model.reply',
+      message: { text: 'Passed to the Tide tables task.' },
+      recordedAt: expect.any(Date),
+      sequence: expect.any(Number),
+      thread: 'conversation',
+    },
   ]);
 
-  expect(JSON.parse(ended?.result ?? '{}')).toMatchObject({
+  expect(page.records.findLast((record) => record.kind === 'model.turn_ended')).toStrictEqual({
+    context: { size: expect.any(Number), window: 200_000 },
+    isSilentTurn: true,
+    kind: 'model.turn_ended',
+    recordedAt: expect.any(Date),
+    sequence: expect.any(Number),
+    thread: 'conversation',
+  });
+
+  expect(JSON.parse(ended?.result ?? '{}')).toStrictEqual({
+    _meta: { 'io.modelcontextprotocol/serverInfo': { name: 'nixie', version: expect.any(String) } },
+    content: [],
     structuredContent: {
       note: 'This turn ends with nothing sent. Write no more text: nixie keeps no reply from this turn.',
     },

@@ -2645,7 +2645,41 @@ test('it ends a turn that a task report alone woke with no reply, and records th
 
   expect(ends).toStrictEqual(['ended']);
   expect(replies).toStrictEqual([]);
-  expect(ended).toMatchObject([{ payload: { isSilent: true } }]);
+
+  expect(ended).toStrictEqual([
+    {
+      sequence: expect.any(Number),
+      recordedAt: expect.any(Date),
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: {
+        model: expect.any(String),
+        profile: expect.any(String),
+        stopReason: 'end_turn',
+        turns: 2,
+        inputTokens: 10,
+        outputTokens: 5,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        pinnedCore: [],
+        retrieved: [],
+        retrievedMessages: [],
+        invalidatedThrough: 0,
+        sessionImageBytes: 0,
+        sessionImageCount: 0,
+        recalledThrough: 0,
+        isSilent: true,
+      },
+      erasable: { status: 'none' },
+    },
+  ]);
 });
 
 test.each([
@@ -2702,14 +2736,60 @@ test.each([
 
   expect(ends).toStrictEqual(['refused']);
 
-  expect(replies).toMatchObject([
-    { erasable: { status: 'readable', fields: { text: 'Yes, Thursday works.' } } },
+  expect(replies).toStrictEqual([
+    {
+      sequence: expect.any(Number),
+      recordedAt: expect.any(Date),
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: {
+        model: expect.any(String),
+        profile: expect.any(String),
+        messageID: expect.any(String),
+      },
+      erasable: { status: 'readable', fields: { text: 'Yes, Thursday works.' } },
+    },
   ]);
 
   expect(ended).toStrictEqual([
-    expect.objectContaining({
-      payload: expect.toSatisfy((payload: object) => !('isSilent' in payload)),
-    }),
+    {
+      sequence: expect.any(Number),
+      recordedAt: expect.any(Date),
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: {
+        model: expect.any(String),
+        profile: expect.any(String),
+        stopReason: 'end_turn',
+        turns: 1,
+        inputTokens: 10,
+        outputTokens: 5,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        pinnedCore: [],
+        retrieved: [],
+        retrievedMessages: [],
+        invalidatedThrough: 0,
+        sessionImageBytes: 0,
+        sessionImageCount: 0,
+        recalledThrough: 0,
+      },
+      erasable: { status: 'none' },
+    },
   ]);
 });
 

@@ -134,10 +134,32 @@ test('it records no reply for a silent turn, and marks its turn end silent', () 
     [],
   );
 
-  expect(result.records).toStrictEqual([
-    expect.objectContaining({
-      kind: 'model.turn_ended',
-      payload: expect.objectContaining({ isSilent: true }),
-    }),
-  ]);
+  expect(result).toStrictEqual({
+    next: 'wait',
+    records: [
+      {
+        kind: 'model.turn_ended',
+        definitions: { snapshotHash: 'sha256:test' },
+        payload: {
+          model: 'claude-test-1',
+          profile: 'chat-direct',
+          stopReason: 'end_turn',
+          turns: 2,
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+          pinnedCore: [],
+          retrieved: [],
+          retrievedMessages: [],
+          invalidatedThrough: 0,
+          sessionImageBytes: 0,
+          sessionImageCount: 0,
+          isSilent: true,
+        },
+      },
+    ],
+    acknowledged: [],
+    sessionBoundary: JSON.stringify({ sessionID: 'session-1', messageID: 'message-1' }),
+  });
 });

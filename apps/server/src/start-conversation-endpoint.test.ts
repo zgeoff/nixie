@@ -62,17 +62,26 @@ test("it refuses the conversation's silent end on a turn that holds your message
 
   const refused = ctx.toolResults.at(-1);
   const ended = records.find((record) => record.kind === 'model.turn_ended');
+  const result: unknown = JSON.parse(refused?.result ?? '{}');
 
-  invariant(ended, 'the turn that replied commits its turn end with the reply');
-
-  expect(refused?.name).toBe('turn.end_silently');
-
-  expect(JSON.parse(refused?.result ?? '{}')).toMatchObject({
-    isError: true,
-    content: [{ type: 'text', text: 'this turn has a message from the owner, so reply' }],
+  expect({ name: refused?.name, result }).toStrictEqual({
+    name: 'turn.end_silently',
+    result: {
+      _meta: {
+        'io.modelcontextprotocol/serverInfo': { name: 'nixie', version: expect.any(String) },
+      },
+      content: [{ type: 'text', text: 'this turn has a message from the owner, so reply' }],
+      isError: true,
+    },
   });
 
-  expect(ended.isSilentTurn).toBeUndefined();
+  expect(ended).toStrictEqual({
+    context: { size: expect.any(Number), window: 200_000 },
+    kind: 'model.turn_ended',
+    recordedAt: expect.any(Date),
+    sequence: expect.any(Number),
+    thread: 'conversation',
+  });
 });
 
 test('it refuses a prompt_write proposal whose template reads a path the prompt does not accept, and keeps no proposal', async () => {
