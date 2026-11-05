@@ -172,9 +172,8 @@ them.
 
 nixie refuses the call when the turn holds a message from you, and the model reads the refusal as
 the tool's answer and replies. A turn holds each message that opened it, and each message that nixie
-passed into it while it ran, as [Waits](#waits) describes. A message you moved to the task with the
-client's move action counts as yours. A message from you that lands after the call stays unread, and
-it wakes the conversation or the task for a turn that answers it.
+passed into it while it ran, as [Waits](#waits) describes. A message from you that lands after the
+call stays unread, and it wakes the conversation or the task for a turn that answers it.
 
 The tool stays in the tool list on every turn, so the list never changes and the prompt cache holds.
 The turn's `model.turn_ended` record marks the turn silent, and the client shows its step as ended

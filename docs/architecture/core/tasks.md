@@ -48,8 +48,8 @@ running until a claim or recovery takes it back ([leases and recovery](./leases-
 ## The inbox
 
 A task's inbox is the records on its thread whose kind is input for it: a message from the user, a
-fired timer, an action's outcome, a message from another task, or a message the user moved. A step's
-own records share the thread and stay out of the inbox.
+fired timer, an action's outcome, or a message from another task. A step's own records share the
+thread and stay out of the inbox.
 
 Every inbox record wakes the task, except a task message in one of these cases, which
 [task messages](./task-messages.md) explains:

@@ -270,9 +270,8 @@ turn takes effect.
 The host answers the call from the inbox records that the turn holds. Those are the records that
 opened the turn, and the records that the host passed into it while it ran, as
 [inbox records as messages](#inbox-records-as-messages) describes. The host refuses the call when
-one of them is the user's own message, or the `message-moved` record of a message that the user
-moved to this task. The model reads the refusal as the tool's answer, and replies. The
-`message-moved` record on the task that lost the message never causes a refusal.
+one of them is the user's own message. The model reads the refusal as the tool's answer, and
+replies.
 
 When the host accepts the call, it stops passing records into the running turn. Any record that
 lands after the call stays unread, and a waking record, such as the user's message, starts the next
