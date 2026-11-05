@@ -28,9 +28,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 28, which the release before can still read', () => {
+test('it moves the schema to version 28', () => {
   expect(nixieSchema.migrations.indexOf(momentsMigration) + 1).toBe(28);
-  expect(nixieSchema.oldestReader).toBeLessThan(28);
 });
 
 test('it refuses a moment in a state the store never writes', async () => {

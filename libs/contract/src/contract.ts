@@ -74,12 +74,6 @@ const versionTextSchema = versionRefSchema.extend({
   text: z.string().optional(),
 });
 
-const routeSchema = z.object({
-  isMove: z.boolean(),
-  messages: z.array(sequenceSchema),
-  taskID: threadSchema,
-});
-
 const listedActionSchema = z.object({ actionID: z.string(), tool: z.string() });
 
 const taskMessageSchema = z.object({
@@ -133,7 +127,6 @@ const recordSchema = z.object({
   recall: recallSchema.optional(),
   recordedAt: z.date(),
 
-  route: routeSchema.optional(),
   sequence: sequenceSchema,
 
   stop: z.object({ cancelledActions: z.array(listedActionSchema) }).optional(),
@@ -161,19 +154,6 @@ const sessionSchema = z.object({
 });
 
 const checkedAction = signedIn.errors(reusedIDErrors);
-const taskNameSchema = z.string().trim().min(1).max(80);
-const taskBriefSchema = z.string().trim().min(1).max(8000);
-
-const newTaskTargetSchema = z.object({
-  kind: z.literal('new'),
-  name: taskNameSchema,
-  brief: taskBriefSchema,
-});
-
-const moveTargetSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('task'), taskID: threadSchema }),
-  newTaskTargetSchema,
-]);
 
 const taskStateSchema = z.enum([
   'ready',
@@ -301,29 +281,6 @@ export const contract = {
         }),
       )
       .output(z.object({ forgottenAt: z.date() })),
-
-    move: checkedAction
-      .errors({
-        RECORD_NOT_FOUND: {
-          message: 'No message of yours on this thread has this sequence',
-          status: 404,
-        },
-        TASK_NOT_FOUND: { message: 'No open task has this ID', status: 404 },
-        TASK_TAKES_NO_MESSAGES: {
-          message: 'This task runs on its own schedule and takes no message of yours',
-          status: 409,
-        },
-        ALREADY_THERE: { message: 'The message already went to this task', status: 409 },
-      })
-      .input(
-        z.object({
-          clientActionID: clientActionIDSchema,
-          sequence: sequenceSchema,
-          thread: threadSchema,
-          to: moveTargetSchema,
-        }),
-      )
-      .output(z.object({ movedAt: z.date(), taskID: threadSchema })),
   },
   tasks: {
     list: signedIn.output(

@@ -3,50 +3,22 @@ import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
 import { toLogRecord } from '../mocks/to-log-record';
-import { buildMockListedTask } from '../test-utils/build-mock-listed-task';
 import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { RecordItem } from './record-item';
 
-test('it shows your message as typed with the controls that move and forget it', () => {
+test('it shows your message as typed with the control that forgets it', () => {
   const rendered = render(
     <RecordItem
       record={buildMockLogRecord({
         kind: 'owner_message',
         message: { text: 'The shed code is 4417.' },
       })}
-      route={undefined}
-      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
     />,
   );
 
-  expect(rendered.getByRole('listitem')).toHaveTextContent('You The shed code is 4417.MoveForget');
-});
-
-test('it marks your message with the task it went to', () => {
-  const rendered = render(
-    <RecordItem
-      record={buildMockLogRecord({
-        kind: 'owner_message',
-        message: { text: 'Plan the bean rows.' },
-        thread: 'conversation',
-      })}
-      route={{ isMove: false, taskID: 'k3vq8m2xpa' }}
-      taskList={{
-        isFailed: false,
-        onRetry: () => {},
-        tasks: [
-          buildMockListedTask({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' }),
-        ],
-      }}
-    />,
-  );
-
-  expect(rendered.getByRole('link', { name: '→ Garden plan' })).toHaveAttribute(
-    'href',
-    '/tasks/k3vq8m2xpa',
-  );
+  expect(rendered.getByRole('listitem')).toHaveTextContent('You The shed code is 4417.Forget');
 });
 
 test('it shows the images of your message, each read from the API', async () => {
@@ -64,13 +36,7 @@ test('it shows the images of your message, each read from the API', async () => 
     thread: 'conversation',
   });
 
-  const rendered = render(
-    <RecordItem
-      record={toLogRecord(stored)}
-      route={undefined}
-      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
-    />,
-  );
+  const rendered = render(<RecordItem record={toLogRecord(stored)} />);
 
   const images = await rendered.findAllByRole('img');
 
@@ -92,8 +58,6 @@ test('it shows an image the API no longer holds as unavailable', async () => {
         sequence: 404,
         thread: 'conversation',
       })}
-      route={undefined}
-      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
     />,
   );
 
@@ -103,13 +67,7 @@ test('it shows an image the API no longer holds as unavailable', async () => {
 });
 
 test('it shows nothing for a message whose text is shredded', () => {
-  const rendered = render(
-    <RecordItem
-      record={buildMockLogRecord({ kind: 'owner_message' })}
-      route={undefined}
-      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
-    />,
-  );
+  const rendered = render(<RecordItem record={buildMockLogRecord({ kind: 'owner_message' })} />);
 
   expect(rendered.container).toBeEmptyDOMElement();
 });
@@ -118,8 +76,6 @@ test('it offers no forget for a message of a kind the API cannot forget', () => 
   const rendered = render(
     <RecordItem
       record={buildMockLogRecord({ kind: 'assistant_message', message: { text: 'Hello.' } })}
-      route={undefined}
-      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
     />,
   );
 
@@ -136,13 +92,7 @@ test('it takes the message out of the view as soon as your forget succeeds', asy
     message: { text: 'Your shed code is 4417.' },
   });
 
-  const rendered = render(
-    <RecordItem
-      record={toLogRecord(stored)}
-      route={undefined}
-      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
-    />,
-  );
+  const rendered = render(<RecordItem record={toLogRecord(stored)} />);
 
   await user.click(rendered.getByRole('button', { name: 'Forget' }));
   await user.click(rendered.getByRole('button', { name: 'Forget for good' }));

@@ -7,8 +7,8 @@ runs on. [0001](../../../decisions/0001-durable-layer.md) and
 
 - [The event log and records](event-log.md) — what a record holds, append-only semantics,
   projections, export and retention
-- [Tasks](tasks.md) — tasks as state machines with leases and an inbox, waits, routing from the
-  conversation, job runs, workers in imps, and crash recovery
+- [Tasks](tasks.md) — tasks as state machines with leases and an inbox, waits, the conversation's
+  task tools, job runs, workers in imps, and crash recovery
 - [Actions](actions.md) — the action queue, its outcomes, approval consumption, reconciliation per
   connector, and unknown outcomes
 - [Crash tests](crash-tests.md) — what a crash is, the harness hooks and fault points, and the tests

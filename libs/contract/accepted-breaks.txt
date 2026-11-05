@@ -21,3 +21,4 @@ GEO-1839: POST /memory/listProposals added the new `subject_change` enum value t
 GEO-1795: POST /tasks/list added the new `paused` enum value to the `tasks/items/state` response property for the response status `200`
 GEO-1795: POST /tasks/list added the new `stopped` enum value to the `tasks/items/state` response property for the response status `200`
 GEO-1795: POST /tasks/list added the new `closed` enum value to the `tasks/items/state` response property for the response status `200`
+GEO-2092: POST /conversation/move api path removed without deprecation

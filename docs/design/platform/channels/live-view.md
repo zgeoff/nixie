@@ -5,9 +5,10 @@
   [0027](../../../decisions/0027-tasks-and-actions.md)
 
 The dashboard shows every task's state and what it waits on, and the live view extends it with
-finished tasks and what each did and why. Both read the same projections as the conversation's task
-board, so you and the conversation see the same state. The [event log design](../core/event-log.md)
-owns the projections, and [tasks](../core/tasks.md) owns routing and task states.
+finished tasks and what each did and why. Both read the same projections as the conversation's
+`tasks.list` tool, so you and the conversation see the same state. The
+[event log design](../core/event-log.md) owns the projections, and [tasks](../core/tasks.md) owns
+the conversation's task tools and task states.
 
 | Tier | View      | Holds                                                                      |
 | ---- | --------- | -------------------------------------------------------------------------- |
@@ -43,14 +44,6 @@ each a checked action:
   which runs to its outcome. A stopped or failed task offers restart.
 - **Close** asks once and leaves the task read-only.
 - **Interrupt** ends the current turn, so your next message starts the next one.
-
-## Routing marks
-
-Each of your messages in the conversation shows where it went, such as "→ backlog task", as soon as
-the routing record commits. A "move" action sends it to another task, back to the conversation or to
-a new task, and writes a correction record. The task that lost the message learns you moved it, and
-the task that gains it receives it as if routed there first. **Why:** a misrouted message fails
-quietly, so it must be quick to see and to fix. Moves also measure routing quality.
 
 ## How the client stays current
 

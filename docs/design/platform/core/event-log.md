@@ -37,9 +37,10 @@ The source of content sits on every tool result. The first build stores it witho
 taint per job run is a later policy change under
 [0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies).
 
-The parent field keeps the delegation chain. A worker's records point at the tool call that started
-it, and a task's records point at the routing record that created the task, so the record shows that
-no task or worker held wider permissions than the thread that started it.
+The log keeps the delegation chain. A worker's records point at the tool call that started it
+through the parent field. A started task's creation record names the task that started it and the
+step it started in. The record then shows that no task or worker held wider permissions than the
+thread that started it.
 
 ## Append-only
 
@@ -95,7 +96,8 @@ transaction, so a projection never disagrees with the log at a commit. The core 
 - **Proposals and approvals:** each proposal's action hash, status, lapse time, optional
   `deadlineAt`, deferred-until time and defer generation.
 - **Actions:** each queued action and its outcome, covered in [actions](actions.md).
-- **The task board:** one row per task with its status, last update and what it waits on, under
+- **Tasks:** one row per task with its status, last update and what it waits on, which the
+  conversation's `tasks.list` tool and the dashboard read, under
   [0018](../../../decisions/0018-the-conversation-and-tasks.md).
 
 Every projection can be dropped and rebuilt by folding the log from the first record. A rebuild test
@@ -104,9 +106,9 @@ in CI folds a recorded log and compares the result with the live tables.
 ## The dashboard and the live view
 
 The dashboard, the live view and the conversation read the same projections, so you and the
-conversation see the same state. The conversation receives the task board as a compact list in its
-newest turn. The live view opens a task and reads its records as a conversation, with each tool
-call, decision and worker transcript expandable.
+conversation see the same state. The conversation reads that state with `tasks.list` when it needs
+it. The live view opens a task and reads its records as a conversation, with each tool call,
+decision and worker transcript expandable.
 
 The client follows the log by sequence. It loads a projection and the sequence it read from one read
 snapshot, then receives every newer record together with the projection rows its transaction

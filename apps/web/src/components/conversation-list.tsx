@@ -4,15 +4,11 @@ import { match } from 'ts-pattern';
 import type { ActivityItem } from '../build-activity';
 import { buildActivity } from '../build-activity';
 import { buildNoticePlacement } from '../build-notice-placement';
-import type { MessageRoute } from '../collect-message-routes';
-import { collectMessageRoutes } from '../collect-message-routes';
 import { isWorking } from '../is-working';
 import { css } from '../styled-system/css';
 import type { MemoryNotice as MemoryNoticeData, OutboxMessage } from '../types';
 import type { LiveRecord } from '../use-live-records';
 import type { OutboxEntry } from '../use-outbox';
-import type { RoutedTasks } from '../use-routed-tasks';
-import { useRoutedTasks } from '../use-routed-tasks';
 import { ExchangeNotice } from './exchange-notice';
 import { MemoryNotice } from './memory-notice';
 import { MomentKeptNotice } from './moment-kept-notice';
@@ -70,20 +66,13 @@ export function ConversationList(props: ConversationListProps): ReactNode {
   const activity = buildActivity(props.records);
   const placement = buildNoticePlacement(activity, props.notices);
   const unshown = props.entries.filter((entry) => !shown.has(entry.message.clientMessageId));
-  const routes = collectMessageRoutes(props.records);
-  const taskList = useRoutedTasks(routes);
 
   return (
     <>
       <ol aria-label="Conversation" className={css(column, messages)}>
         {activity.map((item, index) => (
           <Fragment key={item.kind === 'step' ? `step/${String(item.key)}` : item.record.sequence}>
-            <ActivityEntry
-              item={item}
-              linkedMessage={props.linkedMessage}
-              routes={routes}
-              taskList={taskList}
-            />
+            <ActivityEntry item={item} linkedMessage={props.linkedMessage} />
             {placement.get(index)?.map((notice) => (
               <MemoryNotice key={notice.noticeKey} notice={notice} />
             ))}
@@ -113,19 +102,11 @@ export function ConversationList(props: ConversationListProps): ReactNode {
 interface ActivityEntryProps {
   readonly item: ActivityItem;
   readonly linkedMessage: LinkedMessage | undefined;
-  readonly routes: ReadonlyMap<number, MessageRoute>;
-  readonly taskList: RoutedTasks;
 }
 
 function ActivityEntry(props: ActivityEntryProps): ReactNode {
   return match(props.item)
-    .with({ kind: 'message' }, (item) => (
-      <RecordItem
-        record={item.record}
-        route={props.routes.get(item.record.sequence)}
-        taskList={props.taskList}
-      />
-    ))
+    .with({ kind: 'message' }, (item) => <RecordItem record={item.record} />)
     .with({ kind: 'reset' }, (item) => <ResetMarker record={item.record} />)
     .with({ kind: 'moment' }, (item) => <MomentKeptNotice moment={item.moment} />)
     .with({ kind: 'taskMessage' }, (item) => (

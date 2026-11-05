@@ -120,16 +120,13 @@ machine, leases and recovery. It lives in a long-lived imp that stays awake unde
 its inbox by default, and a message you send while a task is open in the client goes straight to
 that task.
 
-The conversation receives the task board in its newest turn, after the stable part of the prompt, so
-the prompt cache holds. It routes with 2 tools: one passes a message to an existing task, and one
-starts a task with a brief. Each call writes a routing record, and the conversation's reply names
-where it sent the message, as [0018](../../../decisions/0018-the-conversation-and-tasks.md)
-requires. A start also chooses the task's model, persona, memory, tools, report mode and limits,
-within bounds that code checks, as
+The conversation works with tasks through 3 tools, as
+[0018](../../../decisions/0018-the-conversation-and-tasks.md) decides: `task.start` starts a task
+with a brief, `task.message` sends an existing task a message, and `tasks.list` lists the tasks.
+Each turn carries no task list, and nixie writes no routing record of its own. A task message names
+the messages of yours it passes on in its on-behalf-of IDs. A start also chooses the task's model,
+persona, memory, tools, report mode and limits, within bounds that code checks, as
 [start options](../../../architecture/core/started-tasks.md#start-options) covers.
-
-Moving a misrouted message is one checked action in the client, which writes a correction record and
-updates both tasks' inboxes in one transaction.
 
 ## Messages between tasks
 
@@ -175,9 +172,8 @@ them.
 
 nixie refuses the call when the turn holds a message from you, and the model reads the refusal as
 the tool's answer and replies. A turn holds each message that opened it, and each message that nixie
-passed into it while it ran, as [Waits](#waits) describes. A message you moved to the task with the
-client's move action counts as yours. A message from you that lands after the call stays unread, and
-it wakes the conversation or the task for a turn that answers it.
+passed into it while it ran, as [Waits](#waits) describes. A message from you that lands after the
+call stays unread, and it wakes the conversation or the task for a turn that answers it.
 
 The tool stays in the tool list on every turn, so the list never changes and the prompt cache holds.
 The turn's `model.turn_ended` record marks the turn silent, and the client shows its step as ended

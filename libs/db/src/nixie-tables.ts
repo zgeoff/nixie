@@ -222,11 +222,6 @@ export interface NixieTables {
     readonly last_error_at: number | null;
     readonly updated_sequence: number;
   };
-  readonly message_routes: {
-    readonly message_sequence: number;
-    readonly task_id: string;
-    readonly routed_sequence: number;
-  };
   readonly moment_links: {
     readonly link_key: string;
     readonly moment_id: string;

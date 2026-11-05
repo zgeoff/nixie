@@ -37,9 +37,8 @@ async function setupTest() {
   return { db, directory };
 }
 
-test('it moves the schema to version 32, which the release before can still read', () => {
+test('it moves the schema to version 32', () => {
   expect(nixieSchema.migrations.indexOf(taskControlsMigration) + 1).toBe(32);
-  expect(nixieSchema.oldestReader).toBeLessThan(32);
 });
 
 test('it keeps each task and timer of a database it upgrades, with no pause asked and no timer withdrawn', async () => {

@@ -53,40 +53,8 @@ test('it renders the system prompt with the session prompt override in force', a
   expect(context.systemPrompt).toStartWith('You are Pip.\nText inside `<pasted>`');
 });
 
-test('it puts the task board in the turn, after the system prompt, and leaves the prompt as it was', async () => {
+test("it puts no task board in the conversation's turn, with a started task in the log", async () => {
   const ctx = await setupTest();
-
-  const memory = {
-    readPinnedCore: () => Promise.resolve([]),
-    readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
-    readShortIDs: () => Promise.resolve(new Map<string, string>()),
-    recall: () => Promise.resolve({ items: [] }),
-    recallMessages: () => Promise.resolve({ messages: [] }),
-  };
-
-  const query = {
-    taskID: 'conversation',
-    persona: 'You are Pip.',
-    prompts: {},
-    skillCatalog: null,
-    batch: [],
-    previousCore: null,
-    isNewSession: false,
-    isFirstSession: false,
-  };
-
-  const run = {
-    context: ctx.tasks.context,
-    frame: { kind: 'conversation' } as const,
-    memory: () => memory,
-    memorySettings: ctx.memorySettings,
-    defaultZone: 'UTC',
-  };
-
-  const before = await readTurnContext(
-    { ...run, messaging: { directory: [], hopLimit: 20, ownerName: null } },
-    query,
-  );
 
   await writeRecords(ctx.tasks.context.log, [
     {
@@ -103,9 +71,19 @@ test('it puts the task board in the turn, after the system prompt, and leaves th
     },
   ]);
 
-  const after = await readTurnContext(
+  const context = await readTurnContext(
     {
-      ...run,
+      context: ctx.tasks.context,
+      frame: { kind: 'conversation' } as const,
+      memory: () => ({
+        readPinnedCore: () => Promise.resolve([]),
+        readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
+        readShortIDs: () => Promise.resolve(new Map<string, string>()),
+        recall: () => Promise.resolve({ items: [] }),
+        recallMessages: () => Promise.resolve({ messages: [] }),
+      }),
+      memorySettings: ctx.memorySettings,
+      defaultZone: 'UTC',
       messaging: {
         directory: [
           {
@@ -119,17 +97,20 @@ test('it puts the task board in the turn, after the system prompt, and leaves th
         ownerName: null,
       },
     },
-    query,
+    {
+      taskID: 'conversation',
+      persona: 'You are Pip.',
+      prompts: {},
+      skillCatalog: null,
+      batch: [],
+      previousCore: null,
+      isNewSession: false,
+      isFirstSession: false,
+    },
   );
 
-  expect(after.systemPrompt).toBe(before.systemPrompt);
-  expect(before.preamble).toStrictEqual([]);
-
-  expect(after.preamble).toStrictEqual([
-    expect.stringMatching(
-      /^<system-message type="task-board" [^>]+>\n.+\n.+\n<task-data id="[\da-f]{12}">\n- \[k3x9m2p7qa\] Garden plan · ready · last active .+\n {2}Plan the beds\.\n<\/task-data id="[\da-f]{12}">\n<\/system-message/u,
-    ),
-  ]);
+  expect(context.preamble).toStrictEqual([]);
+  expect(context.systemPrompt).not.toContain('Plan the beds.');
 });
 
 test('it reads the pinned figures for no turn whose pinned core is unchanged', async () => {

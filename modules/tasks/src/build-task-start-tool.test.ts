@@ -19,7 +19,7 @@ async function setupTest() {
   return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
 }
 
-test('it starts a task with its name and brief, routes the unread message to it, and tells the model to name it', async () => {
+test('it starts a task with its name and brief, and tells the model how its report comes back', async () => {
   const ctx = await setupTest();
 
   const claim = await createTestConversationClaim(
@@ -45,7 +45,7 @@ test('it starts a task with its name and brief, routes the unread message to it,
 
   const records = await readRecords(ctx.context.log, {
     afterSequence: 0,
-    kinds: ['task.created', 'task.routed'],
+    kinds: ['task.created'],
   });
 
   expect(outcome).toStrictEqual({
@@ -53,7 +53,7 @@ test('it starts a task with its name and brief, routes the unread message to it,
     result: {
       taskID: task.task_id,
       name: 'Garden plan',
-      note: 'In your reply, tell Robin in a few words that you passed this to the Garden plan task. The task starts on its brief now, and its report comes back to you as a task message.',
+      note: 'The task starts on its brief now, and its report comes back to you as a task message.',
     },
   });
 
@@ -78,12 +78,34 @@ test('it starts a task with its name and brief, routes the unread message to it,
         fields: { name: 'Garden plan', brief: 'Plan four raised beds for a spring sowing.' },
       },
     },
-    {
-      kind: 'task.routed',
-      thread: 'conversation',
-      payload: { taskID: task.task_id, via: 'start', messageID: null, messages: [2] },
-    },
   ]);
+});
+
+test("it writes only the task's creation record for a start from the conversation with an unread message", async () => {
+  const ctx = await setupTest();
+
+  const claim = await createTestConversationClaim(
+    ctx.context,
+    'Plan the vegetable beds for spring.',
+  );
+
+  const before = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  const tool = buildTaskStartTool(ctx.context, { ownerName: 'Robin' }, buildMockTaskStartBounds());
+
+  await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: { name: 'Garden plan', brief: 'Plan four raised beds for a spring sowing.' },
+    }),
+    buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  const written = await readRecords(ctx.context.log, {
+    afterSequence: before.at(-1)?.record.sequence ?? 0,
+  });
+
+  expect(written.map((entry) => entry.record.kind)).toStrictEqual(['task.created']);
 });
 
 test('it gives the started task a short ID', async () => {
@@ -541,7 +563,7 @@ test('it tells the model that a task started with no report sends none', async (
     result: {
       taskID: expect.toBeString(),
       name: 'Seed list',
-      note: 'In your reply, tell Robin in a few words that you passed this to the Seed list task. The task starts on its brief now, and it sends you no report.',
+      note: 'The task starts on its brief now, and it sends you no report.',
     },
   });
 });

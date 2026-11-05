@@ -2,7 +2,6 @@ import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
-import { conversationTaskID } from './conversation-task-id';
 import { parseStepRunID } from './parse-step-run-id';
 import type {
   TaskMessageFacts,
@@ -17,7 +16,6 @@ import { taskMessageCodec } from './task-message-codec';
 import { toEventID } from './to-event-id';
 import type { TaskMessaging, TasksContext, TasksTables } from './types';
 import { writeInboxRecordsInTransaction } from './write-inbox-records-in-transaction';
-import { writeTaskRouteInTransaction } from './write-task-route-in-transaction';
 
 export type TaskMessageOutcome =
   | {
@@ -81,15 +79,6 @@ export function writeTaskMessage(
         erasable: { body: request.body },
       },
     ]);
-
-    if (request.from === conversationTaskID) {
-      await writeTaskRouteInTransaction(tx, context, {
-        taskID: request.to,
-        via: 'message',
-        messageID,
-        onBehalfOf: plan.onBehalfOf,
-      });
-    }
 
     const isNoticeDue =
       plan.hold === 'hop_limit' && !(await probeNotice(tx, request, step.stepKey));

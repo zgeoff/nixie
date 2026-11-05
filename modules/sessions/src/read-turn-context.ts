@@ -1,7 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { TaskReport } from '@heynixie/tasks';
-import { readTaskList } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import { formatMessageTime } from './format-message-time';
 import { isCoreChanged } from './is-core-changed';
@@ -10,7 +9,6 @@ import { readTurnRetrieval } from './read-turn-retrieval';
 import { renderCoreChanges } from './render-core-changes';
 import { renderPinnedMemory } from './render-pinned-memory';
 import { renderSessionPrompt } from './render-session-prompt';
-import { renderTaskBoard } from './render-task-board';
 import { renderTurnPreamble } from './render-turn-preamble';
 import type {
   ConversationMemory,
@@ -97,7 +95,6 @@ export async function readTurnContext(
         retrieval,
         thread: query.taskID,
         at,
-        board: await readBoard(run, frame, { taskID: query.taskID, lines }),
       },
       lines,
     ),
@@ -161,33 +158,6 @@ function renderTaskStartNote(startedBy: string, report: TaskReport): string {
         `${start} The task that started you, ${startedBy}, asked for no report, so send it none.`,
     )
     .exhaustive();
-}
-
-interface BoardQuery {
-  readonly taskID: string;
-  readonly lines: MemoryLineOptions;
-}
-
-const boardLimit = 20;
-
-// A task finds the other tasks with tasks.list, and a prompt with no board keeps its cached prefix
-// stable.
-async function readBoard(
-  run: TurnContextRun,
-  frame: SessionFrame,
-  query: BoardQuery,
-): Promise<string | null> {
-  if (frame.kind === 'task') {
-    return null;
-  }
-
-  const tasks = await readTaskList(run.context, run.messaging, {
-    callerID: query.taskID,
-    state: 'all',
-    limit: boardLimit,
-  });
-
-  return renderTaskBoard(tasks, query.lines);
 }
 
 function toMemoryRef(item: MemoryItem): MemoryRef {

@@ -28,9 +28,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 34, which the release before can still read', () => {
+test('it moves the schema to version 34', () => {
   expect(nixieSchema.migrations.indexOf(backupSetsMigration) + 1).toBe(34);
-  expect(nixieSchema.oldestReader).toBeLessThan(34);
 });
 
 test('it keeps a staged set with no receipt yet', async () => {

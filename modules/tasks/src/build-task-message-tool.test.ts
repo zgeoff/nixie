@@ -246,7 +246,7 @@ test('it refuses a call that comes from no step, and sends nothing', async () =>
   expect(messages).toStrictEqual([]);
 });
 
-test("it routes the conversation's message to a started task, names the task in a note, and records the route", async () => {
+test("it sends the conversation's message to a started task, with no note for a message that woke it", async () => {
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Add tulips to the garden plan.');
 
@@ -281,43 +281,35 @@ test("it routes the conversation's message to a started task, names the task in 
     buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
   );
 
-  invariant(outcome.status === 'ok');
-
-  const routes = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['task.routed'] });
-
-  expect(outcome.result).toStrictEqual({
-    messageID: expect.toBeString(),
-    woke: true,
-    hop: 1,
-    note: 'In your reply, tell Robin in a few words that you passed this to Garden plan.',
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { messageID: expect.toBeString(), woke: true, hop: 1 },
   });
-
-  expect(routes.map((entry) => entry.record)).toMatchObject([
-    {
-      thread: 'conversation',
-      payload: {
-        taskID: 'k3x9m2p7qa',
-        via: 'message',
-        messageID: outcome.result['messageID'],
-        messages: [2],
-      },
-    },
-  ]);
 });
 
-test('it records no route for a message between two other tasks', async () => {
+test("it writes only the task message for the conversation's message about an unread one", async () => {
   const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Add tulips to the garden plan.');
 
-  await createSystemTask(ctx.context, 'planner');
-  await createConversationTask(ctx.context);
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'k3x9m2p7qa',
+      payload: {
+        taskID: 'k3x9m2p7qa',
+        isConversation: false,
+        state: 'waiting',
+        startedBy: 'conversation',
+      },
+      erasable: { name: 'Garden plan', brief: 'Plan the beds.' },
+    },
+  ]);
 
-  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
-
-  invariant(claim);
+  const before = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
       { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
     ],
     hopLimit: 20,
@@ -327,14 +319,16 @@ test('it records no route for a message between two other tasks', async () => {
   await tool.run(
     buildMockToolCall({
       tool: 'task.message',
-      input: { to: 'conversation', kind: 'report', body: 'The week is planned.' },
+      input: { to: 'k3x9m2p7qa', kind: 'request', body: 'Robin wants tulips in bed two.' },
     }),
-    buildMockToolContext({ run: { thread: 'planner', stepRunID: buildStepRunID(claim) } }),
+    buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
   );
 
-  const routes = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['task.routed'] });
+  const written = await readRecords(ctx.context.log, {
+    afterSequence: before.at(-1)?.record.sequence ?? 0,
+  });
 
-  expect(routes).toStrictEqual([]);
+  expect(written.map((entry) => entry.record.kind)).toStrictEqual(['task_message']);
 });
 
 test.each([

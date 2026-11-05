@@ -244,12 +244,6 @@ interface TaskMessageTable {
   readonly sent_sequence: number;
 }
 
-interface MessageRouteTable {
-  readonly message_sequence: number;
-  readonly task_id: string;
-  readonly routed_sequence: number;
-}
-
 export type TaskRow = TaskTable;
 
 // Kysely's table map needs an index signature, which an interface lacks.
@@ -260,7 +254,6 @@ export type TasksTables = CheckedTables<
     leases: LeaseTable;
     records: InboxRecordTable;
     task_messages: TaskMessageTable;
-    message_routes: MessageRouteTable;
   }>,
   'records'
 >;

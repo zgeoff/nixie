@@ -35,7 +35,6 @@ test('it renders the start note, the change note, the facts, the self-notes, the
       },
       thread: 'garden',
       at: 'Wed 14 Oct, 12:00, UTC',
-      board: '- [k3x9m2p7qa] Garden plan · waiting',
     },
     { ownerName: 'Sam', defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
   );
@@ -48,7 +47,6 @@ test('it renders the start note, the change note, the facts, the self-notes, the
     'retrieved-memory',
     'retrieved-self-notes',
     'retrieved-messages',
-    'task-board',
   ]);
 });
 
@@ -61,7 +59,6 @@ test('it leaves out each block with nothing in it', () => {
         retrieval: { items: [], selfNotes: [], messages: [] },
         thread: 'garden',
         at: 'Wed 14 Oct, 12:00, UTC',
-        board: null,
       },
       { ownerName: null, defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
     ),

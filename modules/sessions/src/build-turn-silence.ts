@@ -1,5 +1,4 @@
 import type { EnvelopeRecord } from '@heynixie/log';
-import { isOwnerMessageRecord } from '@heynixie/tasks';
 import type { SilentEnd } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 
@@ -13,14 +12,14 @@ export interface TurnSilence {
 }
 
 export function buildTurnSilence(opening: readonly TakenRecord[]): TurnSilence {
-  let hasOwnerMessage = opening.some((record) => isOwnerMessageRecord(record));
+  let hasOwnerMessage = opening.some((record) => record.kind === 'owner_message');
   let isSilent = false;
 
   return {
     take: (record) => {
       invariant(!isSilent, 'a turn that ended silently takes no more messages');
 
-      hasOwnerMessage ||= isOwnerMessageRecord(record);
+      hasOwnerMessage ||= record.kind === 'owner_message';
     },
     end: () => {
       if (hasOwnerMessage) {
