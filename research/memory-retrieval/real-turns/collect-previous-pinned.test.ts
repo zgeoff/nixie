@@ -1,15 +1,30 @@
 import { expect, test } from 'bun:test';
 import { collectPreviousPinned } from './collect-previous-pinned.ts';
 
-test('it gives each turn the pinned core of the turn before it in the same session', () => {
-  const pinned = { itemID: 'item-a', version: 2, isSelf: false, isPinned: true, isLapsed: false, isSensitive: false, text: 'Lives by the canal' };
-  const unpinned = { itemID: 'item-b', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Owns a narrowboat' };
+test('it gives each turn the pinned core of the latest conversation turn that ended before its step', () => {
+  const ended = (sequence: number, thread: string, pinnedCore: { itemID: string; version: number }[] | null) => ({
+    sequence,
+    recordedAt: '2026-03-02T08:00:00Z',
+    kind: 'model.turn_ended',
+    thread,
+    parent: null,
+    payload: { pinnedCore },
+    erasable: { status: 'none' as const },
+  });
 
   expect(
-    collectPreviousPinned([
-      { sessionNumber: 1, candidates: [pinned, unpinned] },
-      { sessionNumber: 1, candidates: [unpinned] },
-      { sessionNumber: 2, candidates: [pinned] },
-    ]),
+    collectPreviousPinned(
+      [
+        { stepSequence: 10, isSessionStart: true },
+        { stepSequence: 30, isSessionStart: false },
+        { stepSequence: 50, isSessionStart: false },
+      ],
+      [
+        ended(12, 'conversation', [{ itemID: 'item-a', version: 1 }]),
+        ended(20, 'conversation', [{ itemID: 'item-a', version: 2 }]),
+        ended(25, 'task-7', [{ itemID: 'item-b', version: 1 }]),
+        ended(40, 'conversation', null),
+      ],
+    ),
   ).toStrictEqual([null, [{ itemID: 'item-a', version: 2 }], null]);
 });

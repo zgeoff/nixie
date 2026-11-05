@@ -68,6 +68,51 @@ test('it counts the pinned block and each retrieved block on a session start', (
   expect(tokens).toStrictEqual({ pinned: 85, pinnedChanges: 0, items: 75, selfNotes: 76, messages: 76 });
 });
 
+test('it renders a retrieved item with its version metadata: short ID, origin, date and quote', () => {
+  const tokens = buildBlockTokens(
+    {
+      caseID: 't6',
+      stepSequence: 5,
+      recalledSequence: 6,
+      recordedAt: Date.parse('2026-03-02T09:00:00Z'),
+      query: 'when is the boiler due?',
+      typedQuery: 'when is the boiler due?',
+      shownMessages: [],
+      isSessionStart: false,
+      sessionNumber: 1,
+      isShredded: false,
+      contextTokens: null,
+      reply: 'October.',
+      earlier: [],
+      candidates: [
+        { itemID: 'item-b', version: 3, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Boiler serviced each October' },
+      ],
+      logged: [{ itemID: 'item-b', version: 3 }],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    {
+      versions: new Map([
+        [
+          'item-b@3',
+          {
+            shortID: 'c2hd81mmqa',
+            subject: 'owner',
+            origin: 'conversation',
+            source: 'owner',
+            recordedAt: Date.parse('2025-10-13T10:00:00Z'),
+            quote: 'the boiler gets serviced every October by the same engineer',
+          },
+        ],
+      ]),
+    },
+    { ownerName: 'Sam', defaultZone: 'UTC' },
+  );
+
+  expect(tokens.items).toBe(98);
+});
+
 test('it counts the change note on a resumed turn whose pinned core changed since the turn before', () => {
   const tokens = buildBlockTokens(
     {

@@ -41,12 +41,9 @@ import { buildTurnReport } from './real-turns/build-turn-report.ts';
 import { pickScoredTurns } from './real-turns/pick-scored-turns.ts';
 import type { Gold, Label } from './real-turns/score-turns.ts';
 import { buildRuns, labelSchema, missingMapSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
-import { buildRatingSample } from './real-turns/build-rating-sample.ts';
-import { collectRatingPools } from './real-turns/collect-rating-pools.ts';
-import { pickPooledRuns } from './real-turns/pick-pooled-runs.ts';
+import { buildRatingSampleFiles } from './real-turns/build-rating-sample-files.ts';
+import { pickRatingSamplePlan } from './real-turns/pick-rating-sample-plan.ts';
 import { collectIndexedMessages } from './real-turns/collect-indexed-messages.ts';
-import { pickRatingTurns } from './real-turns/pick-rating-turns.ts';
-import { renderRatingParts } from './real-turns/render-rating-parts.ts';
 import { parseLabelLines } from './real-turns/parse-label-lines.ts';
 import { readRatedMessages } from './real-turns/read-rated-messages.ts';
 import { collectExchangeItems } from './real-turns/collect-exchange-items.ts';
@@ -146,7 +143,7 @@ function printStats(turns: TurnCase[]): void {
 // holds, so that count is an upper bound.
 function printBlocks(turns: TurnCase[], sources: BlockSources): void {
   const lines = { ownerName: null, defaultZone: 'UTC' };
-  const previousPinned = collectPreviousPinned(turns);
+  const previousPinned = collectPreviousPinned(turns, exported.records);
   const blocks = turns.map((turn, position) => ({ turn, tokens: buildBlockTokens(turn, sources, lines, previousPinned[position] ?? null) }));
   const sessionHeld = collectSessionHeld(blocks.map(({ turn, tokens }) => buildTurnTokens(turn, tokens, sources, lines)));
   const counted = blocks.map((entry, position) => ({ ...entry, sessionHeld: sessionHeld[position] ?? 0 }));
@@ -388,35 +385,21 @@ async function writeRatingSample(turns: TurnCase[]): Promise<void> {
     throw new Error(folderError);
   }
 
-  const size = Number(values.size ?? '240');
-  const chosen = pickRatingTurns(turns, size, shortWords);
-  const runs = pickPooledRuns(buildRuns(['leaf-ir-q8']));
+  const plan = pickRatingSamplePlan(turns, Number(values.size ?? '240'), shortWords, buildRuns(['leaf-ir-q8']));
   const results = await runRankings(
-    chosen.chosen,
-    runs,
+    plan.chosen.chosen,
+    plan.runs,
     { loadEncoder: (name) => loadTurnEncoder(name, encoderDirs), startIndex: startMemoryIndex },
     excludedWords,
     collectBackgroundMessages(turns.filter((turn) => turn.searchMode === 'hybrid')),
   );
+  const built = buildRatingSampleFiles(plan, results, { topPlaces: poolTopPlaces, turnsPerPart });
 
-  const sample = buildRatingSample(chosen, collectRatingPools(runs, results, chosen.chosen, poolTopPlaces));
-  const out = resolve(values.out);
-  const parts = renderRatingParts(sample.turns, turnsPerPart);
-
-  await Bun.write(join(out, 'sample.jsonl'), `${sample.turns.map((turn) => JSON.stringify(turn)).join('\n')}\n`);
-  await Bun.write(join(out, 'sample-key.jsonl'), `${sample.keys.map((key) => JSON.stringify(key)).join('\n')}\n`);
-
-  for (const [position, part] of parts.entries()) {
-    await Bun.write(join(out, `part-${String(position + 1).padStart(2, '0')}.md`), part);
+  for (const file of built.files) {
+    await Bun.write(join(resolve(values.out), file.name), file.text);
   }
 
-  console.log({
-    turns: sample.turns.length,
-    ...sample.strata,
-    parts: parts.length,
-    refs: sample.turns.reduce((sum, turn) => sum + turn.items.length, 0),
-    characters: parts.reduce((sum, part) => sum + part.length, 0),
-  });
+  console.log(built.summary);
 }
 
 async function writeSample(turns: TurnCase[]): Promise<void> {

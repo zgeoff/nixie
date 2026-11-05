@@ -89,7 +89,7 @@ export function buildBlockTokens(
   });
 
   const pinned = turn.candidates
-    .filter((candidate) => candidate.isPinned)
+    .filter((candidate) => candidate.isPinned && !candidate.isLapsed)
     .map((candidate) => buildItem(candidate.itemID, candidate.version, candidate.text));
 
   const pinnedBody = renderPinnedMemory(pinned, lines);
