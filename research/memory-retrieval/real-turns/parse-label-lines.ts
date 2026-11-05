@@ -1,3 +1,5 @@
+// @boundaries-ignore a spike imports the code it measures
+import { parseJSONOrNull } from '../../../libs/wire/src/parse-json-or-null.ts';
 import type { Label } from './score-turns.ts';
 import { labelSchema } from './score-turns.ts';
 
@@ -18,7 +20,7 @@ export function parseLabelLines(text: string, sampled: ReadonlySet<string>): Par
       continue;
     }
 
-    const parsed = labelSchema.safeParse(parseJSON(line));
+    const parsed = labelSchema.safeParse(parseJSONOrNull(line));
 
     if (!parsed.success) {
       dropped.notLabel += 1;
@@ -38,14 +40,6 @@ export function parseLabelLines(text: string, sampled: ReadonlySet<string>): Par
   }
 
   return { labels: [...kept.values()], dropped };
-}
-
-function parseJSON(line: string): unknown {
-  try {
-    return JSON.parse(line);
-  } catch {
-    return null;
-  }
 }
 
 function isSameLabel(first: Label, second: Label): boolean {
