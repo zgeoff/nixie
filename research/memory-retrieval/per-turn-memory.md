@@ -70,10 +70,18 @@ scripts replayed 1,054 of the 1,056 hybrid turns, and why they skipped the other
 
 The deployment's assistant rated a sample of 286 turns: every short turn, every turn shown an item,
 and the rest at random [measured]. For each turn it saw the exchange and the rated list, marked each
-item needed or not, and described any item it missed [from a record]. The rated list holds every
-item a compared setting would show, the top 5 of the ranking of the whole store, and the items the
-turn logged [read in the code]. One rater gave every label, and no second rater checked them
-[measured].
+item needed or not, and described any item it missed [from a record]. One rater gave every label,
+and no second rater checked them [measured].
+
+The rated list holds the items from 4 sources: the top 5 of the shipped ranking of the whole store,
+what the shipped settings showed, what each short-message and pasted-text setting showed, and the
+items the turn logged [read in the code]. The other compared settings could show an item outside
+that list: the similarity and BM25 floors, the BM25 weights, the hub corrections, the query windows
+and the item counts. The scores count such an item as shown and not needed. For those settings,
+fresh recall and precision can read low, and a turn can count as needing none when an unrated item
+would have helped [read in the code]. The labels are no longer at hand, so the count of such items
+is unknown. The sample builder in the harness pools every compared served setting, so a sample it
+builds has no such gap [read in the code].
 
 - 285 labels matched the sample, and 1 named a turn outside it [measured].
 - 15 labels fall on turns about the memory work itself: a block of such turns, and turns the rater
@@ -138,7 +146,8 @@ the turn's retrieval did not return the other [measured].
 ## Fixes on the held-out half
 
 The assistant proposed 5 fixes [from a record]. The table covers the held-out half: 18 turns that
-needed an item the session did not hold, and 97 turns that needed none [measured].
+needed an item the session did not hold, and 97 turns that needed none [measured]. Every setting but
+the shipped one could show an item that nobody rated, as [labels](#labels) explains.
 
 - Fresh recall is the mean, over the 18 turns, of the share of such needed items that the turn
   showed.
@@ -353,6 +362,7 @@ the rule of three [measured].
 ## Untested
 
 - A second rater, and more than 18 held-out turns with a needed item the session lacked.
+- Each compared setting other than shipped, scored on a sample that pools every item it shows.
 - A similarity floor on past messages, scored on the text the product indexes.
 - Dropping pasted text from the query, by the product's typed-text rule.
 - A staleness check on past messages, which would drop a message that a later one replaced.
