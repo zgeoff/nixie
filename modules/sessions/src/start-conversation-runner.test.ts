@@ -2710,7 +2710,7 @@ test.each([
   ]);
 });
 
-test('it leaves a message from you that lands after a silent end unread, and answers it in the next turn', async () => {
+test('it wakes the next turn for a message from you that lands after a silent end, and that turn takes it', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
