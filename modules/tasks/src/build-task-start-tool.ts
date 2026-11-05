@@ -97,9 +97,7 @@ export function buildTaskStartTool(
         result: {
           taskID: outcome.taskID,
           name,
-          note:
-            `In your reply, tell ${owner} in a few words that you passed this to the ${name} ` +
-            `task. The task starts on its brief now, and ${renderReportNote(plan.options.report)}`,
+          note: `The task starts on its brief now, and ${renderReportNote(plan.options.report)}`,
         },
       };
     },

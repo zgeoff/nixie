@@ -276,13 +276,7 @@ test("it shows a proposal's photo as unavailable once you forget its message aft
     text: 'Has blue hexagonal kitchen tiles',
   });
 
-  const rendered = render(
-    <RecordItem
-      record={toLogRecord(photo)}
-      route={undefined}
-      taskList={{ isFailed: false, onRetry: () => {}, tasks: [] }}
-    />,
-  );
+  const rendered = render(<RecordItem record={toLogRecord(photo)} />);
 
   await rendered.findByRole('img', { name: 'Image 1' });
   await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));

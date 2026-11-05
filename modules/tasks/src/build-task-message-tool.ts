@@ -1,7 +1,6 @@
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
-import { conversationTaskID } from './conversation-task-id';
 import { getTaskName } from './get-task-name';
 import type { TaskMessageRefusal } from './plan-task-message';
 import { planTaskReport } from './plan-task-report';
@@ -118,7 +117,7 @@ export function buildTaskMessageTool(
 
       const name = getTaskName(directory, input.to);
 
-      const held = renderHeldNote({
+      const note = renderHeldNote({
         hold: outcome.hold,
         kind: input.kind,
         name,
@@ -126,14 +125,6 @@ export function buildTaskMessageTool(
         hop: outcome.hop,
         ownerName: messaging.ownerName,
       });
-
-      const routed =
-        tool.run.thread === conversationTaskID
-          ? `In your reply, tell ${owner} in a few words that you passed this to ${name}.`
-          : null;
-
-      const parts = [held, routed].filter((part) => part !== null);
-      const note = parts.length === 0 ? null : parts.join(' ');
 
       return {
         status: 'ok',

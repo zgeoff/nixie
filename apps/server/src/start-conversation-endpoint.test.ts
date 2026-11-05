@@ -136,7 +136,7 @@ test('it refuses a prompt_write proposal whose template reads a path the prompt 
   expect(pending.stdout.trim()).toBe('[]');
 });
 
-test('it starts a task from the conversation, routes the message to it, and the reply names the task', async () => {
+test('it starts a task from the conversation, and lists it under the name the conversation gave', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
@@ -151,7 +151,7 @@ test('it starts a task from the conversation, routes the message to it, and the 
     { text: 'I passed this to the Garden plan task, where it is queued.' },
   );
 
-  const records = await sendClientMessage(
+  await sendClientMessage(
     api.client,
     { text: 'Plan the vegetable beds for spring.' },
     'I passed this to the Garden plan task, where it is queued.',
@@ -165,17 +165,11 @@ test('it starts a task from the conversation, routes the message to it, and the 
     .object({ structuredContent: z.object({ taskID: z.string(), name: z.string() }) })
     .parse(JSON.parse(started.result));
 
-  const message = records.find((record) => record.kind === 'owner_message');
+  const listed = await api.client.tasks.list({});
 
-  invariant(message);
-
-  expect(answer.structuredContent.name).toBe('Garden plan');
-
-  expect(records.find((record) => record.kind === 'task.routed')?.route).toStrictEqual({
-    isMove: false,
-    messages: [message.sequence],
-    taskID: answer.structuredContent.taskID,
-  });
+  expect(listed.tasks.find((task) => task.taskID === answer.structuredContent.taskID)?.name).toBe(
+    'Garden plan',
+  );
 });
 
 test('it holds a started task waiting with its message unread, and never fails it', async () => {
@@ -227,7 +221,7 @@ test('it holds a started task waiting with its message unread, and never fails i
   expect(after.tasks.find((task) => task.taskID === garden.taskID)?.state).toBe('waiting');
 });
 
-test('it puts the task board in the newest turn and keeps the system prompt the same bytes between turns', async () => {
+test('it puts no task board in the turn after a task starts, and keeps the system prompt the same bytes between turns', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
@@ -240,11 +234,16 @@ test('it puts the task board in the newest turn and keeps the system prompt the 
       },
     },
     { text: 'Started.' },
-    { text: 'It is on your board.' },
+    { text: 'The seed order is under way.' },
   );
 
   await sendClientMessage(api.client, { text: 'Order the spring seed.' }, 'Started.');
-  await sendClientMessage(api.client, { text: 'What is on my board?' }, 'It is on your board.');
+
+  await sendClientMessage(
+    api.client,
+    { text: 'How is the seed coming along?' },
+    'The seed order is under way.',
+  );
 
   const [first, second] = ctx.guest.received.flatMap((received) =>
     received.owner === 'conversation' && received.frame.type === 'turn' ? [received.frame] : [],
@@ -255,8 +254,5 @@ test('it puts the task board in the newest turn and keeps the system prompt the 
 
   expect(second.systemPrompt).toBe(first.systemPrompt);
   expect(second.systemPrompt).not.toInclude('Seed order');
-
-  expect(second.input[0]?.text).toMatch(
-    /<system-message type="task-board"[^>]*>\n.+\n.+\n<task-data id="[\da-f]{12}">\n[^<]*Seed order/u,
-  );
+  expect(JSON.stringify(second.input)).not.toInclude('Seed order');
 });

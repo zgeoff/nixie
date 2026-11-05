@@ -14,10 +14,8 @@ export type SystemMessageType =
   | 'timer'
   | 'outcome'
   | 'task-messages'
-  | 'task-board'
   | 'task-start'
-  | 'task-limit'
-  | 'message-moved';
+  | 'task-limit';
 
 export interface SystemMessage {
   readonly type: SystemMessageType;

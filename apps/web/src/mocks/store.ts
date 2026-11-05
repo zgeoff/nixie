@@ -56,12 +56,6 @@ const taskSchema = z.object({
   taskID: z.string().default(() => faker.string.uuid()),
 });
 
-const routeSchema = z.object({
-  isMove: z.boolean().default(false),
-  messages: z.array(z.int()),
-  taskID: z.string(),
-});
-
 const toolCallSchema = z.object({
   callID: z.string().default(() => faker.string.uuid()),
   content: jsonObjectSchema.optional(),
@@ -148,7 +142,6 @@ const records = new Collection({
     rating: ratingSchema.optional(),
     recall: recallSchema.optional(),
     recordedAt: z.date().default(() => new Date()),
-    route: routeSchema.optional(),
     sequence: z.int().default(() => {
       counter.lastSequence += 1;
 
@@ -401,15 +394,6 @@ const taskActions = new Collection({
   }),
 });
 
-const moveActions = new Collection({
-  schema: z.object({
-    clientActionID: z.uuid(),
-    movedAt: z.date(),
-    sequence: z.int(),
-    taskID: z.string(),
-  }),
-});
-
 const taskControlActions = new Collection({
   schema: z.object({
     clientActionID: z.uuid(),
@@ -448,7 +432,6 @@ export const store = {
   memoryVersions,
   memoryWriter,
   moments,
-  moveActions,
   ratingNotes,
   records,
   retryActions,
@@ -458,7 +441,6 @@ export const store = {
     for (const collection of [
       records,
       forgetActions,
-      moveActions,
       retryActions,
       taskControlActions,
       taskActions,

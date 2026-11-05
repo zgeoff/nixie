@@ -6,7 +6,6 @@ const inboxKinds: ReadonlySet<RecordKind> = new Set([
   'action.outcome',
   'task.wake',
   'task_message',
-  'task.message_moved',
   'task.limit_notice',
 ]);
 

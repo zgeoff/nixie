@@ -1,12 +1,10 @@
 import { createShortID } from '@heynixie/db';
 import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { conversationTaskID } from './conversation-task-id';
 import type { StepRunRef } from './parse-step-run-id';
 import { parseStepRunID } from './parse-step-run-id';
 import { readLeasedStepHop } from './read-leased-step-hop';
 import { taskCreatedCodec } from './task-created-codec';
 import type { TaskRunOptions, TasksContext, TasksTables } from './types';
-import { writeTaskRouteInTransaction } from './write-task-route-in-transaction';
 
 export interface TaskStartRequest {
   readonly from: string;
@@ -101,15 +99,6 @@ async function writeStartAttempt(
           erasable: { name: request.name, brief: request.brief },
         },
       ]);
-    }
-
-    if (request.from === conversationTaskID) {
-      await writeTaskRouteInTransaction(tx, context, {
-        taskID,
-        via: 'start',
-        messageID: null,
-        onBehalfOf: [],
-      });
     }
 
     return { status: 'started', taskID };

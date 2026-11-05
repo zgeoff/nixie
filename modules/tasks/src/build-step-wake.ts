@@ -1,5 +1,4 @@
 import type { EnvelopeRecord } from '@heynixie/log';
-import { isOwnerMessageRecord } from './is-owner-message-record';
 import { isWakingRecord } from './is-waking-record';
 import { taskMessageCodec } from './task-message-codec';
 import type { StepWake } from './types';
@@ -26,7 +25,7 @@ export function buildStepWake(unread: readonly WakeRecord[], previousHop: number
 }
 
 function toWake(record: WakeRecord): StepWake {
-  if (isOwnerMessageRecord(record)) {
+  if (record.kind === 'owner_message') {
     return { hop: 0, cause: { kind: 'owner' } };
   }
 

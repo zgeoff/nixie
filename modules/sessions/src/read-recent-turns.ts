@@ -1,8 +1,8 @@
 import { countTextTokens } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
-import { readRecords, readThreadNewestFirst } from '@heynixie/log';
+import { readThreadNewestFirst } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
-import { readSentTaskMessages, taskMessageMovedCodec } from '@heynixie/tasks';
+import { readSentTaskMessages } from '@heynixie/tasks';
 import { renderHistoryLine } from './render-history-line';
 import type { MessageTimeOptions } from './types';
 
@@ -45,13 +45,7 @@ export async function readRecentTurns(
   return kept.toReversed();
 }
 
-const historyKinds = [
-  'owner_message',
-  'task_message',
-  'task.message_moved',
-  'model.reply',
-  'log_reset',
-] as const;
+const historyKinds = ['owner_message', 'task_message', 'model.reply', 'log_reset'] as const;
 
 async function* readTurnsNewestFirst(
   context: Pick<TasksContext, 'log'>,
@@ -74,17 +68,13 @@ async function* readTurnsNewestFirst(
     } else if (record.thread !== query.taskID) {
       unanswered.push({ record, answered: null, isSent: true });
     } else if (record.sequence < query.beforeSequence) {
-      const turn = await readTurnRecord(context, query.taskID, record);
+      yield* unanswered
+        .splice(0)
+        .map((later) =>
+          later.isSent === true ? later : { record: later.record, answered: record },
+        );
 
-      if (turn !== null) {
-        yield* unanswered
-          .splice(0)
-          .map((later) =>
-            later.isSent === true ? later : { record: later.record, answered: turn },
-          );
-
-        yield { record: turn, answered: null };
-      }
+      yield { record, answered: null };
     }
   }
 
@@ -109,30 +99,4 @@ async function* mergeNewestFirst(
       right = await second.next();
     }
   }
-}
-
-// A message the user moved to this thread joins its history as the message itself, as if it had
-// come here first. A notice that a message moved away holds nothing the history needs.
-async function readTurnRecord(
-  context: Pick<TasksContext, 'log'>,
-  taskID: string,
-  record: LogRecord,
-): Promise<LogRecord | null> {
-  if (record.kind !== 'task.message_moved') {
-    return record;
-  }
-
-  const move = taskMessageMovedCodec.decode(record.payload);
-
-  if (move.to !== taskID) {
-    return null;
-  }
-
-  const [entry] = await readRecords(context.log, {
-    afterSequence: 0,
-    sequences: [move.message],
-    limit: 1,
-  });
-
-  return entry?.record.kind === 'owner_message' ? entry.record : null;
 }
