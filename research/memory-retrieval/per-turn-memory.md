@@ -17,16 +17,38 @@ Each sentence that states a fact ends with how it is known:
 
 ## Questions
 
+The measurement set out to answer 4 questions, each with its short answer:
+
 1. How many tokens does each block add per turn, and which block carries most of the noise? This
-   informs which block to cut or gate first.
-2. Which of the assistant's proposed fixes cut noise without losing the items a turn needed, on
+   informs which block to cut or gate first. Past messages add the most, 94 tokens a turn, and carry
+   the most noise, at a precision of 0.030 [measured]. [Tokens per block](#tokens-per-block) and
+   [noise per block](#noise-per-block) give each block.
+2. For short messages, does skipping retrieval, querying with the previous exchange, or asking the
+   keyword and vector lists to agree cut the noise without losing the needed items? This informs the
+   retrieval rule for short messages. Asking the lists to agree cut the items shown on short turns
+   that needed none from 0.12 to 0, and showed 1 of the 3 needed items, as the shipped settings did
+   [measured]. Only 3 short turns needed an item, too few to choose a rule [guess].
+   [Short messages](#short-messages) gives each rule.
+3. Does the past-messages block help any turn? This informs whether it stays, gets a high floor, or
+   goes. Rarely: the rater marked 8 of the 265 past messages it showed on scored turns needed, and
+   none of the 78 on short turns [measured]. [Past messages](#past-messages) says why no floor has a
+   result.
+4. What precision and fresh recall do the candidate settings reach on labels from the deployment's
+   assistant? This informs the shipped settings. On the held-out half, the shipped settings reached
+   fresh recall 0.722 and precision 0.058, and similarity 0.46 with a BM25 floor of 2 reached 0.722
+   and 0.071 [measured]. [Fixes on the held-out half](#fixes-on-the-held-out-half) gives each
+   setting, and [labels](#labels) gives the sample and the rater.
+
+The data raised 5 more:
+
+1. Which of the assistant's proposed fixes cut noise without losing the items a turn needed, on
    turns that the choice of fix never saw? This informs the next retrieval change.
-3. How much of the noise comes from the keyword (BM25) list, and does its weight or its floor fix
+2. How much of the noise comes from the keyword (BM25) list, and does its weight or its floor fix
    it? This informs whether to tune BM25 or the floors.
-4. Do a few items show on many unrelated turns, and does a hub correction help? This informs whether
+3. Do a few items show on many unrelated turns, and does a hub correction help? This informs whether
    retrieval needs a correction per item.
-5. Should the sensitive flag stay, narrow or go? This informs the flag's rule.
-6. How far do the scores rest on one rater? This informs how much weight each change can bear.
+4. Should the sensitive flag stay, narrow or go? This informs the flag's rule.
+5. How far do the scores rest on one rater? This informs how much weight each change can bear.
 
 ## Setup
 
@@ -281,8 +303,8 @@ short message lowered fresh recall by 0.056, and asking the lists to agree chang
 
 The past-messages block showed on 801 of the 1,056 hybrid turns, at a mean of 124 tokens [measured].
 It ranks past messages by the same BM25 and vector fusion as the items, and asks for 1 message a
-retrieval [read in the code]. It still showed 265 messages on 221 scored turns, so some turns ran
-retrieval more than once [measured] [guess].
+retrieval [read in the code]. It still showed 265 messages on 221 scored turns [measured]. Some
+turns ran retrieval more than once, which a count of retrievals per turn would settle [guess].
 
 The write-up gives no similarity scores for the past messages shown. The product indexes only a
 message's typed text, whole, which [find-typed-text.ts](real-turns/find-typed-text.ts) picks, and
