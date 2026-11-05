@@ -51,7 +51,7 @@ bun real-turns.ts score --plain <plain> --names <names> --labels <out>/labels --
   [pick-held-out-cases.ts](real-turns/pick-held-out-cases.ts) splits the rest into halves.
 - [score-blocks.ts](real-turns/score-blocks.ts) scores what each block showed, and
   [score-message-floors.ts](real-turns/score-message-floors.ts) the similarity floors on the past
-  messages shown.
+  messages shown, which this write-up does not report.
 
 ### Data
 
@@ -167,13 +167,8 @@ Ranked by the held-out half, the fixes come out in this order:
    marked 2 of the 59 needed [one-off script]. The exchange already holds what those 2 say, so
    leaving such items out loses nothing the turn lacks [guess]. Only those 2 of the 59 rest on the
    labels [one-off script].
-3. **A similarity floor on past messages.** 36 of the 265 past messages shown had a similarity below
-   0.38, the shipped floor, so BM25 alone passed them, and the rater marked none of the 36 needed
-   [measured]. Dropping a shown message below that floor cuts 14% of the block and keeps all 8
-   needed messages [measured]. This is a filter on the shown messages, by the same floor the vector
-   list uses. It does not measure a rule that a message must be among the vector list's own top
-   matches [read in the code]. The block holds 8 needed messages, too few to split, so this result
-   rests on all 266 turns [measured].
+3. **A similarity floor on past messages.** This measurement gives no result for it, as
+   [past messages](#past-messages) explains.
 4. **Rating fields for misleading and missed items.** The missed-item descriptions found 8 needed
    items that the store held and the session lacked, which the scores now count [measured]. Only 2
    turns carry a misleading item, too few to score a fix on [measured]. The product's rate tool
@@ -265,17 +260,15 @@ It ranks past messages by the same BM25 and vector fusion as the items, and asks
 retrieval [read in the code]. It still showed 265 messages on 221 scored turns, so some turns ran
 retrieval more than once [measured] [guess].
 
-| Similarity floor | Kept | Needed kept | Precision |
-| ---------------- | ---- | ----------- | --------- |
-| 0.38 (shipped)   | 229  | 8 of 8      | 0.035     |
-| 0.46             | 121  | 5 of 8      | 0.041     |
-| 0.50             | 63   | 4 of 8      | 0.063     |
-| 0.55             | 28   | 3 of 8      | 0.107     |
+The write-up gives no similarity scores for the past messages shown. The harness encoded the text
+each message showed with, cut at 1,000 characters and with its pasted text, but the product indexes
+only the typed text, whole [read in the code]. The scores therefore did not match the ones retrieval
+saw. The harness now encodes the indexed text, which
+[find-typed-text.ts](real-turns/find-typed-text.ts) picks, but the labels needed to score the floors
+again were no longer at hand [from a record].
 
 - By message length: on short turns the block showed 78 messages and the rater marked none needed.
   On the other turns it showed 187, and 8 were needed, a precision of 0.043 [measured].
-- A higher similarity floor drops needed messages as fast as noise, so fix 3 keeps the shipped floor
-  of 0.38 and applies it to every shown message, the first row of the table [measured].
 - 6 of the 953 past messages shown repeat the current message word for word, from earlier in the
   thread [one-off script]. The exclusion leaves out only the current thread's held messages, so the
   exclusion works as written and these are earlier copies [read in the code].
@@ -354,13 +347,13 @@ the rule of three [measured].
 | ------------------------------------------ | ---------------- | ----------------------------------------------------------- |
 | Similarity floor 0.46 and BM25 floor 2     | 2 config values  | a needed item that shares few words is lost; bound near 17% |
 | Leave out items the current exchange added | 1 rule in recall | 2 of 59 such shows were needed, and the exchange held both  |
-| Past messages need similarity 0.38         | 1 rule in recall | rests on 8 needed messages, too few to split                |
 | Keep the sensitive flag                    | none             | 1 needed show lost on this data                             |
 | Query window, hub correction, bundle split | not advised      | each added noise, or the halves disagreed                   |
 
 ## Untested
 
 - A second rater, and more than 18 held-out turns with a needed item the session lacked.
+- A similarity floor on past messages, scored on the text the product indexes.
 - A staleness check on past messages, which would drop a message that a later one replaced.
 - The higher bar on the stand-in labels, whose snapshot this measurement did not have.
 - A reranker or a model's judgement of the top results, which the
