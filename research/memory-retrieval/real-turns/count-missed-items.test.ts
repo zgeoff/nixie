@@ -39,14 +39,14 @@ test('it sorts each left-out item by why the list lacked it', () => {
       },
     ],
     new Map([['t9', new Set(['item-list'])]]),
-    new Map(),
+    new Map([['t9', new Set(['item-pin'])]]),
   );
 
   expect(missed).toStrictEqual({
     turnsWithMiss: 1,
     turnsWithMissOutsideList: 1,
     unmatched: 1,
-    byReason: { held: 1, pinned: 1, sensitive: 1, lapsed: 1, pooled: 1, eligible: 1, absent: 1 },
+    byReason: { held: 2, sensitive: 1, lapsed: 1, pooled: 1, eligible: 1, absent: 1 },
     turnsWithSensitiveMiss: 1,
   });
 });
@@ -114,5 +114,5 @@ test('it counts as held an item the scores count as delivered though the session
     new Map([['t9', new Set(['item-new'])]]),
   );
 
-  expect(missed.byReason).toStrictEqual({ held: 1, pinned: 0, sensitive: 0, lapsed: 0, pooled: 0, eligible: 0, absent: 0 });
+  expect(missed.byReason).toStrictEqual({ held: 1, sensitive: 0, lapsed: 0, pooled: 0, eligible: 0, absent: 0 });
 });

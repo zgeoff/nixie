@@ -1,7 +1,7 @@
 import type { TurnCase } from './build-turn-cases.ts';
 import type { MissingMap } from './score-turns.ts';
 
-export type MissReason = 'held' | 'pinned' | 'sensitive' | 'lapsed' | 'pooled' | 'eligible' | 'absent';
+export type MissReason = 'held' | 'sensitive' | 'lapsed' | 'pooled' | 'eligible' | 'absent';
 
 export interface MissedItems {
   turnsWithMiss: number;
@@ -12,9 +12,10 @@ export interface MissedItems {
 }
 
 // Sorts each item a rater said the list left out by why the list lacked it. The session already held
-// it, it was pinned, sensitive or lapsed and so never retrievable, it sat in the list after all, it
-// was eligible but ranked below the pool, or the store held no active version of it at that turn. An
-// item the scores count as delivered, such as one the turn's own exchange added, counts as held.
+// it, it was sensitive or lapsed and so never retrievable, it sat in the list after all, it was
+// eligible but ranked below the pool, or the store held no active version of it at that turn. An item
+// the scores count as delivered, such as a pinned item or one the turn's own exchange added, counts
+// as held.
 export function countMissedItems(
   turns: TurnCase[],
   missing: MissingMap[],
@@ -22,7 +23,7 @@ export function countMissedItems(
   heldByCase: Map<string, ReadonlySet<string>>,
 ): MissedItems {
   const turnsByCase = new Map(turns.map((turn) => [turn.caseID, turn]));
-  const byReason: Record<MissReason, number> = { held: 0, pinned: 0, sensitive: 0, lapsed: 0, pooled: 0, eligible: 0, absent: 0 };
+  const byReason: Record<MissReason, number> = { held: 0, sensitive: 0, lapsed: 0, pooled: 0, eligible: 0, absent: 0 };
   let turnsWithMiss = 0;
   let turnsWithMissOutsideList = 0;
   let turnsWithSensitiveMiss = 0;
@@ -65,10 +66,6 @@ function pickMissReason(turn: TurnCase, itemID: string, pooled: Set<string>, hel
 
   if (held.has(itemID) || turn.delivered.includes(`${candidate.itemID}@${candidate.version}`)) {
     return 'held';
-  }
-
-  if (candidate.isPinned) {
-    return 'pinned';
   }
 
   if (candidate.isSensitive) {
