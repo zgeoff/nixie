@@ -35,6 +35,8 @@ export interface RankConfig {
   isPastedDropped: boolean;
   keywordWeight: number;
   hub: HubCorrection;
+  // Leaves out an item the keyword list alone brings, unless it also clears the similarity floor.
+  isKeywordOnlyDropped: boolean;
 }
 
 // A hub correction lowers an item that sits near many earlier messages: the penalty subtracts a share
@@ -68,6 +70,7 @@ export const SHIPPED: RankConfig = {
   isPastedDropped: false,
   keywordWeight: 1,
   hub: { kind: 'none' },
+  isKeywordOnlyDropped: false,
 };
 
 export interface TurnRanking {
@@ -200,11 +203,15 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex, background: Ba
           scored.push({ itemID: entry.candidate.itemID, similarity, hub });
         }
 
-        return scored
-          .filter((entry) => entry.similarity >= config.minSimilarity && isAboveHubFloor(entry, config.hub))
-          .map((entry) => ({ itemID: entry.itemID, score: buildCorrectedSimilarity(entry, config.hub) }))
-          .toSorted((first, second) => second.score - first.score)
-          .slice(0, listLimit);
+        const passing = scored.filter((entry) => entry.similarity >= config.minSimilarity && isAboveHubFloor(entry, config.hub));
+
+        return {
+          passingIDs: new Set(passing.map((entry) => entry.itemID)),
+          ranked: passing
+            .map((entry) => ({ itemID: entry.itemID, score: buildCorrectedSimilarity(entry, config.hub) }))
+            .toSorted((first, second) => second.score - first.score)
+            .slice(0, listLimit),
+        };
       };
 
       // The product passes one limit to both lists and to the fused result.
@@ -223,9 +230,9 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex, background: Ba
                 minScore: config.minScore,
               });
 
-        const vector =
+        const vectors =
           mode === 'keyword' || queryVector === undefined
-            ? []
+            ? { passingIDs: new Set<string>(), ranked: [] }
             : await rankVectors(
                 turn.candidates
                   .map((candidate, position) => ({ candidate, vector: itemVectors[position] ?? new Float32Array() }))
@@ -234,7 +241,10 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex, background: Ba
                 listLimit,
               );
 
-        const fused = buildFusedRanking(keyword, vector, config);
+        const vector = vectors.ranked;
+        const fused = buildFusedRanking(keyword, vector, config).filter(
+          (itemID) => !config.isKeywordOnlyDropped || vectors.passingIDs.has(itemID),
+        );
 
         if (!query.isAgreementNeeded) {
           return fused.slice(0, limit);

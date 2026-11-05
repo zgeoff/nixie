@@ -154,6 +154,55 @@ test('it keeps a keyword match that the similarity floor drops in a hybrid ranki
   expect(ranking.facts.toSorted()).toStrictEqual(['item-bike', 'item-tomato']);
 });
 
+test('it drops a keyword match under the similarity floor and keeps a vector match, when keyword-only items are dropped', async () => {
+  const index = await startMemoryIndex();
+
+  onTestFinished(() => index.stop());
+
+  const vectors: Record<string, Float32Array> = {
+    'bike repair': new Float32Array([1, 0]),
+    'Grows tomatoes': new Float32Array([0.9, 0.436]),
+    'Owns a bike': new Float32Array([0.3, 0.954]),
+  };
+  const ranker = buildRanker(
+    { encode: async (texts) => texts.map((text) => vectors[text] ?? new Float32Array([0, 0])) },
+    index,
+  );
+
+  const ranking = await ranker.rankTurn(
+    {
+      caseID: 't1',
+      stepSequence: 1,
+      recalledSequence: 2,
+      recordedAt: 0,
+      query: 'bike repair',
+      typedQuery: 'bike repair',
+      shownMessages: [],
+      isSessionStart: false,
+      sessionNumber: 0,
+      isShredded: false,
+      contextTokens: null,
+      reply: '',
+      earlier: [],
+      candidates: [
+        { itemID: 'item-bike', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Owns a bike' },
+        { itemID: 'item-tomato', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Grows tomatoes' },
+        { itemID: 'item-dog', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Walks the dog' },
+        { itemID: 'item-pasta', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Cooks pasta' },
+        { itemID: 'item-night', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Reads at night' },
+      ],
+      logged: [],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    { ...SHIPPED, isInt8: false, isKeywordOnlyDropped: true },
+    [],
+  );
+
+  expect(ranking.facts).toStrictEqual(['item-tomato']);
+});
+
 test('it leaves out an item marked sensitive', async () => {
   const index = await startMemoryIndex();
 

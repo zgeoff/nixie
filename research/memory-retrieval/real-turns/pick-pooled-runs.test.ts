@@ -11,6 +11,7 @@ test.each([
   'leaf-ir-q8 served, shipped floors, 3 items',
   'leaf-ir-q8 served, short skip, 3 words',
   'leaf-ir-q8 served, pasted text dropped',
+  'leaf-ir-q8 served, similarity 0.46, BM25 2, keyword-only items dropped',
 ])('it pools the compared served setting %s', (name) => {
   const pooled = pickPooledRuns(buildRuns(['leaf-ir-q8']));
 

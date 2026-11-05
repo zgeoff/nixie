@@ -144,6 +144,16 @@ export function buildRuns(encoders: EncoderName[]): Run[] {
     runs.push(sweep(`served, hub ${hub.kind} ${'weight' in hub ? hub.weight : hub.margin}`, 'served', { ...SHIPPED, hub }));
   }
 
+  runs.push(
+    sweep('served, keyword-only items dropped', 'served', { ...SHIPPED, isKeywordOnlyDropped: true }),
+    sweep('served, similarity 0.46, BM25 2, keyword-only items dropped', 'served', {
+      ...SHIPPED,
+      minSimilarity: 0.46,
+      minScore: 2,
+      isKeywordOnlyDropped: true,
+    }),
+  );
+
   for (const messages of [1, 2]) {
     runs.push(sweep(`served, window ${messages}`, 'served', { ...SHIPPED, shortRule: { kind: 'window', messages } }));
   }
