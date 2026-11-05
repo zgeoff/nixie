@@ -1,5 +1,6 @@
 import { match } from 'ts-pattern';
 import type { TurnCase } from './build-turn-cases.ts';
+import { countWords } from './count-words.ts';
 
 // What a short message does in place of the shipped retrieval. A message is short when it holds
 // at most `maxWords` words. A window rule applies to every message: it adds the user's last few
@@ -34,7 +35,9 @@ export function pickTurnQuery(
   }
 
   if (rule.kind === 'window') {
-    return { ...plain, text: [...turn.earlier.slice(-rule.messages).map((exchange) => exchange.owner), text].join('\n') };
+    const earlier = turn.earlier.slice(Math.max(0, turn.earlier.length - rule.messages));
+
+    return { ...plain, text: [...earlier.map((exchange) => exchange.owner), text].join('\n') };
   }
 
   if (countWords(text) > rule.maxWords) {
@@ -53,9 +56,4 @@ export function pickTurnQuery(
         : { ...plain, text: [previous.owner, previous.reply.slice(0, replyLimit), text].join('\n') };
     })
     .exhaustive();
-}
-
-// Counts runs of letters or digits, so an emoji or punctuation alone counts as no word.
-export function countWords(text: string): number {
-  return text.match(/[\p{L}\p{N}]+/gu)?.length ?? 0;
 }

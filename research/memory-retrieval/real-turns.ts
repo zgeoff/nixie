@@ -20,7 +20,7 @@ import { buildKeyPath } from './real-turns/build-key-path.ts';
 import { buildTurnCases } from './real-turns/build-turn-cases.ts';
 import type { BlockSources } from './real-turns/count-turn-blocks.ts';
 import { buildBlockTokens, collectBlockSources } from './real-turns/count-turn-blocks.ts';
-import { countWords } from './real-turns/pick-turn-query.ts';
+import { countWords } from './real-turns/count-words.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
 import { buildSample, sampleTurnSchema } from './real-turns/build-sample.ts';
@@ -48,10 +48,12 @@ import { collectItemShows } from './real-turns/collect-item-shows.ts';
 import { collectWritingTurns } from './real-turns/collect-writing-turns.ts';
 import { isTechnicalTurn } from './real-turns/is-technical-turn.ts';
 import { scoreWordOverlap } from './real-turns/score-word-overlap.ts';
-import { makeRandom } from './real-turns/make-random.ts';
 import { countMissedItems } from './real-turns/count-missed-items.ts';
 import { isMetaTurn } from './real-turns/is-meta-turn.ts';
-import { isInCaseRanges, parseCaseRanges } from './real-turns/parse-case-ranges.ts';
+import { isInCaseRanges } from './real-turns/is-in-case-ranges.ts';
+import { parseCaseRanges } from './real-turns/parse-case-ranges.ts';
+import { pickHeldOutCases } from './real-turns/pick-held-out-cases.ts';
+import { pickKeptLabels } from './real-turns/pick-kept-labels.ts';
 import { messageKeyPrefix } from './real-turns/build-rating-sample.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { buildVectorQuery } from '../../modules/memory/src/build-vector-query.ts';
@@ -236,27 +238,23 @@ async function runReplay(turns: TurnCase[]): Promise<void> {
 
 async function runScore(turns: TurnCase[]): Promise<void> {
   const read = values.labels === undefined ? { labels: [], keys: [] } : await readLabels(turns);
-  const excludedRanges = readCaseRanges(values.exclude);
-  const turnsByCase = new Map(turns.map((turn) => [turn.caseID, turn]));
-  const isMeta = (caseID: string) => {
-    const turn = turnsByCase.get(caseID);
-
-    return turn !== undefined && isMetaTurn(turn);
-  };
-  const inRange = (caseID: string) => isInCaseRanges(caseID, excludedRanges);
-  const labels = read.labels.filter((label) => !inRange(label.caseID) && !isMeta(label.caseID));
+  const picked = pickKeptLabels(read.labels, turns, parseCaseRangesOption(values.exclude));
+  const labels = picked.kept;
+  const keptCases = new Set(labels.map((label) => label.caseID));
   const keys = read.keys;
   const pooledByCase = new Map(
     keys.map((entry) => [entry.caseID, new Set(Object.values(entry.refs).filter((key) => !key.startsWith(messageKeyPrefix)))]),
   );
-  const heldRanges = readCaseRanges(values.held);
-  const missing = values.missing === undefined ? [] : await readJSONLines(resolve(values.missing), missingMapSchema);
+  const heldRanges = parseCaseRangesOption(values.held);
+  const missing = (values.missing === undefined ? [] : await readJSONLines(resolve(values.missing), missingMapSchema)).filter((entry) =>
+    keptCases.has(entry.caseID),
+  );
   const hybrid = turns.filter((turn) => turn.searchMode === 'hybrid');
   const exchangeItems = collectExchangeItems(hybrid, exported.versions);
   const gold = getGold(
     buildGold(turns, labels, keys, {
       missing,
-      heldCases: new Set(labels.map((label) => label.caseID).filter((caseID) => isInCaseRanges(caseID, heldRanges))),
+      heldCases: new Set([...keptCases].filter((caseID) => isInCaseRanges(caseID, heldRanges))),
       heldItems: exchangeItems,
     }),
   );
@@ -264,16 +262,21 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   console.log({
     metaTurns: {
       hybridFlagged: hybrid.filter((turn) => isMetaTurn(turn)).length,
-      labelsInRange: read.labels.filter((label) => inRange(label.caseID)).length,
-      labelsFlagged: read.labels.filter((label) => isMeta(label.caseID)).length,
-      labelsBoth: read.labels.filter((label) => inRange(label.caseID) && isMeta(label.caseID)).length,
+      labelsInRange: picked.inRange,
+      labelsFlagged: picked.flagged,
+      labelsBoth: picked.both,
+      labelsShredded: picked.shredded,
       labelsKept: labels.length,
     },
-    missing: countMissedItems(turns, missing, pooledByCase),
+    missing: countMissedItems(
+      turns,
+      missing,
+      pooledByCase,
+      new Map([...gold].map(([caseID, expected]) => [caseID, expected.delivered])),
+    ),
     descriptions: labels.reduce((sum, label) => sum + (label.missing?.length ?? 0), 0),
     turnsWithDescriptions: labels.filter((label) => (label.missing?.length ?? 0) > 0).length,
     labelledWithExchangeItems: labels.filter((label) => exchangeItems.has(label.caseID)).length,
-    labelledShredded: labels.filter((label) => turnsByCase.get(label.caseID)?.isShredded === true).length,
   });
   const encoders = parseEncoderNames(values.encoders ?? 'leaf-ir-q8');
 
@@ -291,7 +294,10 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     hybrid.map((turn) => ({ sequence: turn.recalledSequence, text: buildVectorQuery(turn.query, excludedWords) })).filter((message) => message.text.trim() !== ''),
   );
   const scored = buildScoreReport(runs, results, gold);
-  const heldOutIDs = pickHeldOutCases(chosen.map((turn) => turn.caseID));
+  const heldOutIDs = pickHeldOutCases(
+    chosen.map((turn) => turn.caseID),
+    heldOutSeed,
+  );
   const subsetReport = (isIn: (caseID: string) => boolean) =>
     buildScoreReport(runs, new Map([...results].map(([name, ranked]) => [name, ranked.filter((entry) => isIn(entry.caseID))])), gold);
   const technicalIDs = new Set(chosen.filter((turn) => isTechnicalTurn(turn)).map((turn) => turn.caseID));
@@ -432,16 +438,7 @@ async function readLabelText(path: string): Promise<string> {
   return (await Promise.all(files.map((file) => Bun.file(file).text()))).join('\n');
 }
 
-// Holds out half the labelled turns, drawn with a fixed seed, so a setting chosen on the other half
-// is scored on turns it was not chosen on.
-function pickHeldOutCases(caseIDs: string[]): Set<string> {
-  const random = makeRandom(heldOutSeed);
-  const shuffled = caseIDs.toSorted().map((caseID) => ({ caseID, key: random() })).toSorted((first, second) => first.key - second.key);
-
-  return new Set(shuffled.slice(0, Math.floor(shuffled.length / 2)).map((entry) => entry.caseID));
-}
-
-function readCaseRanges(spec: string | undefined): { from: number; to: number }[] {
+function parseCaseRangesOption(spec: string | undefined): { from: number; to: number }[] {
   const parsed = parseCaseRanges(spec ?? '');
 
   if ('invalid' in parsed) {

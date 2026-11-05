@@ -635,6 +635,56 @@ test('it marks a turn whose reply was shredded', () => {
   expect(cases.map((turn) => ({ reply: turn.reply, isShredded: turn.isShredded }))).toStrictEqual([{ reply: '', isShredded: true }]);
 });
 
+test('it marks a turn whose batch holds a shredded message', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 1,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'shredded' },
+      },
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'what is for dinner?' } },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T09:00:02Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 4,
+        recordedAt: '2026-03-02T09:00:03Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+    ],
+    items: [],
+    versions: [],
+    notes: [],
+  });
+
+  expect(cases.map((turn) => ({ query: turn.query, isShredded: turn.isShredded }))).toStrictEqual([
+    { query: 'what is for dinner?', isShredded: true },
+  ]);
+});
+
 test('it gives a turn the past messages, the session start and the call context its turn end records', () => {
   const cases = buildTurnCases({
     records: [
@@ -714,7 +764,7 @@ test('it gives a turn the past messages, the session start and the call context 
   ).toStrictEqual([{ shownMessages: [{ sequence: 1, length: 1000, isCut: true }], isSessionStart: true, contextTokens: 2000 }]);
 });
 
-test('it marks an item flagged sensitive as sensitive', () => {
+test('it marks an item sensitive only on the turns after its mark record', () => {
   const cases = buildTurnCases({
     records: [
       {
@@ -744,6 +794,42 @@ test('it marks an item flagged sensitive as sensitive', () => {
         payload: { items: [], searchMode: 'hybrid' },
         erasable: { status: 'none' },
       },
+      {
+        sequence: 5,
+        recordedAt: '2026-03-02T09:01:00Z',
+        kind: 'memory.sensitive_marked',
+        thread: null,
+        parent: null,
+        payload: { itemID: 'item-a', isSensitive: true },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 6,
+        recordedAt: '2026-03-02T09:02:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'and today?' } },
+      },
+      {
+        sequence: 7,
+        recordedAt: '2026-03-02T09:02:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 8,
+        recordedAt: '2026-03-02T09:02:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
     ],
     items: [
       {
@@ -765,5 +851,5 @@ test('it marks an item flagged sensitive as sensitive', () => {
     notes: [],
   });
 
-  expect(cases.map((turn) => turn.candidates.map((candidate) => candidate.isSensitive))).toStrictEqual([[true]]);
+  expect(cases.map((turn) => turn.candidates.map((candidate) => candidate.isSensitive))).toStrictEqual([[false], [true]]);
 });

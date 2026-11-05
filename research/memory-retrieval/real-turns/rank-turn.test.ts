@@ -453,3 +453,51 @@ test('it drops an item only BM25 found when BM25 has no weight', async () => {
 
   expect(ranking.facts).toStrictEqual([]);
 });
+
+test.each([
+  [2, ['item-basil', 'item-bike']],
+  [0.5, ['item-bike', 'item-basil']],
+])('it ranks the BM25 match against the vector match by a BM25 weight of %p', async (keywordWeight, expected) => {
+  const index = await startMemoryIndex();
+
+  onTestFinished(() => index.stop());
+
+  const vectors: Record<string, Float32Array> = {
+    basil: new Float32Array([1, 0]),
+    'Grows basil': new Float32Array([0, 1]),
+    'Owns a bike': new Float32Array([1, 0]),
+  };
+  const ranker = buildRanker(
+    { encode: async (texts) => texts.map((text) => vectors[text] ?? new Float32Array([0, 0])) },
+    index,
+  );
+
+  const ranking = await ranker.rankTurn(
+    {
+      caseID: 't4',
+      stepSequence: 3,
+      recalledSequence: 4,
+      recordedAt: 0,
+      query: 'basil',
+      typedQuery: 'basil',
+      shownMessages: [],
+      isSessionStart: false,
+      isShredded: false,
+      contextTokens: null,
+      reply: '',
+      earlier: [],
+      candidates: [
+        { itemID: 'item-basil', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Grows basil' },
+        { itemID: 'item-bike', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Owns a bike' },
+      ],
+      logged: [],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    { ...SHIPPED, isInt8: false, minScore: 0, keywordWeight },
+    [],
+  );
+
+  expect(ranking.facts).toStrictEqual(expected);
+});

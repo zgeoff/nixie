@@ -32,7 +32,7 @@ export function buildGold(turns: TurnCase[], labels: Label[], keys: SampleKey[],
     const label = labelsByCase.get(turn.caseID);
     const refs = refsByCase.get(turn.caseID) ?? {};
 
-    const toItem = (ref: string): string | null => {
+    const findItem = (ref: string): string | null => {
       const itemID = refs[ref];
 
       if (itemID === undefined) {
@@ -42,7 +42,7 @@ export function buildGold(turns: TurnCase[], labels: Label[], keys: SampleKey[],
       return itemID ?? null;
     };
 
-    const named = (label?.relevant ?? []).map((ref) => toItem(ref)).filter((itemID) => itemID !== null);
+    const named = (label?.relevant ?? []).map((ref) => findItem(ref)).filter((itemID) => itemID !== null);
     // An item the store did not hold at the turn could not be retrieved, so it never counts as missed.
     const held = new Set(turn.candidates.map((candidate) => candidate.itemID));
     const leftOut = label === undefined ? [] : (missingByCase.get(turn.caseID) ?? []).filter((itemID) => held.has(itemID));
@@ -51,8 +51,8 @@ export function buildGold(turns: TurnCase[], labels: Label[], keys: SampleKey[],
     gold.set(turn.caseID, {
       relevant: new Set([...named.filter((key) => !key.startsWith(messageKeyPrefix)), ...leftOut]),
       messages: new Set(named.filter((key) => key.startsWith(messageKeyPrefix))),
-      best: label === undefined || label.best === null ? null : toItem(label.best),
-      misleading: new Set((label?.misleading ?? []).map((ref) => toItem(ref)).filter((itemID) => itemID !== null)),
+      best: label === undefined || label.best === null ? null : findItem(label.best),
+      misleading: new Set((label?.misleading ?? []).map((ref) => findItem(ref)).filter((itemID) => itemID !== null)),
       noise: new Set(turn.ratings.filter((rating) => rating.verdict !== 'helpful').map((rating) => rating.itemID)),
       // The product leaves out only the version it delivered, so an item counts as delivered only
       // at the version the turn could retrieve.

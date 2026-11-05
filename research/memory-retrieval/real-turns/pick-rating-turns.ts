@@ -1,6 +1,6 @@
 import type { TurnCase } from './build-turn-cases.ts';
 import { makeRandom } from './make-random.ts';
-import { countWords } from './pick-turn-query.ts';
+import { countWords } from './count-words.ts';
 
 export interface RatingTurns {
   chosen: TurnCase[];

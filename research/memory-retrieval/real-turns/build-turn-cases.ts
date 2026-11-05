@@ -110,6 +110,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
   const exchanges: Exchange[] = [];
   const session: SessionFold = { delivered: new Map(), pending: [], isCompacted: false };
   const pinned = new Set<string>();
+  const sensitive = new Map<string, boolean>();
   const messages = new Map<number, string>();
 
   let inbox: PlainRecord[] = [];
@@ -120,6 +121,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
 
   for (const record of data.records) {
     foldPins(pinned, record);
+    foldSensitive(sensitive, record);
 
     // Past-message retrieval searches the user's messages in every thread.
     const messageText = record.kind === 'owner_message' ? readErasableText(record) : null;
@@ -226,7 +228,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
       open.logged = recalled.items;
       open.searchMode = recalled.searchMode ?? null;
       open.delivered = [...session.delivered.keys()];
-      open.candidates = collectCandidates(versionsByItem, itemsByID, pinned, record.sequence, open.recordedAt);
+      open.candidates = collectCandidates(versionsByItem, itemsByID, pinned, sensitive, record.sequence, open.recordedAt);
       open.ratings = [...open.ratings, ...(ratings.get(record.sequence) ?? [])];
     }
 
@@ -301,6 +303,17 @@ function foldPins(pinned: Set<string>, record: PlainRecord): void {
   }
 }
 
+// Follows the sensitive flag of the memory items projection: a mark record sets or clears it, so a
+// turn before the mark still sees the item. The store writes a mark record for an item flagged at
+// creation too.
+function foldSensitive(sensitive: Map<string, boolean>, record: PlainRecord): void {
+  const itemID = record.payload['itemID'];
+
+  if (record.kind === 'memory.sensitive_marked' && typeof itemID === 'string') {
+    sensitive.set(itemID, record.payload['isSensitive'] === true);
+  }
+}
+
 // Most turn records lack the context size, so the input of the mean model call stands in for it:
 // each call reads the whole context, from the cache or not.
 function toCallContext(ended: z.infer<typeof turnEndedSchema>): number | null {
@@ -363,6 +376,7 @@ function collectCandidates(
   versionsByItem: Map<string, PlainVersion[]>,
   itemsByID: Map<string, PlainExport['items'][number]>,
   pinned: Set<string>,
+  sensitive: Map<string, boolean>,
   sequence: number,
   now: number,
 ): Candidate[] {
@@ -385,8 +399,7 @@ function collectCandidates(
       isSelf: (item.subject ?? (item.kind === 'self' ? 'self' : 'owner')) === 'self',
       isPinned: pinned.has(itemID),
       isLapsed: current.until !== null && current.until <= now,
-      // The export holds the flag as it stands at the end, and a turn's retrieval leaves the item out.
-      isSensitive: item.is_sensitive === 1,
+      isSensitive: sensitive.get(itemID) === true,
       text: current.text,
     });
   }

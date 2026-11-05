@@ -172,6 +172,28 @@ test('#scoreServed scores what a served set covers, brings fresh and shows on tu
   });
 });
 
+test('#scoreServed counts no misleading item the session already held', () => {
+  expect(
+    scoreServed(
+      [{ caseID: 't2', ranking: { facts: ['wrong-a'], selves: [] } }],
+      new Map([
+        [
+          't2',
+          {
+            relevant: new Set<string>(),
+            best: null,
+            messages: new Set<string>(),
+            noise: new Set<string>(),
+            misleading: new Set(['wrong-a']),
+            delivered: new Set(['wrong-a']),
+            isLabelled: true,
+          },
+        ],
+      ]),
+    ).misleadingServed,
+  ).toBe(0);
+});
+
 test('#buildPairedDifference gives no difference for a run against itself', () => {
   const ranked = [
     { caseID: 't1', ranking: { facts: ['needed-a'], selves: [] } },

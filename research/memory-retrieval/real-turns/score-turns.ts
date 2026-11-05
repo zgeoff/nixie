@@ -407,11 +407,9 @@ export function scoreServed(ranked: RankedTurn[], gold: Map<string, Gold>): Serv
       .map((itemID) => expected?.relevant.has(itemID) === true);
   });
 
-  const noise = ranked.flatMap((entry) =>
-    shown(entry).filter((itemID) => gold.get(entry.caseID)?.noise.has(itemID) === true && gold.get(entry.caseID)?.delivered.has(itemID) !== true),
-  );
-
-  const misleading = ranked.flatMap((entry) => shown(entry).filter((itemID) => gold.get(entry.caseID)?.misleading.has(itemID) === true));
+  const broughtShown = (entry: RankedTurn) => shown(entry).filter((itemID) => gold.get(entry.caseID)?.delivered.has(itemID) !== true);
+  const noise = ranked.flatMap((entry) => broughtShown(entry).filter((itemID) => gold.get(entry.caseID)?.noise.has(itemID) === true));
+  const misleading = ranked.flatMap((entry) => broughtShown(entry).filter((itemID) => gold.get(entry.caseID)?.misleading.has(itemID) === true));
 
   return {
     goldCases: withGold.length,

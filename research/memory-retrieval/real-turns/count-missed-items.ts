@@ -13,8 +13,14 @@ export interface MissedItems {
 
 // Sorts each item a rater said the list left out by why the list lacked it. The session already held
 // it, it was pinned, sensitive or lapsed and so never retrievable, it sat in the list after all, it
-// was eligible but ranked below the pool, or the store did not hold it at that turn.
-export function countMissedItems(turns: TurnCase[], missing: MissingMap[], pooledByCase: Map<string, Set<string>>): MissedItems {
+// was eligible but ranked below the pool, or the store held no active version of it at that turn. An
+// item the scores count as delivered, such as one the turn's own exchange added, counts as held.
+export function countMissedItems(
+  turns: TurnCase[],
+  missing: MissingMap[],
+  pooledByCase: Map<string, Set<string>>,
+  heldByCase: Map<string, ReadonlySet<string>>,
+): MissedItems {
   const turnsByCase = new Map(turns.map((turn) => [turn.caseID, turn]));
   const byReason: Record<MissReason, number> = { held: 0, pinned: 0, sensitive: 0, lapsed: 0, pooled: 0, eligible: 0, absent: 0 };
   let turnsWithMiss = 0;
@@ -28,7 +34,9 @@ export function countMissedItems(turns: TurnCase[], missing: MissingMap[], poole
       continue;
     }
 
-    const reasons = entry.itemIDs.map((itemID) => pickMissReason(turn, itemID, pooledByCase.get(entry.caseID) ?? new Set()));
+    const reasons = entry.itemIDs.map((itemID) =>
+      pickMissReason(turn, itemID, pooledByCase.get(entry.caseID) ?? new Set(), heldByCase.get(entry.caseID) ?? new Set()),
+    );
 
     for (const reason of reasons) {
       byReason[reason] += 1;
@@ -48,14 +56,14 @@ export function countMissedItems(turns: TurnCase[], missing: MissingMap[], poole
   };
 }
 
-function pickMissReason(turn: TurnCase, itemID: string, pooled: Set<string>): MissReason {
+function pickMissReason(turn: TurnCase, itemID: string, pooled: Set<string>, held: ReadonlySet<string>): MissReason {
   const candidate = turn.candidates.find((entry) => entry.itemID === itemID);
 
   if (candidate === undefined) {
     return 'absent';
   }
 
-  if (turn.delivered.includes(`${candidate.itemID}@${candidate.version}`)) {
+  if (held.has(itemID) || turn.delivered.includes(`${candidate.itemID}@${candidate.version}`)) {
     return 'held';
   }
 
