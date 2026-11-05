@@ -144,6 +144,17 @@ export function buildRuns(encoders: EncoderName[]): Run[] {
     runs.push(sweep(`served, hub ${hub.kind} ${'weight' in hub ? hub.weight : hub.margin}`, 'served', { ...SHIPPED, hub }));
   }
 
+  for (const messages of [1, 2]) {
+    runs.push(sweep(`served, window ${messages}`, 'served', { ...SHIPPED, shortRule: { kind: 'window', messages } }));
+  }
+
+  runs.push(
+    sweep('served, previous exchange on every turn', 'served', {
+      ...SHIPPED,
+      shortRule: { kind: 'previous', maxWords: Number.POSITIVE_INFINITY },
+    }),
+  );
+
   runs.push(...buildShortRuns());
 
   return runs;

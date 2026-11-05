@@ -45,6 +45,9 @@ import { scoreMessageFloors } from './real-turns/score-message-floors.ts';
 import { buildSimilarity } from './real-turns/build-similarity.ts';
 import { collectExchangeItems } from './real-turns/collect-exchange-items.ts';
 import { collectItemShows } from './real-turns/collect-item-shows.ts';
+import { collectWritingTurns } from './real-turns/collect-writing-turns.ts';
+import { isTechnicalTurn } from './real-turns/is-technical-turn.ts';
+import { scoreWordOverlap } from './real-turns/score-word-overlap.ts';
 import { makeRandom } from './real-turns/make-random.ts';
 import { countMissedItems } from './real-turns/count-missed-items.ts';
 import { isMetaTurn } from './real-turns/is-meta-turn.ts';
@@ -290,6 +293,20 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   const heldOutIDs = pickHeldOutCases(chosen.map((turn) => turn.caseID));
   const subsetReport = (isIn: (caseID: string) => boolean) =>
     buildScoreReport(runs, new Map([...results].map(([name, ranked]) => [name, ranked.filter((entry) => isIn(entry.caseID))])), gold);
+  const technicalIDs = new Set(chosen.filter((turn) => isTechnicalTurn(turn)).map((turn) => turn.caseID));
+  const writingIDs = collectWritingTurns(hybrid, exported.records);
+  const kinds = {
+    technical: subsetReport((caseID) => technicalIDs.has(caseID)),
+    chat: subsetReport((caseID) => !technicalIDs.has(caseID)),
+    writing: subsetReport((caseID) => writingIDs.has(caseID)),
+    notWriting: subsetReport((caseID) => !writingIDs.has(caseID)),
+  };
+  const shippedServed = new Map((results.get(getShippedRun(runs, 'served').name) ?? []).map((entry) => [entry.caseID, [...entry.ranking.facts, ...entry.ranking.selves]]));
+  const shippedTop = new Map((results.get(getShippedRun(runs, 'ranking').name) ?? []).map((entry) => [entry.caseID, entry.ranking.facts.slice(0, 5)]));
+  const wordOverlap = {
+    served: scoreWordOverlap(chosen, gold, shippedServed, excludedWords),
+    top5: scoreWordOverlap(chosen, gold, shippedTop, excludedWords),
+  };
   const selection = subsetReport((caseID) => !heldOutIDs.has(caseID));
   const heldOut = subsetReport((caseID) => heldOutIDs.has(caseID));
   const shortIDs = new Set(chosen.filter((turn) => countWords(turn.query) <= shortWords).map((turn) => turn.caseID));
@@ -297,6 +314,14 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   const shortScored = buildScoreReport(runs, shortResults, gold);
   const blocks = {
     all: scoreBlocks(chosen, gold),
+    technical: scoreBlocks(
+      chosen.filter((turn) => technicalIDs.has(turn.caseID)),
+      gold,
+    ),
+    chat: scoreBlocks(
+      chosen.filter((turn) => !technicalIDs.has(turn.caseID)),
+      gold,
+    ),
     short: scoreBlocks(
       chosen.filter((turn) => shortIDs.has(turn.caseID)),
       gold,
@@ -313,6 +338,11 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   console.log(`turns ${chosen.length}, labelled ${labels.length}, short ${shortIDs.size}\n`);
   console.log(scored.lines.join('\n'));
   console.log(`\nshort turns only\n\n${shortScored.lines.join('\n')}`);
+  for (const [kind, report] of Object.entries(kinds)) {
+    console.log(`\n${kind} turns\n\n${report.lines.join('\n')}`);
+  }
+
+  console.log({ technical: technicalIDs.size, writing: chosen.filter((turn) => writingIDs.has(turn.caseID)).length, wordOverlap });
   console.log(`\nselection half, ${chosen.length - heldOutIDs.size} turns\n\n${selection.lines.join('\n')}`);
   console.log(`\nheld-out half, ${heldOutIDs.size} turns\n\n${heldOut.lines.join('\n')}`);
   console.log(`\nshown blocks\n\n${JSON.stringify(blocks, null, 2)}`);
@@ -320,7 +350,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   console.log(`\nitems by turns retrieved\n\n${JSON.stringify({ ...itemShows, items: itemShows.items.slice(0, 15) }, null, 2)}`);
 
   if (values.out !== undefined) {
-    const report = { turns: chosen.length, labelled: labels.length, ...scored.report, short: shortScored.report, selection: selection.report, heldOut: heldOut.report, blocks, messageFloors, itemShows };
+    const report = { turns: chosen.length, labelled: labels.length, ...scored.report, short: shortScored.report, selection: selection.report, heldOut: heldOut.report, kinds: Object.fromEntries(Object.entries(kinds).map(([kind, report]) => [kind, report.report])), wordOverlap, blocks, messageFloors, itemShows };
 
     await Bun.write(resolve(values.out), `${JSON.stringify(report, null, 2)}\n`);
   }

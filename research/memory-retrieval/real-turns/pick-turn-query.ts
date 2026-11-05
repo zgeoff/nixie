@@ -2,10 +2,12 @@ import { match } from 'ts-pattern';
 import type { TurnCase } from './build-turn-cases.ts';
 
 // What a short message does in place of the shipped retrieval. A message is short when it holds
-// at most `maxWords` words.
+// at most `maxWords` words. A window rule applies to every message: it adds the user's last few
+// messages to the query, so a turn that answers an earlier one can still reach its topic.
 export type ShortRule =
   | { kind: 'none' }
-  | { kind: 'skip' | 'previous' | 'agree' | 'vectors'; maxWords: number };
+  | { kind: 'skip' | 'previous' | 'agree' | 'vectors'; maxWords: number }
+  | { kind: 'window'; messages: number };
 
 export interface QueryChoice {
   text: string;
@@ -27,7 +29,15 @@ export function pickTurnQuery(
   const text = isPastedDropped ? turn.typedQuery : turn.query;
   const plain = { text, isSkipped: text.trim() === '', isAgreementNeeded: false, isVectorOnly: false };
 
-  if (rule.kind === 'none' || countWords(text) > rule.maxWords) {
+  if (rule.kind === 'none') {
+    return plain;
+  }
+
+  if (rule.kind === 'window') {
+    return { ...plain, text: [...turn.earlier.slice(-rule.messages).map((exchange) => exchange.owner), text].join('\n') };
+  }
+
+  if (countWords(text) > rule.maxWords) {
     return plain;
   }
 

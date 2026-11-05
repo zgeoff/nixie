@@ -70,6 +70,23 @@ test('#pickTurnQuery ranks the typed text when pasted text is dropped', () => {
   ).toBe('summarise this: ');
 });
 
+test('#pickTurnQuery adds the last user messages to a long message under a window rule', () => {
+  expect(
+    pickTurnQuery(
+      {
+        query: 'and what time does the market open on the weekend?',
+        typedQuery: 'and what time does the market open on the weekend?',
+        earlier: [
+          { owner: 'thinking about Saturday', reply: 'Sounds good.' },
+          { owner: 'the farmers market', reply: 'Which one?' },
+        ],
+      },
+      { kind: 'window', messages: 1 },
+      false,
+    ).text,
+  ).toBe('the farmers market\nand what time does the market open on the weekend?');
+});
+
 test('#pickTurnQuery skips a message that is all pasted text when pasted text is dropped', () => {
   expect(
     pickTurnQuery({ query: 'a long pasted report', typedQuery: '', earlier: [] }, { kind: 'none' }, true).isSkipped,
