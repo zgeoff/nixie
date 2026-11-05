@@ -279,24 +279,32 @@ with each failure in a row. The conversation never fails ([tasks](./tasks.md#ste
 
 ### A turn that ends with nothing sent
 
-The conversation and every [started task](./started-tasks.md#start-options) hold the
-`turn.end_silently` tool, which ends the turn with nothing sent when only a task message or a timer
-woke it. The tool is always on the list, so the prompt cache holds, and its description tells the
-model when it applies. The step token hands each tool call the turn's silent end, which the tool
-calls:
+A silent turn is a turn whose step commits no reply record. The model makes a turn silent by calling
+`turn.end_silently`, a tool that the conversation and every
+[started task](./started-tasks.md#start-options) hold on every turn. The tool list therefore never
+changes, and the prompt cache holds. nixie wrote the tool's description to ask the model for the
+call only when a task message or a timer woke the turn and nothing needs saying. The call ends
+nothing by itself: the model's loop runs until the model stops, and every other tool call in the
+turn takes effect.
 
-- The silent end refuses when the turn holds a message from the user: one that opened the turn, or
-  one that reached it while it ran. A message the user moved to the task counts as the user's, and
-  the notice on the task that lost it does not. The tool returns the refusal to the model at once,
-  so the model replies.
-- Otherwise the turn ends silently. The host passes no more live messages into the turn, so a
-  message from the user that lands afterwards stays unread and starts the next step.
+The host answers the call from the inbox records that the turn holds. Those are the records that
+opened the turn, and the records that the host passed into it while it ran, as
+[inbox records as messages](#inbox-records-as-messages) describes. The host refuses the call when
+one of them is the user's own message, or the `message-moved` record of a message that the user
+moved to this task. The model reads the refusal as the tool's answer, and replies. The
+`message-moved` record on the task that lost the message never causes a refusal.
 
-A silent turn records no reply, even for text the model wrote before or after the call, and a model
-API refusal later in the turn records none with its error either. Its turn-ended record holds
-`isSilent`. The [API](../channels/api.md) carries the mark on that record, and the
-[client](../channels/client.md) shows the step as ended with no reply. A silent turn marks its inbox
-records read and commits its session boundary as any other turn does.
+When the host accepts the call, it stops passing records into the running turn. Any record that
+lands after the call stays unread, and a waking record, such as the user's message, starts the next
+step.
+
+The step that commits a silent turn writes no reply record, even for text the model wrote before or
+after the call. It writes the turn-ended record with `isSilent: true`, marks the read records and
+commits the session boundary, as every step does. One exception: when the model API refuses a later
+call, the step fails as [a call the model API refuses](#a-call-the-model-api-refuses) describes, and
+its error records hold no reply. The [API](../channels/api.md) names the mark `isSilentTurn` on its
+record, because one record type there covers every kind, and the [client](../channels/client.md)
+shows the step as ended with no reply.
 
 ### A call the model API refuses
 

@@ -161,18 +161,27 @@ sender that a reply, if any, arrives as a new message.
 
 ### Silent turns
 
-A turn that only a task message or a timer woke can have nothing to say. The conversation and every
-started task hold `turn.end_silently`, which ends the turn with nothing sent: the conversation sends
-you no reply, and a task sends no task message. **Why:** without it, a model that has nothing to say
-still writes a reply, and the chat fills with idle replies. The tool stays in the tool list on every
-turn, so the prompt cache holds, and its description says when it applies.
+The `turn.end_silently` tool lets a turn send nothing. The conversation and every
+[started task](../../../architecture/core/started-tasks.md) have it. The memory writer and the
+consolidator lack it, because they never reply.
 
-- **Refusal.** A turn that holds a message from you refuses the tool, and the model reads at once
-  that the turn has a message from you, so it replies. A message you moved to the task counts as
-  yours. A message from you that lands after the silent end stays unread, and the next turn answers
-  it.
-- **Record.** The turn records none of its replies, and its turn-ended record marks it silent. The
-  client shows the step as ended with no reply.
+The model calls the tool when only a task message or a timer woke the turn and nothing needs saying,
+as the tool's description asks. nixie then keeps none of the turn's text: the text the model wrote
+before or after the call never reaches the log, and you get no reply. A task sends task messages
+only through `task.message`, so for a task the tool is the way to end a turn without one. Every
+other tool call in the turn takes effect, a `task.message` call included. **Why:** without the tool,
+a model with nothing to say still writes a reply or a task message, and your conversation fills with
+them.
+
+nixie refuses the call when the turn holds a message from you, and the model reads the refusal as
+the tool's answer and replies. A turn holds each message that opened it, and each message that nixie
+passed into it while it ran, as [Waits](#waits) describes. A message you moved to the task with the
+client's move action counts as yours. A message from you that lands after the call stays unread, and
+it wakes the conversation or the task for a turn that answers it.
+
+The tool stays in the tool list on every turn, so the list never changes and the prompt cache holds.
+The turn's `model.turn_ended` record marks the turn silent, and the client shows its step as ended
+with no reply.
 
 ### Hops
 
