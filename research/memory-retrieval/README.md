@@ -28,10 +28,14 @@ add to a turn, and what does a short message bring?
   MRR 0.509. No alternative encoder, fusion setting, floor or item count was shown to be better, and
   BM25 alone scored about 0.1 lower beyond its 95% interval.
 - On a later snapshot, the memory blocks added about 180 tokens a turn, and the past messages showed
-  on 801 of 1,056 hybrid turns. A short message was shown an item on 5 of 98 turns, and a past
-  message on 77.
+  on 801 of 1,056 hybrid turns at a precision of 0.03.
+- On a held-out half of 266 turns that the assistant labelled, similarity 0.46 with a BM25 floor of
+  2 showed 30% fewer items on turns that needed none and lost none of 14 needed items. A query
+  window lost 2 of the 14, and the BM25 weight changed nothing on turns that needed none.
 
-Let the store mark which fact is current. Keep the shipped encoder, fusion, floors and item counts.
+Let the store mark which fact is current. Keep the shipped encoder and fusion. The
+[per-turn options](per-turn-memory.md#options) give the floor and filter changes that the labels
+support.
 
 ## Run it
 
@@ -47,11 +51,11 @@ The [real-turn setup](real-turns.md#setup) gives the commands for a deployment's
 
 The [results](results.md) hold the recall table for every method and form, the findings, and the
 cost table. The [real-turn results](real-turns.md) hold the ranking, floor and item-count tables on
-a deployment's own turns. The [per-turn memory results](per-turn-memory.md) hold the tokens of each
-block and the short-message rules.
+a deployment's own turns. The [per-turn memory results](per-turn-memory.md) hold the tokens and
+noise of each block, and the fixes scored on a held-out half.
 
 ## Untested
 
-Keywords from a model that has not seen the items, and labels from the live assistant rather than a
-language model given its persona. The [untested list](results.md#untested) and the
-[real-turn list](real-turns.md#untested) give the rest.
+Keywords from a model that has not seen the items, and a second rater beside the live assistant. The
+[untested list](results.md#untested), the [real-turn list](real-turns.md#untested) and the
+[per-turn list](per-turn-memory.md#untested) give the rest.
