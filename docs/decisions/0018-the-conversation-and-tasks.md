@@ -54,10 +54,11 @@ finished, and what each did and why. Tasks are state machines over the event log
 - Separate contexts keep the conversation small, so compaction does not discard what you care about,
   and let each task hold only the tools it needs under
   [0005](0005-effects-and-taint.md#where-taint-applies).
-- Tasks already message the conversation on their own, and the conversation can list them when it
-  needs to, so a task list in every turn only grows its context.
+- Tasks message the conversation on their own, and the conversation can list them when it needs to,
+  so a task list in every turn only grows its context.
 - A routing record, a mark on each message and a move action guard against a misrouted message, a
-  failure no deployment has met. The 3 task tools cover the same need with less to build and run.
+  failure the conversation can catch itself with `tasks.list` and fix with `task.message`. The 3
+  task tools cover that need with less to build and run.
 - The conversation matters most, so it gets the durable machinery that is tested hardest, with no
   second loop to maintain.
 - Every deployment needs the conversation to answer, and a few transient failures in a row, such as
@@ -77,7 +78,7 @@ finished, and what each did and why. Tasks are state machines over the event log
 - **A routing layer over the task tools.** A task board in each turn, a record of the task each
   message went to, a mark beside each message, a move for a misrouted message and a reply that names
   where each message went. It grows every turn's context and adds records, an API action and client
-  controls for a failure that has not happened.
+  controls for a failure the task tools already let the conversation fix.
 
 ## Consequences
 
