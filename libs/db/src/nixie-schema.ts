@@ -4,6 +4,7 @@ import { apiMigration } from './api-migration';
 import { backupSetsMigration } from './backup-sets-migration';
 import { definitionSeedRepositoryMigration } from './definition-seed-repository-migration';
 import { definitionsMigration } from './definitions-migration';
+import { dropMessageRoutesMigration } from './drop-message-routes-migration';
 import { eventLogMigration } from './event-log-migration';
 import { memoryKindsMigration } from './memory-kinds-migration';
 import { memoryMigrations } from './memory-migrations';
@@ -56,6 +57,7 @@ export const nixieSchema: BuildSchema = {
     taskControlsMigration,
     actionCancelMigration,
     backupSetsMigration,
+    dropMessageRoutesMigration,
   ],
-  oldestReader: 25,
+  oldestReader: 35,
 };

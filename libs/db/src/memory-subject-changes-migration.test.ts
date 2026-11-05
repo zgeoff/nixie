@@ -39,9 +39,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 31, which the release before can still read', () => {
+test('it moves the schema to version 31', () => {
   expect(nixieSchema.migrations.indexOf(memorySubjectChangesMigration) + 1).toBe(31);
-  expect(nixieSchema.oldestReader).toBeLessThan(31);
 });
 
 test('it gives every proposal no subject change and leaves its other fields and the count unchanged', async () => {
