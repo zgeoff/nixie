@@ -1,5 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import { toSDKToolName } from '@heynixie/tools';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { conversationTaskID } from './conversation-task-id';
@@ -47,7 +48,7 @@ export function buildTaskStartTool(
       'tasks.list, and pass the work to that task with task.message instead. The task speaks as you ' +
       'unless you set persona to none, and reads your memory only when you set memory to read. ' +
       'It always holds tasks.list and task.message, and time.now unless you list its tools, ' +
-      'which must be tools you hold yourself.',
+      'which must be tools you hold yourself. A memory read tool also needs memory set to read.',
     input: buildStartInput(bounds),
     output: {
       type: 'object',
@@ -140,7 +141,9 @@ function buildStartInput(bounds: TaskStartBounds): JSONObject {
         items: { type: 'string' },
         uniqueItems: true,
         maxItems: 50,
-        description: 'the names of tools you hold that the task may use',
+        description:
+          'the names of tools you hold that the task may use, as your tool list shows them, such ' +
+          'as mcp__nixie__memory_recall, or as nixie names them, such as memory.recall',
       },
       report: {
         type: 'string',
@@ -212,19 +215,34 @@ function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
     .with(
       { reason: 'wider_tools' },
       (wider) =>
-        `a task gets only tools you hold, and you do not hold ${wider.tools.join(', ')}, so nixie started nothing`,
+        `a task gets only tools you hold, and you do not hold ${wider.tools.join(', ')}, so nixie started nothing. ${renderAcceptedTools(wider.accepted)}`,
     )
     .with(
       { reason: 'memory_tools' },
       (memory) =>
-        `the task's memory setting leaves out ${memory.tools.join(', ')}, so nixie started nothing`,
+        `a task gets ${memory.tools.join(', ')} only with memory set to read, so nixie started nothing. ${renderAcceptedTools(memory.accepted)}`,
+    )
+    .with(
+      { reason: 'memory_write_tools' },
+      (write) =>
+        `a task cannot get ${write.tools.join(', ')} with any memory setting, so nixie started nothing. ${renderAcceptedTools(write.accepted)}`,
     )
     .with(
       { reason: 'conversation_tools' },
       (conversation) =>
-        `only the conversation can use ${conversation.tools.join(', ')}, so nixie started nothing`,
+        `only the conversation can use ${conversation.tools.join(', ')}, so nixie started nothing. ${renderAcceptedTools(conversation.accepted)}`,
     )
     .exhaustive();
+}
+
+function renderAcceptedTools(accepted: readonly string[]): string {
+  if (accepted.length === 0) {
+    return 'You hold no tool that this task can get.';
+  }
+
+  const names = accepted.map((tool) => `${tool} or ${toSDKToolName(tool)}`);
+
+  return `This task can get ${names.join(', ')}.`;
 }
 
 function renderRefusal(refusal: TaskStartRefusal): string {

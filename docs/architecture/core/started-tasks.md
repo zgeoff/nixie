@@ -32,7 +32,7 @@ writes nothing when one fails, and tells the model why:
 | `model`   | a name of a selectable model | the `task` role's profile               | a name that is not a choice                                                       |
 | `persona` | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                 |
 | `memory`  | `none` or `read`             | `none`                                  | a memory tool that the value leaves out, or `read` from a starter that reads none |
-| `tools`   | names of tools               | the clock                               | a tool that the starter does not hold                                             |
+| `tools`   | names of tools               | the clock                               | a tool that the starter does not hold, under either of its names                  |
 | `report`  | `wake`, `next_turn`, `none`  | `wake`                                  | nothing                                                                           |
 | `limits`  | turns, dollars or both       | the defaults of `models.limits.taskRun` | a value above the max of `models.limits.taskRun`                                  |
 
@@ -49,6 +49,15 @@ the conversation's thread has a skill list, so a skill tool would refuse every c
 starter rule that asks before a stranger reads memory needs a decision point that can ask, so until
 then the start refuses that combination
 ([GEO-1803](https://linear.app/zgeoff/issue/GEO-1803/nixie-policy-the-full-decision-point-with-destination-limits-known)).
+
+Each tool has 2 names. nixie registers a tool under its nixie name, such as `memory.recall`. The
+model sees the tool under its SDK name, such as `mcp__nixie__memory_recall`, which the Agent SDK
+builds as `mcp__nixie__` and then the nixie name with each character outside letters, digits, `_`
+and `-` replaced by `_`. The `tools` option takes either name, and the start records the nixie name.
+
+When the start refuses a tool, the start's error message holds both names of each tool that a start
+with the same options from the same starter would accept. When the start refuses a memory tool that
+only reads, the message also holds the `memory: read` setting that the tool needs.
 
 The report mode decides how the task's result reaches its starter. Under `wake` a report wakes the
 starter unless the task sends it with `wake: false`, under `next_turn` the message tool sends each
@@ -85,6 +94,21 @@ start set `report: none`. After the step that sends the report, the task waits: 
 wakes it again, and the user closes it when its work is done. When the guest loses the task's
 session, the next step [opens a new one](./session-opening.md) from the task's thread and the
 messages it sent.
+
+## The listed state
+
+A started task's step that leaves no unread input moves the task to the `waiting` task state,
+whether or not its work is done. The task state alone therefore can't tell a task that waits on a
+reply from a task with nothing left to do. So the list tool gives a task in the `waiting` task state
+one of 3 listed states, from its [message waits](./task-messages.md#message-waits) and the kind of
+the last task message it sent:
+
+- `waiting`: the task has an open wait on another task.
+- `finished`: the task has no open wait, and the last message it sent is a `report`.
+- `idle`: the task has no open wait, and it sent no message, or its last message is of another kind.
+
+A task in any other task state lists under that state. The list tool also gives each task's model,
+or null for a task on the `task` role's profile.
 
 A started task can wait with unread input, or with a brief that no session read. Only a waking inbox
 record moves a waiting task to ready, so such a task never runs. At each server start, after the

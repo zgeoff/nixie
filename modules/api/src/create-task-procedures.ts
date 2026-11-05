@@ -101,11 +101,7 @@ export function createTaskProcedures(context: APIContext) {
 type TaskProfiles = Awaited<ReturnType<typeof readTaskDirectory>>['directory'];
 
 async function readListedTasks(context: APIContext, directory: TaskProfiles, limit: number) {
-  const listed = await readTaskList(
-    context,
-    { directory },
-    { callerID: null, state: 'all', limit },
-  );
+  const listed = await readTaskList(context, { directory }, { callerID: null, limit });
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('task_list.read.after', { kind: 'task', id: null });

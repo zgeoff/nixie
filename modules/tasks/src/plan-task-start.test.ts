@@ -128,7 +128,11 @@ test('it refuses a tool list wider than its starter holds', () => {
     ),
   ).toStrictEqual({
     status: 'refused',
-    refusal: { reason: 'wider_tools', tools: ['web_fetch', 'memory.remember'] },
+    refusal: {
+      reason: 'wider_tools',
+      tools: ['web_fetch', 'memory.remember'],
+      accepted: ['tasks.list', 'task.message', 'time.now'],
+    },
   });
 });
 
@@ -230,7 +234,11 @@ test('it refuses a memory tool for a task with no memory', () => {
     ),
   ).toStrictEqual({
     status: 'refused',
-    refusal: { reason: 'memory_tools', tools: ['memory.recall'] },
+    refusal: {
+      reason: 'memory_tools',
+      tools: ['memory.recall'],
+      accepted: ['tasks.list', 'task.message'],
+    },
   });
 });
 
@@ -243,7 +251,11 @@ test('it refuses a tool that only the conversation can use, though the starter h
     ),
   ).toStrictEqual({
     status: 'refused',
-    refusal: { reason: 'conversation_tools', tools: ['skill_read'] },
+    refusal: {
+      reason: 'conversation_tools',
+      tools: ['skill_read'],
+      accepted: ['tasks.list', 'task.message'],
+    },
   });
 });
 
@@ -260,6 +272,10 @@ test('it refuses a memory write tool for a task that reads memory', () => {
     ),
   ).toStrictEqual({
     status: 'refused',
-    refusal: { reason: 'memory_tools', tools: ['memory.remember'] },
+    refusal: {
+      reason: 'memory_write_tools',
+      tools: ['memory.remember'],
+      accepted: ['tasks.list', 'task.message'],
+    },
   });
 });

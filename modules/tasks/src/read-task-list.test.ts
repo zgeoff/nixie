@@ -4,11 +4,12 @@ import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { createSystemTask } from './create-system-task';
 import { readTaskList } from './read-task-list';
+import { seedConversationStep } from './test-utils/seed-conversation-step';
+import { seedStartedTask } from './test-utils/seed-started-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTestTaskMessage } from './test-utils/write-test-task-message';
 import { writeStepCommit } from './write-step-commit';
 import { writeStepError } from './write-step-error';
-import { writeTaskControl } from './write-task-control';
 
 function setupTest() {
   return startTestTasks();
@@ -31,7 +32,7 @@ test('it lists the other tasks in the directory, the most recently active first'
         { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
       ],
     },
-    { callerID: 'conversation', state: 'all', limit: 20 },
+    { callerID: 'conversation', limit: 20 },
   );
 
   expect(tasks).toStrictEqual([
@@ -42,6 +43,8 @@ test('it lists the other tasks in the directory, the most recently active first'
       brief: 'Checks plans.',
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
+      model: null,
+      lastSentKind: null,
     },
     {
       id: 'planner',
@@ -50,62 +53,86 @@ test('it lists the other tasks in the directory, the most recently active first'
       brief: 'Plans the week.',
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
+      model: null,
+      lastSentKind: null,
     },
   ]);
 });
 
-test('it lists only the tasks in the state the caller asks for', async () => {
+test.each([
+  ['holds only the caller', 'planner'],
+  ['holds no task that exists', 'conversation'],
+])('it lists no task for a directory that %s', async (_case, callerID) => {
   const ctx = await setupTest();
 
-  await createSystemTask(ctx.context, 'planner');
-  await createConversationTask(ctx.context);
+  await createSystemTask(ctx.context, 'critic');
 
   const tasks = await readTaskList(
     ctx.context,
     {
       directory: [
         { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
       ],
     },
-    { callerID: 'critic', state: 'waiting', limit: 20 },
+    { callerID, limit: 20 },
   );
 
-  expect(tasks.map((task) => task.id)).toStrictEqual(['conversation']);
+  expect(tasks).toStrictEqual([]);
 });
 
-test.each([
-  ['active', []],
-  ['waiting', ['planner', 'critic']],
-  ['done', ['sorter']],
-  ['all', ['planner', 'critic', 'sorter']],
-] as const)(
-  'it lists under %s only the paused, stopped and closed tasks that belong there',
-  async (state, expected) => {
-    const ctx = await setupTest();
+test('it lists each task with the model it started on and the kind of the last message it sent', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
 
-    await createSystemTask(ctx.context, 'planner');
-    await createSystemTask(ctx.context, 'critic');
-    await createSystemTask(ctx.context, 'sorter');
-    await writeTaskControl(ctx.context, { taskID: 'planner', control: 'pause' });
-    await writeTaskControl(ctx.context, { taskID: 'critic', control: 'stop' });
-    await writeTaskControl(ctx.context, { taskID: 'sorter', control: 'close' });
+  const messaging = {
+    directory: [
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+  };
 
-    const tasks = await readTaskList(
-      ctx.context,
-      {
-        directory: [
-          { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-          { taskID: 'critic', name: 'Critic', brief: 'Checks plans.', isWokenByMessages: true },
-          { taskID: 'sorter', name: 'Sorter', brief: 'Sorts the mail.', isWokenByMessages: true },
-        ],
-      },
-      { callerID: 'conversation', state, limit: 20 },
-    );
+  const taskID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Second look',
+    brief: 'Find the weak points in the plan.',
+    options: { model: 'second-look', profile: 'router-b' },
+  });
 
-    expect(tasks.map((task) => task.id)).toIncludeSameMembers([...expected]);
-  },
-);
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  await writeTestTaskMessage(ctx.context, messaging, {
+    from: taskID,
+    to: 'conversation',
+    kind: 'progress',
+    body: 'Two beds get too little sun.',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: false,
+  });
+
+  const tasks = await readTaskList(
+    ctx.context,
+    {
+      directory: [
+        { taskID, name: 'Second look', brief: 'Find the weak points.', isWokenByMessages: true },
+      ],
+    },
+    { callerID: 'conversation', limit: 20 },
+  );
+
+  expect(tasks).toStrictEqual([
+    {
+      id: taskID,
+      name: 'Second look',
+      state: 'running',
+      brief: 'Find the weak points.',
+      isPauseRequested: false,
+      lastActivityAt: expect.toBeValidDate(),
+      model: 'second-look',
+      lastSentKind: 'progress',
+    },
+  ]);
+});
 
 test('it shows a task that asked a question as waiting on the task it asked', async () => {
   const ctx = await setupTest();
@@ -134,11 +161,22 @@ test('it shows a task that asked a question as waiting on the task it asked', as
 
   const tasks = await readTaskList(ctx.context, messaging, {
     callerID: 'conversation',
-    state: 'all',
     limit: 20,
   });
 
-  expect(tasks).toMatchObject([{ id: 'planner', waitingOn: 'conversation' }]);
+  expect(tasks).toStrictEqual([
+    {
+      id: 'planner',
+      name: 'Planner',
+      state: 'running',
+      brief: 'Plans the week.',
+      isPauseRequested: false,
+      lastActivityAt: expect.toBeValidDate(),
+      model: null,
+      lastSentKind: 'question',
+      waitingOn: 'conversation',
+    },
+  ]);
 });
 
 test.each(['question', 'request'] as const)(
@@ -175,11 +213,16 @@ test.each(['question', 'request'] as const)(
 
     const tasks = await readTaskList(ctx.context, messaging, {
       callerID: 'memory-writer',
-      state: 'all',
       limit: 20,
     });
 
-    expect(outcome).toMatchObject({ status: 'sent', woke: false, hold: 'next_run' });
+    expect(outcome).toStrictEqual({
+      status: 'sent',
+      messageID: expect.toBeString(),
+      hop: 1,
+      woke: false,
+      hold: 'next_run',
+    });
 
     expect(tasks).toStrictEqual([
       {
@@ -189,6 +232,8 @@ test.each(['question', 'request'] as const)(
         brief: 'Plans the week.',
         isPauseRequested: false,
         lastActivityAt: expect.toBeValidDate(),
+        model: null,
+        lastSentKind: kind,
       },
     ]);
   },
@@ -239,11 +284,16 @@ test('it clears the wait when the asked task replies to the question, by its ID'
 
   const tasks = await readTaskList(ctx.context, messaging, {
     callerID: 'conversation',
-    state: 'all',
     limit: 20,
   });
 
-  expect(reply).toMatchObject({ status: 'sent', woke: true });
+  expect(reply).toStrictEqual({
+    status: 'sent',
+    messageID: expect.toBeString(),
+    hop: 2,
+    woke: true,
+    hold: 'none',
+  });
 
   expect(tasks).toStrictEqual([
     {
@@ -253,6 +303,8 @@ test('it clears the wait when the asked task replies to the question, by its ID'
       brief: 'Plans the week.',
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
+      model: null,
+      lastSentKind: 'question',
     },
   ]);
 });
@@ -289,7 +341,6 @@ test('it clears the wait when the task that asked finishes', async () => {
 
   const tasks = await readTaskList(ctx.context, messaging, {
     callerID: 'conversation',
-    state: 'all',
     limit: 20,
   });
 
@@ -301,6 +352,8 @@ test('it clears the wait when the task that asked finishes', async () => {
       brief: 'Plans the week.',
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
+      model: null,
+      lastSentKind: 'request',
     },
   ]);
 });
@@ -348,7 +401,6 @@ test('it clears the wait when the asked task stops on its errors', async () => {
 
   const tasks = await readTaskList(ctx.context, messaging, {
     callerID: 'critic',
-    state: 'all',
     limit: 20,
   });
 
@@ -360,6 +412,8 @@ test('it clears the wait when the asked task stops on its errors', async () => {
       brief: 'Plans the week.',
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
+      model: null,
+      lastSentKind: 'question',
     },
   ]);
 });

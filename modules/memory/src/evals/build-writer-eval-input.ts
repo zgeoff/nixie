@@ -1,4 +1,5 @@
 import { renderPrompt } from '@heynixie/prompts';
+import { toSDKToolName } from '@heynixie/tools';
 import { renderWriterPrompt } from '../render-writer-prompt';
 import type { SourceMessage } from '../writer-types';
 import type { WriterCase, WriterCases } from './load-writer-cases';
@@ -69,7 +70,7 @@ export function buildWriterEvalInput(
   });
 
   const evalTools = tools.map((tool) => ({
-    name: `mcp__nixie__${tool.name.replaceAll('.', '_')}`,
+    name: toSDKToolName(tool.name),
     description: tool.description,
     input_schema: tool.input,
   }));

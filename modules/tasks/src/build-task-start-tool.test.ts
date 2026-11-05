@@ -387,7 +387,26 @@ test.each([
   [
     'a tool list wider than its starter holds',
     { tools: ['web_fetch', 'log.read'] },
-    'a task gets only tools you hold, and you do not hold log.read, so nixie started nothing',
+    'a task gets only tools you hold, and you do not hold log.read, so nixie started nothing. ' +
+      'This task can get tasks.list or mcp__nixie__tasks_list, task.message or ' +
+      'mcp__nixie__task_message, task.start or mcp__nixie__task_start, web_fetch or ' +
+      'mcp__nixie__web_fetch.',
+  ],
+  [
+    'a memory read tool for a task that does not read memory',
+    { tools: ['mcp__nixie__memory_recall'] },
+    'a task gets memory.recall only with memory set to read, so nixie started nothing. ' +
+      'This task can get tasks.list or mcp__nixie__tasks_list, task.message or ' +
+      'mcp__nixie__task_message, task.start or mcp__nixie__task_start, web_fetch or ' +
+      'mcp__nixie__web_fetch.',
+  ],
+  [
+    'a memory write tool',
+    { memory: 'read', tools: ['memory.remember'] },
+    'a task cannot get memory.remember with any memory setting, so nixie started nothing. ' +
+      'This task can get tasks.list or mcp__nixie__tasks_list, task.message or ' +
+      'mcp__nixie__task_message, task.start or mcp__nixie__task_start, web_fetch or ' +
+      'mcp__nixie__web_fetch, memory.recall or mcp__nixie__memory_recall.',
   ],
   [
     'a turn limit above the max',
@@ -402,7 +421,9 @@ test.each([
   [
     'a tool that only the conversation can use',
     { tools: ['skill_read'] },
-    'only the conversation can use skill_read, so nixie started nothing',
+    'only the conversation can use skill_read, so nixie started nothing. This task can get ' +
+      'tasks.list or mcp__nixie__tasks_list, task.message or mcp__nixie__task_message, ' +
+      'task.start or mcp__nixie__task_start, web_fetch or mcp__nixie__web_fetch.',
   ],
 ])('it starts nothing for %s', async (_case, options, message) => {
   const ctx = await setupTest();
@@ -425,7 +446,15 @@ test.each([
       run: {
         thread: 'conversation',
         stepRunID: buildStepRunID(claim),
-        tools: ['tasks.list', 'task.message', 'task.start', 'web_fetch', 'skill_read'],
+        tools: [
+          'tasks.list',
+          'task.message',
+          'task.start',
+          'web_fetch',
+          'skill_read',
+          'memory.recall',
+          'memory.remember',
+        ],
       },
     }),
   );
@@ -439,6 +468,58 @@ test.each([
   expect(outcome).toStrictEqual({ status: 'error', message });
   expect(started).toStrictEqual([]);
 });
+
+test.each(['mcp__nixie__memory_recall', 'memory.recall'])(
+  'it starts a task that reads memory with memory.recall for the tool name %s',
+  async (name) => {
+    const ctx = await setupTest();
+    const claim = await createTestConversationClaim(ctx.context, 'Plan the beds from my notes.');
+
+    const tool = buildTaskStartTool(ctx.context, { ownerName: null }, buildMockTaskStartBounds());
+
+    const outcome = await tool.run(
+      buildMockToolCall({
+        tool: 'task.start',
+        input: {
+          name: 'Bed notes',
+          brief: 'Recall what the owner noted about the raised beds.',
+          memory: 'read',
+          tools: [name],
+        },
+      }),
+      buildMockToolContext({
+        run: {
+          thread: 'conversation',
+          stepRunID: buildStepRunID(claim),
+          tools: ['tasks.list', 'task.message', 'task.start', 'memory.recall'],
+        },
+      }),
+    );
+
+    const started = await ctx.db
+      .selectFrom('tasks')
+      .select('task_id')
+      .where('is_conversation', '=', 0)
+      .execute();
+
+    const setups = await Promise.all(
+      started.map((task) => readTaskSetup(ctx.context, task.task_id)),
+    );
+
+    expect(outcome).toStrictEqual({
+      status: 'ok',
+      result: {
+        taskID: expect.toBeString(),
+        name: 'Bed notes',
+        note: 'The task starts on its brief now, and its report comes back to you as a task message.',
+      },
+    });
+
+    expect(setups.map((setup) => setup?.options?.tools)).toStrictEqual([
+      ['tasks.list', 'task.message', 'memory.recall'],
+    ]);
+  },
+);
 
 test('it starts nothing that reads memory for a started task that does not', async () => {
   const ctx = await setupTest();
