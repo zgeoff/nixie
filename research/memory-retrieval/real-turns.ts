@@ -37,6 +37,7 @@ import type { Gold, Label } from './real-turns/score-turns.ts';
 import { buildRuns, buildShortRuns, getShippedRun, labelSchema, missingMapSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
 import { buildRatingSample } from './real-turns/build-rating-sample.ts';
 import { collectRatingPools } from './real-turns/collect-rating-pools.ts';
+import { collectIndexedMessages } from './real-turns/collect-indexed-messages.ts';
 import { pickRatingTurns } from './real-turns/pick-rating-turns.ts';
 import { renderRatingParts } from './real-turns/render-rating-parts.ts';
 import { scoreBlocks } from './real-turns/score-blocks.ts';
@@ -341,7 +342,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   };
 
   const itemShows = collectItemShows(hybrid, gold, pooledByCase, [3, 5, 10]);
-  const messageFloors = scoreMessageFloors(await readRatedMessages(chosen, gold), [0.38, 0.42, 0.46, 0.5, 0.55, 0.6]);
+  const messageFloors = scoreMessageFloors(await readRatedMessages(chosen, gold, collectIndexedMessages(exported.records)), [0.38, 0.42, 0.46, 0.5, 0.55, 0.6]);
 
   console.log(`turns ${chosen.length}, labelled ${labels.length}, short ${shortIDs.size}\n`);
   console.log(scored.lines.join('\n'));
@@ -364,9 +365,9 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   }
 }
 
-// Encodes each past message a labelled turn was shown, and its query, through the shipped encoder,
-// because the log keeps no score for a past message.
-async function readRatedMessages(turns: TurnCase[], gold: Map<string, Gold>): Promise<RatedMessage[]> {
+// Encodes the indexed text of each past message a labelled turn was shown, and its query, through
+// the shipped encoder, because the log keeps no score for a past message.
+async function readRatedMessages(turns: TurnCase[], gold: Map<string, Gold>, indexed: ReadonlyMap<number, string>): Promise<RatedMessage[]> {
   const encoder = await loadTurnEncoder('leaf-ir-q8', encoderDirs);
   const rated: RatedMessage[] = [];
 
@@ -381,7 +382,7 @@ async function readRatedMessages(turns: TurnCase[], gold: Map<string, Gold>): Pr
     const [query, ...messages] = [
       ...(await encoder.encode([queryText], 'query')),
       ...(await encoder.encode(
-        turn.shownMessages.map((message) => message.text),
+        turn.shownMessages.map((message) => indexed.get(message.sequence) ?? message.text),
         'document',
       )),
     ];
