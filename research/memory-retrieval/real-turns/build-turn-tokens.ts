@@ -8,7 +8,7 @@ export function buildTurnTokens(turn: TurnCase, tokens: BlockTokens, sources: Bl
   return {
     sessionNumber: turn.sessionNumber,
     isSessionStart: turn.isSessionStart,
-    added: tokens.pinned + tokens.items + tokens.selfNotes + tokens.messages,
+    added: tokens.pinned + tokens.pinnedChanges + tokens.items + tokens.selfNotes + tokens.messages,
     pinned: turn.isSessionStart ? tokens.pinned : buildBlockTokens({ ...turn, isSessionStart: true }, sources, options).pinned,
   };
 }

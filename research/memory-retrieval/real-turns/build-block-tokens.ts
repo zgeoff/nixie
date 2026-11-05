@@ -6,19 +6,22 @@ import { countTextTokens } from '../../../modules/compaction/src/count-text-toke
 // @boundaries-ignore a spike imports the code it measures
 import { renderPinnedMemory } from '../../../modules/sessions/src/render-pinned-memory.ts';
 // @boundaries-ignore a spike imports the code it measures
+import { renderCoreChanges } from '../../../modules/sessions/src/render-core-changes.ts';
+// @boundaries-ignore a spike imports the code it measures
 import { renderRetrievedItems } from '../../../modules/sessions/src/render-retrieved-items.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { renderRetrievedMessages } from '../../../modules/sessions/src/render-retrieved-messages.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { renderRetrievedSelfNotes } from '../../../modules/sessions/src/render-retrieved-self-notes.ts';
 // @boundaries-ignore a spike imports the code it measures
-import type { MemoryItem } from '../../../modules/sessions/src/types.ts';
+import type { MemoryItem, MemoryRef } from '../../../modules/sessions/src/types.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { renderSystemMessage } from '../../../libs/wire/src/render-system-message.ts';
 import type { TurnCase } from './build-turn-cases.ts';
 
 export interface BlockTokens {
   pinned: number;
+  pinnedChanges: number;
   items: number;
   selfNotes: number;
   messages: number;
@@ -42,9 +45,19 @@ export interface BlockOptions {
   defaultZone: string;
 }
 
-// Pinned memory goes in a session's opening only, so it counts on the turn that opens a session.
-// The other blocks repeat on every turn that has something for them.
-export function buildBlockTokens(turn: TurnCase, sources: BlockSources, options: BlockOptions): BlockTokens {
+// The product's default pinned core budget, which the change note's last line states.
+const pinnedCoreBudget = 2000;
+
+// Pinned memory goes in a session's opening only, so it counts on the turn that opens a session. A
+// later turn of the session whose core differs from the previous turn's gets the change note
+// instead. `previousPinned` is the previous turn's core, or null when the turn has none in its
+// session. The other blocks repeat on every turn that has something for them.
+export function buildBlockTokens(
+  turn: TurnCase,
+  sources: BlockSources,
+  options: BlockOptions,
+  previousPinned: readonly MemoryRef[] | null = null,
+): BlockTokens {
   const at = new Date(turn.recordedAt);
   const lines = { ownerName: options.ownerName, defaultZone: options.defaultZone, now: at };
   const wrap = (type: Parameters<typeof renderSystemMessage>[0]['type'], body: string | null): number =>
@@ -79,8 +92,17 @@ export function buildBlockTokens(turn: TurnCase, sources: BlockSources, options:
     .filter((candidate) => candidate.isPinned)
     .map((candidate) => buildItem(candidate.itemID, candidate.version, candidate.text));
 
+  const pinnedBody = renderPinnedMemory(pinned, lines);
+  const unpinnedShortIDs = new Map(
+    (previousPinned ?? []).map((ref) => [ref.itemID, sources.versions.get(`${ref.itemID}@${ref.version}`)?.shortID ?? ref.itemID]),
+  );
+  const use = { items: pinned.length, tokens: pinnedBody === null ? 0 : countTextTokens(pinnedBody), budget: pinnedCoreBudget };
+
   return {
-    pinned: turn.isSessionStart ? wrap('pinned-memory', renderPinnedMemory(pinned, lines)) : 0,
+    pinned: turn.isSessionStart ? wrap('pinned-memory', pinnedBody) : 0,
+    pinnedChanges: turn.isSessionStart
+      ? 0
+      : wrap('pinned-memory-changes', renderCoreChanges(previousPinned, pinned, { ...lines, unpinnedShortIDs, use })),
     items: wrap(
       'retrieved-memory',
       renderRetrievedItems(

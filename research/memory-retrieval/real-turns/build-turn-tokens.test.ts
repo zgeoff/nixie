@@ -25,12 +25,12 @@ test('it gives a turn that opened no session the pinned tokens it would show at 
       delivered: [],
       ratings: [],
     },
-    { pinned: 0, items: 40, selfNotes: 0, messages: 30 },
+    { pinned: 0, pinnedChanges: 20, items: 40, selfNotes: 0, messages: 30 },
     { versions: new Map() },
     { ownerName: null, defaultZone: 'UTC' },
   );
 
-  expect(tokens).toStrictEqual({ sessionNumber: 2, isSessionStart: false, added: 70, pinned: 85 });
+  expect(tokens).toStrictEqual({ sessionNumber: 2, isSessionStart: false, added: 90, pinned: 85 });
 });
 
 test('it gives a turn that opened its session its own pinned tokens', () => {
@@ -55,7 +55,7 @@ test('it gives a turn that opened its session its own pinned tokens', () => {
       delivered: [],
       ratings: [],
     },
-    { pinned: 60, items: 40, selfNotes: 0, messages: 30 },
+    { pinned: 60, pinnedChanges: 0, items: 40, selfNotes: 0, messages: 30 },
     { versions: new Map() },
     { ownerName: null, defaultZone: 'UTC' },
   );

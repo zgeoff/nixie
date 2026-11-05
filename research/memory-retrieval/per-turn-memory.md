@@ -154,7 +154,9 @@ message's day and, for another thread, that thread's name, which moves a count b
 either way [read in the code]. The harness renders the tags, the image markers and each message's
 own day and thread, so a count from it reads higher than the table [read in the code]. The 90th
 percentile column took the value one rank above the nearest rank, which moves only the self-notes
-row, by one rank [read in the code].
+row, by one rank [read in the code]. The table also leaves out the note that a resumed turn gets
+when its pinned core changed since the turn before it, which the harness counts as a block of its
+own [read in the code].
 
 A turn's model calls read a mean of 155,714 input tokens a call, cached or not, so the blocks a turn
 adds come to about 0.1% of one call [measured]. A block stays in the session once given, and a

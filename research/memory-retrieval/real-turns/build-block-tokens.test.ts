@@ -29,7 +29,7 @@ test('it counts nothing for a turn shown nothing and opening no session', () => 
       { versions: new Map() },
       { ownerName: null, defaultZone: 'UTC' },
     ),
-  ).toStrictEqual({ pinned: 0, items: 0, selfNotes: 0, messages: 0 });
+  ).toStrictEqual({ pinned: 0, pinnedChanges: 0, items: 0, selfNotes: 0, messages: 0 });
 });
 
 test('it counts the pinned block and each retrieved block on a session start', () => {
@@ -65,5 +65,69 @@ test('it counts the pinned block and each retrieved block on a session start', (
     { ownerName: null, defaultZone: 'UTC' },
   );
 
-  expect(tokens).toStrictEqual({ pinned: 85, items: 75, selfNotes: 76, messages: 76 });
+  expect(tokens).toStrictEqual({ pinned: 85, pinnedChanges: 0, items: 75, selfNotes: 76, messages: 76 });
+});
+
+test('it counts the change note on a resumed turn whose pinned core changed since the turn before', () => {
+  const tokens = buildBlockTokens(
+    {
+      caseID: 't4',
+      stepSequence: 3,
+      recalledSequence: 4,
+      recordedAt: Date.parse('2026-03-02T09:00:00Z'),
+      query: 'ok',
+      typedQuery: 'ok',
+      shownMessages: [],
+      isSessionStart: false,
+      sessionNumber: 1,
+      isShredded: false,
+      contextTokens: null,
+      reply: 'Noted.',
+      earlier: [],
+      candidates: [
+        { itemID: 'item-a', version: 2, isSelf: false, isPinned: true, isLapsed: false, isSensitive: false, text: 'Lives by the river' },
+      ],
+      logged: [],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    { versions: new Map() },
+    { ownerName: null, defaultZone: 'UTC' },
+    [{ itemID: 'item-a', version: 1 }],
+  );
+
+  expect(tokens.pinnedChanges).toBe(109);
+});
+
+test('it counts no change note when the pinned core matches the turn before', () => {
+  const tokens = buildBlockTokens(
+    {
+      caseID: 't5',
+      stepSequence: 4,
+      recalledSequence: 5,
+      recordedAt: Date.parse('2026-03-02T09:00:00Z'),
+      query: 'ok',
+      typedQuery: 'ok',
+      shownMessages: [],
+      isSessionStart: false,
+      sessionNumber: 1,
+      isShredded: false,
+      contextTokens: null,
+      reply: 'Noted.',
+      earlier: [],
+      candidates: [
+        { itemID: 'item-a', version: 2, isSelf: false, isPinned: true, isLapsed: false, isSensitive: false, text: 'Lives by the river' },
+      ],
+      logged: [],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    { versions: new Map() },
+    { ownerName: null, defaultZone: 'UTC' },
+    [{ itemID: 'item-a', version: 2 }],
+  );
+
+  expect(tokens.pinnedChanges).toBe(0);
 });

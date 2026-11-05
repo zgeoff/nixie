@@ -24,7 +24,7 @@ test('it gives the nearest-rank 90th percentile of a block over the turns that h
   };
 
   const summary = buildBlockSummary(
-    [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((items) => ({ turn, tokens: { pinned: 0, items, selfNotes: 0, messages: 0 }, sessionHeld: items })),
+    [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((items) => ({ turn, tokens: { pinned: 0, pinnedChanges: 0, items, selfNotes: 0, messages: 0 }, sessionHeld: items })),
   );
 
   expect(summary.blocks['items']).toStrictEqual({ perTurn: 55, turnsWithIt: 10, whenPresent: 55, p90WhenPresent: 90 });
@@ -53,7 +53,7 @@ test('it gives the median, mean and largest count a session held', () => {
   };
 
   const summary = buildBlockSummary(
-    [400, 100, 300, 200].map((sessionHeld) => ({ turn, tokens: { pinned: 0, items: 0, selfNotes: 0, messages: 0 }, sessionHeld })),
+    [400, 100, 300, 200].map((sessionHeld) => ({ turn, tokens: { pinned: 0, pinnedChanges: 0, items: 0, selfNotes: 0, messages: 0 }, sessionHeld })),
   );
 
   expect(summary.sessionHeld).toStrictEqual({ mean: 250, median: 200, max: 400 });
@@ -80,7 +80,7 @@ test('it counts the turns that showed past messages and averages the logged call
     delivered: [],
     ratings: [],
   });
-  const tokens = { pinned: 0, items: 0, selfNotes: 0, messages: 0 };
+  const tokens = { pinned: 0, pinnedChanges: 0, items: 0, selfNotes: 0, messages: 0 };
 
   const summary = buildBlockSummary([
     { turn: turn(1000, [{ sequence: 1, text: 'the train was late', isCut: false, thread: 'conversation', recordedAt: 0 }]), tokens, sessionHeld: 0 },

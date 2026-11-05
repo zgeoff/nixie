@@ -21,6 +21,8 @@ import { buildTurnCases } from './real-turns/build-turn-cases.ts';
 import type { BlockSources } from './real-turns/build-block-tokens.ts';
 import { buildBlockTokens } from './real-turns/build-block-tokens.ts';
 import { collectBlockSources } from './real-turns/collect-block-sources.ts';
+import { collectPreviousPinned } from './real-turns/collect-previous-pinned.ts';
+import { findOutFolderError } from './real-turns/find-out-folder-error.ts';
 import { countWords } from './real-turns/count-words.ts';
 import { collectSessionHeld } from './real-turns/collect-session-held.ts';
 import { buildTurnTokens } from './real-turns/build-turn-tokens.ts';
@@ -144,7 +146,8 @@ function printStats(turns: TurnCase[]): void {
 // holds, so that count is an upper bound.
 function printBlocks(turns: TurnCase[], sources: BlockSources): void {
   const lines = { ownerName: null, defaultZone: 'UTC' };
-  const blocks = turns.map((turn) => ({ turn, tokens: buildBlockTokens(turn, sources, lines) }));
+  const previousPinned = collectPreviousPinned(turns);
+  const blocks = turns.map((turn, position) => ({ turn, tokens: buildBlockTokens(turn, sources, lines, previousPinned[position] ?? null) }));
   const sessionHeld = collectSessionHeld(blocks.map(({ turn, tokens }) => buildTurnTokens(turn, tokens, sources, lines)));
   const counted = blocks.map((entry, position) => ({ ...entry, sessionHeld: sessionHeld[position] ?? 0 }));
 
@@ -379,11 +382,10 @@ async function writeRatingSample(turns: TurnCase[]): Promise<void> {
     throw new Error('pass --out <dir> for the sample, its key and its parts');
   }
 
-  // A smaller sample writes fewer parts, so a part left from an earlier sample would pass as current.
-  const existing = await readdir(resolve(values.out)).catch(() => []);
+  const folderError = findOutFolderError(values.out, await readdir(resolve(values.out)).catch(() => []));
 
-  if (existing.length > 0) {
-    throw new Error(`pass an empty or new --out folder: ${values.out} already holds ${existing.length} files`);
+  if (folderError !== null) {
+    throw new Error(folderError);
   }
 
   const size = Number(values.size ?? '240');

@@ -7,7 +7,7 @@ export interface SummaryEntry {
   sessionHeld: number;
 }
 
-const blockNames = ['pinned', 'items', 'selfNotes', 'messages'] as const;
+const blockNames = ['pinned', 'pinnedChanges', 'items', 'selfNotes', 'messages'] as const;
 
 // Sums up each block's tokens over a group of turns, and the memory tokens a session held at each.
 export function buildBlockSummary(group: SummaryEntry[]) {
