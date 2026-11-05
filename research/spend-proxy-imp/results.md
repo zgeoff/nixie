@@ -89,8 +89,8 @@ PREVIEW_SSH=root@<preview_host> IMP_CLI='<command that runs impz as impd root>' 
   SPIKE_WORK=<scratch_dir> bun run spike
 ```
 
-The results below came from `run.sh`, which does the same steps. `run-spike.ts` has run only against
-a stub of the preview's API and host.
+The results below came from `run.sh`, which does the same steps. `run-spike.ts` ran the same steps
+against the preview of pull request #858, and [the re-run](#the-re-run) gives what it saw.
 
 The script does these steps:
 
@@ -169,6 +169,18 @@ The last 2 probes went straight from the guest, with its HTTPS proxy turned off:
 API, one to the model route listener. The model API answered both with `authentication_error`,
 `x-api-key header is required`, so neither request carried a credential [measured].
 
+### The re-run
+
+`run-spike.ts` ran against the preview of pull request #858 at 05:59 UTC on 5 November 2026, on imp
+6.4.2 [measured]. The imp held the same 2 grants, and `impz policy` printed its egress policy as
+`public` [measured]. The model API answered the conversation's 3 calls with the same 429 and no rate
+limit header, so the count stayed at `{"dollars":0,"tokens":0}` [measured]. Each turn ended in
+`task.step_errored` and wrote no `model.turn_ended` record [measured].
+
+The probes got the same answers as the first run, with one change. The host refused the guest's
+connection to the model route listener, so the `route-listener` probe got no HTTP answer and curl
+exited 7 [measured].
+
 ## Answers
 
 1. **The broker sends each call through the counting proxy; the count is unproven.** The broker
@@ -182,8 +194,9 @@ API, one to the model route listener. The model API answered both with `authenti
 2. **The guest has no way to put the credential on a request that skips the counting proxy.** The
    broker adds the credential only under `/<imp>/`, and refused every other path the probes tried,
    dot segments and encoded slashes included [measured]. Under that path, the counting proxy refused
-   the batch endpoint, whose spend it cannot count [measured]. The guest reaches the model API and
-   the model route listener without the broker, but with no credential [measured].
+   the batch endpoint, whose spend it cannot count [measured]. The guest reaches the model API
+   without the broker, but with no credential [measured]. The host refuses the guest's connection to
+   the model route listener [measured].
 
 ## Untested
 
@@ -193,7 +206,7 @@ API, one to the model route listener. The model API answered both with `authenti
 - A worker in an imp that the sandbox adapter creates, with a grant of its own. The preview runs
   nixie, its conversation and its tasks in one imp, under one grant.
 - Code in the guest that brings a credential of its own. The broker never sees such a key, and the
-  guest's open egress reaches the model API.
+  guest's egress reaches the model API.
 - The production hard stop's own route and limits, which the
   [budgets design](../../docs/design/platform/policy/budgets.md#the-hard-spending-stop) describes.
 - Methods other than `POST`, the token count and model list endpoints, and the endpoints other than
