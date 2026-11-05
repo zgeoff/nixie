@@ -1,7 +1,8 @@
 import type { Pointer } from 'bun:ffi';
 import { FFIType, dlopen, read } from 'bun:ffi';
-import { closeSync, existsSync, openSync } from 'node:fs';
+import { closeSync, openSync } from 'node:fs';
 import invariant from 'tiny-invariant';
+import { openLinuxLibc } from './open-linux-libc';
 
 export type FileLockMode = 'shared' | 'exclusive';
 
@@ -77,10 +78,14 @@ function loadLibc(): Libc {
     };
   }
 
-  const library = dlopen(resolveLinuxLibc(), {
-    flock: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
-    __errno_location: { args: [], returns: FFIType.ptr },
-  });
+  const library = openLinuxLibc(
+    (name) =>
+      dlopen(name, {
+        flock: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
+        __errno_location: { args: [], returns: FFIType.ptr },
+      }),
+    process.arch,
+  );
 
   return {
     flock: library.symbols.flock,
@@ -95,16 +100,4 @@ function readPointedInt(pointer: Pointer | bigint | null): number {
   invariant(typeof pointer === 'number', 'libc returned no errno location');
 
   return read.i32(pointer, 0);
-}
-
-const MUSL_ARCH: Partial<Record<NodeJS.Architecture, string>> = { arm64: 'aarch64', x64: 'x86_64' };
-
-function resolveLinuxLibc(): string {
-  const muslArch = MUSL_ARCH[process.arch];
-
-  if (muslArch !== undefined && existsSync(`/lib/ld-musl-${muslArch}.so.1`)) {
-    return `libc.musl-${muslArch}.so.1`;
-  }
-
-  return 'libc.so.6';
 }
