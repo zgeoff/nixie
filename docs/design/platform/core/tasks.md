@@ -159,6 +159,21 @@ a note that says so. A scheduled task never finishes, so a wait on one would sta
 that may never come. A question or a request to one therefore marks no wait, and its note tells the
 sender that a reply, if any, arrives as a new message.
 
+### Silent turns
+
+A turn that only a task message or a timer woke can have nothing to say. The conversation and every
+started task hold `turn.end_silently`, which ends the turn with nothing sent: the conversation sends
+you no reply, and a task sends no task message. **Why:** without it, a model that has nothing to say
+still writes a reply, and the chat fills with idle replies. The tool stays in the tool list on every
+turn, so the prompt cache holds, and its description says when it applies.
+
+- **Refusal.** A turn that holds a message from you refuses the tool, and the model reads at once
+  that the turn has a message from you, so it replies. A message you moved to the task counts as
+  yours. A message from you that lands after the silent end stays unread, and the next turn answers
+  it.
+- **Record.** The turn records none of its replies, and its turn-ended record marks it silent. The
+  client shows the step as ended with no reply.
+
 ### Hops
 
 Two tasks that answer each other would wake each other forever, so each step carries a hop count. A

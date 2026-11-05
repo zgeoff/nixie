@@ -277,6 +277,26 @@ next message. A turn that fails for any reason but a lost session, such as a dis
 server, throws, so the tasks module records the error and retries the step after a delay that grows
 with each failure in a row. The conversation never fails ([tasks](./tasks.md#steps)).
 
+### A turn that ends with nothing sent
+
+The conversation and every [started task](./started-tasks.md#start-options) hold the
+`turn.end_silently` tool, which ends the turn with nothing sent when only a task message or a timer
+woke it. The tool is always on the list, so the prompt cache holds, and its description tells the
+model when it applies. The step token hands each tool call the turn's silent end, which the tool
+calls:
+
+- The silent end refuses when the turn holds a message from the user: one that opened the turn, or
+  one that reached it while it ran. A message the user moved to the task counts as the user's, and
+  the notice on the task that lost it does not. The tool returns the refusal to the model at once,
+  so the model replies.
+- Otherwise the turn ends silently. The host passes no more live messages into the turn, so a
+  message from the user that lands afterwards stays unread and starts the next step.
+
+A silent turn commits no reply record, even for text the model wrote before or after the call, and
+its turn-ended record holds `isSilent`. The [API](../channels/api.md) carries the mark on that
+record, and the [client](../channels/client.md) shows the step as ended with no reply. A silent turn
+marks its inbox records read and commits its session boundary as any other turn does.
+
 ### A call the model API refuses
 
 When the model API refuses a call, the CLI writes its own message about the refusal as an assistant
