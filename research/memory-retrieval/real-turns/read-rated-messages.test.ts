@@ -45,6 +45,38 @@ test('it encodes the full typed text of a long past message with pasted text, no
   expect(encoded).toStrictEqual([['what did I pack?'], [`${typed}\n${typed}`]]);
 });
 
+test('it rates each indexed message by its stored similarity to the query and by whether the rater needed it', async () => {
+  const vectors = new Map([
+    ['the tide turns at four', new Float32Array([1, 0])],
+    ['bought new oars', new Float32Array([0, 1])],
+  ]);
+
+  const rated = await readRatedMessages(
+    [
+      {
+        caseID: 't2',
+        query: 'when is the tide?',
+        shownMessages: [
+          { sequence: 1, text: 'the tide turns at four', isCut: false },
+          { sequence: 2, text: 'bought new oars', isCut: false },
+        ],
+      },
+    ],
+    new Map([['t2', { isLabelled: true, messages: new Set(['message:1']) }]]),
+    new Map([
+      [1, 'the tide turns at four'],
+      [2, 'bought new oars'],
+    ]),
+    { encode: async (texts) => texts.map((text) => vectors.get(text) ?? new Float32Array([1, 0])) },
+    [],
+  );
+
+  expect(rated).toStrictEqual([
+    { similarity: expect.closeTo(0.09, 6), isHelpful: true },
+    { similarity: 0, isHelpful: false },
+  ]);
+});
+
 test('it leaves out a shown message that the product never indexed', async () => {
   const encoded: string[][] = [];
 
