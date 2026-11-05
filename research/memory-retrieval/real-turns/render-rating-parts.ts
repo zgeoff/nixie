@@ -27,10 +27,14 @@ function renderInstructions(part: number, count: number): string[] {
     'front of you then. Leave out what you would have ignored. Name none when nothing would have helped.',
     'Then name the single most useful one, or null.',
     '',
+    'Under "misleading", name each item or past message that would have made your reply worse.',
+    'Under "missing", describe in a few words each memory you know of that would have helped and is',
+    'not in the list. Leave either list empty when there is none.',
+    '',
     'Answer with one JSON line per turn, and nothing else:',
     '',
-    '{"caseID":"t123","relevant":["M2","P1"],"best":"M2","by":"assistant"}',
-    '{"caseID":"t456","relevant":[],"best":null,"by":"assistant"}',
+    '{"caseID":"t123","relevant":["M2","P1"],"best":"M2","misleading":["M4"],"missing":[],"by":"assistant"}',
+    '{"caseID":"t456","relevant":[],"best":null,"misleading":[],"missing":["the ferry timetable"],"by":"assistant"}',
     '',
   ];
 }
