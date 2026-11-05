@@ -33,7 +33,7 @@
       "@babel/core": "8.0.9",
       "@faker-js/faker": "10.6.0",
       "@huggingface/tokenizers": "0.2.0",
-      "@impz/client": "6.6.0",
+      "@impz/client": "6.6.1",
       "@impz/testing": "6.6.1",
       "@logtape/logtape": "2.4.2",
       "@modelcontextprotocol/client": "2.4.0",
