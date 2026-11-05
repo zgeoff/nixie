@@ -22,6 +22,7 @@ import type { BlockSources } from './real-turns/count-turn-blocks.ts';
 import { buildBlockTokens, collectBlockSources } from './real-turns/count-turn-blocks.ts';
 import { countWords } from './real-turns/count-words.ts';
 import { collectSessionHeld } from './real-turns/collect-session-held.ts';
+import { buildTurnTokens } from './real-turns/build-turn-tokens.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
 import { buildSample, sampleTurnSchema } from './real-turns/build-sample.ts';
@@ -143,14 +144,7 @@ function printStats(turns: TurnCase[]): void {
 function printBlocks(turns: TurnCase[], sources: BlockSources): void {
   const lines = { ownerName: null, defaultZone: 'UTC' };
   const blocks = turns.map((turn) => ({ turn, tokens: buildBlockTokens(turn, sources, lines) }));
-  const sessionHeld = collectSessionHeld(
-    blocks.map(({ turn, tokens }) => ({
-      sessionNumber: turn.sessionNumber,
-      isSessionStart: turn.isSessionStart,
-      added: tokens.pinned + tokens.items + tokens.selfNotes + tokens.messages,
-      pinned: turn.isSessionStart ? tokens.pinned : buildBlockTokens({ ...turn, isSessionStart: true }, sources, lines).pinned,
-    })),
-  );
+  const sessionHeld = collectSessionHeld(blocks.map(({ turn, tokens }) => buildTurnTokens(turn, tokens, sources, lines)));
   const counted = blocks.map((entry, position) => ({ ...entry, sessionHeld: sessionHeld[position] ?? 0 }));
 
   const summarize = (group: typeof counted) => {
