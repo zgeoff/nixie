@@ -51,7 +51,7 @@
       "@pulumi/pulumi": "3.273.0",
       "@pandacss/preset-base": "2.4.0",
       "@pandacss/preset-panda": "2.4.0",
-      "@rolldown/plugin-babel": "0.2.4",
+      "@rolldown/plugin-babel": "0.3.0",
       "@tanstack/query-core": "5.105.0",
       "@tanstack/react-query": "5.105.0",
       "@tanstack/react-router": "1.170.46",
