@@ -151,12 +151,14 @@ product puts around pasted or dropped text and without its image markers [read i
 read low by about 13 tokens for each such span and 11 for each image [read in the code]. Each
 message's line also carried the turn's own day and "this conversation", where the product writes the
 message's day and, for another thread, that thread's name, which moves a count by a few tokens
-either way [read in the code]. The harness renders the tags, the image markers and each message's
-own day and thread, so a count from it reads higher than the table [read in the code]. The 90th
-percentile column took the value one rank above the nearest rank, which moves only the self-notes
-row, by one rank [read in the code]. The table also leaves out the note that a resumed turn gets
-when its pinned core changed since the turn before it, which the harness counts as a block of its
-own [read in the code].
+either way [read in the code]. Each block's wrapper carried an ISO time, where the product writes
+the weekday, the local time and the zone's city, which moves each block by about 1 token either way
+[read in the code]. The harness renders the tags, the image markers, the product's wrapper time, and
+each message's own day and thread, so a count from it reads higher than the table [read in the
+code]. The 90th percentile column took the value one rank above the nearest rank, which moves only
+the self-notes row, by one rank [read in the code]. The table also leaves out the note that a
+resumed turn gets when its pinned core changed since the turn before it, which the harness counts as
+a block of its own [read in the code].
 
 A turn's model calls read a mean of 155,714 input tokens a call, cached or not, so the blocks a turn
 adds come to about 0.1% of one call [measured]. A block stays in the session once given, and a

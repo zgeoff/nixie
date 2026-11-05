@@ -30,7 +30,7 @@ test('it gives a turn that opened no session the pinned tokens it would show at 
     { ownerName: null, defaultZone: 'UTC' },
   );
 
-  expect(tokens).toStrictEqual({ sessionNumber: 2, isSessionStart: false, added: 90, pinned: 85 });
+  expect(tokens).toStrictEqual({ sessionNumber: 2, isSessionStart: false, added: 90, pinned: 84 });
 });
 
 test('it gives a turn that opened its session its own pinned tokens', () => {

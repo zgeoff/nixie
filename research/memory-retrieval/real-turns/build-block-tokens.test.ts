@@ -65,7 +65,38 @@ test('it counts the pinned block and each retrieved block on a session start', (
     { ownerName: null, defaultZone: 'UTC' },
   );
 
-  expect(tokens).toStrictEqual({ pinned: 85, pinnedChanges: 0, items: 75, selfNotes: 76, messages: 76 });
+  expect(tokens).toStrictEqual({ pinned: 84, pinnedChanges: 0, items: 74, selfNotes: 75, messages: 75 });
+});
+
+test('it wraps each block with the message time the product shows, in the default zone with its city', () => {
+  const tokens = buildBlockTokens(
+    {
+      caseID: 't7',
+      stepSequence: 6,
+      recalledSequence: 7,
+      recordedAt: Date.parse('2026-03-02T09:00:00Z'),
+      query: 'ok',
+      typedQuery: 'ok',
+      shownMessages: [],
+      isSessionStart: true,
+      sessionNumber: 1,
+      isShredded: false,
+      contextTokens: null,
+      reply: 'Noted.',
+      earlier: [],
+      candidates: [
+        { itemID: 'item-a', version: 1, isSelf: false, isPinned: true, isLapsed: false, isSensitive: false, text: 'Lives by the canal' },
+      ],
+      logged: [],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    { versions: new Map() },
+    { ownerName: null, defaultZone: 'America/Argentina/Buenos_Aires' },
+  );
+
+  expect(tokens.pinned).toBe(86);
 });
 
 test('it renders a retrieved item with its version metadata: short ID, origin, date and quote', () => {

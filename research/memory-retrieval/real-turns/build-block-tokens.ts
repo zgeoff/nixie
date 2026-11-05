@@ -4,6 +4,8 @@
 // @boundaries-ignore a spike imports the code it measures
 import { countTextTokens } from '../../../modules/compaction/src/count-text-tokens.ts';
 // @boundaries-ignore a spike imports the code it measures
+import { formatMessageTime } from '../../../modules/sessions/src/format-message-time.ts';
+// @boundaries-ignore a spike imports the code it measures
 import { renderPinnedMemory } from '../../../modules/sessions/src/render-pinned-memory.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { renderCoreChanges } from '../../../modules/sessions/src/render-core-changes.ts';
@@ -59,7 +61,7 @@ export function buildBlockTokens(
   const at = new Date(turn.recordedAt);
   const lines = { ownerName: options.ownerName, defaultZone: options.defaultZone, now: at };
   const wrap = (type: Parameters<typeof renderSystemMessage>[0]['type'], body: string | null): number =>
-    body === null ? 0 : countTextTokens(renderSystemMessage({ type, at: at.toISOString(), body }));
+    body === null ? 0 : countTextTokens(renderSystemMessage({ type, at: formatMessageTime(at, null, lines), body }));
 
   const buildItem = (itemID: string, version: number, text: string): MemoryItem => {
     const meta = sources.versions.get(`${itemID}@${version}`);
