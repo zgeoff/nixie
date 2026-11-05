@@ -27,11 +27,12 @@ add to a turn, and what does a short message bring?
 - On 111 labelled real turns, the shipped hybrid ranking scored recall@5 0.539, recall@10 0.709 and
   MRR 0.509. No alternative encoder, fusion setting, floor or item count was shown to be better, and
   BM25 alone scored about 0.1 lower beyond its 95% interval.
-- On a later snapshot, the memory blocks added about 180 tokens a turn, and the past messages showed
+- On a later snapshot, the memory blocks added about 170 tokens a turn, and the past messages showed
   on 801 of 1,056 hybrid turns at a precision of 0.03.
-- On a held-out half of 266 turns that the assistant labelled, similarity 0.46 with a BM25 floor of
-  2 showed 30% fewer items on turns that needed none and lost none of 14 needed items. A query
-  window lost 2 of the 14, and the BM25 weight changed nothing on turns that needed none.
+- On a held-out half of the 266 turns that the assistant labelled, similarity 0.46 with a BM25 floor
+  of 2 showed 31% fewer items on turns that needed none, and lost no needed item on the 18 turns
+  that needed an item the session lacked. The selection half agreed. A query window added noise, and
+  the BM25 weight changed nothing on turns that needed none.
 
 Let the store mark which fact is current. Keep the shipped encoder and fusion. The
 [per-turn options](per-turn-memory.md#options) give the floor and filter changes that the labels
