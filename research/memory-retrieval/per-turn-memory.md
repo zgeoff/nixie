@@ -62,14 +62,18 @@ records do, and the 383 before that date do not [measured]. The deployment sets 
 to 1 and keeps every other memory setting at its default [from a record]. Replaying the shipped
 settings matched the logged retrieval on 1,047 of the 1,056 hybrid turns, and on 144 of the 153 that
 returned an item [measured]. The replay follows each item's sensitive flag from the record that set
-it, so a turn before the flag sees the item as the live turn did [read in the code].
+it, so a turn before the flag sees the item as the live turn did [read in the code]. The one-off
+scripts replayed 1,054 of the 1,056 hybrid turns, and why they skipped the other 2 went unrecorded
+[one-off script].
 
 ### Labels
 
 The deployment's assistant rated a sample of 286 turns: every short turn, every turn shown an item,
-and the rest at random [measured]. For each turn it saw the exchange and every item that any
-compared setting would show, marked each one needed or not, and described any item it missed [from a
-record]. One rater gave every label, and no second rater checked them [measured].
+and the rest at random [measured]. For each turn it saw the exchange and the rated list, marked each
+item needed or not, and described any item it missed [from a record]. The rated list holds every
+item a compared setting would show, the top 5 of the ranking of the whole store, and the items the
+turn logged [read in the code]. One rater gave every label, and no second rater checked them
+[measured].
 
 - 285 labels matched the sample, and 1 named a turn outside it [measured].
 - 15 labels fall on turns about the memory work itself: a block of such turns, and turns the rater
@@ -81,9 +85,9 @@ record]. One rater gave every label, and no second rater checked them [measured]
 - A hash of each turn's ID and a fixed seed puts the turn in the held-out half or the selection
   half, so adding or dropping a turn moves no other turn [read in the code]. The held-out half holds
   151 turns and the selection half 115 [measured].
-- The candidate settings came from the earlier real-turn floor sweep and the rater's notes [from a
-  record]. An earlier draft of this measurement also scored them on all labelled turns, so the
-  held-out half guards against tuning a value to the turns, not against having seen the data.
+- The candidate settings came from the real-turn floor sweep and the rater's notes, chosen with all
+  labelled turns in view [from a record]. The held-out half guards against tuning a value to the
+  turns, not against having seen the data.
 
 The scores leave out the named audit turns. Kept in, they add 8 turns, 274 in all, and leave every
 conclusion the same [measured]:
@@ -170,10 +174,9 @@ Ranked by the held-out half, the fixes come out in this order:
 3. **A similarity floor on past messages.** This measurement gives no result for it, as
    [past messages](#past-messages) explains.
 4. **Rating fields for misleading and missed items.** The missed-item descriptions found 8 needed
-   items that the store held and the session lacked, which the scores now count [measured]. Only 2
-   turns carry a misleading item, too few to score a fix on [measured]. The product's rate tool
-   already takes a misleading verdict, and has no field for a memory the turn missed [read in the
-   code].
+   items that the store held and the session lacked, which the scores count [measured]. Only 2 turns
+   carry a misleading item, too few to score a fix on [measured]. The product's rate tool already
+   takes a misleading verdict, and has no field for a memory the turn missed [read in the code].
 5. **A query window.** Adding earlier messages to the query showed 16% to 52% more items on turns
    that needed none, and moved fresh recall by 0.028 at most, within intervals that cross zero
    [measured]. On the selection half, fresh recall fell by 0.143 to 0.357 [measured].
@@ -208,7 +211,8 @@ that sits close to many earlier messages:
   on the selection half, and it left the items shown on empty turns unchanged [measured].
 - In the ranking, a penalty of 0.5 or 1 lowered recall@5 by 0.037 to 0.049 on the held-out half
   [measured].
-- As a floor relative to the hub score, it cut 8% of the items shown on empty turns [measured].
+- As a floor that keeps an item only when its similarity reaches its hub score less 0.05, it cut 8%
+  of the items shown on empty turns [measured].
 
 The halves disagree, so the data does not support a correction per item [guess].
 
@@ -216,7 +220,8 @@ The halves disagree, so the data does not support a correction per item [guess].
 
 Of the needed items that share a content word with the message, the shipped settings showed 22 of
 24, and of those that share none, 5 of 12 [measured]. Retrieval finds what the message names and
-misses what it implies, and no setting tested closes that gap [measured].
+misses what it implies [measured]. The harness counts this split for the shipped settings only, so
+whether another setting closes the gap is open [guess].
 
 ## Turn kind
 
@@ -260,20 +265,16 @@ It ranks past messages by the same BM25 and vector fusion as the items, and asks
 retrieval [read in the code]. It still showed 265 messages on 221 scored turns, so some turns ran
 retrieval more than once [measured] [guess].
 
-The write-up gives no similarity scores for the past messages shown. The harness encoded the text
-each message showed with, cut at 1,000 characters and with its pasted text, but the product indexes
-only the typed text, whole [read in the code]. The scores therefore did not match the ones retrieval
-saw. The harness now encodes the indexed text, which
-[find-typed-text.ts](real-turns/find-typed-text.ts) picks, but the labels needed to score the floors
-again were no longer at hand [from a record].
+The write-up gives no similarity scores for the past messages shown. The product indexes only a
+message's typed text, whole, which [find-typed-text.ts](real-turns/find-typed-text.ts) picks, and
+the harness encodes that text [read in the code]. The labels needed to score it on this snapshot
+were not at hand, so no similarity floor on past messages has a result here [from a record].
 
 - By message length: on short turns the block showed 78 messages and the rater marked none needed.
   On the other turns it showed 187, and 8 were needed, a precision of 0.043 [measured].
 - 6 of the 953 past messages shown repeat the current message word for word, from earlier in the
   thread [one-off script]. The exclusion leaves out only the current thread's held messages, so the
   exclusion works as written and these are earlier copies [read in the code].
-- 84 hybrid turns hold pasted text, and dropping it from the query shows items on 4 fewer turns in
-  all [measured].
 
 ## Bundled items
 
@@ -323,9 +324,9 @@ without fix 1 [one-off script].
   the turn did not have [one-off script].
 - The missed-item descriptions on the scored turns matched 52 items: 38 the session already held, 7
   the store held and retrieval missed, 1 the sample pooled, and 6 with no active version at the turn
-  [measured]. 10 descriptions matched no item [measured]. The rated list holds only what some
-  compared setting would show, not the whole store, so 7 needed items sat outside it [read in the
-  code].
+  [measured]. 10 descriptions matched no item [measured]. The rated list holds the items that a
+  compared setting would show, the top 5 of the ranking of the whole store, and the items the turn
+  logged, not the whole store, so 7 needed items sat outside it [read in the code].
 - Of 1,448 replies, 2 are shredded rather than blank, and the harness reads them as shredded
   [measured].
 
@@ -354,6 +355,7 @@ the rule of three [measured].
 
 - A second rater, and more than 18 held-out turns with a needed item the session lacked.
 - A similarity floor on past messages, scored on the text the product indexes.
+- Dropping pasted text from the query, by the product's typed-text rule.
 - A staleness check on past messages, which would drop a message that a later one replaced.
 - The higher bar on the stand-in labels, whose snapshot this measurement did not have.
 - A reranker or a model's judgement of the top results, which the
