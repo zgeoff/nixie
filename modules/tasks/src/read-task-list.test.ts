@@ -59,6 +59,27 @@ test('it lists the other tasks in the directory, the most recently active first'
   ]);
 });
 
+test.each([
+  ['holds only the caller', 'planner'],
+  ['holds no task that exists', 'conversation'],
+])('it lists no task for a directory that %s', async (_case, callerID) => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'critic');
+
+  const tasks = await readTaskList(
+    ctx.context,
+    {
+      directory: [
+        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+      ],
+    },
+    { callerID, limit: 20 },
+  );
+
+  expect(tasks).toStrictEqual([]);
+});
+
 test('it lists each task with the model it started on and the kind of the last message it sent', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);

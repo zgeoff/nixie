@@ -240,6 +240,156 @@ test.each([
 );
 
 test.each([
+  ['finished', 'progress', 'report'],
+  ['idle', 'report', 'progress'],
+] as const)(
+  'it lists as %s a started task that sent a %s and then a %s in its turn',
+  async (state, first, last) => {
+    const ctx = await setupTest();
+    const starter = await seedConversationStep(ctx.context);
+
+    const messaging = {
+      directory: [
+        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      ],
+      hopLimit: 20,
+    };
+
+    const taskID = await seedStartedTask(ctx.context, {
+      starter: starter.claim,
+      name: 'Seed list',
+      brief: 'List the seeds to order for spring.',
+    });
+
+    const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+    invariant(claim);
+
+    await writeTestTaskMessage(ctx.context, messaging, {
+      from: taskID,
+      to: 'conversation',
+      kind: first,
+      body: 'The early peas go in first.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: false,
+    });
+
+    await writeTestTaskMessage(ctx.context, messaging, {
+      from: taskID,
+      to: 'conversation',
+      kind: last,
+      body: 'Order the dwarf beans as well.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: false,
+    });
+
+    await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [] });
+
+    const tool = buildTasksListTool(ctx.context, messaging);
+
+    const outcome = await tool.run(
+      buildMockToolCall({ tool: 'tasks.list', input: {} }),
+      buildMockToolContext({ run: { thread: 'conversation' } }),
+    );
+
+    expect(outcome).toStrictEqual({
+      status: 'ok',
+      result: {
+        tasks: [
+          {
+            id: taskID,
+            name: 'Seed list',
+            state,
+            model: null,
+            brief: 'List the seeds to order for spring.',
+            lastActivityAt: expect.toBeString(),
+          },
+        ],
+      },
+    });
+  },
+);
+
+test('it lists a finished task under done within the limit, behind a newer idle task', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const messaging = {
+    directory: [
+      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+    ],
+    hopLimit: 20,
+  };
+
+  const finishedID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Seed list',
+    brief: 'List the seeds to order for spring.',
+  });
+
+  const idleID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Bed sizes',
+    brief: 'Measure the four raised beds.',
+  });
+
+  const finished = await claimTask(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    taskID: finishedID,
+  });
+
+  invariant(finished);
+
+  await writeTestTaskMessage(ctx.context, messaging, {
+    from: finishedID,
+    to: 'conversation',
+    kind: 'report',
+    body: 'Order the early peas and the dwarf beans.',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: false,
+  });
+
+  await writeStepCommit(ctx.context, finished, { next: 'wait', records: [], acknowledged: [] });
+
+  const idle = await claimTask(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    taskID: idleID,
+  });
+
+  invariant(idle);
+
+  await writeStepCommit(ctx.context, idle, { next: 'wait', records: [], acknowledged: [] });
+
+  const tool = buildTasksListTool(ctx.context, messaging);
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'tasks.list', input: { state: 'done', limit: 1 } }),
+    buildMockToolContext({ run: { thread: 'conversation' } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      tasks: [
+        {
+          id: finishedID,
+          name: 'Seed list',
+          state: 'finished',
+          model: null,
+          brief: 'List the seeds to order for spring.',
+          lastActivityAt: expect.toBeString(),
+        },
+      ],
+    },
+  });
+});
+
+test.each([
   ['active', []],
   ['waiting', ['planner', 'critic']],
   ['done', ['sorter']],

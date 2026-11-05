@@ -3,6 +3,8 @@ import { pickListedTaskState } from './pick-listed-task-state';
 
 test.each([
   ['waiting', { state: 'waiting', waitingOn: 'conversation', lastSentKind: 'question' }],
+  ['waiting', { state: 'waiting', waitingOn: 'conversation', lastSentKind: 'report' }],
+  ['paused', { state: 'paused', waitingOn: 'conversation', lastSentKind: 'question' }],
   ['finished', { state: 'waiting', lastSentKind: 'report' }],
   ['idle', { state: 'waiting', lastSentKind: 'progress' }],
   ['idle', { state: 'waiting', lastSentKind: null }],
