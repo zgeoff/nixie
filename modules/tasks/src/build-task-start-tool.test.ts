@@ -508,7 +508,11 @@ test.each(['mcp__nixie__memory_recall', 'memory.recall'])(
 
     expect(outcome).toStrictEqual({
       status: 'ok',
-      result: { taskID: expect.toBeString(), name: 'Bed notes', note: expect.toBeString() },
+      result: {
+        taskID: expect.toBeString(),
+        name: 'Bed notes',
+        note: 'The task starts on its brief now, and its report comes back to you as a task message.',
+      },
     });
 
     expect(setups.map((setup) => setup?.options?.tools)).toStrictEqual([

@@ -118,7 +118,21 @@ test('it lists only as many tasks as the limit asks for', async () => {
     buildMockToolContext({ run: { thread: 'conversation' } }),
   );
 
-  expect(outcome).toMatchObject({ status: 'ok', result: { tasks: [{ id: 'critic' }] } });
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      tasks: [
+        {
+          id: 'critic',
+          name: 'Critic',
+          state: 'ready',
+          model: null,
+          brief: 'Checks plans.',
+          lastActivityAt: expect.toBeString(),
+        },
+      ],
+    },
+  });
 });
 
 test('it lists each task with the model it runs on', async () => {
@@ -391,9 +405,22 @@ test('it lists a finished task under done within the limit, behind a newer idle 
 
 test.each([
   ['active', []],
-  ['waiting', ['planner', 'critic']],
-  ['done', ['sorter']],
-  ['all', ['planner', 'critic', 'sorter']],
+  [
+    'waiting',
+    [
+      { id: 'critic', name: 'Critic', state: 'stopped', brief: 'Checks plans.' },
+      { id: 'planner', name: 'Planner', state: 'paused', brief: 'Plans the week.' },
+    ],
+  ],
+  ['done', [{ id: 'sorter', name: 'Sorter', state: 'closed', brief: 'Sorts the mail.' }]],
+  [
+    'all',
+    [
+      { id: 'sorter', name: 'Sorter', state: 'closed', brief: 'Sorts the mail.' },
+      { id: 'critic', name: 'Critic', state: 'stopped', brief: 'Checks plans.' },
+      { id: 'planner', name: 'Planner', state: 'paused', brief: 'Plans the week.' },
+    ],
+  ],
 ] as const)(
   'it lists under %s only the paused, stopped and closed tasks that belong there',
   async (state, expected) => {
@@ -419,17 +446,28 @@ test.each([
       buildMockToolContext({ run: { thread: 'conversation' } }),
     );
 
-    invariant(outcome.status === 'ok');
-
-    expect(outcome.result['tasks']).toIncludeSameMembers(
-      expected.map((id) => expect.objectContaining({ id })),
-    );
+    expect(outcome).toStrictEqual({
+      status: 'ok',
+      result: {
+        tasks: expected.map((task) => ({
+          ...task,
+          model: null,
+          lastActivityAt: expect.toBeString(),
+        })),
+      },
+    });
   },
 );
 
 test.each([
-  ['waiting', ['planner', 'conversation']],
-  ['done', ['critic']],
+  [
+    'waiting',
+    [
+      { id: 'planner', name: 'Planner', state: 'idle', brief: 'Plans the week.' },
+      { id: 'conversation', name: 'Conversation', state: 'idle', brief: 'Talks.' },
+    ],
+  ],
+  ['done', [{ id: 'critic', name: 'Critic', state: 'finished', brief: 'Checks plans.' }]],
 ] as const)(
   'it lists under %s the idle and finished tasks that belong there',
   async (state, expected) => {
@@ -482,10 +520,15 @@ test.each([
       buildMockToolContext({ run: { thread: 'sorter' } }),
     );
 
-    invariant(outcome.status === 'ok');
-
-    expect(outcome.result['tasks']).toIncludeSameMembers(
-      expected.map((id) => expect.objectContaining({ id })),
-    );
+    expect(outcome).toStrictEqual({
+      status: 'ok',
+      result: {
+        tasks: expected.map((task) => ({
+          ...task,
+          model: null,
+          lastActivityAt: expect.toBeString(),
+        })),
+      },
+    });
   },
 );

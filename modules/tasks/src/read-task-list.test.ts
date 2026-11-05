@@ -164,7 +164,19 @@ test('it shows a task that asked a question as waiting on the task it asked', as
     limit: 20,
   });
 
-  expect(tasks).toMatchObject([{ id: 'planner', waitingOn: 'conversation' }]);
+  expect(tasks).toStrictEqual([
+    {
+      id: 'planner',
+      name: 'Planner',
+      state: 'running',
+      brief: 'Plans the week.',
+      isPauseRequested: false,
+      lastActivityAt: expect.toBeValidDate(),
+      model: null,
+      lastSentKind: 'question',
+      waitingOn: 'conversation',
+    },
+  ]);
 });
 
 test.each(['question', 'request'] as const)(
@@ -204,7 +216,13 @@ test.each(['question', 'request'] as const)(
       limit: 20,
     });
 
-    expect(outcome).toMatchObject({ status: 'sent', woke: false, hold: 'next_run' });
+    expect(outcome).toStrictEqual({
+      status: 'sent',
+      messageID: expect.toBeString(),
+      hop: 1,
+      woke: false,
+      hold: 'next_run',
+    });
 
     expect(tasks).toStrictEqual([
       {
@@ -269,7 +287,13 @@ test('it clears the wait when the asked task replies to the question, by its ID'
     limit: 20,
   });
 
-  expect(reply).toMatchObject({ status: 'sent', woke: true });
+  expect(reply).toStrictEqual({
+    status: 'sent',
+    messageID: expect.toBeString(),
+    hop: 2,
+    woke: true,
+    hold: 'none',
+  });
 
   expect(tasks).toStrictEqual([
     {
