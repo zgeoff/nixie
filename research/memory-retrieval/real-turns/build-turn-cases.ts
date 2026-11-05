@@ -120,7 +120,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
   for (const record of data.records) {
     foldPins(pinned, record);
 
-    // Past-message retrieval searches the owner's messages in every thread.
+    // Past-message retrieval searches the user's messages in every thread.
     const messageText = record.kind === 'owner_message' ? readErasableText(record) : null;
 
     if (messageText !== null) {
@@ -306,7 +306,7 @@ function toCallContext(ended: z.infer<typeof turnEndedSchema>): number | null {
   return Math.round(total / ended.turns);
 }
 
-// The message with its pasted and dropped spans taken out, which leaves what the owner typed.
+// The message with its pasted and dropped spans taken out, which leaves what the user typed.
 function collectTypedText(record: PlainRecord): string | null {
   const text = readErasableText(record);
   const spans = record.erasable.status === 'readable' ? spansSchema.safeParse(record.erasable.fields['spans']) : null;

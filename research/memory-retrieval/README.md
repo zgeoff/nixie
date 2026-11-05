@@ -10,14 +10,15 @@ deployment's own conversations and tunes its settings.
 ## Question
 
 At personal scale, does ranked full-text search beat plain keyword search, and do embeddings add
-enough to earn an index and a model? Does the answer change between the owner's message as typed and
+enough to earn an index and a model? Does the answer change between the user's message as typed and
 the keywords a model passes to the recall tool? On real turns, does any encoder, ranking, floor or
-item count find more of what a turn needed than the shipped settings?
+item count find more of what a turn needed than the shipped settings? What does each memory block
+add to a turn, and what does a short message bring?
 
 ## Answer
 
 - Every method found every lexical question: recall@5 of 1.00 on each method and form.
-- Paraphrase splits them: from the owner's message, keyword search and BM25 found 18 to 22% of
+- Paraphrase splits them: from the user's message, keyword search and BM25 found 18 to 22% of
   paraphrase gold items, and vectors found 52 to 68%.
 - The recall tool's keywords matter more than the ranking: they lifted keyword search from 0.55 to
   0.76 at recall@5, close to MiniLM vectors on the message at 0.77.
@@ -26,6 +27,9 @@ item count find more of what a turn needed than the shipped settings?
 - On 111 labelled real turns, the shipped hybrid ranking scored recall@5 0.539, recall@10 0.709 and
   MRR 0.509. No alternative encoder, fusion setting, floor or item count was shown to be better, and
   BM25 alone scored about 0.1 lower beyond its 95% interval.
+- On a later snapshot, the memory blocks added about 180 tokens a turn, and the past messages showed
+  on 801 of 1,056 hybrid turns. A short message was shown an item on 5 of 98 turns, and a past
+  message on 77.
 
 Let the store mark which fact is current. Keep the shipped encoder, fusion, floors and item counts.
 
@@ -43,7 +47,8 @@ The [real-turn setup](real-turns.md#setup) gives the commands for a deployment's
 
 The [results](results.md) hold the recall table for every method and form, the findings, and the
 cost table. The [real-turn results](real-turns.md) hold the ranking, floor and item-count tables on
-a deployment's own turns.
+a deployment's own turns. The [per-turn memory results](per-turn-memory.md) hold the tokens of each
+block and the short-message rules.
 
 ## Untested
 
