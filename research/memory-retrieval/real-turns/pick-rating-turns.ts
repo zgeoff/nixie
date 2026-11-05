@@ -8,11 +8,12 @@ export interface RatingTurns {
 }
 
 // Picks the turns a rater marks: every short turn, every turn whose retrieval returned an item, and
-// the rest at random from the hybrid turns, up to the size. The seed is fixed, so the same export
+// the rest at random from the hybrid turns, up to the size. A turn whose message or reply was
+// shredded stays out, so a rater never sees a blank the turn never sent. The seed is fixed, so the same export
 // always gives the same turns.
 export function pickRatingTurns(turns: TurnCase[], size: number, shortWords: number): RatingTurns {
   const random = makeRandom(2358);
-  const eligible = turns.filter((turn) => turn.searchMode === 'hybrid' && turn.candidates.length > 0);
+  const eligible = turns.filter((turn) => turn.searchMode === 'hybrid' && turn.candidates.length > 0 && !turn.isShredded);
   const short = eligible.filter((turn) => countWords(turn.query) <= shortWords);
   const shown = eligible.filter((turn) => !short.includes(turn) && turn.logged.length > 0);
   const kept = new Set([...short, ...shown]);

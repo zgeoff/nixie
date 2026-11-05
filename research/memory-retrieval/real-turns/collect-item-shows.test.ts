@@ -10,6 +10,7 @@ test('it counts how often each item was retrieved against how the rater judged i
     typedQuery: 'any plans?',
     shownMessages: [],
     isSessionStart: false,
+    isShredded: false,
     contextTokens: null,
     reply: '',
     earlier: [],

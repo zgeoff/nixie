@@ -12,6 +12,7 @@ test('it keeps every short turn and every turn shown an item, and fills the rest
       typedQuery: query,
       shownMessages: [],
       isSessionStart: false,
+      isShredded: false,
       contextTokens: null,
       reply: '',
       earlier: [],
@@ -46,6 +47,7 @@ test('it leaves out a turn whose retrieval ran on keywords alone', () => {
         typedQuery: 'ok',
         shownMessages: [],
         isSessionStart: false,
+        isShredded: false,
         contextTokens: null,
         reply: '',
         earlier: [],
@@ -54,6 +56,38 @@ test('it leaves out a turn whose retrieval ran on keywords alone', () => {
         ],
         logged: [],
         searchMode: 'keyword',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    10,
+    3,
+  );
+
+  expect(picked.chosen).toStrictEqual([]);
+});
+
+test('it leaves out a turn whose message or reply was shredded', () => {
+  const picked = pickRatingTurns(
+    [
+      {
+        caseID: 't1',
+        stepSequence: 0,
+        recalledSequence: 1,
+        recordedAt: 0,
+        query: 'ok',
+        typedQuery: 'ok',
+        shownMessages: [],
+        isSessionStart: false,
+        isShredded: true,
+        contextTokens: null,
+        reply: '',
+        earlier: [],
+        candidates: [
+          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Takes the ferry' },
+        ],
+        logged: [],
+        searchMode: 'hybrid',
         delivered: [],
         ratings: [],
       },

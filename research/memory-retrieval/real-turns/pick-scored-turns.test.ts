@@ -13,6 +13,7 @@ test('it scores only the labelled turns when labels exist', () => {
         typedQuery: 'any plans?',
         shownMessages: [],
         isSessionStart: false,
+        isShredded: false,
         contextTokens: null,
         reply: '',
         earlier: [],
@@ -31,6 +32,7 @@ test('it scores only the labelled turns when labels exist', () => {
         typedQuery: 'and tomorrow?',
         shownMessages: [],
         isSessionStart: false,
+        isShredded: false,
         contextTokens: null,
         reply: '',
         earlier: [],
@@ -59,6 +61,7 @@ test('it scores the turns that retrieved or were rated when no labels exist', ()
         typedQuery: 'any plans?',
         shownMessages: [],
         isSessionStart: false,
+        isShredded: false,
         contextTokens: null,
         reply: '',
         earlier: [],
@@ -77,6 +80,7 @@ test('it scores the turns that retrieved or were rated when no labels exist', ()
         typedQuery: 'and after?',
         shownMessages: [],
         isSessionStart: false,
+        isShredded: false,
         contextTokens: null,
         reply: '',
         earlier: [],
@@ -95,6 +99,7 @@ test('it scores the turns that retrieved or were rated when no labels exist', ()
         typedQuery: 'and tomorrow?',
         shownMessages: [],
         isSessionStart: false,
+        isShredded: false,
         contextTokens: null,
         reply: '',
         earlier: [],
@@ -109,4 +114,33 @@ test('it scores the turns that retrieved or were rated when no labels exist', ()
   );
 
   expect(picked.map((turn) => turn.caseID)).toStrictEqual(['t3', 't6']);
+});
+
+test('it leaves out a labelled turn whose message or reply was shredded', () => {
+  const picked = pickScoredTurns(
+    [
+      {
+        caseID: 't9',
+        stepSequence: 7,
+        recalledSequence: 9,
+        recordedAt: 0,
+        query: 'and tomorrow?',
+        typedQuery: 'and tomorrow?',
+        shownMessages: [],
+        isSessionStart: false,
+        isShredded: true,
+        contextTokens: null,
+        reply: '',
+        earlier: [],
+        candidates: [],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    [{ caseID: 't9', relevant: [], best: null }],
+  );
+
+  expect(picked).toStrictEqual([]);
 });

@@ -13,6 +13,7 @@ test('it gives recall apart for needed items that share a content word with the 
         typedQuery: 'Dana and the garden this weekend',
         shownMessages: [],
         isSessionStart: false,
+        isShredded: false,
         contextTokens: null,
         reply: '',
         earlier: [],

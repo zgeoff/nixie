@@ -9,6 +9,7 @@ test('it collects the items whose version was added since the turn before', () =
     typedQuery: 'saved it?',
     shownMessages: [],
     isSessionStart: false,
+    isShredded: false,
     contextTokens: null,
     reply: '',
     earlier: [],

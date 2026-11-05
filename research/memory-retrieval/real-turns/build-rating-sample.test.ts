@@ -14,6 +14,7 @@ test('it gives each turn its pooled items and its shown past messages, under ref
           typedQuery: 'and the ferry?',
           shownMessages: [{ sequence: 2, text: 'the ferry leaves at nine', isCut: false }],
           isSessionStart: false,
+          isShredded: false,
           contextTokens: null,
           reply: 'Nine sharp.',
           earlier: [

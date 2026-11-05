@@ -587,6 +587,54 @@ test('it keeps only the typed spans of a message in the typed query', () => {
   expect(cases.map((turn) => turn.typedQuery)).toStrictEqual(['tidy this: ']);
 });
 
+test('it marks a turn whose reply was shredded', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 1,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'what is for dinner?' } },
+      },
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T09:00:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 4,
+        recordedAt: '2026-03-02T09:00:03Z',
+        kind: 'model.reply',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'shredded' },
+      },
+    ],
+    items: [],
+    versions: [],
+    notes: [],
+  });
+
+  expect(cases.map((turn) => ({ reply: turn.reply, isShredded: turn.isShredded }))).toStrictEqual([{ reply: '', isShredded: true }]);
+});
+
 test('it gives a turn the past messages, the session start and the call context its turn end records', () => {
   const cases = buildTurnCases({
     records: [

@@ -85,6 +85,7 @@ export interface TurnCase {
   shownMessages: ShownMessage[];
   isSessionStart: boolean;
   contextTokens: number | null;
+  isShredded: boolean;
 }
 
 const conversationThread = 'conversation';
@@ -196,6 +197,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
           shownMessages: [],
           isSessionStart: false,
           contextTokens: null,
+          isShredded: batch.some((entry) => entry.erasable.status === 'shredded'),
         };
       }
 
@@ -257,6 +259,11 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
 
       if (text !== null) {
         open.reply = open.reply === '' ? text : `${open.reply}\n${text}`;
+      }
+
+      // A shredded reply would read as a blank one, which the turn never sent.
+      if (record.erasable.status === 'shredded') {
+        open.isShredded = true;
       }
     }
   }

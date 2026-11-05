@@ -273,6 +273,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     descriptions: labels.reduce((sum, label) => sum + (label.missing?.length ?? 0), 0),
     turnsWithDescriptions: labels.filter((label) => (label.missing?.length ?? 0) > 0).length,
     labelledWithExchangeItems: labels.filter((label) => exchangeItems.has(label.caseID)).length,
+    labelledShredded: labels.filter((label) => turnsByCase.get(label.caseID)?.isShredded === true).length,
   });
   const encoders = parseEncoderNames(values.encoders ?? 'leaf-ir-q8');
 
