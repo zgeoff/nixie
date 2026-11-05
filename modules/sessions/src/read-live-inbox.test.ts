@@ -37,6 +37,7 @@ test('it yields a message that lands during the turn and adds its images to the 
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
     silence: buildTurnSilence([]),
+    log: () => {},
   });
 
   await writeInboxRecords(ctx.context, [
@@ -82,6 +83,7 @@ test('it ends the feed at a message whose images would pass the session budget',
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
     silence: buildTurnSilence([]),
+    log: () => {},
   });
 
   await writeInboxRecords(ctx.context, [
@@ -125,6 +127,7 @@ test('it ends the feed at a message whose images would pass the session count', 
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
     silence: buildTurnSilence([]),
+    log: () => {},
   });
 
   await writeInboxRecords(ctx.context, [
@@ -163,6 +166,7 @@ test('it yields a message with no images past a spent session budget', async () 
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images,
     silence: buildTurnSilence([]),
+    log: () => {},
   });
 
   await writeInboxRecords(ctx.context, [
@@ -188,6 +192,7 @@ test('it ends the feed at a message that lands after the turn ended silently, an
 
   const sent = new Set([0]);
 
+  const events: unknown[] = [];
   const silence = buildTurnSilence([]);
 
   const live = readLiveInbox(ctx.context, {
@@ -198,11 +203,14 @@ test('it ends the feed at a message that lands after the turn ended silently, an
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
     silence,
+    log: (event, fields) => {
+      events.push({ event, fields });
+    },
   });
 
   silence.end();
 
-  await writeInboxRecords(ctx.context, [
+  const [record] = await writeInboxRecords(ctx.context, [
     {
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
@@ -213,7 +221,16 @@ test('it ends the feed at a message that lands after the turn ended silently, an
 
   const next = await live.next();
 
-  expect({ isDone: next.done, sent: [...sent] }).toStrictEqual({ isDone: true, sent: [0] });
+  expect({ isDone: next.done, sent: [...sent], events }).toStrictEqual({
+    isDone: true,
+    sent: [0],
+    events: [
+      {
+        event: 'session.live_message_held',
+        fields: { taskID: 'conversation', sequence: record?.sequence },
+      },
+    ],
+  });
 });
 
 test("it counts an owner message that lands during the turn against the turn's silent end", async () => {
@@ -231,6 +248,7 @@ test("it counts an owner message that lands during the turn against the turn's s
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
     silence,
+    log: () => {},
   });
 
   await writeInboxRecords(ctx.context, [

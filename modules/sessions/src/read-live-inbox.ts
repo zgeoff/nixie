@@ -1,5 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import { subscribeToRecords } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import type { TasksContext } from '@heynixie/tasks';
 import { isInboxRecord } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
@@ -28,6 +29,8 @@ export interface LiveInbox {
   readonly view: TaskMessageView;
   readonly images: LiveImages;
   readonly silence: TurnSilence;
+
+  readonly log: Logger;
 }
 
 export async function* readLiveInbox(
@@ -54,6 +57,11 @@ export async function* readLiveInbox(
       // A turn that ended silently passes no more messages in, so each one that lands from then
       // on stays unread and wakes the next step, which can answer it.
       if (live.silence.isSilent()) {
+        live.log('session.live_message_held', {
+          taskID: live.taskID,
+          sequence: entry.record.sequence,
+        });
+
         return;
       }
 

@@ -13,6 +13,8 @@ import {
   writeInboxRecords,
 } from '@heynixie/tasks';
 import { readTestTaskProgress, writeTestTaskMessage } from '@heynixie/tasks/test-utils';
+import { waitForCondition } from '@heynixie/testing';
+import type { InboxMessage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
@@ -23,6 +25,7 @@ import { buildStubTurnScript } from './test-utils/build-stub-turn-script';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
 import { runNextStep } from './test-utils/run-next-step';
 import { startTestTasks } from './test-utils/start-test-tasks';
+import { takeGuestMessages } from './test-utils/take-guest-messages';
 
 interface RunnerConfig {
   readonly models: ReturnType<typeof buildMockModelsConfig>;
@@ -2710,23 +2713,46 @@ test.each([
   ]);
 });
 
-test('it wakes the next turn for a message from you that lands after a silent end, and that turn takes it', async () => {
+test('it passes a message from you that lands after a silent end only to the next turn', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
+  const events: string[] = [];
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
     toolNames: ['turn.end_silently'],
+    log: (event) => {
+      events.push(event);
+    },
   });
+
+  const delivered: InboxMessage[] = [];
 
   ctx.sandboxes.setGuestScript(async (turn, guest) => {
     ctx.steps.at(-1)?.session?.endSilently?.();
 
     await ctx.writeMessage('Are you there?');
 
-    return buildStubTurnScript(() => ({}))(turn, guest);
+    await waitForCondition(() => {
+      delivered.push(...takeGuestMessages(guest));
+
+      return delivered.length > 0 || events.includes('session.live_message_held');
+    });
+
+    return [
+      { type: 'read', uuids: [...turn.input, ...delivered].map((message) => message.uuid) },
+      {
+        type: 'ended',
+        boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+        subtype: 'success',
+        stopReason: 'end_turn',
+        turns: 1,
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+    ];
   });
 
   await writeInboxRecords(ctx.context, [
@@ -2744,6 +2770,7 @@ test('it wakes the next turn for a message from you that lands after a silent en
 
   await ctx.runNextStep(runner);
 
+  expect(delivered).toStrictEqual([]);
   expect(ctx.sandboxes.turns[1]?.input.at(-1)?.text).toEndWith('Are you there?');
 });
 

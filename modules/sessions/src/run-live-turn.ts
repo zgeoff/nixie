@@ -108,6 +108,7 @@ async function runTokenTurn(
             view: plan.view,
             images: opening.images,
             silence: plan.silence,
+            log: run.log,
           }),
       signal: plan.signal,
       interrupt: input.interrupt,

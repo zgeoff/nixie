@@ -472,6 +472,7 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     messaging: options.messaging,
     imageBudget: sessionImageBudget,
     session: buildHeldSessionGuard(parts.invalidated),
+    log: options.log,
   };
 }
 
