@@ -31,30 +31,23 @@ import { readPlainExport } from './real-turns/read-plain-export.ts';
 import { startMemoryIndex } from '../../modules/memory/src/start-memory-index.ts';
 import { type BackgroundMessage, buildRanker, SHIPPED } from './real-turns/rank-turn.ts';
 import { readJSONLines } from './real-turns/read-json-lines.ts';
-import { buildScoreReport } from './real-turns/build-score-report.ts';
+import { buildTurnReport } from './real-turns/build-turn-report.ts';
 import { pickScoredTurns } from './real-turns/pick-scored-turns.ts';
 import type { Gold, Label } from './real-turns/score-turns.ts';
-import { buildRuns, getShippedRun, labelSchema, missingMapSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
+import { buildRuns, labelSchema, missingMapSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
 import { buildRatingSample } from './real-turns/build-rating-sample.ts';
 import { collectRatingPools } from './real-turns/collect-rating-pools.ts';
 import { pickPooledRuns } from './real-turns/pick-pooled-runs.ts';
 import { collectIndexedMessages } from './real-turns/collect-indexed-messages.ts';
 import { pickRatingTurns } from './real-turns/pick-rating-turns.ts';
 import { renderRatingParts } from './real-turns/render-rating-parts.ts';
-import { scoreBlocks } from './real-turns/score-blocks.ts';
 import { parseLabelLines } from './real-turns/parse-label-lines.ts';
-import { scoreMessageFloors } from './real-turns/score-message-floors.ts';
 import { readRatedMessages } from './real-turns/read-rated-messages.ts';
 import { collectExchangeItems } from './real-turns/collect-exchange-items.ts';
-import { collectItemShows } from './real-turns/collect-item-shows.ts';
-import { collectWritingTurns } from './real-turns/collect-writing-turns.ts';
-import { isTechnicalTurn } from './real-turns/is-technical-turn.ts';
-import { scoreWordOverlap } from './real-turns/score-word-overlap.ts';
 import { countMissedItems } from './real-turns/count-missed-items.ts';
 import { isMetaTurn } from './real-turns/is-meta-turn.ts';
 import { isInCaseRanges } from './real-turns/is-in-case-ranges.ts';
 import { parseCaseRanges } from './real-turns/parse-case-ranges.ts';
-import { pickHeldOutCases } from './real-turns/pick-held-out-cases.ts';
 import { pickKeptLabels } from './real-turns/pick-kept-labels.ts';
 import { messageKeyPrefix } from './real-turns/build-rating-sample.ts';
 // @boundaries-ignore a spike imports the code it measures
@@ -295,78 +288,30 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     excludedWords,
     collectBackgroundMessages(hybrid),
   );
-  const scored = buildScoreReport(runs, results, gold);
-  const heldOutIDs = pickHeldOutCases(
-    chosen.map((turn) => turn.caseID),
-    heldOutSeed,
-  );
-  const subsetReport = (isIn: (caseID: string) => boolean) =>
-    buildScoreReport(runs, new Map([...results].map(([name, ranked]) => [name, ranked.filter((entry) => isIn(entry.caseID))])), gold);
-  const technicalIDs = new Set(chosen.filter((turn) => isTechnicalTurn(turn)).map((turn) => turn.caseID));
-  const writingIDs = collectWritingTurns(hybrid, exported.records);
-  const kinds = {
-    technical: subsetReport((caseID) => technicalIDs.has(caseID)),
-    chat: subsetReport((caseID) => !technicalIDs.has(caseID)),
-    writing: subsetReport((caseID) => writingIDs.has(caseID)),
-    notWriting: subsetReport((caseID) => !writingIDs.has(caseID)),
-  };
-  const shippedServed = new Map((results.get(getShippedRun(runs, 'served').name) ?? []).map((entry) => [entry.caseID, [...entry.ranking.facts, ...entry.ranking.selves]]));
-  const shippedTop = new Map((results.get(getShippedRun(runs, 'ranking').name) ?? []).map((entry) => [entry.caseID, entry.ranking.facts.slice(0, 5)]));
-  const wordOverlap = {
-    served: scoreWordOverlap(chosen, gold, shippedServed, excludedWords),
-    top5: scoreWordOverlap(chosen, gold, shippedTop, excludedWords),
-  };
-  const selection = subsetReport((caseID) => !heldOutIDs.has(caseID));
-  const heldOut = subsetReport((caseID) => heldOutIDs.has(caseID));
-  const shortIDs = new Set(chosen.filter((turn) => countWords(turn.query) <= shortWords).map((turn) => turn.caseID));
-  const shortResults = new Map([...results].map(([name, ranked]) => [name, ranked.filter((entry) => shortIDs.has(entry.caseID))]));
-  const shortScored = buildScoreReport(runs, shortResults, gold);
-  const blocks = {
-    all: scoreBlocks(chosen, gold),
-    technical: scoreBlocks(
-      chosen.filter((turn) => technicalIDs.has(turn.caseID)),
-      gold,
-    ),
-    chat: scoreBlocks(
-      chosen.filter((turn) => !technicalIDs.has(turn.caseID)),
-      gold,
-    ),
-    short: scoreBlocks(
-      chosen.filter((turn) => shortIDs.has(turn.caseID)),
-      gold,
-    ),
-    other: scoreBlocks(
-      chosen.filter((turn) => !shortIDs.has(turn.caseID)),
-      gold,
-    ),
-  };
-
-  const itemShows = collectItemShows(hybrid, gold, pooledByCase, [3, 5, 10]);
   const messageEncoder = await loadTurnEncoder('leaf-ir-q8', encoderDirs);
   const ratedMessages = await readRatedMessages(chosen, gold, collectIndexedMessages(exported.records), messageEncoder, excludedWords);
 
   await messageEncoder.stop();
 
-  const messageFloors = scoreMessageFloors(ratedMessages, [0.38, 0.42, 0.46, 0.5, 0.55, 0.6]);
+  const built = buildTurnReport({
+    chosen,
+    hybrid,
+    records: exported.records,
+    gold,
+    labelled: labels.length,
+    runs,
+    results,
+    pooledByCase,
+    ratedMessages,
+    excludedWords,
+    shortWords,
+    heldOutSeed,
+  });
 
-  console.log(`turns ${chosen.length}, labelled ${labels.length}, short ${shortIDs.size}\n`);
-  console.log(scored.lines.join('\n'));
-  console.log(`\nshort turns only\n\n${shortScored.lines.join('\n')}`);
-  for (const [kind, report] of Object.entries(kinds)) {
-    console.log(`\n${kind} turns\n\n${report.lines.join('\n')}`);
-  }
-
-  console.log({ technical: technicalIDs.size, writing: chosen.filter((turn) => writingIDs.has(turn.caseID)).length, wordOverlap });
-  console.log(`\nselection half, ${chosen.length - heldOutIDs.size} turns\n\n${selection.lines.join('\n')}`);
-  console.log(`\nheld-out half, ${heldOutIDs.size} turns\n\n${heldOut.lines.join('\n')}`);
-  console.log(`\nshown blocks\n\n${JSON.stringify(blocks, null, 2)}`);
-  console.log(`\npast-message similarity floors\n\n${JSON.stringify(messageFloors, null, 2)}`);
-  console.log(`\nitems by turns retrieved\n\n${JSON.stringify({ ...itemShows, items: itemShows.items.slice(0, 15) }, null, 2)}`);
+  console.log(built.lines.join('\n'));
 
   if (values.out !== undefined) {
-    const report = { turns: chosen.length, labelled: labels.length, ...scored.report, short: shortScored.report, selection: selection.report, heldOut: heldOut.report, kinds: Object.fromEntries(Object.entries(kinds).map(([kind, report]) => [kind, report.report])), wordOverlap, blocks, messageFloors, itemShows };
-
-    await Bun.write(resolve(values.out), `${JSON.stringify(report, null, 2)}\n`);
+    await Bun.write(resolve(values.out), `${JSON.stringify(built.report, null, 2)}\n`);
   }
 }
 
