@@ -16,9 +16,7 @@ export interface ItemShowReport {
   topShares: { top: number; share: number }[];
 }
 
-// Counts, for each item, the turns whose retrieval logged it, and on the labelled turns, how often it
-// was in the rating pool and how the rater judged it. An item retrieved on many turns and helpful on
-// few is a hub.
+// An item retrieved on many turns and helpful on few is a hub.
 export function collectItemShows(
   turns: TurnCase[],
   gold: Map<string, Gold>,
@@ -26,7 +24,7 @@ export function collectItemShows(
   tops: number[],
 ): ItemShowReport {
   const shows = new Map<string, ItemShows>();
-  const entryFor = (itemID: string): ItemShows => {
+  const getEntry = (itemID: string): ItemShows => {
     const found = shows.get(itemID) ?? { itemID, retrieved: 0, pooled: 0, helpful: 0, misleading: 0, held: 0 };
 
     shows.set(itemID, found);
@@ -36,7 +34,7 @@ export function collectItemShows(
 
   for (const turn of turns) {
     for (const itemID of new Set(turn.logged.map((item) => item.itemID))) {
-      entryFor(itemID).retrieved += 1;
+      getEntry(itemID).retrieved += 1;
     }
   }
 
@@ -48,7 +46,7 @@ export function collectItemShows(
     }
 
     for (const itemID of pooled) {
-      const entry = entryFor(itemID);
+      const entry = getEntry(itemID);
 
       entry.pooled += 1;
       entry.helpful += expected.relevant.has(itemID) ? 1 : 0;

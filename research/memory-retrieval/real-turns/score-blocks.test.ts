@@ -45,6 +45,7 @@ test('it scores the items, self notes and past messages a labelled turn was show
           noise: new Set<string>(),
           misleading: new Set(['item-b', 'message:3']),
           delivered: new Set<string>(),
+          pinned: new Set<string>(),
           isLabelled: true,
         },
       ],

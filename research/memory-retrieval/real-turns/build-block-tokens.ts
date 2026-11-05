@@ -1,7 +1,6 @@
 // Counts the tokens each memory block adds to one turn's input, by rendering the block through the
 // product's own renderers and counting it the way the product budgets text: about 4 characters a
 // token.
-import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
 import { countTextTokens } from '../../../modules/compaction/src/count-text-tokens.ts';
 // @boundaries-ignore a spike imports the code it measures
@@ -17,7 +16,6 @@ import type { MemoryItem } from '../../../modules/sessions/src/types.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { renderSystemMessage } from '../../../libs/wire/src/render-system-message.ts';
 import type { TurnCase } from './build-turn-cases.ts';
-import type { PlainExport } from './read-plain-export.ts';
 
 export interface BlockTokens {
   pinned: number;
@@ -26,7 +24,7 @@ export interface BlockTokens {
   messages: number;
 }
 
-interface VersionMeta {
+export interface VersionMeta {
   shortID: string;
   subject: MemoryItem['subject'];
   origin: MemoryItem['origin'];
@@ -37,31 +35,6 @@ interface VersionMeta {
 
 export interface BlockSources {
   versions: Map<string, VersionMeta>;
-}
-
-const subjectSchema = z.enum(['owner', 'self', 'shared']).catch('owner');
-const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']).catch('owner');
-const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']).catch('owner');
-
-// Gathers what the renderers need beyond a turn's own fields: each version's line details.
-export function collectBlockSources(data: PlainExport): BlockSources {
-  const items = new Map(data.items.map((item) => [item.item_id, item]));
-  const versions = new Map<string, VersionMeta>();
-
-  for (const version of data.versions) {
-    const item = items.get(version.item_id);
-
-    versions.set(`${version.item_id}@${version.version}`, {
-      shortID: item?.short_id ?? 'm0000000000',
-      subject: subjectSchema.parse(item?.subject ?? (item?.kind === 'self' ? 'self' : 'owner')),
-      origin: originSchema.parse(version.origin),
-      source: sourceSchema.parse(version.source),
-      recordedAt: version.recorded_at ?? 0,
-      quote: version.quote ?? null,
-    });
-  }
-
-  return { versions };
 }
 
 export interface BlockOptions {

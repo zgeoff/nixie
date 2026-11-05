@@ -270,12 +270,12 @@ export interface RankingScore {
 }
 
 export function scoreRanking(ranked: RankedTurn[], gold: Map<string, Gold>): RankingScore {
-  const scored = ranked.filter((entry) => (gold.get(entry.caseID)?.relevant.size ?? 0) > 0);
+  const scored = ranked.filter((entry) => collectRankable(gold.get(entry.caseID)).size > 0);
 
   const perCase = scored.map((entry) => {
     const expected = gold.get(entry.caseID);
     const list = entry.ranking.facts;
-    const relevant = expected?.relevant ?? new Set<string>();
+    const relevant = collectRankable(expected);
     const first = list.findIndex((itemID) => relevant.has(itemID));
 
     return {
@@ -362,13 +362,23 @@ function buildCaseMetric(entry: RankedTurn, expected: Gold, metric: CaseMetric):
     return unseen.length === 0 ? null : unseen.filter((itemID) => shown.includes(itemID)).length / unseen.length;
   }
 
-  if (metric === 'at5') {
-    return list.slice(0, 5).filter((itemID) => expected.relevant.has(itemID)).length / expected.relevant.size;
+  const rankable = collectRankable(expected);
+
+  if (rankable.size === 0) {
+    return null;
   }
 
-  const first = list.findIndex((itemID) => expected.relevant.has(itemID));
+  if (metric === 'at5') {
+    return list.slice(0, 5).filter((itemID) => rankable.has(itemID)).length / rankable.size;
+  }
+
+  const first = list.findIndex((itemID) => rankable.has(itemID));
 
   return first === -1 ? 0 : 1 / (first + 1);
+}
+
+function collectRankable(expected: Gold | undefined): Set<string> {
+  return new Set([...(expected?.relevant ?? [])].filter((itemID) => expected?.pinned.has(itemID) !== true));
 }
 
 export interface ServedScore {
@@ -392,6 +402,8 @@ export interface Gold {
   noise: Set<string>;
   misleading: Set<string>;
   delivered: Set<string>;
+  // A needed item that the turn's pinned core already shows: the store never ranks it.
+  pinned: Set<string>;
   isLabelled: boolean;
 }
 

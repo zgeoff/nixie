@@ -294,6 +294,61 @@ test('it leaves out an item marked sensitive', async () => {
   expect(ranking).toStrictEqual({ facts: ['item-basil'], selves: [] });
 });
 
+test.each([
+  ['the BM25 list reaches an item that only an earlier message names, under the window rule', 'keyword', 'ok', 'ok', { kind: 'window', messages: 1 }, false, ['item-basil']],
+  ['the vector list reaches an item that only an earlier message names, under the window rule', 'vector', 'ok', 'ok', { kind: 'window', messages: 1 }, false, ['item-basil']],
+  ['the BM25 list leaves out an item that only pasted text names, when pasted text is dropped', 'keyword', 'basil bike', 'bike', { kind: 'none' }, true, ['item-bike']],
+  ['the vector list leaves out an item that only pasted text names, when pasted text is dropped', 'vector', 'basil bike', 'bike', { kind: 'none' }, true, ['item-bike']],
+] as const)('%s', async (_title, mode, query, typedQuery, shortRule, isPastedDropped, expected) => {
+  const index = await startMemoryIndex();
+
+  onTestFinished(() => index.stop());
+
+  const vectors: Record<string, Float32Array> = {
+    'basil\nok': new Float32Array([1, 0]),
+    bike: new Float32Array([0, 1]),
+    'Grows basil': new Float32Array([1, 0]),
+    'Owns a bike': new Float32Array([0, 1]),
+  };
+  const ranker = buildRanker(
+    { encode: async (texts) => texts.map((text) => vectors[text] ?? new Float32Array([0, 0])) },
+    index,
+  );
+
+  const ranking = await ranker.rankTurn(
+    {
+      caseID: 't6',
+      stepSequence: 5,
+      recalledSequence: 6,
+      recordedAt: 0,
+      query,
+      typedQuery,
+      shownMessages: [],
+      isSessionStart: false,
+      sessionNumber: 0,
+      isShredded: false,
+      contextTokens: null,
+      reply: '',
+      earlier: [{ owner: 'basil', reply: 'Noted.' }],
+      candidates: [
+        { itemID: 'item-basil', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Grows basil' },
+        { itemID: 'item-bike', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Owns a bike' },
+        { itemID: 'item-dog', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Walks the dog' },
+        { itemID: 'item-pasta', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Cooks pasta' },
+        { itemID: 'item-night', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Reads at night' },
+      ],
+      logged: [],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    { ...SHIPPED, mode, isInt8: false, shortRule, isPastedDropped },
+    [],
+  );
+
+  expect(ranking.facts).toStrictEqual([...expected]);
+});
+
 test('it shows nothing for a short message under the skip rule', async () => {
   const ctx = await setupTest();
 
@@ -585,7 +640,7 @@ test('it drops an item only BM25 found when BM25 has no weight', async () => {
       delivered: [],
       ratings: [],
     },
-    { ...SHIPPED, minSimilarity: 2, keywordWeight: 0 },
+    { ...SHIPPED, minScore: 0, minSimilarity: 2, keywordWeight: 0 },
     [],
   );
 

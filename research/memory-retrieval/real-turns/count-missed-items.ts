@@ -11,11 +11,8 @@ export interface MissedItems {
   turnsWithSensitiveMiss: number;
 }
 
-// Sorts each item a rater said the list left out by why the list lacked it. The session already held
-// it, it was sensitive or lapsed and so never retrievable, it sat in the list after all, it was
-// eligible but ranked below the pool, or the store held no active version of it at that turn. An item
-// the scores count as delivered, such as a pinned item or one the turn's own exchange added, counts
-// as held.
+// An item the scores count as delivered, such as a pinned item or one the turn's own exchange added,
+// counts as held, so this count and the scores agree on what the session already had.
 export function countMissedItems(
   turns: TurnCase[],
   missing: MissingMap[],

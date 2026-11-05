@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { buildBlockTokens, collectBlockSources } from './count-turn-blocks.ts';
+import { buildBlockTokens } from './build-block-tokens.ts';
 
-test('#buildBlockTokens counts nothing for a turn shown nothing and opening no session', () => {
+test('it counts nothing for a turn shown nothing and opening no session', () => {
   expect(
     buildBlockTokens(
       {
@@ -12,7 +12,8 @@ test('#buildBlockTokens counts nothing for a turn shown nothing and opening no s
         query: 'ok',
         typedQuery: 'ok',
         shownMessages: [],
-        isSessionStart: false, sessionNumber: 0,
+        isSessionStart: false,
+        sessionNumber: 0,
         isShredded: false,
         contextTokens: null,
         reply: 'Noted.',
@@ -31,7 +32,7 @@ test('#buildBlockTokens counts nothing for a turn shown nothing and opening no s
   ).toStrictEqual({ pinned: 0, items: 0, selfNotes: 0, messages: 0 });
 });
 
-test('#buildBlockTokens counts the pinned block and each retrieved block on a session start', () => {
+test('it counts the pinned block and each retrieved block on a session start', () => {
   const tokens = buildBlockTokens(
     {
       caseID: 't9',
@@ -41,7 +42,8 @@ test('#buildBlockTokens counts the pinned block and each retrieved block on a se
       query: 'what about the boat?',
       typedQuery: 'what about the boat?',
       shownMessages: [{ sequence: 4, thread: 'conversation', recordedAt: Date.parse('2026-03-02T09:00:00Z'), text: 'the boat needs new rope', isCut: false }],
-      isSessionStart: true, sessionNumber: 1,
+      isSessionStart: true,
+      sessionNumber: 1,
       isShredded: false,
       contextTokens: null,
       reply: 'Rope first.',
@@ -64,46 +66,4 @@ test('#buildBlockTokens counts the pinned block and each retrieved block on a se
   );
 
   expect(tokens).toStrictEqual({ pinned: 85, items: 75, selfNotes: 76, messages: 76 });
-});
-
-test('#collectBlockSources takes each version line from the export', () => {
-  const sources = collectBlockSources({
-    records: [],
-    items: [
-      {
-        item_id: 'item-b',
-        version: 1,
-        state: 'active',
-        is_pinned: 0,
-        pinned_sequence: null,
-        created_sequence: 1,
-        short_id: 'm7',
-        kind: 'fact',
-        subject: 'owner',
-      },
-    ],
-    versions: [
-      {
-        item_id: 'item-b',
-        version: 1,
-        change: 'created',
-        state: 'active',
-        sequence: 1,
-        until: null,
-        status: 'readable',
-        text: 'Owns a narrowboat',
-        quote: 'we bought the boat',
-        origin: 'conversation',
-        source: 'owner',
-        recorded_at: 1000,
-      },
-    ],
-    notes: [],
-  });
-
-  expect(sources).toStrictEqual({
-    versions: new Map([
-      ['item-b@1', { shortID: 'm7', subject: 'owner', origin: 'conversation', source: 'owner', recordedAt: 1000, quote: 'we bought the boat' }],
-    ]),
-  });
 });

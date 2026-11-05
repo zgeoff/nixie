@@ -39,6 +39,7 @@ test('it gives recall apart for needed items that share a content word with the 
           noise: new Set<string>(),
           misleading: new Set<string>(),
           delivered: new Set(['item-held']),
+          pinned: new Set<string>(),
           isLabelled: true,
         },
       ],

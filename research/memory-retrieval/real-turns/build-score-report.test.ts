@@ -15,7 +15,7 @@ test('it prints a row a run in each table, compared with the shipped run of its 
     new Map([
       [
         't1',
-        { relevant: new Set(['needed-a']), best: 'needed-a', messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+        { relevant: new Set(['needed-a']), best: 'needed-a', messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), pinned: new Set<string>(), isLabelled: true },
       ],
     ]),
   );

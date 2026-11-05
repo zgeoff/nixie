@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { buildGold } from './build-gold.ts';
 
 test('it maps the label references to items and counts a delivered item only at its current version', () => {
@@ -42,6 +43,7 @@ test('it maps the label references to items and counts a delivered item only at 
           noise: new Set(['item-b']),
           misleading: new Set<string>(),
           delivered: new Set(['item-b']),
+          pinned: new Set<string>(),
           isLabelled: true,
         },
       ],
@@ -78,13 +80,16 @@ test('it keeps a named past message apart from the needed items', () => {
     [{ caseID: 't7', refs: { M1: 'item-a', P1: 'message:3' } }],
   );
 
-  expect('gold' in built ? built.gold.get('t7') : null).toStrictEqual({
+  invariant('gold' in built);
+
+  expect(built.gold.get('t7')).toStrictEqual({
     relevant: new Set<string>(),
     messages: new Set(['message:3']),
     best: 'message:3',
     noise: new Set<string>(),
     misleading: new Set<string>(),
     delivered: new Set<string>(),
+    pinned: new Set<string>(),
     isLabelled: true,
   });
 });
@@ -179,10 +184,12 @@ test('it maps the references the rater called misleading to items', () => {
     [{ caseID: 't7', refs: { M1: 'item-a', M2: 'item-b' } }],
   );
 
-  expect('gold' in built ? built.gold.get('t7')?.misleading : null).toStrictEqual(new Set(['item-b']));
+  invariant('gold' in built);
+
+  expect(built.gold.get('t7')?.misleading).toStrictEqual(new Set(['item-b']));
 });
 
-test('it adds the left-out items the store held to the needed items, and counts a pinned one as delivered', () => {
+test('it adds the left-out items the store held to the needed items, and counts a pinned one as delivered and pinned', () => {
   const built = buildGold(
     [
       {
@@ -212,13 +219,16 @@ test('it adds the left-out items the store held to the needed items, and counts 
     { missing: [{ caseID: 't7', itemIDs: ['item-c', 'item-d'], unmatched: 0 }], heldCases: new Set(), heldItems: new Map() },
   );
 
-  expect('gold' in built ? built.gold.get('t7') : null).toStrictEqual({
+  invariant('gold' in built);
+
+  expect(built.gold.get('t7')).toStrictEqual({
     relevant: new Set(['item-a', 'item-c']),
     messages: new Set<string>(),
     best: 'item-a',
     noise: new Set<string>(),
     misleading: new Set<string>(),
     delivered: new Set(['item-c']),
+    pinned: new Set(['item-c']),
     isLabelled: true,
   });
 });
@@ -251,7 +261,9 @@ test('it counts every listed item of a held case as delivered', () => {
     { missing: [], heldCases: new Set(['t7']), heldItems: new Map() },
   );
 
-  expect('gold' in built ? built.gold.get('t7')?.delivered : null).toStrictEqual(new Set(['item-a', 'item-b']));
+  invariant('gold' in built);
+
+  expect(built.gold.get('t7')?.delivered).toStrictEqual(new Set(['item-a', 'item-b']));
 });
 
 test('it counts an item the exchange itself added as delivered', () => {
@@ -282,5 +294,7 @@ test('it counts an item the exchange itself added as delivered', () => {
     { missing: [], heldCases: new Set(), heldItems: new Map([['t7', new Set(['item-b'])]]) },
   );
 
-  expect('gold' in built ? built.gold.get('t7')?.delivered : null).toStrictEqual(new Set(['item-b']));
+  invariant('gold' in built);
+
+  expect(built.gold.get('t7')?.delivered).toStrictEqual(new Set(['item-b']));
 });

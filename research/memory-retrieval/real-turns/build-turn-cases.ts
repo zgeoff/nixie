@@ -178,7 +178,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
 
       const typedQuery = batch
         .flatMap((entry) => {
-          const text = collectTypedText(entry);
+          const text = findRecordTypedText(entry);
 
           return text === null ? [] : [text];
         })
@@ -338,7 +338,7 @@ function toCallContext(ended: z.infer<typeof turnEndedSchema>): number | null {
 }
 
 // The message by the product's own typed-text rule, which leaves what the user typed.
-function collectTypedText(record: PlainRecord): string | null {
+function findRecordTypedText(record: PlainRecord): string | null {
   return record.erasable.status === 'readable' ? findTypedText(record.erasable.fields) : null;
 }
 

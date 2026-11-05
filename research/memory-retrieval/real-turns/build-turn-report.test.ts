@@ -30,6 +30,7 @@ test('it scores the short turns, the technical turns and the chat turns each on 
 
   const built = buildTurnReport({
     chosen: [turn('t4', 'ferry?'), turn('t9', 'fix the deploy config for the ferry app')],
+    turns: [],
     hybrid: [],
     records: [],
     gold: new Map([
@@ -42,6 +43,7 @@ test('it scores the short turns, the technical turns and the chat turns each on 
           noise: new Set<string>(),
           misleading: new Set<string>(),
           delivered: new Set<string>(),
+          pinned: new Set<string>(),
           isLabelled: true,
         },
       ],
@@ -54,6 +56,7 @@ test('it scores the short turns, the technical turns and the chat turns each on 
           noise: new Set<string>(),
           misleading: new Set<string>(),
           delivered: new Set<string>(),
+          pinned: new Set<string>(),
           isLabelled: true,
         },
       ],
@@ -111,6 +114,7 @@ test('it scores the selection half and the held-out half each on its own turns',
 
   const built = buildTurnReport({
     chosen: [turn('t4'), turn('t9')],
+    turns: [],
     hybrid: [],
     records: [],
     gold: new Map([
@@ -123,6 +127,7 @@ test('it scores the selection half and the held-out half each on its own turns',
           noise: new Set<string>(),
           misleading: new Set<string>(),
           delivered: new Set<string>(),
+          pinned: new Set<string>(),
           isLabelled: true,
         },
       ],
@@ -135,6 +140,7 @@ test('it scores the selection half and the held-out half each on its own turns',
           noise: new Set<string>(),
           misleading: new Set<string>(),
           delivered: new Set<string>(),
+          pinned: new Set<string>(),
           isLabelled: true,
         },
       ],
@@ -165,6 +171,73 @@ test('it scores the selection half and the held-out half each on its own turns',
   });
 });
 
+test('it ends a turn\'s exchange at the next turn of any search mode when it picks the writing turns', () => {
+  const turn = (caseID: string, recalledSequence: number, searchMode: string) => ({
+    caseID,
+    stepSequence: recalledSequence - 1,
+    recalledSequence,
+    recordedAt: 0,
+    query: 'when does the morning ferry leave the island',
+    typedQuery: 'when does the morning ferry leave the island',
+    shownMessages: [],
+    isSessionStart: false,
+    sessionNumber: 0,
+    isShredded: false,
+    contextTokens: null,
+    reply: 'Noted.',
+    earlier: [],
+    candidates: [{ itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Takes the ferry' }],
+    logged: [{ itemID: 'item-a', version: 1 }],
+    searchMode,
+    delivered: [],
+    ratings: [],
+  });
+  const ranked = [{ caseID: 't4', ranking: { facts: ['item-a'], selves: [] } }];
+
+  const built = buildTurnReport({
+    chosen: [turn('t4', 4, 'hybrid')],
+    turns: [turn('t4', 4, 'hybrid'), turn('t6', 6, 'vector')],
+    hybrid: [turn('t4', 4, 'hybrid')],
+    records: [{ sequence: 8, kind: 'memory.proposed', recordedAt: '', thread: 'conversation', parent: null, payload: {}, erasable: { status: 'none' } }],
+    gold: new Map([
+      [
+        't4',
+        {
+          relevant: new Set<string>(),
+          messages: new Set<string>(),
+          best: null,
+          noise: new Set<string>(),
+          misleading: new Set<string>(),
+          delivered: new Set<string>(),
+          pinned: new Set<string>(),
+          isLabelled: true,
+        },
+      ],
+    ]),
+    labelled: 1,
+    runs: [
+      { name: 'ranking', encoder: 'leaf-ir-q8', kind: 'ranking', config: SHIPPED, isShipped: true },
+      { name: 'served', encoder: 'leaf-ir-q8', kind: 'served', config: SHIPPED, isShipped: true },
+    ],
+    results: new Map([
+      ['ranking', ranked],
+      ['served', ranked],
+    ]),
+    pooledByCase: new Map(),
+    ratedMessages: [],
+    excludedWords: [],
+    shortWords: 3,
+    heldOutSeed: 4716,
+  });
+
+  expect(built.report['kinds']).toStrictEqual(
+    expect.objectContaining({
+      writing: expect.objectContaining({ served: expect.objectContaining({ emptyCases: 0 }) }),
+      notWriting: expect.objectContaining({ served: expect.objectContaining({ emptyCases: 1 }) }),
+    }),
+  );
+});
+
 test('it counts the scored, labelled and short turns, and scores the blocks of short turns apart', () => {
   const turn = (caseID: string, query: string) => ({
     caseID,
@@ -192,6 +265,7 @@ test('it counts the scored, labelled and short turns, and scores the blocks of s
     noise: new Set<string>(),
     misleading: new Set<string>(),
     delivered: new Set<string>(),
+    pinned: new Set<string>(),
     isLabelled: true,
   };
   const ranked = [
@@ -201,6 +275,7 @@ test('it counts the scored, labelled and short turns, and scores the blocks of s
 
   const built = buildTurnReport({
     chosen: [turn('t4', 'ferry?'), turn('t9', 'when does the morning ferry leave the island')],
+    turns: [],
     hybrid: [],
     records: [],
     gold: new Map([

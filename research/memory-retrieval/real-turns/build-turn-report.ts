@@ -15,6 +15,8 @@ import { scoreWordOverlap } from './score-word-overlap.ts';
 
 export interface TurnReportInput {
   chosen: TurnCase[];
+  // Every turn of every search mode: a turn's exchange ends where the next turn of any mode starts.
+  turns: TurnCase[];
   hybrid: TurnCase[];
   records: PlainRecord[];
   gold: Map<string, Gold>;
@@ -44,7 +46,7 @@ export function buildTurnReport(input: TurnReportInput): TurnReport {
   const subsetReport = (isIn: (caseID: string) => boolean) =>
     buildScoreReport(runs, new Map([...results].map(([name, ranked]) => [name, ranked.filter((entry) => isIn(entry.caseID))])), gold);
   const technicalIDs = new Set(chosen.filter((turn) => isTechnicalTurn(turn)).map((turn) => turn.caseID));
-  const writingIDs = collectWritingTurns(input.hybrid, input.records);
+  const writingIDs = collectWritingTurns(input.turns, input.records);
   const kinds = {
     technical: subsetReport((caseID) => technicalIDs.has(caseID)),
     chat: subsetReport((caseID) => !technicalIDs.has(caseID)),

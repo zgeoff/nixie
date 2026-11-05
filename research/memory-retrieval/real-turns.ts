@@ -18,11 +18,13 @@ import type { BuiltGold, SampleKey } from './real-turns/build-gold.ts';
 import { buildGold } from './real-turns/build-gold.ts';
 import { buildKeyPath } from './real-turns/build-key-path.ts';
 import { buildTurnCases } from './real-turns/build-turn-cases.ts';
-import type { BlockSources } from './real-turns/count-turn-blocks.ts';
-import { buildBlockTokens, collectBlockSources } from './real-turns/count-turn-blocks.ts';
+import type { BlockSources } from './real-turns/build-block-tokens.ts';
+import { buildBlockTokens } from './real-turns/build-block-tokens.ts';
+import { collectBlockSources } from './real-turns/collect-block-sources.ts';
 import { countWords } from './real-turns/count-words.ts';
 import { collectSessionHeld } from './real-turns/collect-session-held.ts';
 import { buildTurnTokens } from './real-turns/build-turn-tokens.ts';
+import { buildBlockSummary } from './real-turns/build-block-summary.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
 import { buildSample, sampleTurnSchema } from './real-turns/build-sample.ts';
@@ -49,7 +51,8 @@ import { collectExchangeItems } from './real-turns/collect-exchange-items.ts';
 import { countMissedItems } from './real-turns/count-missed-items.ts';
 import { isMetaTurn } from './real-turns/is-meta-turn.ts';
 import { isInCaseRanges } from './real-turns/is-in-case-ranges.ts';
-import { parseCaseRanges } from './real-turns/parse-case-ranges.ts';
+import { parseCaseRangesOption } from './real-turns/parse-case-ranges-option.ts';
+import { pickLabelFiles } from './real-turns/pick-label-files.ts';
 import { pickKeptLabels } from './real-turns/pick-kept-labels.ts';
 import { messageKeyPrefix } from './real-turns/build-rating-sample.ts';
 // @boundaries-ignore a spike imports the code it measures
@@ -137,51 +140,20 @@ function printStats(turns: TurnCase[]): void {
   });
 }
 
-// Prints, for each memory block, the tokens it adds per turn, over every turn and over the short
-// ones, beside the mean context of a model call. A block stays in the session once given, so it
-// also prints the memory tokens a session holds at each turn. Only a session start resets that
-// count, and a compaction does not, so it is an upper bound.
+// A block stays in the session once given, and a compaction does not reset the count a session
+// holds, so that count is an upper bound.
 function printBlocks(turns: TurnCase[], sources: BlockSources): void {
   const lines = { ownerName: null, defaultZone: 'UTC' };
   const blocks = turns.map((turn) => ({ turn, tokens: buildBlockTokens(turn, sources, lines) }));
   const sessionHeld = collectSessionHeld(blocks.map(({ turn, tokens }) => buildTurnTokens(turn, tokens, sources, lines)));
   const counted = blocks.map((entry, position) => ({ ...entry, sessionHeld: sessionHeld[position] ?? 0 }));
 
-  const summarize = (group: typeof counted) => {
-    const blocks = (['pinned', 'items', 'selfNotes', 'messages'] as const).map((block) => {
-      const values = group.map((entry) => entry.tokens[block]);
-      const present = values.filter((value) => value > 0);
-
-      return [
-        block,
-        {
-          perTurn: mean(values),
-          turnsWithIt: present.length,
-          whenPresent: mean(present),
-          p90WhenPresent: present.toSorted((first, second) => first - second)[Math.floor(present.length * 0.9)] ?? 0,
-        },
-      ];
-    });
-
-    const contexts = group.flatMap((entry) => (entry.turn.contextTokens === null ? [] : [entry.turn.contextTokens]));
-
-    const held = group.map((entry) => entry.sessionHeld).toSorted((first, second) => first - second);
-
-    return {
-      turns: group.length,
-      meanCallContext: mean(contexts),
-      sessionHeld: { mean: mean(held), median: held[Math.floor(held.length / 2)] ?? 0, max: held.at(-1) ?? 0 },
-      turnsWithShownMessages: group.filter((entry) => entry.turn.shownMessages.length > 0).length,
-      blocks: Object.fromEntries(blocks),
-    };
-  };
-
   console.log(
     JSON.stringify(
       {
-        all: summarize(counted),
-        short: summarize(counted.filter((entry) => countWords(entry.turn.query) <= shortWords)),
-        hybrid: summarize(counted.filter((entry) => entry.turn.searchMode === 'hybrid')),
+        all: buildBlockSummary(counted),
+        short: buildBlockSummary(counted.filter((entry) => countWords(entry.turn.query) <= shortWords)),
+        hybrid: buildBlockSummary(counted.filter((entry) => entry.turn.searchMode === 'hybrid')),
       },
       null,
       2,
@@ -242,7 +214,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     keptCases.has(entry.caseID),
   );
   const hybrid = turns.filter((turn) => turn.searchMode === 'hybrid');
-  const exchangeItems = collectExchangeItems(hybrid, exported.versions);
+  const exchangeItems = collectExchangeItems(turns, exported.versions);
   const gold = getGold(
     buildGold(turns, labels, keys, {
       missing,
@@ -292,6 +264,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
 
   const built = buildTurnReport({
     chosen,
+    turns,
     hybrid,
     records: exported.records,
     gold,
@@ -346,27 +319,11 @@ async function readLabels(turns: TurnCase[]): Promise<{ labels: Label[]; keys: S
   return { labels: current.labels, keys };
 }
 
-// Reads one labels file, or every .jsonl file in a folder of them, as a rater may answer in parts.
 async function readLabelText(path: string): Promise<string> {
   const isFolder = (await stat(path)).isDirectory();
-  const files = isFolder
-    ? (await readdir(path))
-        .filter((name) => name.endsWith('.jsonl'))
-        .toSorted()
-        .map((name) => join(path, name))
-    : [path];
+  const files = isFolder ? pickLabelFiles(await readdir(path)).map((name) => join(path, name)) : [path];
 
   return (await Promise.all(files.map((file) => Bun.file(file).text()))).join('\n');
-}
-
-function parseCaseRangesOption(spec: string | undefined): { from: number; to: number }[] {
-  const parsed = parseCaseRanges(spec ?? '');
-
-  if ('invalid' in parsed) {
-    throw new Error(`pass case ranges such as t120-t180,t200, not ${parsed.invalid.join(', ')}`);
-  }
-
-  return parsed.ranges;
 }
 
 function getGold(built: BuiltGold): Map<string, Gold> {
@@ -420,6 +377,13 @@ async function writeTestSet(turns: TurnCase[]): Promise<void> {
 async function writeRatingSample(turns: TurnCase[]): Promise<void> {
   if (values.out === undefined) {
     throw new Error('pass --out <dir> for the sample, its key and its parts');
+  }
+
+  // A smaller sample writes fewer parts, so a part left from an earlier sample would pass as current.
+  const existing = await readdir(resolve(values.out)).catch(() => []);
+
+  if (existing.length > 0) {
+    throw new Error(`pass an empty or new --out folder: ${values.out} already holds ${existing.length} files`);
   }
 
   const size = Number(values.size ?? '240');

@@ -15,12 +15,9 @@ export interface GoldExtras {
 
 export type BuiltGold = { gold: Map<string, Gold> } | { unknownRefs: string[]; absentCases: string[] };
 
-// Turns each label's references into item IDs through the sample key, and adds the items the rater
-// said the list left out. A left-out item that is pinned sits in the context already, so it counts
-// as delivered, and so does every listed item of a case the rater says the context already held,
-// such as one after the session loaded the items itself, and every item the exchange itself added.
-// It returns every reference the key lacks, as caseID/ref, and every labelled case
-// the rebuilt turns lack, instead of dropping them.
+// A left-out pinned item, every listed item of a held case, and every item the exchange added sit
+// in the context already, so each counts as delivered. A reference or case the key or turns lack is
+// returned rather than dropped, so a stale key fails loudly.
 export function buildGold(turns: TurnCase[], labels: Label[], keys: SampleKey[], extra: GoldExtras = { missing: [], heldCases: new Set(), heldItems: new Map() }): BuiltGold {
   const labelsByCase = new Map(labels.map((label) => [label.caseID, label]));
   const refsByCase = new Map(keys.map((entry) => [entry.caseID, entry.refs]));
@@ -64,6 +61,7 @@ export function buildGold(turns: TurnCase[], labels: Label[], keys: SampleKey[],
         ...(extra.heldItems.get(turn.caseID) ?? []),
         ...(extra.heldCases.has(turn.caseID) ? Object.values(refs).filter((key) => !key.startsWith(messageKeyPrefix)) : []),
       ]),
+      pinned: new Set(leftOut.filter((itemID) => pinned.has(itemID))),
       isLabelled: label !== undefined,
     });
   }

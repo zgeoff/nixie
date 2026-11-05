@@ -7,10 +7,8 @@ export interface RatingTurns {
   strata: { short: number; shown: number; random: number };
 }
 
-// Picks the turns a rater marks: every short turn, every turn whose retrieval returned an item, and
-// the rest at random from the hybrid turns, up to the size. A turn whose message or reply was
-// shredded stays out, so a rater never sees a blank the turn never sent. The seed is fixed, so the same export
-// always gives the same turns.
+// A shredded turn stays out, so a rater never sees a blank the turn never sent. The seed is fixed,
+// so the same export always gives the same turns.
 export function pickRatingTurns(turns: TurnCase[], size: number, shortWords: number): RatingTurns {
   const random = makeRandom(2358);
   const eligible = turns.filter((turn) => turn.searchMode === 'hybrid' && turn.candidates.length > 0 && !turn.isShredded);
