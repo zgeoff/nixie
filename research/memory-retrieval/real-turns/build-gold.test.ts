@@ -203,7 +203,7 @@ test('it adds the items the list left out to the needed items, and counts a pinn
     ],
     [{ caseID: 't7', relevant: ['M1'], best: 'M1', missing: ['the cold', 'the trip'] }],
     [{ caseID: 't7', refs: { M1: 'item-a' } }],
-    { missing: [{ caseID: 't7', itemIDs: ['item-c', 'item-d'], unmatched: 0 }], heldCases: new Set() },
+    { missing: [{ caseID: 't7', itemIDs: ['item-c', 'item-d'], unmatched: 0 }], heldCases: new Set(), heldItems: new Map() },
   );
 
   expect('gold' in built ? built.gold.get('t7') : null).toStrictEqual({
@@ -241,8 +241,38 @@ test('it counts every listed item of a held case as delivered', () => {
     ],
     [{ caseID: 't7', relevant: [], best: null }],
     [{ caseID: 't7', refs: { M1: 'item-a', M2: 'item-b', P1: 'message:3' } }],
-    { missing: [], heldCases: new Set(['t7']) },
+    { missing: [], heldCases: new Set(['t7']), heldItems: new Map() },
   );
 
   expect('gold' in built ? built.gold.get('t7')?.delivered : null).toStrictEqual(new Set(['item-a', 'item-b']));
+});
+
+test('it counts an item the exchange itself added as delivered', () => {
+  const built = buildGold(
+    [
+      {
+        caseID: 't7',
+        stepSequence: 5,
+        recalledSequence: 7,
+        recordedAt: 0,
+        query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false,
+        contextTokens: null,
+        reply: '',
+        earlier: [],
+        candidates: [],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    [{ caseID: 't7', relevant: [], best: null }],
+    [{ caseID: 't7', refs: { M1: 'item-a', M2: 'item-b' } }],
+    { missing: [], heldCases: new Set(), heldItems: new Map([['t7', new Set(['item-b'])]]) },
+  );
+
+  expect('gold' in built ? built.gold.get('t7')?.delivered : null).toStrictEqual(new Set(['item-b']));
 });

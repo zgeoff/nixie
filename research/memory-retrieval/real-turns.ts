@@ -43,7 +43,9 @@ import { parseLabelLines } from './real-turns/parse-label-lines.ts';
 import type { RatedMessage } from './real-turns/score-message-floors.ts';
 import { scoreMessageFloors } from './real-turns/score-message-floors.ts';
 import { buildSimilarity } from './real-turns/build-similarity.ts';
+import { collectExchangeItems } from './real-turns/collect-exchange-items.ts';
 import { collectItemShows } from './real-turns/collect-item-shows.ts';
+import { makeRandom } from './real-turns/make-random.ts';
 import { countMissedItems } from './real-turns/count-missed-items.ts';
 import { isMetaTurn } from './real-turns/is-meta-turn.ts';
 import { isInCaseRanges, parseCaseRanges } from './real-turns/parse-case-ranges.ts';
@@ -77,6 +79,7 @@ const shortWords = 3;
 // gets rated, and fresh recall has a count of needed items to divide by.
 const poolTopPlaces = 5;
 const turnsPerPart = 15;
+const heldOutSeed = 4716;
 
 const encoderDirs = {
   shipped: join(repoRoot, 'node_modules/.cache/nixie-encoder'),
@@ -245,13 +248,15 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   );
   const heldRanges = readCaseRanges(values.held);
   const missing = values.missing === undefined ? [] : await readJSONLines(resolve(values.missing), missingMapSchema);
+  const hybrid = turns.filter((turn) => turn.searchMode === 'hybrid');
+  const exchangeItems = collectExchangeItems(hybrid, exported.versions);
   const gold = getGold(
     buildGold(turns, labels, keys, {
       missing,
       heldCases: new Set(labels.map((label) => label.caseID).filter((caseID) => isInCaseRanges(caseID, heldRanges))),
+      heldItems: exchangeItems,
     }),
   );
-  const hybrid = turns.filter((turn) => turn.searchMode === 'hybrid');
 
   console.log({
     metaTurns: {
@@ -264,6 +269,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     missing: countMissedItems(turns, missing, pooledByCase),
     descriptions: labels.reduce((sum, label) => sum + (label.missing?.length ?? 0), 0),
     turnsWithDescriptions: labels.filter((label) => (label.missing?.length ?? 0) > 0).length,
+    labelledWithExchangeItems: labels.filter((label) => exchangeItems.has(label.caseID)).length,
   });
   const encoders = parseEncoderNames(values.encoders ?? 'leaf-ir-q8');
 
@@ -278,8 +284,14 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     runs,
     { loadEncoder: (name) => loadTurnEncoder(name, encoderDirs), startIndex: startMemoryIndex },
     excludedWords,
+    hybrid.map((turn) => ({ sequence: turn.recalledSequence, text: buildVectorQuery(turn.query, excludedWords) })).filter((message) => message.text.trim() !== ''),
   );
   const scored = buildScoreReport(runs, results, gold);
+  const heldOutIDs = pickHeldOutCases(chosen.map((turn) => turn.caseID));
+  const subsetReport = (isIn: (caseID: string) => boolean) =>
+    buildScoreReport(runs, new Map([...results].map(([name, ranked]) => [name, ranked.filter((entry) => isIn(entry.caseID))])), gold);
+  const selection = subsetReport((caseID) => !heldOutIDs.has(caseID));
+  const heldOut = subsetReport((caseID) => heldOutIDs.has(caseID));
   const shortIDs = new Set(chosen.filter((turn) => countWords(turn.query) <= shortWords).map((turn) => turn.caseID));
   const shortResults = new Map([...results].map(([name, ranked]) => [name, ranked.filter((entry) => shortIDs.has(entry.caseID))]));
   const shortScored = buildScoreReport(runs, shortResults, gold);
@@ -301,12 +313,14 @@ async function runScore(turns: TurnCase[]): Promise<void> {
   console.log(`turns ${chosen.length}, labelled ${labels.length}, short ${shortIDs.size}\n`);
   console.log(scored.lines.join('\n'));
   console.log(`\nshort turns only\n\n${shortScored.lines.join('\n')}`);
+  console.log(`\nselection half, ${chosen.length - heldOutIDs.size} turns\n\n${selection.lines.join('\n')}`);
+  console.log(`\nheld-out half, ${heldOutIDs.size} turns\n\n${heldOut.lines.join('\n')}`);
   console.log(`\nshown blocks\n\n${JSON.stringify(blocks, null, 2)}`);
   console.log(`\npast-message similarity floors\n\n${JSON.stringify(messageFloors, null, 2)}`);
   console.log(`\nitems by turns retrieved\n\n${JSON.stringify({ ...itemShows, items: itemShows.items.slice(0, 15) }, null, 2)}`);
 
   if (values.out !== undefined) {
-    const report = { turns: chosen.length, labelled: labels.length, ...scored.report, short: shortScored.report, blocks, messageFloors, itemShows };
+    const report = { turns: chosen.length, labelled: labels.length, ...scored.report, short: shortScored.report, selection: selection.report, heldOut: heldOut.report, blocks, messageFloors, itemShows };
 
     await Bun.write(resolve(values.out), `${JSON.stringify(report, null, 2)}\n`);
   }
@@ -385,6 +399,15 @@ async function readLabelText(path: string): Promise<string> {
     : [path];
 
   return (await Promise.all(files.map((file) => Bun.file(file).text()))).join('\n');
+}
+
+// Holds out half the labelled turns, drawn with a fixed seed, so a setting chosen on the other half
+// is scored on turns it was not chosen on.
+function pickHeldOutCases(caseIDs: string[]): Set<string> {
+  const random = makeRandom(heldOutSeed);
+  const shuffled = caseIDs.toSorted().map((caseID) => ({ caseID, key: random() })).toSorted((first, second) => first.key - second.key);
+
+  return new Set(shuffled.slice(0, Math.floor(shuffled.length / 2)).map((entry) => entry.caseID));
 }
 
 function readCaseRanges(spec: string | undefined): { from: number; to: number }[] {

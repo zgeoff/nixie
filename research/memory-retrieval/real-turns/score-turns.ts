@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { MemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
 import type { EncoderName, TurnEncoder } from './load-turn-encoder.ts';
 import { makeRandom } from './make-random.ts';
-import type { RankConfig, TurnRanking } from './rank-turn.ts';
+import type { BackgroundMessage, RankConfig, TurnRanking } from './rank-turn.ts';
 import { buildRanker, SHIPPED } from './rank-turn.ts';
 
 // A label names items by the references local to its turn, and the sample key maps each reference
@@ -92,6 +92,8 @@ export function buildRuns(encoders: EncoderName[]): Run[] {
     sweep('hybrid, full width', 'ranking', { ...rankingBase, width: null, isInt8: false }),
     sweep('hybrid, k 20', 'ranking', { ...rankingBase, fusionK: 20 }),
     sweep('hybrid, vectors x2', 'ranking', { ...rankingBase, vectorWeight: 2 }),
+    sweep('hybrid, hub penalty 0.5', 'ranking', { ...rankingBase, hub: { kind: 'penalty', weight: 0.5 } }),
+    sweep('hybrid, hub penalty 1', 'ranking', { ...rankingBase, hub: { kind: 'penalty', weight: 1 } }),
     sweep('served, shipped floors, nothing delivered', 'served', { ...SHIPPED, isDeliveredExcluded: false }),
   );
 
@@ -119,6 +121,27 @@ export function buildRuns(encoders: EncoderName[]): Run[] {
     }
 
     runs.push(sweep(`served vectors, similarity ${minSimilarity}`, 'served', { ...SHIPPED, mode: 'vector', minSimilarity }));
+  }
+
+  for (const keywordWeight of [0, 0.25, 0.5, 2]) {
+    runs.push(
+      sweep(`hybrid, BM25 x${keywordWeight}`, 'ranking', { ...rankingBase, keywordWeight }),
+      sweep(`served, BM25 x${keywordWeight}`, 'served', { ...SHIPPED, keywordWeight }),
+    );
+  }
+
+  for (const minScore of [0.5, 4]) {
+    runs.push(sweep(`served, BM25 floor ${minScore}`, 'served', { ...SHIPPED, minScore }));
+  }
+
+  for (const hub of [
+    { kind: 'penalty', weight: 0.5 },
+    { kind: 'penalty', weight: 1 },
+    { kind: 'floor', margin: -0.05 },
+    { kind: 'floor', margin: 0 },
+    { kind: 'floor', margin: 0.05 },
+  ] as const) {
+    runs.push(sweep(`served, hub ${hub.kind} ${'weight' in hub ? hub.weight : hub.margin}`, 'served', { ...SHIPPED, hub }));
   }
 
   runs.push(...buildShortRuns());
@@ -179,13 +202,14 @@ export async function runRankings(
   runs: Run[],
   resources: RankingResources,
   excludedWords: string[],
+  background: BackgroundMessage[] = [],
 ): Promise<Map<string, RankedTurn[]>> {
   const results = new Map<string, RankedTurn[]>(runs.map((run) => [run.name, []]));
 
   for (const encoderName of [...new Set(runs.map((run) => run.encoder))]) {
     const encoder = await resources.loadEncoder(encoderName);
     const index = await resources.startIndex();
-    const ranker = buildRanker(encoder, index);
+    const ranker = buildRanker(encoder, index, background);
     const own = runs.filter((run) => run.encoder === encoderName);
 
     for (const turn of turns) {

@@ -316,3 +316,130 @@ test('it ranks every item of the store in a ranking run', async () => {
 
   expect(ranking.facts).toHaveLength(12);
 });
+
+test.each([
+  ['no correction', { kind: 'none' }, ['item-vague', 'item-tomato']],
+  ['a hub penalty', { kind: 'penalty', weight: 1 }, ['item-tomato', 'item-vague']],
+  ['a hub floor', { kind: 'floor', margin: 0.55 }, ['item-tomato']],
+] as const)('it ranks an item near earlier messages under %s', async (_name, hub, expected) => {
+  const index = await startMemoryIndex();
+
+  onTestFinished(() => index.stop());
+
+  const vectors: Record<string, Float32Array> = {
+    'garden beds': new Float32Array([1, 0, 0]),
+    'Feels fine': new Float32Array([0.92, 0, 0.392]),
+    'Grows tomatoes': new Float32Array([0.9, 0.436, 0]),
+    'all good': new Float32Array([0, 0, 1]),
+  };
+  const ranker = buildRanker(
+    { encode: async (texts) => texts.map((text) => vectors[text] ?? new Float32Array([0, 0, 0])) },
+    index,
+    [{ sequence: 1, text: 'all good' }],
+  );
+
+  const ranking = await ranker.rankTurn(
+    {
+      caseID: 't3',
+      stepSequence: 2,
+      recalledSequence: 3,
+      recordedAt: 0,
+      query: 'garden beds',
+      typedQuery: 'garden beds',
+      shownMessages: [],
+      isSessionStart: false,
+      contextTokens: null,
+      reply: '',
+      earlier: [],
+      candidates: [
+        { itemID: 'item-vague', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Feels fine' },
+        { itemID: 'item-tomato', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Grows tomatoes' },
+      ],
+      logged: [],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    { ...SHIPPED, mode: 'vector', isInt8: false, hub },
+    [],
+  );
+
+  expect(ranking.facts).toStrictEqual([...expected]);
+});
+
+test('it leaves out the messages after the turn from the hub score', async () => {
+  const index = await startMemoryIndex();
+
+  onTestFinished(() => index.stop());
+
+  const vectors: Record<string, Float32Array> = {
+    'garden beds': new Float32Array([1, 0, 0]),
+    'Feels fine': new Float32Array([0.92, 0, 0.392]),
+    'Grows tomatoes': new Float32Array([0.9, 0.436, 0]),
+    'all good': new Float32Array([0, 0, 1]),
+  };
+  const ranker = buildRanker(
+    { encode: async (texts) => texts.map((text) => vectors[text] ?? new Float32Array([0, 0, 0])) },
+    index,
+    [{ sequence: 5, text: 'all good' }],
+  );
+
+  const ranking = await ranker.rankTurn(
+    {
+      caseID: 't3',
+      stepSequence: 2,
+      recalledSequence: 3,
+      recordedAt: 0,
+      query: 'garden beds',
+      typedQuery: 'garden beds',
+      shownMessages: [],
+      isSessionStart: false,
+      contextTokens: null,
+      reply: '',
+      earlier: [],
+      candidates: [
+        { itemID: 'item-vague', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Feels fine' },
+        { itemID: 'item-tomato', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Grows tomatoes' },
+      ],
+      logged: [],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    { ...SHIPPED, mode: 'vector', isInt8: false, hub: { kind: 'penalty', weight: 1 } },
+    [],
+  );
+
+  expect(ranking.facts).toStrictEqual(['item-vague', 'item-tomato']);
+});
+
+test('it drops an item only BM25 found when BM25 has no weight', async () => {
+  const ctx = await setupTest();
+
+  const ranking = await ctx.ranker.rankTurn(
+    {
+      caseID: 't4',
+      stepSequence: 3,
+      recalledSequence: 4,
+      recordedAt: 0,
+      query: 'basil',
+      typedQuery: 'basil',
+      shownMessages: [],
+      isSessionStart: false,
+      contextTokens: null,
+      reply: '',
+      earlier: [],
+      candidates: [
+        { itemID: 'item-basil', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Grows basil' },
+      ],
+      logged: [],
+      searchMode: 'hybrid',
+      delivered: [],
+      ratings: [],
+    },
+    { ...SHIPPED, minSimilarity: 2, keywordWeight: 0 },
+    [],
+  );
+
+  expect(ranking.facts).toStrictEqual([]);
+});

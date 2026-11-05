@@ -11,6 +11,8 @@ import type { MemoryIndex } from '../../../modules/memory/src/start-memory-index
 import { startVectorIndex } from '../../../modules/memory/src/start-vector-index.ts';
 // @boundaries-ignore a spike imports the code it measures
 import type { Encoder } from '../../../modules/memory/src/types.ts';
+import { match } from 'ts-pattern';
+import { buildHubScore } from './build-hub-score.ts';
 import { buildSimilarity } from './build-similarity.ts';
 import type { Candidate, TurnCase } from './build-turn-cases.ts';
 import type { ShortRule } from './pick-turn-query.ts';
@@ -31,7 +33,23 @@ export interface RankConfig {
   isDeliveredExcluded: boolean;
   shortRule: ShortRule;
   isPastedDropped: boolean;
+  keywordWeight: number;
+  hub: HubCorrection;
 }
+
+// A hub correction lowers an item that sits near many earlier messages: the penalty subtracts a share
+// of its hub score from its similarity, and the floor keeps it only when this message beats its hub
+// score by the margin.
+export type HubCorrection = { kind: 'none' } | { kind: 'penalty'; weight: number } | { kind: 'floor'; margin: number };
+
+// A user message from before the turn, which the hub score measures each item against.
+export interface BackgroundMessage {
+  sequence: number;
+  text: string;
+}
+
+// The count of nearest background messages a hub score averages.
+const hubNearest = 10;
 
 export const SHIPPED: RankConfig = {
   mode: 'hybrid',
@@ -48,6 +66,8 @@ export const SHIPPED: RankConfig = {
   isDeliveredExcluded: true,
   shortRule: { kind: 'none' },
   isPastedDropped: false,
+  keywordWeight: 1,
+  hub: { kind: 'none' },
 };
 
 export interface TurnRanking {
@@ -61,14 +81,17 @@ export interface Ranker {
 }
 
 // The index holds one turn's store at a time, and the ranker reloads it when the turn changes.
-export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
+export function buildRanker(encoder: Encoder, index: MemoryIndex, background: BackgroundMessage[] = []): Ranker {
   const loaded = { turn: '' };
+  const hubScores = new Map<string, number>();
+  const encodedBackground: { sequence: number; vector: Float32Array }[] = [];
 
   // Most turns share the same items, so each text is encoded once.
   const documentVectors = new Map<string, Float32Array>();
 
   const loadIndex = async (turn: TurnCase) => {
     if (loaded.turn !== turn.caseID) {
+      hubScores.clear();
       await index.updateAll(turn.candidates.map((candidate) => ({ itemID: candidate.itemID, text: candidate.text })));
       loaded.turn = turn.caseID;
     }
@@ -83,6 +106,33 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
     }
 
     return texts.map((text) => documentVectors.get(text) ?? new Float32Array());
+  };
+
+  // Only messages from before the turn count, so a turn never learns from what came after it.
+  const readHubScore = async (turn: TurnCase, itemID: string, vector: Float32Array, config: RankConfig): Promise<number> => {
+    if (encodedBackground.length === 0 && background.length > 0) {
+      const vectors = await encoder.encode(
+        background.map((message) => message.text),
+        'query',
+      );
+
+      encodedBackground.push(...background.map((message, position) => ({ sequence: message.sequence, vector: vectors[position] ?? new Float32Array() })));
+    }
+
+    const cached = hubScores.get(itemID);
+
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const score = buildHubScore(
+      encodedBackground.filter((message) => message.sequence < turn.recalledSequence).map((message) => buildSimilarity(message.vector, vector, config)),
+      hubNearest,
+    );
+
+    hubScores.set(itemID, score);
+
+    return score;
   };
 
   return {
@@ -139,6 +189,23 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
 
       const excluded = collectExcludedIDs(turn, config.isDeliveredExcluded);
 
+      const rankVectors = async (entries: { candidate: Candidate; vector: Float32Array }[], queryVector: Float32Array, listLimit: number) => {
+        const scored = [];
+
+        for (const entry of entries) {
+          const similarity = buildSimilarity(queryVector, entry.vector, config);
+          const hub = config.hub.kind === 'none' || similarity < config.minSimilarity ? 0 : await readHubScore(turn, entry.candidate.itemID, entry.vector, config);
+
+          scored.push({ itemID: entry.candidate.itemID, similarity, hub });
+        }
+
+        return scored
+          .filter((entry) => entry.similarity >= config.minSimilarity && isAboveHubFloor(entry, config.hub))
+          .map((entry) => ({ itemID: entry.itemID, score: buildCorrectedSimilarity(entry, config.hub) }))
+          .toSorted((first, second) => second.score - first.score)
+          .slice(0, listLimit);
+      };
+
       // The product passes one limit to both lists and to the fused result.
       const rank = async (pool: Candidate[], limit: number, listLimit: number) => {
         const poolIDs = new Set(pool.map((candidate) => candidate.itemID));
@@ -158,16 +225,13 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
         const vector =
           mode === 'keyword' || queryVector === undefined
             ? []
-            : turn.candidates
-                .map((candidate, position) => ({ candidate, vector: itemVectors[position] }))
-                .filter((entry) => poolIDs.has(entry.candidate.itemID) && !excluded.has(entry.candidate.itemID))
-                .map((entry) => ({
-                  itemID: entry.candidate.itemID,
-                  similarity: buildSimilarity(queryVector, entry.vector ?? new Float32Array(), config),
-                }))
-                .filter((match) => match.similarity >= config.minSimilarity)
-                .toSorted((first, second) => second.similarity - first.similarity)
-                .slice(0, listLimit);
+            : await rankVectors(
+                turn.candidates
+                  .map((candidate, position) => ({ candidate, vector: itemVectors[position] ?? new Float32Array() }))
+                  .filter((entry) => poolIDs.has(entry.candidate.itemID) && !excluded.has(entry.candidate.itemID)),
+                queryVector,
+                listLimit,
+              );
 
         const fused = buildFusedRanking(keyword, vector, config);
 
@@ -225,13 +289,31 @@ function buildFusedRanking(
 ): string[] {
   const fused = new Map<string, number>();
 
-  for (const [rank, match] of keyword.entries()) {
-    fused.set(match.itemID, (fused.get(match.itemID) ?? 0) + 1 / (config.fusionK + rank + 1));
+  for (const [rank, entry] of keyword.entries()) {
+    fused.set(entry.itemID, (fused.get(entry.itemID) ?? 0) + config.keywordWeight / (config.fusionK + rank + 1));
   }
 
-  for (const [rank, match] of vector.entries()) {
-    fused.set(match.itemID, (fused.get(match.itemID) ?? 0) + config.vectorWeight / (config.fusionK + rank + 1));
+  for (const [rank, entry] of vector.entries()) {
+    fused.set(entry.itemID, (fused.get(entry.itemID) ?? 0) + config.vectorWeight / (config.fusionK + rank + 1));
   }
 
-  return [...fused.entries()].toSorted((first, second) => second[1] - first[1]).map(([itemID]) => itemID);
+  // A list given no weight adds nothing, so an item only it found drops out.
+  return [...fused.entries()]
+    .filter(([, score]) => score > 0)
+    .toSorted((first, second) => second[1] - first[1])
+    .map(([itemID]) => itemID);
+}
+
+function isAboveHubFloor(entry: { similarity: number; hub: number }, hub: HubCorrection): boolean {
+  return match(hub)
+    .with({ kind: 'floor' }, (floor) => entry.similarity >= entry.hub + floor.margin)
+    .with({ kind: 'none' }, { kind: 'penalty' }, () => true)
+    .exhaustive();
+}
+
+function buildCorrectedSimilarity(entry: { similarity: number; hub: number }, hub: HubCorrection): number {
+  return match(hub)
+    .with({ kind: 'penalty' }, (penalty) => entry.similarity - penalty.weight * entry.hub)
+    .with({ kind: 'none' }, { kind: 'floor' }, () => entry.similarity)
+    .exhaustive();
 }
