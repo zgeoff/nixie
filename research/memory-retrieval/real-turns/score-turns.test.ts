@@ -32,7 +32,7 @@ test('#runRankings ranks each turn under each run and stops every encoder and in
         query: 'garden tomatoes',
         typedQuery: 'garden tomatoes',
         shownMessages: [],
-        isSessionStart: false,
+        isSessionStart: false, sessionNumber: 0,
         isShredded: false,
         contextTokens: null,
         reply: '',

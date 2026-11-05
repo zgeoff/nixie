@@ -11,7 +11,7 @@ test('it counts the scored, labelled and short turns, and scores the blocks of s
     query,
     typedQuery: query,
     shownMessages: [],
-    isSessionStart: false,
+    isSessionStart: false, sessionNumber: 0,
     isShredded: false,
     contextTokens: null,
     reply: 'Noted.',

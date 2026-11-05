@@ -8,7 +8,7 @@ test('it collects the turns whose exchange proposed a memory', () => {
     query: 'remember that',
     typedQuery: 'remember that',
     shownMessages: [],
-    isSessionStart: false,
+    isSessionStart: false, sessionNumber: 0,
     isShredded: false,
     contextTokens: null,
     reply: '',

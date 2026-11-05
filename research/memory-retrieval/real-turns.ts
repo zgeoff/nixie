@@ -21,6 +21,7 @@ import { buildTurnCases } from './real-turns/build-turn-cases.ts';
 import type { BlockSources } from './real-turns/count-turn-blocks.ts';
 import { buildBlockTokens, collectBlockSources } from './real-turns/count-turn-blocks.ts';
 import { countWords } from './real-turns/count-words.ts';
+import { collectSessionHeld } from './real-turns/collect-session-held.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
 import { buildSample, sampleTurnSchema } from './real-turns/build-sample.ts';
@@ -140,15 +141,17 @@ function printStats(turns: TurnCase[]): void {
 // also prints the memory tokens a session holds at each turn. Only a session start resets that
 // count, and a compaction does not, so it is an upper bound.
 function printBlocks(turns: TurnCase[], sources: BlockSources): void {
-  const held = { tokens: 0 };
-  const counted = turns.map((turn) => {
-    const tokens = buildBlockTokens(turn, sources, { ownerName: null, defaultZone: 'UTC' });
-    const added = tokens.pinned + tokens.items + tokens.selfNotes + tokens.messages;
-
-    held.tokens = turn.isSessionStart ? added : held.tokens + added;
-
-    return { turn, tokens, sessionHeld: held.tokens };
-  });
+  const lines = { ownerName: null, defaultZone: 'UTC' };
+  const blocks = turns.map((turn) => ({ turn, tokens: buildBlockTokens(turn, sources, lines) }));
+  const sessionHeld = collectSessionHeld(
+    blocks.map(({ turn, tokens }) => ({
+      sessionNumber: turn.sessionNumber,
+      isSessionStart: turn.isSessionStart,
+      added: tokens.pinned + tokens.items + tokens.selfNotes + tokens.messages,
+      pinned: turn.isSessionStart ? tokens.pinned : buildBlockTokens({ ...turn, isSessionStart: true }, sources, lines).pinned,
+    })),
+  );
+  const counted = blocks.map((entry, position) => ({ ...entry, sessionHeld: sessionHeld[position] ?? 0 }));
 
   const summarize = (group: typeof counted) => {
     const blocks = (['pinned', 'items', 'selfNotes', 'messages'] as const).map((block) => {

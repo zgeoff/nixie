@@ -84,6 +84,8 @@ export interface TurnCase {
   typedQuery: string;
   shownMessages: ShownMessage[];
   isSessionStart: boolean;
+  // How many sessions had opened by the turn's model call, so a change marks a new session.
+  sessionNumber: number;
   contextTokens: number | null;
   isShredded: boolean;
 }
@@ -116,6 +118,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
   let isAfterRecallTool = false;
   let hasReply = false;
   let hasEnded = false;
+  let sessionCount = 0;
 
   for (const record of data.records) {
     foldPins(pinned, record);
@@ -196,12 +199,21 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
           typedQuery,
           shownMessages: [],
           isSessionStart: false,
+          sessionNumber: sessionCount,
           contextTokens: null,
           isShredded: batch.some((entry) => entry.erasable.status === 'shredded'),
         };
       }
 
       continue;
+    }
+
+    // A session can open on a step with no retrieval, such as an image-only message, so the count
+    // runs whether or not a turn is open.
+    const isSessionRecord = record.kind === 'model.session_opened' || record.kind === 'model.session_rebuilt';
+
+    if (isSessionRecord) {
+      sessionCount += 1;
     }
 
     if (open === null) {
@@ -232,9 +244,10 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
 
     // A turn that opens a new session runs its retrieval with nothing delivered yet, and the
     // opening is logged after that retrieval.
-    if (record.kind === 'model.session_opened' || record.kind === 'model.session_rebuilt') {
+    if (isSessionRecord) {
       open.delivered = [];
       open.isSessionStart = true;
+      open.sessionNumber = sessionCount;
     }
 
     // The first turn end of the step records what the model was shown with the retrieval.

@@ -129,7 +129,9 @@ A turn's model calls read a mean of 155,714 input tokens a call, cached or not, 
 adds come to about 0.1% of one call [measured]. A block stays in the session once given, and a
 session held a median of 19,142 memory tokens at a hybrid turn, with a maximum of 35,335 [measured].
 That count resets only when a session opens, and 3 compactions do not reset it, so it is an upper
-bound [measured].
+bound [measured]. The measured count also missed each session that opened on a step with no turn,
+such as an image-only message, and so can read high again [read in the code]. The harness counts
+those sessions, with the pinned block each one gave [read in the code].
 
 ## Noise per block
 

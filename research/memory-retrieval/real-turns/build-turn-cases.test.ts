@@ -764,6 +764,65 @@ test('it gives a turn the past messages, the session start and the call context 
   ).toStrictEqual([{ shownMessages: [{ sequence: 1, length: 1000, isCut: true }], isSessionStart: true, contextTokens: 2000 }]);
 });
 
+test('it counts a session that opened on a step with no turn, so the next turn falls in the new session', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 1,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'model.session_opened',
+        thread: 'conversation',
+        parent: null,
+        payload: { reason: 'new' },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T09:05:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'and the tide times?' } },
+      },
+      {
+        sequence: 4,
+        recordedAt: '2026-03-02T09:05:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 5,
+        recordedAt: '2026-03-02T09:05:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+    ],
+    items: [],
+    versions: [],
+    notes: [],
+  });
+
+  expect(cases.map((turn) => ({ isSessionStart: turn.isSessionStart, sessionNumber: turn.sessionNumber }))).toStrictEqual([
+    { isSessionStart: false, sessionNumber: 1 },
+  ]);
+});
+
 test('it shows a past message as the product renders it, with its pasted text tagged and its images marked', () => {
   const cases = buildTurnCases({
     records: [

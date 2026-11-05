@@ -14,7 +14,7 @@ test('it drops the labels on an excluded turn, a turn about retrieval and a shre
     recordedAt: 0,
     typedQuery: turn.query,
     shownMessages: [],
-    isSessionStart: false,
+    isSessionStart: false, sessionNumber: 0,
     contextTokens: null,
     earlier: [],
     candidates: [],

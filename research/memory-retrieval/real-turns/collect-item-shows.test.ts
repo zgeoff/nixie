@@ -9,7 +9,7 @@ test('it counts how often each item was retrieved against how the rater judged i
     query: 'any plans?',
     typedQuery: 'any plans?',
     shownMessages: [],
-    isSessionStart: false,
+    isSessionStart: false, sessionNumber: 0,
     isShredded: false,
     contextTokens: null,
     reply: '',
