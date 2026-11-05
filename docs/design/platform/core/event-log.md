@@ -37,9 +37,10 @@ The source of content sits on every tool result. The first build stores it witho
 taint per job run is a later policy change under
 [0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies).
 
-The parent field keeps the delegation chain. A worker's records point at the tool call that started
-it, and a task's records point at the start call that created the task, so the record shows that no
-task or worker held wider permissions than the thread that started it.
+The log keeps the delegation chain. A worker's records point at the tool call that started it
+through the parent field. A started task's creation record names the task that started it and the
+step it started in. The record then shows that no task or worker held wider permissions than the
+thread that started it.
 
 ## Append-only
 
