@@ -50,12 +50,14 @@ starter rule that asks before a stranger reads memory needs a decision point tha
 then the start refuses that combination
 ([GEO-1803](https://linear.app/zgeoff/issue/GEO-1803/nixie-policy-the-full-decision-point-with-destination-limits-known)).
 
-The model sees each of nixie's tools under the name the Agent SDK gives it, such as
-`mcp__nixie__memory_recall` for `memory.recall`: the server name, then the tool's name with each
-character outside letters, digits, `_` and `-` replaced by `_`. The start takes a tool under that
-name or under nixie's own, and records nixie's name. When the start refuses a tool, its message to
-the model holds each tool that the same start would accept, under both names, and the `memory` value
-that a memory tool needs.
+Each tool has 2 names. nixie registers a tool under its nixie name, such as `memory.recall`. The
+model sees the tool under its SDK name, such as `mcp__nixie__memory_recall`, which the Agent SDK
+builds as `mcp__nixie__` and then the nixie name with each character outside letters, digits, `_`
+and `-` replaced by `_`. The `tools` option takes either name, and the start records the nixie name.
+
+When the start refuses a tool, the start's error message holds both names of each tool that a start
+with the same options from the same starter would accept. When the start refuses a memory tool that
+only reads, the message also holds the `memory: read` setting that the tool needs.
 
 The report mode decides how the task's result reaches its starter. Under `wake` a report wakes the
 starter unless the task sends it with `wake: false`, under `next_turn` the message tool sends each
@@ -89,22 +91,24 @@ The brief is in the task's creation record, and no inbox record holds it. So the
 session opens with a start note as its input. The note tells the model to do what the brief asks,
 and to send the result to the task that started it, as a task message of kind `report`, unless the
 start set `report: none`. After the step that sends the report, the task waits: a message to it
-wakes it again, and the user closes it when its work is done.
+wakes it again, and the user closes it when its work is done. When the guest loses the task's
+session, the next step [opens a new one](./session-opening.md) from the task's thread and the
+messages it sent.
 
-A started task's step that leaves no unread input ends in the waiting state, whether or not the
-task's work is done, so the stored state cannot tell a task that waits on a reply from one with
-nothing left to do. The list tool reads the task's open waits and the last message it sent, and
-lists a waiting task as one of these:
+## The listed state
 
-| Listed state | The waiting task                                |
-| ------------ | ----------------------------------------------- |
-| `waiting`    | holds an open wait on another task              |
-| `finished`   | holds no open wait, and last sent a `report`    |
-| `idle`       | holds no open wait, and last sent anything else |
+A started task's step that leaves no unread input moves the task to the `waiting` task state,
+whether or not its work is done. The task state alone therefore can't tell a task that waits on a
+reply from a task with nothing left to do. So the list tool gives a task in the `waiting` task state
+one of 3 listed states, from its [message waits](./task-messages.md#message-waits) and the kind of
+the last task message it sent:
 
-The list tool also gives each task's model, or null for a task on the `task` role's profile. When
-the guest loses the task's session, the next step [opens a new one](./session-opening.md) from the
-task's thread and the messages it sent.
+- `waiting`: the task has an open wait on another task.
+- `finished`: the task has no open wait, and the last message it sent is a `report`.
+- `idle`: the task has no open wait, and it sent no message, or its last message is of another kind.
+
+A task in any other task state lists under that state. The list tool also gives each task's model,
+or null for a task on the `task` role's profile.
 
 A started task can wait with unread input, or with a brief that no session read. Only a waking inbox
 record moves a waiting task to ready, so such a task never runs. At each server start, after the
