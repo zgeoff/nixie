@@ -35,7 +35,6 @@ const plainItemSchema = z.object({
   short_id: z.string().nullable(),
   kind: z.enum(['fact', 'self']),
   subject: z.string().nullable(),
-  is_sensitive: z.int().exactOptional(),
 });
 
 const plainVersionSchema = z.object({

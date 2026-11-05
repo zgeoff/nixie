@@ -13,8 +13,6 @@ import { renderRetrievedMessages } from '../../../modules/sessions/src/render-re
 // @boundaries-ignore a spike imports the code it measures
 import { renderRetrievedSelfNotes } from '../../../modules/sessions/src/render-retrieved-self-notes.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { renderTaskBoard } from '../../../modules/sessions/src/render-task-board.ts';
-// @boundaries-ignore a spike imports the code it measures
 import type { MemoryItem } from '../../../modules/sessions/src/types.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { renderSystemMessage } from '../../../libs/wire/src/render-system-message.ts';
@@ -26,7 +24,6 @@ export interface BlockTokens {
   items: number;
   selfNotes: number;
   messages: number;
-  board: number;
 }
 
 interface VersionMeta {
@@ -38,25 +35,15 @@ interface VersionMeta {
   quote: string | null;
 }
 
-interface BoardTask {
-  sequence: number;
-  id: string;
-  name: string;
-  brief: string;
-  recordedAt: number;
-}
-
 export interface BlockSources {
   versions: Map<string, VersionMeta>;
-  tasks: BoardTask[];
 }
 
 const subjectSchema = z.enum(['owner', 'self', 'shared']).catch('owner');
 const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']).catch('owner');
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']).catch('owner');
 
-// Gathers what the renderers need beyond a turn's own fields: each version's line details, and the
-// started tasks the board lists, which are the ones a task.created record names and briefs.
+// Gathers what the renderers need beyond a turn's own fields: each version's line details.
 export function collectBlockSources(data: PlainExport): BlockSources {
   const items = new Map(data.items.map((item) => [item.item_id, item]));
   const versions = new Map<string, VersionMeta>();
@@ -74,20 +61,7 @@ export function collectBlockSources(data: PlainExport): BlockSources {
     });
   }
 
-  const tasks = data.records.flatMap((record) => {
-    if (record.kind !== 'task.created' || record.erasable.status !== 'readable') {
-      return [];
-    }
-
-    const { name, brief } = record.erasable.fields;
-    const id = record.payload['taskID'];
-
-    return typeof name === 'string' && typeof brief === 'string' && typeof id === 'string'
-      ? [{ sequence: record.sequence, id, name, brief, recordedAt: Date.parse(record.recordedAt) }]
-      : [];
-  });
-
-  return { versions, tasks };
+  return { versions };
 }
 
 export interface BlockOptions {
@@ -103,7 +77,7 @@ export function buildBlockTokens(turn: TurnCase, sources: BlockSources, options:
   const wrap = (type: Parameters<typeof renderSystemMessage>[0]['type'], body: string | null): number =>
     body === null ? 0 : countTextTokens(renderSystemMessage({ type, at: at.toISOString(), body }));
 
-  const toItem = (itemID: string, version: number, text: string): MemoryItem => {
+  const buildItem = (itemID: string, version: number, text: string): MemoryItem => {
     const meta = sources.versions.get(`${itemID}@${version}`);
 
     return {
@@ -125,23 +99,12 @@ export function buildBlockTokens(turn: TurnCase, sources: BlockSources, options:
   const shown = turn.logged.flatMap((logged) => {
     const candidate = byID.get(logged.itemID);
 
-    return candidate === undefined ? [] : [{ candidate, item: toItem(logged.itemID, logged.version, candidate.text) }];
+    return candidate === undefined ? [] : [{ candidate, item: buildItem(logged.itemID, logged.version, candidate.text) }];
   });
 
   const pinned = turn.candidates
     .filter((candidate) => candidate.isPinned)
-    .map((candidate) => toItem(candidate.itemID, candidate.version, candidate.text));
-
-  const board = sources.tasks
-    .filter((task) => task.sequence < turn.stepSequence)
-    .map((task) => ({
-      id: task.id,
-      name: task.name,
-      state: 'running' as const,
-      isPauseRequested: false,
-      brief: task.brief,
-      lastActivityAt: new Date(task.recordedAt),
-    }));
+    .map((candidate) => buildItem(candidate.itemID, candidate.version, candidate.text));
 
   return {
     pinned: turn.isSessionStart ? wrap('pinned-memory', renderPinnedMemory(pinned, lines)) : 0,
@@ -166,6 +129,5 @@ export function buildBlockTokens(turn: TurnCase, sources: BlockSources, options:
         { ...lines, thread: 'conversation' },
       ),
     ),
-    board: wrap('task-board', renderTaskBoard(board, lines)),
   };
 }

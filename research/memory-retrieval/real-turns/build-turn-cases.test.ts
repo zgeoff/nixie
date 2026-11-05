@@ -842,7 +842,6 @@ test('it marks an item sensitive only on the turns after its mark record', () =>
         short_id: 'm1',
         kind: 'fact',
         subject: 'owner',
-        is_sensitive: 1,
       },
     ],
     versions: [

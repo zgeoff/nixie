@@ -156,7 +156,7 @@ function printBlocks(turns: TurnCase[], sources: BlockSources): void {
   });
 
   const summarize = (group: typeof counted) => {
-    const blocks = (['pinned', 'items', 'selfNotes', 'messages', 'board'] as const).map((block) => {
+    const blocks = (['pinned', 'items', 'selfNotes', 'messages'] as const).map((block) => {
       const values = group.map((entry) => entry.tokens[block]);
       const present = values.filter((value) => value > 0);
 

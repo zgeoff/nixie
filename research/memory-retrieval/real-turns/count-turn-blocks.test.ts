@@ -25,13 +25,13 @@ test('#buildBlockTokens counts nothing for a turn shown nothing and opening no s
         delivered: [],
         ratings: [],
       },
-      { versions: new Map(), tasks: [] },
+      { versions: new Map() },
       { ownerName: null, defaultZone: 'UTC' },
     ),
-  ).toStrictEqual({ pinned: 0, items: 0, selfNotes: 0, messages: 0, board: 0 });
+  ).toStrictEqual({ pinned: 0, items: 0, selfNotes: 0, messages: 0 });
 });
 
-test('#buildBlockTokens counts the pinned block, each retrieved block and the board on a session start', () => {
+test('#buildBlockTokens counts the pinned block and each retrieved block on a session start', () => {
   const tokens = buildBlockTokens(
     {
       caseID: 't9',
@@ -59,54 +59,16 @@ test('#buildBlockTokens counts the pinned block, each retrieved block and the bo
       delivered: [],
       ratings: [],
     },
-    { versions: new Map(), tasks: [{ sequence: 5, id: 'k1', name: 'Rope order', brief: 'Order rope', recordedAt: 0 }] },
+    { versions: new Map() },
     { ownerName: null, defaultZone: 'UTC' },
   );
 
   expect(Object.entries(tokens).filter(([, value]) => value === 0)).toStrictEqual([]);
 });
 
-test('#buildBlockTokens leaves a task created after the turn off the board', () => {
-  expect(
-    buildBlockTokens(
-      {
-        caseID: 't3',
-        stepSequence: 2,
-        recalledSequence: 3,
-        recordedAt: 0,
-        query: 'ok',
-        typedQuery: 'ok',
-        shownMessages: [],
-        isSessionStart: false,
-        isShredded: false,
-        contextTokens: null,
-        reply: '',
-        earlier: [],
-        candidates: [],
-        logged: [],
-        searchMode: 'hybrid',
-        delivered: [],
-        ratings: [],
-      },
-      { versions: new Map(), tasks: [{ sequence: 7, id: 'k1', name: 'Rope order', brief: 'Order rope', recordedAt: 0 }] },
-      { ownerName: null, defaultZone: 'UTC' },
-    ).board,
-  ).toBe(0);
-});
-
-test('#collectBlockSources takes a started task from its created record and each version line from the export', () => {
+test('#collectBlockSources takes each version line from the export', () => {
   const sources = collectBlockSources({
-    records: [
-      {
-        sequence: 5,
-        recordedAt: '2026-03-02T08:00:00Z',
-        kind: 'task.created',
-        thread: 'k1',
-        parent: null,
-        payload: { taskID: 'k1' },
-        erasable: { status: 'readable', fields: { name: 'Rope order', brief: 'Order rope' } },
-      },
-    ],
+    records: [],
     items: [
       {
         item_id: 'item-b',
@@ -143,6 +105,5 @@ test('#collectBlockSources takes a started task from its created record and each
     versions: new Map([
       ['item-b@1', { shortID: 'm7', subject: 'owner', origin: 'conversation', source: 'owner', recordedAt: 1000, quote: 'we bought the boat' }],
     ]),
-    tasks: [{ sequence: 5, id: 'k1', name: 'Rope order', brief: 'Order rope', recordedAt: Date.parse('2026-03-02T08:00:00Z') }],
   });
 });
