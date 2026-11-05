@@ -261,24 +261,32 @@ that needed a bundled item, the rater's note does not say which fact helped [mea
 4 items carry the sensitive flag, and retrieval never shows a flagged item [measured] [read in the
 code]. The rater described no missed item that was flagged [measured].
 
-| Option | Rule                                         | Shows over 1,054 hybrid turns | Needed shows lost |
-| ------ | -------------------------------------------- | ----------------------------- | ----------------- |
-| Keep   | never show a flagged item                    | 0                             | 1                 |
-| Narrow | show a flagged item at similarity 0.46 or up | 1                             | 1                 |
-| Remove | treat a flagged item as any other            | 33, on 30 turns               | 0                 |
+Each option runs at the shipped floors and at fix 1's floors, similarity 0.46 and BM25 2. A show
+counts as BM25 alone when its similarity sits below that row's similarity floor.
 
-- With the flag removed, 25 of the 33 shows had a similarity below the shipped floor, so BM25 alone
-  brought them [measured].
+| Option | Rule                                         | Floors  | Shows over 1,054 hybrid turns | BM25 alone | Needed shows lost |
+| ------ | -------------------------------------------- | ------- | ----------------------------- | ---------- | ----------------- |
+| Keep   | never show a flagged item                    | either  | 0                             | 0          | 1                 |
+| Narrow | show a flagged item at similarity 0.46 or up | shipped | 1                             | 0          | 1                 |
+| Narrow | show a flagged item at similarity 0.46 or up | fix 1   | 1                             | 0          | 1                 |
+| Remove | treat a flagged item as any other            | shipped | 33, on 30 turns               | 25         | 0                 |
+| Remove | treat a flagged item as any other            | fix 1   | 31, on 27 turns               | 30         | 0                 |
+
+- Fix 1 barely changes the remove option: 30 of its 31 shows pass the BM25 floor of 2 with a
+  similarity below 0.46 [measured]. Fewer other items compete at fix 1's floors, which may lift a
+  flagged item that a shipped turn ranked lower [guess].
 - The 1 needed show is an address item on turn t12531, where it helped before it was flagged, at
   similarity 0.378 [measured]. A similarity bar hides it too, so narrowing gains nothing on this
   data [measured].
 - Before its flag, the address item showed on 3 turns: needed on 1 and noise on 2 [measured]. Two
-  thirds of the problem that led to the flag was plain noise, which fix 1 targets [guess].
+  thirds of the problem that led to the flag was plain noise, and fix 1 does not remove it: with the
+  flag removed, the address item shows on 7 turns under fix 1 [measured].
 - A planned per-task memory setting ([GEO-2357](https://linear.app/zgeoff/issue/GEO-2357)) gives a
   task started with memory none no pinned or retrieved memory, so a task on another model sees no
   flagged item [from a record]. It does not cover the conversation itself [read in the code].
 
-Keep the flag. Removing it adds 33 shows, most from BM25 alone, to gain 1 needed show [measured].
+Keep the flag. Removing it adds 31 to 33 shows, most from BM25 alone, to gain 1 needed show, with or
+without fix 1 [measured].
 
 ## Harness checks
 
