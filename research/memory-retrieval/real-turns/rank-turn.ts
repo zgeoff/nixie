@@ -12,6 +12,8 @@ import { startVectorIndex } from '../../../modules/memory/src/start-vector-index
 // @boundaries-ignore a spike imports the code it measures
 import type { Encoder } from '../../../modules/memory/src/types.ts';
 import type { Candidate, TurnCase } from './build-turn-cases.ts';
+import type { ShortRule } from './pick-turn-query.ts';
+import { pickTurnQuery } from './pick-turn-query.ts';
 
 export interface RankConfig {
   mode: 'hybrid' | 'vector' | 'keyword';
@@ -26,6 +28,8 @@ export interface RankConfig {
   selfLimit: number;
   isSplit: boolean;
   isDeliveredExcluded: boolean;
+  shortRule: ShortRule;
+  isPastedDropped: boolean;
 }
 
 export const SHIPPED: RankConfig = {
@@ -41,6 +45,8 @@ export const SHIPPED: RankConfig = {
   selfLimit: 2,
   isSplit: true,
   isDeliveredExcluded: true,
+  shortRule: { kind: 'none' },
+  isPastedDropped: false,
 };
 
 export interface TurnRanking {
@@ -57,11 +63,25 @@ export interface Ranker {
 export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
   const loaded = { turn: '' };
 
+  // Most turns share the same items, so each text is encoded once.
+  const documentVectors = new Map<string, Float32Array>();
+
   const loadIndex = async (turn: TurnCase) => {
     if (loaded.turn !== turn.caseID) {
       await index.updateAll(turn.candidates.map((candidate) => ({ itemID: candidate.itemID, text: candidate.text })));
       loaded.turn = turn.caseID;
     }
+  };
+
+  const encodeDocuments = async (texts: string[]): Promise<Float32Array[]> => {
+    const missing = [...new Set(texts.filter((text) => !documentVectors.has(text)))];
+    const encoded = missing.length === 0 ? [] : await encoder.encode(missing, 'document');
+
+    for (const [position, text] of missing.entries()) {
+      documentVectors.set(text, encoded[position] ?? new Float32Array());
+    }
+
+    return texts.map((text) => documentVectors.get(text) ?? new Float32Array());
   };
 
   return {
@@ -103,14 +123,18 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
       return result;
     },
     rankTurn: async (turn, config, excludedWords) => {
+      const query = pickTurnQuery(turn, config.shortRule, config.isPastedDropped);
+
+      if (query.isSkipped) {
+        return { facts: [], selves: [] };
+      }
+
       await loadIndex(turn);
 
-      const queryText = buildVectorQuery(turn.query, excludedWords);
+      const mode = query.isVectorOnly ? 'vector' : config.mode;
+      const queryText = buildVectorQuery(query.text, excludedWords);
       const [queryVector] = queryText.trim() === '' ? [] : await encoder.encode([queryText], 'query');
-      const itemVectors = await encoder.encode(
-        turn.candidates.map((candidate) => candidate.text),
-        'document',
-      );
+      const itemVectors = await encodeDocuments(turn.candidates.map((candidate) => candidate.text));
 
       const excluded = collectExcludedIDs(turn, config.isDeliveredExcluded);
 
@@ -120,9 +144,9 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
         const outside = turn.candidates.filter((candidate) => !poolIDs.has(candidate.itemID)).map((candidate) => candidate.itemID);
 
         const keyword =
-          config.mode === 'vector'
+          mode === 'vector'
             ? []
-            : await index.readMatches(turn.query, {
+            : await index.readMatches(query.text, {
                 // SQLite takes a whole number as its limit, and the store bounds the list anyway.
                 limit: Math.min(listLimit, turn.candidates.length),
                 excludedIDs: [...excluded, ...outside],
@@ -131,7 +155,7 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
               });
 
         const vector =
-          config.mode === 'keyword' || queryVector === undefined
+          mode === 'keyword' || queryVector === undefined
             ? []
             : turn.candidates
                 .map((candidate, position) => ({ candidate, vector: itemVectors[position] }))
@@ -144,7 +168,15 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
                 .toSorted((first, second) => second.similarity - first.similarity)
                 .slice(0, listLimit);
 
-        return buildFusedRanking(keyword, vector, config).slice(0, limit);
+        const fused = buildFusedRanking(keyword, vector, config);
+
+        if (!query.isAgreementNeeded) {
+          return fused.slice(0, limit);
+        }
+
+        const inBoth = new Set(keyword.map((entry) => entry.itemID).filter((itemID) => vector.some((entry) => entry.itemID === itemID)));
+
+        return fused.filter((itemID) => inBoth.has(itemID)).slice(0, limit);
       };
 
       if (!config.isSplit) {
@@ -167,8 +199,8 @@ export function buildRanker(encoder: Encoder, index: MemoryIndex): Ranker {
   };
 }
 
-// The store leaves out a pinned item, which the pinned core already shows, a lapsed one, and a
-// version this session was already given.
+// The store leaves out a pinned item, which the pinned core already shows, a lapsed one, a
+// sensitive one, and a version this session was already given.
 function collectExcludedIDs(turn: TurnCase, isDeliveredExcluded: boolean): Set<string> {
   const delivered = new Set(isDeliveredExcluded ? turn.delivered : []);
 
@@ -176,7 +208,10 @@ function collectExcludedIDs(turn: TurnCase, isDeliveredExcluded: boolean): Set<s
     turn.candidates
       .filter(
         (candidate) =>
-          candidate.isPinned || candidate.isLapsed || delivered.has(`${candidate.itemID}@${candidate.version}`),
+          candidate.isPinned ||
+          candidate.isLapsed ||
+          candidate.isSensitive ||
+          delivered.has(`${candidate.itemID}@${candidate.version}`),
       )
       .map((candidate) => candidate.itemID),
   );

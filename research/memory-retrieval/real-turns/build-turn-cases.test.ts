@@ -538,3 +538,184 @@ test('it rejects a turn retrieval whose logged items hold a null', () => {
     }),
   ).toThrow('record 3 (memory.recalled) does not match its schema at items.0');
 });
+
+test('it keeps only the typed spans of a message in the typed query', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 1,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: {
+          status: 'readable',
+          fields: {
+            text: 'tidy this: Minutes of the allotment committee',
+            spans: [
+              { start: 0, end: 11, source: 'typed' },
+              { start: 11, end: 45, source: 'pasted' },
+            ],
+          },
+        },
+      },
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T09:00:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+    ],
+    items: [],
+    versions: [],
+    notes: [],
+  });
+
+  expect(cases.map((turn) => turn.typedQuery)).toStrictEqual(['tidy this: ']);
+});
+
+test('it gives a turn the past messages, the session start and the call context its turn end records', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 1,
+        recordedAt: '2026-03-01T18:00:00Z',
+        kind: 'owner_message',
+        thread: 'trip-notes',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'x'.repeat(1200) } },
+      },
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'what did I pack last time?' } },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 4,
+        recordedAt: '2026-03-02T09:00:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 5,
+        recordedAt: '2026-03-02T09:00:03Z',
+        kind: 'model.session_opened',
+        thread: 'conversation',
+        parent: null,
+        payload: { reason: 'new' },
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 6,
+        recordedAt: '2026-03-02T09:00:09Z',
+        kind: 'model.turn_ended',
+        thread: 'conversation',
+        parent: null,
+        payload: {
+          retrieved: [],
+          retrievedMessages: [1],
+          turns: 2,
+          inputTokens: 100,
+          cacheReadTokens: 3900,
+          cacheWriteTokens: 0,
+        },
+        erasable: { status: 'none' },
+      },
+    ],
+    items: [],
+    versions: [],
+    notes: [],
+  });
+
+  expect(
+    cases.map((turn) => ({
+      shownMessages: turn.shownMessages.map((message) => ({ sequence: message.sequence, length: message.text.length, isCut: message.isCut })),
+      isSessionStart: turn.isSessionStart,
+      contextTokens: turn.contextTokens,
+    })),
+  ).toStrictEqual([{ shownMessages: [{ sequence: 1, length: 1000, isCut: true }], isSessionStart: true, contextTokens: 2000 }]);
+});
+
+test('it marks an item flagged sensitive as sensitive', () => {
+  const cases = buildTurnCases({
+    records: [
+      {
+        sequence: 2,
+        recordedAt: '2026-03-02T09:00:00Z',
+        kind: 'owner_message',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'readable', fields: { text: 'any news?' } },
+      },
+      {
+        sequence: 3,
+        recordedAt: '2026-03-02T09:00:01Z',
+        kind: 'task.step_started',
+        thread: 'conversation',
+        parent: null,
+        payload: {},
+        erasable: { status: 'none' },
+      },
+      {
+        sequence: 4,
+        recordedAt: '2026-03-02T09:00:02Z',
+        kind: 'memory.recalled',
+        thread: 'conversation',
+        parent: null,
+        payload: { items: [], searchMode: 'hybrid' },
+        erasable: { status: 'none' },
+      },
+    ],
+    items: [
+      {
+        item_id: 'item-a',
+        version: 1,
+        state: 'active',
+        is_pinned: 0,
+        pinned_sequence: null,
+        created_sequence: 1,
+        short_id: 'm1',
+        kind: 'fact',
+        subject: 'owner',
+        is_sensitive: 1,
+      },
+    ],
+    versions: [
+      { item_id: 'item-a', version: 1, change: 'created', state: 'active', sequence: 1, until: null, status: 'readable', text: 'Sees a counsellor on Tuesdays' },
+    ],
+    notes: [],
+  });
+
+  expect(cases.map((turn) => turn.candidates.map((candidate) => candidate.isSensitive))).toStrictEqual([[true]]);
+});

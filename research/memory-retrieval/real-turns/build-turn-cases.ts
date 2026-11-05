@@ -11,7 +11,15 @@ export interface Candidate {
   isSelf: boolean;
   isPinned: boolean;
   isLapsed: boolean;
+  isSensitive: boolean;
   text: string;
+}
+
+// A past message the turn was shown, cut where the product cuts it.
+export interface ShownMessage {
+  sequence: number;
+  text: string;
+  isCut: boolean;
 }
 
 // The fields this rebuild reads from the payloads, in the shapes the product's record codecs give.
@@ -32,7 +40,17 @@ const recalledSchema = z.object({
 
 // Turn records written before the product logged its retrieved items lack the field, and the
 // session-delivery replay reads a missing field as no items.
-const turnEndedSchema = z.object({ retrieved: z.array(itemRefSchema).exactOptional() });
+const turnEndedSchema = z.object({
+  retrieved: z.array(itemRefSchema).exactOptional(),
+  retrievedMessages: z.array(z.int().positive()).exactOptional(),
+  contextSize: z.int().nonnegative().exactOptional(),
+  turns: z.int().exactOptional(),
+  inputTokens: z.int().exactOptional(),
+  cacheReadTokens: z.int().exactOptional(),
+  cacheWriteTokens: z.int().exactOptional(),
+});
+
+const spansSchema = z.array(z.object({ start: z.int(), end: z.int(), source: z.string() }));
 
 const ratedSchema = z.object({
   recalledSequence: z.int(),
@@ -63,9 +81,16 @@ export interface TurnCase {
   searchMode: string | null;
   delivered: string[];
   ratings: Rating[];
+  typedQuery: string;
+  shownMessages: ShownMessage[];
+  isSessionStart: boolean;
+  contextTokens: number | null;
 }
 
 const conversationThread = 'conversation';
+
+// The product cuts a past message it shows at this many characters.
+const messageTextLimit = 1000;
 const earlierExchanges = 2;
 
 // The record kinds the tasks module counts as a task's inbox, and the most records of it that the
@@ -84,14 +109,23 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
   const exchanges: Exchange[] = [];
   const session: SessionFold = { delivered: new Map(), pending: [], isCompacted: false };
   const pinned = new Set<string>();
+  const messages = new Map<number, string>();
 
   let inbox: PlainRecord[] = [];
   let open: TurnCase | null = null;
   let isAfterRecallTool = false;
   let hasReply = false;
+  let hasEnded = false;
 
   for (const record of data.records) {
     foldPins(pinned, record);
+
+    // Past-message retrieval searches the owner's messages in every thread.
+    const messageText = record.kind === 'owner_message' ? readErasableText(record) : null;
+
+    if (messageText !== null) {
+      messages.set(record.sequence, messageText);
+    }
 
     if (record.thread !== conversationThread) {
       continue;
@@ -123,12 +157,22 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
       open = null;
       isAfterRecallTool = false;
       hasReply = false;
+      hasEnded = false;
+
+      const batch = inbox.slice(0, inboxBatchLimit).filter((entry) => entry.kind === 'owner_message');
 
       // Per-turn retrieval runs only when the batch's joined text holds more than whitespace.
-      const query = inbox
-        .slice(0, inboxBatchLimit)
+      const query = batch
         .flatMap((entry) => {
-          const text = entry.kind === 'owner_message' ? readErasableText(entry) : null;
+          const text = readErasableText(entry);
+
+          return text === null ? [] : [text];
+        })
+        .join('\n');
+
+      const typedQuery = batch
+        .flatMap((entry) => {
+          const text = collectTypedText(entry);
 
           return text === null ? [] : [text];
         })
@@ -148,6 +192,10 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
           searchMode: null,
           delivered: [],
           ratings: [],
+          typedQuery,
+          shownMessages: [],
+          isSessionStart: false,
+          contextTokens: null,
         };
       }
 
@@ -184,6 +232,22 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
     // opening is logged after that retrieval.
     if (record.kind === 'model.session_opened' || record.kind === 'model.session_rebuilt') {
       open.delivered = [];
+      open.isSessionStart = true;
+    }
+
+    // The first turn end of the step records what the model was shown with the retrieval.
+    if (record.kind === 'model.turn_ended' && !hasEnded) {
+      const ended = parsePayload(turnEndedSchema, record);
+
+      hasEnded = true;
+      open.contextTokens = ended.contextSize ?? toCallContext(ended);
+      open.shownMessages = (ended.retrievedMessages ?? []).flatMap((sequence) => {
+        const text = messages.get(sequence);
+
+        return text === undefined
+          ? []
+          : [{ sequence, text: text.slice(0, messageTextLimit), isCut: text.length > messageTextLimit }];
+      });
     }
 
     if (record.kind === 'model.reply') {
@@ -228,6 +292,34 @@ function foldPins(pinned: Set<string>, record: PlainRecord): void {
   if (record.kind === 'memory.version_added' && record.payload['state'] === 'retired') {
     pinned.delete(itemID);
   }
+}
+
+// Most turn records lack the context size, so the input of the mean model call stands in for it:
+// each call reads the whole context, from the cache or not.
+function toCallContext(ended: z.infer<typeof turnEndedSchema>): number | null {
+  if (ended.turns === undefined || ended.turns < 1 || ended.inputTokens === undefined) {
+    return null;
+  }
+
+  const total = ended.inputTokens + (ended.cacheReadTokens ?? 0) + (ended.cacheWriteTokens ?? 0);
+
+  return Math.round(total / ended.turns);
+}
+
+// The message with its pasted and dropped spans taken out, which leaves what the owner typed.
+function collectTypedText(record: PlainRecord): string | null {
+  const text = readErasableText(record);
+  const spans = record.erasable.status === 'readable' ? spansSchema.safeParse(record.erasable.fields['spans']) : null;
+
+  if (text === null || spans?.success !== true) {
+    return text;
+  }
+
+  return spans.data
+    .filter((span) => span.source !== 'pasted' && span.source !== 'dropped')
+    .toSorted((first, second) => first.start - second.start)
+    .map((span) => text.slice(span.start, span.end))
+    .join('');
 }
 
 function closeTurn(turn: TurnCase, exchanges: Exchange[]): void {
@@ -286,6 +378,8 @@ function collectCandidates(
       isSelf: (item.subject ?? (item.kind === 'self' ? 'self' : 'owner')) === 'self',
       isPinned: pinned.has(itemID),
       isLapsed: current.until !== null && current.until <= now,
+      // The export holds the flag as it stands at the end, and a turn's retrieval leaves the item out.
+      isSensitive: item.is_sensitive === 1,
       text: current.text,
     });
   }

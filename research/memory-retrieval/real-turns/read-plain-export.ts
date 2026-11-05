@@ -35,6 +35,7 @@ const plainItemSchema = z.object({
   short_id: z.string().nullable(),
   kind: z.enum(['fact', 'self']),
   subject: z.string().nullable(),
+  is_sensitive: z.int().exactOptional(),
 });
 
 const plainVersionSchema = z.object({
@@ -46,6 +47,10 @@ const plainVersionSchema = z.object({
   until: z.number().nullable(),
   status: z.string(),
   text: z.string().exactOptional(),
+  quote: z.string().nullable().exactOptional(),
+  origin: z.string().exactOptional(),
+  source: z.string().exactOptional(),
+  recorded_at: z.number().exactOptional(),
 });
 
 export type PlainVersion = z.infer<typeof plainVersionSchema>;

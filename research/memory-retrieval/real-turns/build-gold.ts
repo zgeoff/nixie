@@ -1,4 +1,5 @@
 import type { TurnCase } from './build-turn-cases.ts';
+import { messageKeyPrefix } from './build-rating-sample.ts';
 import type { Gold, Label } from './score-turns.ts';
 
 export interface SampleKey {
@@ -31,10 +32,11 @@ export function buildGold(turns: TurnCase[], labels: Label[], keys: SampleKey[])
       return itemID ?? null;
     };
 
-    const relevant = (label?.relevant ?? []).map((ref) => toItem(ref)).filter((itemID) => itemID !== null);
+    const named = (label?.relevant ?? []).map((ref) => toItem(ref)).filter((itemID) => itemID !== null);
 
     gold.set(turn.caseID, {
-      relevant: new Set(relevant),
+      relevant: new Set(named.filter((key) => !key.startsWith(messageKeyPrefix))),
+      messages: new Set(named.filter((key) => key.startsWith(messageKeyPrefix))),
       best: label === undefined || label.best === null ? null : toItem(label.best),
       noise: new Set(turn.ratings.filter((rating) => rating.verdict !== 'helpful').map((rating) => rating.itemID)),
       // The product leaves out only the version it delivered, so an item counts as delivered only

@@ -30,10 +30,14 @@ test('#runRankings ranks each turn under each run and stops every encoder and in
         recalledSequence: 2,
         recordedAt: 0,
         query: 'garden tomatoes',
+        typedQuery: 'garden tomatoes',
+        shownMessages: [],
+        isSessionStart: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [
-          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, text: 'The garden grows tomatoes' },
+          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'The garden grows tomatoes' },
         ],
         logged: [],
         searchMode: 'hybrid',
@@ -69,7 +73,7 @@ test('#scoreRanking gives recall at each depth and the reciprocal rank of the fi
           {
             relevant: new Set(['needed-a', 'needed-b']),
             best: 'needed-b',
-            noise: new Set<string>(),
+            messages: new Set<string>(), noise: new Set<string>(),
             delivered: new Set<string>(),
             isLabelled: true,
           },
@@ -94,7 +98,7 @@ test('#scoreRanking counts a needed item at rank 11 toward the reciprocal rank',
           {
             relevant: new Set(['needed-a']),
             best: null,
-            noise: new Set<string>(),
+            messages: new Set<string>(), noise: new Set<string>(),
             delivered: new Set<string>(),
             isLabelled: true,
           },
@@ -111,7 +115,7 @@ test('#scoreRanking leaves out the turns that need no item', () => {
       new Map([
         [
           't1',
-          { relevant: new Set<string>(), best: null, noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set<string>(), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
       ]),
     ),
@@ -131,14 +135,14 @@ test('#scoreServed scores what a served set covers, brings fresh and shows on tu
           {
             relevant: new Set(['needed-a', 'needed-b', 'needed-c']),
             best: null,
-            noise: new Set(['noise-a']),
+            messages: new Set<string>(), noise: new Set(['noise-a']),
             delivered: new Set(['needed-a']),
             isLabelled: true,
           },
         ],
         [
           't2',
-          { relevant: new Set<string>(), best: null, noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set<string>(), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
       ]),
     ),
@@ -168,11 +172,11 @@ test('#buildPairedDifference gives no difference for a run against itself', () =
       new Map([
         [
           't1',
-          { relevant: new Set(['needed-a']), best: null, noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set(['needed-a']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
         [
           't2',
-          { relevant: new Set(['needed-b']), best: null, noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set(['needed-b']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
       ]),
       'reciprocal',
@@ -194,11 +198,11 @@ test('#buildPairedDifference gives the same gain at every bound when a run gains
       new Map([
         [
           't1',
-          { relevant: new Set(['needed-a']), best: null, noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set(['needed-a']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
         [
           't2',
-          { relevant: new Set(['needed-b']), best: null, noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+          { relevant: new Set(['needed-b']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
         ],
       ]),
       'reciprocal',
@@ -218,9 +222,9 @@ test('#buildPairedDifference gives the same interval on every call', () => {
     { caseID: 't3', ranking: { facts: ['needed-c'], selves: [] } },
   ];
   const gold = new Map([
-    ['t1', { relevant: new Set(['needed-a']), best: null, noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
-    ['t2', { relevant: new Set(['needed-b']), best: null, noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
-    ['t3', { relevant: new Set(['needed-c']), best: null, noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
+    ['t1', { relevant: new Set(['needed-a']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
+    ['t2', { relevant: new Set(['needed-b']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
+    ['t3', { relevant: new Set(['needed-c']), best: null, messages: new Set<string>(), noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true }],
   ]);
 
   expect(buildPairedDifference(run, base, gold, 'at5')).toStrictEqual(buildPairedDifference(run, base, gold, 'at5'));

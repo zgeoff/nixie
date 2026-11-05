@@ -18,6 +18,7 @@ export const labelSchema = z.object({
   caseID: z.string(),
   relevant: z.array(z.string()),
   best: z.string().nullable(),
+  by: z.enum(['assistant', 'owner', 'model']).exactOptional(),
 });
 
 export type Label = z.infer<typeof labelSchema>;
@@ -104,6 +105,36 @@ export function buildRuns(encoders: EncoderName[]): Run[] {
 
     runs.push(sweep(`served vectors, similarity ${minSimilarity}`, 'served', { ...SHIPPED, mode: 'vector', minSimilarity }));
   }
+
+  runs.push(...buildShortRuns());
+
+  return runs;
+}
+
+// The served sets that change what a short message, or pasted text, retrieves. The rating sample
+// pools what each of them shows, so every one of them can be scored on the same labels.
+export function buildShortRuns(): Run[] {
+  const runs: Run[] = [];
+
+  for (const maxWords of [3, 6]) {
+    for (const kind of ['skip', 'previous', 'agree', 'vectors'] as const) {
+      runs.push({
+        name: `leaf-ir-q8 served, short ${kind}, ${maxWords} words`,
+        encoder: 'leaf-ir-q8',
+        kind: 'served',
+        config: { ...SHIPPED, shortRule: { kind, maxWords } },
+        isShipped: false,
+      });
+    }
+  }
+
+  runs.push({
+    name: 'leaf-ir-q8 served, pasted text dropped',
+    encoder: 'leaf-ir-q8',
+    kind: 'served',
+    config: { ...SHIPPED, isPastedDropped: true },
+    isShipped: false,
+  });
 
   return runs;
 }
@@ -282,6 +313,7 @@ export interface ServedScore {
 
 export interface Gold {
   relevant: Set<string>;
+  messages: Set<string>;
   best: string | null;
   noise: Set<string>;
   delivered: Set<string>;

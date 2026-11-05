@@ -10,11 +10,15 @@ test('it maps the label references to items and counts a delivered item only at 
         recalledSequence: 7,
         recordedAt: 0,
         query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [
-          { itemID: 'item-a', version: 2, isSelf: false, isPinned: false, isLapsed: false, text: 'Packs light' },
-          { itemID: 'item-b', version: 1, isSelf: false, isPinned: false, isLapsed: false, text: 'Flies on Friday' },
+          { itemID: 'item-a', version: 2, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Packs light' },
+          { itemID: 'item-b', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Flies on Friday' },
         ],
         logged: [],
         searchMode: 'hybrid',
@@ -33,12 +37,50 @@ test('it maps the label references to items and counts a delivered item only at 
         {
           relevant: new Set(['item-b', 'item-a']),
           best: 'item-a',
-          noise: new Set(['item-b']),
+          messages: new Set<string>(), noise: new Set(['item-b']),
           delivered: new Set(['item-b']),
           isLabelled: true,
         },
       ],
     ]),
+  });
+});
+
+test('it keeps a named past message apart from the needed items', () => {
+  const built = buildGold(
+    [
+      {
+        caseID: 't7',
+        stepSequence: 5,
+        recalledSequence: 7,
+        recordedAt: 0,
+        query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [{ sequence: 3, text: 'pack the blue coat', isCut: false }],
+        isSessionStart: false,
+        contextTokens: null,
+        reply: '',
+        earlier: [],
+        candidates: [
+          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Packs light' },
+        ],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    [{ caseID: 't7', relevant: ['P1'], best: 'P1' }],
+    [{ caseID: 't7', refs: { M1: 'item-a', P1: 'message:3' } }],
+  );
+
+  expect('gold' in built ? built.gold.get('t7') : null).toStrictEqual({
+    relevant: new Set<string>(),
+    messages: new Set(['message:3']),
+    best: 'message:3',
+    noise: new Set<string>(),
+    delivered: new Set<string>(),
+    isLabelled: true,
   });
 });
 
@@ -51,6 +93,10 @@ test('it returns each label reference the key lacks', () => {
         recalledSequence: 7,
         recordedAt: 0,
         query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [],
@@ -76,6 +122,10 @@ test('it returns each labelled case the rebuilt turns lack', () => {
         recalledSequence: 7,
         recordedAt: 0,
         query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [],
