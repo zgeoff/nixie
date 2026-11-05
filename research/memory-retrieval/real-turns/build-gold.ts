@@ -43,7 +43,9 @@ export function buildGold(turns: TurnCase[], labels: Label[], keys: SampleKey[],
     };
 
     const named = (label?.relevant ?? []).map((ref) => toItem(ref)).filter((itemID) => itemID !== null);
-    const leftOut = label === undefined ? [] : (missingByCase.get(turn.caseID) ?? []);
+    // An item the store did not hold at the turn could not be retrieved, so it never counts as missed.
+    const held = new Set(turn.candidates.map((candidate) => candidate.itemID));
+    const leftOut = label === undefined ? [] : (missingByCase.get(turn.caseID) ?? []).filter((itemID) => held.has(itemID));
     const pinned = new Set(turn.candidates.filter((candidate) => candidate.isPinned).map((candidate) => candidate.itemID));
 
     gold.set(turn.caseID, {

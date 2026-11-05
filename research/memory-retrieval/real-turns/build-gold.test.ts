@@ -182,7 +182,7 @@ test('it maps the references the rater called misleading to items', () => {
   expect('gold' in built ? built.gold.get('t7')?.misleading : null).toStrictEqual(new Set(['item-b']));
 });
 
-test('it adds the items the list left out to the needed items, and counts a pinned one as delivered', () => {
+test('it adds the left-out items the store held to the needed items, and counts a pinned one as delivered', () => {
   const built = buildGold(
     [
       {
@@ -213,7 +213,7 @@ test('it adds the items the list left out to the needed items, and counts a pinn
   );
 
   expect('gold' in built ? built.gold.get('t7') : null).toStrictEqual({
-    relevant: new Set(['item-a', 'item-c', 'item-d']),
+    relevant: new Set(['item-a', 'item-c']),
     messages: new Set<string>(),
     best: 'item-a',
     noise: new Set<string>(),
