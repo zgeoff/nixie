@@ -39,9 +39,9 @@ fail, nixie shows you that it is failing to answer, and the next turn that succe
 The conversation works with tasks through 3 tools: `task.start` starts a task with a brief,
 `task.message` sends a task a message, and `tasks.list` lists the tasks with their state, brief,
 last activity and the task each waits on. Tasks report back to the conversation with their own
-messages. No task list rides along in each turn, and nixie keeps no record of which task a message
-of yours went to. When the conversation needs to know whether a task already covers some work, it
-asks `tasks.list`.
+messages. No task list rides along in each turn, and nixie writes no routing record of its own. A
+task message names the messages of yours it passes on in its on-behalf-of IDs. When the conversation
+needs to know whether a task already covers some work, it asks `tasks.list`.
 
 The dashboard shows every task and its controls. The live view adds tasks that are finishing or
 finished, and what each did and why. Tasks are state machines over the event log from

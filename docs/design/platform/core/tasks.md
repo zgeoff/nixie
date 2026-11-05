@@ -123,10 +123,10 @@ that task.
 The conversation works with tasks through 3 tools, as
 [0018](../../../decisions/0018-the-conversation-and-tasks.md) decides: `task.start` starts a task
 with a brief, `task.message` sends an existing task a message, and `tasks.list` lists the tasks.
-Each turn carries no task list, and nixie keeps no record of which task a message of yours went to.
-A start also chooses the task's model, persona, memory, tools, report mode and limits, within bounds
-that code checks, as [start options](../../../architecture/core/started-tasks.md#start-options)
-covers.
+Each turn carries no task list, and nixie writes no routing record of its own. A task message names
+the messages of yours it passes on in its on-behalf-of IDs. A start also chooses the task's model,
+persona, memory, tools, report mode and limits, within bounds that code checks, as
+[start options](../../../architecture/core/started-tasks.md#start-options) covers.
 
 ## Messages between tasks
 
