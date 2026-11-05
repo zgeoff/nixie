@@ -50,11 +50,7 @@ export function buildStepResult(
   }
 
   if (failure?.reason === 'model_api') {
-    throw new ModelAPIError(
-      failure.error,
-      failure.detail,
-      buildReplyRecords(source, completed.turn),
-    );
+    throw new ModelAPIError(failure.error, failure.detail, buildReplyRecords(source, completed));
   }
 
   if (failure !== null || last === undefined) {
@@ -79,8 +75,16 @@ export function buildStepResult(
   };
 }
 
-function buildReplyRecords(source: ModelRecordSource, turn: GuestTurn): readonly RecordInput[] {
-  const replies = turn.assistants.filter((assistant) => assistant.text !== '');
+function buildReplyRecords(
+  source: ModelRecordSource,
+  completed: Pick<CompletedTurn, 'isSilent' | 'turn'>,
+): readonly RecordInput[] {
+  const turn = completed.turn;
+
+  const replies = completed.isSilent
+    ? []
+    : turn.assistants.filter((assistant) => assistant.text !== '');
+
   const reasoning = buildTurnReasoning(turn);
 
   return replies.map((assistant, index) => {
@@ -121,7 +125,7 @@ function buildTurnReasoning(turn: GuestTurn): TurnReasoning {
 
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
   return [
-    ...(completed.isSilent ? [] : buildReplyRecords(source, completed.turn)),
+    ...buildReplyRecords(source, completed),
     buildModelRecord(source, modelTurnEndedCodec, {
       payload: {
         ...buildTurnSummary(completed.turn),

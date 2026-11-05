@@ -1,6 +1,39 @@
 import { expect, test } from 'bun:test';
 import { buildStepResult } from './build-step-result';
 
+test('it records no reply with the error of a silent turn that the model API refused', () => {
+  expect(() =>
+    buildStepResult(
+      {
+        definitions: () => ({ snapshotHash: 'sha256:test' }),
+        model: { model: 'claude-test-1', profile: 'chat-direct' },
+      },
+      {
+        turn: {
+          assistants: [
+            { type: 'assistant', messageID: 'message-1', text: 'Nothing to add.', toolUses: [] },
+          ],
+          read: [],
+          ended: [],
+          failure: {
+            type: 'failed',
+            reason: 'model_api',
+            error: 'overloaded',
+            detail: 'API Error: 529 Overloaded',
+          },
+        },
+        sent: new Set<number>(),
+        hasMore: false,
+        notedThrough: null,
+        images: { bytes: 0, count: 0 },
+        isSilent: true,
+        memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
+      },
+      [],
+    ),
+  ).toThrow(expect.objectContaining({ name: 'ModelAPIError', records: [] }));
+});
+
 test('it sums the thinking tokens of every ended frame onto the last reply, and leaves earlier replies without the count', () => {
   const result = buildStepResult(
     {

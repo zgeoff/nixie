@@ -292,10 +292,11 @@ calls:
 - Otherwise the turn ends silently. The host passes no more live messages into the turn, so a
   message from the user that lands afterwards stays unread and starts the next step.
 
-A silent turn commits no reply record, even for text the model wrote before or after the call, and
-its turn-ended record holds `isSilent`. The [API](../channels/api.md) carries the mark on that
-record, and the [client](../channels/client.md) shows the step as ended with no reply. A silent turn
-marks its inbox records read and commits its session boundary as any other turn does.
+A silent turn records no reply, even for text the model wrote before or after the call, and a model
+API refusal later in the turn records none with its error either. Its turn-ended record holds
+`isSilent`. The [API](../channels/api.md) carries the mark on that record, and the
+[client](../channels/client.md) shows the step as ended with no reply. A silent turn marks its inbox
+records read and commits its session boundary as any other turn does.
 
 ### A call the model API refuses
 
