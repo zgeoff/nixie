@@ -29,14 +29,15 @@ import { parseEncoderNames } from './real-turns/parse-encoder-names.ts';
 import { readPlainExport } from './real-turns/read-plain-export.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { startMemoryIndex } from '../../modules/memory/src/start-memory-index.ts';
-import { buildRanker, SHIPPED } from './real-turns/rank-turn.ts';
+import { type BackgroundMessage, buildRanker, SHIPPED } from './real-turns/rank-turn.ts';
 import { readJSONLines } from './real-turns/read-json-lines.ts';
 import { buildScoreReport } from './real-turns/build-score-report.ts';
 import { pickScoredTurns } from './real-turns/pick-scored-turns.ts';
 import type { Gold, Label } from './real-turns/score-turns.ts';
-import { buildRuns, buildShortRuns, getShippedRun, labelSchema, missingMapSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
+import { buildRuns, getShippedRun, labelSchema, missingMapSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
 import { buildRatingSample } from './real-turns/build-rating-sample.ts';
 import { collectRatingPools } from './real-turns/collect-rating-pools.ts';
+import { pickPooledRuns } from './real-turns/pick-pooled-runs.ts';
 import { collectIndexedMessages } from './real-turns/collect-indexed-messages.ts';
 import { pickRatingTurns } from './real-turns/pick-rating-turns.ts';
 import { renderRatingParts } from './real-turns/render-rating-parts.ts';
@@ -293,7 +294,7 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     runs,
     { loadEncoder: (name) => loadTurnEncoder(name, encoderDirs), startIndex: startMemoryIndex },
     excludedWords,
-    hybrid.map((turn) => ({ sequence: turn.recalledSequence, text: buildVectorQuery(turn.query, excludedWords) })).filter((message) => message.text.trim() !== ''),
+    collectBackgroundMessages(hybrid),
   );
   const scored = buildScoreReport(runs, results, gold);
   const heldOutIDs = pickHeldOutCases(
@@ -363,6 +364,13 @@ async function runScore(turns: TurnCase[]): Promise<void> {
 
     await Bun.write(resolve(values.out), `${JSON.stringify(report, null, 2)}\n`);
   }
+}
+
+// The hub settings score an item against these messages, so the sample and the score pass the same.
+function collectBackgroundMessages(hybrid: TurnCase[]): BackgroundMessage[] {
+  return hybrid
+    .map((turn) => ({ sequence: turn.recalledSequence, text: buildVectorQuery(turn.query, excludedWords) }))
+    .filter((message) => message.text.trim() !== '');
 }
 
 // Encodes the indexed text of each past message a labelled turn was shown, and its query, through
@@ -505,13 +513,13 @@ async function writeRatingSample(turns: TurnCase[]): Promise<void> {
 
   const size = Number(values.size ?? '240');
   const chosen = pickRatingTurns(turns, size, shortWords);
-  const shipped = buildRuns(['leaf-ir-q8']);
-  const runs = [getShippedRun(shipped, 'ranking'), getShippedRun(shipped, 'served'), ...buildShortRuns()];
+  const runs = pickPooledRuns(buildRuns(['leaf-ir-q8']));
   const results = await runRankings(
     chosen.chosen,
     runs,
     { loadEncoder: (name) => loadTurnEncoder(name, encoderDirs), startIndex: startMemoryIndex },
     excludedWords,
+    collectBackgroundMessages(turns.filter((turn) => turn.searchMode === 'hybrid')),
   );
 
   const sample = buildRatingSample(chosen, collectRatingPools(runs, results, chosen.chosen, poolTopPlaces));

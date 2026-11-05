@@ -160,9 +160,8 @@ export function buildRuns(encoders: EncoderName[]): Run[] {
   return runs;
 }
 
-// The served sets that change what a short message, or pasted text, retrieves. The rating sample
-// pools what each of them shows, so every one of them can be scored on the same labels.
-export function buildShortRuns(): Run[] {
+// The served sets that change what a short message, or pasted text, retrieves.
+function buildShortRuns(): Run[] {
   const runs: Run[] = [];
 
   for (const maxWords of [3, 6]) {
