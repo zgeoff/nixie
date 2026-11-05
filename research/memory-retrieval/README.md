@@ -34,8 +34,8 @@ add to a turn, and what does a short message bring?
   of 2 showed 31% fewer items on turns that needed none, and lost no needed item on the 18 turns
   that needed an item the session lacked. The selection half agreed. A query window added noise, and
   the BM25 weight changed nothing on turns that needed none. On 274 of the 286 labels, recovered
-  from the rater's replies, the same setting found 14 of 18 needed items against 16 for shipped, so
-  the no-loss result is unconfirmed.
+  from the rater's replies, the same setting reached fresh recall 0.778 against 0.889 for shipped,
+  so the no-loss result is unconfirmed.
 
 Let the store mark which fact is current. Keep the shipped encoder and fusion. The
 [per-turn options](per-turn-memory.md#options) give the floor and filter changes that the labels

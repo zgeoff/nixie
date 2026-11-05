@@ -37,8 +37,8 @@ The measurement set out to answer 4 questions, each with its short answer:
 4. What precision and fresh recall do the candidate settings reach on labels from the deployment's
    assistant? This informs the shipped settings. On the held-out half, the shipped settings reached
    fresh recall 0.722 and precision 0.058, and similarity 0.46 with a BM25 floor of 2 reached 0.722
-   and 0.071 [measured]. On the [recovered labels](#recovered-labels), the same setting lost 2 of
-   the 18 needed items, so its no-loss result is unconfirmed.
+   and 0.071 [measured]. On the [recovered labels](#recovered-labels), the same setting reached
+   fresh recall 0.778 against 0.889 for shipped, so its no-loss result is unconfirmed.
    [Fixes on the held-out half](#fixes-on-the-held-out-half) gives each setting, and
    [labels](#labels) gives the sample and the rater.
 
@@ -68,7 +68,7 @@ bun real-turns.ts score --plain <plain> --names <names> --labels <out>/labels --
 - `--exclude` drops the labels of the listed turns, `--held` counts every listed item of the listed
   turns as already in the session, and `--missing` maps the rater's descriptions of missed items to
   item IDs.
-- [count-turn-blocks.ts](real-turns/count-turn-blocks.ts) renders each block through the product's
+- [build-block-tokens.ts](real-turns/build-block-tokens.ts) renders each block through the product's
   own renderers and counts it at 4 characters a token, the count the product budgets with.
 - [pick-turn-query.ts](real-turns/pick-turn-query.ts) holds the short-message rules and the query
   window, and [rank-turn.ts](real-turns/rank-turn.ts) the keyword weight and the hub correction.
@@ -105,9 +105,9 @@ that list: the similarity and BM25 floors, the BM25 weights, the hub corrections
 and the item counts. Each ranking setting other than shipped could also place such an item in its
 top 5. The scores count such an item as shown and not needed. For those settings, fresh recall,
 precision and recall@5 can read low, and a turn can count as needing none when an unrated item would
-have helped [read in the code]. The labels are no longer at hand, so the count of such items is
-unknown. The sample builder in the harness pools every compared served setting, so a sample it
-builds closes the gap for them; the ranking settings other than shipped keep it [read in the code].
+have helped [read in the code]. The count of such items is not measured. The sample builder in the
+harness pools every compared served setting, so a sample it builds closes the gap for them; the
+ranking settings other than shipped keep it [read in the code].
 
 - 285 labels matched the sample, and 1 named a turn outside it [measured].
 - 15 labels fall on turns about the memory work itself: a block of such turns, and turns the rater
@@ -151,9 +151,10 @@ product puts around pasted or dropped text and without its image markers [read i
 read low by about 13 tokens for each such span and 11 for each image [read in the code]. Each
 message's line also carried the turn's own day and "this conversation", where the product writes the
 message's day and, for another thread, that thread's name, which moves a count by a few tokens
-either way [read in the code]. The harness now renders the tags, the image markers and each
-message's own day and thread, so a new count would read higher than the table [read in the code].
-The snapshot is no longer at hand, so the counts stand as measured.
+either way [read in the code]. The harness renders the tags, the image markers and each message's
+own day and thread, so a count from it reads higher than the table [read in the code]. The 90th
+percentile column took the value one rank above the nearest rank, which moves only the self-notes
+row, by one rank [read in the code].
 
 A turn's model calls read a mean of 155,714 input tokens a call, cached or not, so the blocks a turn
 adds come to about 0.1% of one call [measured]. A block stays in the session once given, and a
@@ -166,8 +167,8 @@ those sessions, with the pinned block as of each one's first turn [read in the c
 ## Noise per block
 
 Each block's precision is the share of what the turn was shown, as logged, that the rater marked
-needed, over the 266 scored turns [measured]. The rater marks an item misleading when the item
-caused a wrong reply, and the scores count it apart from plain noise [read in the code].
+needed, over the 266 scored turns [measured]. The rater marks an item misleading when the item would
+have made the reply worse, and the scores count it apart from plain noise [read in the code].
 
 | Block           | Turns shown it | Shown | Needed | Misleading | Precision |
 | --------------- | -------------- | ----- | ------ | ---------- | --------- |
@@ -208,12 +209,12 @@ Ranked by the held-out half, the fixes come out in this order:
 
 1. **A higher bar for every item.** Similarity 0.46 with a BM25 floor of 2 showed 31% fewer items on
    turns that needed none, and fresh recall stayed the same on every one of the 18 turns [measured].
-   The [recovered labels](#recovered-labels) show a loss of 2 of 18, so this result is unconfirmed.
-   The selection half gave the same result: 1.04 against 1.49 shown on empty, with no change in
-   fresh recall [measured]. The assistant proposed a bar only for heavy personal items, and BM25
-   alone showed both such items it named, with similarity below the shipped floor [one-off script].
-   A BM25 floor is the general form of that fix [guess]. BM25 floor 4 cut more, but lowered fresh
-   recall on both halves [measured].
+   The [recovered labels](#recovered-labels) show fresh recall 0.111 lower, so this result is
+   unconfirmed. The selection half gave the same result: 1.04 against 1.49 shown on empty, with no
+   change in fresh recall [measured]. The assistant proposed a bar only for heavy personal items,
+   and BM25 alone showed both such items it named, with similarity below the shipped floor [one-off
+   script]. A BM25 floor is the general form of that fix [guess]. BM25 floor 4 cut more, but lowered
+   fresh recall on both halves [measured].
 2. **No item that the current exchange added or approved.** Of 554 items that the shipped settings
    showed over 1,054 hybrid turns, 59 came from the turn's own exchange, on 46 turns, and the rater
    marked 2 of the 59 needed [one-off script]. The exchange already holds what those 2 say, so
@@ -393,8 +394,11 @@ the rule of three [measured]. The [recovered labels](#recovered-labels) contradi
 
 The labels were rebuilt from the rater's replies on a later snapshot: 274 of the 286 sampled turns
 carry one, with no missing-item map and the audit turns kept in [measured]. On that held-out half,
-18 turns needed an item the session did not hold, and 111 needed none [measured]. Fix 1 found 14 of
-the 18 needed items, against 16 for shipped, so its no-loss result is unconfirmed [measured].
+18 turns needed an item the session did not hold, and 111 needed none [measured]. Fix 1 reached
+fresh recall 0.778 against 0.889 for shipped, a loss as large as 2 of the 18 turns missing their
+item, so its no-loss result is unconfirmed [measured]. These scores came before the harness left
+pinned needed items out of the ranking scores and ended each exchange at the next turn of any search
+mode [read in the code].
 
 | Setting                                                   | Fresh recall | Fresh change              | Shown on empty | Precision | Shown per turn |
 | --------------------------------------------------------- | ------------ | ------------------------- | -------------- | --------- | -------------- |
@@ -405,15 +409,16 @@ the 18 needed items, against 16 for shipped, so its no-loss result is unconfirme
 | Similarity 0.46, BM25 floor 2, keyword-only items dropped | 0.111        | -0.778 (-0.944 to -0.556) | 0.18           | 0.080     | 0.18           |
 
 A keyword-only item is one that BM25 alone brings, below the similarity floor. With the sensitive
-flag off, the 4 flagged items showed 33 times over 1,056 hybrid turns at the shipped settings, 31 at
-fix 1, and 1 at fix 1 with keyword-only items dropped [one-off script]. Those counts include shows
-that a turn needed, because the labels do not say which shows were asked for [read in the code].
+flag off, the 4 flagged items showed 33 times over all 1,056 hybrid turns at the shipped settings,
+where the [sensitive-flag table](#the-sensitive-flag) replayed 1,054, and 31 at fix 1, and 1 at fix
+1 with keyword-only items dropped [one-off script]. Those counts include shows that a turn needed,
+because the labels do not say which shows were asked for [read in the code].
 
 ## Options
 
 | Option                                     | Effort           | Risk                                                       |
 | ------------------------------------------ | ---------------- | ---------------------------------------------------------- |
-| Similarity floor 0.46 and BM25 floor 2     | 2 config values  | recovered labels: 2 of 18 needed items lost                |
+| Similarity floor 0.46 and BM25 floor 2     | 2 config values  | recovered labels: fresh recall 0.111 lower                 |
 | Leave out items the current exchange added | 1 rule in recall | 2 of 59 such shows were needed, and the exchange held both |
 | Keep the sensitive flag                    | none             | 1 needed show lost on this data                            |
 | Query window, hub correction, bundle split | not advised      | each added noise, or the halves disagreed                  |
