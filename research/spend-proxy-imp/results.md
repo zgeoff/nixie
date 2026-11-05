@@ -66,15 +66,15 @@ cache tokens [read in the code]. The spike sums them to set beside the count.
 
 ### Versions
 
-| Component      | Pull request #834                                    | Pull request #858              |
-| -------------- | ---------------------------------------------------- | ------------------------------ |
-| imp            | 6.4.0, impd and CLI                                  | 6.4.2, impd and CLI            |
-| Counting proxy | `counting-proxy-linux-x64` from nixie 0.42.0         | the same                       |
-| nixie          | commit `3e2d0d4`, as a preview test build            | commit `9a4112d`, the same way |
-| Model          | `claude-haiku-5-5`, the preview's one model profile  | the same                       |
-| Count limit    | $2 for the life of the pull request                  | the same                       |
-| Proxy upstream | `https://api.anthropic.com`                          | the same                       |
-| Spike script   | `run.sh` at `523a22e7`, the shell form of the runner | `run-spike.ts` at `9a4112d`    |
+| Component      | Pull request #834                                    | Pull request #858                           |
+| -------------- | ---------------------------------------------------- | ------------------------------------------- |
+| imp            | 6.4.0, impd and CLI                                  | 6.4.2, impd and CLI                         |
+| Counting proxy | `counting-proxy-linux-x64` from nixie 0.42.0         | the same                                    |
+| nixie          | commit `3e2d0d4`, as a preview test build            | `71f58e6`, then `9a4112d`, the same way     |
+| Model          | `claude-haiku-5-5`, the preview's one model profile  | the same                                    |
+| Count limit    | $2 for the life of the pull request                  | the same                                    |
+| Proxy upstream | `https://api.anthropic.com`                          | the same                                    |
+| Spike script   | `run.sh` at `523a22e7`, the shell form of the runner | `run-spike.ts` at `71f58e6`, then `9a4112d` |
 
 ### Run it
 
@@ -178,18 +178,19 @@ The nixie container's model route and base URL named the imp, as on pull request
 
 ### The model calls
 
-The first `run-spike.ts` run, at 05:59 UTC on 5 November 2026, got the same 429 on each of the
-conversation's 3 calls, with no rate limit header [measured]. Each turn ended in `task.step_errored`
-and wrote no `model.turn_ended` record [measured]. At 06:05:43 UTC the deployment put a new
-credential on `preview-model-counted`, with the same hosts, upstream and grants, and the spike ran
+The first `run-spike.ts` run, at 05:59 UTC on 5 November 2026 on a preview of commit `71f58e6`, got
+the same 429 on each of the conversation's 3 calls, with no rate limit header [measured]. Each turn
+ended in `task.step_errored` and wrote no `model.turn_ended` record [measured]. At 06:05:43 UTC the
+deployment put a new credential on `preview-model-counted`, with the same hosts, upstream and
+grants. The preview was then rebuilt at commit `9a4112d`, with a new database, and the spike ran
 once more at 06:07 UTC [measured].
 
 From then on, the model API answered each of nixie's model calls with a 200 [measured]:
 
-| Time (UTC)      | Calls | Request size | Sender                                                   |
-| --------------- | ----- | ------------ | -------------------------------------------------------- |
-| 06:06:27        | 1     | 15 KB        | the memory writer, which retried a call that got a 429   |
-| 06:07:31 to :43 | 6     | 6 to 38 KB   | 3 conversation turns and 1 turn of the task they started |
+| Time (UTC)      | Calls | Request size | Sender                                                       |
+| --------------- | ----- | ------------ | ------------------------------------------------------------ |
+| 06:06:27        | 1     | 15 KB        | the memory writer of the `71f58e6` build, before the rebuild |
+| 06:07:31 to :43 | 6     | 6 to 38 KB   | 3 conversation turns and 1 turn of the task they started     |
 
 The count file read as follows after each step [measured]:
 
@@ -205,7 +206,8 @@ nixie's 4 `model.turn_ended` records sum to 59183 tokens: 53964 in the conversat
 turns from the memory writer's call, make 64405, the count's total [measured]. By kind, the 4 turns
 held 16 input, 482 output, 41599 cache read and 17086 cache write tokens [measured]. At the
 preview's prices per million tokens of $0.10, $0.50, $0.01 and $0.125, they cost $0.00279434, the
-same as the count's rise over the turns, $0.00345904 less $0.0006647 [measured].
+same as the count's rise over the turns, $0.00345904 less $0.0006647 [measured]. The spike checks
+the memory writer's $0.0006647 against no record.
 
 ### The probes
 
@@ -224,8 +226,8 @@ run.
 1. **The broker sends each call through the counting proxy, and the proxy counts each reply.** The
    broker added the credential to every model call from the preview, from the conversation, its task
    and the memory writer, and sent each one through the imp's counting proxy [measured]. The count's
-   tokens equal those of nixie's turns plus the memory writer's call, and its dollars equal the
-   turns' tokens at the preview's prices [measured].
+   tokens equal those of nixie's turns plus the memory writer's call, and its rise over the turns
+   equals their tokens at the preview's prices [measured].
 2. **The guest has no way to put the credential on a request that skips the counting proxy.** The
    broker adds the credential only under `/<imp>/`, and refused every other path the probes tried,
    dot segments and encoded slashes included [measured]. Under that path, the counting proxy refused

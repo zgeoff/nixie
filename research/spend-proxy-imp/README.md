@@ -31,7 +31,8 @@ Each line ends with [measured]: the spike made the request or the read that show
   proxy [measured].
 - The proxy counted every reply. With a credential that the model API answered with 200, the count
   reached 64405 tokens and $0.00345904. The tokens equal the sum of nixie's own turn records plus a
-  memory writer call, and the dollars equal those turns' tokens at the preview's prices [measured].
+  memory writer call. The count's rise over the turns equals their tokens at the preview's prices
+  [measured].
 
 No request that carries the credential skips the proxy, and the proxy counts each reply, so the hard
 stop can count spend on the host.
