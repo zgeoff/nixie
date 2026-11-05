@@ -37,8 +37,8 @@ spike never saw the proxy count a reply with usage, which the
 
 ## Run it
 
-1. Set the variables that the [setup](results.md#setup) lists: the preview host's SSH target, the
-   preview's imp and origin, and a scratch directory.
+1. Set the 8 variables that [run it](results.md#run-it) lists, such as the preview host's SSH
+   target, the preview's imp and origin, and a scratch directory.
 2. Run one spike at a time on a preview. The proxy keeps one count for the preview's imp, so a
    second spike's model calls land in the same count.
 3. Run the spike from a machine with SSH access to the preview host as root:
