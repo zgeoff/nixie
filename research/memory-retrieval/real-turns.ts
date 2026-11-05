@@ -38,6 +38,13 @@ import { buildRatingSample } from './real-turns/build-rating-sample.ts';
 import { pickRatingTurns } from './real-turns/pick-rating-turns.ts';
 import { renderRatingParts } from './real-turns/render-rating-parts.ts';
 import { scoreBlocks } from './real-turns/score-blocks.ts';
+import { parseLabelLines } from './real-turns/parse-label-lines.ts';
+import type { RatedMessage } from './real-turns/score-message-floors.ts';
+import { scoreMessageFloors } from './real-turns/score-message-floors.ts';
+import { buildSimilarity } from './real-turns/build-similarity.ts';
+import { messageKeyPrefix } from './real-turns/build-rating-sample.ts';
+// @boundaries-ignore a spike imports the code it measures
+import { buildVectorQuery } from '../../modules/memory/src/build-vector-query.ts';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -118,12 +125,19 @@ function printStats(turns: TurnCase[]): void {
 }
 
 // Prints, for each memory block, the tokens it adds per turn, over every turn and over the short
-// ones, beside the mean context of a model call.
+// ones, beside the mean context of a model call. A block stays in the session once given, so it
+// also prints the memory tokens a session holds at each turn. Only a session start resets that
+// count, and a compaction does not, so it is an upper bound.
 function printBlocks(turns: TurnCase[], sources: BlockSources): void {
-  const counted = turns.map((turn) => ({
-    turn,
-    tokens: buildBlockTokens(turn, sources, { ownerName: null, defaultZone: 'UTC' }),
-  }));
+  const held = { tokens: 0 };
+  const counted = turns.map((turn) => {
+    const tokens = buildBlockTokens(turn, sources, { ownerName: null, defaultZone: 'UTC' });
+    const added = tokens.pinned + tokens.items + tokens.selfNotes + tokens.messages;
+
+    held.tokens = turn.isSessionStart ? added : held.tokens + added;
+
+    return { turn, tokens, sessionHeld: held.tokens };
+  });
 
   const summarize = (group: typeof counted) => {
     const blocks = (['pinned', 'items', 'selfNotes', 'messages', 'board'] as const).map((block) => {
@@ -143,9 +157,12 @@ function printBlocks(turns: TurnCase[], sources: BlockSources): void {
 
     const contexts = group.flatMap((entry) => (entry.turn.contextTokens === null ? [] : [entry.turn.contextTokens]));
 
+    const held = group.map((entry) => entry.sessionHeld).toSorted((first, second) => first - second);
+
     return {
       turns: group.length,
       meanCallContext: mean(contexts),
+      sessionHeld: { mean: mean(held), median: held[Math.floor(held.length / 2)] ?? 0, max: held.at(-1) ?? 0 },
       turnsWithShownMessages: group.filter((entry) => entry.turn.shownMessages.length > 0).length,
       blocks: Object.fromEntries(blocks),
     };
@@ -236,16 +253,54 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     ),
   };
 
+  const messageFloors = scoreMessageFloors(await readRatedMessages(chosen, gold), [0.38, 0.42, 0.46, 0.5, 0.55, 0.6]);
+
   console.log(`turns ${chosen.length}, labelled ${labels.length}, short ${shortIDs.size}\n`);
   console.log(scored.lines.join('\n'));
   console.log(`\nshort turns only\n\n${shortScored.lines.join('\n')}`);
   console.log(`\nshown blocks\n\n${JSON.stringify(blocks, null, 2)}`);
+  console.log(`\npast-message similarity floors\n\n${JSON.stringify(messageFloors, null, 2)}`);
 
   if (values.out !== undefined) {
-    const report = { turns: chosen.length, labelled: labels.length, ...scored.report, short: shortScored.report, blocks };
+    const report = { turns: chosen.length, labelled: labels.length, ...scored.report, short: shortScored.report, blocks, messageFloors };
 
     await Bun.write(resolve(values.out), `${JSON.stringify(report, null, 2)}\n`);
   }
+}
+
+// Encodes each past message a labelled turn was shown, and its query, through the shipped encoder,
+// because the log keeps no score for a past message.
+async function readRatedMessages(turns: TurnCase[], gold: Map<string, Gold>): Promise<RatedMessage[]> {
+  const encoder = await loadTurnEncoder('leaf-ir-q8', encoderDirs);
+  const rated: RatedMessage[] = [];
+
+  for (const turn of turns) {
+    const expected = gold.get(turn.caseID);
+    const queryText = buildVectorQuery(turn.query, excludedWords);
+
+    if (expected?.isLabelled !== true || turn.shownMessages.length === 0 || queryText.trim() === '') {
+      continue;
+    }
+
+    const [query, ...messages] = [
+      ...(await encoder.encode([queryText], 'query')),
+      ...(await encoder.encode(
+        turn.shownMessages.map((message) => message.text),
+        'document',
+      )),
+    ];
+
+    for (const [position, message] of turn.shownMessages.entries()) {
+      rated.push({
+        similarity: buildSimilarity(query ?? new Float32Array(), messages[position] ?? new Float32Array(), SHIPPED),
+        isHelpful: expected.messages.has(`${messageKeyPrefix}${message.sequence}`),
+      });
+    }
+  }
+
+  await encoder.stop();
+
+  return rated;
 }
 
 // Reads the labels with the key and the sample they were made from, and drops each label whose
@@ -255,17 +310,19 @@ async function readLabels(turns: TurnCase[]): Promise<{ labels: Label[]; keys: S
     throw new Error('pass --labels <file> with --key <file> and --sample <file>, the sample the labels were made from');
   }
 
-  const [labels, keys, samples] = await Promise.all([
-    readLabelFiles(resolve(values.labels)),
+  const [text, keys, samples] = await Promise.all([
+    readLabelText(resolve(values.labels)),
     readJSONLines(resolve(values.key), sampleKeySchema),
     readJSONLines(resolve(values.sample), sampleTurnSchema),
   ]);
 
-  const current = pickCurrentLabels(turns, labels, samples);
+  const parsed = parseLabelLines(text, new Set(samples.map((sample) => sample.caseID)));
+  const current = pickCurrentLabels(turns, parsed.labels, samples);
   const raters = Map.groupBy(current.labels, (label) => label.by ?? 'unnamed');
 
   console.log({
-    labels: labels.length,
+    labels: parsed.labels.length,
+    dropped: parsed.dropped,
     staleLabels: current.stale.length,
     byRater: Object.fromEntries([...raters].map(([rater, group]) => [rater, group.length])),
   });
@@ -274,7 +331,7 @@ async function readLabels(turns: TurnCase[]): Promise<{ labels: Label[]; keys: S
 }
 
 // Reads one labels file, or every .jsonl file in a folder of them, as a rater may answer in parts.
-async function readLabelFiles(path: string): Promise<Label[]> {
+async function readLabelText(path: string): Promise<string> {
   const isFolder = (await stat(path)).isDirectory();
   const files = isFolder
     ? (await readdir(path))
@@ -283,7 +340,7 @@ async function readLabelFiles(path: string): Promise<Label[]> {
         .map((name) => join(path, name))
     : [path];
 
-  return (await Promise.all(files.map((file) => readJSONLines(file, labelSchema)))).flat();
+  return (await Promise.all(files.map((file) => Bun.file(file).text()))).join('\n');
 }
 
 function getGold(built: BuiltGold): Map<string, Gold> {

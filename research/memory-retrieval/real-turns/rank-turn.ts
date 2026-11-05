@@ -11,6 +11,7 @@ import type { MemoryIndex } from '../../../modules/memory/src/start-memory-index
 import { startVectorIndex } from '../../../modules/memory/src/start-vector-index.ts';
 // @boundaries-ignore a spike imports the code it measures
 import type { Encoder } from '../../../modules/memory/src/types.ts';
+import { buildSimilarity } from './build-similarity.ts';
 import type { Candidate, TurnCase } from './build-turn-cases.ts';
 import type { ShortRule } from './pick-turn-query.ts';
 import { pickTurnQuery } from './pick-turn-query.ts';
@@ -215,30 +216,6 @@ function collectExcludedIDs(turn: TurnCase, isDeliveredExcluded: boolean): Set<s
       )
       .map((candidate) => candidate.itemID),
   );
-}
-
-const storedRange = 0.3;
-const int8Max = 127;
-
-function toStoredVector(vector: Float32Array, config: RankConfig): Float32Array {
-  const cut = vector.slice(0, config.width ?? vector.length);
-  const norm = Math.hypot(...cut) || 1;
-
-  return cut.map((value) =>
-    config.isInt8 ? Math.round(Math.max(-1, Math.min(1, value / norm / storedRange)) * int8Max) * (storedRange / int8Max) : value / norm,
-  );
-}
-
-function buildSimilarity(query: Float32Array, item: Float32Array, config: RankConfig): number {
-  const first = toStoredVector(query, config);
-  const second = toStoredVector(item, config);
-  let sum = 0;
-
-  for (const [position, value] of first.entries()) {
-    sum += value * (second[position] ?? 0);
-  }
-
-  return sum;
 }
 
 function buildFusedRanking(
