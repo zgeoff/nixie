@@ -62,9 +62,10 @@ export function buildSample(turns: TurnCase[], size: number | null): Sample {
   return sample;
 }
 
-// A pinned item is in every turn's context already, and a lapsed one is out of retrieval's reach.
+// A pinned item is in every turn's context already, and a lapsed or sensitive one is out of
+// retrieval's reach.
 function collectShown(turn: TurnCase): TurnCase['candidates'] {
-  return turn.candidates.filter((candidate) => !candidate.isPinned && !candidate.isLapsed);
+  return turn.candidates.filter((candidate) => !candidate.isPinned && !candidate.isLapsed && !candidate.isSensitive);
 }
 
 function shuffle<T>(list: readonly T[], random: () => number): T[] {

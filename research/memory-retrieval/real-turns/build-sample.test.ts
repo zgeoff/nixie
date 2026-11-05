@@ -154,3 +154,34 @@ test('it builds the same sample from the same turns', () => {
 
   expect(buildSample(turns, null)).toStrictEqual(buildSample(turns, null));
 });
+
+test('it leaves a sensitive item out of the items a labeller sees', () => {
+  const sample = buildSample(
+    [
+      {
+        caseID: 't3',
+        stepSequence: 2,
+        recalledSequence: 3,
+        recordedAt: 0,
+        query: 'how was the week?',
+        typedQuery: 'how was the week?',
+        shownMessages: [],
+        isSessionStart: false,
+        contextTokens: null,
+        reply: 'Busy.',
+        earlier: [],
+        candidates: [
+          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: true, text: 'Sees a counsellor on Tuesdays' },
+          { itemID: 'item-b', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Swims on Mondays' },
+        ],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    null,
+  );
+
+  expect(sample.turns.map((turn) => turn.items.map((item) => item.text))).toStrictEqual([['Swims on Mondays']]);
+});
