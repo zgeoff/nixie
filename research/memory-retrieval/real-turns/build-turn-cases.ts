@@ -241,7 +241,7 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
       open.searchMode = recalled.searchMode ?? null;
       open.delivered = [...session.delivered.keys()];
       open.candidates = collectCandidates(versionsByItem, itemsByID, pinned, sensitive, record.sequence, open.recordedAt);
-      open.ratings = [...open.ratings, ...(ratings.get(record.sequence) ?? [])];
+      open.ratings = ratings.get(record.sequence) ?? [];
     }
 
     // A turn that opens a new session runs its retrieval with nothing delivered yet, and the
