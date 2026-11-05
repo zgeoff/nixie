@@ -2,6 +2,7 @@
 // store as it stood when per-turn retrieval ran, what that retrieval logged, the versions that the
 // session had already delivered, and any rating of it.
 import { z } from 'zod';
+import { findTypedText } from './find-typed-text.ts';
 import type { PlainExport, PlainRecord, PlainVersion } from './read-plain-export.ts';
 import { readErasableText } from './read-plain-export.ts';
 
@@ -49,8 +50,6 @@ const turnEndedSchema = z.object({
   cacheReadTokens: z.int().exactOptional(),
   cacheWriteTokens: z.int().exactOptional(),
 });
-
-const spansSchema = z.array(z.object({ start: z.int(), end: z.int(), source: z.string() }));
 
 const ratedSchema = z.object({
   recalledSequence: z.int(),
@@ -326,20 +325,9 @@ function toCallContext(ended: z.infer<typeof turnEndedSchema>): number | null {
   return Math.round(total / ended.turns);
 }
 
-// The message with its pasted and dropped spans taken out, which leaves what the user typed.
+// The message by the product's own typed-text rule, which leaves what the user typed.
 function collectTypedText(record: PlainRecord): string | null {
-  const text = readErasableText(record);
-  const spans = record.erasable.status === 'readable' ? spansSchema.safeParse(record.erasable.fields['spans']) : null;
-
-  if (text === null || spans?.success !== true) {
-    return text;
-  }
-
-  return spans.data
-    .filter((span) => span.source !== 'pasted' && span.source !== 'dropped')
-    .toSorted((first, second) => first.start - second.start)
-    .map((span) => text.slice(span.start, span.end))
-    .join('');
+  return record.erasable.status === 'readable' ? findTypedText(record.erasable.fields) : null;
 }
 
 function closeTurn(turn: TurnCase, exchanges: Exchange[]): void {

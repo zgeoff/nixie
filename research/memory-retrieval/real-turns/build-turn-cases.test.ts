@@ -539,7 +539,7 @@ test('it rejects a turn retrieval whose logged items hold a null', () => {
   ).toThrow('record 3 (memory.recalled) does not match its schema at items.0');
 });
 
-test('it keeps only the typed spans of a message in the typed query', () => {
+test('it puts a line break in place of a pasted span in the typed query, as the product indexes it', () => {
   const cases = buildTurnCases({
     records: [
       {
@@ -584,7 +584,7 @@ test('it keeps only the typed spans of a message in the typed query', () => {
     notes: [],
   });
 
-  expect(cases.map((turn) => turn.typedQuery)).toStrictEqual(['tidy this: ']);
+  expect(cases.map((turn) => turn.typedQuery)).toStrictEqual(['tidy this: \n']);
 });
 
 test('it marks a turn whose reply was shredded', () => {
