@@ -9,6 +9,7 @@ import type { StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolDefinition, ToolEndpoint, ToolEndpointOptions } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { getSandboxRootDir } from '../get-sandbox-root-dir';
 import { buildTestFakeSandboxes } from './build-test-fake-sandboxes';
 import { createTestSandboxes } from './create-test-sandboxes';
 import { startTestLog } from './start-test-log';
@@ -107,7 +108,7 @@ export async function startTestServer(
       log: context.log,
       definitions: context.definitions,
       toolTarget: endpoint.getToolTarget,
-      rootDir: join(dataDir, 'sandboxes'),
+      rootDir: getSandboxRootDir(dataDir),
     });
 
   return {
@@ -121,7 +122,7 @@ export async function startTestServer(
     },
     readSandboxIDs: () =>
       fake === null
-        ? readdir(join(dataDir, 'sandboxes'))
+        ? readdir(getSandboxRootDir(dataDir))
         : Promise.resolve(fake.guest.readSandboxIDs()),
     readRecords: async () => {
       const entries = await readRecords(log, { afterSequence: 0, limit: 1000 });

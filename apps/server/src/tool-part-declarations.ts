@@ -1,9 +1,9 @@
-import { join } from 'node:path';
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-github';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildActions } from './build-actions';
 import { buildTestSendTool } from './build-test-send-tool';
 import { createSandboxAdapter } from './create-sandbox-adapter';
+import { getSandboxRootDir } from './get-sandbox-root-dir';
 import { refreshDefinitions } from './refresh-definitions';
 import type { ServerPartValues } from './server-part-values';
 import { startConversationEndpoint } from './start-conversation-endpoint';
@@ -28,7 +28,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           }),
           toolTarget: (sandbox) => parts.get('tool_endpoint').endpoint.getToolTarget(sandbox),
           sandbox: options.sandbox,
-          testRootDir: join(options.config.server.dataDir, 'sandboxes'),
+          testRootDir: getSandboxRootDir(options.config.server.dataDir),
           hostEnv: process.env,
         }),
       );
