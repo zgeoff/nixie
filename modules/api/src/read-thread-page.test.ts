@@ -105,6 +105,63 @@ test('it reaches back to the call of a tool result that the page holds without i
   }).toStrictEqual({ calls: ['call-1', 'call-1'], hasEarlier: true });
 });
 
+test('it reaches back again when the reach takes in the result of an earlier call', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const [callA, callB] = await writeRecords(
+    ctx.context.log,
+    ['call-a', 'call-b'].map((callID) => ({
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        callID,
+        runID: 'conversation',
+        toolUseID: null,
+        tool: 'task.message',
+        model: 'test-model',
+        profile: 'test',
+      },
+      erasable: { input: { to: 'k3vq8m2xpa', kind: 'chat', body: 'The peas are up.' } },
+    })),
+  );
+
+  invariant(callA && callB);
+
+  await writeRecords(
+    ctx.context.log,
+    [
+      { callID: 'call-a', parent: callA.sequence },
+      { callID: 'call-b', parent: callB.sequence },
+    ].map((result) => ({
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      parent: result.parent,
+      payload: {
+        callID: result.callID,
+        runID: 'conversation',
+        toolUseID: null,
+        outcome: 'result',
+        actionID: null,
+        sources: {},
+      },
+      erasable: { result: { messageID: `m-${result.callID}`, woke: true, hop: 1 } },
+    })),
+  );
+
+  const page = await readThreadPage(ctx.context, { thread: 'conversation', limit: 1 });
+
+  expect(page?.records.map((record) => record.toolCall?.callID)).toStrictEqual([
+    'call-a',
+    'call-b',
+    'call-a',
+    'call-b',
+  ]);
+});
+
 test('it shows a failed tool result as cancelled when a stop cancelled its action', async () => {
   const ctx = await setupTest();
 

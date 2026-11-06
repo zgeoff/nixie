@@ -99,16 +99,7 @@ async function readPageWindow(context: APIContext, bounds: PageBounds): Promise<
     return { afterSequence: 0, count: 0, hasEarlier: false };
   }
 
-  const reach = await db
-    .selectFrom('records')
-    .select((eb) => eb.fn.min('parent').as('parent'))
-    .where('thread', '=', bounds.thread)
-    .where('kind', '=', 'tool_result')
-    .where('sequence', '>=', oldest)
-    .where('sequence', '<', bounds.before)
-    .executeTakeFirst();
-
-  const first = Math.min(oldest, reach?.parent ?? oldest);
+  const first = await readCallReach(context, bounds, oldest);
 
   const counts = await db
     .selectFrom('records')
@@ -121,6 +112,28 @@ async function readPageWindow(context: APIContext, bounds: PageBounds): Promise<
     .executeTakeFirstOrThrow();
 
   return { afterSequence: first - 1, count: counts.inPage, hasEarlier: counts.earlier > 0 };
+}
+
+// Each reach can take in the result of an earlier call, so the page reaches again until every
+// result it holds has its call.
+async function readCallReach(
+  context: APIContext,
+  bounds: PageBounds,
+  first: number,
+): Promise<number> {
+  const reach = await context.log.writer.db
+    .$extendTables<APITables>()
+    .selectFrom('records')
+    .select((eb) => eb.fn.min('parent').as('parent'))
+    .where('thread', '=', bounds.thread)
+    .where('kind', '=', 'tool_result')
+    .where('sequence', '>=', first)
+    .where('sequence', '<', bounds.before)
+    .executeTakeFirst();
+
+  const parent = reach?.parent ?? first;
+
+  return parent < first ? readCallReach(context, bounds, parent) : first;
 }
 
 const stepEndKinds: readonly RecordKind[] = [
