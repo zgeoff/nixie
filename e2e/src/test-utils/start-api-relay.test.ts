@@ -101,6 +101,8 @@ test('it ends a stream whose target stops partway, after the part it sent', asyn
 
   const after = await reader?.read();
 
-  expect(new TextDecoder().decode(first?.value)).toBe('event 1\n');
+  const firstChunk: unknown = first?.value;
+
+  expect(firstChunk).toStrictEqual(new TextEncoder().encode('event 1\n'));
   expect(after?.done).toBeTrue();
 });

@@ -4,8 +4,8 @@ import { startWebJourney } from '../src/test-utils/start-web-journey';
 
 const browserSkip = await checkBrowserSkip();
 
-async function setupTest() {
-  return await startWebJourney();
+function setupTest() {
+  return startWebJourney();
 }
 
 test.skipIf(browserSkip.isSkipped)(
