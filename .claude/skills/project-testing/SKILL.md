@@ -44,17 +44,17 @@ Find a test file's command in this table by the file's suffix or folder. A file 
 other row belongs to the unit run. Each other row is a lane, with its own command and its own limit
 per test.
 
-| Files                                               | Command                                            | Limit per test | In CI             |
-| --------------------------------------------------- | -------------------------------------------------- | -------------- | ----------------- |
-| any other `*.test.ts`                               | `bun run test`                                     | 5 s            | yes               |
-| `*.browser.test.ts`                                 | `bun run test:browser`                             | 10 s           | yes               |
-| `*.agent-sdk.test.ts`                               | `bun run test:agent-sdk`                           | 5 s            | yes               |
-| `e2e/**`, except the journeys and the restic suites | `bun run test:e2e`                                 | 15 s           | yes               |
-| `e2e/journeys/*.test.ts`                            | `bun run test:journeys`                            | 15 s           | in `journeys.yml` |
-| `*.e2e.test.ts` outside `e2e/`                      | `bun run test:e2e`                                 | 15 s           | yes               |
-| `e2e/**/*.restic.test.ts`                           | `bun run test:restic`                              | 40 s           | in `images.yml`   |
-| `*.imp.test.ts`                                     | `bun run test:imp` in the package                  | 14 s           | no                |
-| `*.model-api.test.ts`                               | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract` | 120 s          | no                |
+| Files                                                                    | Command                                            | Limit per test | In CI             |
+| ------------------------------------------------------------------------ | -------------------------------------------------- | -------------- | ----------------- |
+| any other `*.test.ts`                                                    | `bun run test`                                     | 5 s            | yes               |
+| `*.browser.test.ts`                                                      | `bun run test:browser`                             | 10 s           | yes               |
+| `*.agent-sdk.test.ts`                                                    | `bun run test:agent-sdk`                           | 5 s            | yes               |
+| `e2e/**`, except the journeys and the restic suites                      | `bun run test:e2e`                                 | 15 s           | yes               |
+| `e2e/journeys/*.test.ts`, `e2e/src/test-utils/start-web-journey.test.ts` | `bun run test:journeys`                            | 15 s           | in `journeys.yml` |
+| `*.e2e.test.ts` outside `e2e/`                                           | `bun run test:e2e`                                 | 15 s           | yes               |
+| `e2e/**/*.restic.test.ts`                                                | `bun run test:restic`                              | 40 s           | in `images.yml`   |
+| `*.imp.test.ts`                                                          | `bun run test:imp` in the package                  | 14 s           | no                |
+| `*.model-api.test.ts`                                                    | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract` | 120 s          | no                |
 
 - Run the unit tests through `bun run test`. It runs `bun run models`, which fetches the memory
   encoder's model files, and `bun run test:bundles`, which builds the server bundles that the server

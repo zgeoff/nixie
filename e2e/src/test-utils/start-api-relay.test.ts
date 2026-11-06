@@ -106,3 +106,16 @@ test('it ends a stream whose target stops partway, after the part it sent', asyn
   expect(firstChunk).toStrictEqual(new TextEncoder().encode('event 1\n'));
   expect(after?.done).toBeTrue();
 });
+
+test('it stops the relay when the test finishes', () => {
+  const ctx = setupTest();
+
+  onTestFinished(async () => {
+    const reached = await fetch(`${ctx.relay.url}/health/ready`).then(
+      () => true,
+      () => false,
+    );
+
+    expect(reached).toBeFalse();
+  });
+});
