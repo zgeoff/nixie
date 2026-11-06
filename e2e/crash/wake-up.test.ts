@@ -30,7 +30,7 @@ test('it wakes the conversation for a message written just before nixie died, an
   const second = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
 
   const recovered = await second.waitForArrival('recovery.step.5');
-  const tasksAfterRecovery = await ctx.nixie.readRows('tasks');
+  const tasksAfterRecovery = await ctx.nixie.readTasks();
 
   second.release(recovered);
 
@@ -48,7 +48,7 @@ test('it wakes the conversation for a message written just before nixie died, an
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(tasksAfterRecovery).toPartiallyContain({ task_id: 'conversation', state: 'ready' });
+  expect(tasksAfterRecovery).toPartiallyContain({ id: 'conversation', state: 'ready' });
   expect(committed.payload['readCursor']).toBe(messages[1]?.sequence);
   expect(JSON.stringify(lastRequest?.body?.messages).split('Are you there?')).toHaveLength(2);
 
@@ -83,7 +83,7 @@ test('it wakes a task for a timer that fired just before nixie died, and reads i
   const second = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
 
   const recovered = await second.waitForArrival('recovery.step.5');
-  const tasksAfterRecovery = await ctx.nixie.readRows('tasks');
+  const tasksAfterRecovery = await ctx.nixie.readTasks();
 
   second.release(recovered);
 
@@ -96,7 +96,7 @@ test('it wakes a task for a timer that fired just before nixie died, and reads i
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(tasksAfterRecovery).toPartiallyContain({ task_id: taskID, state: 'ready' });
+  expect(tasksAfterRecovery).toPartiallyContain({ id: taskID, state: 'ready' });
   expect(fired).toHaveLength(1);
 
   expect(
@@ -155,7 +155,7 @@ test('it wakes the conversation for an action outcome written just before nixie 
   const second = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
 
   const recovered = await second.waitForArrival('recovery.step.5');
-  const tasksAfterRecovery = await ctx.nixie.readRows('tasks');
+  const tasksAfterRecovery = await ctx.nixie.readTasks();
 
   second.release(recovered);
 
@@ -175,7 +175,7 @@ test('it wakes the conversation for an action outcome written just before nixie 
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(tasksAfterRecovery).toPartiallyContain({ task_id: 'conversation', state: 'ready' });
+  expect(tasksAfterRecovery).toPartiallyContain({ id: 'conversation', state: 'ready' });
   expect(outcome?.payload['status']).toBe('done');
   expect(committed.payload['readCursor']).toBe(outcome?.sequence);
   expect(JSON.stringify(lastRequest?.body?.messages).split('An action settled')).toHaveLength(2);

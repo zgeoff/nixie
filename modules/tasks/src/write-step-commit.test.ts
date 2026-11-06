@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
 import { setFaultPointHandler } from './set-fault-point-handler';
@@ -154,19 +155,13 @@ test('it writes the step records and the commit record with its step key', async
     acknowledged: [],
   });
 
-  const records = await ctx.db
-    .selectFrom('records')
-    .select(['kind', 'thread', 'step_key'])
-    .where('sequence', '>', 2)
-    .execute();
+  const records = await readRecords(ctx.context.log, { afterSequence: 2 });
 
-  expect(records).toStrictEqual([
-    { kind: 'turn_finished', thread: claim.lease.workID, step_key: null },
-    {
-      kind: 'task.step_committed',
-      thread: claim.lease.workID,
-      step_key: `${claim.lease.workID}:1`,
-    },
+  expect(
+    records.map((read) => [read.record.kind, read.record.thread, read.record.stepKey]),
+  ).toStrictEqual([
+    ['turn_finished', claim.lease.workID, null],
+    ['task.step_committed', claim.lease.workID, `${claim.lease.workID}:1`],
   ]);
 });
 
@@ -244,18 +239,17 @@ test('it commits a step key once, and a second commit changes nothing', async ()
 
   await second.catch(() => {});
 
-  const commits = await ctx.db
-    .selectFrom('records')
-    .select('step_key')
-    .where('kind', '=', 'task.step_committed')
-    .execute();
+  const commits = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.step_committed'],
+  });
 
   expect(second).rejects.toThrowWithMessage(
     StepAlreadyCommittedError,
     `step ${claim.stepKey} has already committed`,
   );
 
-  expect(commits).toStrictEqual([{ step_key: claim.stepKey }]);
+  expect(commits.map((read) => read.record.stepKey)).toStrictEqual([claim.stepKey]);
 });
 
 test('it commits nothing once the lease expired', async () => {

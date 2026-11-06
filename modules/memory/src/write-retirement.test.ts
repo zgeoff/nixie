@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
-import type { LogTables } from '@heynixie/log';
-import { writeRecordsInTransaction } from '@heynixie/log';
+import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
 
@@ -136,15 +135,12 @@ test("it commits the caller's own write in the retirement's transaction", async 
     },
   });
 
-  const kinds = await ctx.memory.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('kind')
-    .where('sequence', '>', 1)
-    .orderBy('sequence')
-    .execute();
+  const records = await readRecords(ctx.memory.log, { afterSequence: 1 });
 
-  expect(kinds).toStrictEqual([{ kind: 'owner_message' }, { kind: 'memory.version_added' }]);
+  expect(records.map((read) => read.record.kind)).toStrictEqual([
+    'owner_message',
+    'memory.version_added',
+  ]);
 });
 
 test("it rolls back the caller's own write when the retirement is stale", async () => {
@@ -173,12 +169,10 @@ test("it rolls back the caller's own write when the retirement is stale", async 
 
   await retire.catch(() => {});
 
-  const checked = await ctx.memory.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', '=', 'owner_message')
-    .execute();
+  const checked = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['owner_message'],
+  });
 
   expect(retire).rejects.toMatchObject({ code: 'STALE_VERSION' });
   expect(checked).toStrictEqual([]);

@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { readWriterBacklog } from './read-writer-backlog';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
@@ -175,7 +175,7 @@ test('it reads a forgotten message with no text', async () => {
     },
   ]);
 
-  await removeMessageKey(ctx.memory.log, message?.sequence ?? -1);
+  await removeTestRecordKey(ctx.memory.log, message?.sequence ?? -1);
 
   const backlog = await readWriterBacklog(ctx.memory.log, {
     after: 0,

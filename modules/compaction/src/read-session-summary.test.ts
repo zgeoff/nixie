@@ -1,9 +1,6 @@
 import { expect, test } from 'bun:test';
-import { removeRecordKey, writeRecords } from '@heynixie/log';
-import { startTestLog } from '@heynixie/log/test-utils';
-import { sql } from 'kysely';
-import invariant from 'tiny-invariant';
-import { z } from 'zod';
+import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey, startTestLog } from '@heynixie/log/test-utils';
 import { readSessionSummary } from './read-session-summary';
 
 async function setupTest() {
@@ -59,13 +56,7 @@ test('it passes over a summary whose key is gone to the newest one still readabl
     },
   ]);
 
-  const keys = await sql`select key_id from records where sequence = 2`.execute(ctx.log.writer.db);
-
-  const [key] = z.array(z.object({ key_id: z.string() })).parse(keys.rows);
-
-  invariant(key);
-
-  await removeRecordKey(ctx.log.log, key.key_id);
+  await removeTestRecordKey(ctx.log.log, 2);
 
   const summary = await readSessionSummary(ctx.log, 'conversation');
 

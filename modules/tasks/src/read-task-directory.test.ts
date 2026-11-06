@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { removeRecordKey, writeRecords } from '@heynixie/log';
-import invariant from 'tiny-invariant';
+import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { createSystemTask } from './create-system-task';
 import { readTaskDirectory } from './read-task-directory';
 import { startTestTasks } from './test-utils/start-test-tasks';
@@ -67,18 +67,7 @@ test('it names a started task by its ID once its name is forgotten', async () =>
     },
   ]);
 
-  const created = await ctx.writer.db
-    .$extendTables<
-      Readonly<{ records: { readonly sequence: number; readonly key_id: string | null } }>
-    >()
-    .selectFrom('records')
-    .select('key_id')
-    .where('sequence', '=', 1)
-    .executeTakeFirstOrThrow();
-
-  invariant(created.key_id !== null);
-
-  await removeRecordKey(ctx.context.log, created.key_id);
+  await removeTestRecordKey(ctx.context.log, 1);
 
   const directory = await readTaskDirectory<Pick<TaskMessaging, 'directory'>>(ctx.context, {
     directory: [],

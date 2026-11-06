@@ -1,6 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { runRecovery, setFaultPointHandler } from '@heynixie/tasks';
-import { startNextTestWriter } from '@heynixie/tasks/test-utils';
+import { readTestLeases, readTestTasks, startNextTestWriter } from '@heynixie/tasks/test-utils';
 import { createAllowedAction } from './create-allowed-action';
 import { createTestStep } from './test-utils/create-test-step';
 import { runStalledAttempt } from './test-utils/run-stalled-attempt';
@@ -68,26 +69,25 @@ test('it writes the unknown outcome to the task inbox', async () => {
 
   await runStalledAttempt(ctx);
 
-  const before = await ctx.writer.db
-    .$extendTables<ActionsTables>()
-    .selectFrom('records')
-    .select(['kind', 'thread'])
-    .where('kind', '=', 'action.outcome')
-    .execute();
+  const before = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['action.outcome'],
+  });
 
   const next = await startNextTestWriter(ctx);
 
   await writeUnknownOutcomes(next.context);
 
-  const records = await next.writer.db
-    .$extendTables<ActionsTables>()
-    .selectFrom('records')
-    .select(['kind', 'thread'])
-    .where('kind', '=', 'action.outcome')
-    .execute();
+  const records = await readRecords(next.context.log, {
+    afterSequence: 0,
+    kinds: ['action.outcome'],
+  });
 
   expect(before).toStrictEqual([]);
-  expect(records).toStrictEqual([{ kind: 'action.outcome', thread: step.lease.workID }]);
+
+  expect(records.map((read) => [read.record.kind, read.record.thread])).toStrictEqual([
+    ['action.outcome', step.lease.workID],
+  ]);
 });
 
 test('it runs as recovery step 3, between the interrupted steps and the late timers', async () => {
@@ -145,12 +145,7 @@ test('it frees the step and the action leases through recovery', async () => {
 
   await runStalledAttempt(ctx);
 
-  const held = await ctx.writer.db
-    .$extendTables<ActionsTables>()
-    .selectFrom('leases')
-    .select('holder')
-    .execute();
-
+  const held = await readTestLeases(ctx.writer);
   const next = await startNextTestWriter(ctx);
 
   await runRecovery(next.context, {
@@ -158,14 +153,14 @@ test('it frees the step and the action leases through recovery', async () => {
     sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
   });
 
-  const leases = await next.writer.db
-    .$extendTables<ActionsTables>()
-    .selectFrom('leases')
-    .select('holder')
-    .execute();
+  const leases = await readTestLeases(next.writer);
 
-  expect(held).toStrictEqual([{ holder: expect.toBeString() }, { holder: expect.toBeString() }]);
-  expect(leases).toStrictEqual([{ holder: null }, { holder: null }]);
+  expect(held.map((lease) => lease.holder)).toStrictEqual([
+    expect.toBeString(),
+    expect.toBeString(),
+  ]);
+
+  expect(leases.map((lease) => lease.holder)).toStrictEqual([null, null]);
 });
 
 test('it readies the task through recovery', async () => {
@@ -182,12 +177,7 @@ test('it readies the task through recovery', async () => {
 
   await runStalledAttempt(ctx);
 
-  const before = await ctx.writer.db
-    .$extendTables<ActionsTables>()
-    .selectFrom('tasks')
-    .select('state')
-    .executeTakeFirstOrThrow();
-
+  const [before] = await readTestTasks(ctx.writer);
   const next = await startNextTestWriter(ctx);
 
   await runRecovery(next.context, {
@@ -195,14 +185,10 @@ test('it readies the task through recovery', async () => {
     sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
   });
 
-  const task = await next.writer.db
-    .$extendTables<ActionsTables>()
-    .selectFrom('tasks')
-    .select('state')
-    .executeTakeFirstOrThrow();
+  const [task] = await readTestTasks(next.writer);
 
-  expect(before.state).toBe('running');
-  expect(task.state).toBe('ready');
+  expect(before?.state).toBe('running');
+  expect(task?.state).toBe('ready');
 });
 
 test('it leaves an action with no open attempt as it was', async () => {
@@ -224,12 +210,10 @@ test('it leaves an action with no open attempt as it was', async () => {
   await writeUnknownOutcomes(next.context);
   await writeUnknownOutcomes(next.context);
 
-  const outcomes = await next.writer.db
-    .$extendTables<ActionsTables>()
-    .selectFrom('records')
-    .select('sequence')
-    .where('kind', '=', 'action.outcome')
-    .execute();
+  const outcomes = await readRecords(next.context.log, {
+    afterSequence: 0,
+    kinds: ['action.outcome'],
+  });
 
   expect(outcomes).toHaveLength(1);
 });

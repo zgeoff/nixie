@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { createEnrolmentCode } from './create-enrolment-code';
 import { startTestAPI } from './test-utils/start-test-api';
-import type { APITables } from './types';
 
 function setupTest() {
   return startTestAPI();
@@ -19,15 +19,12 @@ test('it records the code as issued by the host, without the code', async () => 
   const ctx = await setupTest();
   const issued = await createEnrolmentCode(ctx.context);
 
-  const record = await ctx.writer.db
-    .$extendTables<APITables & { records: { kind: string; payload: string } }>()
-    .selectFrom('records')
-    .select('payload')
-    .where('kind', '=', 'enrolment_code.issued')
-    .executeTakeFirstOrThrow();
-
-  expect(JSON.parse(record.payload)).toStrictEqual({
-    issuedBy: null,
-    expiresAt: issued.expiresAt.getTime(),
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['enrolment_code.issued'],
   });
+
+  expect(records.map((read) => read.record.payload)).toStrictEqual([
+    { issuedBy: null, expiresAt: issued.expiresAt.getTime() },
+  ]);
 });

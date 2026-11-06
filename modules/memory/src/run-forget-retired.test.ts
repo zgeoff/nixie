@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { readRecordKeys, readRecords } from '@heynixie/log';
 import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
@@ -39,13 +39,7 @@ test('it forgets every retired item it was given, with a forgotten record and no
   });
 
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
-
-  const keys = await ctx.memory.writer.keys
-    .$extendTables<{ record_keys: { key_id: string } }>()
-    .selectFrom('record_keys')
-    .select('key_id')
-    .where('key_id', 'in', [first.itemID, second.itemID])
-    .execute();
+  const keys = await readRecordKeys(ctx.memory.log, [first.itemID, second.itemID]);
 
   expect(
     records
@@ -53,7 +47,7 @@ test('it forgets every retired item it was given, with a forgotten record and no
       .map((entry) => entry.record.payload),
   ).toStrictEqual([{ itemID: first.itemID }, { itemID: second.itemID }]);
 
-  expect(keys).toStrictEqual([]);
+  expect([...keys.keys()]).toStrictEqual([]);
   expect(ctx.cleanupSessions).toHaveBeenCalledTimes(2);
 });
 
@@ -229,27 +223,15 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
       (error: unknown) => error,
     );
 
-  const keysAtCrash = await ctx.memory.writer.keys
-    .$extendTables<{ record_keys: { key_id: string } }>()
-    .selectFrom('record_keys')
-    .select('key_id')
-    .where('key_id', 'in', [first.itemID, second.itemID])
-    .execute();
-
+  const keysAtCrash = await readRecordKeys(ctx.memory.log, [first.itemID, second.itemID]);
   const statusAtCrash = await ctx.memory.store.view.readForgetStatus([first.itemID, second.itemID]);
   const restarted = await startNextTestMemory(ctx.memory, { cleanupSessions: ctx.cleanupSessions });
   const records = await readRecords(restarted.log, { afterSequence: 0 });
   const status = await restarted.store.view.readForgetStatus([first.itemID, second.itemID]);
-
-  const keys = await restarted.writer.keys
-    .$extendTables<{ record_keys: { key_id: string } }>()
-    .selectFrom('record_keys')
-    .select('key_id')
-    .where('key_id', 'in', [first.itemID, second.itemID])
-    .execute();
+  const keys = await readRecordKeys(restarted.log, [first.itemID, second.itemID]);
 
   expect(crash).toMatchObject({ message: 'crashed at memory.forget.key_removed' });
-  expect(keysAtCrash).toStrictEqual([{ key_id: second.itemID }]);
+  expect([...keysAtCrash.keys()]).toStrictEqual([second.itemID]);
   expect(statusAtCrash).toStrictEqual({ deleted: [], pending: [first.itemID, second.itemID] });
 
   expect(
@@ -259,7 +241,7 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
   ).toStrictEqual([{ itemID: first.itemID }, { itemID: second.itemID }]);
 
   expect(status).toStrictEqual({ deleted: [first.itemID, second.itemID], pending: [] });
-  expect(keys).toStrictEqual([]);
+  expect([...keys.keys()]).toStrictEqual([]);
 });
 
 test('it reports an item whose forget is still pending apart from a deleted one', async () => {

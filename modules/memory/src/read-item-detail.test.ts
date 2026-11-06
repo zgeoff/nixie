@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
@@ -177,7 +177,7 @@ test('it reads the message of a forgotten message as shredded', async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await removeMessageKey(ctx.memory.log, sequence);
+  await removeTestRecordKey(ctx.memory.log, sequence);
 
   const detail = await ctx.memory.store.view.readItem(item.itemID);
 

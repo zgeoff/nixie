@@ -1,10 +1,14 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import {
+  readTestRecordKeyRows,
+  readTestRecordRows,
+  removeTestRecordKey,
+} from '@heynixie/log/test-utils';
 import { startTestSessionHost } from '@heynixie/sessions/test-utils';
 import invariant from 'tiny-invariant';
 import { memoryProjections } from './memory-projections';
 import { buildRememberReply } from './test-utils/build-remember-reply';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import type { TestMemoryWriterOptions } from './test-utils/start-test-memory-writer';
 import { startTestMemoryWriter } from './test-utils/start-test-memory-writer';
 import { writeOwnerMessages } from './test-utils/write-owner-messages';
@@ -86,7 +90,7 @@ test('it publishes nothing from a message forgotten while the model extracts fro
       quote: 'My sister is called Robin',
       sourceID: sequence,
     }),
-    { text: 'Staged.', gate: () => removeMessageKey(log, sequence) },
+    { text: 'Staged.', gate: () => removeTestRecordKey(log, sequence) },
   );
 
   await ctx.memory.run();
@@ -412,23 +416,11 @@ test('it leaves no key behind for the proposals of a batch that split', async ()
   await ctx.memory.run();
 
   const pending = await ctx.memory.store.proposals.listPending();
-
-  const keys = await ctx.memory.context.log.writer.keys
-    .$extendTables<{ record_keys: { key_id: string } }>()
-    .selectFrom('record_keys')
-    .select('key_id')
-    .execute();
-
-  const recordKeys = await ctx.memory.context.log.writer.db
-    .$extendTables<{ records: { key_id: string | null } }>()
-    .selectFrom('records')
-    .select('key_id')
-    .distinct()
-    .where('key_id', 'is not', null)
-    .execute();
+  const keys = await readTestRecordKeyRows(ctx.memory.context.log.writer);
+  const records = await readTestRecordRows(ctx.memory.context.log.writer);
 
   expect(keys.map((key) => key.key_id)).toIncludeSameMembers([
-    ...recordKeys.map((key) => key.key_id),
+    ...new Set(records.flatMap((record) => (record.key_id === null ? [] : [record.key_id]))),
     ...pending.map((proposal) => proposal.itemID),
   ]);
 });

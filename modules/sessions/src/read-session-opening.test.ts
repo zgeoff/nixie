@@ -1,8 +1,7 @@
 import { expect, mock, test } from 'bun:test';
-import { removeRecordKey, writeRecords } from '@heynixie/log';
-import { sql } from 'kysely';
+import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
-import { z } from 'zod';
 import { buildModelStatus } from './build-model-status';
 import { buildStartStatus } from './build-start-status';
 import { readSessionOpening } from './read-session-opening';
@@ -153,7 +152,7 @@ test("it replays a task's message and the reply to it in a rebuilt session's rec
 test('it opens a rebuild after a forget erased the summary with the status that says so, and the turns back to the budget', async () => {
   const ctx = await setupTest();
 
-  await writeRecords(ctx.tasks.context.log, [
+  const [, summarized] = await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
@@ -169,14 +168,9 @@ test('it opens a rebuild after a forget erased the summary with the status that 
     },
   ]);
 
-  const keys = await sql`select key_id from records
-    where kind = 'model.session_summarized'`.execute(ctx.tasks.writer.db);
+  invariant(summarized);
 
-  const [key] = z.array(z.object({ key_id: z.string() })).parse(keys.rows);
-
-  invariant(key);
-
-  await removeRecordKey(ctx.tasks.context.log, key.key_id);
+  await removeTestRecordKey(ctx.tasks.context.log, summarized.sequence);
 
   const opening = await readSessionOpening(ctx.tasks.context, {
     taskID: 'conversation',

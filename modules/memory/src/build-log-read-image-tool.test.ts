@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
-import type { LogTables } from '@heynixie/log';
-import { removeRecordKey, writeRecords } from '@heynixie/log';
+import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { buildLogReadImageTool } from './build-log-read-image-tool';
 import { startTestMemory } from './test-utils';
@@ -137,16 +137,7 @@ test('it refuses an image the owner forgot as image unavailable', async () => {
 
   invariant(photo);
 
-  const row = await ctx.log.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('key_id')
-    .where('sequence', '=', photo.sequence)
-    .executeTakeFirstOrThrow();
-
-  invariant(row.key_id !== null);
-
-  await removeRecordKey(ctx.log, row.key_id);
+  await removeTestRecordKey(ctx.log, photo.sequence);
 
   const outcome = await ctx.tool.run(
     {

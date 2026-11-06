@@ -5,6 +5,7 @@ import {
   gboardTypedEvents,
 } from '@heynixie/contract/test-utils';
 import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { makeChecker } from '@heynixie/sessions';
 import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -15,7 +16,6 @@ import {
   writeModelReplyRecord,
 } from './test-utils';
 import { makeToolAllowRule } from './test-utils/make-tool-allow-rule';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
 
@@ -1776,7 +1776,7 @@ test('it refuses a photo source in a message you forgot, and writes no proposal 
     images: ['image/jpeg'],
   });
 
-  await removeMessageKey(memory.log, photo);
+  await removeTestRecordKey(memory.log, photo);
 
   const write = memory.store.writes.remember({
     text: 'Rides a green cargo bike',

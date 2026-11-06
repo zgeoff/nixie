@@ -1,8 +1,8 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import type { ActionsTables } from '@heynixie/actions';
 import { actionsProjection, writeUnknownOutcomes } from '@heynixie/actions';
+import { readTestActions } from '@heynixie/actions/test-utils';
 import { logProjections, readRecords, startWriter } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import {
@@ -65,7 +65,6 @@ async function setupTest() {
   return {
     context,
     log,
-    db: writer.db.$extendTables<ActionsTables>(),
     runStep,
     wake,
 
@@ -101,19 +100,25 @@ test('it queues one actions.log action under the step that a wake starts, allowe
   const step = await createTestStep(ctx.context);
   const inbox = await ctx.wake(step.taskID);
   const result = await ctx.runStep({ ...step, inbox });
-  const actions = await ctx.db.selectFrom('actions').selectAll().execute();
+  const actions = await readTestActions(ctx.context.log.writer);
 
   const called = await readRecords(ctx.context.log, {
     afterSequence: 0,
     kinds: ['tool_called', 'tool_result'],
   });
 
-  expect(actions).toMatchObject([
+  expect(actions).toStrictEqual([
     {
-      task_id: step.taskID,
-      step_key: step.stepKey,
+      actionID: expect.toBeString(),
+      taskID: step.taskID,
+      stepKey: step.stepKey,
       tool: 'actions.log',
       status: 'pending',
+      attemptCount: 0,
+      isAttemptOpen: false,
+      nextAttemptAt: 1_000_000,
+      reason: null,
+      outcomeSequence: null,
     },
   ]);
 
@@ -147,9 +152,9 @@ test('it queues nothing more for the outcome of the action it queued, and reads 
   const inbox = outcome.map((read) => read.record);
 
   const result = await ctx.runStep({ ...step, inbox });
-  const actions = await ctx.db.selectFrom('actions').select('status').execute();
+  const actions = await readTestActions(ctx.context.log.writer);
 
-  expect(actions).toStrictEqual([{ status: 'done' }]);
+  expect(actions.map((action) => action.status)).toStrictEqual(['done']);
   expect(result.acknowledged).toStrictEqual(inbox.map((record) => record.sequence));
 });
 
@@ -167,19 +172,15 @@ test('it queues a fresh action at the next start after a crash left the last act
 
   await ctx.runNextAttempt();
 
-  const actions = await ctx.db
-    .selectFrom('actions')
-    .select(['action_id', 'step_key', 'status'])
-    .orderBy('queued_sequence')
-    .execute();
+  const actions = await readTestActions(ctx.context.log.writer);
 
-  expect(actions).toMatchObject([
-    { step_key: `${step.taskID}:1`, status: 'unknown' },
-    { step_key: `${next.taskID}:2`, status: 'done' },
+  expect(actions.map((action) => [action.stepKey, action.status])).toStrictEqual([
+    [`${step.taskID}:1`, 'unknown'],
+    [`${next.taskID}:2`, 'done'],
   ]);
 
   expect(ctx.log).toHaveBeenCalledExactlyOnceWith('action.logged', {
-    actionID: actions[1]?.action_id,
+    actionID: actions[1]?.actionID,
     attempt: 1,
   });
 });
@@ -193,7 +194,7 @@ test('it reuses the action it queued when a retry of the step runs on the same i
   await ctx.failStep(step);
 
   const retry = await ctx.runNextStep();
-  const actions = await ctx.db.selectFrom('actions').select(['action_id', 'step_key']).execute();
+  const actions = await readTestActions(ctx.context.log.writer);
 
   const results = await readRecords(ctx.context.log, {
     afterSequence: 0,
@@ -206,10 +207,10 @@ test('it reuses the action it queued when a retry of the step runs on the same i
     inbox,
   });
 
-  expect(actions).toMatchObject([{ step_key: step.stepKey }]);
+  expect(actions.map((action) => action.stepKey)).toStrictEqual([step.stepKey]);
 
   expect(results.map((read) => read.record.payload['actionID'])).toStrictEqual([
-    actions[0]?.action_id,
-    actions[0]?.action_id,
+    actions[0]?.actionID,
+    actions[0]?.actionID,
   ]);
 });

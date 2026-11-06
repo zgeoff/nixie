@@ -3,7 +3,6 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { logProjections, startWriter } from '@heynixie/log';
-import type { TasksTables } from '@heynixie/tasks';
 import { createTask, tasksProjections, writeInboxRecords } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
 import { claimTestStep } from './claim-test-step';
@@ -27,7 +26,6 @@ async function setupTest() {
   ]);
 
   return {
-    db: writer.db.$extendTables<TasksTables>(),
     context: {
       log: { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] },
       clock: buildTestClock(1_000_000),
@@ -38,16 +36,13 @@ async function setupTest() {
 
 test('it claims the next step for runner-a with the unread inbox of its task', async () => {
   const ctx = await setupTest();
-
-  await createTask(ctx.context, 'send the weekly summary');
-
-  const task = await ctx.db.selectFrom('tasks').select('task_id').executeTakeFirstOrThrow();
+  const taskID = await createTask(ctx.context, 'send the weekly summary');
 
   await writeInboxRecords(ctx.context, [
     {
       kind: 'task.wake',
       definitions: { snapshotHash: 'sha256:test' },
-      thread: task.task_id,
+      thread: taskID,
       payload: { at: 1_000_000 },
     },
   ]);
@@ -55,14 +50,14 @@ test('it claims the next step for runner-a with the unread inbox of its task', a
   const step = await claimTestStep(ctx.context);
 
   expect(step).toMatchObject({
-    taskID: task.task_id,
-    stepKey: `${task.task_id}:1`,
-    lease: { kind: 'task', workID: task.task_id, holder: 'runner-a', expiresAt: 1_060_000 },
+    taskID,
+    stepKey: `${taskID}:1`,
+    lease: { kind: 'task', workID: taskID, holder: 'runner-a', expiresAt: 1_060_000 },
     sessionBoundary: null,
     startSequence: expect.any(Number),
   });
 
-  expect(step.inbox).toPartiallyContain({ kind: 'task.wake', thread: task.task_id });
+  expect(step.inbox).toPartiallyContain({ kind: 'task.wake', thread: taskID });
 });
 
 test('it throws when no task is claimable', async () => {

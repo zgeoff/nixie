@@ -2,8 +2,8 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ActionsTables } from '@heynixie/actions';
 import { actionsProjection } from '@heynixie/actions';
+import { readTestActions } from '@heynixie/actions/test-utils';
 import { logProjections, startWriter } from '@heynixie/log';
 import { tasksProjections, writeInboxRecords } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
@@ -45,7 +45,6 @@ async function setupTest() {
 
   return {
     context,
-    db: writer.db.$extendTables<ActionsTables>(),
     log,
     connectors: actions.connectors,
     runStep: actions.trackSteps(
@@ -71,12 +70,12 @@ test('it runs the queued action through its connector', async () => {
 
   await runTestAttempt(ctx.context, ctx.connectors);
 
-  const actions = await ctx.db.selectFrom('actions').select(['action_id', 'status']).execute();
+  const actions = await readTestActions(ctx.context.log.writer);
 
-  expect(actions).toMatchObject([{ status: 'done' }]);
+  expect(actions.map((action) => action.status)).toStrictEqual(['done']);
 
   expect(ctx.log).toHaveBeenCalledExactlyOnceWith('action.logged', {
-    actionID: actions[0]?.action_id,
+    actionID: actions[0]?.actionID,
     attempt: 1,
   });
 });

@@ -720,12 +720,9 @@ test('it commits the session boundary and resumes the next turn at it', async ()
   await ctx.sendMessage(runner, 'Remember APPLE.');
   await ctx.sendMessage(runner, 'What was the word?');
 
-  const task = await ctx.db
-    .selectFrom('tasks')
-    .select('session_boundary')
-    .executeTakeFirstOrThrow();
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
 
-  expect(task.session_boundary).toBe(
+  expect(task.sessionBoundary).toBe(
     '{"sessionID":"7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001","messageID":"7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002"}',
   );
 
@@ -765,10 +762,7 @@ test('it sends each inbox record with its sequence as the message uuid and at th
   await ctx.writeMessage('Second.');
   await ctx.runNextStep(runner);
 
-  const task = await ctx.db
-    .selectFrom('tasks')
-    .select(['state', 'read_cursor'])
-    .executeTakeFirstOrThrow();
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
 
   expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
     {
@@ -787,7 +781,7 @@ test('it sends each inbox record with its sequence as the message uuid and at th
     },
   ]);
 
-  expect(task).toStrictEqual({ state: 'ready', read_cursor: 2 });
+  expect([task.state, task.readCursor]).toStrictEqual(['ready', 2]);
 });
 
 test("it wakes the conversation for a system task's message and gives the turn the framed block", async () => {
@@ -879,12 +873,7 @@ test("it passes a held task message that lands during a turn into that turn, fra
   await ctx.sendMessage(runner, 'Anything new?');
 
   const [sent] = await ctx.readKinds('task_message');
-
-  const task = await ctx.db
-    .selectFrom('tasks')
-    .select(['state', 'read_cursor'])
-    .where('task_id', '=', 'conversation')
-    .executeTakeFirstOrThrow();
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
 
   invariant(sent);
 
@@ -901,7 +890,7 @@ test("it passes a held task message that lands during a turn into that turn, fra
     '\nThis message is from another task, not from Robin.\nKeep the note about the bike?\n',
   );
 
-  expect(task).toStrictEqual({ state: 'waiting', read_cursor: sent.sequence });
+  expect([task.state, task.readCursor]).toStrictEqual(['waiting', sent.sequence]);
 });
 
 test('it gives the next turn a message sent with no wake, before the message that woke it', async () => {
@@ -1807,13 +1796,9 @@ test('it aborts a running turn on a forget, and fails the step so it retries on 
     ),
   ]);
 
-  const task = await ctx.db
-    .selectFrom('tasks')
-    .select(['session_boundary', 'step_errors'])
-    .where('task_id', '=', 'conversation')
-    .executeTakeFirstOrThrow();
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
 
-  expect(task).toStrictEqual({ session_boundary: null, step_errors: 1 });
+  expect([task.sessionBoundary, task.stepErrors]).toStrictEqual([null, 1]);
 });
 
 test('it fails the step and records no reply when nixie tool server is not connected', async () => {
@@ -1834,15 +1819,17 @@ test('it fails the step and records no reply when nixie tool server is not conne
 
   await ctx.sendMessage(runner, 'Hi.');
 
-  const task = await ctx.db
-    .selectFrom('tasks')
-    .select(['state', 'step_errors', 'read_cursor'])
-    .executeTakeFirstOrThrow();
-
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
   const records = await ctx.readKinds('model.reply');
 
   expect(records).toStrictEqual([]);
-  expect(task).toStrictEqual({ state: 'ready', step_errors: 1, read_cursor: 0 });
+
+  expect(task).toStrictEqual({
+    state: 'ready',
+    stepErrors: 1,
+    readCursor: 0,
+    sessionBoundary: null,
+  });
 });
 
 test('it fails the step with a credential error and records no reply when the model API refuses the credential', async () => {
@@ -2262,12 +2249,9 @@ test('it passes a message that lands during the turn into it and acknowledges it
   await ctx.writeMessage('Buy milk.');
   await ctx.runNextStep(runner);
 
-  const task = await ctx.db
-    .selectFrom('tasks')
-    .select(['state', 'read_cursor'])
-    .executeTakeFirstOrThrow();
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
 
-  expect(task).toStrictEqual({ state: 'waiting', read_cursor: live.sequence });
+  expect([task.state, task.readCursor]).toStrictEqual(['waiting', live.sequence]);
 });
 
 test('it stores the profile credential and grants it to the conversation sandbox alone', async () => {
@@ -2359,7 +2343,7 @@ test('it opens a turn with at most the batch limit of inbox records and leaves t
   await ctx.runNextStep(runner);
   await ctx.runNextStep(runner);
 
-  const task = await ctx.db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
 
   expect(ctx.sandboxes.turns.map((turn) => turn.input.length)).toStrictEqual([64, 2]);
   expect(task.state).toBe('waiting');

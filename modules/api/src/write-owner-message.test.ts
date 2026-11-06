@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
-import { readRecords, removeRecordKey } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
+import { readTestTasks } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
@@ -38,16 +40,11 @@ test('it writes your message into the conversation inbox', async () => {
 
   invariant(result.status === 'written');
 
-  const task = await ctx.db
-    .$extendTables<{ tasks: { state: string; last_inbox_sequence: number } }>()
-    .selectFrom('tasks')
-    .select(['state', 'last_inbox_sequence'])
-    .executeTakeFirstOrThrow();
+  const tasks = await readTestTasks(ctx.context.log.writer);
 
-  expect(task).toStrictEqual({
-    state: 'ready',
-    last_inbox_sequence: result.sequence,
-  });
+  expect(tasks.map((task) => [task.state, task.lastInboxSequence])).toStrictEqual([
+    ['ready', result.sequence],
+  ]);
 });
 
 test('it writes a message once for the same client message ID', async () => {
@@ -69,11 +66,10 @@ test('it writes a message once for the same client message ID', async () => {
 
   invariant(first.status === 'written');
 
-  const messages = await ctx.db
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', '=', 'owner_message')
-    .execute();
+  const messages = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['owner_message'],
+  });
 
   expect(retry).toStrictEqual({
     status: 'written',
@@ -126,15 +122,7 @@ test('it answers a retry of a forgotten message by its thread alone', async () =
 
   invariant(first.status === 'written');
 
-  const record = await ctx.db
-    .selectFrom('records')
-    .select('key_id')
-    .where('kind', '=', 'owner_message')
-    .executeTakeFirstOrThrow();
-
-  invariant(typeof record.key_id === 'string');
-
-  await removeRecordKey(ctx.context.log, record.key_id);
+  await removeTestRecordKey(ctx.context.log, first.sequence);
 
   const result = await writeOwnerMessage(ctx.context, laptop.caller, input);
 
@@ -199,12 +187,6 @@ test('it encrypts the spans with the text and keeps neither in plain text', asyn
     ],
   });
 
-  const record = await ctx.db
-    .selectFrom('records')
-    .select(['payload', 'key_id'])
-    .where('kind', '=', 'owner_message')
-    .executeTakeFirstOrThrow();
-
   const [entry] = await readRecords(ctx.context.log, {
     afterSequence: 0,
     thread: 'conversation',
@@ -212,7 +194,7 @@ test('it encrypts the spans with the text and keeps neither in plain text', asyn
 
   const database = await Bun.file(`${ctx.dataDir}/nixie.db-wal`).text();
 
-  expect(JSON.parse(record.payload)).toStrictEqual({
+  expect(entry?.record.payload).toStrictEqual({
     clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     identityID: laptop.caller.identityID,
     spans: 'as_sent',

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { createConversationTask } from './create-conversation-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
@@ -56,10 +56,10 @@ test('it writes no message when the caller rolls its transaction back', async ()
 
   await write.catch(() => {});
 
-  const records = await ctx.db.selectFrom('records').select('kind').execute();
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   expect(write).rejects.toThrowWithMessage(Error, 'the caller failed after the write');
-  expect(records).toStrictEqual([{ kind: 'task.created' }]);
+  expect(records.map((read) => read.record.kind)).toStrictEqual(['task.created']);
 });
 
 test('it refuses a record of a kind outside the inbox', async () => {

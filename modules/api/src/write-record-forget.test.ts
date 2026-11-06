@@ -1,11 +1,11 @@
 import { expect, mock, test } from 'bun:test';
-import type { LogTables } from '@heynixie/log';
 import {
   readRecordAttachments,
   readRecords,
   runProjectionRebuild,
   writeRecords,
 } from '@heynixie/log';
+import { readTestRecordAttachmentRows } from '@heynixie/log/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { readThreadPage } from './read-thread-page';
@@ -97,14 +97,9 @@ test('it forgets the images of your message, whose sealed bytes then decrypt in 
   });
 
   const after = await readRecordAttachments(ctx.context.log, [sent.sequence]);
+  const attachments = await readTestRecordAttachmentRows(ctx.writer);
 
-  const sealed = await ctx.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('record_attachments')
-    .select('sealed')
-    .where('sequence', '=', sent.sequence)
-    .orderBy('position')
-    .execute();
+  const sealed = attachments.filter((row) => row.sequence === sent.sequence);
 
   expect(before.get(sent.sequence)).toStrictEqual({
     status: 'readable',

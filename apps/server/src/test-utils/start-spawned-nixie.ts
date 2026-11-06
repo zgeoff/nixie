@@ -2,10 +2,19 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { TestAction } from '@heynixie/actions/test-utils';
+import { readTestActions } from '@heynixie/actions/test-utils';
+import type { TestBackupSet } from '@heynixie/backup/test-utils';
+import { readTestBackupSets } from '@heynixie/backup/test-utils';
 import { startDatabase } from '@heynixie/db';
-import type { LogRecord } from '@heynixie/log';
+import type { LogRecord, Writer } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
+import { readTestRecordRows, readTestWriterEpoch } from '@heynixie/log/test-utils';
 import type { LogLevel } from '@heynixie/logger';
+import type { TestMemoryItem } from '@heynixie/memory/test-utils';
+import { readTestMemoryItems } from '@heynixie/memory/test-utils';
+import type { TestLease, TestTask, TestTimer } from '@heynixie/tasks/test-utils';
+import { readTestLeases, readTestTasks, readTestTimers } from '@heynixie/tasks/test-utils';
 import type {
   AdvanceOptions,
   CrashHarness,
@@ -29,7 +38,7 @@ import { buildAdvanceHelpers } from './build-advance-helpers';
 import { readDataFiles } from './read-data-files';
 import { readTestBundle } from './read-test-bundle';
 import { readTestRecords } from './read-test-records';
-import type { AdvanceSteps, MatchRecord, RecoveredState, TestRecord, TestRow } from './types';
+import type { AdvanceSteps, MatchRecord, RecoveredState, TestRecord } from './types';
 import { waitForMatch } from './wait-for-match';
 import type { BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
@@ -93,7 +102,19 @@ export interface SpawnedNixie extends BootFiles {
     options: AdvanceSteps,
   ) => Promise<FaultPointArrival>;
 
-  readonly readRows: (table: string) => Promise<readonly TestRow[]>;
+  readonly readTasks: () => Promise<readonly TestTask[]>;
+
+  readonly readLeases: () => Promise<readonly TestLease[]>;
+
+  readonly readTimers: () => Promise<readonly TestTimer[]>;
+
+  readonly readActions: () => Promise<readonly TestAction[]>;
+
+  readonly readMemoryItems: () => Promise<readonly TestMemoryItem[]>;
+
+  readonly readBackupSets: () => Promise<readonly TestBackupSet[]>;
+
+  readonly readWriterEpoch: () => Promise<number | null>;
 
   readonly waitForQueueCheck: () => Promise<void>;
 
@@ -167,7 +188,7 @@ export async function startSpawnedNixie(options: SpawnedNixieOptions = {}): Prom
   // AsyncDisposableStack disposes in reverse, so every nixie dies before its directory goes.
   stack.defer(() => crashHarness.stop());
 
-  const recovery = startRecoveryReads(crashHarness, launch, reader.readRows);
+  const recovery = startRecoveryReads(crashHarness, launch, reader);
 
   const harness: SpawnedNixieHarness = {
     now: crashHarness.now,
@@ -251,22 +272,19 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
   };
 }
 
-type LogReader = Pick<SpawnedNixie, 'readRecords' | 'readRows'>;
+type LogReader = Pick<
+  SpawnedNixie,
+  | 'readRecords'
+  | 'readTasks'
+  | 'readLeases'
+  | 'readTimers'
+  | 'readActions'
+  | 'readMemoryItems'
+  | 'readBackupSets'
+  | 'readWriterEpoch'
+>;
 
 type Database = ReturnType<typeof startDatabase>;
-
-interface RecordRow {
-  readonly sequence: number;
-  readonly kind: string;
-  readonly thread: string | null;
-  readonly step_key: string | null;
-  readonly payload: string;
-}
-
-// Kysely's table map needs an index signature, which an interface lacks, so these are type aliases.
-type ReaderTables = Readonly<{ records: RecordRow }>;
-
-type AnyTables = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
 
 function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader {
   const reader: { db: Database | null } = { db: null };
@@ -279,14 +297,11 @@ function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader
 
   stack.defer(() => reader.db?.destroy());
 
+  const getWriter = (): Pick<Writer, 'db'> => ({ db: getReader() });
+
   return {
     readRecords: async () => {
-      const rows = await getReader()
-        .$extendTables<ReaderTables>()
-        .selectFrom('records')
-        .select(['sequence', 'kind', 'thread', 'step_key', 'payload'])
-        .orderBy('sequence')
-        .execute();
+      const rows = await readTestRecordRows(getWriter());
 
       return rows.map((row) => ({
         sequence: row.sequence,
@@ -296,8 +311,13 @@ function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader
         payload: parseJSONObject(row.payload),
       }));
     },
-    readRows: (table) =>
-      getReader().$extendTables<AnyTables>().selectFrom(table).selectAll().execute(),
+    readTasks: () => readTestTasks(getWriter()),
+    readLeases: () => readTestLeases(getWriter()),
+    readTimers: () => readTestTimers(getWriter()),
+    readActions: () => readTestActions(getWriter()),
+    readMemoryItems: () => readTestMemoryItems(getWriter()),
+    readBackupSets: () => readTestBackupSets(getWriter()),
+    readWriterEpoch: () => readTestWriterEpoch(getWriter()),
   };
 }
 
@@ -316,10 +336,12 @@ function buildServeArgs(files: BootFiles): readonly string[] {
   ];
 }
 
+type RecoveryReader = Pick<SpawnedNixie, 'readLeases' | 'readTasks'>;
+
 function startRecoveryReads(
   crashHarness: CrashHarness,
   launch: Launch,
-  readRows: SpawnedNixie['readRows'],
+  reader: RecoveryReader,
 ): Pick<SpawnedNixieHarness, 'start'> & Pick<SpawnedNixie, 'readRecoveredStates'> {
   const states: RecoveredState[] = [];
 
@@ -327,7 +349,7 @@ function startRecoveryReads(
     start: (faultPoints = []) => {
       const nixie = crashHarness.start([...faultPoints, { point: 'test.recovered' }]);
 
-      void readRecoveredState(nixie, readRows, (state) => {
+      void readRecoveredState(nixie, reader, (state) => {
         states.push(state);
       });
 
@@ -339,7 +361,7 @@ function startRecoveryReads(
 
 async function readRecoveredState(
   nixie: NixieProcess,
-  readRows: SpawnedNixie['readRows'],
+  reader: RecoveryReader,
   onState: (state: RecoveredState) => void,
 ): Promise<void> {
   const arrival = await nixie.waitForArrival('test.recovered').catch(() => null);
@@ -348,7 +370,7 @@ async function readRecoveredState(
     return;
   }
 
-  onState({ leases: await readRows('leases'), tasks: await readRows('tasks') });
+  onState({ leases: await reader.readLeases(), tasks: await reader.readTasks() });
 
   nixie.release(arrival);
 }

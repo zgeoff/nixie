@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { claimEnrolmentCode } from './claim-enrolment-code';
 import { createEnrolmentCode } from './create-enrolment-code';
 import { deriveSecretHash } from './derive-secret-hash';
@@ -247,18 +248,12 @@ test('it records the enrolment with the device name encrypted', async () => {
     throw new Error('the enrolment failed');
   }
 
-  const record = await ctx.db
-    .$extendTables<{ records: { kind: string; payload: string; key_id: string | null } }>()
-    .selectFrom('records')
-    .select(['payload', 'key_id'])
-    .where('kind', '=', 'session.enrolled')
-    .executeTakeFirstOrThrow();
-
-  expect(JSON.parse(record.payload)).toStrictEqual({
-    identityID: enrolled.sessionID,
-    channel: 'client',
-    issuedBy: null,
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['session.enrolled'],
   });
 
-  expect(record.key_id).toBeString();
+  expect(records.map((read) => [read.record.payload, read.record.erasable.status])).toStrictEqual([
+    [{ identityID: enrolled.sessionID, channel: 'client', issuedBy: null }, 'readable'],
+  ]);
 });

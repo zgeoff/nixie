@@ -133,11 +133,10 @@ test('it fires no timer that a stop withdrew after the timer runner picked it', 
 
   const fired = await runDueTimers(ctx.context);
 
-  const records = await ctx.db
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', '=', 'timer.fired')
-    .execute();
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['timer.fired'],
+  });
 
   expect(fired).toBe(0);
   expect(records).toStrictEqual([]);

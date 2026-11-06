@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { ActionsTables } from '@heynixie/actions';
 import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
-import { writeRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import { claimTask, createConversationTask, createTask, writeStepCommit } from '@heynixie/tasks';
 import { isDefinedError, safe } from '@orpc/client';
 import invariant from 'tiny-invariant';
@@ -15,7 +15,7 @@ import type { APITables } from './types';
 async function setupTest() {
   const api = await startTestAPI();
 
-  const db = api.writer.db.$extendTables<APITables & { records: { kind: string } }>();
+  const db = api.writer.db.$extendTables<APITables>();
 
   return { ...api, db };
 }
@@ -405,7 +405,7 @@ test('#conversation.send refuses an image larger than 5 MB with a typed error', 
     }),
   );
 
-  const records = await ctx.db.selectFrom('records').select('kind').execute();
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   expect(result.error).toMatchObject({
     code: 'IMAGE_REFUSED',
@@ -413,7 +413,7 @@ test('#conversation.send refuses an image larger than 5 MB with a typed error', 
     data: { reason: 'too_large', position: 1 },
   });
 
-  expect(records.map((record) => record.kind)).not.toContain('owner_message');
+  expect(records.map((read) => read.record.kind)).not.toContain('owner_message');
 });
 
 test('#conversation.send refuses an image whose bytes are not a type it takes with a typed error', async () => {
@@ -637,7 +637,7 @@ test('#conversation.send from a revoked session writes only a refusal record', a
     sessionID: other.sessionID,
   });
 
-  const before = await ctx.db.selectFrom('records').select('kind').execute();
+  const before = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   const result = await safe(
     buildTestClient(ctx.url, other.token).conversation.send({
@@ -648,10 +648,13 @@ test('#conversation.send from a revoked session writes only a refusal record', a
     }),
   );
 
-  const after = await ctx.db.selectFrom('records').select('kind').execute();
+  const after = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   expect(result.error).toMatchObject({ code: 'UNAUTHORIZED' });
-  expect(after.slice(before.length)).toStrictEqual([{ kind: 'identity.refused' }]);
+
+  expect(after.slice(before.length).map((read) => read.record.kind)).toStrictEqual([
+    'identity.refused',
+  ]);
 });
 
 test('#conversation.forget forgets a message, which the thread then shows with no text', async () => {
@@ -1069,11 +1072,14 @@ test('#records.follow streams a stop with the actions it cancelled', async () =>
     taskID: 'conversation',
   });
 
-  const stop = await ctx.db
-    .selectFrom('records')
-    .select('sequence')
-    .where('kind', '=', 'task.stopped')
-    .executeTakeFirstOrThrow();
+  const [stopRead] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.stopped'],
+  });
+
+  invariant(stopRead);
+
+  const stop = stopRead.record;
 
   await ctx.writer.db
     .$extendTables<ActionsTables>()

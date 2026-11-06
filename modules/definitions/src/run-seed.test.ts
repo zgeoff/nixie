@@ -2,12 +2,10 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readQueryRows } from '@heynixie/db';
 import type { Projection } from '@heynixie/log';
-import { startWriter, withWriteTransaction } from '@heynixie/log';
+import { readRecords, startWriter, withWriteTransaction } from '@heynixie/log';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
-import { z } from 'zod';
 import { buildContentHash } from './build-content-hash';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { checkSkillFiles } from './check-skill-files';
@@ -381,9 +379,11 @@ test('it writes no record for a snapshot it refuses', async () => {
   await writeFile(join(ctx.root, 'persona.md'), '');
   await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
-  const records = await sql`select sequence, kind from records`.execute(ctx.writer.db);
+  const records = await readRecords(ctx.log, { afterSequence: 0 });
 
-  expect(records.rows).toStrictEqual([{ sequence: 1, kind: 'definitions_seeded' }]);
+  expect(records.map((read) => [read.record.sequence, read.record.kind])).toStrictEqual([
+    [1, 'definitions_seeded'],
+  ]);
 });
 
 test('it keeps the last seed when the source refuses the snapshot', async () => {
@@ -506,11 +506,11 @@ test('it writes nothing when the newest seed already holds the same definitions'
 
   const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
   const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
-  const records = await sql`select sequence from records`.execute(ctx.writer.db);
+  const records = await readRecords(ctx.log, { afterSequence: 0 });
 
   expect(result.status).toBe('unchanged');
   expect(result.inForce).toStrictEqual(first.inForce);
-  expect(records.rows).toStrictEqual([{ sequence: 1 }]);
+  expect(records.map((read) => read.record.sequence)).toStrictEqual([1]);
 });
 
 test('it puts an edited persona in force under a new snapshot hash', async () => {
@@ -589,11 +589,13 @@ test('it rolls the whole seed back when its record fails to write', async () => 
   const rows = await sql`select
     (select count(*) from personas) as personas,
     (select count(*) from definition_snapshots) as snapshots,
-    (select count(*) from definition_seeds) as seeds,
-    (select count(*) from records) as records`.execute(ctx.writer.db);
+    (select count(*) from definition_seeds) as seeds`.execute(ctx.writer.db);
+
+  const records = await readRecords(ctx.log, { afterSequence: 0 });
 
   expect(seed).rejects.toThrowWithMessage(Error, 'the fold failed');
-  expect(rows.rows).toStrictEqual([{ personas: 0, snapshots: 0, seeds: 0, records: 0 }]);
+  expect(rows.rows).toStrictEqual([{ personas: 0, snapshots: 0, seeds: 0 }]);
+  expect(records).toStrictEqual([]);
 });
 
 test('it seeds each skill under format 2 and names the added skills in its record', async () => {
@@ -614,22 +616,24 @@ test('it seeds each skill under format 2 and names the added skills in its recor
 
   const skillHash = buildContentHash(new Map([['SKILL.md', new TextEncoder().encode(skill)]]));
 
-  const records = await readQueryRows(
-    sql`select payload from records`,
-    ctx.writer.db,
-    z.object({ payload: z.string() }),
-  );
+  const records = await readRecords(ctx.log, { afterSequence: 0 });
 
   expect(result.inForce?.skills).toStrictEqual([
     { name: 'tide-tables', skillHash, origin: 'definitions' },
   ]);
 
-  expect(records.map((row): unknown => JSON.parse(row.payload))).toMatchObject([
-    {
-      skills: [{ name: 'tide-tables', skillHash, origin: 'definitions' }],
-      skillChanges: { added: ['tide-tables'], changed: [], removed: [] },
-      unapplied: [],
-    },
+  expect(
+    records.map((read) => [
+      read.record.payload['skills'],
+      read.record.payload['skillChanges'],
+      read.record.payload['unapplied'],
+    ]),
+  ).toStrictEqual([
+    [
+      [{ name: 'tide-tables', skillHash, origin: 'definitions' }],
+      { added: ['tide-tables'], changed: [], removed: [] },
+      [],
+    ],
   ]);
 });
 
@@ -663,17 +667,9 @@ test('it names the skills a later seed changes and removes in its record', async
   await rm(join(ctx.root, 'skills', 'bird-log'), { recursive: true });
   await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 
-  const records = await readQueryRows(
-    sql`select payload from records order by sequence`,
-    ctx.writer.db,
-    z.object({ payload: z.string() }),
-  );
+  const records = await readRecords(ctx.log, { afterSequence: 0 });
 
-  const payloads = records.map((row) =>
-    z.looseObject({ skillChanges: z.unknown() }).parse(JSON.parse(row.payload)),
-  );
-
-  expect(payloads.map((payload) => payload.skillChanges)).toStrictEqual([
+  expect(records.map((read) => read.record.payload['skillChanges'])).toStrictEqual([
     { added: ['bird-log', 'tide-tables'], changed: [], removed: [] },
     { added: [], changed: ['tide-tables'], removed: ['bird-log'] },
   ]);

@@ -2,7 +2,9 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
 import { threadsProjection } from '@heynixie/log';
 import { makeDecisionPoint } from '@heynixie/policy';
+import { buildSandboxRecorder, readSandboxOwners } from '@heynixie/sandbox';
 import { buildMockSandboxSpec, runGuestFrame } from '@heynixie/sandbox/test-utils';
+import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import type { ToolOutcome } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
@@ -47,13 +49,17 @@ test('it records each sandbox the stub guest creates in the log', async () => {
     buildMockSandboxSpec({ kind: 'worker', image: 'worker', owner: 'task-1' }),
   );
 
-  const rows = await host.context.log.writer.db
-    .$extendTables<{ sandboxes: { sandbox_id: string; owner: string } }>()
-    .selectFrom('sandboxes')
-    .select(['sandbox_id', 'owner'])
-    .execute();
+  const owners = await readSandboxOwners(host.context.log, host.sandboxes.id);
 
-  expect(rows).toStrictEqual([{ sandbox_id: sandbox.id, owner: 'task-1' }]);
+  const rows = await buildSandboxRecorder({
+    log: host.context.log,
+    definitions: host.context.definitions,
+  }).list(host.sandboxes.id, 'task-1');
+
+  expect({ owners, sandboxIDs: rows.map((row) => row.sandboxID) }).toStrictEqual({
+    owners: ['task-1'],
+    sandboxIDs: [sandbox.id],
+  });
 });
 
 test("it sends a tool call of the stub guest's turn to the run endpoint of the sandbox's owner", async () => {
@@ -164,13 +170,9 @@ test('it stops a deferred part while the log is still open', async () => {
   const seen: { count: number | null } = { count: null };
 
   host.defer(async () => {
-    const rows = await host.context.log.writer.db
-      .$extendTables<{ tasks: { task_id: string } }>()
-      .selectFrom('tasks')
-      .select('task_id')
-      .execute();
+    const tasks = await readTestTasks(host.context.log.writer);
 
-    seen.count = rows.length;
+    seen.count = tasks.length;
   });
 
   onTestFinished(() => {

@@ -2,8 +2,8 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ActionsTables } from '@heynixie/actions';
 import { actionsProjection } from '@heynixie/actions';
+import { readTestActions } from '@heynixie/actions/test-utils';
 import { logProjections, startWriter } from '@heynixie/log';
 import { tasksProjections, writeInboxRecords } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
@@ -45,7 +45,6 @@ async function setupTest() {
 
   return {
     context,
-    db: writer.db.$extendTables<ActionsTables>(),
     log,
     connectors: actions.connectors,
     runStep: actions.trackSteps(
@@ -71,12 +70,15 @@ test('it stops the attempt once its attempt record commits, before the connector
 
   await runCrashedTestAttempt(ctx.context, ctx.connectors);
 
-  const actions = await ctx.db
-    .selectFrom('actions')
-    .select(['attempt_count', 'attempt_open'])
-    .execute();
+  const actions = await readTestActions(ctx.context.log.writer);
 
-  expect(actions).toMatchObject([{ attempt_count: 1, attempt_open: 1 }]);
+  expect(
+    actions.map((action) => ({
+      attemptCount: action.attemptCount,
+      isAttemptOpen: action.isAttemptOpen,
+    })),
+  ).toStrictEqual([{ attemptCount: 1, isAttemptOpen: true }]);
+
   expect(ctx.log).not.toHaveBeenCalled();
 });
 

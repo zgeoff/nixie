@@ -50,12 +50,12 @@ test('it keeps the leases and the tasks that each start recovered', async () => 
   expect(states[0]).toStrictEqual({ leases: [], tasks: [] });
 
   expect(states[1]?.leases).toIncludeAllPartialMembers([
-    { kind: 'task', work_id: taskID, holder: null, generation: 1 },
+    { kind: 'task', workID: taskID, holder: null, generation: 1 },
   ]);
 
   expect(states[1]?.tasks).toIncludeAllPartialMembers([
-    { task_id: 'conversation' },
-    { task_id: taskID, state: 'ready' },
+    { id: 'conversation' },
+    { id: taskID, state: 'ready' },
   ]);
 });
 

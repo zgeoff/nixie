@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { createSystemTask } from './create-system-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
@@ -27,11 +28,7 @@ test('it leaves the system task be on every start after the first', async () => 
   await createSystemTask(ctx.context, 'memory-writer');
   await createSystemTask(ctx.context, 'memory-writer');
 
-  const records = await ctx.writer.db
-    .$extendTables<TasksTables>()
-    .selectFrom('records')
-    .select('kind')
-    .execute();
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
 
-  expect(records).toStrictEqual([{ kind: 'task.created' }]);
+  expect(records.map((read) => read.record.kind)).toStrictEqual(['task.created']);
 });

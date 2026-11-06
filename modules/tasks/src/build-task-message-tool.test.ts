@@ -232,11 +232,10 @@ test('it refuses a call that comes from no step, and sends nothing', async () =>
     buildMockToolContext({ run: { thread: 'planner' } }),
   );
 
-  const messages = await ctx.db
-    .selectFrom('records')
-    .select('sequence')
-    .where('kind', '=', 'task_message')
-    .execute();
+  const messages = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task_message'],
+  });
 
   expect(outcome).toStrictEqual({
     status: 'error',

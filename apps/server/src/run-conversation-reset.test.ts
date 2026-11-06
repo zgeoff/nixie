@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { defaultAPISettings } from '@heynixie/api';
+import { readLinkTarget } from '@heynixie/connectors';
 import { readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
@@ -153,15 +154,9 @@ test('it removes the links that the web fetch tool numbered on the conversation 
     stopWork: () => Promise.resolve(),
   });
 
-  const rows = await ctx.context.log.writer.db
-    .$extendTables<{
-      web_fetch_links: { session_key: string; number: number; url: string; thread: string };
-    }>()
-    .selectFrom('web_fetch_links')
-    .selectAll()
-    .execute();
+  const target = await readLinkTarget(ctx.context.log, { sessionKey: 'session-a', number: 1 });
 
-  expect(rows).toStrictEqual([]);
+  expect(target).toBeNull();
 });
 
 test('it removes nothing when the conversation sandbox destroy fails', async () => {

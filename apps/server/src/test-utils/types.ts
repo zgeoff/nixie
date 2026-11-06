@@ -1,3 +1,5 @@
+import type { TestLease, TestTask } from '@heynixie/tasks/test-utils';
+
 export interface TestRecord {
   readonly sequence: number;
   readonly kind: string;
@@ -13,9 +15,7 @@ export interface AdvanceSteps {
   readonly maxSteps: number;
 }
 
-export type TestRow = Readonly<Record<string, unknown>>;
-
 export interface RecoveredState {
-  readonly leases: readonly TestRow[];
-  readonly tasks: readonly TestRow[];
+  readonly leases: readonly TestLease[];
+  readonly tasks: readonly TestTask[];
 }

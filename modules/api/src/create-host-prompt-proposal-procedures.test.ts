@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkPromptProposal } from '@heynixie/definitions';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
-import type { PromptsInForce, PromptsTables } from '@heynixie/prompts';
-import { promptsOverrideProposedCodec } from '@heynixie/prompts';
+import type { PromptsInForce } from '@heynixie/prompts';
+import { promptsOverrideProposedCodec, readPromptApproval } from '@heynixie/prompts';
 import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
 import { createHostPromptProposalProcedures } from './create-host-prompt-proposal-procedures';
@@ -164,29 +164,23 @@ test('#approve stores the edited files in place of the proposed ones, and record
     },
   ]);
 
-  await ctx.createClient(null).approve({
+  const approved = await ctx.createClient(null).approve({
     proposalID: 'p8w2n4c6ld',
     proposalHash: 'hash-c',
     files: [{ path: 'prompts/compaction-safety.md', text: 'Answer in one line.\n' }],
   });
 
-  const approvals = await ctx.log.writer.db
-    .$extendTables<PromptsTables>()
-    .selectFrom('prompt_approvals')
-    .select(['entry', 'files'])
-    .execute();
+  const approval = await readPromptApproval(ctx.log.writer.db, approved.approvalID);
 
   const records = await readRecords(ctx.log, {
     afterSequence: 0,
     kinds: ['prompts.override_approved'],
   });
 
-  expect(approvals).toStrictEqual([
-    {
-      entry: '{"safety":"prompts/compaction-safety.md"}',
-      files: String.raw`[{"path":"prompts/compaction-safety.md","text":"Answer in one line.\n"}]`,
-    },
-  ]);
+  expect({ entry: approval.entry, files: approval.files }).toStrictEqual({
+    entry: { safety: 'prompts/compaction-safety.md' },
+    files: [{ path: 'prompts/compaction-safety.md', text: 'Answer in one line.\n' }],
+  });
 
   expect(records.map((entry) => entry.record.payload['isEdited'])).toStrictEqual([true]);
 });

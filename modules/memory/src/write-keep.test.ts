@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
-import type { LogTables } from '@heynixie/log';
-import { writeRecordsInTransaction } from '@heynixie/log';
+import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -24,15 +23,15 @@ test("it keeps an item at the version you saw, committing only the caller's own 
     },
   });
 
-  const kinds = await ctx.memory.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', 'in', ['owner_message', 'memory.version_added'])
-    .orderBy('sequence')
-    .execute();
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['owner_message', 'memory.version_added'],
+  });
 
-  expect(kinds).toStrictEqual([{ kind: 'memory.version_added' }, { kind: 'owner_message' }]);
+  expect(records.map((read) => read.record.kind)).toStrictEqual([
+    'memory.version_added',
+    'owner_message',
+  ]);
 });
 
 test("it refuses a keep of a version the item moved past, and rolls back the caller's write", async () => {
@@ -60,12 +59,10 @@ test("it refuses a keep of a version the item moved past, and rolls back the cal
 
   await keep.catch(() => {});
 
-  const written = await ctx.memory.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', '=', 'owner_message')
-    .execute();
+  const written = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['owner_message'],
+  });
 
   expect(keep).rejects.toMatchObject({ code: 'STALE_VERSION' });
   expect(written).toStrictEqual([]);

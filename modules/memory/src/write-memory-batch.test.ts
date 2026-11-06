@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { LeaseLostError, claimLease } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { readWriterRow } from './read-writer-row';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writePlannedBatch } from './test-utils/write-planned-batch';
@@ -325,7 +325,7 @@ test('it leaves out a write whose source was forgotten and counts it', async () 
 
   const planned = await writePlannedBatch(ctx.memory.log, ['My sister is called Robin.']);
 
-  await removeMessageKey(ctx.memory.log, planned.bounds.end);
+  await removeTestRecordKey(ctx.memory.log, planned.bounds.end);
 
   const result = await ctx.memory.store.writeBatch({
     lease,
@@ -391,7 +391,7 @@ test('it keeps a flag whose source is readable, and leaves out one whose source 
 
   invariant(first !== undefined && second !== undefined);
 
-  await removeMessageKey(ctx.memory.log, second);
+  await removeTestRecordKey(ctx.memory.log, second);
 
   const result = await ctx.memory.store.writeBatch({
     lease,

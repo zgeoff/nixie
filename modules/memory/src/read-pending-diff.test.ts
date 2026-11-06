@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import type { LogTables } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
+import { readTestRecordRows } from '@heynixie/log/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import type { ConsolidationTables } from './consolidation-types';
@@ -115,10 +115,13 @@ test('it stores the summary sealed, so the raw store holds no word of it', async
     now: ctx.clock.now(),
   });
 
-  const db = ctx.memory.log.writer.db.$extendTables<ConsolidationTables & LogTables>();
+  const runs = await ctx.memory.log.writer.db
+    .$extendTables<ConsolidationTables>()
+    .selectFrom('memory_consolidations')
+    .selectAll()
+    .execute();
 
-  const runs = await db.selectFrom('memory_consolidations').selectAll().execute();
-  const records = await db.selectFrom('records').selectAll().execute();
+  const records = await readTestRecordRows(ctx.memory.writer);
 
   expect(diff.summary?.text).toBe(
     'Two items conflict and stay unchanged: one says oat milk, the other says black.',

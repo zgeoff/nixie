@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { readWriterStatus } from './read-writer-status';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -163,7 +163,7 @@ test('it reports the last error with no text once its text is forgotten', async 
     },
   ]);
 
-  await removeMessageKey(ctx.memory.log, failed?.sequence ?? -1);
+  await removeTestRecordKey(ctx.memory.log, failed?.sequence ?? -1);
 
   const status = await readWriterStatus(ctx.memory.log);
 

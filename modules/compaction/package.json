@@ -16,9 +16,5 @@
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "zod": "catalog:"
-  },
-  "devDependencies": {
-    "kysely": "catalog:",
-    "tiny-invariant": "catalog:"
   }
 }

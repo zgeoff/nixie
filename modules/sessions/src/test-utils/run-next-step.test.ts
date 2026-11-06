@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { StepInput } from '@heynixie/tasks';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
+import { readTestTaskProgress } from '@heynixie/tasks/test-utils';
 import { runNextStep } from './run-next-step';
 import { startTestTasks } from './start-test-tasks';
 
@@ -30,13 +31,10 @@ test('it runs one step of the task with work and commits its result', async () =
     return Promise.resolve({ next: 'wait', records: [], acknowledged: [2] });
   });
 
-  const task = await ctx.db
-    .selectFrom('tasks')
-    .select(['state', 'read_cursor'])
-    .executeTakeFirstOrThrow();
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
 
   expect(inputs).toMatchObject([{ taskID: 'conversation', stepKey: 'conversation:1' }]);
-  expect(task).toStrictEqual({ state: 'waiting', read_cursor: 2 });
+  expect([task.state, task.readCursor]).toStrictEqual(['waiting', 2]);
 });
 
 test('it throws when no task has work', async () => {

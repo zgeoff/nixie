@@ -1,8 +1,8 @@
 import { writeUnknownOutcomes } from '@heynixie/actions';
-import type { Log, Writer } from '@heynixie/log';
-import { runProjectionRebuild } from '@heynixie/log';
-import type { TasksContext } from '@heynixie/tasks';
+import { readTestProjectionDrift } from '@heynixie/log/test-utils';
+import type { TaskState, TasksContext } from '@heynixie/tasks';
 import { runRecovery } from '@heynixie/tasks';
+import type { TestTask } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { startDataLog } from './start-data-log';
 import type { RecoveredState, SpawnedNixie } from './start-spawned-nixie';
@@ -47,7 +47,7 @@ export async function runOracle(nixie: SpawnedNixie): Promise<OracleReport> {
       ),
       strayCalls: collectStrayCalls(nixie, records),
       ...recovery,
-      projectionDrift: await readProjectionDrift(context.log),
+      projectionDrift: await readTestProjectionDrift(context.log),
     };
   } finally {
     await testLog.writer.stop();
@@ -62,7 +62,7 @@ async function runRecoveryChecks(
 ): Promise<RecoveryChecks> {
   const recovered = nixie.readRecoveredStates();
 
-  const before = await nixie.readRows('tasks');
+  const before = await nixie.readTasks();
 
   await runRecovery(context, {
     writeUnknownOutcomes: () => writeUnknownOutcomes(context),
@@ -71,19 +71,17 @@ async function runRecoveryChecks(
 
   const states: readonly RecoveredState[] = [
     ...recovered,
-    { leases: await nixie.readRows('leases'), tasks: await nixie.readRows('tasks') },
+    { leases: await nixie.readLeases(), tasks: await nixie.readTasks() },
   ];
 
   return {
     heldLeases: states.flatMap((state, index) =>
       state.leases
-        .filter((lease) => lease['holder'] !== null)
-        .map((lease) => `${index}:${String(lease['kind'])}:${String(lease['work_id'])}`),
+        .filter((lease) => lease.holder !== null)
+        .map((lease) => `${index}:${lease.kind}:${lease.workID}`),
     ),
     unreadyTasks: states.flatMap((state, index) =>
-      state.tasks
-        .filter((task) => isUnready(task))
-        .map((task) => `${index}:${String(task['task_id'])}`),
+      state.tasks.filter((task) => isUnready(task)).map((task) => `${index}:${task.id}`),
     ),
     changedEndStates: collectChangedEndStates([
       ...recovered.map((state) => state.tasks),
@@ -93,30 +91,27 @@ async function runRecoveryChecks(
   };
 }
 
-function isUnready(task: Readonly<Record<string, unknown>>): boolean {
+function isUnready(task: TestTask): boolean {
   return (
-    task['state'] === 'running' ||
-    (task['state'] === 'waiting' &&
-      Number(task['last_inbox_sequence']) > Number(task['read_cursor']))
+    task.state === 'running' ||
+    (task.state === 'waiting' && task.lastInboxSequence > task.readCursor)
   );
 }
 
-function collectChangedEndStates(
-  reads: readonly (readonly Readonly<Record<string, unknown>>[])[],
-): readonly string[] {
-  const ended = new Map<unknown, unknown>();
+function collectChangedEndStates(reads: readonly (readonly TestTask[])[]): readonly string[] {
+  const ended = new Map<string, TaskState>();
   const changed = new Set<string>();
 
   for (const tasks of reads) {
     for (const task of tasks) {
-      const endState = ended.get(task['task_id']);
+      const endState = ended.get(task.id);
 
-      if (endState !== undefined && endState !== task['state']) {
-        changed.add(String(task['task_id']));
+      if (endState !== undefined && endState !== task.state) {
+        changed.add(task.id);
       }
 
-      if (endState === undefined && (task['state'] === 'done' || task['state'] === 'failed')) {
-        ended.set(task['task_id'], task['state']);
+      if (endState === undefined && (task.state === 'done' || task.state === 'failed')) {
+        ended.set(task.id, task.state);
       }
     }
   }
@@ -155,27 +150,4 @@ function collectStrayCalls(
 
       return remaining <= 0;
     });
-}
-
-async function readProjectionDrift(log: Log): Promise<readonly string[]> {
-  const tables = [...log.projections.map((projection) => projection.table), 'projection_changes'];
-  const readTables = () => Promise.all(tables.map((table) => readTable(log.writer.db, table)));
-
-  const live = await readTables();
-
-  await runProjectionRebuild(log);
-
-  const rebuilt = await readTables();
-
-  return tables.filter((_table, index) => !Bun.deepEquals(live[index], rebuilt[index]));
-}
-
-async function readTable(db: Writer['db'], table: string): Promise<readonly unknown[]> {
-  const rows = await db
-    .$extendTables<Readonly<Record<string, Readonly<Record<string, unknown>>>>>()
-    .selectFrom(table)
-    .selectAll()
-    .execute();
-
-  return rows.map((row) => JSON.stringify(row)).toSorted();
 }

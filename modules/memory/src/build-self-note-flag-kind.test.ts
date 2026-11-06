@@ -1,9 +1,9 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
 import invariant from 'tiny-invariant';
 import { buildSelfNoteFlagKind } from './build-self-note-flag-kind';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -57,7 +57,7 @@ test('it lists nothing for a flag whose text a forget erased', async () => {
 
   invariant(flag);
 
-  await removeMessageKey(ctx.memory.log, flag.sequence);
+  await removeTestRecordKey(ctx.memory.log, flag.sequence);
 
   const note = await readEventsNote(
     buildEventRegistry([buildSelfNoteFlagKind(ctx.memory.log)]),

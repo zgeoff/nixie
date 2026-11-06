@@ -18,8 +18,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@faker-js/faker": "catalog:",
-    "kysely": "catalog:",
-    "tiny-invariant": "catalog:"
+    "@faker-js/faker": "catalog:"
   }
 }

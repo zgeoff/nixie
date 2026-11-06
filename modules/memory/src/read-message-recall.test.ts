@@ -1,10 +1,10 @@
 import { expect, mock, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer, buildMockWriteCaller, startTestMemory } from './test-utils';
 import { buildStubEncoder } from './test-utils/build-stub-encoder';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import { startNextTestMemory } from './test-utils/start-next-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
@@ -175,7 +175,7 @@ test('it never returns a message you forgot, even while its entry is still in th
 
   const before = await memory.store.recallMessages(query);
 
-  await removeMessageKey(memory.log, sequence);
+  await removeTestRecordKey(memory.log, sequence);
 
   const after = await memory.store.recallMessages(query);
 
@@ -201,7 +201,7 @@ test('it never returns a message you forgot once its entry leaves the index', as
     excludedWords: [],
   });
 
-  await removeMessageKey(memory.log, sequence);
+  await removeTestRecordKey(memory.log, sequence);
 
   await memory.store.removeMessages([sequence]);
 
@@ -226,7 +226,7 @@ test('it never returns a message you forgot after a restart rebuilds the index',
     spans: [{ start: 0, end: 25, source: 'typed' }],
   });
 
-  await removeMessageKey(memory.log, sequence);
+  await removeTestRecordKey(memory.log, sequence);
 
   const restarted = await startNextTestMemory(memory);
 

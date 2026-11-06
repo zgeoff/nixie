@@ -1,4 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { runRecovery } from './run-recovery';
 import { setFaultPointHandler } from './set-fault-point-handler';
 import { createTestClaim } from './test-utils/create-test-claim';
@@ -138,12 +139,10 @@ test('it records the step that started without a commit as interrupted', async (
   const ctx = await setupTest();
   const claim = await createTestClaim(ctx.context, 'tidy the inbox');
 
-  const before = await ctx.writer.db
-    .$extendTables<TasksTables>()
-    .selectFrom('records')
-    .select(['kind', 'thread'])
-    .where('kind', 'in', ['task.lease_expired', 'task.step_interrupted'])
-    .execute();
+  const before = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.lease_expired', 'task.step_interrupted'],
+  });
 
   const next = await startNextTestWriter(ctx);
 
@@ -152,18 +151,16 @@ test('it records the step that started without a commit as interrupted', async (
     sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   });
 
-  const records = await next.writer.db
-    .$extendTables<TasksTables>()
-    .selectFrom('records')
-    .select(['kind', 'thread'])
-    .where('kind', 'in', ['task.lease_expired', 'task.step_interrupted'])
-    .execute();
+  const records = await readRecords(next.context.log, {
+    afterSequence: 0,
+    kinds: ['task.lease_expired', 'task.step_interrupted'],
+  });
 
   expect(before).toStrictEqual([]);
 
-  expect(records).toStrictEqual([
-    { kind: 'task.lease_expired', thread: claim.lease.workID },
-    { kind: 'task.step_interrupted', thread: claim.lease.workID },
+  expect(records.map((read) => [read.record.kind, read.record.thread])).toStrictEqual([
+    ['task.lease_expired', claim.lease.workID],
+    ['task.step_interrupted', claim.lease.workID],
   ]);
 });
 
@@ -253,13 +250,13 @@ test('it writes nothing more when it runs again', async () => {
 
   await runRecovery(next.context, dependencies);
 
-  const db = next.writer.db.$extendTables<TasksTables>();
-
-  const before = await db.selectFrom('records').select('sequence').execute();
+  const before = await readRecords(next.context.log, { afterSequence: 0 });
 
   await runRecovery(next.context, dependencies);
 
-  const after = await db.selectFrom('records').select('sequence').execute();
+  const after = await readRecords(next.context.log, { afterSequence: 0 });
 
-  expect(after).toStrictEqual(before);
+  expect(after.map((read) => read.record.sequence)).toStrictEqual(
+    before.map((read) => read.record.sequence),
+  );
 });

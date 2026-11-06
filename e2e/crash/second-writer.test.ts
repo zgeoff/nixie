@@ -14,13 +14,13 @@ test('it refuses a second process while the first holds the writer lock, and let
 
   await processA.ready;
 
-  const epochBefore = await ctx.nixie.readRows('writer_epoch');
+  const epochBefore = await ctx.nixie.readWriterEpoch();
   const recordsBefore = await ctx.nixie.readRecords();
 
   const refused = ctx.nixie.harness.start();
 
   const refusedExit = await refused.exited;
-  const epochAfterRefusal = await ctx.nixie.readRows('writer_epoch');
+  const epochAfterRefusal = await ctx.nixie.readWriterEpoch();
   const recordsAfterRefusal = await ctx.nixie.readRecords();
 
   ctx.nixie.model.addReplies({ text: 'Hi.' });
@@ -37,7 +37,7 @@ test('it refuses a second process while the first holds the writer lock, and let
 
   await processB.ready;
 
-  const epochAfterB = await ctx.nixie.readRows('writer_epoch');
+  const epochAfterB = await ctx.nixie.readWriterEpoch();
 
   await processB.kill();
 
@@ -52,7 +52,7 @@ test('it refuses a second process while the first holds the writer lock, and let
     recordsBefore.filter((record) => record.thread !== 'queue-check'),
   );
 
-  expect(epochAfterB).toStrictEqual([{ id: 1, epoch: 2 }]);
+  expect(epochAfterB).toBe(2);
 
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
@@ -72,14 +72,14 @@ test('it refuses a second process while the first is frozen, and the first resum
 
   await processA.ready;
 
-  const epochBefore = await ctx.nixie.readRows('writer_epoch');
+  const epochBefore = await ctx.nixie.readWriterEpoch();
 
   processA.signal('SIGSTOP');
 
   const refused = ctx.nixie.harness.start();
 
   const refusedExit = await refused.exited;
-  const epochAfterRefusal = await ctx.nixie.readRows('writer_epoch');
+  const epochAfterRefusal = await ctx.nixie.readWriterEpoch();
 
   processA.signal('SIGCONT');
   ctx.nixie.model.addReplies({ text: 'Hi.' });
