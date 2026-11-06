@@ -3,6 +3,7 @@ import { stat } from 'node:fs/promises';
 import { writeRecords } from '@heynixie/log';
 import type { DecisionPoint } from '@heynixie/policy';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
+import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { BuildTestServerTools } from './start-test-server';
 import { startTestServer } from './start-test-server';
@@ -44,13 +45,9 @@ test('it stops a deferred part while the log is still open', async () => {
   const seen: { count: number | null } = { count: null };
 
   server.defer(async () => {
-    const rows = await server.context.log.writer.db
-      .$extendTables<{ tasks: { task_id: string } }>()
-      .selectFrom('tasks')
-      .select('task_id')
-      .execute();
+    const tasks = await readTestTasks(server.context);
 
-    seen.count = rows.length;
+    seen.count = tasks.length;
   });
 
   onTestFinished(() => {

@@ -3,9 +3,10 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { logProjections, startWriter } from '@heynixie/log';
-import type { TasksTables } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
+import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { createTestStep } from './create-test-step';
 
 async function setupTest() {
@@ -27,7 +28,6 @@ async function setupTest() {
   ]);
 
   return {
-    db: writer.db.$extendTables<TasksTables>(),
     context: {
       log: { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] },
       clock: buildTestClock(1_000_000),
@@ -39,14 +39,16 @@ async function setupTest() {
 test('it returns the first step of a new task that a runner claimed', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
-  const task = await ctx.db.selectFrom('tasks').select('task_id').executeTakeFirstOrThrow();
+  const [task] = await readTestTasks(ctx.context);
+
+  invariant(task);
 
   expect(step).toStrictEqual({
-    taskID: task.task_id,
-    stepKey: `${task.task_id}:1`,
+    taskID: task.id,
+    stepKey: `${task.id}:1`,
     lease: {
       kind: 'task',
-      workID: task.task_id,
+      workID: task.id,
       holder: 'runner-a',
       generation: 1,
       epoch: 1,
@@ -66,11 +68,7 @@ test('it returns the first step of a new task that a runner claimed', async () =
 test('it leaves the task running under the step', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
+  const tasks = await readTestTasks(ctx.context);
 
-  const task = await ctx.db
-    .selectFrom('tasks')
-    .select(['task_id', 'state'])
-    .executeTakeFirstOrThrow();
-
-  expect(task).toStrictEqual({ task_id: step.taskID, state: 'running' });
+  expect(tasks.map((task) => [task.id, task.state])).toStrictEqual([[step.taskID, 'running']]);
 });

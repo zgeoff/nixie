@@ -1,6 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { setFaultPointHandler, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
+import { readTestLeases } from '@heynixie/tasks/test-utils';
 import { createAllowedAction, runActionAttempt } from './index';
 import { buildStubConnector } from './test-utils/build-stub-connector';
 import { claimTestAction } from './test-utils/claim-test-action';
@@ -80,15 +81,13 @@ test.each([['stop'], ['pause'], ['close']] as const)(
       .where('action_id', '=', queued.actionID)
       .executeTakeFirstOrThrow();
 
-    const actionLease = await ctx.db
-      .selectFrom('leases')
-      .select('holder')
-      .where('work_id', '=', queued.actionID)
-      .executeTakeFirstOrThrow();
+    const leases = await readTestLeases(ctx.context);
+
+    const actionLease = leases.find((entry) => entry.workID === queued.actionID);
 
     expect(stub.calls).toStrictEqual([]);
     expect(action).toStrictEqual({ attempt_count: 0, outcome_sequence: null });
-    expect(actionLease.holder).toBeNull();
+    expect(actionLease?.holder).toBeNull();
   },
 );
 
@@ -208,11 +207,10 @@ test('it returns a refusal that can clear to pending, with its next attempt time
 
   const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
 
-  const outcomes = await ctx.db
-    .selectFrom('records')
-    .select('sequence')
-    .where('kind', '=', 'action.outcome')
-    .execute();
+  const outcomes = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['action.outcome'],
+  });
 
   expect(action).toMatchObject({
     status: 'pending',

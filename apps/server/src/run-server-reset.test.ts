@@ -3,6 +3,7 @@ import { defaultAPISettings } from '@heynixie/api';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, startTaskRunners } from '@heynixie/tasks';
+import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { makeGatedCall } from '@heynixie/testing';
 import { runServerReset } from './run-server-reset';
 import { runTestSeed } from './test-utils/run-test-seed';
@@ -220,19 +221,14 @@ test('it folds the reset on the conversation thread, which the conversation task
   await createConversationTask(ctx.context);
 
   const thread = await readRecords(ctx.context.log, { afterSequence: 0, thread: 'conversation' });
-
-  const tasks = await ctx.context.log.writer.db
-    .$extendTables<{ tasks: { task_id: string; created_sequence: number } }>()
-    .selectFrom('tasks')
-    .select(['task_id', 'created_sequence'])
-    .execute();
+  const tasks = await readTestTasks(ctx.context);
 
   expect(thread.map((entry) => [entry.record.sequence, entry.record.kind])).toStrictEqual([
     [reset.lastSequence + 2, 'log_reset'],
     [reset.lastSequence + 3, 'task.created'],
   ]);
 
-  expect(tasks).toStrictEqual([
-    { task_id: 'conversation', created_sequence: reset.lastSequence + 3 },
+  expect(tasks.map((task) => [task.id, task.createdSequence])).toStrictEqual([
+    ['conversation', reset.lastSequence + 3],
   ]);
 });
