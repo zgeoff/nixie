@@ -89,7 +89,7 @@
   "scripts": {
     "audit": "bun audit --ignore=GHSA-3g3m-2fjr-6pw4 --ignore=GHSA-g3hv-75wg-m249",
     "boundaries": "turbo boundaries",
-    "check": "bun run audit && bun run deadcode && bun run format:check && bun run lint:full && bun run typecheck && bun run boundaries && bun run prose && bun run test && bun run test:browser && bun run test:agent-sdk && bun run test:e2e",
+    "check": "bun run audit && bun run deadcode && bun run format:check && bun run lint:full && bun run typecheck && bun run boundaries && bun run prose && bun run test && bun run test:browser && bun run test:agent-sdk && bun run test:e2e && bun run test:journeys",
     "deadcode": "knip",
     "format": "oxfmt . && format-codemod --quiet .",
     "format:check": "oxfmt --check . && format-codemod --check --quiet .",
@@ -105,7 +105,8 @@
     "test:backup-job-build": "bun apps/backup-job/src/test-utils/read-backup-job-bundle.ts",
     "test:browser": "bash scripts/run-memory-capped.sh 8192 bun apps/web/src/test-utils/run-browser-lane.ts --parallel=1 --no-isolate --timeout=10000 --preload ./apps/web/src/test-utils/start-browser.ts .browser.test.ts",
     "test:agent-sdk": "bun test --parallel=1 --no-isolate .agent-sdk.test.ts",
-    "test:e2e": "bun run models && bun run test:bundles && bun run test:web-build && bun run test:backup-job-build && bun test --parallel=1 --no-isolate --timeout=15000 --path-ignore-patterns='**/*.restic.test.ts' e2e/ .e2e.test.ts",
+    "test:e2e": "bun run models && bun run test:bundles && bun run test:web-build && bun run test:backup-job-build && bun test --parallel=1 --no-isolate --timeout=15000 --path-ignore-patterns='**/*.restic.test.ts' --path-ignore-patterns='e2e/journeys/**' e2e/ .e2e.test.ts",
+    "test:journeys": "bun run test:bundles && bash scripts/run-memory-capped.sh 8192 bun apps/web/src/test-utils/run-browser-lane.ts --parallel=1 --no-isolate --timeout=15000 --preload ./apps/web/src/test-utils/start-browser.ts e2e/journeys/",
     "test:restic": "bun run test:backup-job-build && bun test --parallel=1 --no-isolate --timeout=40000 .restic.test.ts",
     "typecheck": "workers=$(bun scripts/read-worker-count.ts) && tsrs --noEmit --checkers $workers && turbo run typecheck --concurrency=$workers -- --checkers $workers",
     "files:branch": "bun scripts/read-branch-files.ts",
