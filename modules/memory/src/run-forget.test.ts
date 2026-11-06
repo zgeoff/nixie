@@ -1,7 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { readRecordKeys, readRecords } from '@heynixie/log';
+import { getDataFilePath, getWALPath, readRecordKeys, readRecords } from '@heynixie/log';
 import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { buildStubEncoder } from './test-utils/build-stub-encoder';
@@ -36,9 +35,11 @@ test('it deletes the item key and leaves no copy of it in the key store files', 
 
   const remaining = await readRecordKeys(ctx.memory.log, [item.itemID]);
 
+  const keysPath = getDataFilePath(ctx.memory.dataDir, 'keys.db');
+
   const [keysFile, keysLog] = await Promise.all([
-    readFile(join(ctx.memory.dataDir, 'keys.db')),
-    readFile(join(ctx.memory.dataDir, 'keys.db-wal')),
+    readFile(keysPath),
+    readFile(getWALPath(keysPath)),
   ]);
 
   expect([...remaining.keys()]).toStrictEqual([]);

@@ -1,6 +1,6 @@
 import { onTestFinished } from 'bun:test';
-import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
+import { getDataFilePath } from '@heynixie/log';
 import { sql } from 'kysely';
 
 export interface KeyStoreReader {
@@ -8,7 +8,7 @@ export interface KeyStoreReader {
 }
 
 export async function startKeyStoreReader(dataDir: string): Promise<KeyStoreReader> {
-  const reader = startDatabase(join(dataDir, 'keys.db'));
+  const reader = startDatabase(getDataFilePath(dataDir, 'keys.db'));
 
   onTestFinished(() => reader.destroy());
 

@@ -2,17 +2,23 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeSnapshotSet } from '@heynixie/backup';
+import { getBackupStagingDir, writeSnapshotSet } from '@heynixie/backup';
 import { readBackupJobBundle } from '@heynixie/backup-job/test-utils';
 import { startDatabase } from '@heynixie/db';
 import {
   createRecordKey,
+  getDataFilePath,
   localDataStorage,
   removeRecordKey,
   withWriteTransaction,
 } from '@heynixie/log';
 import { readTestRecordKeyRows, startTestLog } from '@heynixie/log/test-utils';
-import { backupReceiptSchema, parseBackupFile } from '@heynixie/wire';
+import {
+  backupReceiptSchema,
+  backupSetLayout,
+  getBackupSetDir,
+  parseBackupFile,
+} from '@heynixie/wire';
 import { $ } from 'bun';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -36,7 +42,7 @@ async function setupTest() {
   const keyEnv = { RESTIC_REPOSITORY: join(repos, 'keys'), RESTIC_PASSWORD: 'key-pass' };
 
   const jobEnv = {
-    NIXIE_BACKUP_STAGING_DIR: join(log.dataDir, 'backup'),
+    NIXIE_BACKUP_STAGING_DIR: getBackupStagingDir(log.dataDir),
     NIXIE_BACKUP_RESTIC: restic,
     NIXIE_BACKUP_DATA_REPOSITORY: dataEnv.RESTIC_REPOSITORY,
     NIXIE_BACKUP_DATA_PASSWORD: dataEnv.RESTIC_PASSWORD,
@@ -103,7 +109,7 @@ test.skipIf(isResticMissing)(
     const job = await $`${process.execPath} ${ctx.job} run`.env(ctx.jobEnv).nothrow().quiet();
 
     const receiptText = await Bun.file(
-      join(ctx.jobEnv.NIXIE_BACKUP_STAGING_DIR, '000000000002', 'receipt.json'),
+      join(getBackupSetDir(ctx.jobEnv.NIXIE_BACKUP_STAGING_DIR, 2), backupSetLayout.receipt),
     ).text();
 
     const receipt = parseBackupFile(receiptText, backupReceiptSchema);
@@ -123,9 +129,12 @@ test.skipIf(isResticMissing)(
       .env(ctx.keyEnv)
       .quiet();
 
-    const restoredKeys = startDatabase(join(ctx.repos, 'keys-restored', 'keys.db'), {
-      readonly: true,
-    });
+    const restoredKeys = startDatabase(
+      getDataFilePath(join(ctx.repos, 'keys-restored'), 'keys.db'),
+      {
+        readonly: true,
+      },
+    );
 
     onTestFinished(() => restoredKeys.destroy());
 
@@ -143,7 +152,7 @@ test.skipIf(isResticMissing)(
           .env(ctx.dataEnv)
           .quiet();
 
-        const restoredLog = startDatabase(join(target, 'nixie.db'), { readonly: true });
+        const restoredLog = startDatabase(getDataFilePath(target, 'nixie.db'), { readonly: true });
 
         onTestFinished(() => restoredLog.destroy());
 

@@ -1,8 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { join } from 'node:path';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createSandboxAdapter } from './create-sandbox-adapter';
+import { getSandboxRootDir } from './get-sandbox-root-dir';
 import { readTestBundle } from './test-utils/read-test-bundle';
 import { startTestServer } from './test-utils/start-test-server';
 
@@ -28,7 +28,7 @@ test('it wires the test sandbox, the process double, when the configuration sele
     }),
     toolTarget: ctx.endpoint.getToolTarget,
     sandbox: { adapter: 'test' },
-    testRootDir: join(ctx.dataDir, 'sandboxes'),
+    testRootDir: getSandboxRootDir(ctx.dataDir),
     hostEnv: {},
   });
 
@@ -48,7 +48,7 @@ test('it wires the imp adapter in a test build when the configuration selects im
       adapter: 'imp',
       imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
     },
-    testRootDir: join(ctx.dataDir, 'sandboxes'),
+    testRootDir: getSandboxRootDir(ctx.dataDir),
     hostEnv: {},
   });
 
@@ -72,7 +72,7 @@ test('it refuses the test sandbox in a release build', async () => {
       }),
       toolTarget: ctx.endpoint.getToolTarget,
       sandbox: { adapter: 'test' },
-      testRootDir: join(ctx.dataDir, 'sandboxes'),
+      testRootDir: getSandboxRootDir(ctx.dataDir),
       hostEnv: {},
     }),
   ).toThrowWithMessage(Error, 'a release build holds no test sandbox');

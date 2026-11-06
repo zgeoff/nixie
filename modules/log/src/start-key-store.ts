@@ -1,13 +1,16 @@
-import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
+import { getDataFilePath } from './get-data-file-path';
 
 export async function startKeyStore(
   dataDir: string,
   busyTimeoutMs?: number,
 ): Promise<Kysely<unknown>> {
-  const keys = startDatabase(join(dataDir, 'keys.db'), { secureDelete: true, busyTimeoutMs });
+  const keys = startDatabase(getDataFilePath(dataDir, 'keys.db'), {
+    secureDelete: true,
+    busyTimeoutMs,
+  });
 
   try {
     // The store takes no migrations, because a copy taken before a migration would keep every key

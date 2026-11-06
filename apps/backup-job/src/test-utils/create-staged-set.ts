@@ -5,7 +5,7 @@ import {
   backupSetFiles,
   backupSetLayout,
   formatBackupFile,
-  formatBackupSetName,
+  getBackupSetDir,
   readFileSHA256,
 } from '@heynixie/wire';
 
@@ -19,7 +19,7 @@ export interface StagedSetOptions {
 // The job never opens a database, so a set's copies are any bytes, and the set holds the manifest
 // and the marker that nixie writes when the set is complete.
 export async function createStagedSet(options: StagedSetOptions): Promise<string> {
-  const directory = join(options.stagingDir, formatBackupSetName(options.sequence));
+  const directory = getBackupSetDir(options.stagingDir, options.sequence);
 
   await mkdir(directory, { recursive: true });
 

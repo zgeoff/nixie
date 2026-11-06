@@ -9,6 +9,8 @@ import { dataFiles } from './data-files';
 import type { DataRefusal } from './data-refusal';
 import type { DataStorage } from './data-storage';
 import { getBackupMarkerPath } from './get-backup-marker-path';
+import { getDataFilePath } from './get-data-file-path';
+import { getWALPath } from './get-wal-path';
 import { requireDataFiles } from './require-data-files';
 import { writeRestoreState } from './write-restore-state';
 
@@ -72,7 +74,10 @@ async function requireFinishedBackup(options: DataRestoreOptions): Promise<void>
 }
 
 async function requireIntactDatabase(options: DataRestoreOptions, file: DataFile): Promise<void> {
-  const problems = await readIntegrityProblems(options.storage, join(options.directory, file));
+  const problems = await readIntegrityProblems(
+    options.storage,
+    getDataFilePath(options.directory, file),
+  );
 
   if (problems.length > 0) {
     throw new Error(
@@ -80,7 +85,11 @@ async function requireIntactDatabase(options: DataRestoreOptions, file: DataFile
     );
   }
 
-  const missing = await readMissingTables(options.storage, join(options.directory, file), file);
+  const missing = await readMissingTables(
+    options.storage,
+    getDataFilePath(options.directory, file),
+    file,
+  );
 
   if (missing.length > 0) {
     throw new Error(
@@ -154,7 +163,7 @@ async function writeStagedFiles(options: DataRestoreOptions): Promise<void> {
     for (const file of dataFiles) {
       const staged = join(options.dataDir, `${file}${stagedSuffix}`);
 
-      await files.copyFile(join(options.directory, file), staged);
+      await files.copyFile(getDataFilePath(options.directory, file), staged);
       await files.writeFileToDisk(staged);
     }
   } catch (error) {
@@ -180,9 +189,9 @@ async function replaceDataFiles(options: DataRestoreOptions): Promise<void> {
   await writeRestoreState(files, options.dataDir, 'replacing');
 
   for (const file of dataFiles) {
-    const path = join(options.dataDir, file);
+    const path = getDataFilePath(options.dataDir, file);
 
-    await files.removeFile(`${path}-wal`);
+    await files.removeFile(getWALPath(path));
     await files.removeFile(`${path}-shm`);
     await files.renameFile(`${path}${stagedSuffix}`, path);
   }

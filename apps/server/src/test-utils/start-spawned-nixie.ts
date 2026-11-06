@@ -8,7 +8,7 @@ import type { TestBackupSet } from '@heynixie/backup/test-utils';
 import { readTestBackupSets } from '@heynixie/backup/test-utils';
 import { startDatabase } from '@heynixie/db';
 import type { LogRecord, Writer } from '@heynixie/log';
-import { parseJSONObject } from '@heynixie/log';
+import { getDataFilePath, parseJSONObject } from '@heynixie/log';
 import { readTestRecordRows, readTestWriterEpoch } from '@heynixie/log/test-utils';
 import type { LogLevel } from '@heynixie/logger';
 import type { TestMemoryItem } from '@heynixie/memory/test-utils';
@@ -34,6 +34,7 @@ import {
 } from '@heynixie/testing';
 import { z } from 'zod';
 import type { NixieOperationArgs } from '../build-nixie-operation-schemas';
+import { getSandboxRootDir } from '../get-sandbox-root-dir';
 import { buildAdvanceHelpers } from './build-advance-helpers';
 import { readDataFiles } from './read-data-files';
 import { readTestBundle } from './read-test-bundle';
@@ -208,7 +209,7 @@ export async function startSpawnedNixie(options: SpawnedNixieOptions = {}): Prom
     waitForModelCalls: (count) => waitForModelCalls(doubles.model, count),
     ...buildAdvanceHelpers(harness, reader.readRecords),
     readDataFiles: () => readDataFiles(files.dataDir),
-    readSandboxIDs: () => readdir(join(files.dataDir, 'sandboxes')),
+    readSandboxIDs: () => readdir(getSandboxRootDir(files.dataDir)),
   };
 }
 
@@ -290,7 +291,7 @@ function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader
   const reader: { db: Database | null } = { db: null };
 
   const getReader = (): Database => {
-    reader.db ??= startDatabase(join(dataDir, 'nixie.db'));
+    reader.db ??= startDatabase(getDataFilePath(dataDir, 'nixie.db'));
 
     return reader.db;
   };

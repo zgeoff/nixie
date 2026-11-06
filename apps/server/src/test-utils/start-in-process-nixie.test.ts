@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { getDataFilePath } from '@heynixie/log';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { loadDeploymentConfig } from '../load-deployment-config';
@@ -19,7 +19,7 @@ test('it seeds the migrated data before nixie first starts', async () => {
 
   const nixie = await startInProcessNixie({
     seedData: async (files) => {
-      const data = await stat(join(files.dataDir, 'nixie.db'));
+      const data = await stat(getDataFilePath(files.dataDir, 'nixie.db'));
 
       const found = data.isFile() ? 'migrated' : 'missing';
 
