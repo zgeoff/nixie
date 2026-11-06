@@ -496,11 +496,10 @@ test('it delivers a message past the hop limit without a wake and tells the owne
     wake: true,
   });
 
-  const notices = await ctx.db
-    .selectFrom('records')
-    .select(['thread', 'payload'])
-    .where('kind', '=', 'task.exchange_limited')
-    .execute();
+  const notices = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.exchange_limited'],
+  });
 
   const conversation = await ctx.db
     .selectFrom('tasks')
@@ -518,15 +517,10 @@ test('it delivers a message past the hop limit without a wake and tells the owne
     hold: 'hop_limit',
   });
 
-  expect(
-    notices.map((notice): { readonly thread: string | null; readonly payload: unknown } => ({
-      thread: notice.thread,
-      payload: JSON.parse(notice.payload),
-    })),
-  ).toStrictEqual([
-    {
-      thread: 'planner',
-      payload: {
+  expect(notices.map((read) => [read.record.thread, read.record.payload])).toStrictEqual([
+    [
+      'planner',
+      {
         messageID: outcome.messageID,
         stepKey: claim.stepKey,
         from: 'planner',
@@ -534,7 +528,7 @@ test('it delivers a message past the hop limit without a wake and tells the owne
         hops: 3,
         waiting: { taskID: 'planner', onTaskID: 'conversation' },
       },
-    },
+    ],
   ]);
 
   expect(conversation.state).toBe('waiting');
@@ -569,13 +563,12 @@ test('it tells the owner nothing waits when the message past the limit asks noth
     },
   );
 
-  const notice = await ctx.db
-    .selectFrom('records')
-    .select('payload')
-    .where('kind', '=', 'task.exchange_limited')
-    .executeTakeFirstOrThrow();
+  const [notice] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.exchange_limited'],
+  });
 
-  expect(JSON.parse(notice.payload)).toMatchObject({ waiting: null });
+  expect(notice?.record.payload['waiting']).toBeNull();
 });
 
 test('it stops waking a chain of tasks that message each other at the hop limit', async () => {

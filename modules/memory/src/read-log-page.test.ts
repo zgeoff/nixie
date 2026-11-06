@@ -1,9 +1,9 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { readLogPage } from './read-log-page';
 import { startTestMemory } from './test-utils';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
 async function setupTest() {
@@ -257,7 +257,7 @@ test('it shows a forgotten message with no text, and a search never returns it',
     spans: [{ start: 0, end: 21, source: 'typed' }],
   });
 
-  await removeMessageKey(ctx.log, sequence);
+  await removeTestRecordKey(ctx.log, sequence);
 
   const read = await readLogPage(ctx.log, {
     thread: 'conversation',

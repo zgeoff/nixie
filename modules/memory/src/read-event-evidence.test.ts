@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { readEventEvidence } from './read-event-evidence';
 import { startTestMemory } from './test-utils';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
 test('it finds a quote you typed in the message the event ID names', async () => {
@@ -142,7 +142,7 @@ test('it refuses a message whose text a forget erased', async () => {
     spans: [{ start: 0, end: 21, source: 'typed' }],
   });
 
-  await removeMessageKey(memory.log, sequence);
+  await removeTestRecordKey(memory.log, sequence);
 
   const found = await readEventEvidence(memory.log, {
     thread: 'conversation',

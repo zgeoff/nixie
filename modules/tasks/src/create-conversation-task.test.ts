@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { createConversationTask } from './create-conversation-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
@@ -28,13 +28,9 @@ test('it leaves the conversation be on every start after the first', async () =>
   await createConversationTask(ctx.context);
   await createConversationTask(ctx.context);
 
-  const records = await ctx.writer.db
-    .$extendTables<TasksTables>()
-    .selectFrom('records')
-    .select('kind')
-    .execute();
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
 
-  expect(records).toStrictEqual([{ kind: 'task.created' }]);
+  expect(records.map((read) => read.record.kind)).toStrictEqual(['task.created']);
 });
 
 test('it makes ready a conversation that an earlier release let fail, with its errors cleared', async () => {

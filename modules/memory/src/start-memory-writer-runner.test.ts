@@ -1,10 +1,10 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { startTestSessionHost } from '@heynixie/sessions/test-utils';
 import invariant from 'tiny-invariant';
 import { memoryProjections } from './memory-projections';
 import { buildRememberReply } from './test-utils/build-remember-reply';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import type { TestMemoryWriterOptions } from './test-utils/start-test-memory-writer';
 import { startTestMemoryWriter } from './test-utils/start-test-memory-writer';
 import { writeOwnerMessages } from './test-utils/write-owner-messages';
@@ -86,7 +86,7 @@ test('it publishes nothing from a message forgotten while the model extracts fro
       quote: 'My sister is called Robin',
       sourceID: sequence,
     }),
-    { text: 'Staged.', gate: () => removeMessageKey(log, sequence) },
+    { text: 'Staged.', gate: () => removeTestRecordKey(log, sequence) },
   );
 
   await ctx.memory.run();

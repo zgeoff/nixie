@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { readEvidenceMessage } from './read-evidence-message';
-import { removeMessageKey } from './test-utils/remove-message-key';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
@@ -31,7 +31,7 @@ test('it reads a forgotten message as shredded', async () => {
     spans: [{ start: 0, end: 29, source: 'typed' }],
   });
 
-  await removeMessageKey(ctx.memory.log, sequence);
+  await removeTestRecordKey(ctx.memory.log, sequence);
 
   const message = await readEvidenceMessage(ctx.memory.log, sequence);
 

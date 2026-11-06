@@ -1,4 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { buildRecordedCommits } from '@heynixie/log/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { claimTask } from './claim-task';
@@ -177,11 +178,10 @@ test('it reports a step that throws once its error record commits', async () => 
 
   await waitForCondition(() => onStepErrored.mock.calls.length === 1);
 
-  const errored = await ctx.db
-    .selectFrom('records')
-    .select('sequence')
-    .where('kind', '=', 'task.step_errored')
-    .execute();
+  const errored = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.step_errored'],
+  });
 
   expect(errored).toHaveLength(1);
 

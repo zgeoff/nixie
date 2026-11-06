@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { createTask } from './create-task';
@@ -26,7 +27,7 @@ test('it moves a ready task to running and records the step it starts', async ()
     .select(['state', 'started_step_key'])
     .executeTakeFirstOrThrow();
 
-  const records = await ctx.db.selectFrom('records').select(['kind']).execute();
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   expect(claim).toStrictEqual({
     lease: {
@@ -43,7 +44,11 @@ test('it moves a ready task to running and records the step it starts', async ()
   });
 
   expect(task).toStrictEqual({ state: 'running', started_step_key: `${taskID}:1` });
-  expect(records).toStrictEqual([{ kind: 'task.created' }, { kind: 'task.step_started' }]);
+
+  expect(records.map((read) => read.record.kind)).toStrictEqual([
+    'task.created',
+    'task.step_started',
+  ]);
 });
 
 test('it never claims a waiting task', async () => {
@@ -78,19 +83,17 @@ test('it reclaims a running task whose lease expired, marking the lost step inte
   ctx.clock.advance(60_000);
 
   const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
-
-  const records = await ctx.db
-    .selectFrom('records')
-    .select(['kind'])
-    .where('sequence', '>', 2)
-    .execute();
+  const records = await readRecords(ctx.context.log, { afterSequence: 2 });
 
   expect(claim).toMatchObject({
     lease: { holder: 'runner-b', generation: 2 },
     stepKey: `${taskID}:1`,
   });
 
-  expect(records).toStrictEqual([{ kind: 'task.step_interrupted' }, { kind: 'task.step_started' }]);
+  expect(records.map((read) => read.record.kind)).toStrictEqual([
+    'task.step_interrupted',
+    'task.step_started',
+  ]);
 });
 
 test('it waits out the retry delay of a failed step before claiming the task again', async () => {
@@ -119,18 +122,17 @@ test('it pauses a running task whose pause waited on a step whose lease expired,
   ctx.clock.advance(60_000);
 
   const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
-
-  const records = await ctx.db
-    .selectFrom('records')
-    .select(['kind'])
-    .where('sequence', '>', 3)
-    .execute();
-
+  const records = await readRecords(ctx.context.log, { afterSequence: 3 });
   const lease = await ctx.db.selectFrom('leases').select('holder').executeTakeFirstOrThrow();
   const task = await ctx.db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
 
   expect(claim).toBeNull();
-  expect(records).toStrictEqual([{ kind: 'task.step_interrupted' }, { kind: 'task.paused' }]);
+
+  expect(records.map((read) => read.record.kind)).toStrictEqual([
+    'task.step_interrupted',
+    'task.paused',
+  ]);
+
   expect(lease.holder).toBeNull();
   expect(task.state).toBe('paused');
 });
