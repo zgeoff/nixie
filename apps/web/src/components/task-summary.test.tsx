@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import userEvent from '@testing-library/user-event';
 import { buildMockListedTask } from '../test-utils/build-mock-listed-task';
 import { render } from '../test-utils/render';
 import { TaskSummary } from './task-summary';
@@ -23,6 +24,52 @@ test('it links a task to its page with its state, brief and the task it waits on
   expect(rendered.getByText('Waiting')).toBeVisible();
   expect(rendered.getByText('Plans the vegetable beds.')).toBeVisible();
   expect(rendered.getByText('Waiting on Conversation')).toBeVisible();
+});
+
+test('it opens the whole brief of a task on the task’s own page', async () => {
+  const user = userEvent.setup();
+
+  const garden = buildMockListedTask({
+    brief:
+      'Plan the vegetable beds for spring.\nPut the beans along the north fence, and keep the tomatoes out of the shade of the shed.',
+    name: 'Garden plan',
+  });
+
+  const rendered = render(<TaskSummary isLinked={false} task={garden} tasks={[garden]} />);
+
+  await user.click(rendered.getByRole('button', { name: 'Show the whole prompt' }));
+
+  const toggle = rendered.getByRole('button', { name: 'Show less of the prompt' });
+  const brief = document.querySelector(`[id="${toggle.getAttribute('aria-controls')}"]`);
+
+  expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+  expect({ isClamped: brief?.classList.contains('lc_2'), text: brief?.textContent }).toStrictEqual({
+    isClamped: false,
+    text: 'Plan the vegetable beds for spring.\nPut the beans along the north fence, and keep the tomatoes out of the shade of the shed.',
+  });
+});
+
+test('it cuts the brief of a task to 2 lines until it is opened', () => {
+  const garden = buildMockListedTask({
+    brief:
+      'Plan the vegetable beds for spring.\nPut the beans along the north fence, and keep the tomatoes out of the shade of the shed.',
+    name: 'Garden plan',
+  });
+
+  const rendered = render(<TaskSummary isLinked={false} task={garden} tasks={[garden]} />);
+  const toggle = rendered.getByRole('button', { name: 'Show the whole prompt' });
+
+  expect(document.querySelector(`[id="${toggle.getAttribute('aria-controls')}"]`)).toHaveClass(
+    'lc_2',
+  );
+});
+
+test('it offers no whole brief on the dashboard', () => {
+  const garden = buildMockListedTask({ brief: 'Plans the vegetable beds.', name: 'Garden plan' });
+  const rendered = render(<TaskSummary isLinked task={garden} tasks={[garden]} />);
+
+  expect(rendered.queryByRole('button', { name: 'Show the whole prompt' })).toBeNull();
 });
 
 test('it counts the queued and started actions of a task', () => {

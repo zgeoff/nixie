@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useId, useState } from 'react';
 import { buildTaskHref } from '../build-task-href';
 import { formatTaskName } from '../format-task-name';
 import { formatTaskState } from '../format-task-state';
@@ -19,7 +20,6 @@ const titleRow = css({ alignItems: 'baseline', display: 'flex', flexWrap: 'wrap'
 const title = css({ fontWeight: 'semibold' });
 const link = css({ color: 'link', textDecoration: 'underline' });
 const facts = css({ color: 'textMuted', fontSize: 'sm' });
-const brief = css({ lineClamp: '2', overflowWrap: 'anywhere' });
 
 const timeFormat: Intl.DateTimeFormatOptions = {
   day: 'numeric',
@@ -53,7 +53,7 @@ export function TaskSummary(props: TaskSummaryProps): ReactNode {
           </span>
         ) : null}
       </div>
-      {task.brief === '' ? null : <p className={brief}>{task.brief}</p>}
+      {task.brief === '' ? null : <TaskBrief brief={task.brief} isExpandable={!props.isLinked} />}
       {task.waitingOn === undefined ? null : (
         <p className={facts}>Waiting on {formatTaskName(props.tasks, task.waitingOn)}</p>
       )}
@@ -69,5 +69,55 @@ export function TaskSummary(props: TaskSummaryProps): ReactNode {
       )}
       <TaskControls task={task} />
     </div>
+  );
+}
+
+interface TaskBriefProps {
+  readonly brief: string;
+
+  readonly isExpandable: boolean;
+}
+
+const brief = css({ lineClamp: '2', overflowWrap: 'anywhere' });
+
+const wholeBrief = css({
+  maxHeight: '50dvh',
+  overflowWrap: 'anywhere',
+  overflowY: 'auto',
+  whiteSpace: 'pre-wrap',
+});
+
+const toggle = css({
+  alignSelf: 'start',
+  color: 'link',
+  fontSize: 'sm',
+  textDecoration: 'underline',
+});
+
+function TaskBrief(props: TaskBriefProps): ReactNode {
+  const [isOpen, setIsOpen] = useState(false);
+  const briefID = useId();
+
+  if (!props.isExpandable) {
+    return <p className={brief}>{props.brief}</p>;
+  }
+
+  return (
+    <>
+      <p className={isOpen ? wholeBrief : brief} id={briefID}>
+        {props.brief}
+      </p>
+      <button
+        aria-controls={briefID}
+        aria-expanded={isOpen}
+        className={toggle}
+        onClick={() => {
+          setIsOpen(!isOpen);
+        }}
+        type="button"
+      >
+        {isOpen ? 'Show less of the prompt' : 'Show the whole prompt'}
+      </button>
+    </>
   );
 }

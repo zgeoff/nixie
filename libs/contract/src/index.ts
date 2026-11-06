@@ -12,6 +12,9 @@ export { proposalOutcomeSchema } from './proposal-outcome-schema';
 export { renderSessionCookie } from './render-session-cookie';
 export { sessionCookieName } from './session-cookie-name';
 export { spanSchema } from './span-schema';
+export { taskMessageInputSchema } from './task-message-input-schema';
+export { taskMessageKindSchema } from './task-message-kind-schema';
+export { taskMessageResultSchema } from './task-message-result-schema';
 
 export type {
   ContractClient,

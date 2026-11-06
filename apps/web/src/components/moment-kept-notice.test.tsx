@@ -30,6 +30,7 @@ test('it shows a moment the conversation kept, with a link to open it', () => {
           },
         }),
       ]}
+      taskMessageLayout="line"
     />,
   );
 
@@ -66,6 +67,7 @@ test('it saves a note from the keep notice, and offers no note again', async () 
       onDiscard={() => {}}
       onRetry={() => Promise.resolve()}
       records={records}
+      taskMessageLayout="line"
     />,
   );
 
@@ -90,6 +92,7 @@ test('it saves a note from the keep notice, and offers no note again', async () 
       onDiscard={() => {}}
       onRetry={() => Promise.resolve()}
       records={records}
+      taskMessageLayout="line"
     />,
   );
 
@@ -121,6 +124,7 @@ test('it opens the note form with the note the moment already holds', async () =
           moment: { momentID: moment.momentID, shortID: moment.shortID, title: moment.title },
         }),
       ]}
+      taskMessageLayout="line"
     />,
   );
 
@@ -154,6 +158,7 @@ test('it lets the user skip the note, and offers it no more', async () => {
       onDiscard={() => {}}
       onRetry={() => Promise.resolve()}
       records={records}
+      taskMessageLayout="line"
     />,
   );
 
@@ -168,6 +173,7 @@ test('it lets the user skip the note, and offers it no more', async () => {
       onDiscard={() => {}}
       onRetry={() => Promise.resolve()}
       records={records}
+      taskMessageLayout="line"
     />,
   );
 
@@ -205,6 +211,7 @@ test('it keeps the skip in the storage it is given, beside the answers already t
             },
           }),
         ]}
+        taskMessageLayout="line"
       />
     </NoteOfferStorageContext>,
   );
@@ -244,6 +251,7 @@ test('it closes the offer on a skip that the device cannot store, and says so', 
             },
           }),
         ]}
+        taskMessageLayout="line"
       />
     </NoteOfferStorageContext>,
   );
@@ -285,6 +293,7 @@ test('it shows a saved note as added when the device cannot store the answer', a
             moment: { momentID: moment.momentID, shortID: moment.shortID, title: moment.title },
           }),
         ]}
+        taskMessageLayout="line"
       />
     </NoteOfferStorageContext>,
   );
@@ -331,6 +340,7 @@ test('it shows no offer for a moment that the given storage holds as answered', 
             },
           }),
         ]}
+        taskMessageLayout="line"
       />
     </NoteOfferStorageContext>,
   );

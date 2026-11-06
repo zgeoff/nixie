@@ -1,5 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { hasTaskMessage } from './has-task-message';
 import type { LiveRecord } from './use-live-records';
 import { useNixieClient } from './use-nixie-client';
 
@@ -23,7 +24,7 @@ export function useEarlierRecords(request: EarlierRecordsRequest): EarlierRecord
   const thread = request.thread;
   const messageID = request.messageID;
   const pageRecords = request.page?.records ?? [];
-  const isInPage = pageRecords.some((record) => isLinkedMessage(record, messageID));
+  const isInPage = messageID !== undefined && hasTaskMessage(pageRecords, messageID);
   const oldest = request.page?.hasEarlier === true ? pageRecords[0]?.sequence : undefined;
   const isLinked = messageID !== undefined && oldest !== undefined && !isInPage;
 
@@ -45,7 +46,10 @@ export function useEarlierRecords(request: EarlierRecordsRequest): EarlierRecord
   });
 
   const records = earlier.data?.pages.toReversed().flatMap((page) => page.records) ?? [];
-  const isFound = isInPage || records.some((record) => isLinkedMessage(record, messageID));
+
+  const isFound =
+    messageID !== undefined && hasTaskMessage([...records, ...pageRecords], messageID);
+
   const hasNextPage = earlier.hasNextPage;
   const isFetching = earlier.isFetching;
   const fetchNextPage = earlier.fetchNextPage;
@@ -64,8 +68,4 @@ export function useEarlierRecords(request: EarlierRecordsRequest): EarlierRecord
       void (earlier.isFetchNextPageError ? fetchNextPage() : earlier.refetch());
     },
   };
-}
-
-function isLinkedMessage(record: LiveRecord, messageID: string | undefined): boolean {
-  return messageID !== undefined && record.taskMessage?.messageID === messageID;
 }

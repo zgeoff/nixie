@@ -21,12 +21,95 @@ test('it marks a stop with the tools of the actions it cancelled', () => {
           },
         }),
       ]}
+      taskMessageLayout="line"
     />,
   );
 
   expect(rendered.getByRole('note', { name: 'stop' })).toHaveTextContent(
     'Stopped, and cancelled mail.send, calendar.add',
   );
+});
+
+test.each([
+  {
+    layout: 'line' as const,
+    shown: [
+      'Received a message from Garden plan',
+      'conversation · task message: The north bed. · 1.0s',
+      'Sent a message to task k3vq8m2xpa',
+    ],
+  },
+  {
+    layout: 'block' as const,
+    shown: [
+      'From Garden plan · question · hop 1Which bed gets the beans?',
+      'conversation · task message: The north bed. · 1.0s',
+      'To task k3vq8m2xpa · reply · hop 2The north bed.',
+    ],
+  },
+])('it shows each message to and from a task as a $layout', (row) => {
+  const rendered = render(
+    <ConversationList
+      entries={[]}
+      notices={[]}
+      onDiscard={() => {}}
+      onRetry={() => Promise.resolve()}
+      records={[
+        buildMockLogRecord({
+          kind: 'task_message',
+          sequence: 1,
+          taskMessage: {
+            from: 'k3vq8m2xpa',
+            fromName: 'Garden plan',
+            hop: 1,
+            kind: 'question',
+            messageID: 'm7q2x9k4pa',
+            text: 'Which bed gets the beans?',
+            to: 'conversation',
+            woke: true,
+          },
+        }),
+        buildMockLogRecord({
+          kind: 'task.step_started',
+          recordedAt: new Date(0),
+          sequence: 2,
+          task: { stepKey: 'step-1', taskID: 'conversation' },
+        }),
+        buildMockLogRecord({
+          kind: 'tool_called',
+          sequence: 3,
+          toolCall: {
+            callID: 'call-1',
+            input: { body: 'The north bed.', kind: 'reply', to: 'k3vq8m2xpa' },
+            tool: 'task.message',
+          },
+        }),
+        buildMockLogRecord({
+          kind: 'tool_result',
+          sequence: 4,
+          toolCall: {
+            callID: 'call-1',
+            content: { result: { hop: 2, messageID: 'r4t8w2qz6n', woke: true } },
+            outcome: 'result',
+          },
+        }),
+        buildMockLogRecord({
+          kind: 'task.step_committed',
+          recordedAt: new Date(1000),
+          sequence: 5,
+        }),
+      ]}
+      taskMessageLayout={row.layout}
+    />,
+  );
+
+  const list = rendered.getByRole('list', { name: 'Conversation' });
+
+  expect(
+    [...list.children].map(
+      (item) => item.querySelector('summary')?.textContent ?? item.textContent,
+    ),
+  ).toStrictEqual([...row.shown]);
 });
 
 test('it shows how full the context stood after a turn and marks its compaction before the reply', () => {
@@ -53,6 +136,7 @@ test('it shows how full the context stood after a turn and marks its compaction 
         }),
         buildMockLogRecord({ kind: 'task.step_committed', recordedAt: new Date(12_300) }),
       ]}
+      taskMessageLayout="line"
     />,
   );
 

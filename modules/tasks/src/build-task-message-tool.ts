@@ -1,24 +1,16 @@
+import type { taskMessageResultSchema } from '@heynixie/contract';
+import { taskMessageInputSchema } from '@heynixie/contract';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { match } from 'ts-pattern';
-import { z } from 'zod';
+import type { z } from 'zod';
 import { getTaskName } from './get-task-name';
 import type { TaskMessageRefusal } from './plan-task-message';
 import { planTaskReport } from './plan-task-report';
 import { readTaskDirectory } from './read-task-directory';
 import { readTaskSetup } from './read-task-setup';
 import { renderHeldNote } from './render-held-note';
-import { taskMessageKindSchema } from './task-message-kind-schema';
 import type { TaskMessaging, TasksContext } from './types';
 import { writeTaskMessage } from './write-task-message';
-
-const messageArguments = z.object({
-  to: z.string(),
-  kind: taskMessageKindSchema,
-  body: z.string(),
-  replyTo: z.string().optional(),
-  onBehalfOf: z.string().array().optional(),
-  wake: z.boolean().optional(),
-});
 
 export function buildTaskMessageTool(
   context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
@@ -86,7 +78,7 @@ export function buildTaskMessageTool(
     },
     execution: 'direct',
     run: async (call, tool): Promise<ToolOutcome> => {
-      const input = messageArguments.parse(call.input);
+      const input = taskMessageInputSchema.parse(call.input);
 
       const directory = await readTaskDirectory(context, messaging);
 
@@ -133,7 +125,7 @@ export function buildTaskMessageTool(
           woke: outcome.woke,
           hop: outcome.hop,
           ...(note === null ? {} : { note }),
-        },
+        } satisfies z.input<typeof taskMessageResultSchema>,
       };
     },
   };
