@@ -1,9 +1,6 @@
 import { expect, test } from 'bun:test';
-import { readRecords, removeRecordKey, writeRecords } from '@heynixie/log';
-import { startTestLog } from '@heynixie/log/test-utils';
-import { sql } from 'kysely';
-import invariant from 'tiny-invariant';
-import { z } from 'zod';
+import { readRecords, writeRecords } from '@heynixie/log';
+import { removeTestRecordKey, startTestLog } from '@heynixie/log/test-utils';
 import { buildModelRecord } from './build-model-record';
 import { modelReplyCodec } from './model-reply-codec';
 
@@ -77,13 +74,7 @@ test('it forgets the reply summary with the reply, and keeps the thinking-token 
     fields: { text: 'The 09:25 ferry.', summary: 'I compared the ferries by arrival time.' },
   });
 
-  const keys = await sql`select key_id from records where sequence = 1`.execute(ctx.writer.db);
-
-  const [key] = z.array(z.object({ key_id: z.string() })).parse(keys.rows);
-
-  invariant(key);
-
-  await removeRecordKey(ctx.log, key.key_id);
+  await removeTestRecordKey(ctx.log, 1);
 
   const after = await readRecords(ctx.log, { afterSequence: 0 });
 

@@ -18,9 +18,8 @@ test('it starts a writer whose log folds the tasks projections, on a test clock'
 
 test('it types the writer handle for the tasks tables', async () => {
   const ctx = await startTestTasks();
-  const rows = await ctx.db.selectFrom('tasks').selectAll().execute();
 
-  expect(rows).toStrictEqual([]);
+  expect(ctx.db.getExecutor()).toBe(ctx.writer.db.getExecutor());
 });
 
 test('it removes the data directory when the test finishes', async () => {

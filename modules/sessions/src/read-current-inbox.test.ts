@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { removeRecordKey } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { createConversationTask, readInbox, writeInboxRecords } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { readCurrentInbox } from './read-current-inbox';
@@ -29,16 +29,7 @@ test('it reads a message whose key a forget deleted after the first read as forg
 
   const read = await readInbox(ctx.context, 'conversation');
 
-  const row = await ctx.writer.db
-    .$extendTables<{ records: { sequence: number; key_id: string | null } }>()
-    .selectFrom('records')
-    .select('key_id')
-    .where('sequence', '=', message.sequence)
-    .executeTakeFirstOrThrow();
-
-  invariant(row.key_id !== null);
-
-  await removeRecordKey(ctx.context.log, row.key_id);
+  await removeTestRecordKey(ctx.context.log, message.sequence);
 
   const current = await readCurrentInbox(ctx.context, read);
 
