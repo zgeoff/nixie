@@ -143,6 +143,85 @@ test('it keeps a task message, an exchange notice and a stop each on its own lin
   ]);
 });
 
+test('it takes the sender of a received task message as its other end', () => {
+  const message = buildMockLogRecord({
+    kind: 'task_message',
+    taskMessage: {
+      from: 'k3vq8m2xpa',
+      fromName: 'Garden plan',
+      hop: 2,
+      kind: 'report',
+      messageID: 'm7q2x9k4pa',
+      text: 'The beans are in.',
+      to: 'conversation',
+      woke: true,
+    },
+  });
+
+  expect(buildActivity([message])).toStrictEqual([
+    {
+      kind: 'taskMessage',
+      message: {
+        direction: 'received',
+        hop: 2,
+        kind: 'report',
+        messageID: 'm7q2x9k4pa',
+        taskID: 'k3vq8m2xpa',
+        taskName: 'Garden plan',
+        text: 'The beans are in.',
+        woke: true,
+      },
+      record: message,
+    },
+  ]);
+});
+
+test('it collects the messages a step sent, with the receiver as their other end', () => {
+  const records = [
+    buildMockLogRecord({
+      kind: 'task.step_started',
+      sequence: 1,
+      task: { stepKey: 'step-1', taskID: 'conversation' },
+    }),
+    buildMockLogRecord({
+      kind: 'tool_called',
+      sequence: 2,
+      toolCall: {
+        callID: 'call-1',
+        input: { body: 'Plan the bean bed.', kind: 'request', to: 'k3vq8m2xpa' },
+        tool: 'task.message',
+      },
+    }),
+    buildMockLogRecord({
+      kind: 'tool_result',
+      sequence: 3,
+      toolCall: {
+        callID: 'call-1',
+        content: { result: { hop: 1, messageID: 'r4t8w2qz6n', woke: true } },
+        outcome: 'result',
+      },
+    }),
+    buildMockLogRecord({ kind: 'task.step_committed', sequence: 4 }),
+  ];
+
+  expect(buildActivity(records)).toStrictEqual([
+    expect.objectContaining({
+      kind: 'step',
+      sentMessages: [
+        {
+          direction: 'sent',
+          hop: 1,
+          kind: 'request',
+          messageID: 'r4t8w2qz6n',
+          taskID: 'k3vq8m2xpa',
+          text: 'Plan the bean bed.',
+          woke: true,
+        },
+      ],
+    }),
+  ]);
+});
+
 test('it folds a record before a step into the step that follows it', () => {
   const created = buildMockLogRecord({
     kind: 'task.created',

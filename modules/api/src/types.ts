@@ -169,6 +169,7 @@ interface RecordRow {
   readonly sequence: number;
   readonly thread: string | null;
   readonly kind: RecordKind;
+  readonly parent: number | null;
   readonly recorded_at: number;
   readonly payload: string;
   readonly key_id: string | null;

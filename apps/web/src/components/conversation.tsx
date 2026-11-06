@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { hasTaskMessage } from '../has-task-message';
 import type { StartTimer } from '../start-platform-timer';
 import { css } from '../styled-system/css';
 import { useConversationRecords } from '../use-conversation-records';
@@ -92,9 +93,8 @@ export function Conversation(props: ConversationProps): ReactNode {
 
   const messageID = props.messageID;
 
-  const isLinkedMessageShown = conversation.records.some(
-    (record) => record.taskMessage?.messageID === messageID,
-  );
+  const isLinkedMessageShown =
+    messageID !== undefined && hasTaskMessage(conversation.records, messageID);
 
   const scrolledTo = useRef<string | undefined>(undefined);
   const linkedMessageRef = useRef<HTMLLIElement | null>(null);
@@ -167,6 +167,7 @@ export function Conversation(props: ConversationProps): ReactNode {
           onDiscard={outbox.discard}
           onRetry={outbox.retry}
           records={records}
+          taskMessageLayout={props.thread === 'conversation' ? 'line' : 'block'}
         />
       </ConversationScroller>
       <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />

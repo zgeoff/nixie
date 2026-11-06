@@ -1,7 +1,9 @@
 import type { Clock } from '@heynixie/clock';
+import type { taskMessageKindSchema } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { Definitions, Log, LogRecord, RecordInput, RecordKind } from '@heynixie/log';
 import type { ResumeState, TaskState } from '@heynixie/task-control';
+import type { z } from 'zod';
 
 export interface TasksContext {
   readonly log: Log;
@@ -37,7 +39,7 @@ export interface StartedClaim extends TaskClaim {
   readonly startSequence: number;
 }
 
-export type TaskMessageKind = 'progress' | 'question' | 'request' | 'report' | 'reply' | 'chat';
+export type TaskMessageKind = z.infer<typeof taskMessageKindSchema>;
 
 export type TaskWaitState = 'none' | 'open' | 'answered' | 'released';
 

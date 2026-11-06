@@ -131,6 +131,60 @@ test('it reads earlier records until the thread shows the linked message', async
   expect(message).toHaveTextContent('Which seeds came?');
 });
 
+test('it reads earlier records until the thread shows the linked message that the task sent', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.tasks.create({ name: 'Conversation', taskID: 'conversation' });
+  await store.tasks.create({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' });
+
+  await store.records.create({
+    kind: 'tool_called',
+    thread: 'k3vq8m2xpa',
+    toolCall: {
+      callID: 'call-1',
+      input: { body: 'The beans go in the north bed.', kind: 'report', to: 'conversation' },
+      tool: 'task.message',
+    },
+  });
+
+  await store.records.create({
+    kind: 'tool_result',
+    thread: 'k3vq8m2xpa',
+    toolCall: {
+      callID: 'call-1',
+      content: { result: { hop: 1, messageID: 'r4t8w2qz6n', woke: true } },
+      outcome: 'result',
+    },
+  });
+
+  await Promise.all(
+    Array.from({ length: 120 }, () =>
+      store.records.create({ kind: 'task.step_started', thread: 'k3vq8m2xpa' }),
+    ),
+  );
+
+  const rendered = render(
+    <TaskPage
+      messageID="r4t8w2qz6n"
+      navigation={null}
+      startTimer={ctx.timer.startTimer}
+      taskID="k3vq8m2xpa"
+    />,
+  );
+
+  const message = await rendered.findByRole(
+    'listitem',
+    { name: 'Message to Conversation' },
+    { timeout: 4000 },
+  );
+
+  expect(message).toHaveTextContent(
+    'To Conversation · report · hop 1The beans go in the north bed.',
+  );
+});
+
 test('it sends a message written on the task page to that task', async () => {
   const ctx = setupTest();
 

@@ -1,6 +1,6 @@
+import { taskMessageKindSchema } from '@heynixie/contract';
 import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
-import { taskMessageKindSchema } from './task-message-kind-schema';
 
 export const taskMessageCodec = defineRecordCodec(
   'task_message',

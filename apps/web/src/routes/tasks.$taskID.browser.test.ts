@@ -1,8 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
+import { z } from 'zod';
 import { store } from '../mocks/store';
 import { checkBrowserSkip } from '../test-utils/check-browser-skip';
 import { createBrowserView } from '../test-utils/create-browser-view';
+import { runInPage } from '../test-utils/run-in-page';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
@@ -110,6 +112,63 @@ test.skipIf(browserSkip.isSkipped)(
         );
 
         expect(isInView).toBeTrue();
+      },
+      { timeout: 10_000 },
+    );
+  },
+);
+
+test.skipIf(browserSkip.isSkipped)(
+  'it opens the whole of a long prompt on a task page, down to its last paragraph',
+  async () => {
+    const ctx = await setupTest();
+    const session = await store.sessions.create({});
+
+    await store.tasks.create({
+      brief:
+        'Plan the vegetable beds for the spring planting.\nThe garden has four raised beds: two along the north fence, one by the shed and one in the middle of the lawn. Put the climbing beans where they get the most sun, and keep the tomatoes out of the shade of the shed.\nWhen the plan is ready, send it to the conversation as a report.',
+      name: 'Garden plan',
+      taskID: 'k3vq8m2xpa',
+    });
+
+    await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+    await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
+
+    await waitFor(
+      async () => {
+        const hasToggle: unknown = await ctx.view.evaluate(
+          "document.querySelector('button[aria-controls]') !== null",
+        );
+
+        expect(hasToggle).toBeTrue();
+      },
+      { timeout: 10_000 },
+    );
+
+    await ctx.view.click('button[aria-controls]');
+
+    await waitFor(
+      async () => {
+        const brief = await runInPage(
+          ctx.view,
+          () => {
+            const toggle = document.querySelector('button[aria-controls]');
+
+            const shown = document.querySelector(
+              `[id="${toggle?.getAttribute('aria-controls') ?? ''}"]`,
+            );
+
+            return {
+              isCut: shown === null || shown.scrollHeight > shown.clientHeight,
+              isOpen: toggle?.getAttribute('aria-expanded') === 'true',
+            };
+          },
+          null,
+          z.object({ isCut: z.boolean(), isOpen: z.boolean() }),
+        );
+
+        expect(brief).toStrictEqual({ isCut: false, isOpen: true });
       },
       { timeout: 10_000 },
     );
