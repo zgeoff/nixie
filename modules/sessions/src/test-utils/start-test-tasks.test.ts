@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
+import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { startTestTasks } from './start-test-tasks';
 
 test('it starts a writer whose log folds the tasks projections, on a test clock', async () => {
@@ -18,8 +19,10 @@ test('it starts a writer whose log folds the tasks projections, on a test clock'
 
 test('it types the writer handle for the tasks tables', async () => {
   const ctx = await startTestTasks();
+  const tasks = await readTestTasks(ctx.writer);
 
   expect(ctx.db.getExecutor()).toBe(ctx.writer.db.getExecutor());
+  expect(tasks).toStrictEqual([]);
 });
 
 test('it removes the data directory when the test finishes', async () => {
