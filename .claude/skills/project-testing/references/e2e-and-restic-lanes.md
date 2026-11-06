@@ -3,8 +3,8 @@
 Each of these 3 [lanes](../SKILL.md#runs) has a lane script that makes the builds its tests read,
 then runs the tests: `bun run test:e2e`, `bun run test:journeys` and `bun run test:restic`. Start a
 whole lane from the repo root with its lane script. A build helper, such as `readWebBuild`, makes
-its build when the build is missing. A test that calls such a helper then spends the build's time
-inside the test's own limit, and fails.
+its build when the build is missing. A test that calls such a helper while its build is missing
+spends the build's time inside the test's own limit, and fails.
 
 - Give a test outside `e2e/` the suffix `*.e2e.test.ts` when it reads the web build or the backup
   job's bundle. The e2e lane runs it, and the unit run leaves it out.
@@ -25,6 +25,7 @@ inside the test's own limit, and fails.
 | the backup job's bundle | `bun run test:backup-job-build` | `test:e2e`, `test:restic`                                | `readBackupJobBundle` from `@heynixie/backup-job/test-utils` |
 
 - Pass the server entry path that `readWebBuild` returns to `startBuiltWeb`, from the same package.
+  A journey reads the browser lane's own web build instead: see [Journeys](#journeys).
 - Start the backup job with `bun <bundle_path> run`. `<bundle_path>` is the path that
   `readBackupJobBundle` returns, and `run` is the job's command.
 - Run a build command again after you change a file the build is made from. Each build helper keeps
@@ -36,35 +37,42 @@ inside the test's own limit, and fails.
 
 ## Journeys
 
-Write each core user journey, such as signing in, as a `*.test.ts` file in `e2e/journeys/`. It
-drives the web app in Chrome against nixie's test bundle, within the e2e lane's 15 s limit per test.
+Write each journey the user takes through the web app, such as signing in, sending a message,
+approving a memory proposal or a reset, as a `*.test.ts` file in `e2e/journeys/`. It drives the web
+app in Chrome against nixie's test bundle. Its limit per test is 15 s, the same as the e2e lane's,
+and `bun run test:e2e` leaves the journeys out.
 
 - **Run one journey with `bun run test:journeys -t '<test name>'`.** The lane script builds nixie's
   test bundle, then runs the journeys through the browser lane's script,
   [`run-browser-lane.ts`](../../../../apps/web/src/test-utils/run-browser-lane.ts). That script
-  makes its own web build and starts Chrome, so a journey never calls `readWebBuild`.
+  makes its own web build and starts Chrome. A journey never calls `readWebBuild`.
 - **Add a path to the `changes` job of [`journeys.yml`](../../../../.github/workflows/journeys.yml)
-  when a journey reads a file outside its paths.** CI runs the journeys there, and only on a pull
-  request that changes a listed path.
+  when a journey reads a file outside the job's paths.** CI runs the journeys there, and only on a
+  pull request that changes a listed path.
 - **Start each journey with
   [`startWebJourney`](../../../../e2e/src/test-utils/start-web-journey.ts).** It starts nixie, the
   web server and a proxy that serves both on one origin, as a deployment does, and opens a Chrome
-  view. It stops each of them when the test finishes. After nixie exits, such as after a reset, call
-  the `startServer` function it returns. That function starts nixie on the same data, and the web
-  server's requests then reach the new nixie.
+  view. It stops each of them when the test finishes. It returns the journey: `nixie`, the spawned
+  harness; `server`, the first nixie process; `view`; `appURL`; `enrolmentCode`, the code that first
+  process issued; and `startServer`. After nixie exits, such as after a reset, call `startServer`.
+  It starts a new nixie process on the same data and returns it, and the web server's requests then
+  reach that process.
 - **Wait for the page to hydrate before you click a submit button.** A click before hydration
-  submits the form as plain HTML, and React never sees it. On a signed-in page, wait for an enabled
-  `input[type=file]`: the image pickers stay disabled until the page hydrates. On any other page,
-  wait for a key that starts with `_reactListening` on `document`, which React adds as it hydrates.
+  submits the form as plain HTML, and React never sees it. On the conversation page, wait for an
+  enabled `input[type=file]`: the image pickers stay disabled until the page hydrates. On any other
+  page, wait for a key that starts with `_reactListening` on `document`, which React adds as it
+  hydrates.
 - **Wait on the page with `waitForPage(view, expression)`** from `@heynixie/web/test-utils`. It runs
-  the expression, a string of JavaScript, in the page until it gives `true`, for up to 10 s.
-- **Hold a model reply only until a reset starts.** Pass a `gate` promise in the reply to
-  `journey.nixie.model.addReplies`, and resolve it once `journey.server.waitForLogEvent` sees
-  `reset.started`. The reset command waits up to 30 s for each turn in flight to end, more than the
-  15 s limit.
+  the expression, a string of JavaScript, in the page until it gives `true`. After 10 s it throws
+  with the expression.
+- **In a journey that resets during a turn, hold the model reply only until the reset starts.** Pass
+  the reply as `{ text, gate }` to `journey.nixie.model.addReplies`, where `gate` is a promise.
+  Resolve it once `journey.server.waitForLogEvent('reset.started')` returns. The reset command waits
+  up to 30 s for each turn in flight to end, more than the 15 s limit.
 - **Raise an `online` event in the page after nixie starts again:**
   `view.evaluate("dispatchEvent(new Event('online'))")`. While nixie is down, the page waits longer
-  between each try to reconnect its live record stream, up to 30 s. The event makes it try at once.
+  between each try to reconnect to nixie's stream of new records, up to 30 s. The event makes it try
+  at once.
 
 ## Restic
 

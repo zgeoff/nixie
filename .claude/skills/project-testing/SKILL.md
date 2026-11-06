@@ -13,9 +13,9 @@ metadata:
 
 Follow the shared `testing` skill, with nixie's additions and departures below. Before you call a
 test done, run it with the command in [Runs](#runs) for its file. Watch for the costly traps. A
-`bun test` with no `bun run models` and `bun run test:bundles` before it skips the memory encoder's
-suites, and a test then builds a missing server bundle itself, past its time limit. A real request
-to a host that the MSW server refuses fails with `Failed to fetch`.
+`bun test` with no `bun run models` before it skips the memory encoder's suites. A `bun test` with
+no `bun run test:bundles` before it leaves a test to build a missing server bundle itself, past its
+time limit. A real request to a host that the MSW server refuses fails with `Failed to fetch`.
 
 ## Key rules
 
