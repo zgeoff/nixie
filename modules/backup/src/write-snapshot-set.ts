@@ -6,7 +6,7 @@ import {
   backupSetFiles,
   backupSetLayout,
   formatBackupFile,
-  formatBackupSetName,
+  getBackupSetDir,
   readBackupSets,
 } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
@@ -25,7 +25,7 @@ export async function writeSnapshotSet(
 
   const started = await createSetRow(context, kind, stagingDir);
 
-  const directory = join(stagingDir, formatBackupSetName(started.sequence));
+  const directory = getBackupSetDir(stagingDir, started.sequence);
 
   const created = await files.createDirectory(directory);
 

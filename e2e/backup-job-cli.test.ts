@@ -9,6 +9,7 @@ import {
   readBackupJobBundle,
 } from '@heynixie/backup-job/test-utils';
 import { stopProcesses } from '@heynixie/testing';
+import { backupSetLayout, getBackupSetDir } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 
 async function setupTest() {
@@ -60,7 +61,8 @@ test('it publishes the staged sets once and exits 0 for run', async () => {
 
   const [output, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
 
-  const receipt = Bun.file(join(ctx.dataDir, 'backup', '000000000001', 'receipt.json'));
+  const setDir = getBackupSetDir(join(ctx.dataDir, 'backup'), 1);
+  const receipt = Bun.file(join(setDir, backupSetLayout.receipt));
 
   const isWritten = await receipt.exists();
 

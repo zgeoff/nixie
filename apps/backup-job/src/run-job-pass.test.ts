@@ -3,7 +3,7 @@ import { appendFile, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claimFileLock } from '@heynixie/async';
-import { backupReceiptSchema, parseBackupFile } from '@heynixie/wire';
+import { backupReceiptSchema, getBackupSetDir, parseBackupFile } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { buildResticClient } from './build-restic-client';
 import { localJobFiles } from './local-job-files';
@@ -54,7 +54,7 @@ test('it publishes a complete set to both repos, writes a published receipt, and
   invariant(pass.status === 'ran', 'no other pass holds the staging lock');
 
   const receipts = pass.receipts;
-  const directory = join(ctx.config.stagingDir, '000000000001');
+  const directory = getBackupSetDir(ctx.config.stagingDir, 1);
 
   const names = await readdir(directory);
   const text = await Bun.file(join(directory, 'receipt.json')).text();
@@ -105,7 +105,7 @@ test('it ships no set that lacks its marker, and runs no restic', async () => {
 
   const receipts = pass.receipts;
 
-  const names = await readdir(join(ctx.config.stagingDir, '000000000001'));
+  const names = await readdir(getBackupSetDir(ctx.config.stagingDir, 1));
   const calls = await Bun.file(ctx.calls).exists();
 
   expect(receipts).toStrictEqual([]);
@@ -139,7 +139,7 @@ test('it keeps the newest key snapshot alone and prunes the blob of every older 
   const receipts = pass.receipts;
 
   const firstText = await Bun.file(
-    join(ctx.config.stagingDir, '000000000001', 'receipt.json'),
+    join(getBackupSetDir(ctx.config.stagingDir, 1), 'receipt.json'),
   ).text();
 
   const first = parseBackupFile(firstText, backupReceiptSchema);
@@ -209,7 +209,7 @@ test('it writes a failed receipt for a copy that does not match its checksum, an
     isComplete: true,
   });
 
-  await appendFile(join(ctx.config.stagingDir, '000000000001', 'keys.db'), 'a changed byte');
+  await appendFile(join(getBackupSetDir(ctx.config.stagingDir, 1), 'keys.db'), 'a changed byte');
 
   const pass = await runJobPass(ctx.config, ctx.repos, localJobFiles);
 
@@ -257,7 +257,7 @@ test('it stops the pass and leaves the set with no receipt when its manifest can
     (error: unknown) => error,
   );
 
-  const names = await readdir(join(ctx.config.stagingDir, '000000000001'));
+  const names = await readdir(getBackupSetDir(ctx.config.stagingDir, 1));
   const calls = await Bun.file(ctx.calls).exists();
 
   expect(refused).toMatchObject({ message: 'EIO: i/o error, read' });
@@ -353,7 +353,7 @@ test('it ships nothing and runs no restic while another pass holds the staging l
   onTestFinished(() => held?.release());
 
   const pass = await runJobPass(ctx.config, ctx.repos, localJobFiles);
-  const names = await readdir(join(ctx.config.stagingDir, '000000000001'));
+  const names = await readdir(getBackupSetDir(ctx.config.stagingDir, 1));
   const calls = await Bun.file(ctx.calls).exists();
 
   expect(held).not.toBeNull();

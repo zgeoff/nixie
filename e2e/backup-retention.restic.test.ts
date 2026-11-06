@@ -3,7 +3,12 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createStagedSet, readBackupJobBundle } from '@heynixie/backup-job/test-utils';
-import { backupReceiptSchema, parseBackupFile } from '@heynixie/wire';
+import {
+  backupReceiptSchema,
+  backupSetLayout,
+  getBackupSetDir,
+  parseBackupFile,
+} from '@heynixie/wire';
 import { $ } from 'bun';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -70,7 +75,7 @@ test.skipIf(isResticMissing)(
     const run = await $`${process.execPath} ${ctx.job} run`.env(ctx.jobEnv).nothrow().quiet();
 
     const receiptText = await Bun.file(
-      join(ctx.jobEnv.NIXIE_BACKUP_STAGING_DIR, '000000000001', 'receipt.json'),
+      join(getBackupSetDir(ctx.jobEnv.NIXIE_BACKUP_STAGING_DIR, 1), backupSetLayout.receipt),
     ).text();
 
     const receipt = parseBackupFile(receiptText, backupReceiptSchema);
