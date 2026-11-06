@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.67.0](https://github.com/zgeoff/nixie/compare/v0.66.0...v0.67.0) (2026-11-06)
+
+
+### Features
+
+* **web:** show task messages as one-line links in the conversation ([#888](https://github.com/zgeoff/nixie/issues/888)) ([9318342](https://github.com/zgeoff/nixie/commit/9318342755113b900b85b564e36300ad3882c243))
+
 ## [0.66.0](https://github.com/zgeoff/nixie/compare/v0.65.0...v0.66.0) (2026-11-06)
 
 
