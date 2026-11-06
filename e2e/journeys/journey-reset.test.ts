@@ -42,6 +42,8 @@ test.skipIf(browserSkip.isSkipped)(
 
     await waitForPage(ctx.view, "document.querySelector('[role=progressbar]') !== null");
 
+    await ctx.nixie.waitForModelCalls(1);
+
     const reset = runHostCommand(ctx.nixie.configPath, ['reset', '--keep-sessions', '--yes']);
 
     // the reset waits for each turn in flight, up to the runners' 30 s stop grace, so the held
