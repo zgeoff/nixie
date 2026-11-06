@@ -1,5 +1,7 @@
 export { claimWriterEpoch } from './claim-writer-epoch';
 export { defineRecordCodec } from './define-record-codec';
+export { getDataFilePath } from './get-data-file-path';
+export { getWALPath } from './get-wal-path';
 export type { RecordKey } from './create-record-key';
 export { createRecordKey } from './create-record-key';
 export { claimWriterLock } from './claim-writer-lock';

@@ -2,7 +2,7 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startWriter } from '@heynixie/log';
+import { getDataFilePath, startWriter } from '@heynixie/log';
 import { StepFailedError, createConversationTask } from '@heynixie/tasks';
 import { buildReadinessChecks } from './build-readiness-checks';
 import { loadStartState } from './load-start-state';
@@ -140,7 +140,7 @@ test('it reports the database and the conversation turns as unchecked when the i
   await ctx.writer.stop();
 
   // overwrites the root page of an index that the integrity check reads and the writer's open does not
-  const file = await open(join(ctx.dataDir, 'nixie.db'), 'r+');
+  const file = await open(getDataFilePath(ctx.dataDir, 'nixie.db'), 'r+');
 
   onTestFinished(() => file.close());
 

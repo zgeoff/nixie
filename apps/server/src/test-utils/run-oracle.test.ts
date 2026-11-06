@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
+import { getDataFilePath } from '@heynixie/log';
 import type { TasksTables } from '@heynixie/tasks';
 import { runOracle } from './run-oracle';
 import { startSpawnedNixie } from './start-spawned-nixie';
@@ -52,7 +52,7 @@ test('it reports a projection table whose rows a fold of the log does not rebuil
   await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
   await first.kill();
 
-  const db = startDatabase(join(ctx.nixie.dataDir, 'nixie.db'));
+  const db = startDatabase(getDataFilePath(ctx.nixie.dataDir, 'nixie.db'));
 
   onTestFinished(() => db.destroy());
 
@@ -132,7 +132,7 @@ test('it reports a lease that is still held once recovery ran', async () => {
   await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
   await first.kill();
 
-  const db = startDatabase(join(ctx.nixie.dataDir, 'nixie.db'));
+  const db = startDatabase(getDataFilePath(ctx.nixie.dataDir, 'nixie.db'));
 
   onTestFinished(() => db.destroy());
 

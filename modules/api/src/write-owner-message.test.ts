@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { getDataFilePath, getWALPath, readRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import { readTestTasks } from '@heynixie/tasks/test-utils';
@@ -192,7 +192,7 @@ test('it encrypts the spans with the text and keeps neither in plain text', asyn
     thread: 'conversation',
   }).then((entries) => entries.filter((candidate) => candidate.record.kind === 'owner_message'));
 
-  const database = await Bun.file(`${ctx.dataDir}/nixie.db-wal`).text();
+  const database = await Bun.file(getWALPath(getDataFilePath(ctx.dataDir, 'nixie.db'))).text();
 
   expect(entry?.record.payload).toStrictEqual({
     clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',

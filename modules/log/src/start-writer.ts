@@ -1,5 +1,4 @@
 import { statfsSync } from 'node:fs';
-import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
 import type { BuildSchema } from '@heynixie/db';
@@ -7,6 +6,7 @@ import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
 import { claimWriterEpoch } from './claim-writer-epoch';
 import { claimWriterLock } from './claim-writer-lock';
 import type { DataFileSystem } from './data-storage';
+import { getDataFilePath } from './get-data-file-path';
 import { localDataStorage } from './local-data-storage';
 import { readRestoreState } from './read-restore-state';
 import { requireLocalFilesystem } from './require-local-filesystem';
@@ -37,7 +37,7 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
     throw error;
   }
 
-  const db = startDatabase(join(options.dataDir, 'nixie.db'));
+  const db = startDatabase(getDataFilePath(options.dataDir, 'nixie.db'));
 
   try {
     const epoch = await claimWriterEpoch(db);

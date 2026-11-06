@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { getDataFilePath, getWALPath, readRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { claimEnrolmentCode } from './claim-enrolment-code';
 import { createEnrolmentCode } from './create-enrolment-code';
 import { deriveSecretHash } from './derive-secret-hash';
@@ -124,13 +125,13 @@ test('it stores only the hash of the session token and of the code', async () =>
     tokenDelivery: 'bearer',
   });
 
-  if (enrolled.status !== 'enrolled') {
-    throw new Error('the enrolment failed');
-  }
+  invariant(enrolled.status === 'enrolled', 'the enrolment failed');
+
+  const logPath = getDataFilePath(ctx.dataDir, 'nixie.db');
 
   const stored = await Promise.all([
-    Bun.file(`${ctx.dataDir}/nixie.db`).text(),
-    Bun.file(`${ctx.dataDir}/nixie.db-wal`).text(),
+    Bun.file(logPath).text(),
+    Bun.file(getWALPath(logPath)).text(),
   ]);
 
   const identity = await ctx.db

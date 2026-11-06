@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startWriter } from '@heynixie/log';
+import { getDataFilePath, startWriter } from '@heynixie/log';
 import type { RunTemplateOptions } from '@heynixie/testing';
 import { createRunTemplate } from '@heynixie/testing';
 import { readDataFiles } from './read-data-files';
@@ -44,7 +44,7 @@ test('it gives each data directory files of its own that a change to the other l
 
   const before = await readDataFiles(ctx.otherDir);
 
-  await writeFile(join(ctx.dataDir, 'nixie.db'), 'a changed database');
+  await writeFile(getDataFilePath(ctx.dataDir, 'nixie.db'), 'a changed database');
 
   const after = await readDataFiles(ctx.otherDir);
 

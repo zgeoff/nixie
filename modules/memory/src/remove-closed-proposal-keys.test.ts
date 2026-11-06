@@ -1,7 +1,12 @@
 import { expect, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { readRecordKeys, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import {
+  getDataFilePath,
+  getWALPath,
+  readRecordKeys,
+  withWriteTransaction,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { createProposal } from './test-utils/create-proposal';
 import { startKeyStoreReader } from './test-utils/start-key-store-reader';
@@ -108,6 +113,8 @@ test('it finishes on the next lapse sweep a key removal whose checkpoint a reade
   await reader.release();
   await memory.store.proposals.lapse();
 
+  const keysWAL = getWALPath(getDataFilePath(memory.dataDir, 'keys.db'));
+
   expect(blocked).toBe('blocked');
-  expect(stat(join(memory.dataDir, 'keys.db-wal'))).resolves.toMatchObject({ size: 0 });
+  expect(stat(keysWAL)).resolves.toMatchObject({ size: 0 });
 });

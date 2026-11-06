@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import { readQueryRows } from '@heynixie/db';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
@@ -6,6 +5,7 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import type { DataFile } from './data-files';
 import type { DataStorage } from './data-storage';
+import { getDataFilePath } from './get-data-file-path';
 
 export interface DatabasePairOptions {
   readonly storage: DataStorage;
@@ -32,7 +32,9 @@ export async function writeDatabasePair(options: DatabasePairOptions): Promise<n
 // removes the key. So a keys.db copy taken after the nixie.db copy, with no commit to keys.db from
 // before the one to after the other, holds the key of every record the nixie.db copy keeps.
 async function writeCopies(options: DatabasePairOptions): Promise<boolean> {
-  const keys = options.storage.startDatabase(join(options.dataDir, 'keys.db'), { readonly: true });
+  const keys = options.storage.startDatabase(getDataFilePath(options.dataDir, 'keys.db'), {
+    readonly: true,
+  });
 
   try {
     const before = await readDataVersion(keys);
@@ -40,7 +42,7 @@ async function writeCopies(options: DatabasePairOptions): Promise<boolean> {
     await writeLogCopy(options);
 
     await options.onCopied('nixie.db');
-    await options.storage.writeDatabaseCopy(keys, join(options.directory, 'keys.db'));
+    await options.storage.writeDatabaseCopy(keys, getDataFilePath(options.directory, 'keys.db'));
 
     const after = await readDataVersion(keys);
 
@@ -63,10 +65,12 @@ async function readDataVersion(db: Kysely<unknown>): Promise<number> {
 }
 
 async function writeLogCopy(options: DatabasePairOptions): Promise<void> {
-  const db = options.storage.startDatabase(join(options.dataDir, 'nixie.db'), { readonly: true });
+  const db = options.storage.startDatabase(getDataFilePath(options.dataDir, 'nixie.db'), {
+    readonly: true,
+  });
 
   try {
-    await options.storage.writeDatabaseCopy(db, join(options.directory, 'nixie.db'));
+    await options.storage.writeDatabaseCopy(db, getDataFilePath(options.directory, 'nixie.db'));
   } finally {
     await db.destroy();
   }
