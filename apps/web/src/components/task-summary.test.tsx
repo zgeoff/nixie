@@ -40,13 +40,28 @@ test('it opens the whole brief of a task on the task’s own page', async () => 
   await user.click(rendered.getByRole('button', { name: 'Show the whole prompt' }));
 
   const toggle = rendered.getByRole('button', { name: 'Show less of the prompt' });
+  const brief = document.querySelector(`[id="${toggle.getAttribute('aria-controls')}"]`);
 
   expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
-  expect(
-    document.querySelector(`[id="${toggle.getAttribute('aria-controls')}"]`),
-  ).toHaveTextContent(
-    'Plan the vegetable beds for spring. Put the beans along the north fence, and keep the tomatoes out of the shade of the shed.',
+  expect({ isClamped: brief?.classList.contains('lc_2'), text: brief?.textContent }).toStrictEqual({
+    isClamped: false,
+    text: 'Plan the vegetable beds for spring.\nPut the beans along the north fence, and keep the tomatoes out of the shade of the shed.',
+  });
+});
+
+test('it cuts the brief of a task to 2 lines until it is opened', () => {
+  const garden = buildMockListedTask({
+    brief:
+      'Plan the vegetable beds for spring.\nPut the beans along the north fence, and keep the tomatoes out of the shade of the shed.',
+    name: 'Garden plan',
+  });
+
+  const rendered = render(<TaskSummary isLinked={false} task={garden} tasks={[garden]} />);
+  const toggle = rendered.getByRole('button', { name: 'Show the whole prompt' });
+
+  expect(document.querySelector(`[id="${toggle.getAttribute('aria-controls')}"]`)).toHaveClass(
+    'lc_2',
   );
 });
 
