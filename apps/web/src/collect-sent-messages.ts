@@ -1,19 +1,18 @@
+import { taskMessageInputSchema, taskMessageResultSchema } from '@heynixie/contract';
 import { z } from 'zod';
 import type { TaskMessageActivity, ToolActivity } from './build-activity';
 
 // The message record lands in the receiver's thread, so the sender's thread holds only its call of
 // the message tool: the receiver and the text in the input, and the message ID in the result.
-const inputSchema = z.object({ body: z.string(), kind: z.string(), to: z.string() });
-
-const contentSchema = z.object({
-  result: z.object({ hop: z.int().nonnegative(), messageID: z.string(), woke: z.boolean() }),
-});
+const contentSchema = z.object({ result: taskMessageResultSchema });
 
 export function collectSentMessages(
   calls: readonly ToolActivity[],
 ): readonly TaskMessageActivity[] {
   return calls.flatMap((call) => {
-    const input = call.tool === 'task.message' ? inputSchema.safeParse(call.input).data : undefined;
+    const input =
+      call.tool === 'task.message' ? taskMessageInputSchema.safeParse(call.input).data : undefined;
+
     const sent = contentSchema.safeParse(call.content).data?.result;
 
     if (input === undefined || sent === undefined) {
