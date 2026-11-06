@@ -11,7 +11,7 @@ import {
   removeRecordKey,
   withWriteTransaction,
 } from '@heynixie/log';
-import { startTestLog } from '@heynixie/log/test-utils';
+import { readTestRecordKeyRows, startTestLog } from '@heynixie/log/test-utils';
 import { backupReceiptSchema, parseBackupFile } from '@heynixie/wire';
 import { $ } from 'bun';
 import { sql } from 'kysely';
@@ -81,14 +81,9 @@ test.skipIf(isResticMissing)(
         values (1, 1798761600000, 'memory.version_added', 'snapshot-a', ${payload})`.execute(tx);
     });
 
-    const wrapped =
-      await sql`select wrapped from record_keys where key_id = ${forgotten.keyID}`.execute(
-        ctx.writer.keys,
-      );
+    const liveKeyRows = await readTestRecordKeyRows(ctx.writer);
 
-    const [forgottenRow] = z
-      .array(z.object({ wrapped: z.instanceof(Uint8Array) }))
-      .parse(wrapped.rows);
+    const forgottenRow = liveKeyRows.find((row) => row.key_id === forgotten.keyID);
 
     invariant(forgottenRow, 'the forgotten key has its wrapped row before the forget');
 
