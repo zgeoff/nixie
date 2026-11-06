@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.66.0](https://github.com/zgeoff/nixie/compare/v0.65.0...v0.66.0) (2026-11-06)
+
+
+### Features
+
+* **research:** measure the memory each turn brings ([#864](https://github.com/zgeoff/nixie/issues/864)) ([55c7abc](https://github.com/zgeoff/nixie/commit/55c7abcbf14f226cf6101a91fa6f935409828156))
+
+
+### Bug Fixes
+
+* **async:** load glibc before musl in the file lock ([#873](https://github.com/zgeoff/nixie/issues/873)) ([f3e1090](https://github.com/zgeoff/nixie/commit/f3e10907c317e8486053f5b37d62865083309f2c))
+* **deps:** update @anthropic-ai/claude-agent-sdk to v0.3.314 ([#886](https://github.com/zgeoff/nixie/issues/886)) ([fe8514b](https://github.com/zgeoff/nixie/commit/fe8514b74f25e7bf90dd3139db0985554acc33a6))
+* **tasks:** take the SDK tool name in task.start, list true task state ([#881](https://github.com/zgeoff/nixie/issues/881)) ([83d21a3](https://github.com/zgeoff/nixie/commit/83d21a3127815bd95243de36385f2f1c45b7fab2))
+
 ## [0.65.0](https://github.com/zgeoff/nixie/compare/v0.64.0...v0.65.0) (2026-11-05)
 
 
