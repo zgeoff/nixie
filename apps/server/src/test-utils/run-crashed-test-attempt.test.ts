@@ -70,7 +70,7 @@ test('it stops the attempt once its attempt record commits, before the connector
 
   await runCrashedTestAttempt(ctx.context, ctx.connectors);
 
-  const actions = await readTestActions(ctx.context);
+  const actions = await readTestActions(ctx.context.log.writer);
 
   expect(
     actions.map((action) => ({

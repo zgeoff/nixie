@@ -30,5 +30,7 @@ export { startTestMemoryWriter } from './start-test-memory-writer';
 export type { ImageOfferRecord, WrittenImageOffer } from './write-image-offer-record';
 export { writeImageOfferRecord } from './write-image-offer-record';
 export { writeOwnerMessages } from './write-owner-messages';
+export type { TestMemoryItem } from './read-test-memory-items';
+export { readTestMemoryItems } from './read-test-memory-items';
 export type { ModelReplyRecord } from './write-model-reply-record';
 export { writeModelReplyRecord } from './write-model-reply-record';

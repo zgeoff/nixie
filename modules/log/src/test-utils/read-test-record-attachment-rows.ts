@@ -1,10 +1,10 @@
 import type { Selectable } from 'kysely';
-import type { Log, LogTables } from '../types';
+import type { LogTables, Writer } from '../types';
 
 export function readTestRecordAttachmentRows(
-  log: Pick<Log, 'writer'>,
+  writer: Pick<Writer, 'db'>,
 ): Promise<readonly Selectable<LogTables['record_attachments']>[]> {
-  return log.writer.db
+  return writer.db
     .$extendTables<LogTables>()
     .selectFrom('record_attachments')
     .selectAll()

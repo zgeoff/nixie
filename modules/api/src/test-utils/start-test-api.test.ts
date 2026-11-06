@@ -82,7 +82,7 @@ test('it serves the memory store the test sets', async () => {
 
 test('it starts with no task and the test clock', async () => {
   const ctx = await startTestAPI();
-  const tasks = await readTestTasks(ctx.context);
+  const tasks = await readTestTasks(ctx.context.log.writer);
 
   expect(tasks).toStrictEqual([]);
   expect(ctx.clock.now()).toBe(1_000_000);

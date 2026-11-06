@@ -19,17 +19,17 @@ test('it reads each lease with its kind, its work and its holder, in kind order'
     durationMs: 60_000,
   });
 
-  const leases = await readTestLeases(ctx.context);
+  const leases = await readTestLeases(ctx.writer);
 
   expect(leases).toStrictEqual([
-    { kind: 'action', workID: 'action-ferns', holder: 'runner-b' },
-    { kind: 'task', workID: claim.lease.workID, holder: 'runner-a' },
+    { kind: 'action', workID: 'action-ferns', holder: 'runner-b', generation: 1 },
+    { kind: 'task', workID: claim.lease.workID, holder: 'runner-a', generation: 1 },
   ]);
 });
 
 test('it reads no leases before any work is claimed', async () => {
   const ctx = await setupTest();
-  const leases = await readTestLeases(ctx.context);
+  const leases = await readTestLeases(ctx.writer);
 
   expect(leases).toStrictEqual([]);
 });

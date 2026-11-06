@@ -179,7 +179,7 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
 
   const exit = await nixie.exited;
   const records = await ctx.nixie.readRecords();
-  const actions = await ctx.nixie.readRows('actions');
+  const actions = await ctx.nixie.readActions();
 
   const followUp = ctx.nixie.model.requests
     .filter((request) => request.path === '/v1/messages')
@@ -201,7 +201,7 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
     records.filter((record) => record.kind === 'action.queued' && record.thread === 'conversation'),
   ).toStrictEqual([]);
 
-  expect(actions.filter((action) => action['task_id'] === 'conversation')).toStrictEqual([]);
+  expect(actions.filter((action) => action.taskID === 'conversation')).toStrictEqual([]);
   expect(ctx.nixie.provider.calls).toStrictEqual([]);
 
   expect(JSON.stringify(followUp.body.messages)).toInclude(
@@ -257,7 +257,7 @@ test('it expires the lease of a killed nixie on restart, runs the task once, and
   await second.kill();
 
   const records = await ctx.nixie.readRecords();
-  const tasks = await ctx.nixie.readRows('tasks');
+  const tasks = await ctx.nixie.readTasks();
   const oracle = await runOracle(ctx.nixie);
 
   expect(
@@ -281,7 +281,7 @@ test('it expires the lease of a killed nixie on restart, runs the task once, and
       .map((record) => record.stepKey),
   ).toStrictEqual([`${finishedID}:1`, `${finishedID}:2`, 'conversation:1']);
 
-  expect(tasks).toPartiallyContain({ task_id: finishedID, state: 'done' });
+  expect(tasks).toPartiallyContain({ id: finishedID, state: 'done' });
   expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
 
   expect(oracle).toStrictEqual({

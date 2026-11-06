@@ -416,8 +416,8 @@ test('it leaves no key behind for the proposals of a batch that split', async ()
   await ctx.memory.run();
 
   const pending = await ctx.memory.store.proposals.listPending();
-  const keys = await readTestRecordKeyRows(ctx.memory.context.log);
-  const records = await readTestRecordRows(ctx.memory.context.log);
+  const keys = await readTestRecordKeyRows(ctx.memory.context.log.writer);
+  const records = await readTestRecordRows(ctx.memory.context.log.writer);
 
   expect(keys.map((key) => key.key_id)).toIncludeSameMembers([
     ...new Set(records.flatMap((record) => (record.key_id === null ? [] : [record.key_id]))),

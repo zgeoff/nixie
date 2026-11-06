@@ -21,7 +21,7 @@ test('it reads each record as stored, with its erasable fields sealed under a ke
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
   ]);
 
-  const rows = await readTestRecordRows(ctx.log);
+  const rows = await readTestRecordRows(ctx.writer);
 
   expect(rows).toMatchObject([
     {

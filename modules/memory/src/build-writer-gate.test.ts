@@ -711,7 +711,7 @@ test('it removes the key of a new item whose proposal record could not be built'
 
   await checking.catch(() => {});
 
-  const keys = await readTestRecordKeyRows(memory.log);
+  const keys = await readTestRecordKeyRows(memory.writer);
 
   expect(checking).rejects.toThrow('the definitions snapshot is unreadable');
   expect(keys).toHaveLength(1);

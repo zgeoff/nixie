@@ -38,7 +38,7 @@ test('it reads the wrapped key of each record with erasable fields, in key order
 
   invariant(first !== undefined && second !== undefined);
 
-  const rows = await readTestRecordKeyRows(ctx.log);
+  const rows = await readTestRecordKeyRows(ctx.writer);
 
   expect(rows).toStrictEqual([
     { key_id: first, wrapped: expect.any(Uint8Array) },

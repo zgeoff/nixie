@@ -121,7 +121,7 @@ test('it stores the summary sealed, so the raw store holds no word of it', async
     .selectAll()
     .execute();
 
-  const records = await readTestRecordRows(ctx.memory.log);
+  const records = await readTestRecordRows(ctx.memory.writer);
 
   expect(diff.summary?.text).toBe(
     'Two items conflict and stay unchanged: one says oat milk, the other says black.',

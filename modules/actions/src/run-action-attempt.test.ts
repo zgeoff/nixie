@@ -81,7 +81,7 @@ test.each([['stop'], ['pause'], ['close']] as const)(
       .where('action_id', '=', queued.actionID)
       .executeTakeFirstOrThrow();
 
-    const leases = await readTestLeases(ctx.context);
+    const leases = await readTestLeases(ctx.writer);
 
     const actionLease = leases.find((entry) => entry.workID === queued.actionID);
 

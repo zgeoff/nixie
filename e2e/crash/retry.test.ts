@@ -35,11 +35,9 @@ test('it resumes the retry schedule across a restart and fails the action on the
   await ctx.nixie.advanceUntilRecord(10_000, 2, (record) => record.stepKey === 'conversation:1');
   await first.kill();
 
-  const allActionsAfterKill = await ctx.nixie.readRows('actions');
+  const allActionsAfterKill = await ctx.nixie.readActions();
 
-  const actionsAfterKill = allActionsAfterKill.filter(
-    (action) => action['task_id'] === 'conversation',
-  );
+  const actionsAfterKill = allActionsAfterKill.filter((action) => action.taskID === 'conversation');
 
   ctx.nixie.model.addReplies({ text: 'The send failed.' });
 
@@ -51,11 +49,9 @@ test('it resumes the retry schedule across a restart and fails the action on the
   const attemptTimes: number[] = [1_000_000];
 
   for (const attempt of [2, 3, 4, 5]) {
-    const rows = await ctx.nixie.readRows('actions');
+    const actions = await ctx.nixie.readActions();
 
-    const dueAt = Number(
-      rows.find((row) => row['task_id'] === 'conversation')?.['next_attempt_at'],
-    );
+    const dueAt = Number(actions.find((action) => action.taskID === 'conversation')?.nextAttemptAt);
 
     await ctx.nixie.harness.advance(dueAt - 1 - ctx.nixie.harness.now(), { settle: true });
 
@@ -89,8 +85,15 @@ test('it resumes the retry schedule across a restart and fails the action on the
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(actionsAfterKill).toMatchObject([
-    { attempt_count: 1, attempt_open: 0, next_attempt_at: 1_030_000, status: 'pending' },
+  expect(
+    actionsAfterKill.map((action) => ({
+      attemptCount: action.attemptCount,
+      isAttemptOpen: action.isAttemptOpen,
+      nextAttemptAt: action.nextAttemptAt,
+      status: action.status,
+    })),
+  ).toStrictEqual([
+    { attemptCount: 1, isAttemptOpen: false, nextAttemptAt: 1_030_000, status: 'pending' },
   ]);
 
   expect(callsBeforeDue).toStrictEqual([1, 2, 3, 4]);

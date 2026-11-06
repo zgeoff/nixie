@@ -28,7 +28,7 @@ test('it reads each action with its step, its status and its attempts, in queue 
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
-  const actions = await readTestActions(ctx.context);
+  const actions = await readTestActions(ctx.writer);
 
   expect(actions).toStrictEqual([
     {
@@ -39,6 +39,7 @@ test('it reads each action with its step, its status and its attempts, in queue 
       status: 'pending',
       attemptCount: 0,
       isAttemptOpen: false,
+      nextAttemptAt: 1_000_000,
       reason: null,
       outcomeSequence: null,
     },
@@ -50,6 +51,7 @@ test('it reads each action with its step, its status and its attempts, in queue 
       status: 'pending',
       attemptCount: 0,
       isAttemptOpen: false,
+      nextAttemptAt: 1_000_000,
       reason: null,
       outcomeSequence: null,
     },
@@ -58,7 +60,7 @@ test('it reads each action with its step, its status and its attempts, in queue 
 
 test('it reads no actions before any action is queued', async () => {
   const ctx = await setupTest();
-  const actions = await readTestActions(ctx.context);
+  const actions = await readTestActions(ctx.writer);
 
   expect(actions).toStrictEqual([]);
 });

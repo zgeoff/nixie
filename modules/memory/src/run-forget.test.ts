@@ -23,7 +23,7 @@ test('it deletes the item key and leaves no copy of it in the key store files', 
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const keys = await readTestRecordKeyRows(ctx.memory.log);
+  const keys = await readTestRecordKeyRows(ctx.memory.writer);
 
   const stored = keys.find((key) => key.key_id === item.itemID);
 

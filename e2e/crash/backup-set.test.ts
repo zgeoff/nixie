@@ -50,7 +50,7 @@ test('it ships no set that nixie was killed while copying, and a restart replace
   await restarted.waitForLogEvent('backup.set_published');
 
   const staging = await readdir(join(ctx.nixie.dataDir, 'backup'));
-  const sets = await ctx.nixie.readRows('backup_sets');
+  const sets = await ctx.nixie.readBackupSets();
 
   expect(leftBehind).toIncludeSameMembers(['nixie.db', 'keys.db']);
   expect(afterKill.exitCode).toBe(0);
@@ -59,7 +59,7 @@ test('it ships no set that nixie was killed while copying, and a restart replace
   expect(afterRestart.stdout.toString()).toInclude('"sequence":2');
   expect(staging).toStrictEqual(['job.lock']);
 
-  expect(sets).toMatchObject([
+  expect(sets).toStrictEqual([
     { sequence: 1, kind: 'scheduled', state: 'abandoned' },
     { sequence: 2, kind: 'scheduled', state: 'published' },
   ]);

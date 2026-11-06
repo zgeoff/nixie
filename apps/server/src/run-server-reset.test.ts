@@ -221,7 +221,7 @@ test('it folds the reset on the conversation thread, which the conversation task
   await createConversationTask(ctx.context);
 
   const thread = await readRecords(ctx.context.log, { afterSequence: 0, thread: 'conversation' });
-  const tasks = await readTestTasks(ctx.context);
+  const tasks = await readTestTasks(ctx.context.log.writer);
 
   expect(thread.map((entry) => [entry.record.sequence, entry.record.kind])).toStrictEqual([
     [reset.lastSequence + 2, 'log_reset'],

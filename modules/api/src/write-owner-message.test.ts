@@ -40,7 +40,7 @@ test('it writes your message into the conversation inbox', async () => {
 
   invariant(result.status === 'written');
 
-  const tasks = await readTestTasks(ctx.context);
+  const tasks = await readTestTasks(ctx.context.log.writer);
 
   expect(tasks.map((task) => [task.state, task.lastInboxSequence])).toStrictEqual([
     ['ready', result.sequence],

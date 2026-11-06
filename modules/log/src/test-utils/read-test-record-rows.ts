@@ -1,7 +1,7 @@
-import type { Log, LogTables, RecordRow } from '../types';
+import type { LogTables, RecordRow, Writer } from '../types';
 
-export function readTestRecordRows(log: Pick<Log, 'writer'>): Promise<readonly RecordRow[]> {
-  return log.writer.db
+export function readTestRecordRows(writer: Pick<Writer, 'db'>): Promise<readonly RecordRow[]> {
+  return writer.db
     .$extendTables<LogTables>()
     .selectFrom('records')
     .selectAll()

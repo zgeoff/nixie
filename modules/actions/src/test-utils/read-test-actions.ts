@@ -1,4 +1,4 @@
-import type { TasksContext } from '@heynixie/tasks';
+import type { Writer } from '@heynixie/log';
 import type { ActionStatus, ActionsTables, OutcomeReason } from '../types';
 
 export interface TestAction {
@@ -9,14 +9,13 @@ export interface TestAction {
   readonly status: ActionStatus;
   readonly attemptCount: number;
   readonly isAttemptOpen: boolean;
+  readonly nextAttemptAt: number;
   readonly reason: OutcomeReason | null;
   readonly outcomeSequence: number | null;
 }
 
-export async function readTestActions(
-  context: Pick<TasksContext, 'log'>,
-): Promise<readonly TestAction[]> {
-  const rows = await context.log.writer.db
+export async function readTestActions(writer: Pick<Writer, 'db'>): Promise<readonly TestAction[]> {
+  const rows = await writer.db
     .$extendTables<ActionsTables>()
     .selectFrom('actions')
     .selectAll()
@@ -31,6 +30,7 @@ export async function readTestActions(
     status: row.status,
     attemptCount: row.attempt_count,
     isAttemptOpen: row.attempt_open === 1,
+    nextAttemptAt: row.next_attempt_at,
     reason: row.reason,
     outcomeSequence: row.outcome_sequence,
   }));

@@ -6,6 +6,8 @@ export type { TestTask } from './read-test-tasks';
 export { readTestTasks } from './read-test-tasks';
 export type { TestLease } from './read-test-leases';
 export { readTestLeases } from './read-test-leases';
+export type { TestTimer } from './read-test-timers';
+export { readTestTimers } from './read-test-timers';
 export type { TaskStepsOptions } from './run-task-steps';
 export { runTaskSteps } from './run-task-steps';
 export type { ConversationStep } from './seed-conversation-step';

@@ -70,7 +70,7 @@ test('it runs the queued action through its connector', async () => {
 
   await runTestAttempt(ctx.context, ctx.connectors);
 
-  const actions = await readTestActions(ctx.context);
+  const actions = await readTestActions(ctx.context.log.writer);
 
   expect(actions.map((action) => action.status)).toStrictEqual(['done']);
 

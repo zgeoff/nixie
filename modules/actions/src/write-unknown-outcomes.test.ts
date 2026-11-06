@@ -145,7 +145,7 @@ test('it frees the step and the action leases through recovery', async () => {
 
   await runStalledAttempt(ctx);
 
-  const held = await readTestLeases(ctx.context);
+  const held = await readTestLeases(ctx.writer);
   const next = await startNextTestWriter(ctx);
 
   await runRecovery(next.context, {
@@ -153,7 +153,7 @@ test('it frees the step and the action leases through recovery', async () => {
     sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
   });
 
-  const leases = await readTestLeases(next.context);
+  const leases = await readTestLeases(next.writer);
 
   expect(held.map((lease) => lease.holder)).toStrictEqual([
     expect.toBeString(),
@@ -177,7 +177,7 @@ test('it readies the task through recovery', async () => {
 
   await runStalledAttempt(ctx);
 
-  const [before] = await readTestTasks(ctx.context);
+  const [before] = await readTestTasks(ctx.writer);
   const next = await startNextTestWriter(ctx);
 
   await runRecovery(next.context, {
@@ -185,7 +185,7 @@ test('it readies the task through recovery', async () => {
     sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
   });
 
-  const [task] = await readTestTasks(next.context);
+  const [task] = await readTestTasks(next.writer);
 
   expect(before?.state).toBe('running');
   expect(task?.state).toBe('ready');

@@ -75,7 +75,7 @@ test.each([
   await second.kill();
 
   const records = await ctx.nixie.readRecords();
-  const items = await ctx.nixie.readRows('memory_items');
+  const items = await ctx.nixie.readMemoryItems();
   const oracle = await runOracle(ctx.nixie);
 
   expect(
@@ -83,11 +83,11 @@ test.each([
       .filter((record) => record.kind === 'memory.batch_published')
       .map((record) => [record.payload['mode'], record.payload['applied']]),
   ).toStrictEqual([
-    ['catch_up', [{ itemID: items[0]?.['item_id'], version: 1 }]],
+    ['catch_up', [{ itemID: items[0]?.itemID, version: 1 }]],
     ['catch_up', []],
   ]);
 
-  expect(items).toMatchObject([{ state: 'active', version: 1 }]);
+  expect(items).toStrictEqual([{ itemID: expect.toBeString(), version: 1, state: 'active' }]);
 
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
@@ -168,7 +168,7 @@ test.each([
   await third.kill();
 
   const records = await ctx.nixie.readRecords();
-  const items = await ctx.nixie.readRows('memory_items');
+  const items = await ctx.nixie.readMemoryItems();
   const oracle = await runOracle(ctx.nixie);
 
   expect(
@@ -177,9 +177,9 @@ test.each([
         (record) => record.kind === 'memory.batch_published' && record.payload['mode'] === 'live',
       )
       .map((record) => record.payload['applied']),
-  ).toStrictEqual([[{ itemID: items[0]?.['item_id'], version: 1 }]]);
+  ).toStrictEqual([[{ itemID: items[0]?.itemID, version: 1 }]]);
 
-  expect(items).toMatchObject([{ state: 'active', version: 1 }]);
+  expect(items).toStrictEqual([{ itemID: expect.toBeString(), version: 1, state: 'active' }]);
 
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],

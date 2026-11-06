@@ -25,7 +25,7 @@ test('it fires a timer that fell due while nixie was down once, into the task in
   const second = ctx.nixie.harness.start([{ point: 'recovery.step.5' }]);
 
   const recovered = await second.waitForArrival('recovery.step.5');
-  const tasksAfterRecovery = await ctx.nixie.readRows('tasks');
+  const tasksAfterRecovery = await ctx.nixie.readTasks();
 
   second.release(recovered);
 
@@ -44,7 +44,7 @@ test('it fires a timer that fell due while nixie was down once, into the task in
     { timerID: expect.any(String), taskID, dueAt: 4_600_000, firedAt: 4_700_000 },
   ]);
 
-  expect(tasksAfterRecovery).toPartiallyContain({ task_id: taskID, state: 'ready' });
+  expect(tasksAfterRecovery).toPartiallyContain({ id: taskID, state: 'ready' });
 
   expect(
     records.filter((record) => record.kind === 'test.inbox_read').map((record) => record.payload),
@@ -84,7 +84,7 @@ test('it leaves the timer unfired when nixie dies before the fire commits, and f
   await second.waitForArrival('timer.fire.before', taskID);
   await second.kill();
 
-  const timersAfterKill = await ctx.nixie.readRows('timers');
+  const timersAfterKill = await ctx.nixie.readTimers();
 
   const third = ctx.nixie.harness.start();
 
@@ -99,7 +99,9 @@ test('it leaves the timer unfired when nixie dies before the fire commits, and f
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(timersAfterKill).toMatchObject([{ task_id: taskID, fired_at: null }]);
+  expect(
+    timersAfterKill.map((timer) => ({ taskID: timer.taskID, firedAt: timer.firedAt })),
+  ).toStrictEqual([{ taskID, firedAt: null }]);
 
   expect(fired.map((record) => record.payload)).toStrictEqual([
     { timerID: expect.any(String), taskID, dueAt: 4_600_000, firedAt: 4_700_000 },

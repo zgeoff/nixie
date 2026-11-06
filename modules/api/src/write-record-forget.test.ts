@@ -97,7 +97,7 @@ test('it forgets the images of your message, whose sealed bytes then decrypt in 
   });
 
   const after = await readRecordAttachments(ctx.context.log, [sent.sequence]);
-  const attachments = await readTestRecordAttachmentRows(ctx.context.log);
+  const attachments = await readTestRecordAttachmentRows(ctx.writer);
 
   const sealed = attachments.filter((row) => row.sequence === sent.sequence);
 

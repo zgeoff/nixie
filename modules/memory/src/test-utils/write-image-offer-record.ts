@@ -34,7 +34,7 @@ export async function writeImageOfferRecord(
 
   invariant(record, 'the log wrote no memory.image_offered record');
 
-  const rows = await readTestRecordRows(log);
+  const rows = await readTestRecordRows(log.writer);
 
   const keyID = rows.find((row) => row.sequence === record.sequence)?.key_id;
 

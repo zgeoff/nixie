@@ -170,7 +170,7 @@ test('it stops a deferred part while the log is still open', async () => {
   const seen: { count: number | null } = { count: null };
 
   host.defer(async () => {
-    const tasks = await readTestTasks(host.context);
+    const tasks = await readTestTasks(host.context.log.writer);
 
     seen.count = tasks.length;
   });

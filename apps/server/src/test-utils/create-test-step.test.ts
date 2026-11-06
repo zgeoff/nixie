@@ -39,7 +39,7 @@ async function setupTest() {
 test('it returns the first step of a new task that a runner claimed', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
-  const [task] = await readTestTasks(ctx.context);
+  const [task] = await readTestTasks(ctx.context.log.writer);
 
   invariant(task);
 
@@ -68,7 +68,7 @@ test('it returns the first step of a new task that a runner claimed', async () =
 test('it leaves the task running under the step', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
-  const tasks = await readTestTasks(ctx.context);
+  const tasks = await readTestTasks(ctx.context.log.writer);
 
   expect(tasks.map((task) => [task.id, task.state])).toStrictEqual([[step.taskID, 'running']]);
 });

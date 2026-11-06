@@ -25,7 +25,7 @@ test('it reads each attachment as stored, sealed, in record and position order',
     },
   ]);
 
-  const rows = await readTestRecordAttachmentRows(ctx.log);
+  const rows = await readTestRecordAttachmentRows(ctx.writer);
 
   expect(rows).toStrictEqual([
     { sequence: 1, position: 0, sealed: expect.any(Uint8Array) },
