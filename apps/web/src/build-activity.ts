@@ -1,3 +1,4 @@
+import { collectSentMessages } from './collect-sent-messages';
 import type { LiveRecord } from './use-live-records';
 
 export interface ToolActivity {
@@ -33,6 +34,19 @@ export type SummaryActivity = NonNullable<LiveRecord['summary']> & {
   readonly sequence: number;
 };
 
+export interface TaskMessageActivity {
+  readonly direction: 'received' | 'sent';
+  readonly hop: number;
+  readonly kind: string;
+  readonly messageID: string;
+  readonly taskID: string;
+
+  readonly taskName?: string;
+  readonly text?: string;
+
+  readonly woke: boolean;
+}
+
 type StepStatus = 'done' | 'failed' | 'interrupted' | 'running';
 
 export interface StepActivity {
@@ -55,6 +69,9 @@ export interface StepActivity {
 
   readonly memories?: readonly RecalledMemory[];
   readonly records: readonly LiveRecord[];
+
+  readonly sentMessages?: readonly TaskMessageActivity[];
+
   readonly status: StepStatus;
   readonly stepKey?: string;
   readonly taskID?: string;
@@ -71,7 +88,7 @@ export type ActivityItem =
   | {
       readonly kind: 'taskMessage';
       readonly record: LiveRecord;
-      readonly message: NonNullable<LiveRecord['taskMessage']>;
+      readonly message: TaskMessageActivity;
     }
   | {
       readonly kind: 'exchange';
@@ -155,7 +172,11 @@ function foldRecord(state: ActivityState, record: LiveRecord): void {
   } else if (record.moment !== undefined) {
     state.items.push({ kind: 'moment', record, moment: record.moment });
   } else if (record.taskMessage !== undefined) {
-    state.items.push({ kind: 'taskMessage', record, message: record.taskMessage });
+    state.items.push({
+      kind: 'taskMessage',
+      record,
+      message: toReceivedMessage(record.taskMessage),
+    });
   } else if (record.exchangeNotice !== undefined) {
     state.items.push({ kind: 'exchange', record, notice: record.exchangeNotice });
   } else if (record.stop !== undefined) {
@@ -181,6 +202,19 @@ function foldRecord(state: ActivityState, record: LiveRecord): void {
   }
 }
 
+function toReceivedMessage(message: NonNullable<LiveRecord['taskMessage']>): TaskMessageActivity {
+  return {
+    direction: 'received',
+    hop: message.hop,
+    kind: message.kind,
+    messageID: message.messageID,
+    taskID: message.from,
+    taskName: message.fromName,
+    ...(message.text === undefined ? {} : { text: message.text }),
+    woke: message.woke,
+  };
+}
+
 function buildStep(
   records: readonly LiveRecord[],
   status: StepStatus,
@@ -201,8 +235,11 @@ function buildStep(
     record.summary === undefined ? [] : [{ ...record.summary, sequence: record.sequence }],
   );
 
+  const calls = collectCalls(records);
+  const sentMessages = collectSentMessages(calls);
+
   return {
-    calls: collectCalls(records),
+    calls,
     ...(compactions.length === 0 ? {} : { compactions }),
     ...(summaries.length === 0 ? {} : { summaries }),
     ...(context === undefined ? {} : { context }),
@@ -215,6 +252,7 @@ function buildStep(
       ? {}
       : { memories: recalls.flatMap((record) => collectMemories(record, ratings)) }),
     records,
+    ...(sentMessages.length === 0 ? {} : { sentMessages }),
     status,
     ...(stepKey === undefined ? {} : { stepKey }),
     ...(task === undefined ? {} : { taskID: task.taskID }),

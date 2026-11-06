@@ -1,7 +1,7 @@
 import type { ReactNode, RefObject } from 'react';
 import { Fragment } from 'react';
 import { match } from 'ts-pattern';
-import type { ActivityItem } from '../build-activity';
+import type { ActivityItem, TaskMessageActivity } from '../build-activity';
 import { buildActivity } from '../build-activity';
 import { buildNoticePlacement } from '../build-notice-placement';
 import { isWorking } from '../is-working';
@@ -17,7 +17,8 @@ import { RecordItem } from './record-item';
 import { ResetMarker } from './reset-marker';
 import { StepGroup } from './step-group';
 import { StopMarker } from './stop-marker';
-import { TaskMessageBlock } from './task-message-block';
+import type { TaskMessageLayout } from './task-message-entry';
+import { TaskMessageEntry } from './task-message-entry';
 
 interface LinkedMessage {
   readonly messageID: string;
@@ -30,6 +31,7 @@ export interface ConversationListProps {
   readonly onDiscard: (clientMessageID: string) => void;
   readonly onRetry: (message: OutboxMessage) => Promise<void>;
   readonly records: readonly LiveRecord[];
+  readonly taskMessageLayout: TaskMessageLayout;
 
   readonly linkedMessage?: LinkedMessage;
 }
@@ -72,7 +74,11 @@ export function ConversationList(props: ConversationListProps): ReactNode {
       <ol aria-label="Conversation" className={css(column, messages)}>
         {activity.map((item, index) => (
           <Fragment key={item.kind === 'step' ? `step/${String(item.key)}` : item.record.sequence}>
-            <ActivityEntry item={item} linkedMessage={props.linkedMessage} />
+            <ActivityEntry
+              item={item}
+              linkedMessage={props.linkedMessage}
+              taskMessageLayout={props.taskMessageLayout}
+            />
             {placement.get(index)?.map((notice) => (
               <MemoryNotice key={notice.noticeKey} notice={notice} />
             ))}
@@ -102,25 +108,33 @@ export function ConversationList(props: ConversationListProps): ReactNode {
 interface ActivityEntryProps {
   readonly item: ActivityItem;
   readonly linkedMessage: LinkedMessage | undefined;
+  readonly taskMessageLayout: TaskMessageLayout;
 }
 
 function ActivityEntry(props: ActivityEntryProps): ReactNode {
+  const renderMessage = (message: TaskMessageActivity): ReactNode => (
+    <TaskMessageEntry
+      key={message.messageID}
+      layout={props.taskMessageLayout}
+      message={message}
+      ref={
+        props.linkedMessage?.messageID === message.messageID ? props.linkedMessage.ref : undefined
+      }
+    />
+  );
+
   return match(props.item)
     .with({ kind: 'message' }, (item) => <RecordItem record={item.record} />)
     .with({ kind: 'reset' }, (item) => <ResetMarker record={item.record} />)
     .with({ kind: 'moment' }, (item) => <MomentKeptNotice moment={item.moment} />)
-    .with({ kind: 'taskMessage' }, (item) => (
-      <TaskMessageBlock
-        message={item.message}
-        ref={
-          props.linkedMessage?.messageID === item.message.messageID
-            ? props.linkedMessage.ref
-            : undefined
-        }
-      />
-    ))
+    .with({ kind: 'taskMessage' }, (item) => renderMessage(item.message))
     .with({ kind: 'exchange' }, (item) => <ExchangeNotice notice={item.notice} />)
     .with({ kind: 'stop' }, (item) => <StopMarker stop={item.stop} />)
-    .with({ kind: 'step' }, (item) => <StepGroup step={item} />)
+    .with({ kind: 'step' }, (item) => (
+      <>
+        <StepGroup step={item} />
+        {item.sentMessages?.map(renderMessage)}
+      </>
+    ))
     .exhaustive();
 }
