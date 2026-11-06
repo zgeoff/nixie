@@ -10,12 +10,17 @@ test('it keeps each retrieving turn, fills to the size and shows only the items 
         recalledSequence: 3,
         recordedAt: 0,
         query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: 'Pack light.',
         earlier: [],
         candidates: [
-          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, text: 'Packs light' },
-          { itemID: 'item-b', version: 1, isSelf: false, isPinned: true, isLapsed: false, text: 'Lives in Hobart' },
-          { itemID: 'item-c', version: 2, isSelf: false, isPinned: false, isLapsed: false, text: 'Flies on Friday' },
+          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Packs light' },
+          { itemID: 'item-b', version: 1, isSelf: false, isPinned: true, isLapsed: false, isSensitive: false, text: 'Lives in Hobart' },
+          { itemID: 'item-c', version: 2, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Flies on Friday' },
         ],
         logged: [{ itemID: 'item-a', version: 1 }],
         searchMode: 'hybrid',
@@ -28,11 +33,16 @@ test('it keeps each retrieving turn, fills to the size and shows only the items 
         recalledSequence: 8,
         recordedAt: 0,
         query: 'and the weather?',
+        typedQuery: 'and the weather?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: 'Mild.',
         earlier: [{ owner: 'what should I pack?', reply: 'Pack light.' }],
         candidates: [
-          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, text: 'Packs light' },
-          { itemID: 'item-d', version: 1, isSelf: false, isPinned: false, isLapsed: true, text: 'Hotel booked until May' },
+          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Packs light' },
+          { itemID: 'item-d', version: 1, isSelf: false, isPinned: false, isLapsed: true, isSensitive: false, text: 'Hotel booked until May' },
         ],
         logged: [],
         searchMode: 'hybrid',
@@ -45,9 +55,14 @@ test('it keeps each retrieving turn, fills to the size and shows only the items 
         recalledSequence: 12,
         recordedAt: 0,
         query: 'thanks',
+        typedQuery: 'thanks',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: 'Any time.',
         earlier: [],
-        candidates: [{ itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, text: 'Packs light' }],
+        candidates: [{ itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Packs light' }],
         logged: [],
         searchMode: 'hybrid',
         delivered: [],
@@ -122,12 +137,17 @@ test('it builds the same sample from the same turns', () => {
       recalledSequence: 3,
       recordedAt: 0,
       query: 'what should I pack?',
+      typedQuery: 'what should I pack?',
+      shownMessages: [],
+      isSessionStart: false, sessionNumber: 0,
+      isShredded: false,
+      contextTokens: null,
       reply: 'Pack light.',
       earlier: [],
       candidates: [
-        { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, text: 'Packs light' },
-        { itemID: 'item-c', version: 2, isSelf: false, isPinned: false, isLapsed: false, text: 'Flies on Friday' },
-        { itemID: 'item-e', version: 1, isSelf: true, isPinned: false, isLapsed: false, text: 'Keeps replies short' },
+        { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Packs light' },
+        { itemID: 'item-c', version: 2, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Flies on Friday' },
+        { itemID: 'item-e', version: 1, isSelf: true, isPinned: false, isLapsed: false, isSensitive: false, text: 'Keeps replies short' },
       ],
       logged: [],
       searchMode: 'hybrid',
@@ -137,4 +157,36 @@ test('it builds the same sample from the same turns', () => {
   ];
 
   expect(buildSample(turns, null)).toStrictEqual(buildSample(turns, null));
+});
+
+test('it leaves a sensitive item out of the items a labeller sees', () => {
+  const sample = buildSample(
+    [
+      {
+        caseID: 't3',
+        stepSequence: 2,
+        recalledSequence: 3,
+        recordedAt: 0,
+        query: 'how was the week?',
+        typedQuery: 'how was the week?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
+        reply: 'Busy.',
+        earlier: [],
+        candidates: [
+          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: true, text: 'Sees a counsellor on Tuesdays' },
+          { itemID: 'item-b', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Swims on Mondays' },
+        ],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    null,
+  );
+
+  expect(sample.turns.map((turn) => turn.items.map((item) => item.text))).toStrictEqual([['Swims on Mondays']]);
 });

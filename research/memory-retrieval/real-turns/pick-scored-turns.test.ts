@@ -10,6 +10,11 @@ test('it scores only the labelled turns when labels exist', () => {
         recalledSequence: 3,
         recordedAt: 0,
         query: 'any plans?',
+        typedQuery: 'any plans?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [],
@@ -24,6 +29,11 @@ test('it scores only the labelled turns when labels exist', () => {
         recalledSequence: 9,
         recordedAt: 0,
         query: 'and tomorrow?',
+        typedQuery: 'and tomorrow?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [],
@@ -48,6 +58,11 @@ test('it scores the turns that retrieved or were rated when no labels exist', ()
         recalledSequence: 3,
         recordedAt: 0,
         query: 'any plans?',
+        typedQuery: 'any plans?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [],
@@ -62,6 +77,11 @@ test('it scores the turns that retrieved or were rated when no labels exist', ()
         recalledSequence: 6,
         recordedAt: 0,
         query: 'and after?',
+        typedQuery: 'and after?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [],
@@ -76,6 +96,11 @@ test('it scores the turns that retrieved or were rated when no labels exist', ()
         recalledSequence: 9,
         recordedAt: 0,
         query: 'and tomorrow?',
+        typedQuery: 'and tomorrow?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [],
@@ -89,4 +114,33 @@ test('it scores the turns that retrieved or were rated when no labels exist', ()
   );
 
   expect(picked.map((turn) => turn.caseID)).toStrictEqual(['t3', 't6']);
+});
+
+test('it leaves out a labelled turn whose message or reply was shredded', () => {
+  const picked = pickScoredTurns(
+    [
+      {
+        caseID: 't9',
+        stepSequence: 7,
+        recalledSequence: 9,
+        recordedAt: 0,
+        query: 'and tomorrow?',
+        typedQuery: 'and tomorrow?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: true,
+        contextTokens: null,
+        reply: '',
+        earlier: [],
+        candidates: [],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    [{ caseID: 't9', relevant: [], best: null }],
+  );
+
+  expect(picked).toStrictEqual([]);
 });

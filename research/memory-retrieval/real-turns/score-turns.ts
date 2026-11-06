@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { MemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
 import type { EncoderName, TurnEncoder } from './load-turn-encoder.ts';
 import { makeRandom } from './make-random.ts';
-import type { RankConfig, TurnRanking } from './rank-turn.ts';
+import type { BackgroundMessage, RankConfig, TurnRanking } from './rank-turn.ts';
 import { buildRanker, SHIPPED } from './rank-turn.ts';
 
 // A label names items by the references local to its turn, and the sample key maps each reference
@@ -18,7 +18,23 @@ export const labelSchema = z.object({
   caseID: z.string(),
   relevant: z.array(z.string()),
   best: z.string().nullable(),
+  by: z.enum(['assistant', 'owner', 'model']).exactOptional(),
+  // What the rater says would have helped but the list left out, in the rater's words. Only the
+  // count of these reaches a report: a mapping outside the repo turns each into item IDs.
+  missing: z.array(z.string()).exactOptional(),
+  // The references the rater says made the reply worse, a harder verdict than noise.
+  misleading: z.array(z.string()).exactOptional(),
 });
+
+// The items each turn's missing descriptions name, matched by hand outside the repo, and the count
+// of descriptions that named nothing in the store.
+export const missingMapSchema = z.object({
+  caseID: z.string(),
+  itemIDs: z.array(z.string()),
+  unmatched: z.int().nonnegative(),
+});
+
+export type MissingMap = z.infer<typeof missingMapSchema>;
 
 export type Label = z.infer<typeof labelSchema>;
 
@@ -76,6 +92,8 @@ export function buildRuns(encoders: EncoderName[]): Run[] {
     sweep('hybrid, full width', 'ranking', { ...rankingBase, width: null, isInt8: false }),
     sweep('hybrid, k 20', 'ranking', { ...rankingBase, fusionK: 20 }),
     sweep('hybrid, vectors x2', 'ranking', { ...rankingBase, vectorWeight: 2 }),
+    sweep('hybrid, hub penalty 0.5', 'ranking', { ...rankingBase, hub: { kind: 'penalty', weight: 0.5 } }),
+    sweep('hybrid, hub penalty 1', 'ranking', { ...rankingBase, hub: { kind: 'penalty', weight: 1 } }),
     sweep('served, shipped floors, nothing delivered', 'served', { ...SHIPPED, isDeliveredExcluded: false }),
   );
 
@@ -105,6 +123,90 @@ export function buildRuns(encoders: EncoderName[]): Run[] {
     runs.push(sweep(`served vectors, similarity ${minSimilarity}`, 'served', { ...SHIPPED, mode: 'vector', minSimilarity }));
   }
 
+  for (const keywordWeight of [0, 0.25, 0.5, 2]) {
+    runs.push(
+      sweep(`hybrid, BM25 x${keywordWeight}`, 'ranking', { ...rankingBase, keywordWeight }),
+      sweep(`served, BM25 x${keywordWeight}`, 'served', { ...SHIPPED, keywordWeight }),
+    );
+  }
+
+  for (const minScore of [0.5, 4]) {
+    runs.push(sweep(`served, BM25 floor ${minScore}`, 'served', { ...SHIPPED, minScore }));
+  }
+
+  for (const hub of [
+    { kind: 'penalty', weight: 0.5 },
+    { kind: 'penalty', weight: 1 },
+    { kind: 'floor', margin: -0.05 },
+    { kind: 'floor', margin: 0 },
+    { kind: 'floor', margin: 0.05 },
+  ] as const) {
+    runs.push(sweep(`served, hub ${hub.kind} ${'weight' in hub ? hub.weight : hub.margin}`, 'served', { ...SHIPPED, hub }));
+  }
+
+  runs.push(
+    sweep('served, keyword-only items dropped', 'served', { ...SHIPPED, isKeywordOnlyDropped: true }),
+    sweep('served, similarity 0.46, BM25 2, keyword-only items dropped', 'served', {
+      ...SHIPPED,
+      minSimilarity: 0.46,
+      minScore: 2,
+      isKeywordOnlyDropped: true,
+    }),
+  );
+
+  for (const floors of [
+    { name: 'shipped floors', minSimilarity: SHIPPED.minSimilarity, minScore: SHIPPED.minScore },
+    { name: 'similarity 0.46, BM25 2', minSimilarity: 0.46, minScore: 2 },
+    { name: 'similarity 0.46, BM25 4', minSimilarity: 0.46, minScore: 4 },
+  ]) {
+    const base = { ...SHIPPED, minSimilarity: floors.minSimilarity, minScore: floors.minScore, isSensitiveExcluded: false };
+
+    runs.push(
+      sweep(`served, ${floors.name}, sensitive shown`, 'served', base),
+      sweep(`served, ${floors.name}, sensitive shown, keyword-only items dropped`, 'served', { ...base, isKeywordOnlyDropped: true }),
+    );
+  }
+
+  for (const messages of [1, 2]) {
+    runs.push(sweep(`served, window ${messages}`, 'served', { ...SHIPPED, shortRule: { kind: 'window', messages } }));
+  }
+
+  runs.push(
+    sweep('served, previous exchange on every turn', 'served', {
+      ...SHIPPED,
+      shortRule: { kind: 'previous', maxWords: Number.POSITIVE_INFINITY },
+    }),
+  );
+
+  runs.push(...buildShortRuns());
+
+  return runs;
+}
+
+// The served sets that change what a short message, or pasted text, retrieves.
+function buildShortRuns(): Run[] {
+  const runs: Run[] = [];
+
+  for (const maxWords of [3, 6]) {
+    for (const kind of ['skip', 'previous', 'agree', 'vectors'] as const) {
+      runs.push({
+        name: `leaf-ir-q8 served, short ${kind}, ${maxWords} words`,
+        encoder: 'leaf-ir-q8',
+        kind: 'served',
+        config: { ...SHIPPED, shortRule: { kind, maxWords } },
+        isShipped: false,
+      });
+    }
+  }
+
+  runs.push({
+    name: 'leaf-ir-q8 served, pasted text dropped',
+    encoder: 'leaf-ir-q8',
+    kind: 'served',
+    config: { ...SHIPPED, isPastedDropped: true },
+    isShipped: false,
+  });
+
   return runs;
 }
 
@@ -133,13 +235,14 @@ export async function runRankings(
   runs: Run[],
   resources: RankingResources,
   excludedWords: string[],
+  background: BackgroundMessage[] = [],
 ): Promise<Map<string, RankedTurn[]>> {
   const results = new Map<string, RankedTurn[]>(runs.map((run) => [run.name, []]));
 
   for (const encoderName of [...new Set(runs.map((run) => run.encoder))]) {
     const encoder = await resources.loadEncoder(encoderName);
     const index = await resources.startIndex();
-    const ranker = buildRanker(encoder, index);
+    const ranker = buildRanker(encoder, index, background);
     const own = runs.filter((run) => run.encoder === encoderName);
 
     for (const turn of turns) {
@@ -167,12 +270,12 @@ export interface RankingScore {
 }
 
 export function scoreRanking(ranked: RankedTurn[], gold: Map<string, Gold>): RankingScore {
-  const scored = ranked.filter((entry) => (gold.get(entry.caseID)?.relevant.size ?? 0) > 0);
+  const scored = ranked.filter((entry) => collectRankable(gold.get(entry.caseID)).size > 0);
 
   const perCase = scored.map((entry) => {
     const expected = gold.get(entry.caseID);
     const list = entry.ranking.facts;
-    const relevant = expected?.relevant ?? new Set<string>();
+    const relevant = collectRankable(expected);
     const first = list.findIndex((itemID) => relevant.has(itemID));
 
     return {
@@ -259,13 +362,23 @@ function buildCaseMetric(entry: RankedTurn, expected: Gold, metric: CaseMetric):
     return unseen.length === 0 ? null : unseen.filter((itemID) => shown.includes(itemID)).length / unseen.length;
   }
 
-  if (metric === 'at5') {
-    return list.slice(0, 5).filter((itemID) => expected.relevant.has(itemID)).length / expected.relevant.size;
+  const rankable = collectRankable(expected);
+
+  if (rankable.size === 0) {
+    return null;
   }
 
-  const first = list.findIndex((itemID) => expected.relevant.has(itemID));
+  if (metric === 'at5') {
+    return list.slice(0, 5).filter((itemID) => rankable.has(itemID)).length / rankable.size;
+  }
+
+  const first = list.findIndex((itemID) => rankable.has(itemID));
 
   return first === -1 ? 0 : 1 / (first + 1);
+}
+
+function collectRankable(expected: Gold | undefined): Set<string> {
+  return new Set([...(expected?.relevant ?? [])].filter((itemID) => expected?.pinned.has(itemID) !== true));
 }
 
 export interface ServedScore {
@@ -277,14 +390,20 @@ export interface ServedScore {
   shownOnEmpty: number;
   emptyWithAny: number;
   precision: number;
+  alreadyHeld: number;
   noiseServed: number;
+  misleadingServed: number;
 }
 
 export interface Gold {
   relevant: Set<string>;
+  messages: Set<string>;
   best: string | null;
   noise: Set<string>;
+  misleading: Set<string>;
   delivered: Set<string>;
+  // A needed item that the turn's pinned core already shows: the store never ranks it.
+  pinned: Set<string>;
   isLabelled: boolean;
 }
 
@@ -312,9 +431,19 @@ export function scoreServed(ranked: RankedTurn[], gold: Map<string, Gold>): Serv
     return unseen.length === 0 ? [] : [unseen.filter((itemID) => reached.has(itemID)).length / unseen.length];
   });
 
-  const served = labelled.flatMap((entry) => shown(entry).map((itemID) => gold.get(entry.caseID)?.relevant.has(itemID) === true));
+  // An item the session already holds is neither help nor noise, in line with the session exclusion,
+  // so precision counts only the items the turn brought anew.
+  const brought = labelled.flatMap((entry) => {
+    const expected = gold.get(entry.caseID);
 
-  const noise = ranked.flatMap((entry) => shown(entry).filter((itemID) => gold.get(entry.caseID)?.noise.has(itemID) === true));
+    return shown(entry)
+      .filter((itemID) => expected?.delivered.has(itemID) !== true)
+      .map((itemID) => expected?.relevant.has(itemID) === true);
+  });
+
+  const broughtShown = (entry: RankedTurn) => shown(entry).filter((itemID) => gold.get(entry.caseID)?.delivered.has(itemID) !== true);
+  const noise = ranked.flatMap((entry) => broughtShown(entry).filter((itemID) => gold.get(entry.caseID)?.noise.has(itemID) === true));
+  const misleading = ranked.flatMap((entry) => broughtShown(entry).filter((itemID) => gold.get(entry.caseID)?.misleading.has(itemID) === true));
 
   return {
     goldCases: withGold.length,
@@ -324,8 +453,10 @@ export function scoreServed(ranked: RankedTurn[], gold: Map<string, Gold>): Serv
     emptyCases: empty.length,
     shownOnEmpty: round(average(empty.map((entry) => shown(entry).length))),
     emptyWithAny: round(average(empty.map((entry) => (shown(entry).length > 0 ? 1 : 0)))),
-    precision: round(average(served.map((isGold) => (isGold ? 1 : 0)))),
+    precision: round(average(brought.map((isGold) => (isGold ? 1 : 0)))),
+    alreadyHeld: labelled.reduce((sum, entry) => sum + shown(entry).length, 0) - brought.length,
     noiseServed: noise.length,
+    misleadingServed: misleading.length,
   };
 }
 

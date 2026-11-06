@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { buildGold } from './build-gold.ts';
 
 test('it maps the label references to items and counts a delivered item only at its current version', () => {
@@ -10,11 +11,16 @@ test('it maps the label references to items and counts a delivered item only at 
         recalledSequence: 7,
         recordedAt: 0,
         query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [
-          { itemID: 'item-a', version: 2, isSelf: false, isPinned: false, isLapsed: false, text: 'Packs light' },
-          { itemID: 'item-b', version: 1, isSelf: false, isPinned: false, isLapsed: false, text: 'Flies on Friday' },
+          { itemID: 'item-a', version: 2, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Packs light' },
+          { itemID: 'item-b', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Flies on Friday' },
         ],
         logged: [],
         searchMode: 'hybrid',
@@ -33,12 +39,58 @@ test('it maps the label references to items and counts a delivered item only at 
         {
           relevant: new Set(['item-b', 'item-a']),
           best: 'item-a',
+          messages: new Set<string>(),
           noise: new Set(['item-b']),
+          misleading: new Set<string>(),
           delivered: new Set(['item-b']),
+          pinned: new Set<string>(),
           isLabelled: true,
         },
       ],
     ]),
+  });
+});
+
+test('it keeps a named past message apart from the needed items', () => {
+  const built = buildGold(
+    [
+      {
+        caseID: 't7',
+        stepSequence: 5,
+        recalledSequence: 7,
+        recordedAt: 0,
+        query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [{ sequence: 3, text: 'pack the blue coat', isCut: false, thread: 'conversation', recordedAt: 0 }],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
+        reply: '',
+        earlier: [],
+        candidates: [
+          { itemID: 'item-a', version: 1, isSelf: false, isPinned: false, isLapsed: false, isSensitive: false, text: 'Packs light' },
+        ],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    [{ caseID: 't7', relevant: ['P1'], best: 'P1' }],
+    [{ caseID: 't7', refs: { M1: 'item-a', P1: 'message:3' } }],
+  );
+
+  invariant('gold' in built);
+
+  expect(built.gold.get('t7')).toStrictEqual({
+    relevant: new Set<string>(),
+    messages: new Set(['message:3']),
+    best: 'message:3',
+    noise: new Set<string>(),
+    misleading: new Set<string>(),
+    delivered: new Set<string>(),
+    pinned: new Set<string>(),
+    isLabelled: true,
   });
 });
 
@@ -51,6 +103,11 @@ test('it returns each label reference the key lacks', () => {
         recalledSequence: 7,
         recordedAt: 0,
         query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [],
@@ -76,6 +133,11 @@ test('it returns each labelled case the rebuilt turns lack', () => {
         recalledSequence: 7,
         recordedAt: 0,
         query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
         reply: '',
         earlier: [],
         candidates: [],
@@ -93,4 +155,146 @@ test('it returns each labelled case the rebuilt turns lack', () => {
   );
 
   expect(built).toStrictEqual({ unknownRefs: [], absentCases: ['t70'] });
+});
+
+test('it maps the references the rater called misleading to items', () => {
+  const built = buildGold(
+    [
+      {
+        caseID: 't7',
+        stepSequence: 5,
+        recalledSequence: 7,
+        recordedAt: 0,
+        query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
+        reply: '',
+        earlier: [],
+        candidates: [],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    [{ caseID: 't7', relevant: [], best: null, misleading: ['M2'] }],
+    [{ caseID: 't7', refs: { M1: 'item-a', M2: 'item-b' } }],
+  );
+
+  invariant('gold' in built);
+
+  expect(built.gold.get('t7')?.misleading).toStrictEqual(new Set(['item-b']));
+});
+
+test('it adds the left-out items the store held to the needed items, and counts a pinned one as delivered and pinned', () => {
+  const built = buildGold(
+    [
+      {
+        caseID: 't7',
+        stepSequence: 5,
+        recalledSequence: 7,
+        recordedAt: 0,
+        query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
+        reply: '',
+        earlier: [],
+        candidates: [
+          { itemID: 'item-c', version: 1, isSelf: false, isPinned: true, isLapsed: false, isSensitive: false, text: 'Hates the cold' },
+        ],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    [{ caseID: 't7', relevant: ['M1'], best: 'M1', missing: ['the cold', 'the trip'] }],
+    [{ caseID: 't7', refs: { M1: 'item-a' } }],
+    { missing: [{ caseID: 't7', itemIDs: ['item-c', 'item-d'], unmatched: 0 }], heldCases: new Set(), heldItems: new Map() },
+  );
+
+  invariant('gold' in built);
+
+  expect(built.gold.get('t7')).toStrictEqual({
+    relevant: new Set(['item-a', 'item-c']),
+    messages: new Set<string>(),
+    best: 'item-a',
+    noise: new Set<string>(),
+    misleading: new Set<string>(),
+    delivered: new Set(['item-c']),
+    pinned: new Set(['item-c']),
+    isLabelled: true,
+  });
+});
+
+test('it counts every listed item of a held case as delivered', () => {
+  const built = buildGold(
+    [
+      {
+        caseID: 't7',
+        stepSequence: 5,
+        recalledSequence: 7,
+        recordedAt: 0,
+        query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
+        reply: '',
+        earlier: [],
+        candidates: [],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    [{ caseID: 't7', relevant: [], best: null }],
+    [{ caseID: 't7', refs: { M1: 'item-a', M2: 'item-b', P1: 'message:3' } }],
+    { missing: [], heldCases: new Set(['t7']), heldItems: new Map() },
+  );
+
+  invariant('gold' in built);
+
+  expect(built.gold.get('t7')?.delivered).toStrictEqual(new Set(['item-a', 'item-b']));
+});
+
+test('it counts an item the exchange itself added as delivered', () => {
+  const built = buildGold(
+    [
+      {
+        caseID: 't7',
+        stepSequence: 5,
+        recalledSequence: 7,
+        recordedAt: 0,
+        query: 'what should I pack?',
+        typedQuery: 'what should I pack?',
+        shownMessages: [],
+        isSessionStart: false, sessionNumber: 0,
+        isShredded: false,
+        contextTokens: null,
+        reply: '',
+        earlier: [],
+        candidates: [],
+        logged: [],
+        searchMode: 'hybrid',
+        delivered: [],
+        ratings: [],
+      },
+    ],
+    [{ caseID: 't7', relevant: [], best: null }],
+    [{ caseID: 't7', refs: { M1: 'item-a', M2: 'item-b' } }],
+    { missing: [], heldCases: new Set(), heldItems: new Map([['t7', new Set(['item-b'])]]) },
+  );
+
+  invariant('gold' in built);
+
+  expect(built.gold.get('t7')?.delivered).toStrictEqual(new Set(['item-b']));
 });

@@ -2,8 +2,10 @@
 // store as it stood when per-turn retrieval ran, what that retrieval logged, the versions that the
 // session had already delivered, and any rating of it.
 import { z } from 'zod';
+import { findTypedText } from './find-typed-text.ts';
 import type { PlainExport, PlainRecord, PlainVersion } from './read-plain-export.ts';
 import { readErasableText } from './read-plain-export.ts';
+import { renderShownMessage } from './render-shown-message.ts';
 
 export interface Candidate {
   itemID: string;
@@ -11,7 +13,17 @@ export interface Candidate {
   isSelf: boolean;
   isPinned: boolean;
   isLapsed: boolean;
+  isSensitive: boolean;
   text: string;
+}
+
+// A past message the turn was shown, cut and rendered as the product shows it.
+export interface ShownMessage {
+  sequence: number;
+  thread: string | null;
+  recordedAt: number;
+  text: string;
+  isCut: boolean;
 }
 
 // The fields this rebuild reads from the payloads, in the shapes the product's record codecs give.
@@ -32,7 +44,15 @@ const recalledSchema = z.object({
 
 // Turn records written before the product logged its retrieved items lack the field, and the
 // session-delivery replay reads a missing field as no items.
-const turnEndedSchema = z.object({ retrieved: z.array(itemRefSchema).exactOptional() });
+const turnEndedSchema = z.object({
+  retrieved: z.array(itemRefSchema).exactOptional(),
+  retrievedMessages: z.array(z.int().positive()).exactOptional(),
+  contextSize: z.int().nonnegative().exactOptional(),
+  turns: z.int().exactOptional(),
+  inputTokens: z.int().exactOptional(),
+  cacheReadTokens: z.int().exactOptional(),
+  cacheWriteTokens: z.int().exactOptional(),
+});
 
 const ratedSchema = z.object({
   recalledSequence: z.int(),
@@ -63,9 +83,17 @@ export interface TurnCase {
   searchMode: string | null;
   delivered: string[];
   ratings: Rating[];
+  typedQuery: string;
+  shownMessages: ShownMessage[];
+  isSessionStart: boolean;
+  // How many sessions had opened by the turn's model call, so a change marks a new session.
+  sessionNumber: number;
+  contextTokens: number | null;
+  isShredded: boolean;
 }
 
 const conversationThread = 'conversation';
+
 const earlierExchanges = 2;
 
 // The record kinds the tasks module counts as a task's inbox, and the most records of it that the
@@ -84,14 +112,26 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
   const exchanges: Exchange[] = [];
   const session: SessionFold = { delivered: new Map(), pending: [], isCompacted: false };
   const pinned = new Set<string>();
+  const sensitive = new Map<string, boolean>();
+  const messages = new Map<number, Omit<ShownMessage, 'sequence'>>();
 
   let inbox: PlainRecord[] = [];
   let open: TurnCase | null = null;
   let isAfterRecallTool = false;
   let hasReply = false;
+  let hasEnded = false;
+  let sessionCount = 0;
 
   for (const record of data.records) {
     foldPins(pinned, record);
+    foldSensitive(sensitive, record);
+
+    // Past-message retrieval searches the user's messages in every thread.
+    const shown = record.kind === 'owner_message' ? renderShownMessage(record) : null;
+
+    if (shown !== null) {
+      messages.set(record.sequence, { ...shown, thread: record.thread, recordedAt: Date.parse(record.recordedAt) });
+    }
 
     if (record.thread !== conversationThread) {
       continue;
@@ -123,12 +163,22 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
       open = null;
       isAfterRecallTool = false;
       hasReply = false;
+      hasEnded = false;
+
+      const batch = inbox.slice(0, inboxBatchLimit).filter((entry) => entry.kind === 'owner_message');
 
       // Per-turn retrieval runs only when the batch's joined text holds more than whitespace.
-      const query = inbox
-        .slice(0, inboxBatchLimit)
+      const query = batch
         .flatMap((entry) => {
-          const text = entry.kind === 'owner_message' ? readErasableText(entry) : null;
+          const text = readErasableText(entry);
+
+          return text === null ? [] : [text];
+        })
+        .join('\n');
+
+      const typedQuery = batch
+        .flatMap((entry) => {
+          const text = findRecordTypedText(entry);
 
           return text === null ? [] : [text];
         })
@@ -148,10 +198,24 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
           searchMode: null,
           delivered: [],
           ratings: [],
+          typedQuery,
+          shownMessages: [],
+          isSessionStart: false,
+          sessionNumber: sessionCount,
+          contextTokens: null,
+          isShredded: batch.some((entry) => entry.erasable.status === 'shredded'),
         };
       }
 
       continue;
+    }
+
+    // A session can open on a step with no retrieval, such as an image-only message, so the count
+    // runs whether or not a turn is open.
+    const isSessionRecord = record.kind === 'model.session_opened' || record.kind === 'model.session_rebuilt';
+
+    if (isSessionRecord) {
+      sessionCount += 1;
     }
 
     if (open === null) {
@@ -176,14 +240,29 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
       open.logged = recalled.items;
       open.searchMode = recalled.searchMode ?? null;
       open.delivered = [...session.delivered.keys()];
-      open.candidates = collectCandidates(versionsByItem, itemsByID, pinned, record.sequence, open.recordedAt);
-      open.ratings = [...open.ratings, ...(ratings.get(record.sequence) ?? [])];
+      open.candidates = collectCandidates(versionsByItem, itemsByID, pinned, sensitive, record.sequence, open.recordedAt);
+      open.ratings = ratings.get(record.sequence) ?? [];
     }
 
     // A turn that opens a new session runs its retrieval with nothing delivered yet, and the
     // opening is logged after that retrieval.
-    if (record.kind === 'model.session_opened' || record.kind === 'model.session_rebuilt') {
+    if (isSessionRecord) {
       open.delivered = [];
+      open.isSessionStart = true;
+      open.sessionNumber = sessionCount;
+    }
+
+    // The first turn end of the step records what the model was shown with the retrieval.
+    if (record.kind === 'model.turn_ended' && !hasEnded) {
+      const ended = parsePayload(turnEndedSchema, record);
+
+      hasEnded = true;
+      open.contextTokens = ended.contextSize ?? toCallContext(ended);
+      open.shownMessages = (ended.retrievedMessages ?? []).flatMap((sequence) => {
+        const shown = messages.get(sequence);
+
+        return shown === undefined ? [] : [{ sequence, ...shown }];
+      });
     }
 
     if (record.kind === 'model.reply') {
@@ -193,6 +272,11 @@ export function buildTurnCases(data: PlainExport): TurnCase[] {
 
       if (text !== null) {
         open.reply = open.reply === '' ? text : `${open.reply}\n${text}`;
+      }
+
+      // A shredded reply would read as a blank one, which the turn never sent.
+      if (record.erasable.status === 'shredded') {
+        open.isShredded = true;
       }
     }
   }
@@ -230,6 +314,34 @@ function foldPins(pinned: Set<string>, record: PlainRecord): void {
   }
 }
 
+// Follows the sensitive flag of the memory items projection: a mark record sets or clears it, so a
+// turn before the mark still sees the item. The store writes a mark record for an item flagged at
+// creation too.
+function foldSensitive(sensitive: Map<string, boolean>, record: PlainRecord): void {
+  const itemID = record.payload['itemID'];
+
+  if (record.kind === 'memory.sensitive_marked' && typeof itemID === 'string') {
+    sensitive.set(itemID, record.payload['isSensitive'] === true);
+  }
+}
+
+// Most turn records lack the context size, so the input of the mean model call stands in for it:
+// each call reads the whole context, from the cache or not.
+function toCallContext(ended: z.infer<typeof turnEndedSchema>): number | null {
+  if (ended.turns === undefined || ended.turns < 1 || ended.inputTokens === undefined) {
+    return null;
+  }
+
+  const total = ended.inputTokens + (ended.cacheReadTokens ?? 0) + (ended.cacheWriteTokens ?? 0);
+
+  return Math.round(total / ended.turns);
+}
+
+// The message by the product's own typed-text rule, which leaves what the user typed.
+function findRecordTypedText(record: PlainRecord): string | null {
+  return record.erasable.status === 'readable' ? findTypedText(record.erasable.fields) : null;
+}
+
 function closeTurn(turn: TurnCase, exchanges: Exchange[]): void {
   exchanges.push({ owner: turn.query, reply: turn.reply });
 }
@@ -264,6 +376,7 @@ function collectCandidates(
   versionsByItem: Map<string, PlainVersion[]>,
   itemsByID: Map<string, PlainExport['items'][number]>,
   pinned: Set<string>,
+  sensitive: Map<string, boolean>,
   sequence: number,
   now: number,
 ): Candidate[] {
@@ -286,6 +399,7 @@ function collectCandidates(
       isSelf: (item.subject ?? (item.kind === 'self' ? 'self' : 'owner')) === 'self',
       isPinned: pinned.has(itemID),
       isLapsed: current.until !== null && current.until <= now,
+      isSensitive: sensitive.get(itemID) === true,
       text: current.text,
     });
   }

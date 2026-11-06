@@ -3,10 +3,14 @@
 // directory, rebuilds each turn, and prints counts and scores only, never a message or an item.
 //
 //   bun real-turns.ts stats  --plain <dir>
+//   bun real-turns.ts blocks --plain <dir>
 //   bun real-turns.ts replay --plain <dir> [--names <file>]
 //   bun real-turns.ts sample --plain <dir> --out <file> [--size <n>]
+//   bun real-turns.ts rating-sample --plain <dir> --out <dir> [--size <n>] [--names <file>]
 //   bun real-turns.ts cases  --plain <dir> --labels <file> --key <file> --sample <file> --out <file>
-//   bun real-turns.ts score  --plain <dir> [--labels <file> --key <file> --sample <file>] [--names <file>] [--encoders <a,b>] [--out <file>]
+//   bun real-turns.ts score  --plain <dir> [--labels <file> --key <file> --sample <file>] [--names <file>] [--encoders <a,b>]
+//                            [--exclude <ranges>] [--held <ranges>] [--missing <file>] [--out <file>]
+import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import type { TurnCase } from './real-turns/build-turn-cases.ts';
@@ -14,6 +18,15 @@ import type { BuiltGold, SampleKey } from './real-turns/build-gold.ts';
 import { buildGold } from './real-turns/build-gold.ts';
 import { buildKeyPath } from './real-turns/build-key-path.ts';
 import { buildTurnCases } from './real-turns/build-turn-cases.ts';
+import type { BlockSources } from './real-turns/build-block-tokens.ts';
+import { buildBlockTokens } from './real-turns/build-block-tokens.ts';
+import { collectBlockSources } from './real-turns/collect-block-sources.ts';
+import { collectPreviousPinned } from './real-turns/collect-previous-pinned.ts';
+import { findOutFolderError } from './real-turns/find-out-folder-error.ts';
+import { countWords } from './real-turns/count-words.ts';
+import { collectSessionHeld } from './real-turns/collect-session-held.ts';
+import { buildTurnTokens } from './real-turns/build-turn-tokens.ts';
+import { buildBlockSummary } from './real-turns/build-block-summary.ts';
 import type { EncoderName } from './real-turns/load-turn-encoder.ts';
 import { ENCODERS, loadTurnEncoder } from './real-turns/load-turn-encoder.ts';
 import { buildSample, sampleTurnSchema } from './real-turns/build-sample.ts';
@@ -22,12 +35,27 @@ import { parseEncoderNames } from './real-turns/parse-encoder-names.ts';
 import { readPlainExport } from './real-turns/read-plain-export.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { startMemoryIndex } from '../../modules/memory/src/start-memory-index.ts';
-import { buildRanker, SHIPPED } from './real-turns/rank-turn.ts';
+import { type BackgroundMessage, buildRanker, SHIPPED } from './real-turns/rank-turn.ts';
 import { readJSONLines } from './real-turns/read-json-lines.ts';
-import { buildScoreReport } from './real-turns/build-score-report.ts';
+import { buildTurnReport } from './real-turns/build-turn-report.ts';
 import { pickScoredTurns } from './real-turns/pick-scored-turns.ts';
 import type { Gold, Label } from './real-turns/score-turns.ts';
-import { buildRuns, labelSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
+import { buildRuns, labelSchema, missingMapSchema, runRankings, sampleKeySchema } from './real-turns/score-turns.ts';
+import { buildRatingSampleFiles } from './real-turns/build-rating-sample-files.ts';
+import { pickRatingSamplePlan } from './real-turns/pick-rating-sample-plan.ts';
+import { collectIndexedMessages } from './real-turns/collect-indexed-messages.ts';
+import { parseLabelLines } from './real-turns/parse-label-lines.ts';
+import { readRatedMessages } from './real-turns/read-rated-messages.ts';
+import { collectExchangeItems } from './real-turns/collect-exchange-items.ts';
+import { countMissedItems } from './real-turns/count-missed-items.ts';
+import { isMetaTurn } from './real-turns/is-meta-turn.ts';
+import { isInCaseRanges } from './real-turns/is-in-case-ranges.ts';
+import { parseCaseRangesOption } from './real-turns/parse-case-ranges-option.ts';
+import { pickLabelFiles } from './real-turns/pick-label-files.ts';
+import { pickKeptLabels } from './real-turns/pick-kept-labels.ts';
+import { messageKeyPrefix } from './real-turns/build-rating-sample.ts';
+// @boundaries-ignore a spike imports the code it measures
+import { buildVectorQuery } from '../../modules/memory/src/build-vector-query.ts';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -40,10 +68,22 @@ const { positionals, values } = parseArgs({
     sample: { type: 'string' },
     size: { type: 'string' },
     encoders: { type: 'string' },
+    exclude: { type: 'string' },
+    held: { type: 'string' },
+    missing: { type: 'string' },
   },
 });
 
 const repoRoot = resolve(import.meta.dir, '../..');
+
+// A message of at most this many words counts as short in the reports.
+const shortWords = 3;
+
+// The open ranking's top places join the rating pool, so a needed item that no setting shows still
+// gets rated, and fresh recall has a count of needed items to divide by.
+const poolTopPlaces = 5;
+const turnsPerPart = 15;
+const heldOutSeed = 4716;
 
 const encoderDirs = {
   shipped: join(repoRoot, 'node_modules/.cache/nixie-encoder'),
@@ -54,16 +94,21 @@ if (values.plain === undefined) {
   throw new Error('pass --plain <dir>, the folder an export of the data directory wrote');
 }
 
-const cases = buildTurnCases(await readPlainExport(resolve(values.plain)));
+const exported = await readPlainExport(resolve(values.plain));
+const cases = buildTurnCases(exported);
 const excludedWords = values.names === undefined ? [] : await readNames(values.names);
 const command = positionals[0];
 
 if (command === 'stats') {
   printStats(cases);
+} else if (command === 'blocks') {
+  printBlocks(cases, collectBlockSources(exported));
 } else if (command === 'replay') {
   await runReplay(cases.filter((turn) => turn.searchMode === 'hybrid'));
 } else if (command === 'sample') {
   await writeSample(cases);
+} else if (command === 'rating-sample') {
+  await writeRatingSample(cases);
 } else if (command === 'score') {
   await runScore(cases);
 } else if (command === 'cases') {
@@ -92,6 +137,28 @@ function printStats(turns: TurnCase[]): void {
     meanCandidates: mean(turns.map((turn) => turn.candidates.length)),
     meanQueryChars: mean(turns.map((turn) => turn.query.length)),
   });
+}
+
+// A block stays in the session once given, and a compaction does not reset the count a session
+// holds, so that count is an upper bound.
+function printBlocks(turns: TurnCase[], sources: BlockSources): void {
+  const lines = { ownerName: null, defaultZone: 'UTC' };
+  const previousPinned = collectPreviousPinned(turns, exported.records);
+  const blocks = turns.map((turn, position) => ({ turn, tokens: buildBlockTokens(turn, sources, lines, previousPinned[position] ?? null) }));
+  const sessionHeld = collectSessionHeld(blocks.map(({ turn, tokens }) => buildTurnTokens(turn, tokens, sources, lines)));
+  const counted = blocks.map((entry, position) => ({ ...entry, sessionHeld: sessionHeld[position] ?? 0 }));
+
+  console.log(
+    JSON.stringify(
+      {
+        all: buildBlockSummary(counted),
+        short: buildBlockSummary(counted.filter((entry) => countWords(entry.turn.query) <= shortWords)),
+        hybrid: buildBlockSummary(counted.filter((entry) => entry.turn.searchMode === 'hybrid')),
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 async function runReplay(turns: TurnCase[]): Promise<void> {
@@ -134,8 +201,47 @@ async function runReplay(turns: TurnCase[]): Promise<void> {
 }
 
 async function runScore(turns: TurnCase[]): Promise<void> {
-  const { labels, keys } = values.labels === undefined ? { labels: [], keys: [] } : await readLabels(turns);
-  const gold = getGold(buildGold(turns, labels, keys));
+  const read = values.labels === undefined ? { labels: [], keys: [] } : await readLabels(turns);
+  const picked = pickKeptLabels(read.labels, turns, parseCaseRangesOption(values.exclude));
+  const labels = picked.kept;
+  const keptCases = new Set(labels.map((label) => label.caseID));
+  const keys = read.keys;
+  const pooledByCase = new Map(
+    keys.map((entry) => [entry.caseID, new Set(Object.values(entry.refs).filter((key) => !key.startsWith(messageKeyPrefix)))]),
+  );
+  const heldRanges = parseCaseRangesOption(values.held);
+  const missing = (values.missing === undefined ? [] : await readJSONLines(resolve(values.missing), missingMapSchema)).filter((entry) =>
+    keptCases.has(entry.caseID),
+  );
+  const hybrid = turns.filter((turn) => turn.searchMode === 'hybrid');
+  const exchangeItems = collectExchangeItems(turns, exported.versions);
+  const gold = getGold(
+    buildGold(turns, labels, keys, {
+      missing,
+      heldCases: new Set([...keptCases].filter((caseID) => isInCaseRanges(caseID, heldRanges))),
+      heldItems: exchangeItems,
+    }),
+  );
+
+  console.log({
+    metaTurns: {
+      hybridFlagged: hybrid.filter((turn) => isMetaTurn(turn)).length,
+      labelsInRange: picked.inRange,
+      labelsFlagged: picked.flagged,
+      labelsBoth: picked.both,
+      labelsShredded: picked.shredded,
+      labelsKept: labels.length,
+    },
+    missing: countMissedItems(
+      turns,
+      missing,
+      pooledByCase,
+      new Map([...gold].map(([caseID, expected]) => [caseID, expected.delivered])),
+    ),
+    descriptions: labels.reduce((sum, label) => sum + (label.missing?.length ?? 0), 0),
+    turnsWithDescriptions: labels.filter((label) => (label.missing?.length ?? 0) > 0).length,
+    labelledWithExchangeItems: labels.filter((label) => exchangeItems.has(label.caseID)).length,
+  });
   const encoders = parseEncoderNames(values.encoders ?? 'leaf-ir-q8');
 
   if ('unknown' in encoders) {
@@ -149,17 +255,41 @@ async function runScore(turns: TurnCase[]): Promise<void> {
     runs,
     { loadEncoder: (name) => loadTurnEncoder(name, encoderDirs), startIndex: startMemoryIndex },
     excludedWords,
+    collectBackgroundMessages(hybrid),
   );
-  const scored = buildScoreReport(runs, results, gold);
+  const messageEncoder = await loadTurnEncoder('leaf-ir-q8', encoderDirs);
+  const ratedMessages = await readRatedMessages(chosen, gold, collectIndexedMessages(exported.records), messageEncoder, excludedWords);
 
-  console.log(`turns ${chosen.length}, labelled ${labels.length}\n`);
-  console.log(scored.lines.join('\n'));
+  await messageEncoder.stop();
+
+  const built = buildTurnReport({
+    chosen,
+    turns,
+    hybrid,
+    records: exported.records,
+    gold,
+    labelled: labels.length,
+    runs,
+    results,
+    pooledByCase,
+    ratedMessages,
+    excludedWords,
+    shortWords,
+    heldOutSeed,
+  });
+
+  console.log(built.lines.join('\n'));
 
   if (values.out !== undefined) {
-    const report = { turns: chosen.length, labelled: labels.length, ...scored.report };
-
-    await Bun.write(resolve(values.out), `${JSON.stringify(report, null, 2)}\n`);
+    await Bun.write(resolve(values.out), `${JSON.stringify(built.report, null, 2)}\n`);
   }
+}
+
+// The hub settings score an item against these messages, so the sample and the score pass the same.
+function collectBackgroundMessages(hybrid: TurnCase[]): BackgroundMessage[] {
+  return hybrid
+    .map((turn) => ({ sequence: turn.recalledSequence, text: buildVectorQuery(turn.query, excludedWords) }))
+    .filter((message) => message.text.trim() !== '');
 }
 
 // Reads the labels with the key and the sample they were made from, and drops each label whose
@@ -169,17 +299,31 @@ async function readLabels(turns: TurnCase[]): Promise<{ labels: Label[]; keys: S
     throw new Error('pass --labels <file> with --key <file> and --sample <file>, the sample the labels were made from');
   }
 
-  const [labels, keys, samples] = await Promise.all([
-    readJSONLines(resolve(values.labels), labelSchema),
+  const [text, keys, samples] = await Promise.all([
+    readLabelText(resolve(values.labels)),
     readJSONLines(resolve(values.key), sampleKeySchema),
     readJSONLines(resolve(values.sample), sampleTurnSchema),
   ]);
 
-  const current = pickCurrentLabels(turns, labels, samples);
+  const parsed = parseLabelLines(text, new Set(samples.map((sample) => sample.caseID)));
+  const current = pickCurrentLabels(turns, parsed.labels, samples);
+  const raters = Map.groupBy(current.labels, (label) => label.by ?? 'unnamed');
 
-  console.log({ labels: labels.length, staleLabels: current.stale.length });
+  console.log({
+    labels: parsed.labels.length,
+    dropped: parsed.dropped,
+    staleLabels: current.stale.length,
+    byRater: Object.fromEntries([...raters].map(([rater, group]) => [rater, group.length])),
+  });
 
   return { labels: current.labels, keys };
+}
+
+async function readLabelText(path: string): Promise<string> {
+  const isFolder = (await stat(path)).isDirectory();
+  const files = isFolder ? pickLabelFiles(await readdir(path)).map((name) => join(path, name)) : [path];
+
+  return (await Promise.all(files.map((file) => Bun.file(file).text()))).join('\n');
 }
 
 function getGold(built: BuiltGold): Map<string, Gold> {
@@ -226,6 +370,36 @@ async function writeTestSet(turns: TurnCase[]): Promise<void> {
   await Bun.write(resolve(values.out), `${lines.join('\n')}\n`);
 
   console.log({ cases: lines.length });
+}
+
+// Writes the pooled sample a rater marks, its key, and the same turns as parts to read one at a
+// time.
+async function writeRatingSample(turns: TurnCase[]): Promise<void> {
+  if (values.out === undefined) {
+    throw new Error('pass --out <dir> for the sample, its key and its parts');
+  }
+
+  const folderError = findOutFolderError(values.out, await readdir(resolve(values.out)).catch(() => []));
+
+  if (folderError !== null) {
+    throw new Error(folderError);
+  }
+
+  const plan = pickRatingSamplePlan(turns, Number(values.size ?? '240'), shortWords, buildRuns(['leaf-ir-q8']));
+  const results = await runRankings(
+    plan.chosen.chosen,
+    plan.runs,
+    { loadEncoder: (name) => loadTurnEncoder(name, encoderDirs), startIndex: startMemoryIndex },
+    excludedWords,
+    collectBackgroundMessages(turns.filter((turn) => turn.searchMode === 'hybrid')),
+  );
+  const built = buildRatingSampleFiles(plan, results, { topPlaces: poolTopPlaces, turnsPerPart });
+
+  for (const file of built.files) {
+    await Bun.write(join(resolve(values.out), file.name), file.text);
+  }
+
+  console.log(built.summary);
 }
 
 async function writeSample(turns: TurnCase[]): Promise<void> {

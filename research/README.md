@@ -36,7 +36,7 @@ lists the variable.
 | [installed-web-app-android](installed-web-app-android/) | push, links, sessions, paste spans and sharing in the web app installed from Chrome on Android, with a device checklist             |
 | [mastra-connect](mastra-connect/)                       | a reading spike on Mastra Connect's connector model, with the ideas worth adapting                                                  |
 | [mcp-proxy-pin](mcp-proxy-pin/)                         | hash pinning, effect declarations and output checks on the v2 MCP packages                                                          |
-| [memory-retrieval](memory-retrieval/)                   | keyword search, BM25 and local embeddings, on synthetic memory and on one deployment's own turns                                    |
+| [memory-retrieval](memory-retrieval/)                   | keyword search, BM25 and local embeddings, on synthetic memory and on one deployment's own turns, and the memory each turn brings   |
 | [model-eval](model-eval/)                               | persona, invented memory, tool honesty, cost and latency per model                                                                  |
 | [paste-spans](paste-spans/)                             | which spans of a message you pasted, kept right through edits                                                                       |
 | [policy-rules](policy-rules/)                           | one decision per call whatever the rule order, a stable snapshot hash, and prompts by cause                                         |

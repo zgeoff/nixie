@@ -15,7 +15,7 @@ test('it prints a row a run in each table, compared with the shipped run of its 
     new Map([
       [
         't1',
-        { relevant: new Set(['needed-a']), best: 'needed-a', noise: new Set<string>(), delivered: new Set<string>(), isLabelled: true },
+        { relevant: new Set(['needed-a']), best: 'needed-a', messages: new Set<string>(), noise: new Set<string>(), misleading: new Set<string>(), delivered: new Set<string>(), pinned: new Set<string>(), isLabelled: true },
       ],
     ]),
   );
@@ -26,9 +26,9 @@ test('it prints a row a run in each table, compared with the shipped run of its 
       "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
       "| leaf-ir-q8 hybrid | 1 | 1 | 1 | 1 | 0.5 | 1 | 0 (0 to 0) | 0 (0 to 0) |",
       "",
-      "| Run | Gold cases | Covered recall | Fresh cases | Fresh recall | Empty cases | Shown on empty | Empty with any | Precision | Noise served | Shown per turn | Fresh change | Shown on empty change |",
-      "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
-      "| leaf-ir-q8 served | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 1 | 0 (0 to 0) | 0 (0 to 0) |",
+      "| Run | Gold cases | Covered recall | Fresh cases | Fresh recall | Empty cases | Shown on empty | Empty with any | Precision | Already held | Noise served | Misleading served | Shown per turn | Fresh change | Shown on empty change |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+      "| leaf-ir-q8 served | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 1 | 0 (0 to 0) | 0 (0 to 0) |",
     ]
   `);
 });

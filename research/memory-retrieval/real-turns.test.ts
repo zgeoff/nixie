@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sampleTurnSchema } from './real-turns/build-sample.ts';
@@ -13,6 +13,22 @@ async function setupTest() {
 
   return { dir, cli: join(import.meta.dir, 'real-turns.ts') };
 }
+
+test('the rating-sample command refuses an output folder that holds an earlier part and leaves it as it was', async () => {
+  const ctx = await setupTest();
+  const out = join(ctx.dir, 'out');
+
+  await Promise.all(
+    ['records.jsonl', 'memory-items.jsonl', 'memory-versions.jsonl', 'rating-notes.jsonl'].map((name) => writeFile(join(ctx.dir, name), '')),
+  );
+  await mkdir(out);
+  await writeFile(join(out, 'part-03.md'), '# Part 3\n');
+
+  const run = Bun.spawnSync(['bun', ctx.cli, 'rating-sample', '--plain', ctx.dir, '--out', out]);
+
+  expect({ exitCode: run.exitCode, stderr: run.stderr.toString().includes('pass an empty or new --out folder') }).toStrictEqual({ exitCode: 1, stderr: true });
+  expect({ names: await readdir(out), part: await readFile(join(out, 'part-03.md'), 'utf8') }).toStrictEqual({ names: ['part-03.md'], part: '# Part 3\n' });
+});
 
 test('the sample command writes each chosen turn and a key whose references match its items', async () => {
   const ctx = await setupTest();
