@@ -1,15 +1,11 @@
 import { expect, test } from 'bun:test';
 import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
+import { readRecords } from '@heynixie/log';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
-import type { APITables } from './types';
 
-async function setupTest() {
-  const api = await startTestAPI();
-
-  const db = api.writer.db.$extendTables<APITables & { records: { kind: string } }>();
-
-  return { ...api, db };
+function setupTest() {
+  return startTestAPI();
 }
 
 test.each([
@@ -39,7 +35,7 @@ test.each([
 
 test('it writes nothing for a call without the client header', async () => {
   const ctx = await setupTest();
-  const before = await ctx.db.selectFrom('records').select('kind').execute();
+  const before = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   await fetch(`${ctx.url}/rpc/sessions/list`, {
     method: 'POST',
@@ -47,9 +43,11 @@ test('it writes nothing for a call without the client header', async () => {
     body: '{}',
   });
 
-  const after = await ctx.db.selectFrom('records').select('kind').execute();
+  const after = await readRecords(ctx.context.log, { afterSequence: 0 });
 
-  expect(after).toStrictEqual(before);
+  expect(after.map((read) => read.record.kind)).toStrictEqual(
+    before.map((read) => read.record.kind),
+  );
 });
 
 test('it takes the session from the cookie when no bearer token comes', async () => {

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { APITables } from './types';
@@ -8,9 +9,7 @@ import { writeSessionRevocation } from './write-session-revocation';
 async function setupTest() {
   const api = await startTestAPI();
 
-  const db = api.writer.db.$extendTables<
-    APITables & { records: { kind: string; payload: string; key_id: string | null } }
-  >();
+  const db = api.writer.db.$extendTables<APITables>();
 
   return { ...api, db };
 }
@@ -96,11 +95,10 @@ test('it treats a call with no token as signed out and writes no refusal', async
   const ctx = await setupTest();
   const caller = await verifySessionToken(ctx.context, undefined);
 
-  const refusals = await ctx.db
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', '=', 'identity.refused')
-    .execute();
+  const refusals = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['identity.refused'],
+  });
 
   expect(caller).toBeNull();
   expect(refusals).toStrictEqual([]);
@@ -111,21 +109,13 @@ test('it writes a refusal for an unknown token under one shared ID, never the to
 
   await verifySessionToken(ctx.context, 'a-token-nixie-never-issued');
 
-  const refusals = await ctx.db
-    .selectFrom('records')
-    .select(['payload', 'key_id'])
-    .where('kind', '=', 'identity.refused')
-    .execute();
+  const refusals = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['identity.refused'],
+  });
 
-  expect(refusals).toStrictEqual([
-    {
-      payload: JSON.stringify({
-        channel: 'client',
-        externalID: 'unknown-token',
-        refusedAt: 1_000_000,
-      }),
-      key_id: null,
-    },
+  expect(refusals.map((read) => [read.record.payload, read.record.erasable.status])).toStrictEqual([
+    [{ channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 }, 'none'],
   ]);
 });
 
@@ -145,20 +135,13 @@ test('it writes a refusal for a revoked session under its session ID', async () 
 
   await verifySessionToken(ctx.context, session.token);
 
-  const refusals = await ctx.db
-    .selectFrom('records')
-    .select('payload')
-    .where('kind', '=', 'identity.refused')
-    .execute();
+  const refusals = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['identity.refused'],
+  });
 
-  expect(refusals).toStrictEqual([
-    {
-      payload: JSON.stringify({
-        channel: 'client',
-        externalID: session.sessionID,
-        refusedAt: 1_000_000,
-      }),
-    },
+  expect(refusals.map((read) => read.record.payload)).toStrictEqual([
+    { channel: 'client', externalID: session.sessionID, refusedAt: 1_000_000 },
   ]);
 });
 
@@ -179,20 +162,14 @@ test('it writes one refusal an hour for every token nixie never issued', async (
 
   await verifySessionToken(ctx.context, 'a-last-random-token');
 
-  const refusals = await ctx.db
-    .selectFrom('records')
-    .select('payload')
-    .where('kind', '=', 'identity.refused')
-    .orderBy('sequence')
-    .execute();
+  const refusals = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['identity.refused'],
+  });
 
-  expect(refusals.map((refusal) => refusal.payload)).toStrictEqual([
-    JSON.stringify({ channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 }),
-    JSON.stringify({
-      channel: 'client',
-      externalID: 'unknown-token',
-      refusedAt: 1_000_000 + 60 * 60 * 1000,
-    }),
+  expect(refusals.map((read) => read.record.payload)).toStrictEqual([
+    { channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 },
+    { channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 + 60 * 60 * 1000 },
   ]);
 });
 
@@ -213,14 +190,13 @@ test('it refuses a revoked session and an unknown token each under its own ID', 
   await verifySessionToken(ctx.context, 'a-token-nixie-never-issued');
   await verifySessionToken(ctx.context, session.token);
 
-  const refusals = await ctx.db
-    .selectFrom('records')
-    .select('payload')
-    .where('kind', '=', 'identity.refused')
-    .execute();
+  const refusals = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['identity.refused'],
+  });
 
-  expect(refusals.map((refusal) => refusal.payload)).toStrictEqual([
-    JSON.stringify({ channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 }),
-    JSON.stringify({ channel: 'client', externalID: session.sessionID, refusedAt: 1_000_000 }),
+  expect(refusals.map((read) => read.record.payload)).toStrictEqual([
+    { channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 },
+    { channel: 'client', externalID: session.sessionID, refusedAt: 1_000_000 },
   ]);
 });

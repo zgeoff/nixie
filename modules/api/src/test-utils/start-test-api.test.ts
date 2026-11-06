@@ -2,6 +2,8 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { clientHeaderName } from '@heynixie/contract';
 import { writeRecords } from '@heynixie/log';
+import { readWriterStatus } from '@heynixie/memory';
+import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { buildTestClient } from './build-test-client';
 import { createDeviceSession } from './create-device-session';
 import { startTestAPI } from './start-test-api';
@@ -80,12 +82,7 @@ test('it serves the memory store the test sets', async () => {
 
 test('it starts with no task and the test clock', async () => {
   const ctx = await startTestAPI();
-
-  const tasks = await ctx.writer.db
-    .$extendTables<{ tasks: { task_id: string } }>()
-    .selectFrom('tasks')
-    .select('task_id')
-    .execute();
+  const tasks = await readTestTasks(ctx.context);
 
   expect(tasks).toStrictEqual([]);
   expect(ctx.clock.now()).toBe(1_000_000);
@@ -125,13 +122,9 @@ test("it folds the memory writer's records into its row", async () => {
     },
   ]);
 
-  const row = await ctx.writer.db
-    .$extendTables<{ memory_writer: { writer_id: string; start_sequence: number } }>()
-    .selectFrom('memory_writer')
-    .select(['writer_id', 'start_sequence'])
-    .executeTakeFirst();
+  const status = await readWriterStatus(ctx.context.log);
 
-  expect(row).toStrictEqual({ writer_id: 'memory-writer', start_sequence: 3 });
+  expect(status.startSequence).toBe(3);
 });
 
 test('it stops the server and removes the data directory once the test finishes', async () => {
