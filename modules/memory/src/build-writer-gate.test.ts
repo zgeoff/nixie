@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
+import { readRecordKeys, writeRecords } from '@heynixie/log';
+import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -584,14 +585,9 @@ test('it removes the key of a new item whose proposal never published', async ()
 
   await memory.store.writes.batch.release([verdict]);
 
-  const keys = await memory.writer.keys
-    .$extendTables<{ record_keys: { key_id: string } }>()
-    .selectFrom('record_keys')
-    .select('key_id')
-    .where('key_id', '=', itemID)
-    .execute();
+  const keys = await readRecordKeys(memory.log, [itemID]);
 
-  expect(keys).toStrictEqual([]);
+  expect([...keys.keys()]).toStrictEqual([]);
 });
 
 test('it never removes the key of a proposal that published', async () => {
@@ -715,11 +711,7 @@ test('it removes the key of a new item whose proposal record could not be built'
 
   await checking.catch(() => {});
 
-  const keys = await memory.writer.keys
-    .$extendTables<{ record_keys: { key_id: string } }>()
-    .selectFrom('record_keys')
-    .select('key_id')
-    .execute();
+  const keys = await readTestRecordKeyRows(memory.log);
 
   expect(checking).rejects.toThrow('the definitions snapshot is unreadable');
   expect(keys).toHaveLength(1);

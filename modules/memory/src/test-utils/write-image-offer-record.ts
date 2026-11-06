@@ -1,5 +1,6 @@
-import type { Log, LogTables } from '@heynixie/log';
+import type { Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
+import { readTestRecordRows } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 
 export interface ImageOfferRecord {
@@ -33,14 +34,11 @@ export async function writeImageOfferRecord(
 
   invariant(record, 'the log wrote no memory.image_offered record');
 
-  const row = await log.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('key_id')
-    .where('sequence', '=', record.sequence)
-    .executeTakeFirstOrThrow();
+  const rows = await readTestRecordRows(log);
 
-  invariant(row.key_id !== null, 'the offer record has no key');
+  const keyID = rows.find((row) => row.sequence === record.sequence)?.key_id;
 
-  return { sequence: record.sequence, keyID: row.key_id };
+  invariant(typeof keyID === 'string', 'the offer record has no key');
+
+  return { sequence: record.sequence, keyID };
 }

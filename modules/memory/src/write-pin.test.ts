@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
-import type { LogTables } from '@heynixie/log';
-import { writeRecordsInTransaction } from '@heynixie/log';
+import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
@@ -383,15 +382,12 @@ test("it commits the caller's own write in the pin's transaction", async () => {
     },
   });
 
-  const kinds = await ctx.memory.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', 'in', ['owner_message', 'memory.pinned'])
-    .orderBy('sequence')
-    .execute();
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['owner_message', 'memory.pinned'],
+  });
 
-  expect(kinds).toStrictEqual([{ kind: 'owner_message' }, { kind: 'memory.pinned' }]);
+  expect(records.map((read) => read.record.kind)).toStrictEqual(['owner_message', 'memory.pinned']);
 });
 
 test("it rolls back the caller's own write when the pin fails", async () => {
@@ -410,12 +406,10 @@ test("it rolls back the caller's own write when the pin fails", async () => {
 
   await pin.catch(() => {});
 
-  const checked = await ctx.memory.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', '=', 'owner_message')
-    .execute();
+  const checked = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['owner_message'],
+  });
 
   expect(pin).rejects.toMatchObject({ code: 'NOT_FOUND' });
   expect(checked).toStrictEqual([]);

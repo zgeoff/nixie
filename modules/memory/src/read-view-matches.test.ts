@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { buildStubEncoder } from './test-utils/build-stub-encoder';
 import { startTestMemory } from './test-utils/start-test-memory';
 
@@ -106,12 +107,10 @@ test('it writes no recall record for a search', async () => {
 
   await memory.store.view.readMatchingItems('cello');
 
-  const recalls = await memory.writer.db
-    .$extendTables<{ records: { kind: string } }>()
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', '=', 'memory.recalled')
-    .execute();
+  const recalls = await readRecords(memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
 
   expect(recalls).toStrictEqual([]);
 });

@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
-import type { LogTables } from '@heynixie/log';
-import { writeRecordsInTransaction } from '@heynixie/log';
+import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -249,12 +248,10 @@ test("it rolls back the caller's own write when the undo is stale", async () => 
 
   await undo.catch(() => {});
 
-  const written = await ctx.memory.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', '=', 'owner_message')
-    .execute();
+  const written = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['owner_message'],
+  });
 
   expect(undo).rejects.toMatchObject({ code: 'STALE_VERSION' });
   expect(written).toStrictEqual([]);
@@ -278,14 +275,12 @@ test("it commits the caller's own write with the undo", async () => {
     },
   });
 
-  const written = await ctx.memory.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('kind')
-    .where('kind', '=', 'owner_message')
-    .execute();
+  const written = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['owner_message'],
+  });
 
-  expect(written).toStrictEqual([{ kind: 'owner_message' }]);
+  expect(written.map((read) => read.record.kind)).toStrictEqual(['owner_message']);
 });
 
 test('it undoes a retirement by making the item active again', async () => {

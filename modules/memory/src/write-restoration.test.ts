@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
-import type { LogTables } from '@heynixie/log';
-import { writeRecordsInTransaction } from '@heynixie/log';
+import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -120,15 +119,12 @@ test("it commits the caller's own write in the restore's transaction", async () 
     },
   });
 
-  const kinds = await ctx.memory.writer.db
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select('kind')
-    .where('sequence', '>', 2)
-    .orderBy('sequence')
-    .execute();
+  const records = await readRecords(ctx.memory.log, { afterSequence: 2 });
 
-  expect(kinds).toStrictEqual([{ kind: 'owner_message' }, { kind: 'memory.version_added' }]);
+  expect(records.map((read) => read.record.kind)).toStrictEqual([
+    'owner_message',
+    'memory.version_added',
+  ]);
 });
 
 test('it clears the end time of a lapsed item it restores, so the next sweep leaves it active', async () => {

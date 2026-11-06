@@ -1,7 +1,8 @@
 import { expect, mock, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { readRecords } from '@heynixie/log';
+import { readRecordKeys, readRecords } from '@heynixie/log';
+import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { buildStubEncoder } from './test-utils/build-stub-encoder';
 import { createMemoryItem } from './test-utils/create-memory-item';
@@ -22,12 +23,9 @@ test('it deletes the item key and leaves no copy of it in the key store files', 
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const stored = await ctx.memory.writer.keys
-    .$extendTables<{ record_keys: { key_id: string; wrapped: Uint8Array } }>()
-    .selectFrom('record_keys')
-    .select('wrapped')
-    .where('key_id', '=', item.itemID)
-    .executeTakeFirst();
+  const keys = await readTestRecordKeyRows(ctx.memory.log);
+
+  const stored = keys.find((key) => key.key_id === item.itemID);
 
   invariant(stored);
 
@@ -36,19 +34,14 @@ test('it deletes the item key and leaves no copy of it in the key store files', 
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const remaining = await ctx.memory.writer.keys
-    .$extendTables<{ record_keys: { key_id: string } }>()
-    .selectFrom('record_keys')
-    .select('key_id')
-    .where('key_id', '=', item.itemID)
-    .execute();
+  const remaining = await readRecordKeys(ctx.memory.log, [item.itemID]);
 
   const [keysFile, keysLog] = await Promise.all([
     readFile(join(ctx.memory.dataDir, 'keys.db')),
     readFile(join(ctx.memory.dataDir, 'keys.db-wal')),
   ]);
 
-  expect(remaining).toStrictEqual([]);
+  expect([...remaining.keys()]).toStrictEqual([]);
   expect(keysFile.includes(stored.wrapped)).toBeFalse();
   expect(keysLog.byteLength).toBe(0);
 });

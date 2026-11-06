@@ -1,6 +1,10 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { removeTestRecordKey } from '@heynixie/log/test-utils';
+import {
+  readTestRecordKeyRows,
+  readTestRecordRows,
+  removeTestRecordKey,
+} from '@heynixie/log/test-utils';
 import { startTestSessionHost } from '@heynixie/sessions/test-utils';
 import invariant from 'tiny-invariant';
 import { memoryProjections } from './memory-projections';
@@ -412,23 +416,11 @@ test('it leaves no key behind for the proposals of a batch that split', async ()
   await ctx.memory.run();
 
   const pending = await ctx.memory.store.proposals.listPending();
-
-  const keys = await ctx.memory.context.log.writer.keys
-    .$extendTables<{ record_keys: { key_id: string } }>()
-    .selectFrom('record_keys')
-    .select('key_id')
-    .execute();
-
-  const recordKeys = await ctx.memory.context.log.writer.db
-    .$extendTables<{ records: { key_id: string | null } }>()
-    .selectFrom('records')
-    .select('key_id')
-    .distinct()
-    .where('key_id', 'is not', null)
-    .execute();
+  const keys = await readTestRecordKeyRows(ctx.memory.context.log);
+  const records = await readTestRecordRows(ctx.memory.context.log);
 
   expect(keys.map((key) => key.key_id)).toIncludeSameMembers([
-    ...recordKeys.map((key) => key.key_id),
+    ...new Set(records.flatMap((record) => (record.key_id === null ? [] : [record.key_id]))),
     ...pending.map((proposal) => proposal.itemID),
   ]);
 });
