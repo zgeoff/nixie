@@ -8,12 +8,16 @@ function setupTest() {
 }
 
 test.each(['nixie.db', 'keys.db'] as const)(
-  'it names the WAL file that holds the commits of %s not yet checkpointed',
+  'it names the write-ahead log file that SQLite keeps beside %s',
   async (file) => {
     const ctx = await setupTest();
 
-    const wal = Bun.file(getWALPath(getDataFilePath(ctx.dataDir, file)));
+    const header = await Bun.file(getWALPath(getDataFilePath(ctx.dataDir, file)))
+      .slice(0, 4)
+      .arrayBuffer();
 
-    expect(wal.size).toBeGreaterThan(0);
+    // SQLite starts a WAL file with one of these magic numbers, and a database file with the text
+    // "SQLite format 3", so the header tells the WAL from the database it belongs to.
+    expect(new DataView(header).getUint32(0)).toBeOneOf([0x37_7f_06_82, 0x37_7f_06_83]);
   },
 );
