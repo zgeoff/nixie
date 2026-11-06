@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { getSandboxRootDir } from './get-sandbox-root-dir';
 import { startSpawnedNixie } from './test-utils/start-spawned-nixie';
 
@@ -14,12 +15,15 @@ test('it names the folder that holds a folder for each sandbox of the process do
 
   await server.ready;
 
-  const ids = await readdir(getSandboxRootDir(ctx.dataDir));
+  const root = getSandboxRootDir(ctx.dataDir);
+
+  const ids = await readdir(root);
 
   server.signal('SIGTERM');
 
   const run = await server.waitForExit();
 
+  expect(root).toBe(join(ctx.dataDir, 'sandboxes'));
   expect(ids.length).toBeGreaterThan(0);
 
   expect(
