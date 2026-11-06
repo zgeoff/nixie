@@ -435,10 +435,6 @@
         "@heynixie/wire": "workspace:*",
         "zod": "catalog:",
       },
-      "devDependencies": {
-        "kysely": "catalog:",
-        "tiny-invariant": "catalog:",
-      },
     },
     "modules/connectors": {
       "name": "@heynixie/connectors",
@@ -540,8 +536,6 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
-        "kysely": "catalog:",
-        "tiny-invariant": "catalog:",
       },
     },
     "modules/ops": {
