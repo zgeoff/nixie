@@ -24,7 +24,7 @@ test('it names the directory that the set reader lists as the set of a sequence'
   expect(sets).toStrictEqual([
     {
       sequence: 42,
-      directory: getBackupSetDir(ctx.stagingDir, 42),
+      directory: join(ctx.stagingDir, '000000000042'),
       hasMarker: false,
       hasReceipt: false,
     },
