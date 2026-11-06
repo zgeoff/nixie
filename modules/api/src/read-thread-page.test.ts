@@ -44,6 +44,67 @@ test('it reads the page before a sequence, newest last', async () => {
   expect(page?.records.map((record) => record.message?.text)).toStrictEqual(['two']);
 });
 
+test('it reaches back to the call of a tool result that the page holds without it', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const sent = await writeOwnerMessage(ctx.context, laptop.caller, {
+    clientMessageId: crypto.randomUUID(),
+    thread: 'conversation',
+    text: 'Ask the garden plan where the beans go.',
+    spans: [{ start: 0, end: 39, source: 'typed' }],
+  });
+
+  invariant(sent.status === 'written');
+
+  const [called] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        tool: 'task.message',
+        model: 'test-model',
+        profile: 'test',
+      },
+      erasable: { input: { to: 'k3vq8m2xpa', kind: 'question', body: 'Where do the beans go?' } },
+    },
+  ]);
+
+  invariant(called);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      parent: called.sequence,
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        outcome: 'result',
+        actionID: null,
+        sources: {},
+      },
+      erasable: { result: { messageID: 'r4t8w2qz6n', woke: true, hop: 1 } },
+    },
+  ]);
+
+  const page = await readThreadPage(ctx.context, { thread: 'conversation', limit: 1 });
+
+  expect({
+    calls: page?.records.map((record) => record.toolCall?.callID),
+    hasEarlier: page?.hasEarlier,
+  }).toStrictEqual({ calls: ['call-1', 'call-1'], hasEarlier: true });
+});
+
 test('it shows a failed tool result as cancelled when a stop cancelled its action', async () => {
   const ctx = await setupTest();
 

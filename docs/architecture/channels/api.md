@@ -160,7 +160,9 @@ with the same fields, whatever its place in the list, so a task's page shows a t
 
 A conversation read returns the newest page of a thread before a sequence, and the log sequence it
 read at. The page holds no record past that sequence, so a client that follows the log from it
-misses no record and repeats none.
+misses no record and repeats none. A page that holds a tool result also holds the call it answers,
+even past the page's size, because the client reads what a call did, such as the receiver and text
+of a task message, from the call and its result together.
 
 The live stream follows the event log by sequence through a log subscription, and each event's ID is
 its record's sequence. A client that reconnects sends the last event ID it received, and the stream

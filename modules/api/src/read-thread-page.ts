@@ -79,24 +79,48 @@ interface PageWindow {
   readonly hasEarlier: boolean;
 }
 
+// A page that starts between a tool call and its result would show the result with no call, so the
+// page reaches back to the call of each result it holds.
 async function readPageWindow(context: APIContext, bounds: PageBounds): Promise<PageWindow> {
-  const newest = await context.log.writer.db
-    .$extendTables<APITables>()
+  const db = context.log.writer.db.$extendTables<APITables>();
+
+  const newest = await db
     .selectFrom('records')
     .select('sequence')
     .where('thread', '=', bounds.thread)
     .where('sequence', '<', bounds.before)
     .orderBy('sequence', 'desc')
-    .limit(bounds.limit + 1)
+    .limit(bounds.limit)
     .execute();
 
-  const count = Math.min(bounds.limit, newest.length);
+  const oldest = newest.at(-1)?.sequence;
 
-  return {
-    afterSequence: (newest.at(count - 1)?.sequence ?? 1) - 1,
-    count,
-    hasEarlier: newest.length > bounds.limit,
-  };
+  if (oldest === undefined) {
+    return { afterSequence: 0, count: 0, hasEarlier: false };
+  }
+
+  const reach = await db
+    .selectFrom('records')
+    .select((eb) => eb.fn.min('parent').as('parent'))
+    .where('thread', '=', bounds.thread)
+    .where('kind', '=', 'tool_result')
+    .where('sequence', '>=', oldest)
+    .where('sequence', '<', bounds.before)
+    .executeTakeFirst();
+
+  const first = Math.min(oldest, reach?.parent ?? oldest);
+
+  const counts = await db
+    .selectFrom('records')
+    .select((eb) => [
+      eb.fn.countAll<number>().filterWhere('sequence', '>=', first).as('inPage'),
+      eb.fn.countAll<number>().filterWhere('sequence', '<', first).as('earlier'),
+    ])
+    .where('thread', '=', bounds.thread)
+    .where('sequence', '<', bounds.before)
+    .executeTakeFirstOrThrow();
+
+  return { afterSequence: first - 1, count: counts.inPage, hasEarlier: counts.earlier > 0 };
 }
 
 const stepEndKinds: readonly RecordKind[] = [
