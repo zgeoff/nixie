@@ -3,8 +3,8 @@ name: project-testing
 description:
   "nixie's test facts, the shared testing rules it replaces for the model API lane and the MSW
   server, and its own test topics: the unit run's prerequisites, the live lanes, the test build,
-  where a harness lives, the browser lane, the e2e and restic lanes and the nixie harnesses. Load it
-  beside testing before you design, write, run or review a nixie test."
+  where a harness lives, the browser lane, the e2e, journeys and restic lanes and the nixie
+  harnesses. Load it beside testing before you design, write, run or review a nixie test."
 metadata:
   kind: rule-set
 ---
@@ -12,9 +12,10 @@ metadata:
 # nixie testing
 
 Follow the shared `testing` skill, with nixie's additions and departures below. Before you call a
-test done, run it with the command in [Runs](#runs) for its file. Watch for the costly traps. A bare
-`bun test` skips the memory encoder's suites, and builds a missing server bundle inside a test, past
-its time limit. A real request to a host that the MSW server refuses fails with `Failed to fetch`.
+test done, run it with the command in [Runs](#runs) for its file. Watch for the costly traps. A
+`bun test` with no `bun run models` and `bun run test:bundles` before it skips the memory encoder's
+suites, and a test then builds a missing server bundle itself, past its time limit. A real request
+to a host that the MSW server refuses fails with `Failed to fetch`.
 
 ## Key rules
 
@@ -31,8 +32,9 @@ Each line links the section that explains it.
 
 - [The browser lane](./references/browser-lane.md): read it before you write, run or debug a
   `*.browser.test.ts` suite.
-- [The e2e and restic lanes](./references/e2e-and-restic-lanes.md): read it before you write, run or
-  debug a suite under `e2e/`, including a `*.restic.test.ts` suite.
+- [The e2e, journeys and restic lanes](./references/e2e-and-restic-lanes.md): read it before you
+  write, run or debug a suite under `e2e/`, including a `*.restic.test.ts` suite and a journey in
+  `e2e/journeys/`.
 - [The nixie harnesses](./references/nixie-harnesses.md): read it before you start nixie in a test,
   in process or as a child process, or write a crash suite that arms fault points.
 
@@ -42,16 +44,17 @@ Find a test file's command in this table by the file's suffix or folder. A file 
 other row belongs to the unit run. Each other row is a lane, with its own command and its own limit
 per test.
 
-| Files                               | Command                                            | Limit per test | In CI           |
-| ----------------------------------- | -------------------------------------------------- | -------------- | --------------- |
-| any other `*.test.ts`               | `bun run test`                                     | 5 s            | yes             |
-| `*.browser.test.ts`                 | `bun run test:browser`                             | 10 s           | yes             |
-| `*.agent-sdk.test.ts`               | `bun run test:agent-sdk`                           | 5 s            | yes             |
-| `e2e/**`, except `*.restic.test.ts` | `bun run test:e2e`                                 | 15 s           | yes             |
-| `*.e2e.test.ts` outside `e2e/`      | `bun run test:e2e`                                 | 15 s           | yes             |
-| `e2e/**/*.restic.test.ts`           | `bun run test:restic`                              | 40 s           | in `images.yml` |
-| `*.imp.test.ts`                     | `bun run test:imp` in the package                  | 14 s           | no              |
-| `*.model-api.test.ts`               | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract` | 120 s          | no              |
+| Files                                               | Command                                            | Limit per test | In CI             |
+| --------------------------------------------------- | -------------------------------------------------- | -------------- | ----------------- |
+| any other `*.test.ts`                               | `bun run test`                                     | 5 s            | yes               |
+| `*.browser.test.ts`                                 | `bun run test:browser`                             | 10 s           | yes               |
+| `*.agent-sdk.test.ts`                               | `bun run test:agent-sdk`                           | 5 s            | yes               |
+| `e2e/**`, except the journeys and the restic suites | `bun run test:e2e`                                 | 15 s           | yes               |
+| `e2e/journeys/*.test.ts`                            | `bun run test:journeys`                            | 15 s           | in `journeys.yml` |
+| `*.e2e.test.ts` outside `e2e/`                      | `bun run test:e2e`                                 | 15 s           | yes               |
+| `e2e/**/*.restic.test.ts`                           | `bun run test:restic`                              | 40 s           | in `images.yml`   |
+| `*.imp.test.ts`                                     | `bun run test:imp` in the package                  | 14 s           | no                |
+| `*.model-api.test.ts`                               | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract` | 120 s          | no                |
 
 - Run the unit tests through `bun run test`. It runs `bun run models`, which fetches the memory
   encoder's model files, and `bun run test:bundles`, which builds the server bundles that the server
@@ -61,7 +64,7 @@ per test.
 - Run the `*.imp.test.ts` suites by hand, as the
   [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) describes. Each needs a
   real impd, the daemon that runs nixie's sandboxes, on a host with `/dev/kvm`. They skip until the
-  runbook's variables are set, and a skipped run does not count as a run.
+  runbook's variables are set, and a suite that skips does not count as run.
 - Test the imp adapter in the unit run instead, on `startTestImpd` from `@impz/testing`. It runs
   impd's own API on stand-ins for the VMs and the host, so the test needs no `/dev/kvm`.
 - Set no time limit in a test. The one exception is a model API test: give it about twice its time
