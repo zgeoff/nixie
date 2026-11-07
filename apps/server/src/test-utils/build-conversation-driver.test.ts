@@ -116,12 +116,17 @@ test('it retries a failed step once its backoff passed, and returns the turn the
 
   const retry = await conversation.retryForStep();
 
-  expect({
-    turns: retry.turns.map((turn) => ({ type: turn.type, text: turn.input[0]?.text })),
-    summaries: retry.summaries,
-    error: retry.error,
-  }).toStrictEqual({
-    turns: [{ type: 'turn', text: expect.toEndWith('How many sugars?') }],
+  expect(retry).toStrictEqual({
+    turns: [
+      {
+        type: 'turn',
+        profile: expect.any(Object),
+        tools: expect.any(Object),
+        resume: null,
+        systemPrompt: expect.toInclude('You are nixie.'),
+        input: [{ uuid: expect.any(String), text: expect.toEndWith('How many sugars?') }],
+      },
+    ],
     summaries: [],
     error: null,
   });
