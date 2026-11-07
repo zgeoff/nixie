@@ -243,11 +243,11 @@ repo it names and its revision to both hashes. A persona, a snapshot or a skill 
 keeps its first row. The definitions in force are the newest seed, and every record takes its
 snapshot hash from it.
 
-| Result    | When                                                                                                                                         | Writes                                            |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Seeded    | The source, repo, revision, content hash or snapshot hash differs from the last, or a written skill or a runtime rule change becomes adopted | The rows                                          |
-| Unchanged | The newest seed holds the same source, repo, revision and both hashes, and no written skill or runtime rule change becomes adopted           | Only the record of an adopted skill that lacks it |
-| Refused   | The snapshot failed to read, parse or validate                                                                                               | Nothing                                           |
+| Result    | When                                                                                                                                                                                          | Writes                                            |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Seeded    | The source, repo, revision, content hash or snapshot hash differs from the last, a written skill or a runtime rule change becomes adopted, or a rule change proposal is withdrawn or proposed | The rows                                          |
+| Unchanged | The newest seed holds the same source, repo, revision and both hashes, no written skill or runtime rule change becomes adopted, and no rule change proposal is withdrawn or proposed          | Only the record of an adopted skill that lacks it |
+| Refused   | The snapshot failed to read, parse or validate                                                                                                                                                | Nothing                                           |
 
 A refused seed comes back as a value with its error and the definitions still in force, never as a
 throw, so the caller reports the refusal while the last good seed keeps serving. A half-applied seed

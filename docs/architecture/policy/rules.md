@@ -119,8 +119,8 @@ file follows the same check, so its denies and asks apply and its allows wait fo
 a later seed, including a seed of the definitions in force, holds other widenings, it withdraws the
 pending proposal and proposes again. An approval applies each widened version as seeded. After a
 rejection or a lapse, the seeded version stays in force, and nixie asks again only once the set of
-widenings changes. A log reset removes the proposal records, so the first seed after it proposes
-again.
+widenings changes. An approved set held again means the definitions narrowed it since, so nixie asks
+again at once. A log reset removes the proposal records, so the first seed after it proposes again.
 
 A runtime change stays in force over the seeded version and the definitions' version. It records the
 definitions' version that it changed, its base, so the store tells whether the definitions moved

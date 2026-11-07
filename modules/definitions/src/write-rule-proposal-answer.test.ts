@@ -280,3 +280,35 @@ test('it asks again about a widening you rejected only once the definitions chan
 
   expect(proposals.map((entry) => entry.outcome)).toStrictEqual(['rejected', null]);
 });
+
+test('it asks again about a widening you approved once the definitions narrow it and widen it back', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'rules', 'web.yaml'),
+    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
+  );
+
+  await ctx.seed();
+
+  const proposalID = await ctx.readProposalID();
+
+  await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
+  await writeFile(join(ctx.root, 'rules', 'web.yaml'), '# No web rules for now.\n');
+
+  await ctx.seed();
+
+  await writeFile(
+    join(ctx.root, 'rules', 'web.yaml'),
+    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
+  );
+
+  await ctx.seed();
+
+  const proposals = await readRuleProposals(ctx.log.writer.db);
+
+  expect(proposals.map((entry) => entry.outcome)).toStrictEqual(['approved', null]);
+});

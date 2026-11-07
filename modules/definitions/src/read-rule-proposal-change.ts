@@ -6,9 +6,8 @@ import type { RuleEdit } from './build-rule-seed-plan';
 import { readRuleProposals } from './read-rule-proposals';
 import type { RuleProposalChange } from './write-seed';
 
-// A seed gathers every widening into one proposal, so a pending proposal for other widenings gives
-// way to the new one. A set of widenings you answered, or left to lapse, waits for the definitions
-// to change it before nixie asks again.
+// A pending proposal gives way to a new set of widenings. A set you rejected or left to lapse waits
+// for the definitions to change it. An approved set held again was narrowed since, so it asks again.
 export async function readRuleProposalChange(
   db: Kysely<unknown>,
   held: readonly RuleEdit[],
@@ -28,7 +27,9 @@ export async function readRuleProposalChange(
 
   const isAsked = proposals.some(
     (state) =>
-      state.outcome !== 'withdrawn' && state.proposal.proposalHash === proposed?.proposalHash,
+      state.outcome !== 'withdrawn' &&
+      state.outcome !== 'approved' &&
+      state.proposal.proposalHash === proposed?.proposalHash,
   );
 
   return { withdrawn: pending?.proposal.proposalID ?? null, proposed: isAsked ? null : proposed };
