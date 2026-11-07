@@ -1,7 +1,7 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { canMoveProposal, proposalLapseMs } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import type { RuleProposal } from './build-rule-proposal';
+import { pickRuleProposalMove } from './pick-rule-proposal-move';
 import { readRuleProposals } from './read-rule-proposals';
 import { rulesChangeApprovedCodec } from './rules-change-approved-codec';
 import { rulesChangeRejectedCodec } from './rules-change-rejected-codec';
@@ -12,7 +12,7 @@ export type RuleProposalAnswer =
   | { readonly answer: 'approve'; readonly proposalID: string }
   | { readonly answer: 'reject'; readonly proposalID: string; readonly reason: string };
 
-type RuleProposalRefusal = 'NOT_FOUND' | 'CLOSED' | 'STALE';
+export type RuleProposalRefusal = 'NOT_FOUND' | 'CLOSED' | 'STALE';
 
 export type RuleProposalResult =
   | { readonly status: 'approved' | 'rejected'; readonly proposalID: string }
@@ -22,88 +22,62 @@ export async function writeRuleProposalAnswer(
   context: RuleContext,
   answer: RuleProposalAnswer,
 ): Promise<RuleProposalResult> {
-  const result = await withWriteTransaction(context.log.writer, async (tx) => {
-    const now = context.clock.now();
+  const result = await withWriteTransaction(
+    context.log.writer,
+    async (tx): Promise<RuleProposalResult> => {
+      const proposals = await readRuleProposals(tx);
 
-    const proposals = await readRuleProposals(tx);
+      const seeded = await tx
+        .$extendTables<DefinitionsTables>()
+        .selectFrom('seeded_rules')
+        .select(['rule_id', 'rule_hash'])
+        .execute();
 
-    const state = proposals.find((entry) => entry.proposal.proposalID === answer.proposalID);
+      const move = pickRuleProposalMove({
+        proposals,
+        answer,
+        seeded: new Map(seeded.map((row) => [row.rule_id, row.rule_hash])),
+        now: context.clock.now(),
+      });
 
-    if (state === undefined) {
-      return refuse('NOT_FOUND', `no rule change proposal has ID ${answer.proposalID}`);
-    }
+      if (move.status === 'refused') {
+        return move;
+      }
 
-    const isPastLapse = state.proposedAt + proposalLapseMs <= now;
-    const status = state.outcome ?? (isPastLapse ? 'lapsed' : 'pending');
-    const next = answer.answer === 'approve' ? 'approved' : 'rejected';
+      if (move.status === 'rejected') {
+        await writeRecordsInTransaction(tx, context.log, [
+          {
+            kind: rulesChangeRejectedCodec.kind,
+            definitions: context.definitions(),
+            payload: rulesChangeRejectedCodec.encode({
+              proposalID: answer.proposalID,
+              reason: move.reason,
+            }),
+          },
+        ]);
 
-    if (status === 'withdrawn' || !canMoveProposal(status, next)) {
-      return refuse('CLOSED', `the rule change proposal ${answer.proposalID} is ${status}`);
-    }
+        return { status: 'rejected', proposalID: answer.proposalID };
+      }
 
-    if (answer.answer === 'reject') {
+      await writeApprovedRules(tx, move.proposal);
+
       await writeRecordsInTransaction(tx, context.log, [
         {
-          kind: rulesChangeRejectedCodec.kind,
+          kind: rulesChangeApprovedCodec.kind,
           definitions: context.definitions(),
-          payload: rulesChangeRejectedCodec.encode({
-            proposalID: answer.proposalID,
-            reason: answer.reason,
-          }),
+          payload: rulesChangeApprovedCodec.encode({ proposalID: answer.proposalID }),
         },
       ]);
 
-      return { status: 'rejected', proposalID: answer.proposalID } as const;
-    }
-
-    if (!(await probeProposalCurrent(tx, state.proposal))) {
-      return refuse(
-        'STALE',
-        `the rules changed since proposal ${answer.proposalID}, so the next seed proposes again`,
-      );
-    }
-
-    await writeApprovedRules(tx, state.proposal);
-
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: rulesChangeApprovedCodec.kind,
-        definitions: context.definitions(),
-        payload: rulesChangeApprovedCodec.encode({ proposalID: answer.proposalID }),
-      },
-    ]);
-
-    return { status: 'approved', proposalID: answer.proposalID } as const;
-  });
+      return { status: 'approved', proposalID: answer.proposalID };
+    },
+  );
 
   if (result.status === 'approved') {
     await context.seedInForce();
   }
 
   return result;
-}
-
-function refuse(code: RuleProposalRefusal, reason: string): RuleProposalResult {
-  return { status: 'refused', code, reason };
-}
-
-// The proposal holds each rule's version from before the widening, so an approval applies only
-// while the rules seeded from the definitions still hold those versions.
-async function probeProposalCurrent(
-  tx: Transaction<unknown>,
-  proposal: RuleProposal,
-): Promise<boolean> {
-  const seeded = await tx
-    .$extendTables<DefinitionsTables>()
-    .selectFrom('seeded_rules')
-    .select(['rule_id', 'rule_hash'])
-    .execute();
-
-  const hashes = new Map(seeded.map((row) => [row.rule_id, row.rule_hash]));
-
-  return proposal.changes.every(
-    (change) => (hashes.get(change.ruleID) ?? null) === (change.before?.hash ?? null),
-  );
 }
 
 async function writeApprovedRules(tx: Transaction<unknown>, proposal: RuleProposal) {
