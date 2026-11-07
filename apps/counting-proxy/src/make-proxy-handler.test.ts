@@ -126,9 +126,6 @@ test.each([
   'it prices %s on a Responses route, its cache reads and writes taken out of the input',
   async (_case, isStream) => {
     const ctx = await setupTest();
-
-    await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
-
     const store = await createCounterStore(ctx.storePath);
 
     ctx.model.addReplies({
@@ -178,9 +175,6 @@ test.each([
 
 test('it refuses a background Responses request, whose reply holds no usage, and sends nothing on', async () => {
   const ctx = await setupTest();
-
-  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
-
   const store = await createCounterStore(ctx.storePath);
 
   const handler = makeProxyHandler({
@@ -223,9 +217,6 @@ test('it refuses a background Responses request, whose reply holds no usage, and
 
 test('it refuses a Messages request on a Responses route and sends nothing on', async () => {
   const ctx = await setupTest();
-
-  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
-
   const store = await createCounterStore(ctx.storePath);
 
   const handler = makeProxyHandler({
