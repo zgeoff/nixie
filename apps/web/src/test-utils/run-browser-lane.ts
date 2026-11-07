@@ -104,7 +104,7 @@ function runTests(testArgs: readonly string[], env: Env, signal: AbortSignal): P
 if (import.meta.main) {
   const run = buildBrowserRun(String(process.pid));
 
-  // The memory cap script stops the lane with a signal. The abort stops the build or the test
+  // diet passes a stop signal on to the lane. The abort stops the build or the test
   // process, and the lane waits for it to exit before it removes its folders.
   const controller = new AbortController();
 

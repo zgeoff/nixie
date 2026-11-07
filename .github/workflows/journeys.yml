@@ -33,7 +33,6 @@ jobs:
         guests/**
         libs/**
         modules/**
-        scripts/run-memory-capped.sh
 
   journeys:
     needs: changes
