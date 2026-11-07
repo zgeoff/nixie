@@ -62,6 +62,7 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
     tool: buildWebFetchTool(fetchSandbox.readPage, {
       log: options.log,
       textBytes: config.limits.textBytes,
+      linkPathChars: config.linkPathChars,
     }),
     readSkillPage: skillSandbox.readPage,
     stop: async () => {

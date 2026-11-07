@@ -11,6 +11,14 @@ export interface PageLinks {
   readonly numbers: ReadonlyMap<string, number>;
 }
 
+export interface LinkedTextLimits {
+  // the most bytes of the whole text, its link tags included
+  readonly textBytes: number;
+
+  // the most characters of an off-site link's path that its tag shows
+  readonly linkPathChars: number;
+}
+
 export interface LinkedText {
   readonly text: string;
   readonly isCut: boolean;
@@ -19,18 +27,22 @@ export interface LinkedText {
 export function renderLinkedText(
   parts: readonly MarkedTextPart[],
   page: PageLinks,
-  limitBytes: number,
+  limits: LinkedTextLimits,
 ): LinkedText {
   const pageHost = URL.parse(page.pageURL)?.hostname ?? null;
   const rendered: string[] = [];
   let spentBytes = 0;
 
   for (const part of parts) {
-    const piece = typeof part === 'string' ? part : formatLinkTag(part.link, page, pageHost);
+    const piece =
+      typeof part === 'string'
+        ? part
+        : formatLinkTag(part.link, page, { pageHost, linkPathChars: limits.linkPathChars });
+
     const pieceBytes = Buffer.byteLength(piece);
 
-    if (spentBytes + pieceBytes > limitBytes) {
-      const tail = typeof part === 'string' ? cutText(piece, limitBytes - spentBytes) : '';
+    if (spentBytes + pieceBytes > limits.textBytes) {
+      const tail = typeof part === 'string' ? cutText(piece, limits.textBytes - spentBytes) : '';
 
       rendered.push(tail);
 
@@ -45,7 +57,12 @@ export function renderLinkedText(
   return { text: rendered.join(''), isCut: false };
 }
 
-function formatLinkTag(index: number, page: PageLinks, pageHost: string | null): string {
+interface TagContext {
+  readonly pageHost: string | null;
+  readonly linkPathChars: number;
+}
+
+function formatLinkTag(index: number, page: PageLinks, context: TagContext): string {
   const target = page.targets[index];
   const number = target === undefined ? undefined : page.numbers.get(target);
 
@@ -53,9 +70,24 @@ function formatLinkTag(index: number, page: PageLinks, pageHost: string | null):
     return '';
   }
 
-  const host = URL.parse(target)?.hostname ?? null;
+  const url = URL.parse(target);
 
-  return host === null || host === pageHost ? `[L${number}]` : `[L${number} · ${host}]`;
+  return url === null || url.hostname === context.pageHost
+    ? `[L${number}]`
+    : `[L${number} · ${url.hostname}${formatPathStart(url.pathname, context.linkPathChars)}]`;
+}
+
+// a URL parser leaves square brackets in a path as they are, and a bracket would end the tag early
+function formatPathStart(path: string, limitChars: number): string {
+  if (path === '/') {
+    return '';
+  }
+
+  const shown = path.replaceAll('[', '%5B').replaceAll(']', '%5D');
+
+  return shown.length <= limitChars
+    ? shown
+    : `${shown.slice(0, limitChars).replace(/%[\da-f]?$/iu, '')}…`;
 }
 
 function cutText(text: string, limitBytes: number): string {

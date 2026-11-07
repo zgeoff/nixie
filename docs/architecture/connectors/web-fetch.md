@@ -36,8 +36,11 @@ showed, and the tool refuses a call that gives both or neither.
 
 Each link in a page's text reads as a short ID that the conversation session numbers, such as
 `[L12]`, so a link costs a few characters in place of its whole URL. A link that leaves the page's
-site shows its host after the ID, such as `[L40 · example.org]`, so the model can tell where a link
-goes before it follows it. The tool fetches the page a link ID names, and its result holds the URL
+host shows its host and the start of its path after the ID, such as `[L40 · example.org/docs/…]`, so
+the model can tell where a link goes before it follows it, and cite it. The `link_path_chars` value
+in the deployment config's `web_fetch` section sets how many characters of the path show, and a
+longer path ends in `…`. The tag never shows the query string or the fragment, and shows no path for
+a link to the host's root. The tool fetches the page a link ID names, and its result holds the URL
 the fetch ended at, as a fetch by URL does.
 
 The session numbers each URL once, from a count of its own, so a URL keeps one ID across every page
@@ -123,8 +126,8 @@ splits a character. Passing the time limit or the redirect limit fails the fetch
 The reply lists the target of each link mark the cut text keeps and no other. The targets have a
 byte budget of their own, a fixed multiple of the text limit, and the text stops before the first
 mark whose target would pass it, so a page of long links still fits the reply's size limit, which
-nixie sets from both budgets. A host can run far longer than its mark, so nixie applies the text
-limit again once each link reads as its ID and host, and marks a result it cuts there truncated.
+nixie sets from both budgets. A host and path can run far longer than their mark, so nixie applies
+the text limit again once each link reads as its tag, and marks a result it cuts there truncated.
 
 The default text limit sits under the tool-output limit that the conversation guest sets for the
 Agent SDK's CLI, so a long page reaches the model as its start, marked truncated. The CLI saves a

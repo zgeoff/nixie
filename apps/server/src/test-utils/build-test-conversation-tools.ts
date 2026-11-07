@@ -22,6 +22,7 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
           webFetch: buildWebFetchTool(() => Promise.resolve(reply), {
             log: context.log,
             textBytes: webFetchDefaults.limits.textBytes,
+            linkPathChars: webFetchDefaults.linkPathChars,
           }),
           time: buildTimeTool({
             clock: context.clock,

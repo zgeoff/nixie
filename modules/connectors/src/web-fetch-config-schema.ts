@@ -10,6 +10,7 @@ export const webFetchConfigSchema = z
     timeout_ms: countSchema.default(webFetchDefaults.limits.timeoutMs),
     redirects: z.number().int().nonnegative().default(webFetchDefaults.limits.redirects),
     text_bytes: countSchema.default(webFetchDefaults.limits.textBytes),
+    link_path_chars: countSchema.default(webFetchDefaults.linkPathChars),
   })
   .transform((config): WebFetchConfig => ({
     limits: {
@@ -19,4 +20,5 @@ export const webFetchConfigSchema = z
       textBytes: config.text_bytes,
     },
     sandboxLimits: webFetchDefaults.sandboxLimits,
+    linkPathChars: config.link_path_chars,
   }));
