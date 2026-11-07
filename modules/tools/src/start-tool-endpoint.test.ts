@@ -114,7 +114,7 @@ test("it records the tool-use ID that the call carries under the run's _meta key
   await client.callTool({
     name: 'notes_read',
     arguments: { query: 'milk' },
-    _meta: { 'example/toolUseId': 'toolu_b44b20cd' },
+    _meta: { 'example/toolUseId': 'toolu_b44b20cd', 'claudecode/toolUseId': 'toolu_c55c31de' },
   });
 
   const entries = await readRecords(ctx.log, { afterSequence: 0 });

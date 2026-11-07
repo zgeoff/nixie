@@ -63,12 +63,16 @@ test('it carries only the session files the harness lists into the replacement s
       path: `/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}/tool-results/r1.txt`,
       content: new TextEncoder().encode('low tide 14:10\n'),
     },
+    {
+      path: `/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}/scratch/draft.txt`,
+      content: new TextEncoder().encode('harbour map, second draft\n'),
+    },
   ]);
 
   await writeReplacedSession({
     context: ctx.context,
     command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
-    listSessionFiles: (point) => [`${point.sessionID}.jsonl`],
+    listSessionFiles: (point) => [`${point.sessionID}.jsonl`, `${point.sessionID}/tool-results/`],
     log: mock(() => {}),
     replaced: [from],
     target: to,
@@ -76,7 +80,10 @@ test('it carries only the session files the harness lists into the replacement s
 
   const landed = await to.readFilePaths('/home/nixie/.claude/projects');
 
-  expect(landed).toStrictEqual([`-home-nixie-conversation/${sessionID}.jsonl`]);
+  expect(landed).toIncludeSameMembers([
+    `-home-nixie-conversation/${sessionID}.jsonl`,
+    `-home-nixie-conversation/${sessionID}/tool-results/r1.txt`,
+  ]);
 });
 
 test('it carries nothing for a harness that keeps no session a new sandbox can resume', async () => {
