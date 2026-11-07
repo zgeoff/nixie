@@ -30,8 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 38, which the release before can still read', () => {
-  expect(nixieSchema.migrations.indexOf(ruleExportsMigration) + 1).toBe(38);
+test('it moves the schema to version 39, which the release before can still read', () => {
+  expect(nixieSchema.migrations.indexOf(ruleExportsMigration) + 1).toBe(39);
   expect(nixieSchema.oldestReader).toBe(35);
 });
 
