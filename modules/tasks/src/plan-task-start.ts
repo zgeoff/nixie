@@ -1,4 +1,5 @@
 import { toSDKToolName } from '@heynixie/tools';
+import type { HarnessCapability } from '@heynixie/wire';
 import { startedTaskBaseTools, startedTaskDefaultTools } from './started-task-default-tools';
 import type {
   TaskLimits,
@@ -34,6 +35,11 @@ interface ToolRefusal {
 
 export type TaskStartChoiceRefusal =
   | { readonly reason: 'unknown_model'; readonly model: string }
+  | {
+      readonly reason: 'harness_misfit';
+      readonly model: string;
+      readonly missing: readonly HarnessCapability[];
+    }
   | { readonly reason: 'stranger_with_memory' }
   | { readonly reason: 'wider_memory' }
   | { readonly reason: 'wider_persona' }
@@ -64,6 +70,10 @@ export function planTaskStart(
 
   if (choice.model !== undefined && model === null) {
     return refuse({ reason: 'unknown_model', model: choice.model });
+  }
+
+  if (model !== null && model.missing.length > 0) {
+    return refuse({ reason: 'harness_misfit', model: model.name, missing: model.missing });
   }
 
   // A task gets the persona only when its starter has it, so a stranger's tasks are strangers too.

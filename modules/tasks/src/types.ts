@@ -3,6 +3,7 @@ import type { taskMessageKindSchema } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { Definitions, Log, LogRecord, RecordInput, RecordKind } from '@heynixie/log';
 import type { ResumeState, TaskState } from '@heynixie/task-control';
+import type { HarnessCapability } from '@heynixie/wire';
 import type { z } from 'zod';
 
 export interface TasksContext {
@@ -88,6 +89,9 @@ export interface TaskModelChoice {
   readonly name: string;
   readonly profile: string;
   readonly description: string;
+
+  // what a task needs that the harness of the model's profile lacks
+  readonly missing: readonly HarnessCapability[];
 }
 
 export interface TaskStartBounds {

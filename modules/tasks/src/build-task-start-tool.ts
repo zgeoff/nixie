@@ -195,6 +195,11 @@ function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
       (unknown) => `${unknown.model} is not a model a task can run on, so nixie started nothing`,
     )
     .with(
+      { reason: 'harness_misfit' },
+      (misfit) =>
+        `${misfit.model} runs on a harness that lacks ${misfit.missing.join(', ')}, which a task needs, so nixie started nothing`,
+    )
+    .with(
       { reason: 'stranger_with_memory' },
       () => 'a task with persona none cannot read memory, so nixie started nothing',
     )

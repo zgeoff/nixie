@@ -36,7 +36,9 @@ point can ask before such a start
 
 The schema refuses an entry whose profile the file does not define, and an entry whose profile has
 no price table, because a task counts the cost of its turns against its dollar limit
-([started tasks](./started-tasks.md#limits)).
+([started tasks](./started-tasks.md#limits)). For the same reason, the schema refuses a config whose
+task profile has no price table. A config that leaves the `task` role unset runs its tasks on the
+conversation's profile, so that profile then needs a price table too.
 
 The section's `limits.taskRun` sets the default and the max of a started task's limits, each as a
 count of turns and an amount of dollars. The schema refuses a default above its max.
@@ -60,8 +62,16 @@ everything that differs between harnesses, and never branches on a harness ID:
 - the session files that a replaced sandbox carries, or none when the harness keeps no session that
   a new sandbox can resume.
 
-Only the `agent-sdk` harness has a record, so the schema refuses a profile on any other harness. The
-wire library holds every harness ID and the features each harness declares.
+Only the `agent-sdk` harness has a record, so the schema refuses a profile on any other harness.
+
+The wire library holds every harness ID and the features each harness declares, such as resuming a
+session at an entry or returning structured output. Each role declares the features its loop needs,
+and nixie checks a profile's harness against those needs in 2 places:
+
+| Where             | What it checks                                                                                                     | On a misfit                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| The config's load | each role's profile, an unset role on the conversation's profile, and each selectable model against a task's needs | the schema refuses the file, naming the role or the selectable model, the profile and each missing feature |
+| A task's start    | the chosen selectable model against a task's needs                                                                 | the start writes nothing, and tells the model each missing feature                                         |
 
 The turn profile that the host sends a guest, and each session point, name their harness too. nixie
 reads a stored session point that names no harness as an Agent SDK point.

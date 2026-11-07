@@ -58,6 +58,7 @@ async function setupTest() {
             model: 'claude-test-errands',
             effort: 'low',
             context_tokens: 200_000,
+            prices: { input: 0, cache_write: 0, cache_write_1h: 0, cached_input: 0, output: 0 },
           },
           'router-b': {
             harness: 'agent-sdk',

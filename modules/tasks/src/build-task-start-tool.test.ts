@@ -290,8 +290,8 @@ test('it shows the model each selectable model as an enum value, with its descri
     { ownerName: null },
     buildMockTaskStartBounds({
       models: [
-        { name: 'second-look', profile: 'router-b', description: 'Another family' },
-        { name: 'quick', profile: 'small-fast', description: 'Fast and cheap' },
+        { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
+        { name: 'quick', profile: 'small-fast', description: 'Fast and cheap', missing: [] },
       ],
     }),
   );
@@ -329,7 +329,9 @@ test('it starts a stranger on a selectable model with the tools it asks for, and
     ctx.context,
     { ownerName: null },
     buildMockTaskStartBounds({
-      models: [{ name: 'second-look', profile: 'router-b', description: 'Another family' }],
+      models: [
+        { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
+      ],
     }),
   );
 
@@ -385,6 +387,11 @@ test.each([
     'opus-high is not a model a task can run on, so nixie started nothing',
   ],
   [
+    'a model whose harness lacks what a task needs',
+    { model: 'other-loop' },
+    'other-loop runs on a harness that lacks turn-limit, call-usage, which a task needs, so nixie started nothing',
+  ],
+  [
     'a tool list wider than its starter holds',
     { tools: ['web_fetch', 'log.read'] },
     'a task gets only tools you hold, and you do not hold log.read, so nixie started nothing. ' +
@@ -433,7 +440,15 @@ test.each([
     ctx.context,
     { ownerName: null },
     buildMockTaskStartBounds({
-      models: [{ name: 'second-look', profile: 'router-b', description: 'Another family' }],
+      models: [
+        { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
+        {
+          name: 'other-loop',
+          profile: 'loop-b',
+          description: 'Another loop',
+          missing: ['turn-limit', 'call-usage'],
+        },
+      ],
     }),
   );
 

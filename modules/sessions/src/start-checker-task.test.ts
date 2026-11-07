@@ -21,6 +21,7 @@ test('it runs each check in the check guest on the checker role profile', async 
           auth_header: 'x-api-key',
           model: 'claude-test-1',
           effort: 'low',
+          prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
         },
         checker: {
           harness: 'agent-sdk',
@@ -84,6 +85,7 @@ test('it logs where each check spent its time', async () => {
           auth_header: 'x-api-key',
           model: 'claude-test-1',
           effort: 'low',
+          prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
         },
         checker: {
           harness: 'agent-sdk',

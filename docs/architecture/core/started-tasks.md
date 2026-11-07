@@ -29,7 +29,7 @@ writes nothing when one fails, and tells the model why:
 
 | Option    | Values                       | When the start leaves it out            | The start refuses                                                                 |
 | --------- | ---------------------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
-| `model`   | a name of a selectable model | the `task` role's profile               | a name that is not a choice                                                       |
+| `model`   | a name of a selectable model | the `task` role's profile               | a name that is not a choice, or a model whose harness lacks what a task needs     |
 | `persona` | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                 |
 | `memory`  | `none` or `read`             | `none`                                  | a memory tool that the value leaves out, or `read` from a starter that reads none |
 | `tools`   | names of tools               | the clock                               | a tool that the starter does not hold, under either of its names                  |
@@ -120,13 +120,14 @@ that the user paused or stopped keeps its state.
 A started task has a limit of turns and of dollars, which its start set or took from
 `models.limits.taskRun`. Each model turn record on the task's thread counts as one turn, and its
 token counts, priced with the task's profile, count as its dollars. Each summary of the task's
-session records the token counts of its calls too, and they count as dollars and as no turn. A
-profile with no price table counts no dollars, so only its turns limit holds. A record sums its
-calls, and the per-call usage that the model API reports leaves out thinking tokens, so the count
-prices each record as one call. It therefore prices every cache write at the longer lifetime's
-price, and a turn whose calls together pass a profile's long-prompt size at the long-prompt prices.
-The count can run above the spend. One exception: a summary recorded by an earlier release kept no
-token counts, so it adds no dollars, and the count of a task that has one can fall below its spend.
+session records the token counts of its calls too, and they count as dollars and as no turn. The
+config schema refuses a profile with no price table for any profile a task can run on, as
+[selectable models](./model-profiles.md#selectable-models) describes. A record sums its calls, and
+the per-call usage that the model API reports leaves out thinking tokens, so the count prices each
+record as one call. It therefore prices every cache write at the longer lifetime's price, and a turn
+whose calls together pass a profile's long-prompt size at the long-prompt prices. The count can run
+above the spend. One exception: a summary recorded by an earlier release kept no token counts, so it
+adds no dollars, and the count of a task that has one can fall below its spend.
 
 Before each step runs a turn, the runner counts the task's turns and dollars. When either count has
 reached its limit, the step runs no turn. In one transaction it asks for a pause, writes a

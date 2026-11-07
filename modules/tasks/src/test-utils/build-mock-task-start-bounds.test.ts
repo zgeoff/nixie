@@ -16,7 +16,11 @@ test('it builds bounds with no selectable model, the default limits, two memory 
 test('it applies overrides on top of the defaults', () => {
   expect(
     buildMockTaskStartBounds({
-      models: [{ name: 'second-look', profile: 'router-b', description: 'Another family' }],
+      models: [
+        { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
+      ],
     }).models,
-  ).toStrictEqual([{ name: 'second-look', profile: 'router-b', description: 'Another family' }]);
+  ).toStrictEqual([
+    { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
+  ]);
 });

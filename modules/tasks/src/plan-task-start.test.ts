@@ -44,7 +44,9 @@ test('it plans a stranger on a selectable model with the tools asked for and the
         persona: 'default',
       },
       buildMockTaskStartBounds({
-        models: [{ name: 'second-look', profile: 'router-b', description: 'Another family' }],
+        models: [
+          { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
+        ],
       }),
     ),
   ).toStrictEqual({
@@ -113,7 +115,9 @@ test('it refuses a model that is not selectable', () => {
       { model: 'opus-high' },
       { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default' },
       buildMockTaskStartBounds({
-        models: [{ name: 'second-look', profile: 'router-b', description: 'Another family' }],
+        models: [
+          { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
+        ],
       }),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'unknown_model', model: 'opus-high' } });
