@@ -102,10 +102,10 @@ later match and could pick the wrong part. A match that runs into the next part 
 it starts in. When the text never appears, the tool returns an error with the count of parts, such
 as "0 matches in 7 parts of page tz4a98xxat".
 
-The truncated mark means that the fetcher stopped before the page's end, at the body limit or at the
-budget of its link targets ([the fetcher](#the-fetcher)), so no part holds that end. A page with no
-text, such as an image, returns its URL, status and content type with no text, no page ID, no part
-number and a count of 0 parts.
+The truncated mark means that the fetcher stopped before the page's end, at the body limit
+([the fetcher](#the-fetcher)), so no part holds that end. A page with no text, such as an image,
+returns its URL, status and content type with no text, no page ID, no part number and a count of 0
+parts.
 
 When the tool stores a page, it removes these pages in the same transaction:
 
@@ -187,10 +187,12 @@ stops the read and marks the result truncated, and the text cut never splits a c
 the time limit or the redirect limit fails the fetch.
 
 The reply lists the target of each link mark the cut text keeps and no other. The targets have a
-byte budget of their own, a fixed multiple of the text limit, and the text stops before the first
-mark whose target would pass it, so a page of long links still fits the reply's size limit, which
-nixie sets from both budgets. A host and path can run far longer than their mark, so nixie cuts the
-text into parts only once each link reads as its tag ([pages and parts](#pages-and-parts)).
+byte budget of their own, a fixed multiple of the text limit. From the first mark whose target would
+pass that budget, the fetcher drops the mark of each link it has not yet listed and keeps the text,
+so a page of long links still fits the reply's size limit, which nixie sets from both budgets. The
+budget never cuts the text and never marks the result truncated. A host and path can run far longer
+than their mark, so nixie cuts the text into parts only once each link reads as its tag
+([pages and parts](#pages-and-parts)).
 
 The default `text_bytes` value, the most bytes of one part, sits under the tool-output limit that
 the conversation guest sets for the Agent SDK's CLI, so every part reaches the model whole. The CLI
