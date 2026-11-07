@@ -149,7 +149,10 @@ export async function readCLIArgs(
             actions.map((name) => {
               const action = name.slice(group.length + 1);
               const args = ACTION_OPTIONS[name] ?? CLI_OPTIONS;
-              const positionals = Object.values(args).filter((arg) => arg.type === 'positional');
+
+              const positionals = Object.values<{ readonly type: string }>(args).filter(
+                (arg) => arg.type === 'positional',
+              );
 
               return [
                 action,

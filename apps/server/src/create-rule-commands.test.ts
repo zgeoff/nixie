@@ -130,7 +130,7 @@ test.each([
 
   expect({
     exitCode: resolved.exitCode,
-    resolved: JSON.parse(resolved.stdout),
+    resolved: z.unknown().parse(JSON.parse(resolved.stdout)),
     inForce: inForce.map((rule) => [rule.ruleID, rule.sentence]),
   }).toStrictEqual({
     exitCode: 0,
