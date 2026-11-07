@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
 import { runCLI } from './run-cli';
+import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import { seedRuleConflict } from './test-utils/seed-rule-conflict';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
@@ -50,6 +51,22 @@ test('it puts the allows of a first seed in force when you approve their proposa
     .parse(JSON.parse(pending.stdout));
 
   await runHostCommand(ctx.configPath, ['proposals', 'approve', proposal.proposalID]);
+
+  const listed = await runHostCommand(ctx.configPath, ['rules', 'list']);
+
+  const rules = z.array(z.object({ ruleID: z.string() })).parse(JSON.parse(listed.stdout));
+
+  expect(rules.map((rule) => rule.ruleID)).toStrictEqual(['allow-web', 'deny-shell']);
+});
+
+test('it puts the allows of a first seed in force when a device approves their proposal', async () => {
+  const ctx = await setupTest();
+  const api = await createTestClient(ctx);
+  const pending = await api.client.rules.listProposals();
+
+  const [proposal] = z.tuple([z.object({ proposalID: z.string() })]).parse(pending.proposals);
+
+  await api.client.rules.approveProposal({ proposalID: proposal.proposalID });
 
   const listed = await runHostCommand(ctx.configPath, ['rules', 'list']);
 
