@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "propertyNames": {
+    "type": "string",
+    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  },
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "outcome": {
+        "type": "string",
+        "enum": [
+          "allow",
+          "ask",
+          "deny"
+        ]
+      },
+      "tools": {
+        "description": "Tool names, such as mail.send, or a tool variant, such as task.start/atc",
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^\\S+$",
+          "description": "Exact text, or a pattern whose only wildcard is *, which matches any run of text"
+        }
+      },
+      "effects": {
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "read",
+            "fetch",
+            "note",
+            "write",
+            "delete",
+            "send",
+            "spend",
+            "schedule",
+            "code_run",
+            "device",
+            "policy_widen",
+            "policy_narrow",
+            "budget_raise",
+            "budget_lower",
+            "export"
+          ]
+        }
+      },
+      "contexts": {
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "conversation",
+            "task",
+            "job",
+            "coding"
+          ]
+        }
+      },
+      "jobs": {
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "checks": {
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "arg": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*$",
+                  "description": "The argument the check reads, such as memory or to.address"
+                },
+                "op": {
+                  "type": "string",
+                  "const": "eq"
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean"
+                  ]
+                }
+              },
+              "required": [
+                "arg",
+                "op",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "arg": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*$",
+                  "description": "The argument the check reads, such as memory or to.address"
+                },
+                "op": {
+                  "type": "string",
+                  "const": "in"
+                },
+                "value": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "arg",
+                "op",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "arg": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*$",
+                  "description": "The argument the check reads, such as memory or to.address"
+                },
+                "op": {
+                  "type": "string",
+                  "const": "matches"
+                },
+                "value": {
+                  "type": "string",
+                  "pattern": "^\\S+$",
+                  "description": "Exact text, or a pattern whose only wildcard is *, which matches any run of text"
+                }
+              },
+              "required": [
+                "arg",
+                "op",
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "destinations": {
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^\\S+$",
+          "description": "Exact text, or a pattern whose only wildcard is *, which matches any run of text"
+        }
+      },
+      "sources": {
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "owner",
+            "own_data",
+            "task",
+            "outside"
+          ]
+        }
+      },
+      "expires": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "mandate": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "cel": {
+        "type": "string",
+        "minLength": 1
+      },
+      "note": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "outcome"
+    ],
+    "additionalProperties": false
+  },
+  "title": "nixie rules file",
+  "description": "A YAML file under rules/ in the definitions, which maps each rule ID to its rule. An ID names one rule across every file."
+}
