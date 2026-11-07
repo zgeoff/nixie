@@ -145,6 +145,27 @@ reset seed restores the rules of the snapshot in force.
 The snapshot hash covers each rule in force with its revision, its origin and its runtime change, so
 each snapshot holds the revision of every rule in force.
 
+## The rule export
+
+nixie exports the runtime changes in force to the definitions repo through the
+[definitions export](../core/definitions.md#the-export-to-the-definitions-repo), as one rolling pull
+request on the `nixie/rules` branch. A runtime change in a mandate never exports. The export's ID is
+a hash of the exported changes, each with its base, the definitions' version and the file that holds
+it, the count of runtime changes that left force, and the record of the seed in force. Any change to
+those, such as a new runtime change, a choice on a conflict or a new seed, makes a new export, even
+when the set or the repo returns to one an earlier export held. The export builds the branch again
+on the newest commit of the base branch, which updates the open pull request, and the run marks each
+earlier export closed without closing that pull request. When the set empties, the run closes a pull
+request still open on the branch, and leaves a merged one as it is.
+
+The export edits the rules files in place: it replaces or removes the top-level block of each
+changed rule, and appends a new rule to `rules/nixie.yaml`. Every other line, comments included,
+stays as the user wrote it, and a file that a removal leaves empty is deleted. The pull request's
+body lists each change as its sentence, who made it and why. An export to definitions below format 3
+fails and opens no pull request, because those formats apply no rule file. An export that would edit
+a prompt part under `rules/`, such as a `rules/nixie.yaml` that the `prompts:` map names, fails the
+same way.
+
 ## Commands and the proposals screen
 
 The host commands read and answer the rule store, and each prints JSON:

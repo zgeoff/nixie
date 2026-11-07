@@ -380,6 +380,15 @@ export interface SnapshotRuleRow {
   readonly change_id: string | null;
 }
 
+interface RuleExportRow {
+  readonly export_id: string;
+  readonly state: Exclude<DefinitionsExportState, 'exporting'> | null;
+  readonly pull_request_number: number | null;
+  readonly pull_request_url: string | null;
+  readonly attempt_started_at: number | null;
+  readonly updated_at: number;
+}
+
 interface RuleFireRow {
   readonly rule_id: string;
   readonly last_fired_at: number;
@@ -408,5 +417,6 @@ export type DefinitionsTables = CheckedTables<
     snapshot_rules: SnapshotRuleRow;
     rule_fires: RuleFireRow;
     closed_rule_proposals: { readonly proposal_hash: string };
+    rule_exports: RuleExportRow;
   }>
 >;

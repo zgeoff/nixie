@@ -9,6 +9,7 @@ export type { DefinitionsSnapshotInput } from './build-definitions-snapshot';
 export { buildPromptChangeKind } from './build-prompt-change-kind';
 export type { PromptExportText } from './build-prompt-export-change';
 export { buildSkillChangeKind } from './build-skill-change-kind';
+export { buildRuleChangeKind } from './build-rule-change-kind';
 export type { PromptPartFile, PromptProposalInput } from './check-prompt-proposal';
 export { checkPromptProposal } from './check-prompt-proposal';
 export { checkSkillFiles } from './check-skill-files';
