@@ -8,23 +8,21 @@ suites check that an imp reaches nothing else.
 
 1. Start an impd that you can create imps and secrets on, and get a token with manage scope for it.
 2. Import an image that holds `sh` and `curl`, such as `ubuntu:24.04` with `curl` installed.
-3. Run the test from `adapters/sandbox-imp`:
+3. Run the test from the repo root:
 
    ```bash
-   cd adapters/sandbox-imp
    NIXIE_IMP_TEST_URL=<impd_url> \
    NIXIE_IMP_TEST_TOKEN=<impd_token> \
    NIXIE_IMP_TEST_IMAGE=<image_name> \
-   bun run test:imp
+   bun run test:imp adapters/sandbox-imp/
    ```
 
-Expect `0 fail`, with no skipped test. The package's `test:imp` script runs its `*.imp.test.ts`
-files under the imp lane's limit per test.
+Expect `0 fail`, with no skipped test. The `test:imp` script runs the `*.imp.test.ts` files under
+the imp lane's limit per test.
 
-The package's `bunfig.toml` leaves out the web test preload, whose mock server and DOM take over
-`fetch` and `WebSocket`, so no call would reach impd. Bun reads `bunfig.toml` only from the folder
-it runs in. From the repo root, Bun loads the web preload, and the suite fails at once with
-`the web test preload is loaded`.
+The script runs the tests with `bunfig.imp.toml`, which leaves out the web test preload, whose mock
+server and DOM take over `fetch` and `WebSocket`, so no call would reach impd. A plain `bun test`
+loads the web preload, and the suite fails at once with `the web test preload is loaded`.
 
 Each test creates its own imp and its own secret named `nixie-test-<id>` with a dummy value. A test
 refuses a secret name that impd holds already, because the run did not add that secret, and it
@@ -58,15 +56,14 @@ failing on it. Run the tests from a machine with IPv6 to prove the IPv6 targets 
    impd refuses a `FROM` line that names its image with a variable, so the Dockerfile writes out the
    Bun version from `.bun-version`. When `.bun-version` changes, change both `FROM` lines to match.
 
-2. Run the tests from `apps/server`, whose `bunfig.toml` leaves out the web test preload:
+2. Run the tests from the repo root:
 
    ```bash
-   cd apps/server
    NIXIE_IMP_TEST_URL=<impd_url> \
    NIXIE_IMP_TEST_TOKEN=<impd_token> \
    NIXIE_IMP_TEST_HOST_ADDRESSES=<host_addresses> \
    NIXIE_IMP_TEST_FETCH_IMAGE=<fetch_image_name> \
-   bun run test:imp
+   bun run test:imp apps/server/
    ```
 
    `NIXIE_IMP_TEST_EGRESS_DENY` takes the list that impd reads from `IMP_EGRESS_DENY`. The test

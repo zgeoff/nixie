@@ -28,7 +28,7 @@ done, run it with its command from this table. Find the row by the file's suffix
 that matches no other row belongs to the unit run. Each other row is a lane, with its own command
 and its own limit per test.
 
-The test runner `@zgeoff/rig`, called rig, runs the unit run and every lane but the imp lane. Its
+The test runner `@zgeoff/rig`, called rig, runs the unit tests and every lane but the e2e lane. Its
 config, [`rig.config.ts`](../../../rig.config.ts), holds the lanes nixie adds and their limits, and
 the `zgeoff/max-test-timeout` lint rule reads those limits.
 
@@ -41,7 +41,7 @@ the `zgeoff/max-test-timeout` lint rule reads those limits.
 | `e2e/journeys/*.browser.test.ts`, `e2e/src/test-utils/start-web-journey.browser.test.ts` | `bun run test:journeys`                       | 10 s           | in `journeys.yml` |
 | `*.bundle.test.ts` outside `e2e/`                                                        | `bun run test:bundle`                         | 15 s           | in `pr.yml`       |
 | `e2e/**/*.restic.test.ts`                                                                | `bun run test:restic`                         | 40 s           | in `images.yml`   |
-| `*.imp.test.ts`                                                                          | `bun run test:imp` in the package             | 14 s           | no                |
+| `*.imp.test.ts`                                                                          | `bun run test:imp`                            | 14 s           | no                |
 | `*.model-api.test.ts`                                                                    | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | 120 s          | no                |
 
 - Run the unit tests through `bun run test`. It first runs `bun run models`, which fetches the

@@ -147,7 +147,8 @@
     "ci:release:write-release-notes": "bun scripts/release/write-release-notes.ts",
     "check:dependency-gates": "bun scripts/dependency-gates/run-dependency-gates-check.ts",
     "check:uncommitted": "bun scripts/run-uncommitted-check.ts",
-    "test:model-api": "rig model-api"
+    "test:model-api": "rig model-api",
+    "test:imp": "rig imp --config=bunfig.imp.toml"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
