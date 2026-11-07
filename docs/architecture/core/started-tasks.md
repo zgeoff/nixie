@@ -151,8 +151,11 @@ A `task.limit_reached` record holds the task's whole count at its turn's end, wi
 step, and commits before that step's commit. When the step's commit also carries a turn record, the
 turn record counts the turn's spend. A turn that failed, or a step that stopped before its commit,
 leaves no turn record, so the limit record is the only record of that spend. The count therefore
-takes a limit record's dollars, when they are higher, unless its own step committed a turn record.
-That way a failed turn's spend still counts after a raise.
+adds the dollars that a limit record counted past the records before it, unless that step's own
+commit carried a turn record. A retry takes the same step key, so the count settles each limit
+record at its step's end: the step's commit, its `task.step_errored` record or the
+`task.step_interrupted` record that a reclaim writes. That way a failed turn's spend still counts
+after a raise, and a raise that lands before a step's commit never counts the turn twice.
 
 While the newest limit record on the task's thread is `task.limit_reached`, a resume or a restart of
 the task refuses. The user raises the limit with the `task-raise` host command
