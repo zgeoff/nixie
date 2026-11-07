@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { modelSessionOpenedCodec } from '@heynixie/models';
+import { buildTestClock } from '@heynixie/testing';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { readLinkTarget } from './read-link-target';
@@ -9,7 +10,9 @@ import { startTestLog } from './test-utils/start-test-log';
 import { writeWebFetchPage } from './write-web-fetch-page';
 
 async function setupTest() {
-  return { log: await startTestLog() };
+  const clock = buildTestClock(Date.parse('2026-11-02T09:00:00.000Z'));
+
+  return { clock, log: await startTestLog(clock) };
 }
 
 test('it stores the page in parts under a new page ID, and returns it', async () => {
@@ -222,7 +225,7 @@ test("it removes the session's oldest page first once its pages pass the store l
   invariant(oldest && middle && newest);
 
   const pages = await sql`select page_id from web_fetch_pages
-    order by stored_at, rowid`.execute(ctx.log.writer.db);
+    order by rowid`.execute(ctx.log.writer.db);
 
   expect(pages.rows).toStrictEqual([{ page_id: middle.pageID }, { page_id: newest.pageID }]);
 });
@@ -380,4 +383,72 @@ test("it keeps the thread's pages of a key no session opening names, such as a r
     order by session_key`.execute(ctx.log.writer.db);
 
   expect(pages.rows).toStrictEqual([{ session_key: 'run-ferries' }, { session_key: 'run-tides' }]);
+});
+
+test("it writes the time it stored the page from the writer's clock", async () => {
+  const ctx = await setupTest();
+
+  await writeWebFetchPage(
+    ctx.log,
+    {
+      url: 'https://harbour.test/a',
+      status: 200,
+      contentType: 'text/plain',
+      isTruncated: false,
+      blocked: null,
+      text: 'Pier one.',
+      links: [],
+    },
+    { sessionKey: 'session-a', thread: 'conversation', invalidatedThrough: null },
+    { textBytes: 100, linkPathChars: 24, storeBytes: 1000 },
+  );
+
+  const pages = await sql`select stored_at from web_fetch_pages`.execute(ctx.log.writer.db);
+
+  expect(pages.rows).toStrictEqual([{ stored_at: Date.parse('2026-11-02T09:00:00.000Z') }]);
+});
+
+test('it removes the page stored first once the store limit passes, even after the clock steps back', async () => {
+  const ctx = await setupTest();
+
+  const session = { sessionKey: 'session-a', thread: 'conversation', invalidatedThrough: null };
+  const limits = { textBytes: 100, linkPathChars: 24, storeBytes: 20 };
+
+  await writeWebFetchPage(
+    ctx.log,
+    {
+      url: 'https://harbour.test/a',
+      status: 200,
+      contentType: 'text/plain',
+      isTruncated: false,
+      blocked: null,
+      text: 'Pier one.',
+      links: [],
+    },
+    session,
+    limits,
+  );
+
+  ctx.clock.advance(-60_000);
+
+  const newest = await writeWebFetchPage(
+    ctx.log,
+    {
+      url: 'https://harbour.test/b',
+      status: 200,
+      contentType: 'text/plain',
+      isTruncated: false,
+      blocked: null,
+      text: 'Pier two is open.',
+      links: [],
+    },
+    session,
+    limits,
+  );
+
+  invariant(newest);
+
+  const pages = await sql`select page_id from web_fetch_pages`.execute(ctx.log.writer.db);
+
+  expect(pages.rows).toStrictEqual([{ page_id: newest.pageID }]);
 });

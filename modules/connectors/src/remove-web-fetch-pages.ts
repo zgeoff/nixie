@@ -9,13 +9,14 @@ import type { WebFetchTables } from './web-fetch-tables';
 
 // A thread removal is a forget's: every page of every session on the thread. A stored removal
 // follows a new page: every page of the thread's ended conversation sessions, which no call can
-// reach again, and the session's oldest pages past its store limit.
+// reach again, and the session's oldest other pages past its store limit.
 export type PageRemoval =
   | { readonly kind: 'thread'; readonly thread: string }
   | {
       readonly kind: 'stored';
       readonly thread: string;
       readonly sessionKey: string;
+      readonly pageID: string;
       readonly storeBytes: number;
     };
 
@@ -36,11 +37,10 @@ export async function removeWebFetchPages(
         .selectFrom('web_fetch_pages')
         .select(['page_id', 'bytes'])
         .where('session_key', '=', stored.sessionKey)
-        .orderBy('stored_at', 'desc')
         .orderBy(sql`rowid`, 'desc')
         .execute();
 
-      const evicted = collectEvictedPages(pages, stored.storeBytes);
+      const evicted = collectEvictedPages(pages, stored.pageID, stored.storeBytes);
 
       if (evicted.length > 0) {
         await tables
@@ -119,14 +119,23 @@ interface StoredPageSize {
   readonly bytes: number;
 }
 
-// The newest page always stays, even past the limit on its own, so the call that stored it can
-// return it.
-function collectEvictedPages(newestFirst: readonly StoredPageSize[], storeBytes: number): string[] {
-  let keptBytes = 0;
+// The page just stored always stays, even past the limit on its own, so the call that stored it can
+// return it, and the others go from the oldest insert, which the clock cannot reorder.
+function collectEvictedPages(
+  newestFirst: readonly StoredPageSize[],
+  keptPageID: string,
+  storeBytes: number,
+): string[] {
+  const kept = newestFirst.find((page) => page.page_id === keptPageID);
+  let keptBytes = kept?.bytes ?? 0;
 
-  return newestFirst.flatMap((page, index) => {
+  return newestFirst.flatMap((page) => {
+    if (page.page_id === keptPageID) {
+      return [];
+    }
+
     keptBytes += page.bytes;
 
-    return index > 0 && keptBytes > storeBytes ? [page.page_id] : [];
+    return keptBytes > storeBytes ? [page.page_id] : [];
   });
 }

@@ -105,7 +105,7 @@ export function writeWebFetchPage(
         blocked: stored.blocked,
         parts: JSON.stringify(stored.parts),
         bytes: stored.parts.reduce((sum, part) => sum + Buffer.byteLength(part), 0),
-        stored_at: Date.now(),
+        stored_at: log.writer.clock.now(),
       })
       .execute();
 
@@ -113,6 +113,7 @@ export function writeWebFetchPage(
       kind: 'stored',
       thread: session.thread,
       sessionKey: session.sessionKey,
+      pageID: stored.pageID,
       storeBytes: limits.storeBytes,
     });
 
