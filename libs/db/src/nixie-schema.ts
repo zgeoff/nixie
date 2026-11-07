@@ -1,6 +1,7 @@
 import { actionCancelMigration } from './action-cancel-migration';
 import { actionsMigration } from './actions-migration';
 import { apiMigration } from './api-migration';
+import { backupNoticesMigration } from './backup-notices-migration';
 import { backupSetsMigration } from './backup-sets-migration';
 import { definitionSeedRepositoryMigration } from './definition-seed-repository-migration';
 import { definitionsMigration } from './definitions-migration';
@@ -62,6 +63,7 @@ export const nixieSchema: BuildSchema = {
     dropMessageRoutesMigration,
     searchCallsMigration,
     webFetchPagesMigration,
+    backupNoticesMigration,
   ],
   oldestReader: 35,
 };
