@@ -13,11 +13,6 @@ export interface ProgramResult {
   readonly stderr: string;
 }
 
-export type RunProgram = (
-  argv: readonly string[],
-  options: Readonly<ProgramOptions>,
-) => ProgramResult;
-
 export function runProgram(
   argv: readonly string[],
   options: Readonly<ProgramOptions>,
