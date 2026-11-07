@@ -990,6 +990,95 @@ test('it interrupts a task turn whose model calls reach its dollar limit, and pa
   });
 });
 
+test('it interrupts a task turn on the call that reaches its dollar limit with the spend of its earlier turns', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the evening tide.',
+    usage: {
+      uncachedInputTokens: 9990,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.writeMessage(taskID, 'And the evening tide?');
+  await ctx.runNextStep(runner);
+
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 2, dollars: expect.toBeWithin(0.03, 0.031) },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+});
+
+test('it pauses a task whose guest fails after its calls reach the dollar limit, so no retry spends again', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    failure: 'the guest lost its model stream',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const paused = await ctx.readKinds('task.paused');
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(paused.map((record) => record.thread)).toStrictEqual([taskID]);
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 0, dollars: 0.03 },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+});
+
+test('it caps each task turn at 100 model calls', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter);
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.guest.turns[0]?.limits).toStrictEqual({ modelCalls: 100 });
+});
+
 test('it sleeps the imp of a task whose turn reached its dollar limit with work left', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();

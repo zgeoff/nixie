@@ -144,7 +144,8 @@ with the task's profile as the guest reports it
 reach the dollar limit, the runner interrupts the turn
 ([interrupts](./conversation-turns.md#interrupts)). Once the turn ends, the step asks for the pause
 and writes the same two records, with the counts it reached. The step sleeps the task's imp, even
-with work left, and its commit pauses the task.
+with work left, and its commit pauses the task. A step whose guest fails after its calls reach the
+limit asks for the pause too, so the step's retry waits for a raise and spends nothing more.
 
 While the newest limit record on the task's thread is `task.limit_reached`, a resume or a restart of
 the task refuses. The user raises the limit with the `task-raise` host command
