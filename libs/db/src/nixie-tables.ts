@@ -330,6 +330,10 @@ export interface NixieTables {
     readonly spec: string;
     readonly created_sequence: number;
   };
+  readonly search_calls: {
+    readonly day: string;
+    readonly count: number;
+  };
   readonly skill_export_attempts: {
     readonly approval_id: string;
     readonly started_at: number;

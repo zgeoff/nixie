@@ -14,6 +14,7 @@ export interface Secrets {
 
   readonly definitionsExportToken: string | null;
   readonly models: ModelSecrets;
+  readonly connectorCredentials: Readonly<Record<string, string>>;
 
   readonly settings: Readonly<Record<string, string>>;
 }
@@ -56,6 +57,7 @@ export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
     impdToken: result.data.impd_token ?? null,
     definitionsExportToken: result.data.definitions_export_token ?? null,
     models: { model_credentials: result.data.model_credentials },
+    connectorCredentials: result.data.connector_credentials,
     settings: result.data.settings,
   };
 }

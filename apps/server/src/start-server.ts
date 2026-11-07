@@ -12,6 +12,7 @@ import type { Secrets } from './load-secrets';
 import { loadServerInputs } from './load-server-inputs';
 import type { DefinitionsExportSettings } from './resolve-definitions-export';
 import type { SandboxSettings } from './resolve-sandbox-settings';
+import type { SearchSettings } from './resolve-search-settings';
 import { startServerWork } from './start-server-work';
 import type { Cleanup, ServerParts } from './types';
 
@@ -52,6 +53,7 @@ export interface ServerPartsOptions extends ServerOptions {
   readonly sandbox: SandboxSettings;
 
   readonly definitionsExport: DefinitionsExportSettings | null;
+  readonly search: SearchSettings | null;
   readonly writer: Writer;
   readonly cleanup: Cleanup;
 
