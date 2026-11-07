@@ -1,4 +1,4 @@
-import { removeThreadLinks } from '@heynixie/connectors';
+import { removeWebFetchThread } from '@heynixie/connectors';
 import { removeThreadKeys, writeRecords } from '@heynixie/log';
 import { modelSessionInvalidatedCodec } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
@@ -37,7 +37,7 @@ export async function runConversationReset(
 
   const shreddedRecords = await removeThreadKeys(log, conversationTaskID);
 
-  await removeThreadLinks(log, conversationTaskID);
+  await removeWebFetchThread(log, conversationTaskID);
 
   const resetAt = new Date();
 

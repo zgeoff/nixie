@@ -410,6 +410,19 @@ export interface NixieTables {
     readonly url: string;
     readonly thread: string;
   };
+  readonly web_fetch_pages: {
+    readonly session_key: string;
+    readonly page_id: string;
+    readonly thread: string;
+    readonly url: string;
+    readonly status: number;
+    readonly content_type: string | null;
+    readonly is_truncated: number;
+    readonly blocked: string | null;
+    readonly parts: string;
+    readonly bytes: number;
+    readonly stored_at: number;
+  };
   readonly written_skills: {
     readonly approval_id: string;
     readonly proposal_id: string;

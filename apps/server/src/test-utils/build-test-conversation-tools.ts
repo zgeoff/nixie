@@ -23,6 +23,7 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
             log: context.log,
             textBytes: webFetchDefaults.limits.textBytes,
             linkPathChars: webFetchDefaults.linkPathChars,
+            pageStoreBytes: webFetchDefaults.pageStoreBytes,
           }),
           time: buildTimeTool({
             clock: context.clock,

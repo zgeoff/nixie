@@ -61,6 +61,7 @@ test('it reads every section, with the default of each setting the file leaves o
       limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 20_000 },
       sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
       linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
     },
     search: { daily_call_cap: 200, credential: null, api_url: 'https://kagi.com/api/v1' },
     time: { default_zone: 'Australia/Sydney' },

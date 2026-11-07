@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { createSandboxAdapter } from './create-sandbox-adapter';
 import { startWebFetch } from './start-web-fetch';
 
@@ -132,4 +133,132 @@ test("it returns a skill file past the web fetch's text limit whole", async () =
   const reply = await webFetch.readSkillPage('https://pages.test/files/30000');
 
   expect(reply).toMatchObject({ kind: 'page', text: 'x'.repeat(30_000), isTruncated: false });
+});
+
+test("it stores a page past the web fetch's text limit whole, in parts of that limit", async () => {
+  const ctx = await setupTest();
+
+  const adapter = createSandboxAdapter({
+    recorder: ctx.recorder,
+    toolTarget: () => ({ path: '/nonexistent.sock' }),
+    sandbox: { adapter: 'test' },
+    testRootDir: ctx.dataDir,
+    hostEnv: {},
+  });
+
+  const webFetch = startWebFetch({
+    adapter,
+    image: 'fetch',
+    argv: [process.execPath, join(import.meta.dir, 'test-utils/run-stub-fetcher.ts')],
+    deniedRanges: [],
+    log: ctx.log,
+  });
+
+  ctx.stack.defer(() => webFetch.stop());
+
+  const run = {
+    runID: 'run-1',
+    thread: 'conversation',
+    tools: ['web_fetch'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  };
+
+  const first = await webFetch.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://pages.test/files/30000' },
+      toolUseID: null,
+    },
+    { run },
+  );
+
+  invariant(first.status === 'ok' && typeof first.result['page'] === 'string');
+
+  const second = await webFetch.tool.run(
+    {
+      callID: 'call-2',
+      tool: 'web_fetch',
+      input: { page: first.result['page'], part: 2 },
+      toolUseID: null,
+    },
+    { run },
+  );
+
+  expect(first.result).toStrictEqual({
+    url: 'https://pages.test/files/30000',
+    status: 200,
+    contentType: 'text/plain; charset=utf-8',
+    page: expect.any(String),
+    part: 1,
+    parts: 2,
+    text: 'x'.repeat(20_000),
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(second).toStrictEqual({
+    status: 'ok',
+    result: { ...first.result, part: 2, text: 'x'.repeat(10_000) },
+  });
+});
+
+test('it keeps the whole text of a page whose text decodes to 3 times its body bytes, unmarked', async () => {
+  const ctx = await setupTest();
+
+  const adapter = createSandboxAdapter({
+    recorder: ctx.recorder,
+    toolTarget: () => ({ path: '/nonexistent.sock' }),
+    sandbox: { adapter: 'test' },
+    testRootDir: ctx.dataDir,
+    hostEnv: {},
+  });
+
+  const webFetch = startWebFetch({
+    adapter,
+    image: 'fetch',
+    argv: [process.execPath, join(import.meta.dir, 'test-utils/run-stub-fetcher.ts')],
+    deniedRanges: [],
+    log: ctx.log,
+    config: {
+      limits: { bodyBytes: 1000, timeoutMs: 15_000, redirects: 5, textBytes: 1000 },
+      sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+    },
+  });
+
+  ctx.stack.defer(() => webFetch.stop());
+
+  const outcome = await webFetch.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://pages.test/files/3000' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      url: 'https://pages.test/files/3000',
+      status: 200,
+      contentType: 'text/plain; charset=utf-8',
+      page: expect.any(String),
+      part: 1,
+      parts: 3,
+      text: 'x'.repeat(1000),
+      isTruncated: false,
+      blocked: null,
+    },
+  });
 });

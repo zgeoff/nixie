@@ -11,6 +11,7 @@ export const webFetchConfigSchema = z
     redirects: z.number().int().nonnegative().default(webFetchDefaults.limits.redirects),
     text_bytes: countSchema.default(webFetchDefaults.limits.textBytes),
     link_path_chars: countSchema.default(webFetchDefaults.linkPathChars),
+    page_store_bytes: countSchema.default(webFetchDefaults.pageStoreBytes),
   })
   .transform((config): WebFetchConfig => ({
     limits: {
@@ -21,4 +22,5 @@ export const webFetchConfigSchema = z
     },
     sandboxLimits: webFetchDefaults.sandboxLimits,
     linkPathChars: config.link_path_chars,
+    pageStoreBytes: config.page_store_bytes,
   }));

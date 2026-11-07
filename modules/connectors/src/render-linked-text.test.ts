@@ -12,7 +12,7 @@ test("it writes a link on the page's site as its ID alone", () => {
       },
       { textBytes: 1000, linkPathChars: 24 },
     ),
-  ).toStrictEqual({ text: 'Fares [L12]', isCut: false });
+  ).toStrictEqual({ text: 'Fares [L12]', tags: [{ start: 6, end: 11 }] });
 });
 
 test('it writes a link to another host with the host and path after its ID', () => {
@@ -26,7 +26,10 @@ test('it writes a link to another host with the host and path after its ID', () 
       },
       { textBytes: 1000, linkPathChars: 24 },
     ),
-  ).toStrictEqual({ text: 'Weather [L40 · weather.test/coast]', isCut: false });
+  ).toStrictEqual({
+    text: 'Weather [L40 · weather.test/coast]',
+    tags: [{ start: 8, end: 34 }],
+  });
 });
 
 test.each([
@@ -44,7 +47,7 @@ test.each([
       },
       { textBytes: 1000, linkPathChars },
     ),
-  ).toStrictEqual({ text: tag, isCut: false });
+  ).toStrictEqual({ text: tag, tags: [{ start: 0, end: tag.length }] });
 });
 
 test.each([
@@ -64,7 +67,7 @@ test.each([
         },
         { textBytes: 1000, linkPathChars },
       ),
-    ).toStrictEqual({ text: tag, isCut: false });
+    ).toStrictEqual({ text: tag, tags: [{ start: 0, end: tag.length }] });
   },
 );
 
@@ -79,7 +82,7 @@ test('it writes a square bracket in a path as its escape, so the tag ends only a
       },
       { textBytes: 1000, linkPathChars: 24 },
     ),
-  ).toStrictEqual({ text: '[L7 · weather.test/a%5Db%5Bc]', isCut: false });
+  ).toStrictEqual({ text: '[L7 · weather.test/a%5Db%5Bc]', tags: [{ start: 0, end: 29 }] });
 });
 
 test.each([
@@ -99,7 +102,7 @@ test.each([
         },
         { textBytes: 1000, linkPathChars },
       ),
-    ).toStrictEqual({ text: tag, isCut: false });
+    ).toStrictEqual({ text: tag, tags: [{ start: 0, end: tag.length }] });
   },
 );
 
@@ -114,7 +117,7 @@ test('it shows an IPv6 host in its brackets, followed by the path', () => {
       },
       { textBytes: 1000, linkPathChars: 24 },
     ),
-  ).toStrictEqual({ text: '[L1 · [2001:db8::1]/breads]', isCut: false });
+  ).toStrictEqual({ text: '[L1 · [2001:db8::1]/breads]', tags: [{ start: 0, end: 27 }] });
 });
 
 test('it counts a subdomain of the page host as another host, and shows no path for its root', () => {
@@ -128,7 +131,7 @@ test('it counts a subdomain of the page host as another host, and shows no path 
       },
       { textBytes: 1000, linkPathChars: 24 },
     ),
-  ).toStrictEqual({ text: '[L3 · shop.ferries.test]', isCut: false });
+  ).toStrictEqual({ text: '[L3 · shop.ferries.test]', tags: [{ start: 0, end: 24 }] });
 });
 
 test('it drops a mark with no target', () => {
@@ -138,20 +141,20 @@ test('it drops a mark with no target', () => {
       { pageURL: 'https://ferries.test/', targets: [], numbers: new Map() },
       { textBytes: 1000, linkPathChars: 24 },
     ),
-  ).toStrictEqual({ text: 'Fares', isCut: false });
+  ).toStrictEqual({ text: 'Fares', tags: [] });
 });
 
-test('it cuts the text at the limit, never inside a character', () => {
+test('it keeps the whole text past the part limit, for the cut into parts', () => {
   expect(
     renderLinkedText(
       ['Café au lait'],
       { pageURL: 'https://cafe.test/', targets: [], numbers: new Map() },
       { textBytes: 4, linkPathChars: 24 },
     ),
-  ).toStrictEqual({ text: 'Caf', isCut: true });
+  ).toStrictEqual({ text: 'Café au lait', tags: [] });
 });
 
-test('it drops a whole ID that would pass the limit', () => {
+test('it writes a tag longer than one part as its ID alone', () => {
   expect(
     renderLinkedText(
       ['Fares ', { link: 0 }, ' and more'],
@@ -162,45 +165,19 @@ test('it drops a whole ID that would pass the limit', () => {
       },
       { textBytes: 12, linkPathChars: 24 },
     ),
-  ).toStrictEqual({ text: 'Fares ', isCut: true });
+  ).toStrictEqual({ text: 'Fares [L40] and more', tags: [{ start: 6, end: 11 }] });
 });
 
-test('it keeps 2,000 links to one off-site host with a long name inside the text limit', () => {
-  const host = `${'a'.repeat(63)}.${'b'.repeat(63)}.${'c'.repeat(63)}.test`;
-  const parts = Array.from({ length: 2000 }, () => [' ', { link: 0 }] as const).flat();
-
-  const linked = renderLinkedText(
-    parts,
-    {
-      pageURL: 'https://almanac.test/',
-      targets: [`https://${host}/`],
-      numbers: new Map([[`https://${host}/`, 1]]),
-    },
-    { textBytes: 20_000, linkPathChars: 24 },
-  );
-
-  expect(Buffer.byteLength(linked.text)).toBeLessThanOrEqual(20_000);
-  expect(linked.isCut).toBeTrue();
-});
-
-test('it keeps 2,000 off-site links with long paths inside the text limit once each tag shows its path', () => {
-  const targets = Array.from(
-    { length: 2000 },
-    (_, index) => `https://tides.test/harbours/station-${index}/${'observations/'.repeat(20)}`,
-  );
-
-  const parts = targets.flatMap((_, index) => [' ', { link: index }] as const);
-
-  const linked = renderLinkedText(
-    parts,
-    {
-      pageURL: 'https://almanac.test/',
-      targets,
-      numbers: new Map(targets.map((target, index) => [target, index + 1])),
-    },
-    { textBytes: 20_000, linkPathChars: 200 },
-  );
-
-  expect(Buffer.byteLength(linked.text)).toBeLessThanOrEqual(20_000);
-  expect(linked.isCut).toBeTrue();
+test('it leaves out an ID longer than one part', () => {
+  expect(
+    renderLinkedText(
+      ['Fares ', { link: 0 }, ' and more'],
+      {
+        pageURL: 'https://ferries.test/',
+        targets: ['https://weather.test/coast'],
+        numbers: new Map([['https://weather.test/coast', 40]]),
+      },
+      { textBytes: 4, linkPathChars: 24 },
+    ),
+  ).toStrictEqual({ text: 'Fares  and more', tags: [] });
 });

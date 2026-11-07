@@ -154,7 +154,7 @@ request, and the server runs it on the same stopped path as the full reset:
 3. It writes a `model.session_invalidated` record on the thread, so the next turn opens a new
    session instead of resuming the old one.
 4. It deletes the key of every record on the thread from the key store and checkpoints it, then
-   deletes the links that the web fetch tool numbered on the thread.
+   deletes the links that the web fetch tool numbered and the pages it stored on the thread.
 5. It writes a `log_reset` record on the thread, with the mode `conversations`, the sequence of the
    invalidation record and the number of records it shredded. The tasks projection moves the
    conversation task's read cursor to this record, so a message still unread drops out of the inbox.

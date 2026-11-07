@@ -1,6 +1,6 @@
 import type { CompactionSettings } from '@heynixie/compaction';
 import { removeSummaryKeys } from '@heynixie/compaction';
-import { removeThreadLinks } from '@heynixie/connectors';
+import { removeWebFetchThread } from '@heynixie/connectors';
 import { subscribeToRecordCommits, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
@@ -532,7 +532,7 @@ async function cleanTaskSession(
   ]);
 
   await removeSummaryKeys(context.log, taskID);
-  await removeThreadLinks(context.log, taskID);
+  await removeWebFetchThread(context.log, taskID);
 
   const sandboxes = await runner.options.sandboxes.list(taskID);
 

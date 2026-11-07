@@ -1,4 +1,5 @@
 import type { Log } from '@heynixie/log';
+import { withWriteTransaction } from '@heynixie/log';
 import { writeLinkNumbers } from '../write-link-numbers';
 
 export interface WebFetchLinksSeed {
@@ -11,5 +12,5 @@ export async function seedWebFetchLinks(
   log: Pick<Log, 'writer'>,
   seed: WebFetchLinksSeed,
 ): Promise<void> {
-  await writeLinkNumbers(log, { ...seed, invalidatedThrough: null });
+  await withWriteTransaction(log.writer, (tx) => writeLinkNumbers(tx, seed));
 }

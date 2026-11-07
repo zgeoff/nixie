@@ -47,8 +47,9 @@ The address check refuses these addresses:
 ## Limits and the result
 
 Each fetch has 4 limits, all configurable: a body of 2 MB read, 15 s for the whole call with its
-redirects, 5 redirects, and 256 KB of returned text. The fetcher stops at the body limit or the text
-limit and marks the result as truncated.
+redirects, 5 redirects, and 20 KB of text in each result. The fetcher stops at the body limit and
+marks the result as truncated. nixie stores the whole text and returns it in parts of the text limit
+([pages and parts](../../../architecture/connectors/web-fetch.md#pages-and-parts)).
 
 The result holds the final URL, the status code, the content type, the page's text and the truncated
 mark. An HTML page returns its readable text, another text type returns as it arrived, and a binary
