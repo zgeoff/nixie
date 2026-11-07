@@ -17,17 +17,27 @@ export async function updateStoreIndexes(parts: StoreParts): Promise<UpdatedInde
 
   parts.messages.cursor.updateThrough(messages.through);
 
-  const moments = await readMomentEntries(parts.context.log, 0);
-
-  parts.moments.cursor.through = moments.through;
+  const moments = await readMomentRebuildEntries(parts);
 
   return {
     rebuilt: runVectorRebuilds(parts, {
       items: entries,
       messages: messages.entries,
-      moments: moments.entries,
+      moments,
     }),
   };
+}
+
+async function readMomentRebuildEntries(parts: StoreParts): Promise<readonly IndexEntry[]> {
+  if (parts.moments.vectors === null) {
+    return [];
+  }
+
+  const moments = await readMomentEntries(parts.context.log, 0);
+
+  parts.moments.cursor.through = moments.through;
+
+  return moments.entries;
 }
 
 interface RebuildEntries {

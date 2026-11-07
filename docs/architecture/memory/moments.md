@@ -81,14 +81,15 @@ rebuilds in the background after each start, and leaves each search on keywords 
 rebuild ends.
 
 Before each search, the store reads every moment kept or changed since the last search, whether a
-tool call or a client action changed it. It encodes each active or retired moment among them, and
-drops the vector of each moment whose destroy started. A moment kept on one turn therefore matches
-by meaning on the next. A destroy that completes also drops the moment's vector at once, without
-waiting for the next search.
+tool call or a client action changed it. It encodes each active or retired moment among them, drops
+the vector of each moment whose destroy started, and waits for the encodings to end. A moment kept
+on one turn therefore matches by meaning on the next. A destroy runs the same step when it ends, so
+the destroyed moment's vector leaves at once.
 
-A moment matches by meaning when its similarity to the query reaches 0.3, the same floor as the
-`memory.recall` tool. As in [recall](./store.md#recall), reciprocal rank fusion merges the keyword
-ranking and the meaning ranking.
+A moment matches by meaning above the similarity floor of the `memory.recall` tool, which sits below
+the floor of per-turn retrieval because the model asked for the search. As in
+[recall](./store.md#recall), reciprocal rank fusion merges the keyword ranking and the meaning
+ranking.
 
 `moment.read` returns the conversation of the span by default: the user's messages and the model's
 replies, in order. The raw fields of tool calls, tool results and step markers bury those words, so

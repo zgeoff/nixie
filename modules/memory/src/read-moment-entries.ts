@@ -1,14 +1,10 @@
 import type { Log } from '@heynixie/log';
 import { buildMomentText } from './build-moment-text';
+import type { MomentEntries } from './collect-moment-entries';
+import { collectMomentEntries } from './collect-moment-entries';
+import { isIndexedMomentState } from './is-indexed-moment-state';
 import type { MomentTables } from './moment-types';
 import { readMomentDetail } from './read-moment-detail';
-import type { IndexEntry } from './start-memory-index';
-
-export interface MomentEntries {
-  readonly entries: readonly IndexEntry[];
-  readonly removedIDs: readonly string[];
-  readonly through: number;
-}
 
 export async function readMomentEntries(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
@@ -22,22 +18,17 @@ export async function readMomentEntries(
     .orderBy('updated_sequence')
     .execute();
 
-  const live = rows.filter((row) => row.state === 'active' || row.state === 'retired');
+  const indexed = rows.filter((row) => isIndexedMomentState(row.state));
 
-  const details = await Promise.all(live.map((row) => readMomentDetail(log, row)));
+  const details = await Promise.all(indexed.map((row) => readMomentDetail(log, row)));
 
-  const entries = live.flatMap((row, index) => {
-    const detail = details[index];
-    const text = detail === undefined ? '' : buildMomentText(detail);
+  const texts = new Map(
+    indexed.flatMap((row, index) => {
+      const detail = details[index];
 
-    return text.trim() === '' ? [] : [{ itemID: row.moment_id, text }];
-  });
+      return detail === undefined ? [] : [[row.moment_id, buildMomentText(detail)] as const];
+    }),
+  );
 
-  const indexed = new Set(entries.map((entry) => entry.itemID));
-
-  return {
-    entries,
-    removedIDs: rows.map((row) => row.moment_id).filter((momentID) => !indexed.has(momentID)),
-    through: rows.at(-1)?.updated_sequence ?? afterSequence,
-  };
+  return collectMomentEntries(rows, texts, afterSequence);
 }

@@ -25,6 +25,7 @@ import { runBegunDestroy } from './run-begun-destroy';
 import { runMomentDestroy } from './run-moment-destroy';
 import type { MomentIndexes } from './start-store-indexes';
 import type { WriteInTransaction } from './types';
+import { updateMomentIndex } from './update-moment-index';
 import { writeKeptMoment } from './write-kept-moment';
 import { writeMomentEdit } from './write-moment-edit';
 import { writeMomentLink } from './write-moment-link';
@@ -85,12 +86,13 @@ export function buildMomentStore(
     destroy: async (target, writeInTransaction) => {
       const destroyed = await runMomentDestroy(context, target, writeInTransaction);
 
-      if (destroyed.status === 'destroyed') {
-        indexes.vectors?.remove(destroyed.momentID);
-      }
+      await updateMomentIndex(log, indexes);
 
       return destroyed;
     },
-    finishDestroy: (momentID) => runBegunDestroy(context, momentID),
+    finishDestroy: async (momentID) => {
+      await runBegunDestroy(context, momentID);
+      await updateMomentIndex(log, indexes);
+    },
   };
 }

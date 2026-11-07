@@ -1,6 +1,7 @@
 import type { Log } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildMomentText } from './build-moment-text';
+import { defaultMinSimilarity } from './default-min-similarity';
 import { mergeRankings } from './merge-rankings';
 import type { MomentTables } from './moment-types';
 import type { MomentDetail } from './read-moment-detail';
@@ -177,10 +178,6 @@ interface RowVectorMatch {
   readonly similarity: number;
 }
 
-// The floor of the memory.recall tool, which sits below per-turn retrieval's because the model or
-// the user asked for the search.
-const minSimilarity = 0.3;
-
 // The index holds every live moment, so the query's state and time filters apply to its matches.
 async function readVectorMatches(
   parts: MomentSearchParts,
@@ -196,7 +193,10 @@ async function readVectorMatches(
   }
 
   const [matches, rows] = await Promise.all([
-    vectors.readMatches(query.query, { limit: Number.MAX_SAFE_INTEGER, minSimilarity }),
+    vectors.readMatches(query.query, {
+      limit: Number.MAX_SAFE_INTEGER,
+      minSimilarity: defaultMinSimilarity,
+    }),
     readCandidateRows(parts.log, query, null),
   ]);
 

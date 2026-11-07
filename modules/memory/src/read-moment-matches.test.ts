@@ -4,6 +4,7 @@ import { makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildStubEncoder } from './test-utils/build-stub-encoder';
 import { startNextTestMemory } from './test-utils/start-next-test-memory';
+import type { TestMemoryOptions } from './test-utils/start-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -17,7 +18,10 @@ async function setupTest() {
     },
   });
 
-  return { memory };
+  return {
+    memory,
+    restart: (options: TestMemoryOptions) => startNextTestMemory(memory, options),
+  };
 }
 
 test('it finds the oldest moment by a word that only it holds, behind more than 100 newer moments', async () => {
@@ -145,9 +149,9 @@ test('it finds a moment by a paraphrase that shares no word with its title, note
 });
 
 test('it misses the same paraphrase by keyword alone when no encoder is wired', async () => {
-  const memory = await startTestMemory();
+  const ctx = await setupTest();
 
-  const [message] = await writeRecords(memory.log, [
+  const [message] = await writeRecords(ctx.memory.log, [
     {
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
@@ -158,13 +162,15 @@ test('it misses the same paraphrase by keyword alone when no encoder is wired', 
 
   invariant(message);
 
-  await memory.store.moments.keep({
+  await ctx.memory.store.moments.keep({
     caller: { kind: 'owner' },
     thread: 'conversation',
     firstSequence: message.sequence,
     lastSequence: message.sequence,
     title: 'Boiler service booked',
   });
+
+  const memory = await ctx.restart({});
 
   const page = await memory.store.moments.readMatches({
     query: 'heating engineer visit',
@@ -220,9 +226,9 @@ test('it ranks a moment that matches by keyword and by meaning above one that ma
 });
 
 test('it finds a moment kept before a restart by meaning once the index rebuilds', async () => {
-  const first = await startTestMemory();
+  const ctx = await setupTest();
 
-  const [message] = await writeRecords(first.log, [
+  const [message] = await writeRecords(ctx.memory.log, [
     {
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
@@ -233,7 +239,7 @@ test('it finds a moment kept before a restart by meaning once the index rebuilds
 
   invariant(message);
 
-  await first.store.moments.keep({
+  await ctx.memory.store.moments.keep({
     caller: { kind: 'owner' },
     thread: 'conversation',
     firstSequence: message.sequence,
@@ -241,7 +247,7 @@ test('it finds a moment kept before a restart by meaning once the index rebuilds
     title: 'Boiler service booked',
   });
 
-  const memory = await startNextTestMemory(first, {
+  const memory = await ctx.restart({
     semanticSearch: {
       encoder: buildStubEncoder([['boiler', 'heating']]),
       onError: mock<(error: unknown) => void>(),
@@ -415,9 +421,9 @@ test('it no longer finds a destroyed moment by meaning', async () => {
 });
 
 test('it finds moments by keyword alone while the index rebuilds after a start', async () => {
-  const first = await startTestMemory();
+  const ctx = await setupTest();
 
-  const [message] = await writeRecords(first.log, [
+  const [message] = await writeRecords(ctx.memory.log, [
     {
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
@@ -429,7 +435,7 @@ test('it finds moments by keyword alone while the index rebuilds after a start',
   invariant(message);
 
   for (const title of ['Boiler service booked', 'Heating engineer at nine']) {
-    await first.store.moments.keep({
+    await ctx.memory.store.moments.keep({
       caller: { kind: 'owner' },
       thread: 'conversation',
       firstSequence: message.sequence,
@@ -440,7 +446,7 @@ test('it finds moments by keyword alone while the index rebuilds after a start',
 
   const gated = makeGatedCall(buildStubEncoder([['boiler', 'heating']]).encode);
 
-  const memory = await startNextTestMemory(first, {
+  const memory = await ctx.restart({
     semanticSearch: { encoder: { encode: gated.call }, onError: mock<(error: unknown) => void>() },
   });
 
@@ -458,4 +464,252 @@ test('it finds moments by keyword alone while the index rebuilds after a start',
   gated.release();
 
   expect(page.matches.map((match) => match.title)).toStrictEqual(['Heating engineer at nine']);
+});
+
+test('it finds a moment by the meaning of a reflection', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.waitForSemanticIndex();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'booked it for the ninth' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'Booked for the ninth',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    target: { momentID: kept.momentID, version: 1 },
+    change: { kind: 'reflection', text: 'The furnace had failed twice that winter.' },
+  });
+
+  const page = await ctx.memory.store.moments.readMatches({
+    query: 'heating engineer visit',
+    from: null,
+    to: null,
+    includeRetired: false,
+    before: null,
+    limit: 10,
+  });
+
+  expect(page.matches.map((match) => match.title)).toStrictEqual(['Booked for the ninth']);
+});
+
+test('it no longer finds a moment by the meaning of a reflection the user removed', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.waitForSemanticIndex();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'booked it for the ninth' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'Booked for the ninth',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    target: { momentID: kept.momentID, version: 1 },
+    change: { kind: 'reflection', text: 'The furnace had failed twice that winter.' },
+  });
+
+  await ctx.memory.store.moments.readMatches({
+    query: 'heating engineer visit',
+    from: null,
+    to: null,
+    includeRetired: false,
+    before: null,
+    limit: 10,
+  });
+
+  const view = await ctx.memory.store.moments.readView(kept.momentID);
+
+  const reflectionID = view?.reflections[0]?.reflectionID;
+
+  invariant(reflectionID);
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 2 },
+    change: { kind: 'reflection_removed', reflectionID },
+  });
+
+  const page = await ctx.memory.store.moments.readMatches({
+    query: 'heating engineer visit',
+    from: null,
+    to: null,
+    includeRetired: false,
+    before: null,
+    limit: 10,
+  });
+
+  expect(page.matches).toStrictEqual([]);
+});
+
+test('it no longer finds a moment by the meaning of its old title after an edit', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.waitForSemanticIndex();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'booked it for the ninth' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'Boiler service booked',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.store.moments.readMatches({
+    query: 'heating engineer visit',
+    from: null,
+    to: null,
+    includeRetired: false,
+    before: null,
+    limit: 10,
+  });
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 1 },
+    change: { kind: 'title', title: 'Walk along the canal' },
+  });
+
+  const page = await ctx.memory.store.moments.readMatches({
+    query: 'heating engineer visit',
+    from: null,
+    to: null,
+    includeRetired: false,
+    before: null,
+    limit: 10,
+  });
+
+  expect(page.matches).toStrictEqual([]);
+});
+
+test('it finds a restored moment by meaning again', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.waitForSemanticIndex();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'booked it for the ninth' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'Boiler service booked',
+  });
+
+  invariant(kept.status === 'written');
+
+  await ctx.memory.store.moments.retire({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 1 },
+    isRetired: true,
+  });
+
+  await ctx.memory.store.moments.retire({
+    caller: { kind: 'owner' },
+    target: { momentID: kept.momentID, version: 2 },
+    isRetired: false,
+  });
+
+  const page = await ctx.memory.store.moments.readMatches({
+    query: 'heating engineer visit',
+    from: null,
+    to: null,
+    includeRetired: false,
+    before: null,
+    limit: 10,
+  });
+
+  expect(page.matches.map((match) => match.title)).toStrictEqual(['Boiler service booked']);
+});
+
+test('it leaves a moment kept outside from and to out of a search by meaning', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.waitForSemanticIndex();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'booked it for the ninth' },
+    },
+  ]);
+
+  invariant(message);
+
+  await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'Boiler service booked',
+  });
+
+  const page = await ctx.memory.store.moments.readMatches({
+    query: 'heating engineer visit',
+    from: Date.parse('2001-01-01T00:00:00Z'),
+    to: Date.parse('2001-02-01T00:00:00Z'),
+    includeRetired: false,
+    before: null,
+    limit: 10,
+  });
+
+  expect(page.matches).toStrictEqual([]);
 });

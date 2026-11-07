@@ -2,8 +2,8 @@ import type { Log } from '@heynixie/log';
 import { readMomentEntries } from './read-moment-entries';
 import type { MomentIndexes } from './start-store-indexes';
 
-// The index catches up on the moments projection before each search, so a moment kept or edited on
-// one turn matches by meaning on the next, whichever path wrote it.
+// The index reads its changes from the moments projection, so a keep, an edit or a destroy reaches
+// it whether a tool, the API or the store's start wrote the record.
 export function updateMomentIndex(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   moments: MomentIndexes,
@@ -27,7 +27,7 @@ export function updateMomentIndex(
 
     moments.cursor.through = read.through;
 
-    if (read.entries.length > 0 && vectors.isReady()) {
+    if (vectors.isReady()) {
       await vectors.waitForIdle();
     }
   });
