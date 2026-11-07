@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test';
 import { encodeFrame } from './encode-frame';
+import { frameHeaderBytes } from './frame-header-bytes';
 import { FrameTooLargeError } from './frame-too-large-error';
 import { makeFrameDecoder } from './make-frame-decoder';
-import { measureChunkedDecode } from './test-utils/measure-chunked-decode';
+import { countChunkedDecodeCopies } from './test-utils/count-chunked-decode-copies';
 
 test('it returns each message whole when the transport splits and joins frames', () => {
   const decode = makeFrameDecoder(64);
@@ -38,24 +39,11 @@ test('it keeps a partial frame until the rest arrives', () => {
   ]);
 });
 
-test('it decodes a 90 MiB frame sent in 64 KiB chunks at the time per byte of a 10 MiB frame', () => {
-  const smallMessage = new Uint8Array(10 * 1024 * 1024).fill(7);
-  const largeMessage = new Uint8Array(90 * 1024 * 1024).fill(7);
+test('it copies each byte of a 4 MiB frame sent in 64 KiB chunks once', () => {
+  const message = new Uint8Array(4 * 1024 * 1024).fill(7);
 
-  const largeDecode = measureChunkedDecode(largeMessage, 64 * 1024);
-
-  // The fastest of 3 runs drops a run that garbage collection slowed, and keeping only each run's
-  // time holds one decoded 90 MiB message at a time. A decoder that copies its whole buffer per
-  // chunk measured 6 to 16 times the time per byte here.
-  const smallNsPerByte = Math.min(
-    ...[1, 2, 3].map(() => measureChunkedDecode(smallMessage, 64 * 1024).nsPerByte),
-  );
-
-  const largeNsPerByte = Math.min(
-    largeDecode.nsPerByte,
-    ...[1, 2].map(() => measureChunkedDecode(largeMessage, 64 * 1024).nsPerByte),
-  );
-
-  expect(largeDecode.messages).toStrictEqual([largeMessage]);
-  expect(largeNsPerByte / smallNsPerByte).toBeLessThan(2);
+  expect(countChunkedDecodeCopies(message, 64 * 1024)).toStrictEqual({
+    messages: [message],
+    copiedBytes: frameHeaderBytes + message.byteLength,
+  });
 });
