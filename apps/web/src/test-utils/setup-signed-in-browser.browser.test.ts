@@ -1,11 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { checkBrowserSkip } from './check-browser-skip';
-import { createBrowserView } from './create-browser-view';
 import { setupSignedInBrowser } from './setup-signed-in-browser';
-
-// Bun 1.4.2's skipIf takes a boolean and has no in-body skip, so the suite checks the browser
-// before its tests start.
-const browserSkip = await checkBrowserSkip();
 
 async function setupTest() {
   const cookies: (string | null)[] = [];
@@ -28,7 +22,7 @@ async function setupTest() {
     await app.stop(true);
   });
 
-  const view = createBrowserView();
+  const view = new Bun.WebView({ backend: 'chrome' });
 
   onTestFinished(() => {
     view.close();
@@ -41,13 +35,10 @@ async function setupTest() {
   return { appURL: `http://127.0.0.1:${app.port}`, cookies, view };
 }
 
-test.skipIf(browserSkip.isSkipped)(
-  'it opens the app with the session cookie on the first request',
-  async () => {
-    const ctx = await setupTest();
+test('it opens the app with the session cookie on the first request', async () => {
+  const ctx = await setupTest();
 
-    await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: 'device-token-4417' });
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: 'device-token-4417' });
 
-    expect(ctx.cookies.at(0)).toBe('nixie_session=device-token-4417');
-  },
-);
+  expect(ctx.cookies.at(0)).toBe('nixie_session=device-token-4417');
+});

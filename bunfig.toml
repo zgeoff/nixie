@@ -22,6 +22,7 @@ minimumReleaseAgeExcludes = [
   "@zgeoff/format-codemod",
   "@zgeoff/kysely-bun-sqlite",
   "@zgeoff/oxlint-config",
+  "@zgeoff/rig",
   "@zgeoff/skill-gate",
   "@zgeoff/std",
 ]

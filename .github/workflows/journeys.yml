@@ -26,6 +26,7 @@ jobs:
         bun.lock
         bunfig.toml
         package.json
+        rig.config.ts
         tsconfig*.json
         adapters/**
         apps/**

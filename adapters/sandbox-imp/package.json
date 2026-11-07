@@ -9,7 +9,7 @@
     "./test-utils": "./src/test-utils/index.ts"
   },
   "scripts": {
-    "test:imp": "bun test --timeout=14000 .imp.test.ts",
+    "test:imp": "bun run --cwd ../.. test:imp adapters/sandbox-imp/",
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {

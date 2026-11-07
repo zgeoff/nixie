@@ -1,19 +1,13 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
+import { runInPage } from '@zgeoff/rig';
 import { z } from 'zod';
 import { store } from '../mocks/store';
-import { checkBrowserSkip } from '../test-utils/check-browser-skip';
-import { createBrowserView } from '../test-utils/create-browser-view';
-import { runInPage } from '../test-utils/run-in-page';
 import { setBrowserFiles } from '../test-utils/set-browser-files';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
 import { startStubAPI } from '../test-utils/start-stub-api';
-
-// Bun 1.4.2's skipIf takes a boolean and has no in-body skip, so the suite checks the browser
-// before its tests start.
-const browserSkip = await checkBrowserSkip();
 
 async function setupTest() {
   const api = startStubAPI();
@@ -39,7 +33,7 @@ async function setupTest() {
     await elsewhere.stop(true);
   });
 
-  const view = createBrowserView();
+  const view = new Bun.WebView({ backend: 'chrome' });
 
   onTestFinished(() => {
     view.close();
@@ -53,250 +47,235 @@ async function setupTest() {
   return { api, appURL: app.url, elsewhereURL: `http://localhost:${elsewhere.port}/`, view };
 }
 
-test.skipIf(browserSkip.isSkipped)(
-  'it renders the conversation signed in when a link from another site opens the app',
-  async () => {
-    const ctx = await setupTest();
+test('it renders the conversation signed in when a link from another site opens the app', async () => {
+  const ctx = await setupTest();
 
-    const [code] = await Promise.all([
-      store.enrolmentCodes.create({}),
-      store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } }),
-    ]);
+  const [code] = await Promise.all([
+    store.enrolmentCodes.create({}),
+    store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } }),
+  ]);
 
-    await ctx.view.navigate(`${ctx.appURL}/`);
+  await ctx.view.navigate(`${ctx.appURL}/`);
 
-    await runInPage(
-      ctx.view,
-      async (enrolmentCode: string) => {
-        const response = await fetch('/rpc/sessions/enrol', {
-          body: JSON.stringify({
-            json: {
-              clientActionID: '0b7e4f2a-6c1d-4e8b-9a3f-5d2c8e1b7a64',
-              code: enrolmentCode,
-              deviceName: 'kitchen tablet',
-              tokenDelivery: 'cookie',
-            },
-          }),
-          headers: { 'content-type': 'application/json', 'x-nixie-client': 'web' },
-          method: 'POST',
-        });
+  await runInPage(
+    ctx.view,
+    async (enrolmentCode: string) => {
+      const response = await fetch('/rpc/sessions/enrol', {
+        body: JSON.stringify({
+          json: {
+            clientActionID: '0b7e4f2a-6c1d-4e8b-9a3f-5d2c8e1b7a64',
+            code: enrolmentCode,
+            deviceName: 'kitchen tablet',
+            tokenDelivery: 'cookie',
+          },
+        }),
+        headers: { 'content-type': 'application/json', 'x-nixie-client': 'web' },
+        method: 'POST',
+      });
 
-        return response.status;
-      },
-      code.code,
-      z.number(),
-    );
+      return response.status;
+    },
+    code.code,
+    z.number(),
+  );
 
-    await ctx.view.navigate(ctx.elsewhereURL);
-    await ctx.view.click('#open');
+  await ctx.view.navigate(ctx.elsewhereURL);
+  await ctx.view.click('#open');
 
-    await waitFor(
-      async () => {
-        const text: unknown = await ctx.view.evaluate('document.body.innerText');
+  await waitFor(
+    async () => {
+      const text: unknown = await ctx.view.evaluate('document.body.innerText');
 
-        expect(text).toInclude('Is the kettle on?');
-      },
-      { timeout: 10_000 },
-    );
+      expect(text).toInclude('Is the kettle on?');
+    },
+    { timeout: 10_000 },
+  );
 
-    const session = store.sessions.findFirst((query) =>
-      query.where({ deviceName: 'kitchen tablet' }),
-    );
+  const session = store.sessions.findFirst((query) =>
+    query.where({ deviceName: 'kitchen tablet' }),
+  );
 
-    expect(ctx.api.requests.filter((request) => request.authorization !== null)).toStrictEqual([
-      { authorization: `Bearer ${session?.token}`, cookie: null, path: '/rpc/conversation/read' },
-    ]);
-  },
-);
+  expect(ctx.api.requests.filter((request) => request.authorization !== null)).toStrictEqual([
+    { authorization: `Bearer ${session?.token}`, cookie: null, path: '/rpc/conversation/read' },
+  ]);
+});
 
-test.skipIf(browserSkip.isSkipped)(
-  'it checks again in the browser when the server render gets no cookie that the browser holds',
-  async () => {
-    const ctx = await setupTest();
-    const session = await store.sessions.create({});
+test('it checks again in the browser when the server render gets no cookie that the browser holds', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
 
-    await store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } });
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } });
 
-    // A browser leaves a Strict cookie off a navigation from another site, so the server renders
-    // the page without the session that the browser holds.
-    await ctx.view.navigate(ctx.elsewhereURL);
+  // A browser leaves a Strict cookie off a navigation from another site, so the server renders
+  // the page without the session that the browser holds.
+  await ctx.view.navigate(ctx.elsewhereURL);
 
-    await ctx.view.cdp('Network.setCookie', {
-      httpOnly: true,
-      name: 'nixie_session',
-      path: '/',
-      sameSite: 'Strict',
-      secure: true,
-      url: `${ctx.appURL}/`,
-      value: session.token,
-    });
+  await ctx.view.cdp('Network.setCookie', {
+    httpOnly: true,
+    name: 'nixie_session',
+    path: '/',
+    sameSite: 'Strict',
+    secure: true,
+    url: `${ctx.appURL}/`,
+    value: session.token,
+  });
 
-    await ctx.view.click('#open');
+  await ctx.view.click('#open');
 
-    await waitFor(
-      async () => {
-        const text: unknown = await ctx.view.evaluate('document.body.innerText');
+  await waitFor(
+    async () => {
+      const text: unknown = await ctx.view.evaluate('document.body.innerText');
 
-        expect(text).toInclude('Is the kettle on?');
-      },
-      { timeout: 10_000 },
-    );
+      expect(text).toInclude('Is the kettle on?');
+    },
+    { timeout: 10_000 },
+  );
 
-    expect(ctx.api.requests.slice(0, 2)).toStrictEqual([
-      { authorization: null, cookie: null, path: '/rpc/conversation/read' },
+  expect(ctx.api.requests.slice(0, 2)).toStrictEqual([
+    { authorization: null, cookie: null, path: '/rpc/conversation/read' },
+    {
+      authorization: null,
+      cookie: `nixie_session=${session.token}`,
+      path: '/rpc/conversation/read',
+    },
+  ]);
+});
+
+test('it sends a photo picked in the browser with the message, then shows it in the thread', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await setBrowserFiles(ctx.view, {
+    selector: 'input[type=file][multiple]:enabled',
+    files: [
       {
-        authorization: null,
-        cookie: `nixie_session=${session.token}`,
-        path: '/rpc/conversation/read',
+        name: 'swatch.png',
+        bytes: Uint8Array.fromBase64(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
+        ),
       },
-    ]);
-  },
-);
+    ],
+  });
 
-test.skipIf(browserSkip.isSkipped)(
-  'it sends a photo picked in the browser with the message, then shows it in the thread',
-  async () => {
-    const ctx = await setupTest();
-    const session = await store.sessions.create({});
+  await waitFor(
+    async () => {
+      const attached: unknown = await ctx.view.evaluate(
+        'document.querySelector(\'img[alt="Attached image 1"]\') !== null',
+      );
 
-    await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+      expect(attached).toBeTrue();
+    },
+    { timeout: 10_000 },
+  );
 
-    await setBrowserFiles(ctx.view, {
-      selector: 'input[type=file][multiple]:enabled',
-      files: [
-        {
-          name: 'swatch.png',
-          bytes: Uint8Array.fromBase64(
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
-          ),
-        },
-      ],
-    });
+  await ctx.view.click('textarea');
+  await ctx.view.cdp('Input.insertText', { text: 'Is this the right shade?' });
+  await ctx.view.click('button[type=submit]');
 
-    await waitFor(
-      async () => {
-        const attached: unknown = await ctx.view.evaluate(
-          'document.querySelector(\'img[alt="Attached image 1"]\') !== null',
-        );
+  await waitFor(
+    async () => {
+      const width: unknown = await ctx.view.evaluate(
+        "document.querySelector('[role=status]') === null ? (document.querySelector('img[alt=\"Image 1\"]')?.naturalWidth ?? 0) : 0",
+      );
 
-        expect(attached).toBeTrue();
-      },
-      { timeout: 10_000 },
-    );
+      expect(width).toBe(1);
+    },
+    { timeout: 10_000 },
+  );
 
-    await ctx.view.click('textarea');
-    await ctx.view.cdp('Input.insertText', { text: 'Is this the right shade?' });
-    await ctx.view.click('button[type=submit]');
+  expect(
+    store.records.findFirst((query) => query.where({ kind: 'owner_message' }))?.message,
+  ).toMatchObject({
+    images: [{ data: expect.toBeString(), mediaType: 'image/png' }],
+    text: 'Is this the right shade?',
+  });
+});
 
-    await waitFor(
-      async () => {
-        const width: unknown = await ctx.view.evaluate(
-          "document.querySelector('[role=status]') === null ? (document.querySelector('img[alt=\"Image 1\"]')?.naturalWidth ?? 0) : 0",
-        );
+test('it shows the enrolment form once the browser finds that it holds no session', async () => {
+  const ctx = await setupTest();
 
-        expect(width).toBe(1);
-      },
-      { timeout: 10_000 },
-    );
+  await ctx.view.navigate(ctx.elsewhereURL);
+  await ctx.view.click('#open');
 
-    expect(
-      store.records.findFirst((query) => query.where({ kind: 'owner_message' }))?.message,
-    ).toMatchObject({
-      images: [{ data: expect.toBeString(), mediaType: 'image/png' }],
-      text: 'Is this the right shade?',
-    });
-  },
-);
+  await waitFor(
+    async () => {
+      const text: unknown = await ctx.view.evaluate('document.body.innerText');
 
-test.skipIf(browserSkip.isSkipped)(
-  'it shows the enrolment form once the browser finds that it holds no session',
-  async () => {
-    const ctx = await setupTest();
+      expect(text).toInclude('Enrol this browser');
+    },
+    { timeout: 10_000 },
+  );
 
-    await ctx.view.navigate(ctx.elsewhereURL);
-    await ctx.view.click('#open');
+  expect(ctx.api.requests).toStrictEqual([
+    { authorization: null, cookie: null, path: '/rpc/conversation/read' },
+    { authorization: null, cookie: null, path: '/rpc/conversation/read' },
+  ]);
+});
 
-    await waitFor(
-      async () => {
-        const text: unknown = await ctx.view.evaluate('document.body.innerText');
+test('it opens the conversation at a message that a hop-limit notice links, behind later records', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
 
-        expect(text).toInclude('Enrol this browser');
-      },
-      { timeout: 10_000 },
-    );
+  await store.tasks.create({ name: 'Conversation', taskID: 'conversation' });
+  await store.tasks.create({ name: 'Garden plan', taskID: 'k3vq8m2xpa' });
 
-    expect(ctx.api.requests).toStrictEqual([
-      { authorization: null, cookie: null, path: '/rpc/conversation/read' },
-      { authorization: null, cookie: null, path: '/rpc/conversation/read' },
-    ]);
-  },
-);
+  await store.records.create({
+    kind: 'task_message',
+    taskMessage: {
+      from: 'k3vq8m2xpa',
+      fromName: 'Garden plan',
+      hop: 21,
+      kind: 'question',
+      messageID: 'm7q2x9k4pa',
+      text: 'Which bed gets the beans?',
+      to: 'conversation',
+      woke: false,
+    },
+    thread: 'conversation',
+  });
 
-test.skipIf(browserSkip.isSkipped)(
-  'it opens the conversation at a message that a hop-limit notice links, behind later records',
-  async () => {
-    const ctx = await setupTest();
-    const session = await store.sessions.create({});
+  await Promise.all(
+    Array.from({ length: 120 }, () =>
+      store.records.create({ kind: 'task.step_started', thread: 'conversation' }),
+    ),
+  );
 
-    await store.tasks.create({ name: 'Conversation', taskID: 'conversation' });
-    await store.tasks.create({ name: 'Garden plan', taskID: 'k3vq8m2xpa' });
+  await store.records.create({
+    exchangeNotice: {
+      link: { label: 'Open the exchange', messageID: 'm7q2x9k4pa', taskID: 'conversation' },
+      text: 'Garden plan and Conversation exchanged 21 messages with no outside cause. New messages between them wait for the next one. Garden plan is waiting on Conversation.',
+    },
+    kind: 'task.exchange_limited',
+    thread: 'k3vq8m2xpa',
+  });
 
-    await store.records.create({
-      kind: 'task_message',
-      taskMessage: {
-        from: 'k3vq8m2xpa',
-        fromName: 'Garden plan',
-        hop: 21,
-        kind: 'question',
-        messageID: 'm7q2x9k4pa',
-        text: 'Which bed gets the beans?',
-        to: 'conversation',
-        woke: false,
-      },
-      thread: 'conversation',
-    });
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
 
-    await Promise.all(
-      Array.from({ length: 120 }, () =>
-        store.records.create({ kind: 'task.step_started', thread: 'conversation' }),
-      ),
-    );
+  await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
 
-    await store.records.create({
-      exchangeNotice: {
-        link: { label: 'Open the exchange', messageID: 'm7q2x9k4pa', taskID: 'conversation' },
-        text: 'Garden plan and Conversation exchanged 21 messages with no outside cause. New messages between them wait for the next one. Garden plan is waiting on Conversation.',
-      },
-      kind: 'task.exchange_limited',
-      thread: 'k3vq8m2xpa',
-    });
+  await waitFor(
+    async () => {
+      const hasLink: unknown = await ctx.view.evaluate(
+        'document.querySelector(\'a[href="/#task-message-m7q2x9k4pa"]\') !== null',
+      );
 
-    await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+      expect(hasLink).toBeTrue();
+    },
+    { timeout: 10_000 },
+  );
 
-    await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
+  await ctx.view.click('a[href="/#task-message-m7q2x9k4pa"]');
 
-    await waitFor(
-      async () => {
-        const hasLink: unknown = await ctx.view.evaluate(
-          'document.querySelector(\'a[href="/#task-message-m7q2x9k4pa"]\') !== null',
-        );
+  await waitFor(
+    async () => {
+      const isInView: unknown = await ctx.view.evaluate(
+        "(() => { const box = document.getElementById('task-message-m7q2x9k4pa')?.getBoundingClientRect(); return box !== undefined && box.top >= 0 && box.bottom <= innerHeight; })()",
+      );
 
-        expect(hasLink).toBeTrue();
-      },
-      { timeout: 10_000 },
-    );
-
-    await ctx.view.click('a[href="/#task-message-m7q2x9k4pa"]');
-
-    await waitFor(
-      async () => {
-        const isInView: unknown = await ctx.view.evaluate(
-          "(() => { const box = document.getElementById('task-message-m7q2x9k4pa')?.getBoundingClientRect(); return box !== undefined && box.top >= 0 && box.bottom <= innerHeight; })()",
-        );
-
-        expect(isInView).toBeTrue();
-      },
-      { timeout: 10_000 },
-    );
-  },
-);
+      expect(isInView).toBeTrue();
+    },
+    { timeout: 10_000 },
+  );
+});
