@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { fitFetchedImage } from './fit-fetched-image';
+import { buildNoisePNG } from './test-utils/build-noise-png';
 import { buildPNGHeader } from './test-utils/build-png-header';
 import { encodeTestImage } from './test-utils/encode-test-image';
 
@@ -98,4 +99,28 @@ test('it returns an image whose header claims more than 25 million pixels as unr
   expect(
     fitFetchedImage(buildPNGHeader({ width: 10_000, height: 8000 }), 1568),
   ).resolves.toStrictEqual({ kind: 'unreadable', reason: 'ERR_IMAGE_TOO_MANY_PIXELS' });
+});
+
+test('it returns a PNG still past the 5 MiB the model takes as a JPEG of the same size', async () => {
+  const fitted = await fitFetchedImage(buildNoisePNG({ width: 1400, height: 1400 }), 1568);
+
+  invariant(fitted.kind === 'image');
+
+  expect(fitted).toStrictEqual({
+    kind: 'image',
+    image: { mediaType: 'image/jpeg', bytes: expect.any(Uint8Array) },
+    width: 1400,
+    height: 1400,
+  });
+
+  expect(fitted.image.bytes.byteLength).toBeLessThanOrEqual(5_242_880);
+});
+
+test('it returns an image still past the 5 MiB the model takes as a JPEG as unreadable', () => {
+  expect(
+    fitFetchedImage(buildNoisePNG({ width: 3000, height: 3000 }), 3000),
+  ).resolves.toStrictEqual({
+    kind: 'unreadable',
+    reason: 'past the 5242880 bytes the model takes',
+  });
 });
