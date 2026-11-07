@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { createPathSource } from './create-path-source';
 import { readRuleConflicts } from './read-rule-conflicts';
 import { readRulesInForce } from './read-rules-in-force';
@@ -84,9 +85,15 @@ test('it keeps a runtime change in force when the repo changes its rule, and lis
   const rules = await readRulesInForce(ctx.log.writer.db);
   const conflicts = await readRuleConflicts(ctx.log.writer.db);
 
-  expect(result).toMatchObject({
-    status: 'seeded',
-    record: { payload: { rules: { conflicts: ['ask-mail'] } } },
+  invariant(result.status === 'seeded');
+
+  expect(result.record.payload['rules']).toStrictEqual({
+    revisions: [],
+    applied: [],
+    held: [],
+    adopted: [],
+    conflicts: ['ask-mail'],
+    proposalID: null,
   });
 
   expect(

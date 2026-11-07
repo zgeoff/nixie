@@ -10,6 +10,7 @@ import { buildContentHash } from './build-content-hash';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
+import { DefinitionsParseError } from './definitions-parse-error';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import { readRulesInForce } from './read-rules-in-force';
@@ -1418,20 +1419,15 @@ test('it applies a rule edit that narrows and records it in the seed record', as
     buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
-  expect(result).toMatchObject({
-    status: 'seeded',
-    record: {
-      payload: {
-        rules: {
-          revisions: [{ ruleID: 'ask-mail', revision: 2, hash: expect.any(String) }],
-          applied: [{ ruleID: 'ask-mail', change: 'narrowing' }],
-          held: [],
-          adopted: [],
-          conflicts: [],
-          proposalID: null,
-        },
-      },
-    },
+  invariant(result.status === 'seeded');
+
+  expect(result.record.payload['rules']).toStrictEqual({
+    revisions: [{ ruleID: 'ask-mail', revision: 2, hash: expect.any(String) }],
+    applied: [{ ruleID: 'ask-mail', change: 'narrowing' }],
+    held: [],
+    adopted: [],
+    conflicts: [],
+    proposalID: null,
   });
 });
 
@@ -1597,20 +1593,21 @@ test('it applies the denies and asks of a first seed and gathers its allows into
     buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
-  expect(result).toMatchObject({
-    status: 'seeded',
-    record: {
-      payload: {
-        rules: {
-          applied: [
-            { ruleID: 'ask-mail', change: 'narrowing' },
-            { ruleID: 'deny-shell', change: 'narrowing' },
-          ],
-          held: ['allow-notes', 'allow-web'],
-          proposalID: expect.any(String),
-        },
-      },
-    },
+  invariant(result.status === 'seeded');
+
+  expect(result.record.payload['rules']).toStrictEqual({
+    revisions: [
+      { ruleID: 'ask-mail', revision: 1, hash: expect.any(String) },
+      { ruleID: 'deny-shell', revision: 1, hash: expect.any(String) },
+    ],
+    applied: [
+      { ruleID: 'ask-mail', change: 'narrowing' },
+      { ruleID: 'deny-shell', change: 'narrowing' },
+    ],
+    held: ['allow-notes', 'allow-web'],
+    adopted: [],
+    conflicts: [],
+    proposalID: expect.any(String),
   });
 });
 
@@ -1628,11 +1625,12 @@ test('it refuses a format 3 repo whose rule file fails the rule schema', async (
     buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
-  expect(result).toMatchObject({
-    status: 'refused',
-    error: { name: 'DefinitionsParseError', problems: [{ path: 'rules/notes.yaml' }] },
-    inForce: null,
-  });
+  invariant(result.status === 'refused' && result.error instanceof DefinitionsParseError);
+
+  expect({
+    inForce: result.inForce,
+    paths: result.error.problems.map((problem) => problem.path),
+  }).toStrictEqual({ inForce: null, paths: ['rules/notes.yaml'] });
 });
 
 test('it keeps the last seed in force when a rule file is malformed', async () => {
@@ -1661,7 +1659,11 @@ test('it keeps the last seed in force when a rule file is malformed', async () =
     buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
-  expect(result).toMatchObject({ status: 'refused', inForce: first.inForce });
+  expect(result).toStrictEqual({
+    status: 'refused',
+    error: expect.any(DefinitionsParseError),
+    inForce: first.inForce,
+  });
 });
 
 test('it changes the snapshot hash when a rule changes', async () => {
@@ -1731,8 +1733,5 @@ test('it keeps the snapshot hash when a rule fires', async () => {
     buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
-  expect(result).toMatchObject({
-    status: 'unchanged',
-    inForce: { snapshotHash: first.inForce.snapshotHash },
-  });
+  expect(result).toStrictEqual({ status: 'unchanged', inForce: first.inForce });
 });

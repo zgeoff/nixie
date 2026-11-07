@@ -108,13 +108,13 @@ test('it records a runtime change with its sentence, who made it and why', async
 
   const records = await readRecords(ctx.log, { afterSequence: 1 });
 
-  expect(records[0]?.record).toMatchObject({
+  expect({ kind: records[0]?.record.kind, payload: records[0]?.record.payload }).toStrictEqual({
     kind: 'rules.runtime_changed',
     payload: {
       changeID: change.changeID,
       ruleID: 'deny-shell',
       ruleHash: expect.any(String),
-      sentence: expect.any(String),
+      sentence: '**Deny** `shell.run`.',
       changedBy: 'owner',
       reason: 'No shell commands.',
     },

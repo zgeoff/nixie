@@ -49,9 +49,19 @@ test('it holds a definitions edit that widens and keeps the seeded version in fo
     runtime: [],
   });
 
-  expect(plan).toMatchObject({
+  expect(plan).toStrictEqual({
+    seeded: [{ hash: 'h-deny', rule: { id: 'mail', outcome: 'deny', tools: ['mail.send'] } }],
     applied: [],
-    held: [{ ruleID: 'mail', change: 'widening' }],
+    held: [
+      {
+        ruleID: 'mail',
+        before: { hash: 'h-deny', rule: { id: 'mail', outcome: 'deny', tools: ['mail.send'] } },
+        after: { hash: 'h-ask', rule: { id: 'mail', outcome: 'ask', tools: ['mail.send'] } },
+        change: 'widening',
+      },
+    ],
+    adopted: [],
+    overlaid: [],
     inForce: [
       {
         rule: { hash: 'h-deny', rule: { id: 'mail', outcome: 'deny', tools: ['mail.send'] } },
