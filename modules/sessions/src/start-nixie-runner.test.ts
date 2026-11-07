@@ -1056,6 +1056,7 @@ test('it pauses a task whose guest fails after its calls reach the dollar limit,
 
   const paused = await ctx.readKinds('task.paused');
   const [notice] = await ctx.readKinds('task.limit_notice');
+  const errored = await ctx.readKinds('task.step_errored');
 
   expect(paused.map((record) => record.thread)).toStrictEqual([taskID]);
 
@@ -1064,6 +1065,8 @@ test('it pauses a task whose guest fails after its calls reach the dollar limit,
     used: { turns: 0, dollars: 0.03 },
     limits: { turns: 25, dollars: 0.03 },
   });
+
+  expect(errored.map((record) => record.thread)).toStrictEqual([taskID]);
 });
 
 test('it caps each task turn at 100 model calls', async () => {

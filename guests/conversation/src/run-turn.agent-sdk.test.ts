@@ -1428,6 +1428,50 @@ test('it never compacts the session itself when a call reads past the profile wi
   ]);
 });
 
+test('it reports each model call with its own usage, carrying no count from the call before it', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    {
+      toolUse: { name: 'mcp__nixie__note_read', input: { name: 'groceries' } },
+      cacheReadTokens: 3000,
+      cacheWriteTokens: 4000,
+    },
+    { text: 'You need milk.' },
+  );
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  expect(ctx.frames.filter((frame) => frame.type === 'call')).toStrictEqual([
+    {
+      type: 'call',
+      usage: {
+        uncachedInputTokens: 10,
+        cacheReadTokens: 3000,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 4000,
+        outputTokens: 5,
+      },
+    },
+    {
+      type: 'call',
+      usage: {
+        uncachedInputTokens: 10,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 5,
+      },
+    },
+  ]);
+});
+
 test('it reports a session to resume that is not on the guest disk as missing', async () => {
   const ctx = await setupTest();
 
