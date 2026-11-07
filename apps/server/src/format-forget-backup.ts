@@ -18,6 +18,9 @@ export function formatForgetBackup(backup: ForgetBackupState): string {
       (failed) =>
         `Key backups: failed: ${failed.failure}. The next scheduled backup set removes the old keys again.`,
     )
-    .with({ state: 'complete' }, () => 'Key backups: complete. No key backup holds the old keys.')
+    .with(
+      { state: 'complete' },
+      () => 'Key backups: complete. No key backup holds a key that the reset removed.',
+    )
     .exhaustive();
 }

@@ -256,20 +256,17 @@ The session cleanup is the one the server passes in from the conversation, and
 ### A forget and the key backups
 
 A backup copied before a forget still holds the forgotten item's key, so a forget also reports its
-key backup state, from the forgotten record of each item it deleted:
+key backup state: off, pending, failed with a reason, or complete. A forget or a bulk forget answers
+with this state, and `memory.readForgetStatus` reads it again for the same items.
 
-- **off:** the deployment turned the backup schedule off, so nixie stages no backup to wait on.
-- **pending:** an item still waits on its cleanup, or no backup set copied after its forgotten
-  record has published.
-- **failed:** the newest such set failed, and the report carries the backup job's failure.
-- **complete:** such a set published, so its job run pruned every key copy that held the item.
+- The state reads off when the deployment turned the backup schedule off.
+- It reads pending while any item still waits on its cleanup.
+- Otherwise nixie reads it from the backup sets at or after the newest forgotten record among the
+  items, as [a forget's backup state](../deployment/backups.md#a-forgets-backup-state) describes.
+- A forget that deleted no item reads complete, because it removed no key.
 
-A forget or a bulk forget answers with this state, and `memory.readForgetStatus` reads it again for
-the same items. The answer reads pending in most cases, because the forget's own set publishes at
-the backup job's next job run. A failed state keeps the forget open, and the next scheduled set
-covers it again. A restart keeps the wait, because nixie reads the state from the log and the backup
-sets' rows. [A forget's backup state](../deployment/backups.md#a-forgets-backup-state) gives the
-rule for each set state.
+The answer reads pending in most cases, because the forget's own set publishes at the backup job's
+next job run.
 
 ### Forgetting retired items in bulk
 

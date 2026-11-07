@@ -98,11 +98,13 @@ Both filtered resets print one key backup line, which reads the state a forget r
 | off      | nixie stages no backup, so a backup copied before the reset still holds the old data |
 | pending  | the next backup job run removes the old keys, within the backup interval             |
 | failed   | the job's failure, and that the next scheduled set removes the old keys again        |
-| complete | no key backup holds the old keys                                                     |
+| complete | no key backup holds a key that the reset removed                                     |
 
 A reset answers before any backup set covers it, so the line reads pending, or off when the
-[backup schedule](backups.md) is off. The `memory-forget` command prints the same state in its JSON
-answer, under `backup`.
+[backup schedule](backups.md) is off. A reset of the memories that finds no item to forget removes
+no key, so its line reads complete. The `memory-forget` command prints the same state in its JSON
+answer, under `backup`. The warning that each filtered reset prints without `--yes` says that the
+next backup job run removes the old keys, and that a backup copied by hand keeps them.
 
 ## Backup and restore
 

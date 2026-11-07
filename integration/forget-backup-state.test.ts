@@ -23,6 +23,7 @@ import { tasksProjections } from '@heynixie/tasks';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
+import invariant from 'tiny-invariant';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -156,12 +157,18 @@ test('it keeps a forget pending while only a set staged before its delete has pu
     ctx.onPass.mock.calls.some((call) => call[0].staged?.kind === 'forget'),
   );
 
-  await writeTestBackupReceipt(ctx.dataDir, { sequence: 1, status: 'published' });
+  const earlier = ctx.onPass.mock.calls[0]?.[0].staged;
+
+  invariant(earlier, 'the first pass staged a set before the forget');
+
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: earlier.sequence, status: 'published' });
 
   await waitForCondition(() => {
     ctx.clock.advance(60_000);
 
-    return ctx.onPass.mock.calls.some((call) => call[0].received.length > 0);
+    return ctx.onPass.mock.calls.some((call) =>
+      call[0].received.some((receipt) => receipt.sequence === earlier.sequence),
+    );
   });
 
   const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
@@ -191,17 +198,28 @@ test('it completes a forget once the receipt of the set staged after its delete 
     ctx.onPass.mock.calls.some((call) => call[0].staged?.kind === 'forget'),
   );
 
-  await writeTestBackupReceipt(ctx.dataDir, { sequence: 2, status: 'published' });
+  const forgetSet = ctx.onPass.mock.calls.find((call) => call[0].staged?.kind === 'forget')?.[0]
+    .staged;
+
+  invariant(forgetSet, 'a pass staged the forget set');
+
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: forgetSet.sequence, status: 'published' });
 
   await waitForCondition(() => {
     ctx.clock.advance(60_000);
 
-    return ctx.onPass.mock.calls.some((call) => call[0].received.length > 0);
+    return ctx.onPass.mock.calls.some((call) =>
+      call[0].received.some((receipt) => receipt.sequence === forgetSet.sequence),
+    );
   });
 
   const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
-  expect(status.backup).toStrictEqual({ state: 'complete' });
+  expect(status).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    backup: { state: 'complete' },
+  });
 });
 
 test('it reports a failed prune with its reason, and keeps the forget open', async () => {
@@ -222,8 +240,13 @@ test('it reports a failed prune with its reason, and keeps the forget open', asy
     ctx.onPass.mock.calls.some((call) => call[0].staged?.kind === 'forget'),
   );
 
+  const forgetSet = ctx.onPass.mock.calls.find((call) => call[0].staged?.kind === 'forget')?.[0]
+    .staged;
+
+  invariant(forgetSet, 'a pass staged the forget set');
+
   await writeTestBackupReceipt(ctx.dataDir, {
-    sequence: 2,
+    sequence: forgetSet.sequence,
     status: 'failed',
     failure: 'keys: prune exited 1',
   });
@@ -231,12 +254,18 @@ test('it reports a failed prune with its reason, and keeps the forget open', asy
   await waitForCondition(() => {
     ctx.clock.advance(60_000);
 
-    return ctx.onPass.mock.calls.some((call) => call[0].received.length > 0);
+    return ctx.onPass.mock.calls.some((call) =>
+      call[0].received.some((receipt) => receipt.sequence === forgetSet.sequence),
+    );
   });
 
   const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
-  expect(status.backup).toStrictEqual({ state: 'failed', failure: 'keys: prune exited 1' });
+  expect(status).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    backup: { state: 'failed', failure: 'keys: prune exited 1' },
+  });
 });
 
 test('it completes a forget after a failed prune once the next scheduled set publishes', async () => {
@@ -257,10 +286,18 @@ test('it completes a forget after a failed prune once the next scheduled set pub
     ctx.onPass.mock.calls.some((call) => call[0].staged?.kind === 'forget'),
   );
 
-  await writeTestBackupReceipt(ctx.dataDir, { sequence: 1, status: 'published' });
+  const earlier = ctx.onPass.mock.calls[0]?.[0].staged;
+
+  const forgetSet = ctx.onPass.mock.calls.find((call) => call[0].staged?.kind === 'forget')?.[0]
+    .staged;
+
+  invariant(earlier, 'the first pass staged a set before the forget');
+  invariant(forgetSet, 'a pass staged the forget set');
+
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: earlier.sequence, status: 'published' });
 
   await writeTestBackupReceipt(ctx.dataDir, {
-    sequence: 2,
+    sequence: forgetSet.sequence,
     status: 'failed',
     failure: 'keys: prune exited 1',
   });
@@ -268,22 +305,66 @@ test('it completes a forget after a failed prune once the next scheduled set pub
   await waitForCondition(() => {
     ctx.clock.advance(60_000);
 
-    return ctx.onPass.mock.calls.some((call) => call[0].staged?.sequence === 3);
+    return ctx.onPass.mock.calls.some(
+      (call) =>
+        call[0].staged?.kind === 'scheduled' && call[0].staged.sequence > forgetSet.sequence,
+    );
   });
 
-  await writeTestBackupReceipt(ctx.dataDir, { sequence: 3, status: 'published' });
+  const nextSet = ctx.onPass.mock.calls.findLast(
+    (call) => call[0].staged?.kind === 'scheduled',
+  )?.[0].staged;
+
+  invariant(nextSet, 'a pass staged the next scheduled set');
+
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: nextSet.sequence, status: 'published' });
 
   await waitForCondition(() => {
     ctx.clock.advance(60_000);
 
     return ctx.onPass.mock.calls.some((call) =>
-      call[0].received.some((receipt) => receipt.sequence === 3),
+      call[0].received.some((receipt) => receipt.sequence === nextSet.sequence),
     );
   });
 
   const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
-  expect(status.backup).toStrictEqual({ state: 'complete' });
+  expect(status).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    backup: { state: 'complete' },
+  });
+});
+
+test('it keeps a forget pending while a staging error holds back its set', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+
+  await writeFile(getBackupStagingDir(ctx.dataDir), 'a file where staging belongs');
+
+  ctx.startSchedule();
+
+  await ctx.client.memory.forget({
+    clientActionID: crypto.randomUUID(),
+    itemID: item.itemID,
+    version: 1,
+  });
+
+  const errors = ctx.onError.mock.calls.length;
+
+  await waitForCondition(() => {
+    ctx.clock.advance(60_000);
+
+    return ctx.onError.mock.calls.length > errors;
+  });
+
+  const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
+
+  expect(status).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    backup: { state: 'pending' },
+  });
 });
 
 test('it completes a forget whose set a staging error held back, once a later pass stages it', async () => {
@@ -309,17 +390,28 @@ test('it completes a forget whose set a staging error held back, once a later pa
     return ctx.onPass.mock.calls.some((call) => call[0].staged?.kind === 'forget');
   });
 
-  await writeTestBackupReceipt(ctx.dataDir, { sequence: 1, status: 'published' });
+  const forgetSet = ctx.onPass.mock.calls.find((call) => call[0].staged?.kind === 'forget')?.[0]
+    .staged;
+
+  invariant(forgetSet, 'a pass staged the forget set');
+
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: forgetSet.sequence, status: 'published' });
 
   await waitForCondition(() => {
     ctx.clock.advance(60_000);
 
-    return ctx.onPass.mock.calls.some((call) => call[0].received.length > 0);
+    return ctx.onPass.mock.calls.some((call) =>
+      call[0].received.some((receipt) => receipt.sequence === forgetSet.sequence),
+    );
   });
 
   const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
-  expect(status.backup).toStrictEqual({ state: 'complete' });
+  expect(status).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    backup: { state: 'complete' },
+  });
 });
 
 test('it keeps a forget pending past the backup interval while its set has no receipt', async () => {
@@ -352,7 +444,11 @@ test('it keeps a forget pending past the backup interval while its set has no re
 
   const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
-  expect(status.backup).toStrictEqual({ state: 'pending' });
+  expect(status).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    backup: { state: 'pending' },
+  });
 });
 
 test('it completes a forget after a restart from the receipt the job wrote while nixie was down', async () => {
@@ -375,15 +471,28 @@ test('it completes a forget after a restart from the receipt the job wrote while
 
   await first.stop();
 
-  await writeTestBackupReceipt(ctx.dataDir, { sequence: 2, status: 'published' });
+  const forgetSet = ctx.onPass.mock.calls.find((call) => call[0].staged?.kind === 'forget')?.[0]
+    .staged;
+
+  invariant(forgetSet, 'a pass staged the forget set');
+
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: forgetSet.sequence, status: 'published' });
 
   ctx.startSchedule();
 
-  await waitForCondition(() => ctx.onPass.mock.calls.some((call) => call[0].received.length > 0));
+  await waitForCondition(() =>
+    ctx.onPass.mock.calls.some((call) =>
+      call[0].received.some((receipt) => receipt.sequence === forgetSet.sequence),
+    ),
+  );
 
   const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
-  expect(status.backup).toStrictEqual({ state: 'complete' });
+  expect(status).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    backup: { state: 'complete' },
+  });
 });
 
 test('it reports a client forget as pending on its key backups', async () => {
@@ -441,17 +550,28 @@ test('it completes a reset of the memories with the receipt of the set staged af
     ctx.onPass.mock.calls.some((call) => call[0].staged?.kind === 'forget'),
   );
 
-  await writeTestBackupReceipt(ctx.dataDir, { sequence: 2, status: 'published' });
+  const forgetSet = ctx.onPass.mock.calls.find((call) => call[0].staged?.kind === 'forget')?.[0]
+    .staged;
+
+  invariant(forgetSet, 'a pass staged the forget set');
+
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: forgetSet.sequence, status: 'published' });
 
   await waitForCondition(() => {
     ctx.clock.advance(60_000);
 
-    return ctx.onPass.mock.calls.some((call) => call[0].received.length > 0);
+    return ctx.onPass.mock.calls.some((call) =>
+      call[0].received.some((receipt) => receipt.sequence === forgetSet.sequence),
+    );
   });
 
   const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
-  expect(status.backup).toStrictEqual({ state: 'complete' });
+  expect(status).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    backup: { state: 'complete' },
+  });
 });
 
 test('it stages a forget set for a reset of the conversations', async () => {

@@ -53,10 +53,13 @@ async function runReset(host: HostTransport, flags: CLIFlags, io: CLIIO): Promis
   return 0;
 }
 
+const filteredBackupNote =
+  'The next backup job run removes the old keys from the key backups, and a backup copied by hand keeps them.';
+
 const memoriesWarning = [
   'A reset of the memories forgets every memory item, and keeps every record, the conversation and the device sessions.',
   'Only a restore from a backup undoes it.',
-  backupNote,
+  filteredBackupNote,
 ].join('\n');
 
 async function runMemoriesReset(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
@@ -82,7 +85,7 @@ async function runMemoriesReset(host: HostTransport, flags: CLIFlags, io: CLIIO)
 const conversationsWarning = [
   'A reset of the conversations forgets every message of the conversation, destroys its sandbox and gives the model a new session, and keeps every record, every memory item and the device sessions.',
   'Only a restore from a backup undoes it.',
-  backupNote,
+  filteredBackupNote,
 ].join('\n');
 
 async function runConversationsReset(

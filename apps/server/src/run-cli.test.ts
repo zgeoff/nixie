@@ -183,7 +183,7 @@ test('it refuses a reset of the memories without --yes, and says what it keeps',
       [
         'A reset of the memories forgets every memory item, and keeps every record, the conversation and the device sessions.',
         'Only a restore from a backup undoes it.',
-        'Backups from before the reset still hold the old data until they age out.',
+        'The next backup job run removes the old keys from the key backups, and a backup copied by hand keeps them.',
         'Run nixie reset --only memories --yes to reset.',
       ].join('\n'),
     ],
@@ -210,7 +210,7 @@ test('it refuses a reset of the conversations without --yes, and says what it ke
       [
         'A reset of the conversations forgets every message of the conversation, destroys its sandbox and gives the model a new session, and keeps every record, every memory item and the device sessions.',
         'Only a restore from a backup undoes it.',
-        'Backups from before the reset still hold the old data until they age out.',
+        'The next backup job run removes the old keys from the key backups, and a backup copied by hand keeps them.',
         'Run nixie reset --only conversations --yes to reset.',
       ].join('\n'),
     ],

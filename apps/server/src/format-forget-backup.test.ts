@@ -17,7 +17,11 @@ test.each([
     { state: 'failed', failure: 'keys: prune exited 1' },
     'Key backups: failed: keys: prune exited 1. The next scheduled backup set removes the old keys again.',
   ],
-  ['complete', { state: 'complete' }, 'Key backups: complete. No key backup holds the old keys.'],
+  [
+    'complete',
+    { state: 'complete' },
+    'Key backups: complete. No key backup holds a key that the reset removed.',
+  ],
 ] as const)('it formats the %s key backup state', (_label, backup, line) => {
   expect(formatForgetBackup(backup)).toBe(line);
 });
