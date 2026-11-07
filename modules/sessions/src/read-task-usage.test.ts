@@ -1,7 +1,11 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { modelSessionSummarizedCodec, modelTurnEndedCodec } from '@heynixie/models';
-import { taskLimitReachedCodec } from '@heynixie/tasks';
+import {
+  taskLimitReachedCodec,
+  taskLimitsRaisedCodec,
+  taskStepCommittedCodec,
+} from '@heynixie/tasks';
 import { readTaskUsage } from './read-task-usage';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
@@ -203,7 +207,7 @@ test('it counts a turn whose pause came before its turn record once', async () =
       payload: taskLimitReachedCodec.encode({
         taskID: 'tide-tables',
         stepKey: 'tide-tables:1',
-        used: { turns: 1, dollars: 3 },
+        used: { turns: 1, dollars: 3.5 },
         limits: { turns: 25, dollars: 2 },
       }),
     },
@@ -227,6 +231,19 @@ test('it counts a turn whose pause came before its turn record once', async () =
         sessionImageCount: 0,
       }),
     },
+    {
+      kind: taskStepCommittedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      stepKey: 'tide-tables:1',
+      payload: taskStepCommittedCodec.encode({
+        taskID: 'tide-tables',
+        nextState: 'ready',
+        readCursor: 0,
+        sessionBoundary: null,
+        timers: [],
+      }),
+    },
   ]);
 
   const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
@@ -238,4 +255,74 @@ test('it counts a turn whose pause came before its turn record once', async () =
   });
 
   expect(used).toStrictEqual({ turns: 1, dollars: 3 });
+});
+
+test('it counts the dollars of a pause whose step never committed, though a later step committed a turn', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: taskLimitReachedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      payload: taskLimitReachedCodec.encode({
+        taskID: 'tide-tables',
+        stepKey: 'tide-tables:1',
+        used: { turns: 1, dollars: 3.5 },
+        limits: { turns: 25, dollars: 2 },
+      }),
+    },
+    {
+      kind: taskLimitsRaisedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      payload: taskLimitsRaisedCodec.encode({
+        taskID: 'tide-tables',
+        limits: { turns: 25, dollars: 10 },
+      }),
+    },
+    {
+      kind: modelTurnEndedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      payload: modelTurnEndedCodec.encode({
+        model: 'claude-test',
+        profile: 'task-direct',
+        stopReason: 'end_turn',
+        turns: 1,
+        inputTokens: 1_000_000,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        pinnedCore: [],
+        retrieved: [],
+        invalidatedThrough: 0,
+        sessionImageBytes: 0,
+        sessionImageCount: 0,
+      }),
+    },
+    {
+      kind: taskStepCommittedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      stepKey: 'tide-tables:1',
+      payload: taskStepCommittedCodec.encode({
+        taskID: 'tide-tables',
+        nextState: 'ready',
+        readCursor: 0,
+        sessionBoundary: null,
+        timers: [],
+      }),
+    },
+  ]);
+
+  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+    input: 3,
+    cacheWrite: 3.75,
+    cacheWrite1h: 6,
+    cachedInput: 0.3,
+    output: 15,
+  });
+
+  expect(used).toStrictEqual({ turns: 1, dollars: 6.5 });
 });

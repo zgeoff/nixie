@@ -147,11 +147,12 @@ and writes the same two records, with the counts it reached. The step sleeps the
 with work left, and its commit pauses the task. A step whose guest fails after its calls reach the
 limit asks for the pause too, so the step's retry waits for a raise and spends nothing more.
 
-A failed turn leaves no turn record, so its `task.limit_reached` record is the only record of its
-spend. That record holds the task's whole count at the turn's end, and it commits before the turn
-record of a turn that ended. When the count reaches a `task.limit_reached` record whose turns equal
-the turns counted so far, it takes that record's dollars, so a failed turn's spend counts after a
-raise. A record with one turn more belongs to a turn whose own record follows and counts its spend.
+A `task.limit_reached` record holds the task's whole count at its turn's end, with the key of its
+step, and commits before that step's commit. When the step's commit also carries a turn record, the
+turn record counts the turn's spend. A turn that failed, or a step that stopped before its commit,
+leaves no turn record, so the limit record is the only record of that spend. The count therefore
+takes a limit record's dollars, when they are higher, unless its own step committed a turn record.
+That way a failed turn's spend still counts after a raise.
 
 While the newest limit record on the task's thread is `task.limit_reached`, a resume or a restart of
 the task refuses. The user raises the limit with the `task-raise` host command
