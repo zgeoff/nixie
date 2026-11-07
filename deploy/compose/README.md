@@ -15,7 +15,9 @@ secrets.
    profiles. Keep `harness: agent-sdk` on each profile, because nixie refuses a profile with no
    harness. Add any network your Docker daemon uses outside its default ranges to the egress deny
    list.
-3. Replace the persona in `definitions/` with your own.
+3. Replace the persona in `definitions/` with your own. Keep or edit the starter rules in
+   `definitions/rules/starter.yaml`. The first seed applies their asks at once, and waits for you to
+   approve their allows with `nixie proposals approve <proposal ID>`.
 4. Encrypt your secrets file with sops to your host's age key and your recovery key. It holds the
    deployment key, impd's token and one credential per model profile, in the shape
    [the Kubernetes Secret example](../kubernetes/secret.example.yaml) shows.

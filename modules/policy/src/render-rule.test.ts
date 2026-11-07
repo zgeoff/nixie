@@ -1,4 +1,7 @@
 import { expect, test } from 'bun:test';
+import { join } from 'node:path';
+import invariant from 'tiny-invariant';
+import { parseRuleFiles } from './parse-rule-files';
 import { renderRule } from './render-rule';
 import type { Rule } from './types';
 
@@ -119,4 +122,32 @@ test.each<[string, Rule, string]>([
   ],
 ])('it renders %s as one sentence', (_id, rule, sentence) => {
   expect(renderRule(rule)).toBe(sentence);
+});
+
+test('it renders every rule of the starter template as one sentence', async () => {
+  const text = await Bun.file(
+    join(import.meta.dir, '../../../deploy/compose/definitions/rules/starter.yaml'),
+  ).text();
+
+  const parsed = parseRuleFiles(new Map([['rules/starter.yaml', text]]));
+
+  invariant(parsed.status === 'parsed');
+
+  expect(parsed.rules.map((entry) => [entry.rule.id, renderRule(entry.rule)])).toStrictEqual([
+    [
+      'allow-narrowing',
+      '**Allow** a call when every effect it has is `budget_lower` or `policy_narrow`.',
+    ],
+    ['allow-notes', '**Allow** a call when every effect it has is `note`.'],
+    ['allow-reads', '**Allow** a call when every effect it has is `fetch` or `read`.'],
+    ['allow-sandboxed-code', '**Allow** a call when every effect it has is `code_run`.'],
+    ['allow-sends-within-limits', '**Allow** a call when every effect it has is `send`.'],
+    ['allow-service-writes', '**Allow** a call when every effect it has is `write`.'],
+    ['ask-exports', '**Ask** before a call when it has the effect `export`.'],
+    ['ask-permanent-deletes', '**Ask** before a call when it has the effect `delete`.'],
+    [
+      'ask-stranger-with-memory',
+      '**Ask** before `task.start/nixie` when `memory` is `read` and `persona` is `none`.',
+    ],
+  ]);
 });
