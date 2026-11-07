@@ -205,6 +205,12 @@ const taskControl = checkedAction
   .input(z.object({ clientActionID: clientActionIDSchema, taskID: threadSchema }))
   .output(controlledTaskSchema);
 
+const backupNoticeSchema = z.object({
+  cause: z.enum(['failed', 'missing']),
+  sequence: z.int().positive(),
+  raisedAt: z.date(),
+});
+
 const followRecords = signedIn
   .input(z.object({ afterSequence: sequenceSchema, thread: threadSchema.optional() }))
   .output(eventIterator(z.object({ record: recordSchema })));
@@ -332,6 +338,9 @@ export const contract = {
 
     consolidatorStatus: signedIn.output(z.object({ isEnabled: z.boolean() })),
     ...memoryViewContract,
+  },
+  backups: {
+    readNotice: signedIn.output(z.object({ notice: backupNoticeSchema.nullable() })),
   },
   log: {
     // Clients of earlier releases call this path. A content blocker's generic rule for /rpc/log/

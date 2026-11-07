@@ -104,8 +104,10 @@ sidecar's first checkout can, therefore seeds within seconds.
 
 The health endpoint serves liveness and readiness, each as a report with one entry per part. An
 unready part carries a short reason, never an error's message, because a message can quote what the
-part was working on. Liveness answers 200 when every part is ready and 503 when one is not. It holds
-when the process answers and the database answers a query.
+part was working on. A part can also carry details, named values that a deployment alerts on, such
+as the backups part's age of the newest set and time of the last upload
+([backup health](backups.md#backup-health)). Liveness answers 200 when every part is ready and 503
+when one is not. It holds when the process answers and the database answers a query.
 
 Readiness sorts its parts into three tiers, because the probe that reads it takes nixie out of its
 Service, and nixie runs as the only endpoint there:
@@ -117,6 +119,7 @@ Service, and nixie runs as the only endpoint there:
 | imp host           | dependency | impd answers, and every image in the manifest is added      |
 | conversation imp   | dependency | Its sandbox started and the runners started                 |
 | disk               | dependency | The data volume is under the fill limit                     |
+| backups            | dependency | A backup set published within twice the backup interval     |
 | conversation turns | advisory   | The conversation's turns are not failing                    |
 
 A readiness part that fails makes the status unready and the answer 503, because nixie cannot answer
@@ -130,10 +133,11 @@ another service. A refresh loop checks impd and the data volume on an interval a
 answer, because impd measures the memory of every awake imp to answer and can take longer than a
 probe waits. When impd stops answering, readiness shows it up to one interval and two check timeouts
 later, because the round in flight ends before the next one checks impd again. The other parts read
-state that the start sequence and the runners keep. The conversation imp stays unready until the
-runners start, so a start step that keeps failing after the conversation imp starts, such as writing
-the start record, leaves nixie degraded instead of ready with no runner claiming work. Each check
-runs under a timeout, so a part that hangs reports unready instead of holding the endpoint.
+state that the start sequence, the runners and the backup schedule keep. The conversation imp stays
+unready until the runners start, so a start step that keeps failing after the conversation imp
+starts, such as writing the start record, leaves nixie degraded instead of ready with no runner
+claiming work. Each check runs under a timeout, so a part that hangs reports unready instead of
+holding the endpoint.
 
 Each part that turns unready writes a warning to the log with its name and reason, and writes again
 when its reason changes or it turns ready. A probe that failed therefore leaves the name of its part

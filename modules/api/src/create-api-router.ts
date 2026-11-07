@@ -1,4 +1,5 @@
 import { apiImplementer } from './api-implementer';
+import { createBackupProcedures } from './create-backup-procedures';
 import { createConversationProcedures } from './create-conversation-procedures';
 import { createEnrolProcedure } from './create-enrol-procedure';
 import { createMemoryProcedures } from './create-memory-procedures';
@@ -11,6 +12,7 @@ import type { APIContext, ReadViewMemory } from './types';
 
 export function createAPIRouter(context: APIContext, readMemory: ReadViewMemory) {
   return apiImplementer.router({
+    backups: createBackupProcedures(context),
     conversation: createConversationProcedures(context),
     memory: {
       ...createMemoryProcedures(context),

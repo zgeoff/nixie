@@ -17,6 +17,11 @@ export interface NixieTables {
     readonly updated_sequence: number;
     readonly cancelled_sequence: number | null;
   };
+  readonly backup_notices: {
+    readonly sequence: number;
+    readonly cause: string;
+    readonly raised_at: number;
+  };
   readonly backup_sets: {
     readonly sequence: number;
     readonly kind: string;

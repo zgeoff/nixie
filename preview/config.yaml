@@ -38,6 +38,9 @@ models:
     conversation: preview
 sandbox:
   adapter: test
+# the preview runs no backup job, so nixie stages no backup set
+backup:
+  enabled: false
 definitions:
   source:
     kind: path
