@@ -102,9 +102,10 @@ later match and could pick the wrong part. A match that runs into the next part 
 it starts in. When the text never appears, the tool returns an error with the count of parts, such
 as "0 matches in 7 parts of page tz4a98xxat".
 
-The truncated mark means that the page passed the body limit ([the fetcher](#the-fetcher)), and no
-part holds its end. A page with no text, such as an image, returns its URL, status and content type
-with no text, no page ID, no part number and a count of 0 parts.
+The truncated mark means that the fetcher stopped before the page's end, at the body limit or at the
+budget of its link targets ([the fetcher](#the-fetcher)), so no part holds that end. A page with no
+text, such as an image, returns its URL, status and content type with no text, no page ID, no part
+number and a count of 0 parts.
 
 When the tool stores a page, it removes these pages in the same transaction:
 
