@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { z } from 'zod';
 import { agentSDKProfileSchema } from './agent-sdk-profile-schema';
 import { buildModelsConfigSchema } from './build-models-config-schema';
+import { modelPricesSchema } from './model-prices-schema';
 
 function setupTest() {
   // A stand-in for a second harness's profile schema, whose profiles parse with no fields of their
@@ -12,6 +13,7 @@ function setupTest() {
       base_url: z.url(),
       credential: z.string(),
       model: z.string(),
+      prices: modelPricesSchema.optional(),
     })
     .transform((input) => ({
       harness: input.harness,
@@ -23,7 +25,7 @@ function setupTest() {
       providerPin: null,
       contextTokens: null,
       cacheTTL: '5m' as const,
-      prices: null,
+      prices: input.prices ?? null,
     }));
 
   return { schema: buildModelsConfigSchema([agentSDKProfileSchema, codexProfileSchema]) };
@@ -134,4 +136,32 @@ test('it refuses a task role whose profile sets no prices, though its harness fi
       message: 'the task role names the profile task-codex, which sets no prices',
     }),
   ]);
+});
+
+test('it accepts a selectable model on a profile whose harness has everything a task needs', () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+      },
+      'task-codex': {
+        harness: 'codex',
+        base_url: 'https://models.example.test',
+        credential: 'deployment:openai',
+        model: 'gpt-test-1',
+        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 },
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    selectable: { 'second-look': { profile: 'task-codex', description: 'Another loop' } },
+  });
+
+  expect(result.error).toBeUndefined();
 });

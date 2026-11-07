@@ -3,10 +3,10 @@ import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { buildMockToolDefinition } from '@heynixie/tools/test-utils';
 import { buildTaskStartBounds } from './build-task-start-bounds';
 
-test('it offers each selectable model that does not ask, with the task run limits', () => {
+test('it offers each selectable model that does not ask, with what its harness lacks for a task and the task run limits', () => {
   const bounds = buildTaskStartBounds(
     buildMockModelsConfig({
-      profiles: { 'chat-direct': {}, big: {}, 'router-b': {} },
+      profiles: { 'chat-direct': {}, big: {}, 'router-b': { harness: 'codex' } },
       selectable: [
         { name: 'deep-think', profile: 'big', description: 'Most capable', isAsked: true },
         { name: 'second-look', profile: 'router-b', description: 'Another family', isAsked: false },
