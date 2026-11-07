@@ -1,11 +1,13 @@
 import type { ModelCallUsage, ReportedUsage } from '@heynixie/wire';
-import { foldAnthropicUsageEvent, parseAnthropicCallUsage, parseJSONOrNull } from '@heynixie/wire';
+import { parseJSONOrNull } from '@heynixie/wire';
+import type { UsageDialect } from './usage-dialects';
 
 // The stream ends for its reader only after the count is written, so a caller that read a whole
 // reply never races its own next request past the count. A reader that stops early, or an upstream
 // that breaks, still counts what the events reported so far.
 export function buildCountedStream(
   body: ReadableStream<Uint8Array>,
+  dialect: UsageDialect,
   onEnd: (usage: ModelCallUsage | null, complete: boolean) => Promise<void>,
 ): ReadableStream<Uint8Array> {
   const reader = body.getReader();
@@ -24,7 +26,7 @@ export function buildCountedStream(
     pending = lines.pop() ?? '';
 
     for (const line of lines) {
-      reported = foldEventLine(reported, line);
+      reported = foldEventLine(dialect, reported, line);
     }
   };
 
@@ -37,7 +39,7 @@ export function buildCountedStream(
 
     readEvents(`${decoder.decode()}\n`);
 
-    await onEnd(parseAnthropicCallUsage(reported), complete);
+    await onEnd(dialect.parseUsage(reported), complete);
   };
 
   return new ReadableStream<Uint8Array>({
@@ -75,10 +77,14 @@ export function buildCountedStream(
   });
 }
 
-function foldEventLine(reported: ReportedUsage, line: string): ReportedUsage {
+function foldEventLine(
+  dialect: UsageDialect,
+  reported: ReportedUsage,
+  line: string,
+): ReportedUsage {
   if (!line.startsWith('data:')) {
     return reported;
   }
 
-  return foldAnthropicUsageEvent(reported, parseJSONOrNull(line.slice('data:'.length).trim()));
+  return dialect.foldStreamEvent(reported, parseJSONOrNull(line.slice('data:'.length).trim()));
 }

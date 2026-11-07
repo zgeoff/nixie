@@ -2,12 +2,13 @@ import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import { buildCallCost } from '@heynixie/models';
 import type { ModelCallUsage } from '@heynixie/wire';
-import { parseAnthropicCallUsage, parseJSONOrNull } from '@heynixie/wire';
+import { parseJSONOrNull } from '@heynixie/wire';
 import { buildCallTokens } from './build-call-tokens';
 import { buildCountedStream } from './build-counted-stream';
 import { findProxyEndpoint } from './find-proxy-endpoint';
 import { isRecord } from './is-record';
 import type { CounterStore, ProxyLimits, ProxyRoute, SpendTotals, StoredCount } from './types';
+import { usageDialects } from './usage-dialects';
 
 export interface ProxyHandlerDeps {
   readonly routes: Readonly<Record<string, ProxyRoute>>;
@@ -82,7 +83,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
-    const endpoint = findProxyEndpoint(request.method, target.path);
+    const endpoint = findProxyEndpoint(target.route.api, request.method, target.path);
 
     if (endpoint === null) {
       return renderAPIError(
@@ -167,6 +168,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
     // a successful message reply has spent, and an error reply has not
     const spent = endpoint.spends && upstream.ok;
+    const dialect = usageDialects[target.route.api];
 
     if (upstream.body === null) {
       await count(target.route, null, spent);
@@ -177,7 +179,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     // a stream that broke or was cancelled before its first usage event may still have spent
     if (upstream.headers.get('content-type')?.startsWith('text/event-stream') === true) {
       return new Response(
-        buildCountedStream(upstream.body, (usage, complete) =>
+        buildCountedStream(upstream.body, dialect, (usage, complete) =>
           count(target.route, usage, spent || !complete),
         ),
         init,
@@ -199,7 +201,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(502, 'api_error', 'the counting proxy lost the reply of the model API');
     }
 
-    await count(target.route, parseAnthropicCallUsage(findBodyUsage(text)), spent);
+    await count(target.route, dialect.parseUsage(findBodyUsage(text)), spent);
 
     return new Response(text, init);
   };

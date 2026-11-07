@@ -11,6 +11,20 @@ export interface ScriptedUsage {
   };
 }
 
+interface ScriptedResponsesUsage {
+  readonly input_tokens: number;
+  readonly output_tokens: number;
+  readonly input_tokens_details?: {
+    readonly cached_tokens: number;
+    readonly cache_write_tokens?: number;
+    readonly cache_write_tokens_details?: {
+      readonly ttl_30m_tokens: number;
+      readonly ttl_12h_tokens: number;
+    };
+  };
+  readonly output_tokens_details?: { readonly reasoning_tokens: number };
+}
+
 type ScriptedMessage = (
   | { readonly text: string }
   | {
@@ -25,6 +39,7 @@ type ScriptedMessage = (
   readonly inputTokens?: number;
 
   readonly usage?: ScriptedUsage;
+  readonly responsesUsage?: ScriptedResponsesUsage;
 };
 
 interface ScriptedRefusal {
@@ -120,7 +135,9 @@ function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]):
     return { response: Response.json({ input_tokens: 10 }) };
   }
 
-  if (request.path !== '/v1/messages' || request.body === null) {
+  const isResponses = request.path === '/v1/responses';
+
+  if ((request.path !== '/v1/messages' && !isResponses) || request.body === null) {
     return { response: new Response('not found', { status: 404 }) };
   }
 
@@ -131,7 +148,11 @@ function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]):
   }
 
   const model = request.body.model ?? 'stub';
-  const response = buildReplyResponse(reply, model, request.body.stream === true);
+  const isStream = request.body.stream === true;
+
+  const response = isResponses
+    ? buildResponsesReply(reply, model, isStream)
+    : buildReplyResponse(reply, model, isStream);
 
   return reply.gate === undefined ? { response } : { response, gate: reply.gate };
 }
@@ -140,6 +161,42 @@ function renderRefusal(message: string): Response {
   return Response.json(
     { type: 'error', error: { type: 'invalid_request_error', message } },
     { status: 400 },
+  );
+}
+
+function buildResponsesReply(reply: ScriptedReply, model: string, isStream: boolean): Response {
+  if (!('text' in reply)) {
+    return renderRefusal('the scripted model answers the Responses endpoint only with text');
+  }
+
+  const completed = {
+    id: `resp_${crypto.randomUUID().replaceAll('-', '')}`,
+    object: 'response',
+    model,
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'output_text', text: reply.text, annotations: [] }],
+      },
+    ],
+    usage: reply.responsesUsage ?? { input_tokens: 10, output_tokens: 5 },
+  };
+
+  if (!isStream) {
+    return Response.json(completed);
+  }
+
+  const events = [
+    { type: 'response.created', response: { ...completed, status: 'in_progress', usage: null } },
+    { type: 'response.output_text.delta', delta: reply.text },
+    { type: 'response.completed', response: completed },
+  ];
+
+  return new Response(
+    events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''),
+    { headers: { 'content-type': 'text/event-stream' } },
   );
 }
 
