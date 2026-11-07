@@ -1826,6 +1826,41 @@ test('it refuses a page ID given as a link, and names the kind it expected', asy
   expect(readPage).not.toHaveBeenCalled();
 });
 
+test.each([
+  ['a page', { page: 'qx7f2m9kpa', part: 2, find: 'ferries' }],
+  ['a url', { url: 'https://harbour.test/ferries', part: 2, find: 'ferries' }],
+])(
+  'it refuses a call on %s that gives both a part and a find, and fetches nothing',
+  async (_, input) => {
+    const ctx = await setupTest();
+
+    const readPage = mock();
+
+    const tool = buildWebFetchTool(readPage, {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+    });
+
+    const outcome = await tool.run(
+      { callID: 'call-1', tool: 'web_fetch', input, toolUseID: null },
+      {
+        run: {
+          runID: 'conversation',
+          thread: 'conversation',
+          tools: ['web_fetch'],
+          model: { model: 'model-a', profile: 'chat-direct' },
+          session: { key: 'session-a', invalidatedThrough: 0 },
+        },
+      },
+    );
+
+    expect(outcome).toStrictEqual({ status: 'error', message: 'give part or find, not both' });
+    expect(readPage).not.toHaveBeenCalled();
+  },
+);
+
 test('it refuses a link ID given as a page, and names the kind it expected', async () => {
   const ctx = await setupTest();
 
