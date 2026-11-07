@@ -156,7 +156,7 @@
     "@stylistic/eslint-plugin": "5.10.0",
     "@tsconfig/strictest": "2.0.8",
     "@types/bun": "1.4.4",
-    "@zgeoff/agent-hooks": "0.2.9",
+    "@zgeoff/agent-hooks": "0.2.10",
     "@zgeoff/bun-test-extended": "0.2.3",
     "@zgeoff/bun-test-react": "0.2.3",
     "@zgeoff/commitlint-config": "0.1.0",
