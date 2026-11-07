@@ -33,7 +33,7 @@ export function buildRuleExportChange(input: RuleExportInput): DefinitionsChange
 
     const text = files.get(path) ?? input.files.get(path) ?? '';
     const edited = replaceBlock(text, change.ruleID, block);
-    const kept = edited.trim() === '' ? null : edited;
+    const kept = edited.trim() === '' ? null : `${edited.trimEnd()}\n`;
 
     files.set(path, kept);
   }
@@ -70,8 +70,10 @@ interface BlockRange {
   readonly end: number;
 }
 
-const topLevelKeyPattern = /^(?<key>[a-z0-9]+(?:-[a-z0-9]+)*):/u;
+const topLevelKeyPattern = /^(?<quote>["']?)(?<key>[a-z0-9]+(?:-[a-z0-9]+)*)\k<quote>[ \t]*:/u;
 
+// A blank line or a comment at column 0 can sit inside a block, so the block runs to the next line
+// of content at column 0, less the blank lines and comments just above it, which head the next rule.
 function findBlock(text: string, ruleID: string): BlockRange | null {
   const lines = text.split('\n');
 
@@ -85,19 +87,23 @@ function findBlock(text: string, ruleID: string): BlockRange | null {
 
   let end = start + 1;
 
-  while (end < lines.length && isBlockLine(lines[end] ?? '')) {
+  while (end < lines.length && !isTopLevelLine(lines[end] ?? '')) {
     end += 1;
   }
 
-  while (end > start + 1 && (lines[end - 1] ?? '').trim() === '') {
+  while (end > start + 1 && isGapLine(lines[end - 1] ?? '')) {
     end -= 1;
   }
 
   return { start, end };
 }
 
-function isBlockLine(line: string): boolean {
-  return line.trim() === '' || /^\s/u.test(line);
+function isTopLevelLine(line: string): boolean {
+  return /^\S/u.test(line) && !line.startsWith('#');
+}
+
+function isGapLine(line: string): boolean {
+  return line.trim() === '' || line.startsWith('#');
 }
 
 // JSON is a subset of YAML's flow style, so each value serialises with no YAML writer.

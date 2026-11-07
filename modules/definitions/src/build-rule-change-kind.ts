@@ -3,6 +3,7 @@ import { buildRuleExportChange, ruleExportBranch } from './build-rule-export-cha
 import { buildSHA256 } from './build-sha256';
 import { isDefinitionsPath } from './is-definitions-path';
 import { parseDefinitions } from './parse-definitions';
+import type { RuleStore } from './read-rule-store';
 import { readRuleStore } from './read-rule-store';
 import { toCanonicalJSON } from './to-canonical-json';
 import type {
@@ -65,24 +66,43 @@ interface RuleExport {
   readonly changes: readonly RuntimeRule[];
 }
 
-// A mandate lasts a day at most, so it never reaches the user's definitions.
 async function readRuleExport(db: Kysely<unknown>): Promise<RuleExport | null> {
   const store = await readRuleStore(db);
 
+  const left = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('runtime_rules')
+    .select((eb) => eb.fn.countAll<number>().as('leftCount'))
+    .where('state', '!=', 'in_force')
+    .executeTakeFirstOrThrow();
+
+  return buildRuleExport(store, left.leftCount);
+}
+
+// A mandate lasts a day at most, so it never reaches the user's definitions. The ID also counts the
+// changes that left force, so a set that returns to an earlier one starts a new export in place of
+// the closed one.
+function buildRuleExport(store: RuleStore, leftCount: number): RuleExport | null {
   const changes = store.runtime.filter((change) => change.rule?.rule['mandate'] === undefined);
 
   if (changes.length === 0) {
     return null;
   }
 
+  const paths = new Map(
+    store.definitions.map((definition) => [definition.rule.id, definition.path]),
+  );
+
   const exportID = buildSHA256(
-    toCanonicalJSON(
-      changes.map((change) => ({
+    toCanonicalJSON({
+      changes: changes.map((change) => ({
         changeID: change.changeID,
         base: change.base?.hash ?? null,
         beneath: change.beneath?.hash ?? null,
+        path: paths.get(change.ruleID) ?? null,
       })),
-    ),
+      leftCount,
+    }),
   );
 
   return { exportID, changes };

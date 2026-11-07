@@ -150,11 +150,13 @@ each snapshot holds the revision of every rule in force.
 nixie exports the runtime changes in force to the definitions repo through the
 [definitions export](../core/definitions.md#the-export-to-the-definitions-repo), as one rolling pull
 request on the `nixie/rules` branch. A runtime change in a mandate never exports. The export's ID is
-a hash of the set of exported changes with their bases, so any change to that set, such as a new
-runtime change or a choice on a conflict, makes a new export. The export builds the branch again on
-the newest commit of the base branch, which updates the open pull request, and the run marks each
-earlier export closed without closing that pull request. When the set empties, the run closes a pull
-request still open on the branch, and leaves a merged one as it is.
+a hash of the exported changes, each with its base, the definitions' version and the file that holds
+it, and of the count of runtime changes that left force. Any change to those, such as a new runtime
+change, a choice on a conflict or a rule the user moved to another file, makes a new export, even
+when the set returns to one an earlier export held. The export builds the branch again on the newest
+commit of the base branch, which updates the open pull request, and the run marks each earlier
+export closed without closing that pull request. When the set empties, the run closes a pull request
+still open on the branch, and leaves a merged one as it is.
 
 The export edits the rules files in place: it replaces or removes the top-level block of each
 changed rule, and appends a new rule to `rules/nixie.yaml`. Every other line, comments included,

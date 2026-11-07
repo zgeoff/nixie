@@ -181,6 +181,136 @@ test('it leaves a mandate rule out of the pull request', async () => {
   });
 });
 
+test('it leaves the removal of a rule your definitions lack out of the pull request', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await ctx.seed();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'allow-invites',
+    rule: {
+      outcome: 'allow',
+      tools: ['calendar.invite'],
+      mandate: 'calendar-day',
+      expires: '2026-10-20T23:59:59Z',
+    },
+    changedBy: 'owner',
+    reason: 'Handle my invites today.',
+  });
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'allow-invites',
+    rule: null,
+    changedBy: 'owner',
+    reason: 'I am back at my desk.',
+  });
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'deny-shell',
+    rule: { outcome: 'deny', tools: ['shell.run'] },
+    changedBy: 'owner',
+    reason: 'No shell commands.',
+  });
+
+  await ctx.runExports();
+
+  const [pullRequest] = ctx.repo.readPullRequests();
+
+  expect(pullRequest?.change.body.includes('allow-invites')).toBe(false);
+});
+
+test('it rebuilds the rolling pull request when its changes return to a set an earlier export held', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await ctx.seed();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'ask-mail',
+    rule: { outcome: 'deny', tools: ['mail.send'] },
+    changedBy: 'owner',
+    reason: 'No mail this week.',
+  });
+
+  await ctx.runExports();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'deny-shell',
+    rule: { outcome: 'deny', tools: ['shell.run'] },
+    changedBy: 'owner',
+    reason: 'No shell commands.',
+  });
+
+  await ctx.runExports();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'deny-shell',
+    rule: null,
+    changedBy: 'owner',
+    reason: 'Shell commands are fine again.',
+  });
+
+  await ctx.runExports();
+
+  const pullRequests = ctx.repo.readPullRequests();
+
+  expect(
+    pullRequests.map((request) => ({
+      state: request.state,
+      paths: [...request.change.files.keys()],
+    })),
+  ).toStrictEqual([{ state: 'open', paths: ['rules/mail.yaml'] }]);
+});
+
+test('it rebuilds the rolling pull request when the repo moves a changed rule to another file', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await ctx.seed();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'ask-mail',
+    rule: { outcome: 'deny', tools: ['mail.send'] },
+    changedBy: 'owner',
+    reason: 'No mail this week.',
+  });
+
+  await ctx.runExports();
+
+  await rm(join(ctx.root, 'rules', 'mail.yaml'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'messages.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await ctx.seed();
+  await ctx.runExports();
+
+  const files = ctx.repo.readPullRequests().map((request) => request.change.files);
+
+  expect(files).toStrictEqual([
+    new Map([['rules/messages.yaml', 'ask-mail:\n  outcome: "deny"\n  tools: ["mail.send"]\n']]),
+  ]);
+});
+
 test("it rebuilds the rolling pull request on the repo's newer version when you keep nixie's", async () => {
   const ctx = await setupTest();
 
