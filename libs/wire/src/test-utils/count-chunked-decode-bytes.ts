@@ -30,7 +30,7 @@ export function countChunkedDecodeBytes(
   const counted: Counted = { allocatedBytes: 0 };
   const original = globalThis.Uint8Array;
 
-  globalThis.Uint8Array = new Proxy(original, {
+  const counting = new Proxy(original, {
     construct: (target, args: unknown[]) => {
       const created: unknown = Reflect.construct(target, args, target);
 
@@ -46,6 +46,8 @@ export function countChunkedDecodeBytes(
 
   const sets = spyOn(original.prototype, 'set');
   const slices = spyOn(original.prototype, 'slice');
+
+  globalThis.Uint8Array = counting;
 
   try {
     const messages = chunks.flatMap((chunk) => decode(chunk));
