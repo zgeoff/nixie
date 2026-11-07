@@ -49,6 +49,7 @@ function setupTest() {
   };
 
   const run = {
+    toolUseMetaKey: null,
     runID: 'k3vq8m2xpa',
     thread: 'k3vq8m2xpa',
     tools: ['time.now'],

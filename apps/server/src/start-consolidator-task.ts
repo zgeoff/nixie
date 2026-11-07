@@ -5,6 +5,7 @@ import { startMemoryConsolidatorRunner } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
 import { buildTaskMessaging } from './build-task-messaging';
 import { runOffTaskStep } from './run-off-task-step';
+import { toImageNames } from './to-image-names';
 import type { ServerParts } from './types';
 
 export async function startConsolidatorTask(
@@ -24,7 +25,7 @@ export async function startConsolidatorTask(
     sandboxes: parts.tools.adapter,
     queue: parts.tools.actions.queue,
     socketDir: join(parts.config.server.dataDir, 'run', 'tools'),
-    image: parts.images.conversation.name,
+    images: toImageNames(parts.images),
     store,
     config: parts.config.memory_consolidation,
     getPersona: () => parts.inForce.read()?.persona ?? '',

@@ -4,6 +4,7 @@ import { startMemoryWriterRunner } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
 import { buildTaskMessaging } from './build-task-messaging';
 import { runOffTaskStep } from './run-off-task-step';
+import { toImageNames } from './to-image-names';
 import type { ServerParts } from './types';
 
 export async function startWriterTask(
@@ -23,7 +24,7 @@ export async function startWriterTask(
     sandboxes: parts.tools.adapter,
     queue: parts.tools.actions.queue,
     socketDir: join(parts.config.server.dataDir, 'run', 'tools'),
-    image: parts.images.conversation.name,
+    images: toImageNames(parts.images),
     store,
     gate: store.writes.batch,
     config: parts.config.memory_writer,

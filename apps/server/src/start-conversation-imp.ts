@@ -16,6 +16,7 @@ import { makeConversationReadinessStep } from './make-conversation-readiness-ste
 import { makeSkillCatalogLoader } from './make-skill-catalog-loader';
 import { makeTurnNoteReader } from './make-turn-note-reader';
 import { startConversation } from './start-conversation';
+import { toImageNames } from './to-image-names';
 import { toSessionDefinitions } from './to-session-definitions';
 import type { ServerParts } from './types';
 
@@ -38,7 +39,7 @@ export async function startConversationImp(
     sandboxes: parts.tools.adapter,
     tools: parts.tools.endpoint,
     toolNames: parts.tools.definitions.map((definition) => definition.name),
-    image: parts.images.conversation.name,
+    images: toImageNames(parts.images),
     getDefinitions: () => toSessionDefinitions(parts.inForce.read()),
     readTurnNote: makeTurnNoteReader(
       {

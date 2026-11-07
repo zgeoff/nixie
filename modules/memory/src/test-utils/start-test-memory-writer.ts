@@ -158,6 +158,7 @@ async function startTestWriterRunner(
     models: modelsConfigSchema.parse({
       profiles: {
         'writer-direct': {
+          harness: 'agent-sdk',
           base_url: 'https://models.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -175,7 +176,7 @@ async function startTestWriterRunner(
       waitForOutcome: () => Promise.resolve(null),
     },
     socketDir: host.socketDir,
-    image: 'nixie-conversation-0123456789ab',
+    images: { conversation: 'nixie-conversation-0123456789ab' },
     store: wiring.store,
 
     gate: wiring.options.check === undefined ? buildStubGate() : wiring.store.writes.batch,

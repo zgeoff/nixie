@@ -25,6 +25,7 @@ test('it opens a new session in place of one whose persona changed, and never re
     },
     personaHash: 'sha256:persona-b',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
       messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
     },

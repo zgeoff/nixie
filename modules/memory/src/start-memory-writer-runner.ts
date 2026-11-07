@@ -36,7 +36,7 @@ export const startMemoryWriterRunner = makeSystemTaskRunner<
   MemoryWriter
 >({
   role: 'memory-writer',
-  entry: 'main',
+  entry: 'turn',
   start: async (options, session) => {
     const staging = createWriterStaging();
 

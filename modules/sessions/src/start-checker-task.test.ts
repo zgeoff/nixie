@@ -15,6 +15,7 @@ test('it runs each check in the check guest on the checker role profile', async 
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
+          harness: 'agent-sdk',
           base_url: 'https://models.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -22,6 +23,7 @@ test('it runs each check in the check guest on the checker role profile', async 
           effort: 'low',
         },
         checker: {
+          harness: 'agent-sdk',
           base_url: 'https://checker.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -33,7 +35,7 @@ test('it runs each check in the check guest on the checker role profile', async 
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: ctx.host.sandboxes,
-    image: 'nixie-conversation-0123456789ab',
+    images: { conversation: 'nixie-conversation-0123456789ab' },
     timeoutMs: 60_000,
     clock: buildTestClock(1_700_000_000_000),
     log: () => {},
@@ -76,6 +78,7 @@ test('it logs where each check spent its time', async () => {
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
+          harness: 'agent-sdk',
           base_url: 'https://models.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -83,6 +86,7 @@ test('it logs where each check spent its time', async () => {
           effort: 'low',
         },
         checker: {
+          harness: 'agent-sdk',
           base_url: 'https://checker.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -94,7 +98,7 @@ test('it logs where each check spent its time', async () => {
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: ctx.host.sandboxes,
-    image: 'nixie-conversation-0123456789ab',
+    images: { conversation: 'nixie-conversation-0123456789ab' },
     timeoutMs: 60_000,
     clock: buildTestClock(1_700_000_000_000),
     log,

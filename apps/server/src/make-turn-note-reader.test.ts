@@ -26,7 +26,7 @@ async function setupTest() {
       sandboxes: server.sandboxes,
       tools: server.endpoint,
       toolNames: [],
-      image,
+      images: { conversation: image },
       getDefinitions: () => ({
         persona: 'You are nixie.',
         prompts: {},

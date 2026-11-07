@@ -5,6 +5,7 @@ test('it records each run it starts and hands back its token', async () => {
   const stub = buildStubToolEndpoint();
 
   const run = {
+    toolUseMetaKey: null,
     runID: 'conversation',
     thread: 'conversation',
     tools: ['notes_read'],
@@ -21,6 +22,7 @@ test('it numbers each step token a run issues and records which ones stopped', a
   const stub = buildStubToolEndpoint();
 
   const endpoint = await stub.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'conversation',
     thread: 'conversation',
     tools: ['notes_read'],
@@ -50,6 +52,7 @@ test('it rejects the first starts it is told to fail, then starts the run', asyn
   const stub = buildStubToolEndpoint({ failedStarts: 1 });
 
   const run = {
+    toolUseMetaKey: null,
     runID: 'k3vq8m2xpa',
     thread: 'k3vq8m2xpa',
     tools: ['time.now'],

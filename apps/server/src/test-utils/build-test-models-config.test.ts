@@ -6,6 +6,7 @@ test('it builds a conversation role on one profile at the model URL, with no con
     profiles: {
       'chat-direct': {
         id: 'chat-direct',
+        harness: 'agent-sdk',
         baseURL: 'http://127.0.0.1:4100',
         credential: 'deployment:anthropic',
         authHeader: 'x-api-key',

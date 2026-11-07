@@ -25,7 +25,11 @@ test('it sends the summarize frame and returns the summary the guest reports', a
 
   expect(summary).toStrictEqual({
     type: 'summarized',
-    boundary: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+    boundary: {
+      harness: 'agent-sdk',
+      sessionID: expect.toBeString(),
+      messageID: expect.toBeString(),
+    },
     text: 'Open threads: none.',
     usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
   });

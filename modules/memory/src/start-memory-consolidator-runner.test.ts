@@ -26,6 +26,7 @@ async function setupTest() {
     models: modelsConfigSchema.parse({
       profiles: {
         'tidy-direct': {
+          harness: 'agent-sdk',
           base_url: 'https://models.example.test',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -39,7 +40,7 @@ async function setupTest() {
     sandboxes: host.sandboxes,
     queue: buildActionQueue(context).queue,
     socketDir: host.socketDir,
-    image: 'nixie-conversation-0123456789ab',
+    images: { conversation: 'nixie-conversation-0123456789ab' },
     store,
     config: consolidationConfigSchema.parse({}),
     getPersona: () => '',

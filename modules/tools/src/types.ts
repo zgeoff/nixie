@@ -139,8 +139,15 @@ interface StepToken {
   readonly stop: () => Promise<void>;
 }
 
+// A run whose calls a guest's MCP client sends.
+export interface GuestToolRun extends ToolRun {
+  // the MCP _meta key that carries the model's tool-use ID on each call, or null when the guest
+  // sends none
+  readonly toolUseMetaKey: string | null;
+}
+
 export interface ToolEndpoint {
-  readonly startRun: (run: ToolRun) => Promise<RunEndpoint>;
+  readonly startRun: (run: GuestToolRun) => Promise<RunEndpoint>;
 
   readonly getToolTarget: (sandbox: SandboxRef) => ToolTarget;
   readonly stop: () => Promise<void>;

@@ -20,6 +20,7 @@ test('it answers a turn frame with the script frames, then exits', async () => {
     encodeTurnFrame({
       type: 'turn',
       profile: {
+        harness: 'agent-sdk',
         model: 'model-a',
         baseURL: 'https://api.anthropic.com',
         effort: 'low',
@@ -97,7 +98,11 @@ test('it answers a summarize frame with a summary at a new chain entry, records 
   expect(messages.map((message) => decodeTurnFrame(guestFrameSchema, message))).toStrictEqual([
     {
       type: 'summarized',
-      boundary: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: expect.toBeString(),
+        messageID: expect.toBeString(),
+      },
       text: 'Open threads: none.',
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
@@ -122,6 +127,7 @@ test('it answers a summarize frame with the script a test sets', async () => {
     encodeTurnFrame(
       buildMockSummarizeFrame({
         resume: {
+          harness: 'agent-sdk',
           sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
           messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
         },

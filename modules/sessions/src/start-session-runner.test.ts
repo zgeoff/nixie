@@ -50,7 +50,11 @@ test('it sums the token counts over every model turn the session ended', async (
   ctx.sandboxes.setGuestScript(() => [
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'tool_use',
       turns: 1,
@@ -58,7 +62,11 @@ test('it sums the token counts over every model turn the session ended', async (
     },
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       isError: false,
@@ -183,7 +191,11 @@ test('it throws when a model turn of the session ended at a model API error', as
   ctx.sandboxes.setGuestScript(() => [
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'stop_sequence',
       isError: true,
@@ -214,7 +226,11 @@ test('it throws an overflow apart from an API error when the session ends at pro
   ctx.sandboxes.setGuestScript(() => [
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'stop_sequence',
       isError: true,
@@ -245,7 +261,11 @@ test('it throws an overflow apart from an API error when the session ends at blo
   ctx.sandboxes.setGuestScript(() => [
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'stop_sequence',
       isError: true,
@@ -275,6 +295,7 @@ test('it opens the tool run for the system task on the profile model', async () 
 
   expect(ctx.runs).toStrictEqual([
     {
+      toolUseMetaKey: 'claudecode/toolUseId',
       runID: 'memory-writer',
       thread: 'memory-writer',
       tools: ['memory_write'],

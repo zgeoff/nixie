@@ -95,78 +95,61 @@
             "pattern": "^[a-z0-9][a-z0-9-]*$"
           },
           "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "base_url": {
-                "type": "string",
-                "format": "uri",
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
-              },
-              "credential": {
-                "type": "string",
-                "pattern": "^deployment:[\\w-]+$"
-              },
-              "auth_header": {
-                "type": "string",
-                "enum": [
-                  "bearer",
-                  "x-api-key"
-                ]
-              },
-              "model": {
-                "type": "string",
-                "minLength": 1
-              },
-              "effort": {
-                "type": "string",
-                "enum": [
-                  "low",
-                  "medium",
-                  "high",
-                  "xhigh",
-                  "max"
-                ]
-              },
-              "provider_pin": {
-                "type": "string",
-                "minLength": 1
-              },
-              "context_tokens": {
-                "type": "integer",
-                "minimum": 100000,
-                "maximum": 1000000
-              },
-              "cache_ttl": {
-                "type": "string",
-                "enum": [
-                  "5m",
-                  "1h"
-                ]
-              },
-              "prices": {
+            "oneOf": [
+              {
                 "type": "object",
                 "properties": {
-                  "input": {
-                    "type": "number",
-                    "minimum": 0
+                  "harness": {
+                    "type": "string",
+                    "const": "agent-sdk"
                   },
-                  "cache_write": {
-                    "type": "number",
-                    "minimum": 0
+                  "base_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
                   },
-                  "cache_write_1h": {
-                    "type": "number",
-                    "minimum": 0
+                  "credential": {
+                    "type": "string",
+                    "pattern": "^deployment:[\\w-]+$"
                   },
-                  "cached_input": {
-                    "type": "number",
-                    "minimum": 0
+                  "auth_header": {
+                    "type": "string",
+                    "enum": [
+                      "bearer",
+                      "x-api-key"
+                    ]
                   },
-                  "output": {
-                    "type": "number",
-                    "minimum": 0
+                  "model": {
+                    "type": "string",
+                    "minLength": 1
                   },
-                  "long_prompt": {
+                  "effort": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high",
+                      "xhigh",
+                      "max"
+                    ]
+                  },
+                  "provider_pin": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "context_tokens": {
+                    "type": "integer",
+                    "minimum": 100000,
+                    "maximum": 1000000
+                  },
+                  "cache_ttl": {
+                    "type": "string",
+                    "enum": [
+                      "5m",
+                      "1h"
+                    ]
+                  },
+                  "prices": {
                     "type": "object",
                     "properties": {
                       "input": {
@@ -189,10 +172,44 @@
                         "type": "number",
                         "minimum": 0
                       },
-                      "over_tokens": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 9007199254740991
+                      "long_prompt": {
+                        "type": "object",
+                        "properties": {
+                          "input": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "cache_write": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "cache_write_1h": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "cached_input": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "output": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "over_tokens": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "input",
+                          "cache_write",
+                          "cache_write_1h",
+                          "cached_input",
+                          "output",
+                          "over_tokens"
+                        ],
+                        "additionalProperties": false
                       }
                     },
                     "required": [
@@ -200,30 +217,22 @@
                       "cache_write",
                       "cache_write_1h",
                       "cached_input",
-                      "output",
-                      "over_tokens"
+                      "output"
                     ],
                     "additionalProperties": false
                   }
                 },
                 "required": [
-                  "input",
-                  "cache_write",
-                  "cache_write_1h",
-                  "cached_input",
-                  "output"
+                  "harness",
+                  "base_url",
+                  "credential",
+                  "auth_header",
+                  "model",
+                  "effort"
                 ],
                 "additionalProperties": false
               }
-            },
-            "required": [
-              "base_url",
-              "credential",
-              "auth_header",
-              "model",
-              "effort"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "roles": {

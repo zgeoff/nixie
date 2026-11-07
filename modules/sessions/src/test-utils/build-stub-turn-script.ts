@@ -32,6 +32,7 @@ export function buildStubTurnScript(pick: (turn: TurnFrame) => StubTurnEnd): Stu
       {
         type: 'ended',
         boundary: end.boundary ?? {
+          harness: 'agent-sdk',
           sessionID: crypto.randomUUID(),
           messageID: crypto.randomUUID(),
         },

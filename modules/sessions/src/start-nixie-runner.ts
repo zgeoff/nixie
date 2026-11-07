@@ -4,16 +4,15 @@ import { removeThreadLinks } from '@heynixie/connectors';
 import { subscribeToRecordCommits, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import type { ResolvedProfile } from '@heynixie/models';
+import type { HarnessDescriptor, ResolvedProfile } from '@heynixie/models';
 import {
-  buildModelGrant,
   deriveModelSecret,
+  getHarness,
   modelSessionCleanupCompletedCodec,
   modelSessionInvalidatedCodec,
   resolveModelCredentials,
-  toTurnProfile,
 } from '@heynixie/models';
-import type { GrantSpec, Sandbox } from '@heynixie/sandbox';
+import type { GrantSpec, GuestCommand, Sandbox } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
 import type {
   RunStep,
@@ -37,8 +36,10 @@ import invariant from 'tiny-invariant';
 import type { Actor } from 'xstate';
 import { createActor } from 'xstate';
 import { buildDefaultStatus } from './build-default-status';
+import { buildGuestCommand } from './build-guest-command';
 import { silentEndToolName } from './build-silent-end-tool';
 import { createWorkerSandbox } from './create-worker-sandbox';
+import { getHarnessImage } from './get-harness-image';
 import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
@@ -95,7 +96,7 @@ interface TaskRunner {
 
 export const startNixieRunner = makeSystemTaskRunner<NixieRunnerOptions, NixieRunner>({
   role: 'task',
-  entry: 'main',
+  entry: 'turn',
   start: async (options, session) => {
     const runner: TaskRunner = {
       options,
@@ -148,7 +149,7 @@ async function createModelGrant(runner: TaskRunner, profile: ResolvedProfile): P
     throw error;
   }
 
-  return buildModelGrant(secret);
+  return getHarness(profile.profile.harness).buildGrant(secret);
 }
 
 async function stopTaskImps(runner: TaskRunner): Promise<void> {
@@ -270,6 +271,7 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
         thread: taskID,
         tools: [...new Set([...run.options.tools, silentEndToolName])],
         model: run.model,
+        toolUseMetaKey: run.harness.toolUseMetaKey,
       });
     },
     readSandbox: (id) => options.sandboxes.read(id),
@@ -278,7 +280,7 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
 
       return createWorkerSandbox({
         sandboxes: options.sandboxes,
-        image: options.image,
+        image: getHarnessImage(options.images, run.harness.imageKey),
         owner: taskID,
         limits: runner.session.limits,
         modelGrant: await resolveModelGrant(runner, run.profile),
@@ -302,6 +304,8 @@ interface StartedRun {
   readonly options: TaskRunOptions;
   readonly limits: TaskLimits;
   readonly profile: ResolvedProfile;
+  readonly harness: HarnessDescriptor;
+  readonly command: GuestCommand;
   readonly model: ToolRunModel;
 }
 
@@ -333,11 +337,15 @@ function buildStartedRun(runner: TaskRunner, setup: TaskSetup): StartedRun {
 
   invariant(profile, `the task's profile ${options.profile ?? ''} is not defined`);
 
+  const harness = getHarness(profile.profile.harness);
+
   return {
     startedBy: setup.startedBy,
     options,
     limits: setup.limits ?? options.limits,
     profile,
+    harness,
+    command: buildGuestCommand(runner.options.sandboxes, harness.guest),
     model: { model: profile.profile.model, profile: profile.profile.id },
   };
 }
@@ -455,11 +463,11 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     context: options.context,
     frame: { kind: 'task', startedBy: run.startedBy, report: run.options.report },
     profile: run.profile,
-    turnProfile: toTurnProfile(run.profile.profile),
+    turnProfile: run.harness.toTurnProfile(run.profile.profile),
     sandbox: parts.sandbox,
     endpoint: parts.endpoint,
     model: run.model,
-    command: runner.session.command,
+    command: run.command,
     getDefinitions: () =>
       run.options.persona === 'default'
         ? options.getDefinitions()
@@ -551,7 +559,9 @@ async function runTaskGuestPurge(runner: TaskRunner, taskID: string): Promise<vo
   const held = await acquired.promise;
 
   try {
-    await runGuestPurge({ sandbox: held.sandbox, command: runner.session.command });
+    const run = await readStartedRun(runner, taskID);
+
+    await runGuestPurge({ sandbox: held.sandbox, command: run.command });
   } finally {
     await releaseTaskImp(imp);
   }

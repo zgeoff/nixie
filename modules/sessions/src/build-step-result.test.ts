@@ -55,7 +55,7 @@ test('it sums the thinking tokens of every ended frame onto the last reply, and 
         ended: [
           {
             type: 'ended',
-            boundary: { sessionID: 'session-1', messageID: 'message-1' },
+            boundary: { harness: 'agent-sdk', sessionID: 'session-1', messageID: 'message-1' },
             subtype: 'success',
             stopReason: 'end_turn',
             turns: 1,
@@ -64,7 +64,7 @@ test('it sums the thinking tokens of every ended frame onto the last reply, and 
           },
           {
             type: 'ended',
-            boundary: { sessionID: 'session-1', messageID: 'message-2' },
+            boundary: { harness: 'agent-sdk', sessionID: 'session-1', messageID: 'message-2' },
             subtype: 'success',
             stopReason: 'end_turn',
             turns: 1,
@@ -115,7 +115,7 @@ test('it records no reply for a silent turn, and marks its turn end silent', () 
         ended: [
           {
             type: 'ended',
-            boundary: { sessionID: 'session-1', messageID: 'message-1' },
+            boundary: { harness: 'agent-sdk', sessionID: 'session-1', messageID: 'message-1' },
             subtype: 'success',
             stopReason: 'end_turn',
             turns: 2,
@@ -160,6 +160,10 @@ test('it records no reply for a silent turn, and marks its turn end silent', () 
       },
     ],
     acknowledged: [],
-    sessionBoundary: JSON.stringify({ sessionID: 'session-1', messageID: 'message-1' }),
+    sessionBoundary: JSON.stringify({
+      harness: 'agent-sdk',
+      sessionID: 'session-1',
+      messageID: 'message-1',
+    }),
   });
 });

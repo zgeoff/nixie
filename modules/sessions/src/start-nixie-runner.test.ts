@@ -43,6 +43,7 @@ async function setupTest() {
       models: modelsConfigSchema.parse({
         profiles: {
           'chat-direct': {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.test',
             credential: 'deployment:anthropic',
             auth_header: 'x-api-key',
@@ -50,6 +51,7 @@ async function setupTest() {
             effort: 'low',
           },
           errands: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.test',
             credential: 'deployment:anthropic',
             auth_header: 'x-api-key',
@@ -58,6 +60,7 @@ async function setupTest() {
             context_tokens: 200_000,
           },
           'router-b': {
+            harness: 'agent-sdk',
             base_url: 'https://router.example.test/anthropic',
             credential: 'deployment:router',
             auth_header: 'bearer',
@@ -73,7 +76,7 @@ async function setupTest() {
       }),
       secrets: { model_credentials: { anthropic: 'not-a-real-key', router: 'not-a-real-token' } },
       sandboxes: host.sandboxes,
-      image: 'nixie-conversation-0123456789ab',
+      images: { conversation: 'nixie-conversation-0123456789ab' },
       tools: parts.tools ?? tools.endpoint,
       memory: parts.memory ?? (() => noMemory),
       getDefinitions: () => ({
@@ -359,6 +362,7 @@ test("it runs a started task's tool run on its own ID with the tools it is given
 
   expect(ctx.runs).toStrictEqual([
     {
+      toolUseMetaKey: 'claudecode/toolUseId',
       runID: taskID,
       thread: taskID,
       tools: ['tasks.list', 'task.message', 'time.now', 'turn.end_silently'],
@@ -617,6 +621,7 @@ test("it runs a task on its chosen model's profile, through that profile's host,
   ]);
 
   expect(turn?.profile).toStrictEqual({
+    harness: 'agent-sdk',
     model: 'other-family-test-3',
     baseURL: 'https://router.example.test/anthropic',
     effort: 'low',
@@ -627,6 +632,7 @@ test("it runs a task on its chosen model's profile, through that profile's host,
 
   expect(ctx.runs).toStrictEqual([
     {
+      toolUseMetaKey: 'claudecode/toolUseId',
       runID: taskID,
       thread: taskID,
       tools: ['tasks.list', 'task.message', 'web_fetch', 'turn.end_silently'],

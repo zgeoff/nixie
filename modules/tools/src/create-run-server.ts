@@ -2,10 +2,12 @@ import { JSON_OBJECT_SCHEMA } from '@heynixie/log';
 import { Server } from '@modelcontextprotocol/server';
 import type { ToolCallOptions } from './run-tool-call';
 import { runToolCall } from './run-tool-call';
-import type { ToolRun } from './types';
+import type { GuestToolRun } from './types';
 
 // oxlint-disable-next-line typescript/no-deprecated -- McpServer answers a call to a tool it does not list itself, so the scope stage would never see it
-export function createRunServer(run: ToolRun, options: ToolCallOptions): Server {
+export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions): Server {
+  const { toolUseMetaKey, ...run } = guestRun;
+
   // oxlint-disable-next-line typescript/no-deprecated -- as above
   const server = new Server(
     { name: 'nixie', version: '0.0.0' },
@@ -35,7 +37,7 @@ export function createRunServer(run: ToolRun, options: ToolCallOptions): Server 
         input: JSON_OBJECT_SCHEMA.parse(request.params.arguments ?? {}),
 
         // oxlint-disable-next-line no-underscore-dangle -- _meta is the MCP field's name
-        toolUseID: findToolUseID(request.params._meta),
+        toolUseID: findToolUseID(request.params._meta, toolUseMetaKey),
       },
       run,
       options,
@@ -45,9 +47,12 @@ export function createRunServer(run: ToolRun, options: ToolCallOptions): Server 
   return server;
 }
 
-// Claude Code sends the model's tool-use ID on every tools/call, so the call's record joins its turn.
-function findToolUseID(meta: Readonly<Record<string, unknown>> | undefined): string | null {
-  const toolUseID = meta?.['claudecode/toolUseId'];
+// The guest sends the model's tool-use ID on every tools/call, so the call's record joins its turn.
+function findToolUseID(
+  meta: Readonly<Record<string, unknown>> | undefined,
+  key: string | null,
+): string | null {
+  const toolUseID = key === null ? undefined : meta?.[key];
 
   return typeof toolUseID === 'string' ? toolUseID : null;
 }

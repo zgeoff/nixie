@@ -48,7 +48,11 @@ test('it returns no ended frame for a guest that fails', async () => {
     buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' }),
   );
 
-  const resume = { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() };
+  const resume = {
+    harness: 'agent-sdk' as const,
+    sessionID: crypto.randomUUID(),
+    messageID: crypto.randomUUID(),
+  };
 
   const run = await runGuestFrame(sandbox, buildMockTurnFrame({ resume }));
 

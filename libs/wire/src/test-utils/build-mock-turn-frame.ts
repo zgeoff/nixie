@@ -15,6 +15,7 @@ export function buildMockTurnFrame(overrides: TurnFrameOverrides = {}): TurnFram
   return {
     type: 'turn',
     profile: {
+      harness: 'agent-sdk',
       model: faker.string.alphanumeric(12),
       baseURL: faker.internet.url(),
       effort: 'medium',

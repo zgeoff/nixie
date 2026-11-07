@@ -46,6 +46,7 @@ test('it reads an opened session at its boundary under the threshold as resumabl
         lastContext: { size: 79_000, window: 100_000 },
       },
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
@@ -55,6 +56,7 @@ test('it reads an opened session at its boundary under the threshold as resumabl
   ).toStrictEqual({
     state: 'resumable',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
       messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
     },
@@ -72,6 +74,7 @@ test('it reads an opened session at its boundary past the threshold as due for c
         lastContext: { size: 80_000, window: 100_000 },
       },
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
@@ -81,6 +84,7 @@ test('it reads an opened session at its boundary past the threshold as due for c
   ).toStrictEqual({
     state: 'compaction-due',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
       messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
     },
@@ -98,6 +102,7 @@ test('it reads a session that a forget invalidated as invalidated, past the thre
         lastContext: { size: 90_000, window: 100_000 },
       },
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
@@ -107,6 +112,7 @@ test('it reads a session that a forget invalidated as invalidated, past the thre
   ).toStrictEqual({
     state: 'invalidated',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
       messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
     },
@@ -142,6 +148,7 @@ test('it reads a boundary from before opening records as lost', () => {
         lastContext: null,
       },
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
@@ -151,6 +158,7 @@ test('it reads a boundary from before opening records as lost', () => {
   ).toStrictEqual({
     state: 'lost',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
       messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
     },
@@ -169,6 +177,7 @@ test('it reads an opened session under another persona as invalidated by the per
       },
       personaHash: 'sha256:persona-b',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
@@ -177,6 +186,7 @@ test('it reads an opened session under another persona as invalidated by the per
   ).toStrictEqual({
     state: 'invalidated',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
       messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
     },
@@ -196,6 +206,7 @@ test('it reads a session that a forget invalidated under another persona as inva
       },
       personaHash: 'sha256:persona-b',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
@@ -204,6 +215,7 @@ test('it reads a session that a forget invalidated under another persona as inva
   ).toStrictEqual({
     state: 'invalidated',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
       messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
     },
@@ -223,6 +235,7 @@ test('it reads a session opened before openings kept the persona hash as resumab
       },
       personaHash: 'sha256:persona-b',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
@@ -231,6 +244,7 @@ test('it reads a session opened before openings kept the persona hash as resumab
   ).toStrictEqual({
     state: 'resumable',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
       messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
     },

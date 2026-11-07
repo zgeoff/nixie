@@ -1,11 +1,5 @@
 import { z } from 'zod';
-
-const sessionPointSchema = z
-  .object({
-    sessionID: z.uuid(),
-    messageID: z.uuid(),
-  })
-  .readonly();
+import { sessionPointSchema } from './session-point';
 
 const tokenCountSchema = z.int().nonnegative();
 const toolUseSchema = z.object({ id: z.string(), name: z.string() }).readonly();

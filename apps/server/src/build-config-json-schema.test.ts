@@ -69,6 +69,7 @@ test('it accepts a configuration with only the required sections', () => {
     models: {
       profiles: {
         main: {
+          harness: 'agent-sdk',
           base_url: 'https://models.example.com',
           credential: 'deployment:models',
           auth_header: 'bearer',
@@ -99,6 +100,7 @@ test('it refuses an unknown key in a section', () => {
     models: {
       profiles: {
         main: {
+          harness: 'agent-sdk',
           base_url: 'https://models.example.com',
           credential: 'deployment:models',
           auth_header: 'bearer',
@@ -131,6 +133,7 @@ test('it refuses a credential that is not a deployment reference', () => {
     models: {
       profiles: {
         main: {
+          harness: 'agent-sdk',
           base_url: 'https://models.example.com',
           credential: 'plain-text-key',
           auth_header: 'bearer',
@@ -162,6 +165,7 @@ test('it refuses the test sandbox, which a release build does not hold', () => {
     models: {
       profiles: {
         main: {
+          harness: 'agent-sdk',
           base_url: 'https://models.example.com',
           credential: 'deployment:models',
           auth_header: 'bearer',
@@ -192,6 +196,7 @@ test('it refuses a model URL that is not HTTP', () => {
     models: {
       profiles: {
         main: {
+          harness: 'agent-sdk',
           base_url: 'ftp://models.example.com',
           credential: 'deployment:models',
           auth_header: 'bearer',
@@ -217,6 +222,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -237,6 +243,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -258,6 +265,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -279,6 +287,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -298,6 +307,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'ftp://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -318,6 +328,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https:models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -338,6 +349,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'HTTPS://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -358,6 +370,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -378,6 +391,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -398,6 +412,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -418,6 +433,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -438,6 +454,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -458,6 +475,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -479,6 +497,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -500,6 +519,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -522,6 +542,7 @@ test.each([
       models: {
         profiles: {
           main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -542,6 +563,7 @@ test.each([
       models: {
         profiles: {
           Main: {
+            harness: 'agent-sdk',
             base_url: 'https://models.example.com',
             credential: 'deployment:models',
             auth_header: 'bearer',
@@ -584,6 +606,7 @@ test('it refuses a time zone alias that a release build reads', () => {
     models: {
       profiles: {
         main: {
+          harness: 'agent-sdk',
           base_url: 'https://models.example.com',
           credential: 'deployment:models',
           auth_header: 'bearer',
@@ -618,6 +641,7 @@ test('it accepts a role that names a missing profile, which a release build refu
     models: {
       profiles: {
         main: {
+          harness: 'agent-sdk',
           base_url: 'https://models.example.com',
           credential: 'deployment:models',
           auth_header: 'bearer',

@@ -1,4 +1,4 @@
-import { buildModelGrant, deriveModelSecret } from '@heynixie/models';
+import { deriveModelSecret, getHarness } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
 import type { GuestCommand, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
@@ -49,12 +49,14 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
 
   await options.sandboxes.addSecret(secret);
 
+  const harness = getHarness(options.profile.profile.harness);
+
   const worker = await createWorkerSandbox({
     sandboxes: options.sandboxes,
     image: options.image,
     owner: options.taskID,
     limits: options.limits,
-    modelGrant: buildModelGrant(secret),
+    modelGrant: harness.buildGrant(secret),
   });
 
   const model: ToolRunModel = {
@@ -67,6 +69,7 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
     thread: options.taskID,
     tools: options.toolNames,
     model,
+    toolUseMetaKey: harness.toolUseMetaKey,
   });
 
   return {
@@ -116,11 +119,7 @@ async function runStepSession(
     turn: {
       type: 'turn',
       profile: {
-        model: profile.model,
-        baseURL: profile.baseURL,
-        effort: profile.effort,
-        authHeader: profile.authHeader,
-        contextTokens: profile.contextTokens,
+        ...getHarness(profile.harness).toTurnProfile(profile),
 
         // Each run starts a fresh session, so a 1-hour cache entry costs more to write and is never
         // read again.

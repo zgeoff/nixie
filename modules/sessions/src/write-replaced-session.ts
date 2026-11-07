@@ -1,4 +1,5 @@
 import type { Logger } from '@heynixie/logger';
+import type { HarnessDescriptor } from '@heynixie/models';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID, readSessionBoundary } from '@heynixie/tasks';
@@ -8,6 +9,7 @@ import { writeKeptSession } from './write-kept-session';
 export interface ReplacedSessionSpec {
   readonly context: TasksContext;
   readonly command: GuestCommand;
+  readonly listSessionFiles: HarnessDescriptor['listSessionFiles'];
   readonly log: Logger;
 
   readonly replaced: readonly Sandbox[];
@@ -15,14 +17,16 @@ export interface ReplacedSessionSpec {
 }
 
 export async function writeReplacedSession(spec: ReplacedSessionSpec): Promise<void> {
-  if (spec.replaced.length === 0) {
+  const listSessionFiles = spec.listSessionFiles;
+
+  if (spec.replaced.length === 0 || listSessionFiles === null) {
     return;
   }
 
   const failures: string[] = [];
 
   for (const from of spec.replaced) {
-    const failure = await tryWriteKeptSession(spec, from);
+    const failure = await tryWriteKeptSession({ ...spec, listSessionFiles }, from);
 
     if (failure === null) {
       return;
@@ -37,10 +41,11 @@ export async function writeReplacedSession(spec: ReplacedSessionSpec): Promise<v
   });
 }
 
-async function tryWriteKeptSession(
-  spec: ReplacedSessionSpec,
-  from: Sandbox,
-): Promise<string | null> {
+interface KeptSessionSource extends ReplacedSessionSpec {
+  readonly listSessionFiles: NonNullable<ReplacedSessionSpec['listSessionFiles']>;
+}
+
+async function tryWriteKeptSession(spec: KeptSessionSource, from: Sandbox): Promise<string | null> {
   try {
     const boundary = await readSessionBoundary(spec.context, conversationTaskID);
 
@@ -51,7 +56,7 @@ async function tryWriteKeptSession(
         from,
         to: spec.target,
         command: spec.command,
-        sessionID: resume.sessionID,
+        files: spec.listSessionFiles(resume),
       });
     }
 

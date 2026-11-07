@@ -261,7 +261,11 @@ test('it reports each inbox message the model read, then the turn end at the las
     { type: 'assistant', messageID: expect.toBeString(), text: 'You need milk.', toolUses: [] },
     {
       type: 'ended',
-      boundary: { sessionID: expect.toBeString(), messageID: reply.messageID },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: expect.toBeString(),
+        messageID: reply.messageID,
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       isError: false,
@@ -341,7 +345,11 @@ test('it carries the reasoning summary on the thinking frame, the thinking token
     },
     {
       type: 'ended',
-      boundary: { sessionID: expect.toBeString(), messageID: reply.messageID },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: expect.toBeString(),
+        messageID: reply.messageID,
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       isError: false,
@@ -978,7 +986,11 @@ test('it ends an interrupted turn at its last chain entry, and leaves a queued m
   expect(ctx.frames.at(-1)).toMatchObject({
     type: 'ended',
     subtype: 'error_during_execution',
-    boundary: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+    boundary: {
+      harness: 'agent-sdk',
+      sessionID: expect.toBeString(),
+      messageID: expect.toBeString(),
+    },
   });
 });
 
@@ -1349,6 +1361,7 @@ test('it reports a session to resume that is not on the guest disk as missing', 
     buildMockTurnFrame({
       profile: { baseURL: ctx.model.url },
       resume: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },

@@ -17,7 +17,11 @@ test('it reads every inbox message and ends the turn at a fresh chain entry with
     { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
     {
       type: 'ended',
-      boundary: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: expect.toBeString(),
+        messageID: expect.toBeString(),
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 1,
@@ -29,6 +33,7 @@ test('it reads every inbox message and ends the turn at a fresh chain entry with
 test('it ends the turn with the reply, the chain entry and the context the pick gives', async () => {
   const script = buildStubTurnScript(() => ({
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
@@ -51,6 +56,7 @@ test('it ends the turn with the reply, the chain entry and the context the pick 
     {
       type: 'ended',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -90,6 +96,7 @@ test('it picks how each turn ends from that turn frame', async () => {
   const resumed = await script(
     buildMockTurnFrame({
       resume: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },

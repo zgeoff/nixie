@@ -39,6 +39,7 @@ export async function startTestConversation(
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
+          harness: 'agent-sdk',
           base_url: model.url,
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -52,7 +53,7 @@ export async function startTestConversation(
     sandboxes: server.sandboxes,
     tools: server.endpoint,
     toolNames: options.toolNames ?? [],
-    image: 'nixie-conversation-0123456789ab',
+    images: { conversation: 'nixie-conversation-0123456789ab' },
     getDefinitions: () => ({
       persona: 'You are nixie.',
       prompts: {},

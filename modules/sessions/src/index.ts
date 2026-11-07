@@ -59,6 +59,7 @@ export { startCheckerRunner } from './start-checker-runner';
 export type { CheckerTask, CheckerTaskOptions } from './start-checker-task';
 export { startCheckerTask } from './start-checker-task';
 export { buildGuestCommand } from './build-guest-command';
+export { getHarnessImage } from './get-harness-image';
 export type { SystemTaskOptions, SystemTaskRunner } from './make-system-task-runner';
 export { makeSystemTaskRunner } from './make-system-task-runner';
 export type { ToolSessionOptions } from './start-tool-session';
@@ -69,7 +70,6 @@ export type {
   EventKind,
   EventRegistry,
   EventSettings,
-  GuestEntry,
   ConversationMemory,
   ConversationMemorySettings,
   MemoryApproval,

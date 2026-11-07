@@ -1,7 +1,5 @@
 import type { SessionPoint } from '@heynixie/wire';
-import { z } from 'zod';
-
-const sessionPointSchema = z.object({ sessionID: z.uuid(), messageID: z.uuid() });
+import { sessionPointSchema } from '@heynixie/wire';
 
 export function parseSessionBoundary(boundary: string | null): SessionPoint | null {
   if (boundary === null) {

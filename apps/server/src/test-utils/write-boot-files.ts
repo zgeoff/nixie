@@ -128,6 +128,7 @@ function buildConfigLines(
     'models:',
     '  profiles:',
     '    scripted:',
+    '      harness: agent-sdk',
     `      base_url: ${modelURL}`,
     '      credential: deployment:scripted',
     '      auth_header: x-api-key',
@@ -135,6 +136,7 @@ function buildConfigLines(
     '      effort: low',
     ...roleModels.flatMap(([role, url]) => [
       `    scripted-${role}:`,
+      '      harness: agent-sdk',
       `      base_url: ${url}`,
       '      credential: deployment:scripted',
       '      auth_header: x-api-key',
@@ -143,6 +145,7 @@ function buildConfigLines(
     ]),
     ...selectableModels.flatMap(([name, url]) => [
       `    selectable-${name}:`,
+      '      harness: agent-sdk',
       `      base_url: ${url}`,
       '      credential: deployment:scripted',
       '      auth_header: bearer',

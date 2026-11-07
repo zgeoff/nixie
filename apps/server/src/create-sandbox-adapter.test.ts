@@ -99,7 +99,13 @@ test("it routes a guest to its run's endpoint in a test build, passing each chun
 
   const model = { model: 'model-a', profile: 'chat-direct' };
 
-  const run = await ctx.endpoint.startRun({ runID: 'run-1', thread: 'task-1', tools: [], model });
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: [],
+    model,
+  });
 
   const sandbox = await ctx.sandboxes.create(
     buildMockSandboxSpec({

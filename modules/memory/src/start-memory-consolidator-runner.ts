@@ -29,7 +29,7 @@ export const startMemoryConsolidatorRunner = makeSystemTaskRunner<
   MemoryConsolidator
 >({
   role: 'memory-consolidator',
-  entry: 'main',
+  entry: 'turn',
   start: async (options, session) => {
     const staging = createConsolidationStaging();
 

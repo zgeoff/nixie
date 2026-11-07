@@ -36,6 +36,7 @@ test('it runs the callback with a client connected to the run endpoint and retur
   onTestFinished(() => endpoint.stop());
 
   const run = await endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],

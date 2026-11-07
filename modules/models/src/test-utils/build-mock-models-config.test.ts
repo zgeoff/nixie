@@ -9,6 +9,7 @@ test('it builds a default models config', () => {
     profiles: {
       [id]: {
         id,
+        harness: 'agent-sdk',
         baseURL: expect.toStartWith('https://'),
         credential: expect.toStartWith('deployment:'),
         authHeader: 'x-api-key',
@@ -49,6 +50,7 @@ test('it builds each profile it is given from the full profile defaults', () => 
   ).toStrictEqual({
     chat: {
       id: 'chat',
+      harness: 'agent-sdk',
       baseURL: expect.toStartWith('https://'),
       credential: expect.toStartWith('deployment:'),
       authHeader: 'x-api-key',

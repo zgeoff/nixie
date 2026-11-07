@@ -4,6 +4,7 @@ import { buildMockModelProfile } from './build-mock-model-profile';
 test('it builds a default model profile', () => {
   expect(buildMockModelProfile()).toStrictEqual({
     id: expect.toBeString(),
+    harness: 'agent-sdk',
     baseURL: expect.toStartWith('https://'),
     credential: expect.toStartWith('deployment:'),
     authHeader: 'x-api-key',
@@ -19,6 +20,7 @@ test('it builds a default model profile', () => {
 test('it applies overrides on top of the defaults', () => {
   expect(buildMockModelProfile({ id: 'chat', authHeader: 'bearer' })).toStrictEqual({
     id: 'chat',
+    harness: 'agent-sdk',
     baseURL: expect.toStartWith('https://'),
     credential: expect.toStartWith('deployment:'),
     authHeader: 'bearer',

@@ -8,6 +8,7 @@ test('it builds a default summarize frame', () => {
   expect(frame).toStrictEqual({
     type: 'summarize',
     profile: {
+      harness: 'agent-sdk',
       model: expect.toBeString(),
       baseURL: expect.toStartWith('https://'),
       effort: 'medium',
@@ -15,7 +16,11 @@ test('it builds a default summarize frame', () => {
       contextTokens: null,
       cacheTTL: '5m',
     },
-    resume: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+    resume: {
+      harness: 'agent-sdk',
+      sessionID: expect.toBeString(),
+      messageID: expect.toBeString(),
+    },
     systemPrompt: expect.toBeString(),
     instruction: expect.toBeString(),
   });
@@ -27,6 +32,7 @@ test('it applies overrides on top of the defaults', () => {
   const frame = buildMockSummarizeFrame({
     profile: { model: 'glm-5.3', authHeader: 'bearer' },
     resume: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
@@ -36,6 +42,7 @@ test('it applies overrides on top of the defaults', () => {
   expect(frame).toStrictEqual({
     type: 'summarize',
     profile: {
+      harness: 'agent-sdk',
       model: 'glm-5.3',
       baseURL: expect.toStartWith('https://'),
       effort: 'medium',
@@ -44,6 +51,7 @@ test('it applies overrides on top of the defaults', () => {
       cacheTTL: '5m',
     },
     resume: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },

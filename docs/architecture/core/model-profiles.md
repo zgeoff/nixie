@@ -1,13 +1,13 @@
 # Model profiles
 
 nixie reaches every model through a model profile: a named route to one model on one
-Anthropic-compatible endpoint, with a reference to its credential, the header that credential goes
-in, the model ID, the reasoning effort, an optional context cap, a prompt cache lifetime, an
-optional provider pin and an optional price table. Each model role names the profile it uses, so
-moving a role to another model is a change to the deployment configuration and never to code.
-[Conversation turns](./conversation-turns.md) covers how the conversation runs its turns on its
-role's profile, and decision [0033](../../decisions/0033-model-profiles.md) records why profiles
-exist.
+Anthropic-compatible endpoint, with the harness that runs its turns, a reference to its credential,
+the header that credential goes in, the model ID, the reasoning effort, an optional context cap, a
+prompt cache lifetime, an optional provider pin and an optional price table. Each model role names
+the profile it uses, so moving a role to another model is a change to the deployment configuration
+and never to code. [Conversation turns](./conversation-turns.md) covers how the conversation runs
+its turns on its role's profile, and decision [0033](../../decisions/0033-model-profiles.md) records
+why profiles exist.
 
 ## The role map
 
@@ -40,6 +40,31 @@ no price table, because a task counts the cost of its turns against its dollar l
 
 The section's `limits.taskRun` sets the default and the max of a started task's limits, each as a
 count of turns and an amount of dollars. The schema refuses a default above its max.
+
+## Harnesses
+
+A harness is the model loop that runs a profile's turns inside a sandbox, such as the Agent SDK.
+Each profile names its harness under the required `harness` key, which has no default. The schema
+refuses a profile with no `harness` key, and its error names the profile and the fix,
+`harness: agent-sdk`.
+
+The models module holds one record for each harness that nixie runs. Host code reads the record for
+everything that differs between harnesses, and never branches on a harness ID:
+
+- the profile's config schema;
+- the model grant, and the placeholder credential the guest holds;
+- the guest and the entry file for each of its loops, and the key of its image in the sandbox
+  manifest;
+- the model API the harness speaks;
+- the MCP `_meta` key that carries the model's tool-use ID on each tool call;
+- the session files that a replaced sandbox carries, or none when the harness keeps no session that
+  a new sandbox can resume.
+
+Only the `agent-sdk` harness has a record, so the schema refuses a profile on any other harness. The
+wire library holds every harness ID and the features each harness declares.
+
+The turn profile that the host sends a guest, and each session point, name their harness too. nixie
+reads a stored session point that names no harness as an Agent SDK point.
 
 ## The context cap
 

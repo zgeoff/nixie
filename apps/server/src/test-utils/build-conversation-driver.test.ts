@@ -46,6 +46,7 @@ test('it returns a turn that resumes the point the last turn ended at', async ()
   const turn = await conversation.send('How many sugars?');
 
   expect(turn.resume).toStrictEqual({
+    harness: 'agent-sdk',
     sessionID: expect.toBeString(),
     messageID: expect.toBeString(),
   });

@@ -1,5 +1,5 @@
 import type { CompactionSettings } from '@heynixie/compaction';
-import { deriveModelSecret, toTurnProfile } from '@heynixie/models';
+import { deriveModelSecret, getHarness } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
 import type { RunStep, TaskMessaging, TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
@@ -79,7 +79,9 @@ export async function startConversationRunner(
 
   await options.sandboxes.addSecret(secret);
 
-  const sandbox = await setupConversationSandbox(options, secret);
+  const harness = getHarness(options.profile.profile.harness);
+
+  const sandbox = await setupConversationSandbox({ ...options, harness }, secret);
 
   const model: ToolRunModel = {
     model: options.profile.profile.model,
@@ -91,6 +93,7 @@ export async function startConversationRunner(
     thread: conversationTaskID,
     tools: options.toolNames,
     model,
+    toolUseMetaKey: harness.toolUseMetaKey,
   });
 
   const run: ConversationRun = {
@@ -99,7 +102,7 @@ export async function startConversationRunner(
     sandbox,
     endpoint,
     model,
-    turnProfile: toTurnProfile(options.profile.profile),
+    turnProfile: harness.toTurnProfile(options.profile.profile),
     memorySettings: { ...defaultMemorySettings, ...options.memorySettings },
     compaction: { ...defaultCompaction, ...options.compaction },
     status: options.status ?? buildDefaultStatus(),
