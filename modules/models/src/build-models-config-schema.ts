@@ -7,7 +7,7 @@ import type { ModelProfile, ModelsConfig, SelectableModel } from './types';
 
 // Each harness's profile schema names the harness under the key the union reads.
 export type HarnessProfileSchema = z.core.$ZodTypeDiscriminable &
-  z.ZodType<Omit<ModelProfile, 'id'>, unknown>;
+  z.ZodType<Omit<ModelProfile, 'id'>>;
 
 const profileIDSchema = z
   .string()
