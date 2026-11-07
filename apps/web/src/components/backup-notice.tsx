@@ -55,12 +55,12 @@ function renderNotice(current: Notice): string {
     .with(
       'failed',
       () =>
-        `A backup failed at ${time}. nixie keeps its data, and the next backup tries again within the backup interval.`,
+        `nixie found a failed backup at ${time}. nixie keeps its data, and the next backup tries again within the backup interval.`,
     )
     .with(
       'missing',
       () =>
-        `No backup uploaded within the backup interval, as of ${time}. Check that the backup job runs.`,
+        `nixie found at ${time} that a backup had not uploaded within the backup interval. Check that the backup job runs.`,
     )
     .exhaustive();
 }

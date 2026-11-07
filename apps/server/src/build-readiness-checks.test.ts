@@ -267,6 +267,38 @@ test('it reports backups unready once no receipt arrives within twice the interv
   });
 });
 
+test('it reports backups ready within twice the interval of a restart, after an upload older than that', async () => {
+  const state = buildStartState({ isReady: true, reason: null });
+  const clock = buildTestClock(Date.parse('2026-11-02T08:00:00Z'));
+
+  const checks = buildReadinessChecks(
+    state,
+    { read: () => ({ isReady: true, reason: null }) },
+    clock,
+  );
+
+  state.update({
+    backups: {
+      state: 'on',
+      intervalMs: 3_600_000,
+      startedAt: Date.parse('2026-11-02T07:00:00Z'),
+      health: {
+        lastUploadAt: Date.parse('2026-11-01T22:00:00Z'),
+        newestSetAt: Date.parse('2026-11-01T22:00:00Z'),
+        notice: null,
+      },
+    },
+  });
+
+  const report = await checks.dependencies.backups();
+
+  expect(report).toStrictEqual({
+    isReady: true,
+    reason: null,
+    details: { newest_set_age_seconds: 36_000, last_upload_at: '2026-11-01T22:00:00.000Z' },
+  });
+});
+
 test('it reports backups ready again once a receipt arrives', async () => {
   const state = buildStartState({ isReady: true, reason: null });
   const clock = buildTestClock(Date.parse('2026-11-02T08:00:00Z'));

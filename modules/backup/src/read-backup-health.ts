@@ -6,8 +6,6 @@ export interface BackupHealth {
   readonly notice: BackupNotice | null;
 }
 
-// The notice is the newest one since the last published set, because a publish shows the backups
-// work again.
 export async function readBackupHealth(writer: Pick<BackupWriter, 'db'>): Promise<BackupHealth> {
   const db = writer.db.$extendTables<BackupTables>();
 

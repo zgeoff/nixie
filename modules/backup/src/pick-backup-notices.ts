@@ -11,17 +11,15 @@ export interface RaisedNotice {
   readonly cause: BackupNoticeCause;
 }
 
-// A set that a newer set's publish covers raises nothing, so the first pass of a release that adds
-// notices stays quiet about failures the backups have since recovered from.
 export function pickBackupNotices(
   sets: readonly NoticeSet[],
   raised: readonly RaisedNotice[],
   now: number,
   intervalMs: number,
 ): RaisedNotice[] {
-  const lastPublished = Math.max(
+  const lastPublished = sets.reduce(
+    (newest, set) => (set.state === 'published' ? Math.max(newest, set.sequence) : newest),
     0,
-    ...sets.filter((set) => set.state === 'published').map((set) => set.sequence),
   );
 
   return sets

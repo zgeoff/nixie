@@ -18,7 +18,7 @@ test('it shows the notice of a failed backup', async () => {
 
   await waitFor(() => {
     expect(rendered.getByRole('alert')).toHaveTextContent(
-      /^A backup failed at .+\. nixie keeps its data, and the next backup tries again within the backup interval\.$/u,
+      /^nixie found a failed backup at .+\. nixie keeps its data, and the next backup tries again within the backup interval\.$/u,
     );
   });
 });
@@ -36,7 +36,7 @@ test('it shows the notice of a backup with no upload within the interval', async
 
   await waitFor(() => {
     expect(rendered.getByRole('alert')).toHaveTextContent(
-      /^No backup uploaded within the backup interval, as of .+\. Check that the backup job runs\.$/u,
+      /^nixie found at .+ that a backup had not uploaded within the backup interval\. Check that the backup job runs\.$/u,
     );
   });
 });

@@ -12,8 +12,6 @@ export type BackupWatch =
       readonly health: BackupHealth | null;
     };
 
-// A deployment with no published set yet counts from the schedule's start, so a new deployment is
-// ready while its first set ships.
 export function buildBackupsReport(watch: BackupWatch, now: number): PartReport {
   return match(watch)
     .returnType<PartReport>()
@@ -26,7 +24,7 @@ export function buildBackupsReport(watch: BackupWatch, now: number): PartReport 
       const lastUploadAt = on.health?.lastUploadAt ?? null;
       const newestSetAt = on.health?.newestSetAt ?? null;
       const limitMs = 2 * on.intervalMs;
-      const isReady = now - (lastUploadAt ?? on.startedAt) < limitMs;
+      const isReady = now - Math.max(lastUploadAt ?? 0, on.startedAt) < limitMs;
 
       return {
         isReady,

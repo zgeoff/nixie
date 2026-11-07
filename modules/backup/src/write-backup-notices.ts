@@ -2,41 +2,55 @@ import { withWriteTransaction } from '@heynixie/log';
 import { pickBackupNotices } from './pick-backup-notices';
 import type { BackupContext, BackupNotice, BackupTables } from './types';
 
-export function writeBackupNotices(
+export async function writeBackupNotices(
   context: BackupContext,
   intervalMs: number,
 ): Promise<readonly BackupNotice[]> {
-  return withWriteTransaction(context.writer, async (tx) => {
-    const db = tx.$extendTables<BackupTables>();
+  const db = context.writer.db.$extendTables<BackupTables>();
 
-    const sets = await db
-      .selectFrom('backup_sets')
-      .select(['sequence', 'state', 'staged_at'])
-      .where('state', 'in', ['staged', 'published', 'failed'])
-      .orderBy('sequence')
-      .execute();
+  const lastPublished = db
+    .selectFrom('backup_sets')
+    .select((eb) => eb.fn.coalesce(eb.fn.max('sequence'), eb.lit(0)).as('sequence'))
+    .where('state', '=', 'published');
 
-    const raised = await db.selectFrom('backup_notices').select(['sequence', 'cause']).execute();
+  const sets = await db
+    .selectFrom('backup_sets')
+    .select(['sequence', 'state', 'staged_at'])
+    .where('state', 'in', ['staged', 'published', 'failed'])
+    .where('sequence', '>=', lastPublished)
+    .orderBy('sequence')
+    .execute();
 
-    const raisedAt = context.writer.clock.now();
+  const raised = await db
+    .selectFrom('backup_notices')
+    .select(['sequence', 'cause'])
+    .where('sequence', '>=', lastPublished)
+    .execute();
 
-    const notices = pickBackupNotices(sets, raised, raisedAt, intervalMs).map(
-      (notice): BackupNotice => ({ sequence: notice.sequence, cause: notice.cause, raisedAt }),
-    );
+  const raisedAt = context.writer.clock.now();
 
-    if (notices.length > 0) {
-      await db
-        .insertInto('backup_notices')
-        .values(
-          notices.map((notice) => ({
-            sequence: notice.sequence,
-            cause: notice.cause,
-            raised_at: notice.raisedAt,
-          })),
-        )
-        .execute();
-    }
+  const notices = pickBackupNotices(sets, raised, raisedAt, intervalMs).map(
+    (notice): BackupNotice => ({ sequence: notice.sequence, cause: notice.cause, raisedAt }),
+  );
 
+  if (notices.length === 0) {
     return notices;
+  }
+
+  await withWriteTransaction(context.writer, async (tx) => {
+    await tx
+      .$extendTables<BackupTables>()
+      .insertInto('backup_notices')
+      .values(
+        notices.map((notice) => ({
+          sequence: notice.sequence,
+          cause: notice.cause,
+          raised_at: notice.raisedAt,
+        })),
+      )
+      .onConflict((conflict) => conflict.doNothing())
+      .execute();
   });
+
+  return notices;
 }

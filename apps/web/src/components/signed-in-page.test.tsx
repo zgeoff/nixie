@@ -55,6 +55,6 @@ test('it shows the backup notice above the page of a live session', async () => 
   );
 
   await waitFor(() => {
-    expect(rendered.getByRole('alert')).toHaveTextContent(/^A backup failed at /u);
+    expect(rendered.getByRole('alert')).toHaveTextContent(/^nixie found a failed backup at /u);
   });
 });

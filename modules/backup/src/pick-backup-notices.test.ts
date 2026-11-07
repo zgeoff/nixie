@@ -27,6 +27,17 @@ test.each<[string, number, RaisedNotice[]]>([
   expect(notices).toStrictEqual(expected);
 });
 
+test('it raises nothing for a set still staging, however long it has waited', () => {
+  const notices = pickBackupNotices(
+    [{ sequence: 3, state: 'staging', staged_at: 1_798_761_600_000 }],
+    [],
+    1_798_772_400_000,
+    3_600_000,
+  );
+
+  expect(notices).toStrictEqual([]);
+});
+
 test('it raises nothing for a cause a set has already raised', () => {
   const notices = pickBackupNotices(
     [{ sequence: 3, state: 'failed', staged_at: 1_798_761_600_000 }],

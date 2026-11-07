@@ -133,10 +133,12 @@ notice as a warning. The client reads the newest notice since the newest publish
 minute, and shows it above every signed-in page until a newer set publishes.
 
 Readiness carries backups as a [dependency part](server.md#health). The part turns unready once no
-set has published within twice the backup interval, counted from the newest published receipt, or
-from the backup schedule's start while no set has published. Its details give the age in seconds of
-the newest set that is not abandoned or still staging, and the time nixie recorded the newest
-published receipt. The part is unready until the backup schedule starts, and ready with backups off.
+set has published within twice the backup interval, counted from the newest published receipt or the
+backup schedule's start, whichever is later, so a nixie that was down gives the backup job 2
+intervals before it reports the job. Its details give the age in seconds of the newest set that is
+not abandoned or still staging, and the time nixie recorded the newest published receipt. The part
+is unready until the server's backups start step runs, with backups on or off, and that step makes
+it ready when backups are off.
 
 ## Formats
 
