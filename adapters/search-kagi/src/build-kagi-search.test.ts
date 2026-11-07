@@ -183,6 +183,31 @@ test('it returns only the hits published within the freshness the search sets', 
   });
 });
 
+test('it fails with a reason that never holds the key when the error Kagi sends repeats the key', async () => {
+  const ctx = setupTest();
+
+  mockServer.use(
+    http.post(`${kagiAPIURL}/search`, () =>
+      HttpResponse.json(
+        { error: [{ code: '2', message: 'Unknown key kagi-key-a' }] },
+        { status: 401 },
+      ),
+    ),
+  );
+
+  const reply = await ctx.provider.readHits({
+    query: 'tide times',
+    limit: 10,
+    sites: [],
+    freshness: null,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: 'Kagi answered 401: Unknown key <the API key>',
+  });
+});
+
 test("it fails with Kagi's error, which never quotes the key, when Kagi refuses the key", async () => {
   const ctx = setupTest();
 

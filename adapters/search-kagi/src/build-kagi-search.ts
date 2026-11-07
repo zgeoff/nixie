@@ -10,31 +10,42 @@ export interface KagiSearchOptions {
   readonly apiURL: string;
 }
 
-// Kagi spends up to 4 s collecting results, and the rest covers the round trip.
-const requestTimeoutMs = 15_000;
-
 export function buildKagiSearch(options: KagiSearchOptions): SearchProvider {
   return {
     readHits: async (request) => {
-      const response = await fetch(`${options.apiURL}/search`, {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${options.apiKey}`,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify(buildKagiRequest(request)),
-        signal: AbortSignal.timeout(requestTimeoutMs),
-      }).catch((error: unknown) => error);
+      const reply = await readKagiReply(options, request);
 
-      if (!(response instanceof Response)) {
-        return { kind: 'failed', reason: `Kagi could not be reached: ${String(response)}` };
-      }
-
-      const text = await response.text();
-
-      return parseKagiResponse(response.status, text);
+      return reply.kind === 'failed'
+        ? { kind: 'failed', reason: reply.reason.replaceAll(options.apiKey, '<the API key>') }
+        : reply;
     },
   };
+}
+
+// Kagi spends up to 4 s collecting results, and the rest covers the round trip.
+const requestTimeoutMs = 15_000;
+
+async function readKagiReply(
+  options: KagiSearchOptions,
+  request: SearchRequest,
+): Promise<SearchReply> {
+  const response = await fetch(`${options.apiURL}/search`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${options.apiKey}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(buildKagiRequest(request)),
+    signal: AbortSignal.timeout(requestTimeoutMs),
+  }).catch((error: unknown) => error);
+
+  if (!(response instanceof Response)) {
+    return { kind: 'failed', reason: `Kagi could not be reached: ${String(response)}` };
+  }
+
+  const text = await response.text();
+
+  return parseKagiResponse(response.status, text);
 }
 
 function buildKagiRequest(request: SearchRequest): KagiSearchRequest {

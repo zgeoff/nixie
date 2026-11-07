@@ -76,7 +76,6 @@ export type SearchReply =
   | { readonly kind: 'hits'; readonly hits: readonly SearchHit[]; readonly costUSD: number }
   | { readonly kind: 'failed'; readonly reason: string };
 
-// A search provider holds its own credential, and its reason for a failure never quotes it.
 export interface SearchProvider {
   readonly readHits: (request: SearchRequest) => Promise<SearchReply>;
 }

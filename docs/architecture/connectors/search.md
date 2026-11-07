@@ -66,12 +66,14 @@ the provider or on the way to it, still counts. The count keeps one row per day 
 The connectors module holds the tool and the provider interface. A provider takes the query, the
 limit, the sites and the freshness, and returns the hits with the search's cost, or a reason for the
 failure. The tool calls nothing else of the provider, so another provider can replace Kagi without a
-change to the tool.
+change to the tool. The provider holds its own key, and its failure reason must never hold that key,
+because the tool passes the reason to the model as it is.
 
 Kagi is the one provider, in the `search-kagi` adapter. The adapter sends the sites and the
 freshness in Kagi's lens, the set of filters Kagi applies to one search, and takes each hit's date
 from the `time` Kagi gives the hit. Kagi's answer holds no cost, so the adapter gives each search
-the price on Kagi's [price list](https://kagi.com/api/pricing).
+the price on Kagi's [price list](https://kagi.com/api/pricing). The adapter removes the key from
+every failure reason, so an error in which Kagi repeats the key still reaches the model without it.
 
 ## Settings and the key
 
