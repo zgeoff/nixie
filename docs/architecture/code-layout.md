@@ -190,7 +190,7 @@ package that imports the SDK. They run against the guest's own stub model, so no
 imp or a real model. Each probe of the [SDK contract suite](core/sdk-contract-suite.md) is a
 function in the guest's `sdk-contract` folder: the guest's tests run it against the stub model, and
 the suite in `evals/` runs it against a real model, to check the SDK behaviours nixie relies on. The
-suite's README lists the probes that only the real model can check, which no guest test runs. The
+suite's doc lists the probes that only the real model can check, which no guest test runs. The
 suite's probes run only with `NIXIE_SDK_CONTRACT=1` and a model credential, and skip otherwise, so a
 plain `bun test` never calls a model. Whole-program suites in `e2e/` run nixie with the sandbox
 double, which starts the conversation guest as a local process, so the SDK still loads only from its

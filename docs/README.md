@@ -73,6 +73,9 @@ below, and planned work lives in Linear.
   hashes in the policy
 - [Crash tests](architecture/core/crash-tests.md) — the test build, the harness link and its clock,
   the scripted model, the provider double and the oracle
+- [The Agent SDK contract suite](architecture/core/sdk-contract-suite.md) — the SDK behaviours nixie
+  relies on, checked against a stub model on every pull request and against the model on every SDK
+  bump
 
 ### Policy
 
@@ -168,9 +171,6 @@ below, and planned work lives in Linear.
   model on an imp for each Agent SDK bump, and act on one that fails
 - [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a
   fetch sandbox reach, on a host with impd
-- [The Agent SDK contract suite](architecture/core/sdk-contract-suite.md) — the SDK behaviours nixie
-  relies on, checked against a stub model on every pull request and against the model on every SDK
-  bump
 
 ## Design
 
@@ -179,6 +179,7 @@ rests on.
 
 - [Slice plan](https://linear.app/zgeoff/document/slice-plan-f056442e64a3) — the first build in 10
   ordered slices, each with its scope, what it needs first and its acceptance checks, in Linear
+- [Platform design index](design/platform/README.md) — the design areas and their indexes
 - [Skills](design/platform/skills.md) — skills in the definitions, vendoring and the lock, versions
   and reload, skill lists, the skill tools, the catalog, scripts and skills that nixie writes
 
