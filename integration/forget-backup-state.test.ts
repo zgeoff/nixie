@@ -103,8 +103,6 @@ async function setupTest() {
     await offApp.stop(true);
   });
 
-  const laptop = await createDeviceSession(context, 'laptop');
-
   const respond = makeHostResponder({
     context,
     readMemory: () => memory,
@@ -148,11 +146,13 @@ async function setupTest() {
     memory,
     onPass,
     onError,
-    client: buildTestClient(`http://127.0.0.1:${app.server?.port}`, laptop.token),
+    context,
+    buildClient: (token: string) => buildTestClient(`http://127.0.0.1:${app.server?.port}`, token),
     host: createORPCClient<HostContractClient>(
       new RPCLink({ url: 'http://localhost/rpc', fetch: respond }),
     ),
-    offClient: buildTestClient(`http://127.0.0.1:${offApp.server?.port}`, laptop.token),
+    buildOffClient: (token: string) =>
+      buildTestClient(`http://127.0.0.1:${offApp.server?.port}`, token),
     offHost: createORPCClient<HostContractClient>(
       new RPCLink({ url: 'http://localhost/rpc', fetch: respondOff }),
     ),
@@ -174,13 +174,17 @@ async function setupTest() {
 
 test('it keeps a forget pending while only a set staged before its delete has published', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 
   await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
 
-  await ctx.client.memory.forget({
+  await client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: item.itemID,
     version: 1,
@@ -204,7 +208,7 @@ test('it keeps a forget pending while only a set staged before its delete has pu
     );
   });
 
-  const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
+  const status = await client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
   expect(status).toStrictEqual({
     deleted: [item.itemID],
@@ -215,13 +219,17 @@ test('it keeps a forget pending while only a set staged before its delete has pu
 
 test('it completes a forget once the receipt of the set staged after its delete arrives', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 
   await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
 
-  await ctx.client.memory.forget({
+  await client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: item.itemID,
     version: 1,
@@ -246,7 +254,7 @@ test('it completes a forget once the receipt of the set staged after its delete 
     );
   });
 
-  const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
+  const status = await client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
   expect(status).toStrictEqual({
     deleted: [item.itemID],
@@ -257,13 +265,17 @@ test('it completes a forget once the receipt of the set staged after its delete 
 
 test('it reports a failed prune with its reason, and keeps the forget open', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 
   await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
 
-  await ctx.client.memory.forget({
+  await client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: item.itemID,
     version: 1,
@@ -292,7 +304,7 @@ test('it reports a failed prune with its reason, and keeps the forget open', asy
     );
   });
 
-  const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
+  const status = await client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
   expect(status).toStrictEqual({
     deleted: [item.itemID],
@@ -303,13 +315,17 @@ test('it reports a failed prune with its reason, and keeps the forget open', asy
 
 test('it completes a forget after a failed prune once the next scheduled set publishes', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 
   await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
 
-  await ctx.client.memory.forget({
+  await client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: item.itemID,
     version: 1,
@@ -360,7 +376,7 @@ test('it completes a forget after a failed prune once the next scheduled set pub
     );
   });
 
-  const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
+  const status = await client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
   expect(status).toStrictEqual({
     deleted: [item.itemID],
@@ -371,13 +387,17 @@ test('it completes a forget after a failed prune once the next scheduled set pub
 
 test('it keeps a forget pending while a staging error holds back its set', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
   await writeFile(getBackupStagingDir(ctx.dataDir), 'a file where staging belongs');
 
   ctx.startSchedule();
 
-  await ctx.client.memory.forget({
+  await client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: item.itemID,
     version: 1,
@@ -391,7 +411,7 @@ test('it keeps a forget pending while a staging error holds back its set', async
     return ctx.onError.mock.calls.length > errors;
   });
 
-  const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
+  const status = await client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
   expect(status).toStrictEqual({
     deleted: [item.itemID],
@@ -402,13 +422,17 @@ test('it keeps a forget pending while a staging error holds back its set', async
 
 test('it completes a forget whose set a staging error held back, once a later pass stages it', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
   await writeFile(getBackupStagingDir(ctx.dataDir), 'a file where staging belongs');
 
   ctx.startSchedule();
 
-  await ctx.client.memory.forget({
+  await client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: item.itemID,
     version: 1,
@@ -438,7 +462,7 @@ test('it completes a forget whose set a staging error held back, once a later pa
     );
   });
 
-  const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
+  const status = await client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
   expect(status).toStrictEqual({
     deleted: [item.itemID],
@@ -449,13 +473,17 @@ test('it completes a forget whose set a staging error held back, once a later pa
 
 test('it keeps a forget pending past the backup interval while its set has no receipt', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 
   await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
 
-  await ctx.client.memory.forget({
+  await client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: item.itemID,
     version: 1,
@@ -475,7 +503,7 @@ test('it keeps a forget pending past the backup interval while its set has no re
     return ctx.onPass.mock.calls.length > passes;
   });
 
-  const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
+  const status = await client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
   expect(status).toStrictEqual({
     deleted: [item.itemID],
@@ -486,13 +514,17 @@ test('it keeps a forget pending past the backup interval while its set has no re
 
 test('it completes a forget after a restart from the receipt the job wrote while nixie was down', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
   const first = ctx.startSchedule();
 
   await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
 
-  await ctx.client.memory.forget({
+  await client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: item.itemID,
     version: 1,
@@ -519,7 +551,7 @@ test('it completes a forget after a restart from the receipt the job wrote while
     ),
   );
 
-  const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
+  const status = await client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
   expect(status).toStrictEqual({
     deleted: [item.itemID],
@@ -530,9 +562,13 @@ test('it completes a forget after a restart from the receipt the job wrote while
 
 test('it reports a client forget as pending on its key backups', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
-  const forgotten = await ctx.client.memory.forget({
+  const forgotten = await client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: item.itemID,
     version: 1,
@@ -571,9 +607,13 @@ test('it reports a reset of the conversations as pending on its key backups, as 
 
 test('it reports a client forget as off on its key backups when backups are off', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildOffClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
-  const forgotten = await ctx.offClient.memory.forget({
+  const forgotten = await client.memory.forget({
     clientActionID: crypto.randomUUID(),
     itemID: item.itemID,
     version: 1,
@@ -612,6 +652,10 @@ test('it reports a reset of the conversations as off on its key backups when bac
 
 test('it completes a reset of the memories with the receipt of the set staged after it, as a forget', async () => {
   const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = ctx.buildClient(laptop.token);
+
   const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
@@ -639,7 +683,7 @@ test('it completes a reset of the memories with the receipt of the set staged af
     );
   });
 
-  const status = await ctx.client.memory.readForgetStatus({ itemIDs: [item.itemID] });
+  const status = await client.memory.readForgetStatus({ itemIDs: [item.itemID] });
 
   expect(status).toStrictEqual({
     deleted: [item.itemID],
