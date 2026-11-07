@@ -7,7 +7,7 @@ import { waitForCondition } from '@heynixie/testing';
 import { sql } from 'kysely';
 import type { BackupPass } from './run-backup-pass';
 import { startBackupSchedule } from './start-backup-schedule';
-import { writeTestBackupReceipt } from './test-utils';
+import { buildStubFailingStorage, writeTestBackupReceipt } from './test-utils';
 
 async function setupTest() {
   const log = await startTestLog();
@@ -172,6 +172,36 @@ test('it passes a failed pass to onError, and tries again at the next poll', asy
   await waitForCondition(() => ctx.onError.mock.calls.length > failures);
 
   expect(ctx.onPass).not.toHaveBeenCalled();
+});
+
+test('it passes the health of a pass whose staging fails to onPass, and the staging failure to onError', async () => {
+  const ctx = await setupTest();
+
+  const schedule = startBackupSchedule({
+    context: {
+      writer: ctx.writer,
+      storage: buildStubFailingStorage(localDataStorage, 'complete', 'write'),
+    },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(() => ctx.onError.mock.calls.length === 1);
+
+  expect(ctx.onPass.mock.calls[0]?.[0]).toStrictEqual({
+    received: [],
+    noticed: [],
+    staged: null,
+    health: { lastUploadAt: null, newestSetAt: null, notice: null },
+  });
+
+  expect(ctx.onError.mock.calls[0]?.[0]).toMatchObject({
+    message: 'the stub fails the write of complete',
+  });
 });
 
 test('it raises one notice for a failed receipt, however many passes follow it', async () => {

@@ -1,4 +1,5 @@
 import type { BackupSetManifest } from '@heynixie/wire';
+import { BackupStageError } from './backup-stage-error';
 import { pickBackupSetKind } from './pick-backup-set-kind';
 import { readBackupDue } from './read-backup-due';
 import type { BackupHealth } from './read-backup-health';
@@ -25,7 +26,15 @@ export async function runBackupPass(
   const due = await readBackupDue(context.writer);
 
   const kind = pickBackupSetKind(due, context.writer.clock.now(), intervalMs);
-  const staged = kind === null ? null : await writeSnapshotSet(context, kind);
+
+  const staged =
+    kind === null
+      ? null
+      : await writeSnapshotSet(context, kind).catch(async (error: unknown) => {
+          const health = await readBackupHealth(context.writer);
+
+          throw new BackupStageError({ received, noticed, staged: null, health }, error);
+        });
 
   return { received, noticed, staged, health: await readBackupHealth(context.writer) };
 }

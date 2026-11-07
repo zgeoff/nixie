@@ -1,6 +1,7 @@
 import { subscribeToRecordCommits } from '@heynixie/log';
 import { createActor, toPromise } from 'xstate';
 import { backupScheduleMachine } from './backup-schedule-machine';
+import { BackupStageError } from './backup-stage-error';
 import { removeAbandonedSets } from './remove-abandoned-sets';
 import type { BackupPass } from './run-backup-pass';
 import { runBackupPass } from './run-backup-pass';
@@ -36,7 +37,16 @@ export function startBackupSchedule(options: BackupScheduleOptions): BackupSched
       clock: options.context.writer.clock,
       pollMs,
       onPass: options.onPass,
-      onError: options.onError,
+      onError: (error) => {
+        if (error instanceof BackupStageError) {
+          options.onPass(error.pass);
+          options.onError(error.cause);
+
+          return;
+        }
+
+        options.onError(error);
+      },
     },
   });
 
