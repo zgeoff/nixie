@@ -1,4 +1,5 @@
 import { backupReceiptSchema, parseBackupFile } from '@heynixie/wire';
+import invariant from 'tiny-invariant';
 import type { BackupSetState } from './types';
 
 export type ForgetBackup =
@@ -7,6 +8,7 @@ export type ForgetBackup =
   | { readonly state: 'complete' };
 
 export interface ForgetCoveringSet {
+  readonly sequence: number;
   readonly state: BackupSetState;
   readonly receipt: string | null;
 }
@@ -24,15 +26,23 @@ export function pickForgetBackup(newestFirst: readonly ForgetCoveringSet[]): For
     return { state: 'pending' };
   }
 
-  return { state: 'failed', failure: parseSetFailure(newest.receipt) };
+  return { state: 'failed', failure: parseSetFailure(newest) };
 }
 
-function parseSetFailure(receipt: string | null): string {
-  const parsed = parseBackupFile(receipt ?? '', backupReceiptSchema);
+function parseSetFailure(set: ForgetCoveringSet): string {
+  invariant(set.receipt, `failed backup set ${String(set.sequence)} keeps its receipt`);
+
+  const parsed = parseBackupFile(set.receipt, backupReceiptSchema);
 
   if ('refused' in parsed) {
     return `nixie refused the set's receipt: ${parsed.refused}`;
   }
 
-  return parsed.value.failure ?? "nixie refused the set's receipt: it names another set";
+  if (parsed.value.sequence !== set.sequence) {
+    return `nixie refused the set's receipt: it names set ${String(parsed.value.sequence)}`;
+  }
+
+  invariant(parsed.value.failure, `failed backup set ${String(set.sequence)} has a failed receipt`);
+
+  return parsed.value.failure;
 }

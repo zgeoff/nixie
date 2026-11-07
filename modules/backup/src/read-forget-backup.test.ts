@@ -17,6 +17,35 @@ test('it reads a forget as pending while only a set that copied before it publis
   expect(backup).toStrictEqual({ state: 'pending' });
 });
 
+test('it reads a forget as pending while a newer set waits after a failed one', async () => {
+  const log = await startTestLog();
+
+  const receipt = JSON.stringify({
+    format: 1,
+    sequence: 1,
+    writtenAt: 1_798_761_660_000,
+    status: 'failed',
+    dataSnapshotID: null,
+    keySnapshotID: null,
+    removedKeySnapshotIDs: [],
+    prune: 'failed',
+    check: 'not-run',
+    failure: 'keys: prune exited 1',
+  });
+
+  await withWriteTransaction(log.writer, async (tx) => {
+    await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at, received_at, receipt)
+      values (1, 'forget', 'failed', 9, 1798761600000, 1798761660000, ${receipt})`.execute(tx);
+
+    await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
+      values (2, 'scheduled', 'staged', 10, 1798765200000)`.execute(tx);
+  });
+
+  const backup = await readForgetBackup(log.writer, 9);
+
+  expect(backup).toStrictEqual({ state: 'pending' });
+});
+
 test('it reads a forget as complete once a set that copied at its record published', async () => {
   const log = await startTestLog();
 

@@ -11,7 +11,7 @@ export async function readForgetBackup(
   const sets = await writer.db
     .$extendTables<BackupTables>()
     .selectFrom('backup_sets')
-    .select(['state', 'receipt'])
+    .select(['sequence', 'state', 'receipt'])
     .where('log_head', '>=', forgetSequence)
     .orderBy('sequence', 'desc')
     .execute();

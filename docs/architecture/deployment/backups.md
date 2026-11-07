@@ -103,11 +103,11 @@ stop left.
 nixie reads a forget's backup state from the sets whose log position is at or after the forget
 record, because only a copy that started after that record lacks the deleted keys:
 
-| Sets at or after the forget record                                                                   | Backup state                       |
-| ---------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| any published set                                                                                    | complete                           |
-| none published, and the newest set that is not abandoned failed                                      | failed, with the receipt's failure |
-| none published, and the newest set that is not abandoned is staging or staged, or no such set exists | pending                            |
+| Sets at or after the forget record                                                                   | Backup state                                                               |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| any published set                                                                                    | complete                                                                   |
+| none published, and the newest set that is not abandoned failed                                      | failed, with the receipt's failure, or with nixie's refusal of the receipt |
+| none published, and the newest set that is not abandoned is staging or staged, or no such set exists | pending                                                                    |
 
 One published set is enough, because its job run forgets every other key snapshot and prunes it. A
 failed state keeps the forget open, and the next scheduled set covers the forget again, within one

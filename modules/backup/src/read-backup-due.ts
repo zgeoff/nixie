@@ -8,8 +8,8 @@ export interface BackupDue {
 }
 
 // A forget, a moment destroy or a reset of the conversations deletes its keys before it writes its
-// closing record, so a set whose copy started after that record lacks the key. A failed set counts too, so a backend that stays down fails one set
-// per interval rather than one per pass.
+// closing record, so a set whose copy started after that record lacks the key. A failed set counts
+// too, so a backend that stays down fails one set per interval rather than one per pass.
 export async function readBackupDue(writer: BackupWriter): Promise<BackupDue> {
   const db = writer.db.$extendTables<BackupTables>();
 
