@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { isImpReleasedAfterStep, planTaskStep } from './plan-task-step';
+import { planTaskStep } from './plan-task-step';
 
 test('it runs a step under both limits', () => {
   expect(
@@ -28,12 +28,4 @@ test('it sleeps the awake imp of a task that pauses at its limit', () => {
       isImpAwake: true,
     }),
   ).toStrictEqual({ kind: 'pause', isImpReleased: true });
-});
-
-test.each([
-  ['wait', true],
-  ['continue', false],
-  ['done', false],
-] as const)('it sleeps the imp after a step whose next is %s: %s', (next, isReleased) => {
-  expect(isImpReleasedAfterStep({ next })).toBe(isReleased);
 });

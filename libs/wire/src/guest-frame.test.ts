@@ -2,6 +2,40 @@ import { expect, test } from 'bun:test';
 import type { GuestFrame } from './guest-frame';
 import { guestFrameSchema } from './guest-frame';
 
+test('it accepts a call frame with the usage of one model call, its reasoning tokens included', () => {
+  const frame: GuestFrame = {
+    type: 'call',
+    usage: {
+      uncachedInputTokens: 120,
+      cacheReadTokens: 30_000,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 800,
+      outputTokens: 450,
+      reasoningTokens: 300,
+    },
+  };
+
+  expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test.each([
+  ['a negative count', -1],
+  ['a fraction', 0.5],
+])('it refuses a call frame whose usage holds %s', (_case, outputTokens) => {
+  const result = guestFrameSchema.safeParse({
+    type: 'call',
+    usage: {
+      uncachedInputTokens: 120,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens,
+    },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['usage', 'outputTokens'] });
+});
+
 test('it accepts an ended frame that marks a model API error', () => {
   const frame: GuestFrame = {
     type: 'ended',

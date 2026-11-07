@@ -1,15 +1,11 @@
-import type { CallUsage } from '@heynixie/models';
+import type { ModelCallUsage } from '@heynixie/wire';
 
-export function buildCallTokens(usage: CallUsage): number {
-  // the larger cache-write count wins, as it does for the price, so a missing split never lowers
-  // the count
-  const cacheWrites = Math.max(
-    usage.cache_creation_input_tokens ?? 0,
-    (usage.cache_creation?.ephemeral_5m_input_tokens ?? 0) +
-      (usage.cache_creation?.ephemeral_1h_input_tokens ?? 0),
-  );
-
+export function buildCallTokens(usage: ModelCallUsage): number {
   return (
-    usage.input_tokens + cacheWrites + (usage.cache_read_input_tokens ?? 0) + usage.output_tokens
+    usage.uncachedInputTokens +
+    usage.cacheWrite5mTokens +
+    usage.cacheWrite1hTokens +
+    usage.cacheReadTokens +
+    usage.outputTokens
   );
 }

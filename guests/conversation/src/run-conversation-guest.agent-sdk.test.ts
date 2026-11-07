@@ -56,7 +56,12 @@ test('it runs the turn the first frame starts and writes its frames framed', asy
     createToolServer: () => createStubToolServer().config,
   });
 
-  expect(ctx.frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
+  expect(ctx.frames.map((frame) => frame.type)).toStrictEqual([
+    'read',
+    'assistant',
+    'call',
+    'ended',
+  ]);
 });
 
 test('it answers a turn whose tool server connection failed at start, after one reconnect', async () => {
@@ -80,7 +85,12 @@ test('it answers a turn whose tool server connection failed at start, after one 
     waitBeforeReconnect: tools.acceptConnections,
   });
 
-  expect(ctx.frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
+  expect(ctx.frames.map((frame) => frame.type)).toStrictEqual([
+    'read',
+    'assistant',
+    'call',
+    'ended',
+  ]);
 
   expect(ctx.model.requests.filter((request) => request.path === '/v1/messages')).toMatchObject([
     {

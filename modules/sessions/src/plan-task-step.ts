@@ -1,4 +1,4 @@
-import type { StepResult, TaskLimits } from '@heynixie/tasks';
+import type { TaskLimits } from '@heynixie/tasks';
 
 export interface TaskStepFacts {
   readonly used: TaskLimits;
@@ -17,9 +17,4 @@ export function planTaskStep(facts: TaskStepFacts): TaskStepPlan {
     facts.used.turns >= facts.limits.turns || facts.used.dollars >= facts.limits.dollars;
 
   return isAtLimit ? { kind: 'pause', isImpReleased: facts.isImpAwake } : { kind: 'run' };
-}
-
-// A step with work left runs again soon on the same imp, so only a step that waits sleeps it.
-export function isImpReleasedAfterStep(result: Pick<StepResult, 'next'>): boolean {
-  return result.next === 'wait';
 }

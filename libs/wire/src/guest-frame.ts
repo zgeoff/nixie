@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { modelCallUsageSchema } from './model-call-usage';
 import { sessionPointSchema } from './session-point';
 
 const tokenCountSchema = z.int().nonnegative();
@@ -65,6 +66,11 @@ const summarizedFrameSchema = z
 
 const purgedFrameSchema = z.object({ type: z.literal('purged') }).readonly();
 
+// The guest sends one after each model API call, so the host prices the turn as it runs.
+const callFrameSchema = z
+  .object({ type: z.literal('call'), usage: modelCallUsageSchema })
+  .readonly();
+
 // A model_auth failure means the model API refused the credential, so every retry fails the same
 // way until the credential changes.
 const turnFailedFrameSchema = z
@@ -111,6 +117,7 @@ export const guestFrameSchema = z.discriminatedUnion('type', [
   summarizedFrameSchema,
   failedFrameSchema,
   purgedFrameSchema,
+  callFrameSchema,
 ]);
 
 export type GuestFrame = z.infer<typeof guestFrameSchema>;

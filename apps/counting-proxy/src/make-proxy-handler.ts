@@ -1,13 +1,12 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import type { CallUsage } from '@heynixie/models';
 import { buildCallCost } from '@heynixie/models';
-import { parseJSONOrNull } from '@heynixie/wire';
+import type { ModelCallUsage } from '@heynixie/wire';
+import { parseAnthropicCallUsage, parseJSONOrNull } from '@heynixie/wire';
 import { buildCallTokens } from './build-call-tokens';
 import { buildCountedStream } from './build-counted-stream';
 import { findProxyEndpoint } from './find-proxy-endpoint';
 import { isRecord } from './is-record';
-import { parseReportedUsage } from './parse-reported-usage';
 import type { CounterStore, ProxyLimits, ProxyRoute, SpendTotals, StoredCount } from './types';
 
 export interface ProxyHandlerDeps {
@@ -37,7 +36,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
   // can read leaves the count behind
   const count = async (
     route: ProxyRoute,
-    usage: CallUsage | null,
+    usage: ModelCallUsage | null,
     required: boolean,
   ): Promise<void> => {
     if (usage === null && required) {
@@ -200,7 +199,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(502, 'api_error', 'the counting proxy lost the reply of the model API');
     }
 
-    await count(target.route, parseReportedUsage(findBodyUsage(text)), spent);
+    await count(target.route, parseAnthropicCallUsage(findBodyUsage(text)), spent);
 
     return new Response(text, init);
   };

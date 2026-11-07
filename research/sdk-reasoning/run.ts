@@ -73,6 +73,7 @@ async function runTurn(model: string, effort: Effort, thinking: ThinkingConfig |
     tools: { url: 'http://127.0.0.1:1', token: 'unused' },
     resume: null,
     systemPrompt: 'You are nixie, a personal assistant that works for one person.',
+    limits: { modelCalls: null },
     input: [{ uuid: crypto.randomUUID(), text: prompt }],
   };
   const toolServer = createSdkMcpServer({ name: 'nixie', tools: [] });
