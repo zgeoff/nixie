@@ -107,7 +107,10 @@ interface HostReset {
   readonly keptSessions: number;
 }
 
-export type ForgetBackupState = ForgetBackup | { readonly state: 'off' };
+export type ForgetBackupState =
+  | ForgetBackup
+  | { readonly state: 'off' }
+  | { readonly state: 'unknown' };
 
 export type ForgetProgress =
   | { readonly stage: 'deleting' }

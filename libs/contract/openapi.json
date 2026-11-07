@@ -9464,6 +9464,17 @@
                           "required": [
                             "state"
                           ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "unknown"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
                         }
                       ]
                     }
@@ -10182,6 +10193,17 @@
                           "required": [
                             "state"
                           ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "unknown"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
                         }
                       ]
                     }
@@ -10580,6 +10602,17 @@
                           "properties": {
                             "state": {
                               "const": "complete"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "unknown"
                             }
                           },
                           "required": [

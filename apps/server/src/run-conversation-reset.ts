@@ -2,6 +2,8 @@ import type { ForgetBackupState } from '@heynixie/api';
 import { readForgetBackupState } from '@heynixie/api';
 import { removeWebFetchThread } from '@heynixie/connectors';
 import { removeThreadKeys, writeRecords } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
+import { toErrorFields } from '@heynixie/logger';
 import { modelSessionInvalidatedCodec } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -14,8 +16,12 @@ export interface ConversationReset {
   readonly backup: ForgetBackupState;
 }
 
+export interface ConversationResetOptions extends ServerResetOptions {
+  readonly log: Logger;
+}
+
 export async function runConversationReset(
-  options: ServerResetOptions,
+  options: ConversationResetOptions,
 ): Promise<ConversationReset> {
   const log = options.context.log;
 
@@ -60,9 +66,15 @@ export async function runConversationReset(
 
   invariant(logReset, 'the log wrote no log_reset record');
 
+  // The keys are gone and the log_reset record is written, so a failed read of the backup state
+  // must not report the finished reset as failed and start a second one on retry.
   const backup = await readForgetBackupState(options.context, {
     stage: 'forgotten',
     sequence: logReset.sequence,
+  }).catch((error: unknown): ForgetBackupState => {
+    options.log('reset.backup_state_failed', toErrorFields(error));
+
+    return { state: 'unknown' };
   });
 
   return { resetAt, lastSequence: invalidated.sequence, shreddedRecords, backup };

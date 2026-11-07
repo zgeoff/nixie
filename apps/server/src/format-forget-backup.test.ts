@@ -22,6 +22,11 @@ test.each([
     { state: 'complete' },
     'Key backups: complete. No key backup holds a key that the reset removed.',
   ],
+  [
+    'unknown',
+    { state: 'unknown' },
+    'Key backups: unknown. nixie could not read the backup state, and the server log holds the error.',
+  ],
 ] as const)('it formats the %s key backup state', (_label, backup, line) => {
   expect(formatForgetBackup(backup)).toBe(line);
 });

@@ -99,6 +99,7 @@ Both filtered resets print one key backup line, which reads the state a forget r
 | pending  | the next backup job run removes the old keys, within the backup interval             |
 | failed   | the job's failure, and that the next scheduled set removes the old keys again        |
 | complete | no key backup holds a key that the reset removed                                     |
+| unknown  | the server could not read the state, and the reset still finished                    |
 
 A reset answers before any backup set covers it, so the line reads pending, or off when the
 [backup schedule](backups.md) is off. A reset of the memories that finds no item to forget removes

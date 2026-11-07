@@ -22,5 +22,10 @@ export function formatForgetBackup(backup: ForgetBackupState): string {
       { state: 'complete' },
       () => 'Key backups: complete. No key backup holds a key that the reset removed.',
     )
+    .with(
+      { state: 'unknown' },
+      () =>
+        'Key backups: unknown. nixie could not read the backup state, and the server log holds the error.',
+    )
     .exhaustive();
 }

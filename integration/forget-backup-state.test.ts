@@ -117,6 +117,7 @@ async function setupTest() {
         context,
         adapter: { id: 'stub', list: () => Promise.resolve([]) },
         stopWork: () => Promise.resolve(),
+        log: () => {},
       }),
     gate: { runCall: (call) => call() },
   });
@@ -133,6 +134,7 @@ async function setupTest() {
         context: offContext,
         adapter: { id: 'stub', list: () => Promise.resolve([]) },
         stopWork: () => Promise.resolve(),
+        log: () => {},
       }),
     gate: { runCall: (call) => call() },
   });

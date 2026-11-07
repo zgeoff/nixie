@@ -5,4 +5,5 @@ export const forgetBackupSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('pending') }),
   z.object({ state: z.literal('failed'), failure: z.string() }),
   z.object({ state: z.literal('complete') }),
+  z.object({ state: z.literal('unknown') }),
 ]);
