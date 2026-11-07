@@ -128,6 +128,41 @@ test('it deletes a rules file that a removal leaves empty', () => {
   expect([...change.files]).toStrictEqual([['rules/mail.yaml', null]]);
 });
 
+test('it adds a new rule to the rules file nixie writes to after an earlier change emptied it', () => {
+  const change = buildRuleExportChange({
+    changes: [
+      {
+        changeID: 'change-1',
+        ruleID: 'ask-mail',
+        rule: null,
+        base: null,
+        beneath: null,
+        changedBy: 'owner',
+        reason: 'Mail no longer needs a check.',
+        changedAt: 1,
+      },
+      {
+        changeID: 'change-2',
+        ruleID: 'deny-shell',
+        rule: {
+          hash: 'h-shell',
+          rule: { id: 'deny-shell', outcome: 'deny', tools: ['shell.run'] },
+        },
+        base: null,
+        beneath: null,
+        changedBy: 'owner',
+        reason: 'No shell commands.',
+        changedAt: 2,
+      },
+    ],
+    files: new Map([['rules/nixie.yaml', 'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n']]),
+  });
+
+  expect([...change.files]).toStrictEqual([
+    ['rules/nixie.yaml', 'deny-shell:\n  outcome: "deny"\n  tools: ["shell.run"]\n'],
+  ]);
+});
+
 test('it adds a new rule at the end of the rules file nixie writes to', () => {
   const change = buildRuleExportChange({
     changes: [

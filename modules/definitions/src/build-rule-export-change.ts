@@ -23,7 +23,7 @@ export function buildRuleExportChange(input: RuleExportInput): DefinitionsChange
 
     if (path === null) {
       if (block !== null) {
-        const text = files.get(newRulesPath) ?? input.files.get(newRulesPath) ?? '';
+        const text = pickCurrentText(input.files, files, newRulesPath);
 
         files.set(newRulesPath, appendBlock(text, block));
       }
@@ -31,7 +31,7 @@ export function buildRuleExportChange(input: RuleExportInput): DefinitionsChange
       continue;
     }
 
-    const text = files.get(path) ?? input.files.get(path) ?? '';
+    const text = pickCurrentText(input.files, files, path);
     const edited = replaceBlock(text, change.ruleID, block);
     const kept = edited.trim() === '' ? null : `${edited.trimEnd()}\n`;
 
@@ -136,6 +136,18 @@ function toFieldRank(field: string): number {
   const rank = ruleFieldOrder.indexOf(field);
 
   return rank === -1 ? ruleFieldOrder.length : rank;
+}
+
+function pickCurrentText(
+  base: ReadonlyMap<string, string>,
+  edited: ReadonlyMap<string, string | null>,
+  path: string,
+): string {
+  if (edited.has(path)) {
+    return edited.get(path) ?? '';
+  }
+
+  return base.get(path) ?? '';
 }
 
 function appendBlock(text: string, block: string): string {
