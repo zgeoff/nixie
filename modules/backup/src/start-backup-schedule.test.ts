@@ -199,9 +199,10 @@ test('it passes the health of a pass whose staging fails to onPass, and the stag
     health: { lastUploadAt: null, newestSetAt: null, notice: null },
   });
 
-  expect(ctx.onError.mock.calls[0]?.[0]).toMatchObject({
-    message: 'the stub fails the write of complete',
-  });
+  expect(ctx.onError.mock.calls[0]?.[0]).toSatisfy(
+    (failure: unknown) =>
+      failure instanceof Error && /^the stub fails the write of complete$/u.test(failure.message),
+  );
 });
 
 test('it passes the receipts of a pass that fails after it records them to onPass, and both the failure and the failed health read to onError', async () => {
@@ -264,10 +265,14 @@ test('it passes the failure of a pass to onError when onPass throws on that pass
 
   await waitForCondition(() => ctx.onError.mock.calls.length === 2);
 
-  expect(ctx.onError.mock.calls.map((call) => call[0])).toMatchObject([
-    { message: 'the stub onPass fails' },
-    { message: 'the stub fails the write of complete' },
-  ]);
+  expect(ctx.onError.mock.calls.map((call) => call[0])).toSatisfy(
+    (failures: unknown[]) =>
+      failures.length === 2 &&
+      failures[0] instanceof Error &&
+      /^the stub onPass fails$/u.test(failures[0].message) &&
+      failures[1] instanceof Error &&
+      /^the stub fails the write of complete$/u.test(failures[1].message),
+  );
 });
 
 test('it raises one notice for a failed receipt, however many passes follow it', async () => {
