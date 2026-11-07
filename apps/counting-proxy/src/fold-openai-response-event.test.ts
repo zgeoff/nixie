@@ -2,11 +2,11 @@ import { expect, test } from 'bun:test';
 import { foldOpenAIResponseEvent } from './fold-openai-response-event';
 
 test.each(['response.completed', 'response.incomplete', 'response.failed'])(
-  'it takes the usage of a %s event',
+  'it takes the usage of a %s event in place of the usage reported before it',
   (type) => {
     expect(
       foldOpenAIResponseEvent(
-        {},
+        { input_tokens: 40, input_tokens_details: { cached_tokens: 30 } },
         { type, response: { status: 'completed', usage: { input_tokens: 70, output_tokens: 8 } } },
       ),
     ).toStrictEqual({ input_tokens: 70, output_tokens: 8 });
