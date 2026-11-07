@@ -180,7 +180,11 @@ test('it refuses an answer to a rule change proposal it has no record of', async
     proposalID: 'p-missing',
   });
 
-  expect(result).toMatchObject({ status: 'refused', code: 'NOT_FOUND' });
+  expect(result).toStrictEqual({
+    status: 'refused',
+    code: 'NOT_FOUND',
+    reason: expect.any(String),
+  });
 });
 
 test('it refuses an approval of a rule change proposal you rejected', async () => {
@@ -206,7 +210,11 @@ test('it refuses an approval of a rule change proposal you rejected', async () =
 
   const result = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
 
-  expect(result).toMatchObject({ status: 'refused', code: 'CLOSED' });
+  expect(result).toStrictEqual({
+    status: 'refused',
+    code: 'CLOSED',
+    reason: expect.any(String),
+  });
 });
 
 test('it refuses an approval of a rule change proposal past its lapse time', async () => {
@@ -232,7 +240,11 @@ test('it refuses an approval of a rule change proposal past its lapse time', asy
 
   const result = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
 
-  expect(result).toMatchObject({ status: 'refused', code: 'CLOSED' });
+  expect(result).toStrictEqual({
+    status: 'refused',
+    code: 'CLOSED',
+    reason: expect.any(String),
+  });
 });
 
 test('it refuses an approval of a rule change proposal that a later seed withdrew', async () => {
@@ -263,7 +275,11 @@ test('it refuses an approval of a rule change proposal that a later seed withdre
 
   const result = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
 
-  expect(result).toMatchObject({ status: 'refused', code: 'CLOSED' });
+  expect(result).toStrictEqual({
+    status: 'refused',
+    code: 'CLOSED',
+    reason: expect.any(String),
+  });
 });
 
 test('it asks again about a widening you rejected only once the definitions change it', async () => {

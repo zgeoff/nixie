@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { buildRuleProposal } from './build-rule-proposal';
 import { pickRuleProposalMove } from './pick-rule-proposal-move';
 import type { RuleProposalOutcome } from './rule-proposal-outcomes';
+import type { RuleProposalRefusal } from './write-rule-proposal-answer';
 
 interface RefusalCase {
   readonly label: string;
@@ -9,7 +10,7 @@ interface RefusalCase {
   readonly outcome: RuleProposalOutcome | null;
   readonly proposedAt: number;
   readonly seeded: readonly [string, string][];
-  readonly code: string;
+  readonly code: RuleProposalRefusal;
 }
 
 test.each<RefusalCase>([
@@ -62,7 +63,11 @@ test.each<RefusalCase>([
     now: 0,
   });
 
-  expect(move).toMatchObject({ status: 'refused', code: refusal.code });
+  expect(move).toStrictEqual({
+    status: 'refused',
+    code: refusal.code,
+    reason: expect.any(String),
+  });
 });
 
 test('it approves a pending proposal while the seeded rules hold its versions from before', () => {

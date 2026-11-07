@@ -245,5 +245,9 @@ test('it refuses to resolve a rule with no conflict', async () => {
 
   const resolution = await writeRuleResolution(ctx.context, { ruleID: 'ask-mail', keep: 'nixie' });
 
-  expect(resolution).toMatchObject({ status: 'refused', code: 'NOT_FOUND' });
+  expect(resolution).toStrictEqual({
+    status: 'refused',
+    code: 'NOT_FOUND',
+    reason: expect.any(String),
+  });
 });
