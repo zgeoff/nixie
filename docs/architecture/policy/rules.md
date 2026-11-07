@@ -162,7 +162,9 @@ The export edits the rules files in place: it replaces or removes the top-level 
 changed rule, and appends a new rule to `rules/nixie.yaml`. Every other line, comments included,
 stays as the user wrote it, and a file that a removal leaves empty is deleted. The pull request's
 body lists each change as its sentence, who made it and why. An export to definitions below format 3
-fails and opens no pull request, because those formats apply no rule file.
+fails and opens no pull request, because those formats apply no rule file. An export that would edit
+a prompt part under `rules/`, such as a `rules/nixie.yaml` that the `prompts:` map names, fails the
+same way.
 
 ## Commands and the proposals screen
 

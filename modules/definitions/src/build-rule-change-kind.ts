@@ -13,6 +13,7 @@ import type {
   DefinitionsRepo,
   DefinitionsTables,
   DueDefinitionsExport,
+  ParsedDefinitions,
   RuntimeRule,
 } from './types';
 import { writeRuleExportState } from './write-rule-export-state';
@@ -132,20 +133,7 @@ async function readRuleChange(
 
   // The seed refuses the whole snapshot when one file fails to parse, so a change that leaves the
   // definitions unparsable, or in a format that applies no rule file, never reaches a pull request.
-  const encoder = new TextEncoder();
-  const edited = new Map([...texts, ...change.files]);
-
-  const parsed = parseDefinitions({
-    contentHash: '',
-    files: new Map(
-      [...edited].flatMap(([path, text]): [string, Uint8Array][] =>
-        text === null ? [] : [[path, encoder.encode(text)]],
-      ),
-    ),
-    revision,
-    repository: null,
-    skipped: [],
-  });
+  const parsed = parseTexts(new Map([...texts, ...change.files]), revision);
 
   if (parsed.formatVersion < 3) {
     throw new Error(
@@ -153,7 +141,31 @@ async function readRuleChange(
     );
   }
 
+  // A prompt part may sit under rules/, and its text must never take a rule block.
+  if (!Bun.deepEquals(parsed.prompts, parseTexts(texts, revision).prompts)) {
+    throw new Error('the rule export would change a prompt part file under rules/');
+  }
+
   return change;
+}
+
+function parseTexts(
+  texts: ReadonlyMap<string, string | null>,
+  revision: string,
+): ParsedDefinitions {
+  const encoder = new TextEncoder();
+
+  return parseDefinitions({
+    contentHash: '',
+    files: new Map(
+      [...texts].flatMap(([path, text]): [string, Uint8Array][] =>
+        text === null ? [] : [[path, encoder.encode(text)]],
+      ),
+    ),
+    revision,
+    repository: null,
+    skipped: [],
+  });
 }
 
 async function readClosingRules(

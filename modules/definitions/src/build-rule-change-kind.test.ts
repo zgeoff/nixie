@@ -431,6 +431,37 @@ test('it leaves a merged pull request merged once the seed adopts its changes', 
   }).toStrictEqual({ states: ['merged'], exported: [], errors: 0 });
 });
 
+test('it opens no pull request that would write a rule into a prompt part under rules/', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.root, 'nixie.yaml'),
+    'format: 3\nprompts:\n  writer:\n    instruction: rules/nixie.yaml\n',
+  );
+
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await writeFile(join(ctx.root, 'rules', 'nixie.yaml'), 'Write short notes.\n');
+
+  await ctx.seed();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'deny-shell',
+    rule: { outcome: 'deny', tools: ['shell.run'] },
+    changedBy: 'owner',
+    reason: 'No shell commands.',
+  });
+
+  await ctx.runExports();
+
+  expect({
+    pullRequests: ctx.repo.readPullRequests().length,
+    error: ctx.onError.mock.calls[0]?.[0],
+  }).toStrictEqual({
+    pullRequests: 0,
+    error: new Error('the rule export would change a prompt part file under rules/'),
+  });
+});
+
 test('it opens no pull request on a repo whose format applies no rule file', async () => {
   const ctx = await setupTest();
 
