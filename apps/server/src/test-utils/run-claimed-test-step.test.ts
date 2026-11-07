@@ -41,15 +41,18 @@ test('it returns the step error of a step that throws', async () => {
 
   await ctx.writeMessage('Is the gate locked?');
 
-  const errored = await runClaimedTestStep(ctx.server.context, () =>
-    Promise.reject(new Error('the guest dropped its socket')),
-  );
+  const failure = new Error('the guest dropped its socket');
 
-  expect(errored).toMatchObject({
+  const errored = await runClaimedTestStep(ctx.server.context, () => Promise.reject(failure));
+
+  expect(errored).toStrictEqual({
     taskID: 'conversation',
-    nextState: 'ready',
+    stepKey: expect.any(String),
     errors: 1,
-    error: { message: 'the guest dropped its socket' },
+    errorLimit: 1,
+    nextState: 'ready',
+    retryAt: expect.any(Number),
+    error: failure,
   });
 });
 
