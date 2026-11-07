@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import type { SearchProvider } from '@heynixie/connectors';
 import { buildSearchTool, buildTimeTool, readMessageTimeZone } from '@heynixie/connectors';
 import type { DefinitionsInForce } from '@heynixie/definitions';
 import { checkPromptProposal } from '@heynixie/definitions';
@@ -6,7 +7,6 @@ import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
-import { buildKagiSearch } from '@heynixie/search-kagi';
 import { buildSilentEndTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
 import { buildTaskMessageTool, buildTaskStartTool, buildTasksListTool } from '@heynixie/tasks';
@@ -17,12 +17,16 @@ import { buildConversationSkillTools } from './build-conversation-skill-tools';
 import { buildConversationTools } from './build-conversation-tools';
 import { buildTaskMessaging } from './build-task-messaging';
 import { buildTaskStartBounds } from './build-task-start-bounds';
-import type { SearchSettings } from './resolve-search-settings';
 import type { ServerParts } from './types';
+
+interface ConversationSearch {
+  readonly provider: SearchProvider;
+  readonly dailyCallCap: number;
+}
 
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
-  readonly search: SearchSettings | null;
+  readonly search: ConversationSearch | null;
 
   readonly testTools: readonly ToolDefinition[];
 
@@ -106,15 +110,12 @@ export async function startConversationEndpoint(
     tools.search === null
       ? []
       : [
-          buildSearchTool(
-            buildKagiSearch({ apiKey: tools.search.apiKey, apiURL: tools.search.apiURL }),
-            {
-              log: options.context.log,
-              clock: options.context.clock,
-              dailyCallCap: tools.search.dailyCallCap,
-              timeZone: options.config.time.default_zone,
-            },
-          ),
+          buildSearchTool(tools.search.provider, {
+            log: options.context.log,
+            clock: options.context.clock,
+            dailyCallCap: tools.search.dailyCallCap,
+            timeZone: options.config.time.default_zone,
+          }),
         ];
 
   const definitions = [

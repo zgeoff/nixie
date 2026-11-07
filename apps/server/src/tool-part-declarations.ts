@@ -1,5 +1,6 @@
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-github';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
+import { buildKagiSearch } from '@heynixie/search-kagi';
 import { buildActions } from './build-actions';
 import { buildTestSendTool } from './build-test-send-tool';
 import { createSandboxAdapter } from './create-sandbox-adapter';
@@ -85,7 +86,16 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         },
         {
           webFetch: parts.get('web_fetch').tool,
-          search: options.search,
+          search:
+            options.search === null
+              ? null
+              : {
+                  provider: buildKagiSearch({
+                    apiKey: options.search.apiKey,
+                    apiURL: options.search.apiURL,
+                  }),
+                  dailyCallCap: options.search.dailyCallCap,
+                },
           testTools: NIXIE_TEST_BUILD && options.harness !== undefined ? [buildTestSendTool()] : [],
           queue: parts.get('actions').queue,
           readStore: () => parts.find('memory'),
