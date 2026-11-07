@@ -13,6 +13,7 @@ import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, startTaskRunners } from '@heynixie/tasks';
 import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { makeGatedCall } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { runServerReset } from './run-server-reset';
 import { runTestSeed } from './test-utils/run-test-seed';
 import { startTestServer } from './test-utils/start-test-server';
@@ -113,6 +114,10 @@ test('it keeps a widening that passed its lapse time closed through a reset', as
   );
 
   await runSeed({ log: ctx.context.log, source, buildPolicy: () => ({ rules: [], tools: [] }) });
+
+  const pending = await readRuleProposals(ctx.context.log.writer.db);
+
+  invariant(pending.length === 1);
 
   const monthLater = { ...ctx.context.clock, now: () => Date.now() + 30 * 24 * 60 * 60 * 1000 };
 
