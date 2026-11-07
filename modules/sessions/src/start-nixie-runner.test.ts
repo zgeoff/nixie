@@ -1069,6 +1069,56 @@ test('it pauses a task whose guest fails after its calls reach the dollar limit,
   expect(errored.map((record) => record.thread)).toStrictEqual([taskID]);
 });
 
+test("it gives the retry of a failed turn only the dollars that the turn's spend and a raise leave", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      failure: 'the guest lost its model stream',
+      usage: {
+        uncachedInputTokens: 10_000,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+    {
+      text: 'Checking the tides.',
+      usage: {
+        uncachedInputTokens: 4000,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+  );
+
+  await ctx.runNextStepWithNoRetryDelay(runner);
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 0.04 } });
+
+  await ctx.runNextStep(runner);
+
+  const notices = await ctx.readKinds('task.limit_notice');
+
+  expect(notices.map((notice) => notice.payload['used'])).toStrictEqual([
+    { turns: 0, dollars: 0.03 },
+    { turns: 1, dollars: expect.closeTo(0.042, 6) },
+  ]);
+});
+
 test('it caps each task turn at 100 model calls', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
