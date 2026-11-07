@@ -46,8 +46,6 @@ export interface StoredPage {
   readonly parts: readonly string[];
 }
 
-// Once a newer invalidation ended the session it writes nothing and returns null, so a fetch that
-// outlives a forget's cleanup leaves no link or page behind it.
 export function writeWebFetchPage(
   log: Pick<Log, 'writer'>,
   page: FetchedPage,
