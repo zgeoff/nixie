@@ -45,6 +45,7 @@ export async function startTestConversation(
           auth_header: 'x-api-key',
           model: 'claude-test-1',
           effort: 'low',
+          prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
         },
       },
       roles: { conversation: 'chat-direct' },

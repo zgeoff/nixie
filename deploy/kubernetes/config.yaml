@@ -25,6 +25,15 @@ data:
           auth_header: x-api-key
           model: claude-opus-5-5
           effort: medium
+          # Anthropic's list prices for Claude Opus 5.5, in US dollars per million tokens, from
+          # https://platform.claude.com/docs/en/about-claude/pricing, which bills its whole context
+          # window at one set
+          prices:
+            input: 4
+            cache_write: 5
+            cache_write_1h: 8
+            cached_input: 0.2
+            output: 20
       roles:
         conversation: chat
     imp:

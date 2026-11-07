@@ -115,14 +115,19 @@ export function buildModelsConfigSchema(
         }
       }
 
-      const taskProfile =
-        config.roles.task === undefined ? undefined : config.profiles[config.roles.task];
+      // A task counts its cost against its dollar limit, and an unset task role runs on the
+      // conversation's profile, so the profile a task runs on needs a price table.
+      const taskProfileID = config.roles.task ?? config.roles.conversation;
+      const taskProfile = taskProfileID === undefined ? undefined : config.profiles[taskProfileID];
 
       if (taskProfile?.prices === null) {
         issues.addIssue({
           code: 'custom',
           path: ['roles', 'task'],
-          message: `the task role names the profile ${config.roles.task ?? ''}, which sets no prices`,
+          message:
+            config.roles.task === undefined
+              ? `the task role is unset, so tasks run on the conversation's profile ${taskProfileID ?? ''}, which sets no prices`
+              : `the task role names the profile ${config.roles.task}, which sets no prices`,
         });
       }
 

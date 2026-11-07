@@ -15,7 +15,7 @@ test('it builds a conversation role on one profile at the model URL, with no con
         providerPin: null,
         contextTokens: null,
         cacheTTL: '5m',
-        prices: null,
+        prices: { input: 3, cacheWrite: 3.75, cacheWrite1h: 6, cachedInput: 0.3, output: 15 },
       },
     },
     roles: { conversation: 'chat-direct' },

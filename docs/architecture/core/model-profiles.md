@@ -36,8 +36,9 @@ point can ask before such a start
 
 The schema refuses an entry whose profile the file does not define, and an entry whose profile has
 no price table, because a task counts the cost of its turns against its dollar limit
-([started tasks](./started-tasks.md#limits)). For the same reason, the schema refuses a `task` role
-that names a profile with no price table.
+([started tasks](./started-tasks.md#limits)). For the same reason, the schema refuses a config whose
+task profile has no price table. A config that leaves the `task` role unset runs its tasks on the
+conversation's profile, so that profile then needs a price table too.
 
 The section's `limits.taskRun` sets the default and the max of a started task's limits, each as a
 count of turns and an amount of dollars. The schema refuses a default above its max.
