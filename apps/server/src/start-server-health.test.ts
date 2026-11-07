@@ -41,6 +41,7 @@ test('it answers readiness from the last impd report while a later impd check ha
     images: { isReady: true, reason: null },
     conversation: { isReady: true, reason: null },
     areRunnersStarted: true,
+    backups: { state: 'off' },
   });
 
   const stub = buildStubCheck<RuntimeReport>(() =>
@@ -90,6 +91,7 @@ test('it answers readiness with 200 and the status degraded, and logs the imp ho
     images: { isReady: true, reason: null },
     conversation: { isReady: true, reason: null },
     areRunnersStarted: true,
+    backups: { state: 'off' },
   });
 
   const log = mock<Logger>();
