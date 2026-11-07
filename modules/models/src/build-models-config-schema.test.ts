@@ -56,6 +56,28 @@ test("it refuses an unset role on the conversation's profile when that profile's
 
   const result = ctx.schema.safeParse({
     profiles: {
+      'chat-codex': {
+        harness: 'codex',
+        base_url: 'https://models.example.test',
+        credential: 'deployment:openai',
+        model: 'gpt-test-1',
+      },
+    },
+    roles: { conversation: 'chat-codex' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['roles', 'checker'],
+    message:
+      'the checker role runs on the profile chat-codex, whose codex harness lacks structured-output',
+  });
+});
+
+test('it refuses the checker role on a profile whose harness lacks structured output', () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
       'chat-direct': {
         harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
