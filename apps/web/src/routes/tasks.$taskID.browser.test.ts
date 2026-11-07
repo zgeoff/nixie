@@ -14,6 +14,7 @@ async function setupTest() {
   const web = await startBuiltWeb(api.url);
 
   const app = startFrontProxy({ apiURL: api.url, webURL: web.url });
+
   const view = new Bun.WebView({ backend: 'chrome' });
 
   onTestFinished(() => {
