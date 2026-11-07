@@ -28,7 +28,7 @@ test.each<RefusalCase>([
     outcome: 'withdrawn',
     proposedAt: 0,
     seeded: [],
-    code: 'CLOSED',
+    code: 'PROPOSAL_CLOSED',
   },
   {
     label: 'a rejected proposal',
@@ -36,7 +36,7 @@ test.each<RefusalCase>([
     outcome: 'rejected',
     proposedAt: 0,
     seeded: [],
-    code: 'CLOSED',
+    code: 'PROPOSAL_CLOSED',
   },
   {
     label: 'a proposal past its lapse time',
@@ -44,7 +44,7 @@ test.each<RefusalCase>([
     outcome: null,
     proposedAt: -15 * 24 * 60 * 60 * 1000,
     seeded: [],
-    code: 'CLOSED',
+    code: 'PROPOSAL_CLOSED',
   },
 ])('it refuses an approval of $label', (refusal) => {
   const proposal = buildRuleProposal('p-web', [

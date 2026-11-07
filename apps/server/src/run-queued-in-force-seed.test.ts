@@ -8,8 +8,8 @@ import invariant from 'tiny-invariant';
 import { buildStartState } from './build-start-state';
 import { createServerContext } from './create-server-context';
 import { runDefinitionsSeed } from './run-definitions-seed';
+import { runQueuedInForceSeed } from './run-queued-in-force-seed';
 import type { SeedParts } from './run-queued-seed';
-import { runWrittenSkillsSeed } from './run-written-skills-seed';
 import { buildStubHeldSource } from './test-utils/build-stub-held-source';
 import { startTestLog } from './test-utils/start-test-log';
 
@@ -69,7 +69,7 @@ test("it queues an approval's seed behind a definitions seed in flight, and the 
 
   const stub = buildStubHeldSource(createPathSource({ directory: ctx.root }));
   const held = { ...plain, source: stub.source };
-  const seeds = [runDefinitionsSeed(held), runWrittenSkillsSeed(held)];
+  const seeds = [runDefinitionsSeed(held), runQueuedInForceSeed(held)];
 
   stub.release();
 

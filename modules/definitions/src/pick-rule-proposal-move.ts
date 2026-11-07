@@ -31,7 +31,7 @@ export function pickRuleProposalMove(input: RuleProposalMoveInput): RuleProposal
   const next = answer.answer === 'approve' ? 'approved' : 'rejected';
 
   if (status === 'withdrawn' || !canMoveProposal(status, next)) {
-    return refuse('CLOSED', `the rule change proposal ${answer.proposalID} is ${status}`);
+    return refuse('PROPOSAL_CLOSED', `the rule change proposal ${answer.proposalID} is ${status}`);
   }
 
   if (answer.answer === 'reject') {

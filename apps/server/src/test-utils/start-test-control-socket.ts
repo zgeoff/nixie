@@ -23,7 +23,7 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
       context: api.context,
       readMemory: options.readMemory ?? (() => null),
 
-      seedWrittenSkills: () => Promise.resolve(),
+      runInForceSeed: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
       runReset:

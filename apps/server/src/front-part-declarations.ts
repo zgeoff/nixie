@@ -5,7 +5,7 @@ import { buildServerReset } from './build-server-reset';
 import { buildTaskMessaging } from './build-task-messaging';
 import { createServerContext } from './create-server-context';
 import { loadStartState } from './load-start-state';
-import { runApprovedSkillsSeed } from './run-approved-skills-seed';
+import { runInForceSeedAndWake } from './run-in-force-seed-and-wake';
 import type { ServerPartValues } from './server-part-values';
 import { startHostCommands } from './start-host-commands';
 import { startHTTPServer } from './start-http-server';
@@ -46,7 +46,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'http',
     needs: ['inputs', 'state', 'context', 'tools', 'api_gate'],
-    uses: ['memory'],
+    uses: ['memory', 'server_parts', 'definitions_exports'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
@@ -57,6 +57,8 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         apiContext: parts.get('context').apiContext,
         gate: parts.get('api_gate'),
         readMemory: () => parts.find('memory'),
+        runInForceSeed: () =>
+          runInForceSeedAndWake(parts.find('server_parts'), parts.find('definitions_exports')),
       });
 
       options.log('http.listening', { port });
@@ -120,8 +122,8 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           dataDir: options.config.server.dataDir,
           apiContext: parts.get('context').apiContext,
           readMemory: () => parts.find('memory'),
-          seedWrittenSkills: () =>
-            runApprovedSkillsSeed(parts.find('server_parts'), parts.find('definitions_exports')),
+          runInForceSeed: () =>
+            runInForceSeedAndWake(parts.find('server_parts'), parts.find('definitions_exports')),
           readInForce: parts.get('context').inForce.read,
           wakeExports: () => parts.find('definitions_exports')?.wake(),
           runReset: parts.get('reset').run,

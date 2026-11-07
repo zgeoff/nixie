@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
@@ -121,6 +122,8 @@ async function runSkillResolve(host: HostTransport, call: CommandCall): Promise<
 
     return 2;
   }
+
+  invariant(keep !== 'repo', 'the CLI parser gives skill-resolve only --keep nixie or definitions');
 
   const socketPath = await host.resolveSocketPath(call.flags.config);
 

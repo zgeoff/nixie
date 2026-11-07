@@ -1,4 +1,5 @@
 import { createFirstEnrolmentCode } from '@heynixie/api';
+import { startRuleLapseSweep } from '@heynixie/definitions';
 import { toErrorFields } from '@heynixie/logger';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
 import { startPromptLapseSweep } from '@heynixie/prompts';
@@ -129,6 +130,23 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         clock: parts.context.clock,
         onError: (error) => {
           parts.log('prompts.lapse_failed', toErrorFields(error));
+        },
+      });
+
+      await parts.cleanup.defer(() => sweep.stop());
+    },
+  },
+  {
+    name: 'rule_lapse_sweep',
+    needs: ['server_parts', 'start_record'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+
+      const sweep = startRuleLapseSweep({
+        context: parts.context,
+        clock: parts.context.clock,
+        onError: (error) => {
+          parts.log('rules.lapse_failed', toErrorFields(error));
         },
       });
 

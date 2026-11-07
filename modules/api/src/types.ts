@@ -58,7 +58,7 @@ export interface HostRouterOptions {
   readonly runReset: () => Promise<HostReset>;
   readonly runConversationReset: () => Promise<HostConversationReset>;
 
-  readonly seedWrittenSkills: () => Promise<void>;
+  readonly runInForceSeed: () => Promise<void>;
 
   readonly readInForce: () => PromptsInForce | null;
   readonly wakeExports: () => void;

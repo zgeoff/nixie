@@ -5,6 +5,7 @@ import { match } from 'ts-pattern';
 import type { ReadonlyDeep } from '../types';
 import { mockImplementer } from './mock-implementer';
 import { mockMemoryRouter } from './mock-memory-router';
+import { mockRuleProcedures } from './mock-rule-procedures';
 import { readMockBackupNotice } from './read-mock-backup-notice';
 import { readMockTaskActions } from './read-mock-task-actions';
 import { readMockTaskList } from './read-mock-task-list';
@@ -145,6 +146,7 @@ export const mockAPIRouter = os.router({
   log: { follow: followProcedure },
   memory: mockMemoryRouter,
   records: { follow: followProcedure },
+  rules: mockRuleProcedures,
   sessions: {
     enrol: os.sessions.enrol.handler(async (options) => {
       const input = options.input;

@@ -89,7 +89,7 @@ test('it prints what the server reset, and that backups still hold the old data'
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => null,
-      seedWrittenSkills: () => Promise.resolve(),
+      runInForceSeed: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
       runReset: () =>
@@ -138,7 +138,7 @@ test('it exits 1 when the server fails the reset', async () => {
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => null,
-      seedWrittenSkills: () => Promise.resolve(),
+      runInForceSeed: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
       runReset: () => Promise.reject(new Error('the runtime refused the destroy')),
@@ -232,7 +232,7 @@ test('it prints what a reset of the conversations shredded, that the server rest
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => null,
-      seedWrittenSkills: () => Promise.resolve(),
+      runInForceSeed: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no full reset runs in this test')),
@@ -283,7 +283,7 @@ test('it forgets every memory item through a reset of the memories, and prints h
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
-      seedWrittenSkills: () => Promise.resolve(),
+      runInForceSeed: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no full reset runs in this test')),
@@ -395,7 +395,7 @@ test('it pins a self-note from memory-pin', async () => {
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
-      seedWrittenSkills: () => Promise.resolve(),
+      runInForceSeed: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
@@ -435,7 +435,7 @@ test('it prints the subject of a self-note from memory-show', async () => {
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
-      seedWrittenSkills: () => Promise.resolve(),
+      runInForceSeed: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no reset runs in this test')),
@@ -479,7 +479,7 @@ test('it prints the count of each subject from memory-subjects', async () => {
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
-      seedWrittenSkills: () => Promise.resolve(),
+      runInForceSeed: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no reset runs in this test')),

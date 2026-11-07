@@ -93,7 +93,16 @@ function startTestApp(
   context: APIContext,
 ): Pick<TestAPI, 'url' | 'setMemory'> & { readonly stop: () => Promise<void> } {
   const memory: { store: ViewMemoryStore | null } = { store: null };
-  const app = createAPIApp(context, () => memory.store).listen({ hostname: '127.0.0.1', port: 0 });
+
+  // The device API's tests check the answer, and the definitions' own tests check the seed after it.
+  const app = createAPIApp(
+    context,
+    () => memory.store,
+    () => Promise.resolve(),
+  ).listen({
+    hostname: '127.0.0.1',
+    port: 0,
+  });
 
   return {
     stop: async () => {

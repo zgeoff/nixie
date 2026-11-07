@@ -76,6 +76,7 @@ export type {
   Snapshot,
   SnapshotPolicy,
   SourceKind,
+  StoredRule,
   DueDefinitionsExport,
   ToolDeclaration,
   RuntimeChangeState,
@@ -88,5 +89,13 @@ export type { RuleInForceEntry } from './read-rules-in-force';
 export { readRulesInForce } from './read-rules-in-force';
 export { readRuleConflicts } from './read-rule-conflicts';
 export { readRuleProposals } from './read-rule-proposals';
+export type { PendingRuleProposal } from './read-pending-rule-proposals';
+export { readPendingRuleProposals } from './read-pending-rule-proposals';
+export type { RuleContext } from './write-runtime-rule';
+export { writeRuntimeRule } from './write-runtime-rule';
+export { writeRuleResolution } from './write-rule-resolution';
+export type { RuleProposalAnswer, RuleProposalResult } from './write-rule-proposal-answer';
+export { writeRuleProposalAnswer } from './write-rule-proposal-answer';
+export { startRuleLapseSweep } from './start-rule-lapse-sweep';
 export type { DefinitionsRecordKind } from './definitions-record-kind';
 export type { RulesRecordKind } from './rules-record-kind';

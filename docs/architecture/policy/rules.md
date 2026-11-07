@@ -144,3 +144,21 @@ reset seed restores the rules of the snapshot in force.
 
 The snapshot hash covers each rule in force with its revision, its origin and its runtime change, so
 each snapshot holds the revision of every rule in force.
+
+## Commands and the proposals screen
+
+The host commands read and answer the rule store, and each prints JSON:
+
+| Command                                       | Does                                                               |
+| --------------------------------------------- | ------------------------------------------------------------------ |
+| `nixie rules list`                            | Lists each rule in force, its sentence, revision and origin        |
+| `nixie rules conflicts`                       | Lists each conflict with nixie's, the repo's and the base versions |
+| `nixie rules resolve <id> --keep nixie\|repo` | Resolves the conflict on that rule                                 |
+| `nixie proposals list`                        | Lists each pending rule change proposal                            |
+| `nixie proposals approve <id>`                | Puts the proposal's widenings in force                             |
+| `nixie proposals reject <id> --reason <why>`  | Leaves the seeded versions in force, with your reason              |
+
+The proposals screen in the web client lists the same pending proposals under the memory proposals,
+each change as the sentence before and after it, and answers them through the device API. A
+rejection there needs a reason too. An hourly sweep records the lapse of each proposal left past the
+shared proposal lapse time.
