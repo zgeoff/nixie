@@ -54,6 +54,12 @@ Each guest script runs its command under [`guest/measure.sh`](guest/measure.sh),
 - `used` is `MemTotal` less `MemAvailable`, in MiB. It includes kernel reserves that grow with the
   imp's size, so compare `used` only at one size.
 - `anon` is `AnonPages`, the guest's anonymous memory. Compare this figure across sizes.
+- `cgroup_peak` and `cgroup_max` are the peak and the limit of the cgroup that holds the guest's
+  processes. impd sets the limit to `MemTotal` less 64 MiB, which it keeps for its own agent, and
+  sets no limit when that leaves too little [measured]. The peak covers the guest's whole life, and
+  counts file cache, which the kernel takes back at the limit.
+- The summary line also gives the command's exit status, and each fetch scenario checks that every
+  reply is a page.
 - Each process over 5 MiB appears with its peak resident memory (RSS), which counts the pages of its
   binary that it has read. The conversation scenarios start a stub tool server, which shows as
   `mcpstub`. Production never runs it.
@@ -125,15 +131,20 @@ the right verdict in 3.5 s [measured].
 alone, then all 4 at once [measured]. nixie gives each fetch its own imp, so the single fetches set
 the size, and the 4 at once size a [shared imp](#shared-imps).
 
-| Size    | Guest's `MemTotal` | Largest single fetch, `used` | Its `anon` | 4 at once, `used` | 4 at once, `anon` | OOM kills, single | OOM kills, 4 at once |
-| ------- | ------------------ | ---------------------------- | ---------- | ----------------- | ----------------- | ----------------- | -------------------- |
-| 512 MiB | 480 MiB            | 101 MiB                      | 69 MiB     | 101 MiB           | 68 MiB            | 0                 | 0                    |
-| 192 MiB | 164 MiB            | 90 MiB                       | 62 MiB     | 106 MiB           | 78 MiB            | 0                 | 0                    |
-| 128 MiB | 102 MiB            | 91 MiB                       | 64 MiB     | 98 MiB            | 72 MiB            | 0                 | 1                    |
+| Size    | Guest's `MemTotal` | Cgroup limit | Largest single fetch, `used` | Its `anon` | 4 at once, `used` | 4 at once, `anon` | OOM kills, single | OOM kills, 4 at once |
+| ------- | ------------------ | ------------ | ---------------------------- | ---------- | ----------------- | ----------------- | ----------------- | -------------------- |
+| 512 MiB | 480 MiB            | 415 MiB      | 101 MiB                      | 69 MiB     | 101 MiB           | 68 MiB            | 0                 | 0                    |
+| 192 MiB | 164 MiB            | 100 MiB      | 97 MiB                       | 68 MiB     | 105 MiB           | 77 MiB            | 0                 | 0                    |
+| 128 MiB | 102 MiB            | none         | 92 MiB                       | 65 MiB     | 100 MiB           | 71 MiB            | 0                 | 1                    |
 
-- The fetcher's `bun` process peaked at 37 to 87 MiB RSS, highest on the largest page [measured].
-- At 128 MiB, a single fetch of the largest page left 11 MiB of `MemTotal` free [measured]. A page
-  heavier than the ones tried could fail at 128 MiB, so the recommended size is 192 MiB.
+- At 192 MiB, the cgroup reached its 100 MiB limit on the 2 largest pages, alone and 4 at once. The
+  kernel took back file cache, and every fetch returned its page with no OOM kill [measured]. The
+  headroom is the 23 to 32 MiB between the anonymous peak and that limit.
+- At 128 MiB, impd set no cgroup limit. With 4 at once, the guest OOM-killed one fetcher, and 2 of
+  the 4 replies failed [measured].
+- The fetcher's `bun` process peaked at 38 to 81 MiB RSS, highest on the largest page [measured].
+- The 512 MiB row comes from a probe before the reply check. Its single replies were pages, and its
+  4 replies at once went unchecked [measured].
 
 ## The guest and its image
 
@@ -160,23 +171,24 @@ the size, and the 4 at once size a [shared imp](#shared-imps).
 
 [`guest/runtime.sh`](guest/runtime.sh) ran the SDK's host process 4 ways, 3 turns each, at 512 MiB
 [measured]. It then started each form 3 times with its prompt file missing, so the process loads and
-exits with no model call. The start column times that, over 2 probes of `runtime.sh`.
+exits with no model call. The start column times that, over 3 probes of `runtime.sh`.
 
 | SDK host process                                     | Peak RSS  | Start to exit |
 | ---------------------------------------------------- | --------- | ------------- |
-| `bun turn.ts`, from source                           | 62–67 MiB | 214–515 ms    |
-| `bun turn-bundle.js`, a `bun build` bundle of 1.3 MB | 48 MiB    | 120–387 ms    |
-| `./turnbin`, from `bun build --compile`, 110 MB      | 46–48 MiB | 115–243 ms    |
+| `bun turn.ts`, from source                           | 62–68 MiB | 214–515 ms    |
+| `bun turn-bundle.js`, a `bun build` bundle of 1.3 MB | 48 MiB    | 119–387 ms    |
+| `./turnbin`, from `bun build --compile`, 110 MB      | 46–48 MiB | 113–243 ms    |
 | `bun --smol turn.ts`                                 | 59–66 MiB | not timed     |
 
-- The `claude` CLI held 183 to 194 MiB in every form, and `claude --version` took 12 to 20 ms
+- The `claude` CLI held 183 to 195 MiB in every form, and `claude --version` took 11 to 20 ms
   [measured].
 - A compiled build can't find the CLI from its own path, so it needs `pathToClaudeCodeExecutable`
   [measured].
-- Each start range covers the 6 starts of both probes on the same image. The slower probe ran while
-  the host was busier [measured].
-- Each memory range covers both probes too. The compiled build's comes from the second probe alone,
-  because in the first its turns failed to start the CLI [measured].
+- Each start range covers the 9 starts of the 3 probes on the same image. The slowest probe ran
+  while the host was busier [measured].
+- Each memory range covers the 3 probes too. The compiled build's comes from the last 2 alone,
+  because in the first its turns failed to start the CLI. The last probe reported each turn's exit
+  status, and every turn exited 0 [measured].
 
 ## Shared imps
 
@@ -216,13 +228,14 @@ isolation:
 ### Huge pages at a create and a wake
 
 [`time-starts.sh`](time-starts.sh) times 5 imps of each kind on 2 MiB pages [measured]. For each
-imp, it times the create to the first command, then sleeps and wakes the imp twice and times each
-wake to the first command. The host clock times each CLI call.
+imp, it times the create to the first command, and writes 64 MiB to the guest's memory. It then
+sleeps and wakes the imp twice, and times each wake to the first command. The host clock times each
+CLI call.
 
 | Kind and size                  | Create, median | Create, range | First wake, median | Second wake, median | Wake range |
 | ------------------------------ | -------------- | ------------- | ------------------ | ------------------- | ---------- |
-| Fetch, 192 MiB, 1 vCPU         | 658 ms         | 585–844 ms    | 431 ms             | 463 ms              | 396–560 ms |
-| Conversation, 512 MiB, 2 vCPUs | 600 ms         | 554–717 ms    | 503 ms             | 446 ms              | 393–540 ms |
+| Fetch, 192 MiB, 1 vCPU         | 522 ms         | 513–753 ms    | 398 ms             | 393 ms              | 372–433 ms |
+| Conversation, 512 MiB, 2 vCPUs | 588 ms         | 485–709 ms    | 406 ms             | 416 ms              | 395–450 ms |
 
 impd's spikes compared the two page sizes on one host:
 
@@ -249,7 +262,7 @@ faster restore, and slow its wakes.
 | ------------ | ---------- | ---------------- | ----------------------------------- |
 | Conversation | 2048 MiB   | 512 MiB          | 186 MiB                             |
 | System task  | 1024 MiB   | 384 MiB          | 186 MiB, on the conversation's path |
-| Web fetch    | 512 MiB    | 192 MiB          | 69 MiB, alone                       |
+| Web fetch    | 512 MiB    | 192 MiB          | 68 MiB, alone                       |
 
 A busy deployment then takes 512 + 2 × 384 + 4 × 192 = 2048 MiB, against 6144 MiB.
 
@@ -258,7 +271,9 @@ A busy deployment then takes 512 + 2 × 384 + 4 × 192 = 2048 MiB, against 6144 
   peak anonymous memory.
 - A system task passed a check at 384 MiB, and runs tool loops that peaked at 184 MiB anonymous in a
   320 MiB conversation imp.
-- A fetch at 192 MiB passed alone and 4 at once, with room for a heavier page than any tried.
+- A fetch at 192 MiB passed alone and 4 at once. Its cgroup limit of 100 MiB leaves 32 MiB over the
+  anonymous peak of one fetch, which a page heavier to parse than the HTML spec could use up. 256
+  MiB would raise the limit to about 164 MiB, and a busy deployment to 2304 MiB.
 - Bundle the conversation's code with `bun build`, which cuts its `bun` process by about 15 MiB in
   each conversation and system task imp.
 

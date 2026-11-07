@@ -18,8 +18,10 @@ for n in $(seq 1 "$runs"); do
   impz new --image "$image" --memory "$memory" --cpus "$vcpus" --policy none "$name" > /dev/null
   impz exec "$name" -- true
   t1=$(now_ms)
-  # Touch about 200 MiB of guest memory through tmpfs, so the wake restores a used guest.
-  impz exec "$name" -- sh -c 'dd if=/dev/zero of=/dev/shm/touch bs=1M count=200 2>/dev/null; rm -f /dev/shm/touch'
+  # Touch 64 MiB of guest memory through tmpfs, so the wake restores a used guest. /dev/shm holds
+  # half of MemTotal, so 64 MiB fits the smallest guest timed here, a 192 MiB fetch. set -e stops
+  # the script when the write fails.
+  impz exec "$name" -- sh -c 'dd if=/dev/zero of=/dev/shm/touch bs=1M count=64 2> /dev/null && rm /dev/shm/touch'
   impz sleep "$name" > /dev/null
   t2=$(now_ms)
   impz exec "$name" -- true

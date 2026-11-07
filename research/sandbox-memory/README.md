@@ -50,7 +50,7 @@ removes the imp.
    - The other scenarios: `check.sh <model_id>`, `concurrent.sh`, `runtime.sh` and `idle.sh` on the
      conversation image; `fetch.sh <url>...` and `idle.sh` on the fetch image.
 
-   Expect: one `peak used=… anon=…` line for each part of the scenario, then `oom_kill 0`.
+   Expect: one `status=0 peak used=…` line for each part of the scenario, then `oom_kill 0`.
 
 3. Time 5 creates and wakes of one image at one memory size and vCPU count:
 
