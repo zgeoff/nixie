@@ -154,6 +154,64 @@ test('it streams a reply as server-sent events when the request asks', async () 
   expect(text).toEndWith('event: message_stop\ndata: {"type":"message_stop"}\n\n');
 });
 
+test('it answers the Responses endpoint with the reply text and its Responses usage', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({
+    text: 'answered',
+    responsesUsage: {
+      input_tokens: 900,
+      output_tokens: 40,
+      input_tokens_details: { cached_tokens: 600 },
+    },
+  });
+
+  const response = await fetch(`${ctx.model.url}/v1/responses`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-o', input: 'Hi.' }),
+  });
+
+  const reply: unknown = await response.json();
+
+  expect(reply).toStrictEqual({
+    id: expect.toStartWith('resp_'),
+    object: 'response',
+    model: 'model-o',
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'output_text', text: 'answered', annotations: [] }],
+      },
+    ],
+    usage: { input_tokens: 900, output_tokens: 40, input_tokens_details: { cached_tokens: 600 } },
+  });
+});
+
+test('it streams a Responses reply that ends with its usage in the completed event', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({ text: 'streamed' });
+
+  const response = await fetch(`${ctx.model.url}/v1/responses`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-o', stream: true, input: 'Hi.' }),
+  });
+
+  const text = await response.text();
+
+  const last = text.trim().split('\n').at(-1) ?? '';
+
+  expect(JSON.parse(last.slice('data: '.length))).toStrictEqual({
+    type: 'response.completed',
+    response: expect.objectContaining({
+      status: 'completed',
+      usage: { input_tokens: 10, output_tokens: 5 },
+    }),
+  });
+});
+
 test('it refuses a request past the end of its script with a 400', async () => {
   const ctx = setupTest();
 

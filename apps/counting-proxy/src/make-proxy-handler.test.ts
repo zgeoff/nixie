@@ -43,6 +43,7 @@ test('it prices a reply through its route profile, the 1-hour cache write price 
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -90,6 +91,7 @@ test('it prices a streamed reply from its message start and its last delta', asy
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -117,6 +119,96 @@ test('it prices a streamed reply from its message start and its last delta', asy
   expect(totals).toStrictEqual({ dollars: 0.00543, tokens: 3852, lost: false });
 });
 
+test.each([
+  ['a whole reply', false],
+  ['a streamed reply, from its completed event', true],
+])(
+  'it prices %s on a Responses route, its cache reads and writes taken out of the input',
+  async (_case, isStream) => {
+    const ctx = await setupTest();
+
+    await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+    const store = await createCounterStore(ctx.storePath);
+
+    ctx.model.addReplies({
+      text: 'reviewed',
+      responsesUsage: {
+        input_tokens: 12_000,
+        output_tokens: 900,
+        input_tokens_details: {
+          cached_tokens: 4000,
+          cache_write_tokens: 7000,
+          cache_write_tokens_details: { ttl_30m_tokens: 5000, ttl_12h_tokens: 2000 },
+        },
+        output_tokens_details: { reasoning_tokens: 600 },
+      },
+    });
+
+    const handler = makeProxyHandler({
+      routes: {
+        review: {
+          api: 'openai-responses',
+          upstream: ctx.model.url,
+          model: 'model-o',
+          prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        },
+      },
+      limits: { dollars: 1, tokens: null },
+      store,
+      sendUpstream: fetch,
+      log: ctx.log,
+    });
+
+    const response = await handler(
+      new Request('http://proxy.test/review/v1/responses', {
+        method: 'POST',
+        body: JSON.stringify({ model: 'model-o', stream: isStream, input: 'Review the plan.' }),
+      }),
+    );
+
+    await response.text();
+
+    // 1,000 × $1 + 4,000 × $0.10 + 5,000 × $1.25 + 2,000 × $2 + 900 × $5, per million tokens
+    const totals = await store.read();
+
+    expect(totals).toStrictEqual({ dollars: 0.01615, tokens: 12_900, lost: false });
+  },
+);
+
+test('it refuses a Messages request on a Responses route and sends nothing on', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
+  const handler = makeProxyHandler({
+    routes: {
+      review: {
+        api: 'openai-responses',
+        upstream: ctx.model.url,
+        model: 'model-o',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store,
+    sendUpstream: fetch,
+    log: ctx.log,
+  });
+
+  const response = await handler(
+    new Request('http://proxy.test/review/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-o', messages: [] }),
+    }),
+  );
+
+  expect(response.status).toBe(403);
+  expect(ctx.model.requests).toHaveLength(0);
+});
+
 test('it refuses every request once the replies it counted reach its dollar limit', async () => {
   const ctx = await setupTest();
 
@@ -133,6 +225,7 @@ test('it refuses every request once the replies it counted reach its dollar limi
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -188,6 +281,7 @@ test('it refuses every request once the replies it counted reach its token limit
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -227,6 +321,7 @@ test('it logs the limit once when a count reaches it', async () => {
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -268,6 +363,7 @@ test('it refuses every request when its counter store is down', async () => {
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -313,6 +409,7 @@ test('it refuses every request when its counter store holds no count it can read
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -360,6 +457,7 @@ test('it answers a 502 and refuses every later request when a reply body breaks 
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -410,6 +508,7 @@ test('it refuses every later request when a streamed reply breaks before its usa
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -460,6 +559,7 @@ test('it refuses every later request once a count fails to write, even after the
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -506,6 +606,7 @@ test('it refuses a request for a model its route does not price', async () => {
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -550,6 +651,7 @@ test('it refuses a message request whose body names no model', async () => {
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -598,6 +700,7 @@ test.each([
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -625,6 +728,7 @@ test('it sends on a request for the model list', async () => {
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -651,6 +755,7 @@ test('it answers a path outside every route with a 404 and sends nothing on', as
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -683,6 +788,7 @@ test('it sends a request on with its path past the route, its query and its cred
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -730,6 +836,7 @@ test('it passes an upstream error through without counting it', async () => {
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -765,6 +872,7 @@ test('it answers a 502 when the upstream cannot be reached', async () => {
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: 'http://127.0.0.1:1',
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -800,6 +908,7 @@ test('it refuses every later request once a message call fails before its reply 
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -841,6 +950,7 @@ test('it refuses every request after a restart once a lost count marks its store
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -863,6 +973,7 @@ test('it refuses every request after a restart once a lost count marks its store
   const restarted = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -917,6 +1028,7 @@ test('it refuses every later request once a successful message reply holds usage
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -958,6 +1070,7 @@ test('it keeps sending on after a call that spends nothing fails', async () => {
   const handler = makeProxyHandler({
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
