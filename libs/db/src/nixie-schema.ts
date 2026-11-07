@@ -27,6 +27,7 @@ import { taskRoutesMigration } from './task-routes-migration';
 import { tasksMigration } from './tasks-migration';
 import type { BuildSchema } from './types';
 import { webFetchLinksMigration } from './web-fetch-links-migration';
+import { webFetchPagesMigration } from './web-fetch-pages-migration';
 import { writtenSkillsMigration } from './written-skills-migration';
 
 export const nixieSchema: BuildSchema = {
@@ -60,6 +61,7 @@ export const nixieSchema: BuildSchema = {
     backupSetsMigration,
     dropMessageRoutesMigration,
     searchCallsMigration,
+    webFetchPagesMigration,
   ],
   oldestReader: 35,
 };
