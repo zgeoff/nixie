@@ -12,6 +12,8 @@ test.each([
   ['two wildcards inside one', 'a*b*c', 'a*c', true],
   ['one wildcard outside two literal parts', 'a*c', 'a*b*c', false],
   ['the same pattern', 'mail.*', 'mail.*', true],
+  ['a decomposed text inside its composed pattern', 'café@example.com', 'café@*', true],
+  ['a flag outside a pattern that holds half of it', '🇫🇷*', '🇫*', false],
 ])('it answers %s', (_label, inner, outer, isInside) => {
   expect(isPatternInside(inner, outer)).toBe(isInside);
 });
