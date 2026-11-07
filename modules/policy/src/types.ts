@@ -1,8 +1,8 @@
 import type { ContentSource, Decision, JSONObject } from '@heynixie/log';
 import type { z } from 'zod';
 import type { effectNames } from './effect-names';
+import type { ruleBodySchema } from './rule-body-schema';
 import type { ruleContexts } from './rule-contexts';
-import type { ruleBodySchema } from './rule-schema';
 import type { ruleSources } from './rule-sources';
 
 export type Effect = (typeof effectNames)[number];

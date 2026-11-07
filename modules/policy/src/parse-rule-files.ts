@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { rulesFileSchema } from './rule-schema';
+import { rulesFileSchema } from './rules-file-schema';
 import { toRuleForm } from './to-rule-form';
 import type { RuleForm } from './types';
 

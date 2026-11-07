@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { rulesFileSchema } from './rule-schema';
+import { rulesFileSchema } from './rules-file-schema';
 
 export function buildRulesJSONSchema(): Record<string, unknown> {
   const schema = z.toJSONSchema(rulesFileSchema, { io: 'input', target: 'draft-2020-12' });

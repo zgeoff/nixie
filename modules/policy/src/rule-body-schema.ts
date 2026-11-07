@@ -50,5 +50,3 @@ export const ruleBodySchema = z
     path: ['expires'],
   })
   .meta({ dependentRequired: { mandate: ['expires'] } });
-
-export const rulesFileSchema = z.record(z.string().regex(ruleIDPattern), ruleBodySchema);
