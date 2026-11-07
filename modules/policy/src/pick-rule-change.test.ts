@@ -182,6 +182,24 @@ test.each<[string, Rule | null, Rule | null, RuleChange]>([
     'unchanged',
   ],
   [
+    'a note edit on a rule with a CEL condition',
+    {
+      id: 'deny-big-sends',
+      outcome: 'deny',
+      tools: ['mail.send'],
+      cel: 'size(args.to) > 20',
+      note: 'Large sends wait.',
+    },
+    {
+      id: 'deny-big-sends',
+      outcome: 'deny',
+      tools: ['mail.send'],
+      cel: 'size(args.to) > 20',
+      note: 'Large sends never go out.',
+    },
+    'unchanged',
+  ],
+  [
     'the same lists in another order',
     { id: 'allow-reads', outcome: 'allow', effects: ['read', 'fetch'] },
     { id: 'allow-reads', outcome: 'allow', effects: ['fetch', 'read'] },

@@ -9,7 +9,7 @@ export function pickRuleChange(before: Rule | null, after: Rule | null): RuleCha
     return pickPresenceChange(before, after);
   }
 
-  if (JSON.stringify(toRuleForm(before)) === JSON.stringify(toRuleForm(after))) {
+  if (JSON.stringify(toMatchForm(before)) === JSON.stringify(toMatchForm(after))) {
     return 'unchanged';
   }
 
@@ -39,6 +39,13 @@ function pickPresenceChange(before: Rule | null, after: Rule | null): RuleChange
   }
 
   return 'unchanged';
+}
+
+// The note and the mandate ID name a rule for you and change no call it matches.
+function toMatchForm(rule: Rule): Omit<Rule, 'note' | 'mandate'> {
+  const { note: _note, mandate: _mandate, ...form } = toRuleForm(rule);
+
+  return form;
 }
 
 function pickSameOutcomeChange(
