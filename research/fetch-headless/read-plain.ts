@@ -4,6 +4,8 @@
 //   bun read-plain.ts <url>
 import { readFile } from 'node:fs/promises';
 // @boundaries-ignore a spike imports the code it measures
+import { createWebTransports } from '../../guests/fetch/src/create-web-transports';
+// @boundaries-ignore a spike imports the code it measures
 import { makeAddressCheck } from '../../guests/fetch/src/make-address-check';
 // @boundaries-ignore a spike imports the code it measures
 import { readPage } from '../../guests/fetch/src/read-page';
@@ -14,9 +16,16 @@ const [url = ''] = process.argv.slice(2);
 const started = performance.now();
 
 const reply = await readPage(url, {
-  limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 262_144 },
+  limits: {
+    bodyBytes: 2_097_152,
+    timeoutMs: 15_000,
+    redirects: 5,
+    textBytes: 262_144,
+    imageBytes: 2_097_152,
+  },
   checkAddress: makeAddressCheck([]),
   resolveHost: resolveHostAddresses,
+  transports: createWebTransports(),
 });
 
 const totalMs = Math.round(performance.now() - started);
@@ -30,7 +39,9 @@ console.log(
     kind: reply.kind,
     ...(reply.kind === 'page'
       ? { status: reply.status, blocked: reply.blocked ?? null, textChars: reply.text?.length ?? null }
-      : { reason: reply.reason }),
+      : reply.kind === 'image'
+        ? { status: reply.status }
+        : { reason: reply.reason }),
     peakMemoryMiB: peak === null ? null : Math.round(Number(peak) / 1_048_576),
   }),
 );
