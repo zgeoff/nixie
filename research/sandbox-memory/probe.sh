@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Runs one script from guest/ in a new test imp, prints its output, and removes the imp.
+# Usage: probe.sh <image> <memory_mib> <vcpus> <guest_script> [args...]
+# MODEL_SECRET names an impd secret for the model API. probe.sh grants it to the test imp alone,
+# for the /v1/ paths, and impd revokes the grant when it removes the imp.
+set -euo pipefail
+
+image=$1 memory=$2 vcpus=$3 script=$4
+shift 4
+here=$(cd "$(dirname "$0")" && pwd)
+name="memprobe-$memory-$$"
+
+if impz ls | grep -q "^$name "; then
+  echo "refusing: $name exists" >&2
+  exit 1
+fi
+
+# A failed removal leaves the test imp and its model grant behind, so say so. The script keeps its
+# own failure status, and fails with 1 when only the removal failed.
+remove_imp() {
+  local status=$?
+
+  if ! impz rm "$name" > /dev/null; then
+    echo "probe.sh: failed to remove the test imp; remove it with: impz rm $name" >&2
+
+    if [ "$status" -eq 0 ]; then
+      status=1
+    fi
+  fi
+
+  exit "$status"
+}
+
+impz new --image "$image" --memory "$memory" --cpus "$vcpus" --policy public "$name" > /dev/null
+# Only an imp this script created is its to remove.
+trap remove_imp EXIT
+
+require=()
+
+if [ -n "${MODEL_SECRET:-}" ]; then
+  impz grant --methods=POST,GET,HEAD --paths='/v1/**' "$name" "$MODEL_SECRET"
+  require=(--require=broker)
+fi
+
+# The guest's shell expands $HOME, so the host must not.
+# shellcheck disable=SC2016
+home=$(impz exec "$name" -- sh -c 'printf %s "$HOME"')
+impz cp "$here/guest" "$name:$home/spike"
+impz exec "${require[@]}" "$name" -- sh "$home/spike/$script" "$@"

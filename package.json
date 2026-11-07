@@ -22,6 +22,7 @@
       "research/*",
       "!research/encoder",
       "!research/fetch-headless",
+      "!research/sandbox-memory",
       "!research/sdk-first-token",
       "!research/sdk-long-hold",
       "!research/sdk-reasoning",
