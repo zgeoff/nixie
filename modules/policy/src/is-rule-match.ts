@@ -48,7 +48,7 @@ function isDestinationMatch(
     patterns.some((pattern) => isPatternMatch(pattern, destination));
 
   return isAllow
-    ? destinations.every((destination) => isFit(destination))
+    ? destinations.length > 0 && destinations.every((destination) => isFit(destination))
     : destinations.some((destination) => isFit(destination));
 }
 

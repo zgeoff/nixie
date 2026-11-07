@@ -49,12 +49,12 @@ A rule matches a call when every field it holds matches. A list field reads one 
 the other way for an ask or a deny, because an allow grants access and must cover all of a call,
 while an ask or a deny guards access and catches any part of it:
 
-| Field          | An allow covers the call when                      | An ask or a deny catches the call when   |
-| -------------- | -------------------------------------------------- | ---------------------------------------- |
-| `effects`      | the call has effects, and the rule lists each one  | the rule lists one of the call's effects |
-| `checks`       | every element of a list argument passes each check | one element passes each check            |
-| `destinations` | every destination matches one of the patterns      | one destination matches a pattern        |
-| `sources`      | the call has sources, and the rule lists each one  | the rule lists one of the call's sources |
+| Field          | An allow covers the call when                         | An ask or a deny catches the call when   |
+| -------------- | ----------------------------------------------------- | ---------------------------------------- |
+| `effects`      | the call has effects, and the rule lists each one     | the rule lists one of the call's effects |
+| `checks`       | every element of a list argument passes each check    | one element passes each check            |
+| `destinations` | the call has destinations, and each matches a pattern | one destination matches a pattern        |
+| `sources`      | the call has sources, and the rule lists each one     | the rule lists one of the call's sources |
 
 A check on an argument the call lacks fails, for an allow and an ask alike. A tool name matches the
 tool and each of its variants, so `task.start` matches `task.start/atc`, while `task.start/atc`

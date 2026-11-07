@@ -26,6 +26,12 @@ test.each<[string, Rule, Partial<RuleCall>, boolean]>([
     false,
   ],
   [
+    'an allow leaves a call with no destination',
+    { id: 'allow-team-mail', outcome: 'allow', destinations: ['*@example.com'] },
+    { tool: 'files.remove', destinations: [] },
+    false,
+  ],
+  [
     'an ask catches a send with one destination inside its patterns',
     { id: 'ask-net-mail', outcome: 'ask', tools: ['mail.send'], destinations: ['*.net'] },
     { destinations: ['pat@example.com', 'stranger@example.net'] },
