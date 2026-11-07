@@ -19,6 +19,7 @@
     "@heynixie/log": "workspace:*",
     "@heynixie/memory": "workspace:*",
     "@heynixie/models": "workspace:*",
+    "@heynixie/policy": "workspace:*",
     "@heynixie/prompts": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/skills": "workspace:*",

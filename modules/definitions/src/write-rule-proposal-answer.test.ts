@@ -212,7 +212,7 @@ test('it refuses an approval of a rule change proposal you rejected', async () =
 
   expect(result).toStrictEqual({
     status: 'refused',
-    code: 'CLOSED',
+    code: 'PROPOSAL_CLOSED',
     reason: expect.any(String),
   });
 });
@@ -242,7 +242,7 @@ test('it refuses an approval of a rule change proposal past its lapse time', asy
 
   expect(result).toStrictEqual({
     status: 'refused',
-    code: 'CLOSED',
+    code: 'PROPOSAL_CLOSED',
     reason: expect.any(String),
   });
 });
@@ -277,7 +277,7 @@ test('it refuses an approval of a rule change proposal that a later seed withdre
 
   expect(result).toStrictEqual({
     status: 'refused',
-    code: 'CLOSED',
+    code: 'PROPOSAL_CLOSED',
     reason: expect.any(String),
   });
 });
