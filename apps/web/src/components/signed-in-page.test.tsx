@@ -1,4 +1,7 @@
 import { expect, mock, test } from 'bun:test';
+import { waitFor } from '@testing-library/react';
+import { store } from '../mocks/store';
+import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { SignedInPage } from './signed-in-page';
 
@@ -34,4 +37,24 @@ test('it reads the page again with the browser cookie when the server render was
 
   expect(onRefresh).toHaveBeenCalledOnce();
   expect(rendered.queryByText('Stub page')).toBeNull();
+});
+
+test('it shows the backup notice above the page of a live session', async () => {
+  await createDeviceSession();
+
+  await store.backupNotices.create({
+    cause: 'failed',
+    sequence: 3,
+    raisedAt: new Date('2026-11-02T08:00:00Z'),
+  });
+
+  const rendered = render(
+    <SignedInPage onRefresh={() => {}} session="live">
+      <p>Stub page</p>
+    </SignedInPage>,
+  );
+
+  await waitFor(() => {
+    expect(rendered.getByRole('alert')).toHaveTextContent(/^A backup failed at /u);
+  });
 });

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import type { SessionState } from '../read-session-state';
+import { BackupNotice } from './backup-notice';
 import { EnrolForm } from './enrol-form';
 
 export interface SignedInPageProps {
@@ -27,5 +28,10 @@ export function SignedInPage(props: SignedInPageProps): ReactNode {
     return <EnrolForm onEnrolled={onRefresh} />;
   }
 
-  return props.children;
+  return (
+    <>
+      <BackupNotice />
+      {props.children}
+    </>
+  );
 }

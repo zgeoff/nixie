@@ -238,6 +238,17 @@ const memoryWriter = new Collection({
   }),
 });
 
+const backupNotices = new Collection({
+  schema: z.object({
+    cause: z.enum(['failed', 'missing']).default('failed'),
+    raisedAt: z.date().default(() => faker.date.recent()),
+    sequence: z
+      .int()
+      .positive()
+      .default(() => faker.number.int({ max: 500, min: 1 })),
+  }),
+});
+
 const memoryConsolidator = new Collection({
   schema: z.object({
     isEnabled: z.boolean().default(true),
@@ -422,6 +433,7 @@ const retryActions = new Collection({
 });
 
 export const store = {
+  backupNotices,
   enrolmentCodes,
   forgetActions,
   memoryActions,
@@ -451,6 +463,7 @@ export const store = {
       memoryProposals,
       memoryWriter,
       memoryConsolidator,
+      backupNotices,
       memoryVersions,
       moments,
       ratingNotes,

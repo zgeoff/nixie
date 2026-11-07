@@ -1,3 +1,5 @@
+export type { FailedBackupNoticeInput } from './seed-failed-backup-notice';
+export { seedFailedBackupNotice } from './seed-failed-backup-notice';
 export type { TestBackupSet } from './read-test-backup-sets';
 export { readTestBackupSets } from './read-test-backup-sets';
 export type { TestBackupReceipt } from './write-test-backup-receipt';

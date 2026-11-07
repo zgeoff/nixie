@@ -5,6 +5,7 @@ import { match } from 'ts-pattern';
 import type { ReadonlyDeep } from '../types';
 import { mockImplementer } from './mock-implementer';
 import { mockMemoryRouter } from './mock-memory-router';
+import { readMockBackupNotice } from './read-mock-backup-notice';
 import { readMockTaskActions } from './read-mock-task-actions';
 import { readMockTaskList } from './read-mock-task-list';
 import { requireMockSession } from './require-mock-session';
@@ -24,6 +25,13 @@ const followProcedure = os.records.follow.handler((options) => {
 });
 
 export const mockAPIRouter = os.router({
+  backups: {
+    readNotice: os.backups.readNotice.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return readMockBackupNotice();
+    }),
+  },
   conversation: {
     read: os.conversation.read.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
