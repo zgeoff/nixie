@@ -1,6 +1,6 @@
 interface OverlayEntry<Value> {
   readonly key: string;
-  readonly hash: string | null;
+  readonly hash: string;
   readonly value: Value;
 }
 
@@ -30,7 +30,7 @@ export function buildRuntimeOverlay<Seeded, Change>(
   for (const change of input.changes) {
     const beneath = seeded.get(change.key) ?? null;
 
-    if ((beneath?.hash ?? null) === change.hash) {
+    if (beneath?.hash === change.hash) {
       adopted.push(change.value);
     } else {
       inForce.push({ change: change.value, beneath: beneath?.value ?? null });

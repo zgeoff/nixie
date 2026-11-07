@@ -33,24 +33,3 @@ test('it adopts a runtime change once the seed holds the same version', () => {
 
   expect(overlay).toStrictEqual({ inForce: [], adopted: ['runtime kettle'] });
 });
-
-test('it adopts a runtime removal once the seed lacks the key too', () => {
-  const overlay = buildRuntimeOverlay({
-    seeded: [],
-    changes: [{ key: 'kettle', hash: null, value: 'removed kettle' }],
-  });
-
-  expect(overlay).toStrictEqual({ inForce: [], adopted: ['removed kettle'] });
-});
-
-test('it keeps a runtime removal in force while the seed still holds the key', () => {
-  const overlay = buildRuntimeOverlay({
-    seeded: [{ key: 'kettle', hash: 'hash-seeded', value: 'seeded kettle' }],
-    changes: [{ key: 'kettle', hash: null, value: 'removed kettle' }],
-  });
-
-  expect(overlay).toStrictEqual({
-    inForce: [{ change: 'removed kettle', beneath: 'seeded kettle' }],
-    adopted: [],
-  });
-});
