@@ -30,7 +30,7 @@ export type StubGuestReply =
     }
   | { readonly overflow: 'blocking_limit' | 'prompt_too_long' }
   | { readonly modelAuthRefusal: string }
-  | { readonly failure: string };
+  | { readonly failure: string; readonly usage?: ModelCallUsage };
 
 export interface StubGuestToolCall {
   readonly sandboxID: string;
@@ -215,6 +215,10 @@ async function runInputCall(
         refusal: refused.modelAuthRefusal,
       }))
       .with({ failure: P.string }, (failed) => {
+        if (failed.usage !== undefined) {
+          run.emit?.([{ type: 'call', usage: failed.usage }]);
+        }
+
         throw new Error(failed.failure);
       })
       .with({ overflow: P.string }, (overflowed): InputAnswer => {

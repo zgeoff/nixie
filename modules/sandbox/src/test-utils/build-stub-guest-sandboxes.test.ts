@@ -295,6 +295,38 @@ test('it fails a turn whose reply is a failed model call as an error, with no an
   ]);
 });
 
+test("it reports a failed reply's model call usage before the failure", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies({
+    failure: 'the guest lost its model stream',
+    usage: {
+      uncachedInputTokens: 70,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 2,
+    },
+  });
+
+  const run = await runGuestFrame(sandbox, buildMockTurnFrame());
+
+  expect(run.frames).toStrictEqual([
+    {
+      type: 'call',
+      usage: {
+        uncachedInputTokens: 70,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 2,
+      },
+    },
+    { type: 'failed', reason: 'error', detail: 'Error: the guest lost its model stream' },
+  ]);
+});
+
 test('it calls the tool a reply asks for and replies after it, in the same turn', async () => {
   const calls: unknown[] = [];
 
