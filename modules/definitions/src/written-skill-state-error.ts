@@ -1,13 +1,13 @@
-import type { WrittenSkillState } from './types';
+import type { RuntimeChangeState } from './types';
 
 export class WrittenSkillStateError extends Error {
   override readonly name = 'WrittenSkillStateError';
 
   readonly code = 'WRONG_STATE';
 
-  readonly state: WrittenSkillState | null;
+  readonly state: RuntimeChangeState | null;
 
-  constructor(approvalID: string, state: WrittenSkillState | null, to: WrittenSkillState) {
+  constructor(approvalID: string, state: RuntimeChangeState | null, to: RuntimeChangeState) {
     const message =
       state === null
         ? `no skill that nixie wrote has approval ${approvalID}`
