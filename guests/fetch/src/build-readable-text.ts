@@ -164,7 +164,7 @@ function collectLink(reading: ReadingState, element: HTMLRewriterTypes.Element):
   reading.openLinks.push(link);
 
   element.onEndTag(() => {
-    reading.openLinks.splice(reading.openLinks.indexOf(link), 1);
+    reading.openLinks.splice(reading.openLinks.lastIndexOf(link), 1);
 
     if (isInText) {
       collectPart(reading, ' ');

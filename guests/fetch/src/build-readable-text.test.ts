@@ -70,8 +70,8 @@ test('it numbers each target by its first mark in the text, then in the list of 
 test('it builds a page of 20000 links at the time per link of a page of 2500', () => {
   const largeBuild = measureLinkPageBuild(20_000);
 
-  // The fastest of 3 runs drops a run that garbage collection slowed. A build that looks up each
-  // target in a list measured 7 times the time per link here, and a map lookup 1.1 to 1.5 times.
+  // The fastest of 3 runs drops a run that garbage collection slowed. A scan of a list per link
+  // measures 7 to 9 times the time per link here, and a map lookup 1.1 to 1.5 times.
   const smallNsPerLink = Math.min(...[1, 2, 3].map(() => measureLinkPageBuild(2500).nsPerLink));
 
   const largeNsPerLink = Math.min(
