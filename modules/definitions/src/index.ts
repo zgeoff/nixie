@@ -87,5 +87,6 @@ export { ruleFiresProjection } from './rule-fires-projection';
 export type { RuleInForceEntry } from './read-rules-in-force';
 export { readRulesInForce } from './read-rules-in-force';
 export { readRuleConflicts } from './read-rule-conflicts';
+export { readRuleProposals } from './read-rule-proposals';
 export type { DefinitionsRecordKind } from './definitions-record-kind';
 export type { RulesRecordKind } from './rules-record-kind';
