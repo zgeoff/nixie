@@ -3,9 +3,9 @@
 - Decisions: [0005](../../../decisions/0005-effects-and-taint.md),
   [0030](../../../decisions/0030-connectors-and-sandbox-environments.md)
 
-Web fetch is one of nixie's own tools: it fetches one public HTTPS page for the model and returns
-its text. It declares only the `fetch` effect, so it runs `direct`. It declares no destination, as
-the [destination limits](../policy/decision-point.md#destination-limits) set for the first build.
+Web fetch is one of nixie's own tools: it fetches one public web page for the model and returns its
+text. It declares only the `fetch` effect, so it runs `direct`. It declares no destination, as the
+[destination limits](../policy/decision-point.md#destination-limits) set for the first build.
 
 The tool runs in the fetch sandbox, a [sandbox](sandbox-adapter.md#sandboxes-by-kind-of-work) with
 `public` egress and no grants. `public` egress reaches the global internet only, and the sandbox
@@ -23,11 +23,12 @@ The fetcher uses a plain HTTP client, never the host's [credential fetcher](cred
 request carries no credential, cookie or stored header. It drops any user name or password in the
 URL. It also runs the address check below as a second layer, in these stages:
 
-1. It accepts `https` only, and refuses every other scheme, `http` included.
+1. It accepts `http` and `https`, and refuses every other scheme. For an `http` URL it tries `https`
+   first, and fetches over `http` when `https` fails to connect.
 2. It resolves the host, checks every A and AAAA address returned, and refuses the URL when any
    address is not public.
-3. It connects to the address it checked, and sends the host name for TLS and in the `Host` header,
-   so a second DNS answer never changes where the request goes.
+3. It connects to the address it checked, and sends the host name in the `Host` header, and for TLS
+   over `https`, so a second DNS answer never changes where the request goes.
 4. It runs the first 3 stages again on every redirect.
 
 ## Non-public addresses

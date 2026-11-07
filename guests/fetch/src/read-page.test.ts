@@ -5,6 +5,8 @@ import { buildReadableText } from './build-readable-text';
 import { makeAddressCheck } from './make-address-check';
 import { readPage } from './read-page';
 import { buildStubResolver } from './test-utils/build-stub-resolver';
+import { readClosedPort } from './test-utils/read-closed-port';
+import { startSilentListener } from './test-utils/start-silent-listener';
 import { startTestSite } from './test-utils/start-test-site';
 
 test('it returns the readable text of an HTML page over a connection to the checked address', async () => {
@@ -87,7 +89,6 @@ test('it refuses a site whose certificate no trusted root signed', async () => {
 });
 
 test.each([
-  ['http://site.test/', 'http:'],
   ['ftp://site.test/', 'ftp:'],
   ['file:///etc/passwd', 'file:'],
   ['ws://site.test/', 'ws:'],
@@ -102,11 +103,221 @@ test.each([
 
   expect(reply).toStrictEqual({
     kind: 'refused',
-    reason: `only https URLs are fetched, not ${scheme}`,
+    reason: `only http and https URLs are fetched, not ${scheme}`,
   });
 
   expect(resolver.hosts).toStrictEqual([]);
 });
+
+test('it returns the https page for an http URL whose host serves https', async () => {
+  const secure = await startTestSite({
+    names: ['site.test'],
+    respond: () =>
+      new Response('<main><p>Tide times over https</p></main>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+  });
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('Tide times over http'),
+  });
+
+  const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1']] } });
+
+  const reply = await readPage('http://site.test/tides', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: resolver.resolveHost,
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: 'https://site.test/tides',
+    status: 200,
+    contentType: 'text/html',
+    text: 'Tide times over https',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(plain.requests).toStrictEqual([]);
+});
+
+test('it returns the http page, with its http final URL, for an http URL whose host refuses https', async () => {
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () =>
+      new Response('<main><p>Harbour notices</p></main>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+  });
+
+  const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1'], ['10.0.0.1']] } });
+
+  const reply = await readPage('http://site.test/notices', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: resolver.resolveHost,
+    defaultPorts: { http: plain.port, https: readClosedPort() },
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: 'http://site.test/notices',
+    status: 200,
+    contentType: 'text/html',
+    text: 'Harbour notices',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(resolver.hosts).toStrictEqual(['site.test']);
+  expect(plain.requests).toHaveLength(1);
+});
+
+test('it returns the http page within the time limit for an http URL whose host drops https', async () => {
+  const silent = startSilentListener();
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () =>
+      new Response('Lock opening hours', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage('http://site.test/locks', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 2000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    defaultPorts: { http: plain.port, https: silent.port },
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: 'http://site.test/locks',
+    status: 200,
+    contentType: 'text/plain',
+    text: 'Lock opening hours',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(silent.chunks).not.toStrictEqual([]);
+});
+
+test('it returns the http page for an http URL whose host fails the https handshake', async () => {
+  const secure = await startTestSite({ names: ['other.test'], respond: () => new Response('x') });
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('Harbour notices', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage('http://site.test/notices', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
+  });
+
+  expect(reply).toMatchObject({
+    kind: 'page',
+    url: 'http://site.test/notices',
+    text: 'Harbour notices',
+  });
+
+  expect(secure.requests).toStrictEqual([]);
+});
+
+test('it fetches an http URL that names a port over http without trying https', async () => {
+  const secure = await startTestSite({ names: ['site.test'], respond: () => new Response('x') });
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('Buoy readings', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage(`http://site.test:${plain.port}/buoys`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: secure.ca,
+    defaultPorts: { http: readClosedPort(), https: secure.port },
+  });
+
+  expect(reply).toMatchObject({
+    kind: 'page',
+    url: `http://site.test:${plain.port}/buoys`,
+    text: 'Buoy readings',
+  });
+
+  expect(secure.requests).toStrictEqual([]);
+});
+
+test('it fails at the time limit, with no http request, when https connects but never answers', async () => {
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
+  const secure = await startTestSite({
+    names: ['site.test'],
+    respond: async () => {
+      await held.promise;
+
+      return new Response('late');
+    },
+  });
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('plain'),
+  });
+
+  const reply = await readPage('http://site.test/', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 300, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
+  });
+
+  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
+  expect(plain.requests).toStrictEqual([]);
+});
+
+test.each(['http', 'https'])(
+  'it refuses a %s URL whose host resolves to a non-public address',
+  async (scheme) => {
+    const resolver = buildStubResolver({ answers: { 'inside.test': [['10.0.0.5']] } });
+
+    const reply = await readPage(`${scheme}://inside.test/admin`, {
+      limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+      checkAddress: makeAddressCheck([]),
+      resolveHost: resolver.resolveHost,
+    });
+
+    expect(reply).toStrictEqual({
+      kind: 'refused',
+      reason: 'inside.test resolves to 10.0.0.5, which is not a public address',
+    });
+
+    expect(resolver.hosts).toStrictEqual(['inside.test']);
+  },
+);
 
 test('it refuses text that is not a URL', async () => {
   const reply = await readPage('not a url', {
@@ -183,49 +394,67 @@ test('it refuses a host that resolves to no address', async () => {
   expect(reply).toStrictEqual({ kind: 'refused', reason: 'site.test resolves to no address' });
 });
 
-test('it resolves and checks the host of each redirect before it connects', async () => {
-  const site = await startTestSite({
-    names: ['site.test', 'inside.test'],
-    respond: () => Response.redirect('https://inside.test/admin', 302),
-  });
+test.each(['https', 'http'])(
+  'it resolves and checks the host of a redirect to %s before it connects',
+  async (scheme) => {
+    const site = await startTestSite({
+      names: ['site.test', 'inside.test'],
+      respond: () => Response.redirect(`${scheme}://inside.test/admin`, 302),
+    });
 
-  const resolver = buildStubResolver({
-    answers: { 'site.test': [['127.0.0.1']], 'inside.test': [['10.0.0.5']] },
-  });
+    const resolver = buildStubResolver({
+      answers: { 'site.test': [['127.0.0.1']], 'inside.test': [['10.0.0.5']] },
+    });
 
-  const reply = await readPage(`https://site.test:${site.port}/`, {
-    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
-    checkAddress: (address) => address === '127.0.0.1',
-    resolveHost: resolver.resolveHost,
-    ca: site.ca,
-  });
+    const reply = await readPage(`https://site.test:${site.port}/`, {
+      limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+      checkAddress: (address) => address === '127.0.0.1',
+      resolveHost: resolver.resolveHost,
+      ca: site.ca,
+    });
 
-  expect(reply).toStrictEqual({
-    kind: 'refused',
-    reason: 'inside.test resolves to 10.0.0.5, which is not a public address',
-  });
+    expect(reply).toStrictEqual({
+      kind: 'refused',
+      reason: 'inside.test resolves to 10.0.0.5, which is not a public address',
+    });
 
-  expect(resolver.hosts).toStrictEqual(['site.test', 'inside.test']);
-  expect(site.requests).toHaveLength(1);
-});
+    expect(resolver.hosts).toStrictEqual(['site.test', 'inside.test']);
+    expect(site.requests).toHaveLength(1);
+  },
+);
 
-test('it refuses a redirect to an http URL', async () => {
-  const site = await startTestSite({
+test('it follows a redirect to an http URL over http, with no https try first', async () => {
+  const plain = await startTestSite({
     names: ['site.test'],
-    respond: () => Response.redirect('http://site.test/plain', 301),
+    scheme: 'http',
+    respond: () => new Response('Plain chart', { headers: { 'content-type': 'text/plain' } }),
   });
 
-  const reply = await readPage(`https://site.test:${site.port}/`, {
+  const secure = await startTestSite({
+    names: ['site.test'],
+    respond: () => Response.redirect('http://site.test/chart', 301),
+  });
+
+  const reply = await readPage('https://site.test/', {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
-    ca: site.ca,
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
   });
 
   expect(reply).toStrictEqual({
-    kind: 'refused',
-    reason: 'only https URLs are fetched, not http:',
+    kind: 'page',
+    url: 'http://site.test/chart',
+    status: 200,
+    contentType: 'text/plain',
+    text: 'Plain chart',
+    links: [],
+    isTruncated: false,
+    blocked: null,
   });
+
+  expect(secure.requests).toHaveLength(1);
 });
 
 test('it follows redirects up to the limit and returns the final URL', async () => {

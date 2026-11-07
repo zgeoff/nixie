@@ -1,13 +1,13 @@
 # Web fetch
 
-The web fetch tool reads one public HTTPS page for the model and returns its text. nixie never
-parses the page itself: a fetcher process inside the fetch sandbox resolves the host, fetches the
-page and extracts its text, and nixie reads back one reply. The fetch sandbox has public egress and
-no grants, and the sandbox adapter enforces public egress at the network layer, so the network layer
-is the boundary that keeps a page away from internal addresses. The fetcher checks every address
-again as a second layer, so a resolver trick fails twice, never once. [Sandboxes](./sandboxes.md)
-covers the kinds of work and their egress, and [tool calls](./tool-calls.md) covers the endpoint
-that runs the tool.
+The web fetch tool reads one public web page for the model and returns its text. nixie never parses
+the page itself: a fetcher process inside the fetch sandbox resolves the host, fetches the page and
+extracts its text, and nixie reads back one reply. The fetch sandbox has public egress and no
+grants, and the sandbox adapter enforces public egress at the network layer, so the network layer is
+the boundary that keeps a page away from internal addresses. The fetcher checks every address again
+as a second layer, so a resolver trick fails twice, never once. [Sandboxes](./sandboxes.md) covers
+the kinds of work and their egress, and [tool calls](./tool-calls.md) covers the endpoint that runs
+the tool.
 
 ```mermaid
 flowchart LR
@@ -91,13 +91,21 @@ it arrives.
 
 The fetcher's checks run on every hop, the first request and each redirect alike:
 
-1. It accepts `https` only, and refuses every other scheme, `http` included. It drops any user name,
-   password and fragment from the URL.
+1. It accepts `http` and `https`, and refuses every other scheme. It drops any user name, password
+   and fragment from the URL.
 2. It resolves the host through the system resolver and checks every A and AAAA address returned.
    One address that is not public refuses the URL.
-3. It connects to the address it checked, and sends the host name for TLS and in the `Host` header.
-   The connection never asks DNS again, so a second answer cannot move the request, and the
-   certificate must still match the host name.
+3. It connects to the address it checked, and sends the host name in the `Host` header, and over
+   `https` for TLS too. The connection never asks DNS again, so a second answer cannot move the
+   request, and an `https` certificate must still match the host name.
+
+For an `http` URL that names no port, the fetcher tries `https` first, on the address it checked. It
+fetches over `http` when the `https` request fails before a response arrives, such as on a refused
+connection or a failed TLS handshake. The `https` try has a fifth of the time limit to open its
+connection, so a host that drops packets to port 443 still gets its `http` fetch within the limit.
+An `https` server that connects and never answers fails the fetch at the time limit, with no `http`
+try. A redirect goes to the URL it names, `http` included, with no `https` try first, so a site that
+redirects from `https` to `http` cannot loop. The reply's final URL shows the scheme that answered.
 
 A request carries no credential, cookie or stored header, and never goes through a proxy, because a
 proxy resolves the host itself and would skip the pinned address. The fetcher refuses the non-public

@@ -12,7 +12,7 @@ import { writeLinkNumbers } from './write-link-numbers';
 const webFetchInput = {
   type: 'object',
   properties: {
-    url: { type: 'string', description: 'the https URL of the page; give url or link' },
+    url: { type: 'string', description: 'the http or https URL of the page; give url or link' },
     link: {
       type: 'string',
       description:
@@ -56,8 +56,9 @@ export function buildWebFetchTool(
   return {
     name: 'web_fetch',
     description:
-      'Fetches one public https page and returns its final URL, status code, content type and ' +
-      'text: the readable text of an HTML page, the text of another text type, and no text for ' +
+      'Fetches one public web page and returns its final URL, status code, content type and ' +
+      'text. An http URL is tried over https first, and the final URL shows the scheme that ' +
+      'answered. The text is the readable text of an HTML page, the text of another text type, and no text for ' +
       'a binary type. Each link in the text reads as its ID, such as [L12], with its host when ' +
       'it leaves the site, such as [L40 · example.org]; pass the ID as link to fetch that page. ' +
       'An ID lasts for this session only. isTruncated is true when the page passed a size ' +
