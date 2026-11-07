@@ -1,8 +1,8 @@
 const wildcard = '*';
 
 export function isPatternInside(inner: string, outer: string): boolean {
-  const innerChars = [...inner.normalize('NFC')];
-  const outerChars = [...outer.normalize('NFC')];
+  const innerChars = toGraphemes(inner);
+  const outerChars = toGraphemes(outer);
 
   const known = new Map<string, boolean>();
 
@@ -44,4 +44,10 @@ export function isPatternInside(inner: string, outer: string): boolean {
   };
 
   return isInside(0, 0);
+}
+
+const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+
+function toGraphemes(text: string): readonly string[] {
+  return Array.from(segmenter.segment(text.normalize('NFC')), (part) => part.segment);
 }
