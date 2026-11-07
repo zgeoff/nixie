@@ -171,10 +171,11 @@ internal, whatever its class. The embedded forms it reads are IPv4-mapped, IPv4-
 IPv4-translated, NAT64, 6to4 and Teredo.
 
 Each fetch has 4 limits: the body bytes read, the time for the whole call with its redirects, the
-number of redirects, and the bytes of text returned. The deployment config sets the first 3, and the
-caller sets the text limit. The web fetch tool asks for text up to 3 times the body limit, because
-one body byte decodes to at most 3 bytes of UTF-8 text, so its text stops only where the body does.
-The fetch that reads a skill's files asks for up to the file size limit of the
+number of redirects, and the bytes of text returned. The deployment config sets the time limit and
+the redirect limit of every fetch. For the web fetch tool, it also sets the body limit, and the tool
+asks for text up to 3 times that limit, because one body byte decodes to at most 3 bytes of UTF-8
+text, so its text stops only where the body does. The fetch that reads a skill's files takes both
+its body limit and its text limit from the file size limit of the
 [definitions repo](../core/definitions.md). The body limit counts bytes after a compressed body is
 decoded, so a small compressed body cannot expand past it. Reaching the body limit or the text limit
 stops the read and marks the result truncated, and the text cut never splits a character. Passing
