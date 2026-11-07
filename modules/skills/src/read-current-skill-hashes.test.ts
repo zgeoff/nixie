@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import {
   checkSkillFiles,
   createPathSource,
+  runInForceSeed,
   runSeed,
-  runWrittenSkillSeed,
   writeWrittenSkill,
   writeWrittenSkillState,
 } from '@heynixie/definitions';
@@ -132,7 +132,7 @@ test("it reads your definitions' version of a retired skill nixie wrote before t
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => ({ rules: [], tools: [] }) });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => ({ rules: [], tools: [] }) });
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkillState(tx, {

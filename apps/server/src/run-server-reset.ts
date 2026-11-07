@@ -1,7 +1,7 @@
 import type { APIContext, KeptSession } from '@heynixie/api';
 import { readKeptSessions, writeKeptSessions } from '@heynixie/api';
 import type { ResetSeed } from '@heynixie/definitions';
-import { readResetSeed, writeResetSeed } from '@heynixie/definitions';
+import { readResetSeed, ruleStoreTables, writeResetSeed } from '@heynixie/definitions';
 import type { LogReset, LogResetOptions } from '@heynixie/log';
 import { runLogReset, writeRecordsInTransaction } from '@heynixie/log';
 import type { StaleSandboxesOptions } from '@heynixie/sandbox';
@@ -40,7 +40,7 @@ export async function runServerReset(options: ServerResetOptions): Promise<Serve
   const kept = { sessions: 0 };
 
   const reset = await runLogReset(options.context.log, {
-    keptTables: ['identities'],
+    keptTables: ['identities', ...ruleStoreTables],
     readKept: async (tx) => ({
       seed: await readResetSeed(tx),
       sessions: await readKeptSessions(tx, options.context),

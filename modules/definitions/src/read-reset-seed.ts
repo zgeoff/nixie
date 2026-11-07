@@ -6,7 +6,13 @@ import { loadSkillVersions } from './load-skill-versions';
 import type { SnapshotSkill } from './load-snapshot-skills';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
-import type { DefinitionsInForce, DefinitionsTables, SkillVersion, WrittenSkillRow } from './types';
+import type {
+  DefinitionsInForce,
+  DefinitionsTables,
+  SkillVersion,
+  SnapshotRuleRow,
+  WrittenSkillRow,
+} from './types';
 
 export interface ResetSeed {
   readonly inForce: DefinitionsInForce;
@@ -20,6 +26,8 @@ export interface ResetSeed {
 
   readonly written: readonly WrittenSkillRow[];
   readonly beneath: readonly SkillVersion[];
+
+  readonly rules: readonly SnapshotRuleRow[];
 }
 
 type SeedRecordTables = Readonly<{
@@ -64,6 +72,14 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     ),
   );
 
+  const rules = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('snapshot_rules')
+    .selectAll()
+    .where('snapshot_hash', '=', inForce.snapshotHash)
+    .orderBy('rule_id')
+    .execute();
+
   return {
     inForce,
     policyHash: snapshot.policy_hash,
@@ -74,5 +90,6 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     skills: await loadSnapshotSkills(db, inForce.snapshotHash),
     written,
     beneath: [...beneath.values()],
+    rules,
   };
 }

@@ -20,6 +20,14 @@ export async function writeResetSeed(
     conversationSkills: seed.inForce.conversationSkills,
   });
 
+  if (seed.rules.length > 0) {
+    await tx
+      .$extendTables<DefinitionsTables>()
+      .insertInto('snapshot_rules')
+      .values(seed.rules)
+      .execute();
+  }
+
   if (seed.written.length > 0) {
     await tx
       .$extendTables<DefinitionsTables>()

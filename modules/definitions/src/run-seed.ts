@@ -1,10 +1,15 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
+import { addSeededRules } from './add-seeded-rules';
+import { buildDefinitionRule } from './build-definition-rule';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
+import { buildRuleSeedPlan } from './build-rule-seed-plan';
 import { buildSkillOverlay } from './build-skill-overlay';
 import { parseDefinitions } from './parse-definitions';
 import { readDefinitionsInForce } from './read-definitions-in-force';
+import { readRuleProposalChange } from './read-rule-proposal-change';
+import { readRuleStore } from './read-rule-store';
 import { readWrittenSkills } from './read-written-skills';
 import type {
   DefinitionsInForce,
@@ -56,9 +61,19 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       written: await readWrittenSkills(tx),
     });
 
+    const store = await readRuleStore(tx);
+
+    const definitions = read.parsed.rules.map((entry) => buildDefinitionRule(entry));
+
+    const rules = buildRuleSeedPlan({
+      definitions,
+      seeded: store.seeded,
+      runtime: store.runtime,
+    });
+
     const built = buildDefinitionsSnapshot({
       persona: read.parsed.persona,
-      policy: options.buildPolicy(read.parsed.prompts),
+      policy: addSeededRules(options.buildPolicy(read.parsed.prompts), rules.inForce),
       prompts: read.parsed.prompts,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
@@ -73,6 +88,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     if (
       inForce !== null &&
       overlay.adopted.length === 0 &&
+      rules.adopted.length === 0 &&
       isSameSeed(inForce, { ...read, built, sourceID: options.source.id })
     ) {
       return { status: 'unchanged', inForce };
@@ -91,6 +107,13 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       skipped: read.snapshot.skipped,
       versions: read.parsed.skills,
       overlay,
+      rules: {
+        plan: rules,
+        definitions,
+        current: store.current,
+        at: options.log.writer.clock.now(),
+      },
+      proposals: await readRuleProposalChange(tx, rules.held),
       built,
       previous: inForce,
     });

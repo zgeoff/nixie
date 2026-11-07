@@ -9,8 +9,8 @@ import invariant from 'tiny-invariant';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
 import { readDefinitionsInForce } from './read-definitions-in-force';
+import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
-import { runWrittenSkillSeed } from './run-written-skill-seed';
 import { writeWrittenSkill } from './write-written-skill';
 import { writeWrittenSkillState } from './write-written-skill-state';
 
@@ -74,7 +74,7 @@ test('it puts an approved skill in force at once, on the revision in force', asy
     }),
   );
 
-  const result = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  const result = await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -122,7 +122,7 @@ test('it gives a retired written skill back to the version beneath it, in its li
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkillState(tx, {
@@ -132,7 +132,7 @@ test('it gives a retired written skill back to the version beneath it, in its li
     }),
   );
 
-  const result = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  const result = await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -179,7 +179,7 @@ test('it names the newest approval when a later approval brings back an earlier 
       writeWrittenSkill(tx, { approvalID, proposalID, skill, approvedAt: 1 }),
     );
 
-    await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+    await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
   }
 
   const inForce = await readDefinitionsInForce(ctx.writer.db);
@@ -201,7 +201,7 @@ test('it writes nothing when the written skills already stand in force', async (
   const policy = { rules: [], tools: [] };
 
   const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
-  const result = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  const result = await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   invariant(first.inForce);
 
@@ -235,7 +235,7 @@ test('it marks an approval whose files your definitions already hold as yours, w
     }),
   );
 
-  const result = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  const result = await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   const states = await sql`select state, definitions_hash, definitions_origin
     from written_skills`.execute(ctx.writer.db);
@@ -297,7 +297,7 @@ test('it keeps the prompt overrides in force and builds the policy from them whe
     }),
   );
 
-  const result = await runWrittenSkillSeed({
+  const result = await runInForceSeed({
     log: ctx.log,
     buildPolicy: (prompts) => ({
       rules: buildCheckerRules('Robin', prompts).map((rule) => ({
@@ -318,7 +318,7 @@ test('it keeps the prompt overrides in force and builds the policy from them whe
 test('it refuses before the first seed', async () => {
   const ctx = await setupTest();
 
-  const result = await runWrittenSkillSeed({
+  const result = await runInForceSeed({
     log: ctx.log,
     buildPolicy: () => ({ rules: [], tools: [] }),
   });

@@ -9,8 +9,8 @@ import { createPathSource } from './create-path-source';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import { readResetSeed } from './read-reset-seed';
+import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
-import { runWrittenSkillSeed } from './run-written-skill-seed';
 import { createStubGitSyncWorktree } from './test-utils/create-stub-git-sync-worktree';
 import { writeResetSeed } from './write-reset-seed';
 import { writeWrittenSkill } from './write-written-skill';
@@ -388,7 +388,7 @@ test('it keeps a skill nixie wrote in force through a reset and the seed after i
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await runLogReset(ctx.log, {
     keptTables: [],
@@ -449,7 +449,7 @@ test('it keeps a skill nixie wrote through a reset before its seed, and the seed
     },
   });
 
-  const seeded = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  const seeded = await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   expect(seeded.inForce?.skills).toStrictEqual([
     { name: 'tide-tables', skillHash: skill.skillHash, origin: 'nixie' },
@@ -486,7 +486,7 @@ test("it puts your definitions' version back after a reset when you retire nixie
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await runLogReset(ctx.log, {
     keptTables: [],
@@ -506,7 +506,7 @@ test("it puts your definitions' version back after a reset when you retire nixie
     }),
   );
 
-  const retired = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  const retired = await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   expect(retired.inForce?.skills).toStrictEqual(first.inForce?.skills);
 });

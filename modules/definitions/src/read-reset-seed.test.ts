@@ -88,9 +88,11 @@ test('it reads the seed in force with its snapshot row and the payload of its re
       adoptedSkills: [],
       unapplied: [],
       skipped: [],
+      rules: { revisions: [], applied: [], held: [], adopted: [], conflicts: [], proposalID: null },
     },
     skills: [],
     written: [],
     beneath: [],
+    rules: [],
   });
 });
