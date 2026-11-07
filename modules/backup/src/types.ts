@@ -11,8 +11,21 @@ export interface BackupContext {
   readonly storage: DataStorage;
 }
 
+export type BackupNoticeCause = 'failed' | 'missing';
+
+export interface BackupNotice {
+  readonly sequence: number;
+  readonly cause: BackupNoticeCause;
+  readonly raisedAt: number;
+}
+
 export type BackupTables = CheckedTables<
   Readonly<{
+    backup_notices: {
+      readonly sequence: number;
+      readonly cause: BackupNoticeCause;
+      readonly raised_at: number;
+    };
     backup_sets: {
       readonly sequence: number;
       readonly kind: BackupSetKind;
