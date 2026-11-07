@@ -3,7 +3,7 @@ import { encodeFrame } from './encode-frame';
 import { frameHeaderBytes } from './frame-header-bytes';
 import { FrameTooLargeError } from './frame-too-large-error';
 import { makeFrameDecoder } from './make-frame-decoder';
-import { countChunkedDecodeCopies } from './test-utils/count-chunked-decode-copies';
+import { countChunkedDecodeBytes } from './test-utils/count-chunked-decode-bytes';
 
 test('it returns each message whole when the transport splits and joins frames', () => {
   const decode = makeFrameDecoder(64);
@@ -39,11 +39,12 @@ test('it keeps a partial frame until the rest arrives', () => {
   ]);
 });
 
-test('it copies each byte of a 4 MiB frame sent in 64 KiB chunks once', () => {
+test('it allocates and copies each byte of a 4 MiB frame sent in 64 KiB chunks once', () => {
   const message = new Uint8Array(4 * 1024 * 1024).fill(7);
 
-  expect(countChunkedDecodeCopies(message, 64 * 1024)).toStrictEqual({
+  expect(countChunkedDecodeBytes(message, 64 * 1024)).toStrictEqual({
     messages: [message],
+    allocatedBytes: message.byteLength,
     copiedBytes: frameHeaderBytes + message.byteLength,
   });
 });
