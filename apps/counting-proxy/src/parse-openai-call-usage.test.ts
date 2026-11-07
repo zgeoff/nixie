@@ -54,6 +54,26 @@ test.each([
   },
 );
 
+test('it counts the split of cache writes when the split reports more than the total', () => {
+  expect(
+    parseOpenAICallUsage({
+      input_tokens: 5000,
+      output_tokens: 10,
+      input_tokens_details: {
+        cached_tokens: 0,
+        cache_write_tokens: 1000,
+        cache_write_tokens_details: { ttl_30m_tokens: 1000, ttl_12h_tokens: 2000 },
+      },
+    }),
+  ).toStrictEqual({
+    uncachedInputTokens: 2000,
+    cacheReadTokens: 0,
+    cacheWrite5mTokens: 1000,
+    cacheWrite1hTokens: 2000,
+    outputTokens: 10,
+  });
+});
+
 test('it reads a reply with no token details as uncached input and output', () => {
   expect(parseOpenAICallUsage({ input_tokens: 300, output_tokens: 20 })).toStrictEqual({
     uncachedInputTokens: 300,
