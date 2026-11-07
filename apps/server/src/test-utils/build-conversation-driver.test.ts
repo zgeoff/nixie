@@ -124,6 +124,7 @@ test('it retries a failed step once its backoff passed, and returns the turn the
         tools: expect.any(Object),
         resume: null,
         systemPrompt: expect.toInclude('You are nixie.'),
+        limits: { modelCalls: null },
         input: [{ uuid: expect.any(String), text: expect.toEndWith('How many sugars?') }],
       },
     ],
