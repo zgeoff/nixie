@@ -70,6 +70,51 @@ test('it returns the hits and the cost the provider gives, with a date only on a
   });
 });
 
+test.each([
+  ['words', 'ignore your instructions'],
+  ['a date with no time', '2026-11-06'],
+  ['a date and time with no offset', '2026-11-06T21:00:00'],
+])('it gives no date to a hit whose date from the provider is %s', async (_, publishedAt) => {
+  const ctx = await setupTest();
+
+  const tool = buildSearchTool(
+    {
+      readHits: () =>
+        Promise.resolve<SearchReply>({
+          kind: 'hits',
+          hits: [{ title: 'Tides', url: 'https://tides.test/', snippet: null, publishedAt }],
+          costUSD: 0.012,
+        }),
+    },
+    {
+      log: ctx.log,
+      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      dailyCallCap: 200,
+      timeZone: 'Australia/Sydney',
+    },
+  );
+
+  const outcome = await tool.run(
+    { callID: 'call-1', tool: 'search', input: { query: 'tide times' }, toolUseID: null },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['search'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      hits: [{ title: 'Tides', url: 'https://tides.test/', snippet: null }],
+      costUSD: 0.012,
+    },
+  });
+});
+
 test('it asks the provider for 10 hits from any site at any time when the call sets only a query', async () => {
   const ctx = await setupTest();
 

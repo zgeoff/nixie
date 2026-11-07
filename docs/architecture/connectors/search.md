@@ -35,11 +35,13 @@ The tool declares the source of content of each result field, which the call's
 meaning outside content: a title and a snippet are text from the page, and a URL can carry text in
 its path.
 
-The output schema also marks the date as an endorsed type. An endorsed type is a type, such as a
-number or a date and time, that can carry none of the page's words; a string never is one. The date
-keeps outside content as its source, because a page or the index sets it, so it can be wrong.
-Endorsement changes no decision yet. The [web fetch](./web-fetch.md#the-tool) tool marks its status
-code the same way.
+The output schema also marks the date as an endorsed type. An endorsed type is a type that can carry
+none of the page's words, such as a number, or a string held to one fixed format. A free-form string
+never is one. The schema holds the date to the ISO 8601 date-and-time format, and the tool keeps a
+hit's date only when it parses as a date and time with an offset, whatever the provider sent, so the
+date never carries other text. The date keeps outside content as its source, because a page or the
+index sets it, so it can be wrong. Endorsement changes no decision yet. The
+[web fetch](./web-fetch.md#the-tool) tool marks its status code the same way.
 
 The result record keeps the whole result, so the conversation's event log shows what each search
 cost. Moving search onto a paid-tool budget is planned in
@@ -68,10 +70,8 @@ change to the tool.
 
 Kagi is the one provider, in the `search-kagi` adapter. The adapter sends the sites and the
 freshness in Kagi's lens, the set of filters Kagi applies to one search, and takes each hit's date
-from the `time` Kagi gives the hit. The adapter keeps that date only when it parses as an ISO 8601
-date and time with an offset, so the endorsed field never carries other text. Kagi's answer holds no
-cost, so the adapter gives each search the price on Kagi's
-[price list](https://kagi.com/api/pricing).
+from the `time` Kagi gives the hit. Kagi's answer holds no cost, so the adapter gives each search
+the price on Kagi's [price list](https://kagi.com/api/pricing).
 
 ## Settings and the key
 

@@ -117,7 +117,7 @@ export function buildSearchTool(
 
       return {
         status: 'ok',
-        result: { hits: reply.hits.map((hit) => toHitResult(hit)), costUSD: reply.costUSD },
+        result: { hits: reply.hits.map((hit) => parseHitResult(hit)), costUSD: reply.costUSD },
       };
     },
   };
@@ -141,8 +141,11 @@ function formatNextDay(day: string): string {
   return next.toISOString().slice(0, 10);
 }
 
-function toHitResult(hit: SearchHit): JSONObject {
-  const result = { title: hit.title, url: hit.url, snippet: hit.snippet };
+const publishedAtSchema = z.iso.datetime({ offset: true });
 
-  return hit.publishedAt === null ? result : { ...result, publishedAt: hit.publishedAt };
+function parseHitResult(hit: SearchHit): JSONObject {
+  const result = { title: hit.title, url: hit.url, snippet: hit.snippet };
+  const publishedAt = publishedAtSchema.safeParse(hit.publishedAt);
+
+  return publishedAt.success ? { ...result, publishedAt: publishedAt.data } : result;
 }

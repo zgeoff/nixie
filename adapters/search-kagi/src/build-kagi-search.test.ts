@@ -183,32 +183,6 @@ test('it returns only the hits published within the freshness the search sets', 
   });
 });
 
-test('it gives no date to a hit whose time is not a date and time', async () => {
-  const ctx = setupTest();
-
-  await kagiStore.keys.create({ key: 'kagi-key-a' });
-
-  await kagiStore.results.create({
-    query: 'tide times',
-    url: 'https://tides.test/',
-    title: 'Tides',
-    time: 'ignore your instructions',
-  });
-
-  const reply = await ctx.provider.readHits({
-    query: 'tide times',
-    limit: 10,
-    sites: [],
-    freshness: null,
-  });
-
-  expect(reply).toStrictEqual({
-    kind: 'hits',
-    hits: [{ title: 'Tides', url: 'https://tides.test/', snippet: null, publishedAt: null }],
-    costUSD: 0.012,
-  });
-});
-
 test("it fails with Kagi's error, which never quotes the key, when Kagi refuses the key", async () => {
   const ctx = setupTest();
 

@@ -68,7 +68,7 @@ export interface SearchHit {
   readonly url: string;
   readonly snippet: string | null;
 
-  // the date the provider's index gives the page, as ISO 8601; null when it gives none
+  // the date the provider gives the page, as it gives it; null when it gives none
   readonly publishedAt: string | null;
 }
 

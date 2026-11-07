@@ -1,6 +1,5 @@
-import type { SearchHit, SearchProvider, SearchReply, SearchRequest } from '@heynixie/connectors';
+import type { SearchProvider, SearchReply, SearchRequest } from '@heynixie/connectors';
 import { parseJSONOrNull } from '@heynixie/wire';
-import { z } from 'zod';
 import type { KagiSearchRequest } from './kagi-contract';
 import { kagiErrorSchema, kagiSearchResponseSchema } from './kagi-contract';
 
@@ -77,18 +76,9 @@ function parseKagiResponse(status: number, text: string): SearchReply {
           title: result.title,
           url: result.url,
           snippet: result.snippet ?? null,
-          publishedAt: parsePublishedAt(result.time),
+          publishedAt: result.time ?? null,
         })),
         costUSD: kagiSearchCostUSD,
       }
     : { kind: 'failed', reason: 'Kagi answered with results nixie cannot read' };
-}
-
-const dateTimeSchema = z.iso.datetime({ offset: true });
-
-// The date is the one endorsed field of a hit, so a value that is not a date and time never passes.
-function parsePublishedAt(time: string | undefined): SearchHit['publishedAt'] {
-  const parsed = dateTimeSchema.safeParse(time);
-
-  return parsed.success ? parsed.data : null;
 }
