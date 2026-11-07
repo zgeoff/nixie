@@ -38,7 +38,7 @@ async function setupTest() {
 
   const log = { writer, deploymentKey, projections: [] };
   const repo = buildStubDefinitionsRepo(root);
-  const onError = mock();
+  const onError = mock<(error: unknown) => void>();
 
   return {
     root,
@@ -171,8 +171,8 @@ test('it leaves a mandate rule out of the pull request', async () => {
   expect({
     paths: [...(pullRequest?.change.files.keys() ?? [])],
     isMandateListed: pullRequest?.change.body.includes('allow-invites'),
-    isMandateWritten: [...(pullRequest?.change.files.values() ?? [])].some((text) =>
-      text?.includes('allow-invites'),
+    isMandateWritten: [...(pullRequest?.change.files.values() ?? [])].some(
+      (text) => text?.includes('allow-invites') === true,
     ),
   }).toStrictEqual({
     paths: ['rules/nixie.yaml'],

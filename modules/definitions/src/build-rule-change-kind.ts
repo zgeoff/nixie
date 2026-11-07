@@ -83,7 +83,7 @@ async function readRuleExport(db: Kysely<unknown>): Promise<RuleExport | null> {
 // changes that left force, so a set that returns to an earlier one starts a new export in place of
 // the closed one.
 function buildRuleExport(store: RuleStore, leftCount: number): RuleExport | null {
-  const changes = store.runtime.filter((change) => change.rule?.rule['mandate'] === undefined);
+  const changes = store.runtime.filter((change) => change.rule?.rule.mandate === undefined);
 
   if (changes.length === 0) {
     return null;

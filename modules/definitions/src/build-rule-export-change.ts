@@ -78,7 +78,7 @@ function findBlock(text: string, ruleID: string): BlockRange | null {
   const lines = text.split('\n');
 
   const start = lines.findIndex(
-    (line) => line.match(topLevelKeyPattern)?.groups?.['key'] === ruleID,
+    (line) => topLevelKeyPattern.exec(line)?.groups?.['key'] === ruleID,
   );
 
   if (start === -1) {
