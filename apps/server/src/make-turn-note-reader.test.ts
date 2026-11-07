@@ -328,8 +328,8 @@ test("it keeps a turn's failure out of the retry that recovered it", async () =>
 
   const retry = await conversation.retryForStep();
 
-  expect(retry.turns.map((turn) => turn.input[0]?.text)).toStrictEqual([
-    expect.not.stringContaining('type="events"'),
+  expect(retry.turns.map((turn) => turn.input[0]?.text.includes('type="events"'))).toStrictEqual([
+    false,
   ]);
 });
 

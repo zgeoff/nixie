@@ -220,6 +220,44 @@ test('it leaves out the first failure of a turn when the turn before it failed o
   expect(events).toStrictEqual([]);
 });
 
+test('it leaves out two first failures in one range that came hours apart, each of which its retry recovered', async () => {
+  const ctx = await setupTest();
+
+  onTestFinished(() => setSystemTime());
+  setSystemTime(new Date(Date.UTC(2026, 2, 4, 8, 0)));
+
+  const [summary] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.step_errored',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { taskID: 'conversation', nextState: 'ready', errors: 1, claimableAt: 1_000_000 },
+      erasable: { message: 'the summary call timed out' },
+    },
+  ]);
+
+  setSystemTime(new Date(Date.UTC(2026, 2, 4, 11, 0)));
+
+  const [failure] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.step_errored',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { taskID: 'conversation', nextState: 'ready', errors: 1, claimableAt: 1_000_000 },
+      erasable: { message: 'connect ECONNREFUSED 192.0.2.10:8443' },
+    },
+  ]);
+
+  invariant(summary && failure);
+
+  const events = await buildRetriedTurnKind(ctx.tasks.context.log).read({
+    after: 0,
+    through: failure.sequence,
+  });
+
+  expect(events).toStrictEqual([]);
+});
+
 test("it reads a turn the model API refused without the model API's error text", async () => {
   const ctx = await setupTest();
 

@@ -359,11 +359,11 @@ reads.
   quotes the error when the log still holds its text. One exception: a turn the model API refused is
   listed without the error, which [a refused call](#a-call-the-model-api-refuses) keeps out of the
   conversation. A failure that waits for the user is not a retry, so the block leaves it out. The
-  block lists the failures only once a retry failed too, or once another conversation step failed
-  within the hour before the first of them. A one-off failure that the next try fixes never reaches
-  the conversation, because that try is the turn that reads the block. A committed step resets the
-  task's error count, and a failed step commits no note, so the block's range holds only the
-  failures since the last committed turn. The event log and the client keep every failure.
+  block also leaves out a one-off failure whose retry may still fix it, so a failure that the next
+  try fixes never reaches the conversation. The block lists a failure when its record counts more
+  than one error in a row ([steps](./tasks.md#steps)), when the conversation's next failure does, or
+  when the conversation's previous failure came within the hour before it. The event log and the
+  client keep every failure.
 - **A compaction heads-up** reads the first turn of a session that ended near the compaction
   threshold, and gives the tokens left, as [compaction](./compaction.md#the-heads-up) describes.
 

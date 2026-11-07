@@ -50,45 +50,37 @@ function collectRetriedTurns(
   failures: readonly LogRecord[],
   earlier: LogRecord | null,
 ): NotedEvent<RetriedTurn>[] {
-  const decoded = failures.map((record) => ({
-    record,
-    payload: taskStepErroredCodec.tryDecodePartial(record.payload),
-  }));
+  return failures.flatMap((record, index) => {
+    const payload = taskStepErroredCodec.tryDecodePartial(record.payload);
+    const previous = index === 0 ? earlier : (failures[index - 1] ?? null);
 
-  if (!isRepeatedFailure(decoded, earlier)) {
-    return [];
-  }
+    const isListed =
+      payload?.nextState === 'ready' &&
+      isUnrecoveredFailure(record, previous, failures[index + 1] ?? null);
 
-  return decoded.flatMap((failure) =>
-    failure.payload?.nextState === 'ready'
-      ? [buildRetriedTurn(failure.record, isModelAPIReason(failure.payload.reason))]
-      : [],
-  );
-}
-
-interface DecodedFailure {
-  readonly record: LogRecord;
-  readonly payload: ReturnType<typeof taskStepErroredCodec.tryDecodePartial>;
+    return isListed ? [buildRetriedTurn(record, isModelAPIReason(payload.reason))] : [];
+  });
 }
 
 const repeatWindowMs = 60 * 60 * 1000;
 
-function isRepeatedFailure(
-  failures: readonly DecodedFailure[],
-  earlier: LogRecord | null,
+// The task counts a step's failures since its last commit, so a count above 1 on a failure, or on
+// the failure after it, shows that a retry failed too.
+function isUnrecoveredFailure(
+  failure: LogRecord,
+  previous: LogRecord | null,
+  next: LogRecord | null,
 ): boolean {
-  const [first] = failures;
-
-  if (first === undefined) {
-    return false;
-  }
-
   return (
-    failures.length > 1 ||
-    (first.payload?.errors ?? 1) > 1 ||
-    (earlier !== null &&
-      first.record.recordedAt.getTime() - earlier.recordedAt.getTime() <= repeatWindowMs)
+    getErrorCount(failure) > 1 ||
+    (next !== null && getErrorCount(next) > 1) ||
+    (previous !== null &&
+      failure.recordedAt.getTime() - previous.recordedAt.getTime() <= repeatWindowMs)
   );
+}
+
+function getErrorCount(failure: LogRecord): number {
+  return taskStepErroredCodec.tryDecodePartial(failure.payload)?.errors ?? 1;
 }
 
 function buildRetriedTurn(record: LogRecord, isTextHidden: boolean): NotedEvent<RetriedTurn> {
