@@ -109,7 +109,11 @@ number and a count of 0 parts.
 
 When the tool stores a page, it removes these pages in the same transaction:
 
-- every page of the thread's earlier sessions, which no call can reach again;
+- every page of the thread's ended conversation sessions, which no call can reach again. A session's
+  opening record keeps its key, and a thread runs one conversation session at a time, so the tool
+  treats each key that an opening on the thread names, other than the caller's own, as ended. A call
+  under a run's own token keys its pages by the run, which no opening names, so those pages stay
+  until a forget or the store limit removes them;
 - the session's oldest pages, until the session's pages fit the `page_store_bytes` value of the
   `web_fetch` section. The page just stored always stays, even when it alone passes that value.
 

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { modelSessionOpenedCodec } from '@heynixie/models';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { readLinkTarget } from './read-link-target';
@@ -269,7 +270,78 @@ test('it keeps a new page larger than the whole store limit, and removes every o
   expect(pages.rows).toStrictEqual([{ page_id: large.pageID }]);
 });
 
-test("it removes the pages of the thread's earlier sessions when a new session stores a page", async () => {
+test("it removes the pages of the thread's ended sessions when a new session stores a page", async () => {
+  const ctx = await setupTest();
+
+  const limits = { textBytes: 100, linkPathChars: 24, storeBytes: 1000 };
+
+  await writeRecords(ctx.log, [
+    {
+      kind: modelSessionOpenedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: modelSessionOpenedCodec.encode({
+        model: 'model-a',
+        profile: 'chat-direct',
+        kind: 'first',
+        reason: null,
+        lostSessionID: null,
+        summarySequence: null,
+        recentRecords: 0,
+        recentEvents: 0,
+        recalledThrough: 0,
+        status: {},
+        personaHash: 'sha256:persona',
+        policyHash: 'sha256:policy',
+        sessionKey: '00000000-0000-4000-8000-00000000000a',
+      }),
+    },
+  ]);
+
+  await writeWebFetchPage(
+    ctx.log,
+    {
+      url: 'https://harbour.test/a',
+      status: 200,
+      contentType: 'text/plain',
+      isTruncated: false,
+      blocked: null,
+      text: 'Pier one.',
+      links: [],
+    },
+    {
+      sessionKey: '00000000-0000-4000-8000-00000000000a',
+      thread: 'conversation',
+      invalidatedThrough: null,
+    },
+    limits,
+  );
+
+  await writeWebFetchPage(
+    ctx.log,
+    {
+      url: 'https://harbour.test/b',
+      status: 200,
+      contentType: 'text/plain',
+      isTruncated: false,
+      blocked: null,
+      text: 'Pier two.',
+      links: [],
+    },
+    {
+      sessionKey: '00000000-0000-4000-8000-00000000000b',
+      thread: 'conversation',
+      invalidatedThrough: null,
+    },
+    limits,
+  );
+
+  const pages = await sql`select session_key from web_fetch_pages`.execute(ctx.log.writer.db);
+
+  expect(pages.rows).toStrictEqual([{ session_key: '00000000-0000-4000-8000-00000000000b' }]);
+});
+
+test("it keeps the thread's pages of a key no session opening names, such as a run's", async () => {
   const ctx = await setupTest();
 
   const limits = { textBytes: 100, linkPathChars: 24, storeBytes: 1000 };
@@ -285,7 +357,7 @@ test("it removes the pages of the thread's earlier sessions when a new session s
       text: 'Pier one.',
       links: [],
     },
-    { sessionKey: 'session-a', thread: 'conversation', invalidatedThrough: null },
+    { sessionKey: 'run-tides', thread: 'task-tides', invalidatedThrough: null },
     limits,
   );
 
@@ -300,27 +372,12 @@ test("it removes the pages of the thread's earlier sessions when a new session s
       text: 'Pier two.',
       links: [],
     },
-    { sessionKey: 'session-c', thread: 'task-tides', invalidatedThrough: null },
-    limits,
-  );
-
-  await writeWebFetchPage(
-    ctx.log,
-    {
-      url: 'https://harbour.test/c',
-      status: 200,
-      contentType: 'text/plain',
-      isTruncated: false,
-      blocked: null,
-      text: 'Pier six.',
-      links: [],
-    },
-    { sessionKey: 'session-b', thread: 'conversation', invalidatedThrough: null },
+    { sessionKey: 'run-ferries', thread: 'task-tides', invalidatedThrough: null },
     limits,
   );
 
   const pages = await sql`select session_key from web_fetch_pages
     order by session_key`.execute(ctx.log.writer.db);
 
-  expect(pages.rows).toStrictEqual([{ session_key: 'session-b' }, { session_key: 'session-c' }]);
+  expect(pages.rows).toStrictEqual([{ session_key: 'run-ferries' }, { session_key: 'run-tides' }]);
 });
