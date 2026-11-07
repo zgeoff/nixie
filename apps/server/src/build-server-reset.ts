@@ -1,7 +1,7 @@
 import { waitForSettled } from '@heynixie/async';
 import type { LogFields, Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import type { ConversationReset } from './run-conversation-reset';
+import type { ConversationReset, ConversationResetOptions } from './run-conversation-reset';
 import { runConversationReset } from './run-conversation-reset';
 import type { ServerReset, ServerResetOptions } from './run-server-reset';
 import { runServerReset } from './run-server-reset';
@@ -80,7 +80,7 @@ export function buildServerReset(options: ServerResetControlOptions): ServerRese
 
 interface ResetRun<Reset> {
   readonly mode: 'full' | 'conversations';
-  readonly run: (options: ServerResetOptions) => Promise<Reset>;
+  readonly run: (options: ConversationResetOptions) => Promise<Reset>;
   readonly toFields: (reset: Reset) => LogFields;
   readonly onDone: () => void;
 }
@@ -107,7 +107,7 @@ async function runLoggedReset<Reset>(
 
 async function runStoppedReset<Reset>(
   options: ServerResetControlOptions,
-  run: (options: ServerResetOptions) => Promise<Reset>,
+  run: (options: ConversationResetOptions) => Promise<Reset>,
 ): Promise<Reset> {
   options.work.abort();
 

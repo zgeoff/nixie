@@ -1,5 +1,6 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
+import { forgetBackupSchema } from './forget-backup-schema';
 
 const versionRefSchema = z.object({ itemID: z.string(), version: z.int().positive() });
 
@@ -258,7 +259,10 @@ const prompts = oc.errors({
   PROMPT_CHECK: { message: 'the override fails the definitions checks', status: 400 },
 });
 
-const forgottenItemsSchema = z.object({ itemIDs: z.array(z.string()) });
+const forgottenItemsSchema = z.object({
+  itemIDs: z.array(z.string()),
+  backup: forgetBackupSchema,
+});
 
 const hostTaskStateSchema = z.enum([
   'ready',
@@ -301,6 +305,7 @@ export const hostContract = {
       resetAt: z.date(),
       lastSequence: z.int().nonnegative(),
       shreddedRecords: z.int().nonnegative(),
+      backup: forgetBackupSchema,
     }),
   ),
   tasks: {
@@ -383,7 +388,9 @@ export const hostContract = {
       retire: memory.input(versionTargetSchema).output(versionRefSchema),
       restore: memory.input(versionTargetSchema).output(versionRefSchema),
 
-      forget: memory.input(versionTargetSchema).output(z.object({ itemID: z.string() })),
+      forget: memory
+        .input(versionTargetSchema)
+        .output(z.object({ itemID: z.string(), backup: forgetBackupSchema })),
       forgetAll: memory.output(forgottenItemsSchema),
       pin: memory
         .input(z.strictObject({ itemID: z.string().min(1), isPinned: z.boolean() }))

@@ -9414,10 +9414,74 @@
                   "properties": {
                     "itemID": {
                       "type": "string"
+                    },
+                    "backup": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "off"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "pending"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "failed"
+                            },
+                            "failure": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "failure"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "complete"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "unknown"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        }
+                      ]
                     }
                   },
                   "required": [
-                    "itemID"
+                    "itemID",
+                    "backup"
                   ]
                 }
               }
@@ -10079,11 +10143,75 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "backup": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "off"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "pending"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "failed"
+                            },
+                            "failure": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "failure"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "complete"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "unknown"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "deleted",
-                    "pending"
+                    "pending",
+                    "backup"
                   ]
                 }
               }
@@ -10429,11 +10557,75 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "backup": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "off"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "pending"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "failed"
+                            },
+                            "failure": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "failure"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "complete"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "unknown"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "deleted",
-                    "pending"
+                    "pending",
+                    "backup"
                   ]
                 }
               }

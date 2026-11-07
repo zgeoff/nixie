@@ -3,11 +3,24 @@ import { createMemoryItem, startTestMemory } from '@heynixie/memory/test-utils';
 import { createRouterClient } from '@orpc/server';
 import invariant from 'tiny-invariant';
 import { createHostItemProcedures } from './create-host-item-procedures';
+import { defaultAPISettings } from './default-api-settings';
 
 async function setupTest() {
   const memory = await startTestMemory();
 
-  return { memory, client: createRouterClient(createHostItemProcedures(() => memory.store)) };
+  const context = {
+    log: memory.log,
+    clock: memory.writer.clock,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    settings: defaultAPISettings,
+    readSessionCleanup: () => null,
+  };
+
+  return {
+    memory,
+    context,
+    client: createRouterClient(createHostItemProcedures(context, () => memory.store)),
+  };
 }
 
 test('#read shows an item with its state and every version, oldest first', async () => {
@@ -132,17 +145,53 @@ test('#restore refuses an item that is not retired with WRONG_STATE', async () =
   expect(restored).rejects.toMatchObject({ code: 'WRONG_STATE', status: 409 });
 });
 
-test('#forgetAll answers with every item it forgot', async () => {
+test('#forget answers with the item and its key backups as pending', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees' });
+  const forgotten = await ctx.client.forget({ itemID: item.itemID, version: 1 });
+
+  expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
+});
+
+test('#forget answers with its key backups as off when backups are off', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees' });
+
+  const client = createRouterClient(
+    createHostItemProcedures(
+      { ...ctx.context, settings: { ...defaultAPISettings, isBackupEnabled: false } },
+      () => ctx.memory.store,
+    ),
+  );
+
+  const forgotten = await client.forget({ itemID: item.itemID, version: 1 });
+
+  expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'off' } });
+});
+
+test('#forgetAll answers with every item it forgot, and its key backups as pending', async () => {
   const ctx = await setupTest();
   const first = await createMemoryItem(ctx.memory.store, { text: 'Cycles to work' });
   const second = await createMemoryItem(ctx.memory.store, { text: 'Speaks some Welsh' });
   const forgotten = await ctx.client.forgetAll();
 
-  expect(forgotten).toStrictEqual({ itemIDs: [first.itemID, second.itemID] });
+  expect(forgotten).toStrictEqual({
+    itemIDs: [first.itemID, second.itemID],
+    backup: { state: 'pending' },
+  });
+});
+
+test('#forgetAll answers with its key backups as complete when it forgot no item', async () => {
+  const ctx = await setupTest();
+  const forgotten = await ctx.client.forgetAll();
+
+  expect(forgotten).toStrictEqual({ itemIDs: [], backup: { state: 'complete' } });
 });
 
 test('#forgetAll refuses with MEMORY_NOT_STARTED before the memory store starts', async () => {
-  const client = createRouterClient(createHostItemProcedures(() => null));
+  const ctx = await setupTest();
+
+  const client = createRouterClient(createHostItemProcedures(ctx.context, () => null));
   const forgotten = client.forgetAll();
 
   await forgotten.catch(() => {});

@@ -30,12 +30,17 @@ test('it completes a forget whose cleanup failed after the key went', async () =
     })
     .catch((error: unknown) => error);
 
-  await ctx.memory.store.finishForget(item.itemID);
-
+  const status = await ctx.memory.store.finishForgets([item.itemID]);
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
   expect(failed).toMatchObject({ message: 'crashed at memory.forget.key_removed' });
   expect(ctx.cleanupSessions).toHaveBeenCalledExactlyOnceWith({ itemID: item.itemID });
+
+  expect(status).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    forgottenSequence: records.at(-1)?.record.sequence ?? null,
+  });
 
   expect(records.map((entry) => entry.record.kind)).toStrictEqual([
     'memory.version_added',
@@ -47,12 +52,11 @@ test('it completes a forget whose cleanup failed after the key went', async () =
 test('it leaves an item no forget began with its key and its text', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'The gate code is 4417' });
-
-  await ctx.memory.store.finishForget(item.itemID);
-
+  const status = await ctx.memory.store.finishForgets([item.itemID]);
   const detail = await ctx.memory.store.view.readItem(item.itemID);
 
   expect(ctx.cleanupSessions).not.toHaveBeenCalled();
+  expect(status).toStrictEqual({ deleted: [], pending: [], forgottenSequence: null });
 
   expect(detail).toMatchObject({
     state: 'active',
@@ -70,7 +74,7 @@ test('it runs nothing again for a completed forget', async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await ctx.memory.store.finishForget(item.itemID);
+  await ctx.memory.store.finishForgets([item.itemID]);
 
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 

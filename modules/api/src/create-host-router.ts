@@ -40,7 +40,7 @@ export function createHostRouter(options: HostRouterOptions) {
       .router(createHostSessionProcedures(options.context)),
     memory: hostImplementer.memory.use(gated).router({
       proposals: createHostProposalProcedures(options.readMemory),
-      items: createHostItemProcedures(options.readMemory),
+      items: createHostItemProcedures(options.context, options.readMemory),
       consolidation: createHostConsolidationProcedures(options.readMemory),
       subjects: createHostSubjectsProcedure(options.readMemory),
     }),
