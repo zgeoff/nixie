@@ -15,7 +15,15 @@ if impz ls | grep -q "^$name "; then
   exit 1
 fi
 
-trap 'impz rm "$name" >/dev/null 2>&1 || true' EXIT
+# A failed removal leaves the test imp and its model grant behind, so say so and fail.
+remove_imp() {
+  if ! impz rm "$name" > /dev/null; then
+    echo "probe.sh: failed to remove the test imp; remove it with: impz rm $name" >&2
+    exit 1
+  fi
+}
+
+trap remove_imp EXIT
 
 impz new --image "$image" --memory "$memory" --cpus "$vcpus" --policy public "$name" > /dev/null
 

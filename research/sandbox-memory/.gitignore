@@ -1,0 +1,2 @@
+# temp folders that the spike's tests make and remove
+.test-*/

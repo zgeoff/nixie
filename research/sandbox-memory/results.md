@@ -65,7 +65,21 @@ Each guest script runs its command under [`guest/measure.sh`](guest/measure.sh),
   binary that it has read. The conversation scenarios start a stub tool server, which shows as
   `mcpstub`. Production never runs it.
 
-The scenarios:
+### Scenarios
+
+Each scenario is a script in [`guest/`](guest/) that `probe.sh` runs in a new test imp. Each one
+that runs a model turn needs `MODEL_SECRET`.
+
+| Scenario              | Image        | Arguments                                                                                                                                                        | Expected output                                                                                                                                           |
+| --------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `conversation.sh`     | conversation | none                                                                                                                                                             | for each of the 4 turns, a `"subtype":"success"` result and a `status=0 peak used=…` line; then `oom_kill 0`                                              |
+| `check.sh <model_id>` | conversation | the model ID the check runs on, such as `claude-sonnet-5-5`                                                                                                      | a `check status=0 peak used=…` line and an `{"kind":"answer",…}` reply; then `oom_kill 0`                                                                 |
+| `concurrent.sh`       | conversation | none                                                                                                                                                             | a `three status=0 peak used=…` line, 3 `"subtype":"success"` results and the summed anonymous peak; then `oom_kill 0`                                     |
+| `runtime.sh`          | conversation | none                                                                                                                                                             | 12 `status=0 peak used=…` lines, 3 for each form of the SDK host; then 12 `start form=… ms=…` lines, with no OOM counter                                  |
+| `idle.sh`             | either       | none                                                                                                                                                             | `/proc/meminfo` lines, one memory sample and the disk sizes in MiB, with no status line and no OOM counter                                                |
+| `fetch.sh <url>...`   | fetch        | `https://example.com/`, `https://en.wikipedia.org/wiki/List_of_sovereign_states`, `https://www.rfc-editor.org/rfc/rfc9110.html`, `https://html.spec.whatwg.org/` | for each URL, a `fetch<n> status=0 peak used=…` line and its reply's size; then a `together status=0 peak used=…` line, no `bad reply` line, `oom_kill 0` |
+
+The scenarios do this:
 
 - [`guest/turn.ts`](guest/turn.ts) runs one Agent SDK turn with the conversation guest's own query
   options.

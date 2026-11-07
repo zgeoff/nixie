@@ -47,10 +47,8 @@ removes the imp.
      test imp alone. Every scenario on the conversation image except `idle.sh` needs it.
    - `<conversation_image>` and `<fetch_image>`: the impd names of nixie's 2 guest images.
    - `<output_file>`: any local file for the scenario's output.
-   - The other scenarios: `check.sh <model_id>`, `concurrent.sh`, `runtime.sh` and `idle.sh` on the
-     conversation image; `fetch.sh <url>...` and `idle.sh` on the fetch image.
 
-   Expect: one `status=0 peak used=…` line for each part of the scenario, then `oom_kill 0`.
+   Expect: the output that [scenarios](results.md#scenarios) lists, with each scenario's arguments.
 
 3. Time 5 creates and wakes of one image at one memory size and vCPU count:
 
@@ -59,6 +57,8 @@ removes the imp.
    ```
 
    Expect: 5 `run=` lines, each with `create_to_exec_ms` and 2 wake times.
+
+4. Test the scripts with `bun test --cwd research/sandbox-memory`. Expect: 4 pass.
 
 ## Results
 
