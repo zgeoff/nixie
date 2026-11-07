@@ -20,6 +20,6 @@ for form in "bun turn.ts" "bun turn-bundle.js" "./turnbin" "$CLAUDE_BIN --versio
     start=$(date +%s%N)
     PROMPT_FILE=/nonexistent $form > /dev/null 2>&1
     end=$(date +%s%N)
-    echo "start form=\"$form\" ms=$(( (end - start) / 1000000 ))"
+    echo "start form=\"$form\" ms=$(((end - start) / 1000000))"
   done
 done

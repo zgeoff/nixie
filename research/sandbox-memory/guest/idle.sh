@@ -9,8 +9,8 @@ sleep 0.3
 touch stop
 wait "$sampler"
 tail -1 idle-sample.txt
-du -sxm /usr /app /var /etc 2>/dev/null
-du -sm /usr/local/bin/bun 2>/dev/null
+du -sxm /usr /app /var /etc 2> /dev/null
+du -sm /usr/local/bin/bun 2> /dev/null
 
 if [ -d /app/node_modules/.bun ]; then
   du -sm /app/node_modules/.bun/* | sort -rn | head -5

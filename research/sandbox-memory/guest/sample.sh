@@ -11,7 +11,7 @@ while [ ! -e stop ]; do
   procs=""
 
   for status in /proc/[0-9]*/status; do
-    line=$(awk '/^Name:/{n=$2}/^VmRSS:/{r=int($2/1024)}/^RssAnon:/{a=int($2/1024)}END{if(r>5)printf "%s=%s/%s ", n, r, a}' "$status" 2>/dev/null)
+    line=$(awk '/^Name:/{n=$2}/^VmRSS:/{r=int($2/1024)}/^RssAnon:/{a=int($2/1024)}END{if(r>5)printf "%s=%s/%s ", n, r, a}' "$status" 2> /dev/null)
     procs="$procs$line"
   done
 

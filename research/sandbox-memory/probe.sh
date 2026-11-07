@@ -17,7 +17,7 @@ fi
 
 trap 'impz rm "$name" >/dev/null 2>&1 || true' EXIT
 
-impz new --image "$image" --memory "$memory" --cpus "$vcpus" --policy public "$name" >/dev/null
+impz new --image "$image" --memory "$memory" --cpus "$vcpus" --policy public "$name" > /dev/null
 
 require=()
 
@@ -26,6 +26,8 @@ if [ -n "${MODEL_SECRET:-}" ]; then
   require=(--require=broker)
 fi
 
+# The guest's shell expands $HOME, so the host must not.
+# shellcheck disable=SC2016
 home=$(impz exec "$name" -- sh -c 'printf %s "$HOME"')
 impz cp "$here/guest" "$name:$home/spike"
 impz exec "${require[@]}" "$name" -- sh "$home/spike/$script" "$@"
