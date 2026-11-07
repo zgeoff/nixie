@@ -43,15 +43,7 @@ async function setupTest() {
     root,
     log,
     time,
-    readProposalID: async () => {
-      const proposals = await readRuleProposals(writer.db);
-
-      const last = proposals.at(-1);
-
-      invariant(last);
-
-      return last.proposal.proposalID;
-    },
+    readProposals: () => readRuleProposals(writer.db),
     seed: () =>
       runSeed({
         log,
@@ -87,7 +79,11 @@ test('it puts the widening of a rule change proposal in force once you approve i
 
   await ctx.seed();
 
-  const proposalID = await ctx.readProposalID();
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID);
 
   await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
 
@@ -113,7 +109,12 @@ test('it records your approval of a rule change proposal', async () => {
 
   invariant(held.status === 'seeded');
 
-  const proposalID = await ctx.readProposalID();
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID);
+
   const result = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
   const records = await readRecords(ctx.log, { afterSequence: held.record.sequence + 1 });
 
@@ -147,7 +148,11 @@ test('it keeps the version in force and records your reason when you reject a ru
 
   invariant(held.status === 'seeded');
 
-  const proposalID = await ctx.readProposalID();
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID);
 
   await writeRuleProposalAnswer(ctx.context, {
     answer: 'reject',
@@ -191,7 +196,11 @@ test('it refuses an approval of a rule change proposal you rejected', async () =
 
   await ctx.seed();
 
-  const proposalID = await ctx.readProposalID();
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID);
 
   await writeRuleProposalAnswer(ctx.context, { answer: 'reject', proposalID, reason: 'Not yet.' });
 
@@ -213,7 +222,11 @@ test('it refuses an approval of a rule change proposal past its lapse time', asy
 
   await ctx.seed();
 
-  const proposalID = await ctx.readProposalID();
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID);
 
   ctx.time.now += proposalLapseMs;
 
@@ -235,7 +248,11 @@ test('it refuses an approval of a rule change proposal that a later seed withdre
 
   await ctx.seed();
 
-  const proposalID = await ctx.readProposalID();
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID);
 
   await writeFile(
     join(ctx.root, 'rules', 'web.yaml'),
@@ -262,7 +279,11 @@ test('it asks again about a widening you rejected only once the definitions chan
 
   await ctx.seed();
 
-  const proposalID = await ctx.readProposalID();
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID);
 
   await writeRuleProposalAnswer(ctx.context, { answer: 'reject', proposalID, reason: 'Not yet.' });
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nShort replies.\n');
@@ -276,7 +297,7 @@ test('it asks again about a widening you rejected only once the definitions chan
 
   await ctx.seed();
 
-  const proposals = await readRuleProposals(ctx.log.writer.db);
+  const proposals = await ctx.readProposals();
 
   expect(proposals.map((entry) => entry.outcome)).toStrictEqual(['rejected', null]);
 });
@@ -294,7 +315,11 @@ test('it asks again about a widening you approved once the definitions narrow it
 
   await ctx.seed();
 
-  const proposalID = await ctx.readProposalID();
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID);
 
   await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
   await writeFile(join(ctx.root, 'rules', 'web.yaml'), '# No web rules for now.\n');
@@ -308,7 +333,7 @@ test('it asks again about a widening you approved once the definitions narrow it
 
   await ctx.seed();
 
-  const proposals = await readRuleProposals(ctx.log.writer.db);
+  const proposals = await ctx.readProposals();
 
   expect(proposals.map((entry) => entry.outcome)).toStrictEqual(['approved', null]);
 });
