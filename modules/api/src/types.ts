@@ -82,7 +82,6 @@ export type ViewMemoryStore = Pick<
   | 'pin'
   | 'markSensitive'
   | 'forget'
-  | 'finishForget'
   | 'forgetRetired'
   | 'finishForgets'
 > & {
@@ -109,6 +108,10 @@ interface HostReset {
 }
 
 export type ForgetBackupState = ForgetBackup | { readonly state: 'off' };
+
+export type ForgetProgress =
+  | { readonly stage: 'deleting' }
+  | { readonly stage: 'forgotten'; readonly sequence: number | null };
 
 interface HostConversationReset {
   readonly resetAt: Date;

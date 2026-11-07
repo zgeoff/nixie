@@ -1,8 +1,6 @@
 import { readForgetBackup } from '@heynixie/backup';
-import type { ForgetStatus } from '@heynixie/memory';
-import type { APIContext, ForgetBackupState } from './types';
-
-type ForgetProgress = Pick<ForgetStatus, 'pending' | 'forgottenSequence'>;
+import { P, match } from 'ts-pattern';
+import type { APIContext, ForgetBackupState, ForgetProgress } from './types';
 
 // A forget writes its closing record only after its local cleanup, so no backup set covers an item
 // that still waits on that cleanup. A forget that deleted nothing leaves no key to prune.
@@ -14,13 +12,12 @@ export function readForgetBackupState(
     return Promise.resolve({ state: 'off' });
   }
 
-  if (progress.pending.length > 0) {
-    return Promise.resolve({ state: 'pending' });
-  }
-
-  if (progress.forgottenSequence === null) {
-    return Promise.resolve({ state: 'complete' });
-  }
-
-  return readForgetBackup(context.log.writer, progress.forgottenSequence);
+  return match(progress)
+    .returnType<Promise<ForgetBackupState>>()
+    .with({ stage: 'deleting' }, () => Promise.resolve({ state: 'pending' }))
+    .with({ stage: 'forgotten', sequence: null }, () => Promise.resolve({ state: 'complete' }))
+    .with({ stage: 'forgotten', sequence: P.number }, (forgotten) =>
+      readForgetBackup(context.log.writer, forgotten.sequence),
+    )
+    .exhaustive();
 }

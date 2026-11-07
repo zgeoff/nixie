@@ -43,7 +43,6 @@ test('it serves the memory store the test sets', async () => {
     pin: () => Promise.reject(new Error('no change runs here')),
     markSensitive: () => Promise.reject(new Error('no change runs here')),
     forget: () => Promise.reject(new Error('no change runs here')),
-    finishForget: () => Promise.reject(new Error('no change runs here')),
     forgetRetired: () => Promise.reject(new Error('no change runs here')),
     finishForgets: () => Promise.reject(new Error('no change runs here')),
     readItemIDMap: () => Promise.resolve(new Map()),

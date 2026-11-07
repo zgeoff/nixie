@@ -92,6 +92,17 @@ async function setupTest() {
     await app.stop(true);
   });
 
+  const offContext: APIContext = {
+    ...context,
+    settings: { ...defaultAPISettings, isBackupEnabled: false },
+  };
+
+  const offApp = createAPIApp(offContext, () => memory).listen({ hostname: '127.0.0.1', port: 0 });
+
+  stack.defer(async () => {
+    await offApp.stop(true);
+  });
+
   const laptop = await createDeviceSession(context, 'laptop');
 
   const respond = makeHostResponder({
@@ -110,6 +121,22 @@ async function setupTest() {
     gate: { runCall: (call) => call() },
   });
 
+  const respondOff = makeHostResponder({
+    context: offContext,
+    readMemory: () => memory,
+    seedWrittenSkills: () => Promise.resolve(),
+    readInForce: () => null,
+    wakeExports: () => {},
+    runReset: () => Promise.reject(new Error('no full reset runs in this suite')),
+    runConversationReset: () =>
+      runConversationReset({
+        context: offContext,
+        adapter: { id: 'stub', list: () => Promise.resolve([]) },
+        stopWork: () => Promise.resolve(),
+      }),
+    gate: { runCall: (call) => call() },
+  });
+
   const onPass = mock<(pass: BackupPass) => void>();
   const onError = mock<(error: unknown) => void>();
 
@@ -122,6 +149,10 @@ async function setupTest() {
     client: buildTestClient(`http://127.0.0.1:${app.server?.port}`, laptop.token),
     host: createORPCClient<HostContractClient>(
       new RPCLink({ url: 'http://localhost/rpc', fetch: respond }),
+    ),
+    offClient: buildTestClient(`http://127.0.0.1:${offApp.server?.port}`, laptop.token),
+    offHost: createORPCClient<HostContractClient>(
+      new RPCLink({ url: 'http://localhost/rpc', fetch: respondOff }),
     ),
     startSchedule: () => {
       const schedule = startBackupSchedule({
@@ -533,6 +564,47 @@ test('it reports a reset of the conversations as pending on its key backups, as 
     lastSequence: expect.any(Number),
     shreddedRecords: 0,
     backup: { state: 'pending' },
+  });
+});
+
+test('it reports a client forget as off on its key backups when backups are off', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+
+  const forgotten = await ctx.offClient.memory.forget({
+    clientActionID: crypto.randomUUID(),
+    itemID: item.itemID,
+    version: 1,
+  });
+
+  expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'off' } });
+});
+
+test('it reports a host forget as off on its key backups when backups are off, as a client forget', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const forgotten = await ctx.offHost.memory.items.forget({ itemID: item.itemID, version: 1 });
+
+  expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'off' } });
+});
+
+test('it reports a reset of the memories as off on its key backups when backups are off, as a forget', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const reset = await ctx.offHost.memory.items.forgetAll();
+
+  expect(reset).toStrictEqual({ itemIDs: [item.itemID], backup: { state: 'off' } });
+});
+
+test('it reports a reset of the conversations as off on its key backups when backups are off, as a forget', async () => {
+  const ctx = await setupTest();
+  const reset = await ctx.offHost.resetConversations();
+
+  expect(reset).toStrictEqual({
+    resetAt: expect.toBeValidDate(),
+    lastSequence: expect.any(Number),
+    shreddedRecords: 0,
+    backup: { state: 'off' },
   });
 });
 

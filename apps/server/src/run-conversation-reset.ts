@@ -61,8 +61,8 @@ export async function runConversationReset(
   invariant(logReset, 'the log wrote no log_reset record');
 
   const backup = await readForgetBackupState(options.context, {
-    pending: [],
-    forgottenSequence: logReset.sequence,
+    stage: 'forgotten',
+    sequence: logReset.sequence,
   });
 
   return { resetAt, lastSequence: invalidated.sequence, shreddedRecords, backup };

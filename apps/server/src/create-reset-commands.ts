@@ -54,7 +54,7 @@ async function runReset(host: HostTransport, flags: CLIFlags, io: CLIIO): Promis
 }
 
 const filteredBackupNote =
-  'The next backup job run removes the old keys from the key backups, and a backup copied by hand keeps them.';
+  'When backups are on, the next backup job run removes the old keys from the key backups. A backup copied by hand keeps them.';
 
 const memoriesWarning = [
   'A reset of the memories forgets every memory item, and keeps every record, the conversation and the device sessions.',

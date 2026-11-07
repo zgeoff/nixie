@@ -1,6 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { hostImplementer } from './host-implementer';
-import { readForgetBackupState } from './read-forget-backup-state';
+import { readForgetStatusReply } from './read-forget-status-reply';
 import { requireHostMemory } from './require-host-memory';
 import { toContractKind } from './to-contract-kind';
 import type { APIContext, ReadHostMemory } from './types';
@@ -55,11 +55,9 @@ export function createHostItemProcedures(context: APIContext, readMemory: ReadHo
       const memory = requireHostMemory(readMemory, options.errors.MEMORY_NOT_STARTED);
 
       const status = await memory.forget(options.input);
+      const reply = await readForgetStatusReply(context, [options.input.itemID], status);
 
-      return {
-        itemID: options.input.itemID,
-        backup: await readForgetBackupState(context, status),
-      };
+      return { itemID: options.input.itemID, backup: reply.backup };
     }),
 
     forgetAll: items.forgetAll.handler(async (options) => {
@@ -67,10 +65,11 @@ export function createHostItemProcedures(context: APIContext, readMemory: ReadHo
 
       const status = await memory.forgetAll();
 
-      return {
-        itemIDs: [...status.deleted, ...status.pending],
-        backup: await readForgetBackupState(context, status),
-      };
+      const itemIDs = [...status.deleted, ...status.pending];
+
+      const reply = await readForgetStatusReply(context, itemIDs, status);
+
+      return { itemIDs, backup: reply.backup };
     }),
 
     pin: items.pin.handler(async (options) => {

@@ -691,6 +691,22 @@ test('#memory.forgetRetired refuses a caller with no session, and deletes and re
   expect(ctx.cleanupSessions).not.toHaveBeenCalled();
 });
 
+test('#memory.readForgetStatus reports the key backups of an item no forget took as pending', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const item = await ctx.memory.remember({
+    text: 'Plays the cello on Thursdays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const status = await buildTestClient(ctx.url, laptop.token).memory.readForgetStatus({
+    itemIDs: [item.itemID],
+  });
+
+  expect(status).toStrictEqual({ deleted: [], pending: [], backup: { state: 'pending' } });
+});
+
 test('#memory.readForgetStatus refuses a caller with no session', async () => {
   const ctx = await setupTest();
 

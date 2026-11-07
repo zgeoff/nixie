@@ -236,8 +236,6 @@ export interface MemoryStore {
 
   readonly forget: (request: ForgetRequest) => Promise<void>;
 
-  readonly finishForget: (itemID: string) => Promise<void>;
-
   readonly forgetRetired: (request: RetiredForgetRequest) => Promise<void>;
 
   readonly forgetAll: (request: AllForgetRequest) => Promise<readonly string[]>;
