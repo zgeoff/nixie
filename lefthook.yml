@@ -21,7 +21,7 @@ pre-commit:
     - name: format-codemod
       glob: '*.{ts,tsx}'
       exclude:
-        - '.claude/hooks/skill-gate/**'
+        - '.claude/hooks/start.ts'
         - 'apps/web/src/routeTree.gen.ts'
         - 'apps/web/src/styled-system/**'
         - 'research/**'
