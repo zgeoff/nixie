@@ -1,4 +1,5 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
+import { connect as connectTCP } from 'node:net';
 import { connect } from 'node:tls';
 import { startSilentListener } from './start-silent-listener';
 
@@ -25,4 +26,26 @@ test('it records the bytes of a TLS handshake and never answers it', async () =>
 
   expect(answer).toBe('no answer');
   expect(listener.chunks).not.toStrictEqual([]);
+});
+
+test('it stops the listener when the test finishes', () => {
+  const listener = startSilentListener();
+
+  onTestFinished(async () => {
+    const socket = connectTCP({ host: '127.0.0.1', port: listener.port });
+    const outcome = Promise.withResolvers<string>();
+
+    socket.on('error', (error: NodeJS.ErrnoException) => {
+      outcome.resolve(error.code ?? '');
+    });
+
+    socket.on('connect', () => {
+      socket.destroy();
+      outcome.resolve('connected');
+    });
+
+    const code = await outcome.promise;
+
+    expect(code).toBe('ECONNREFUSED');
+  });
 });
