@@ -110,7 +110,12 @@ test.each<[string, Rule, string]>([
   [
     'deny-big-sends',
     { id: 'deny-big-sends', outcome: 'deny', tools: ['mail.send'], cel: 'size(args.to) > 20' },
-    '**Deny** `mail.send` when the CEL condition `size(args.to) > 20` holds.',
+    '**Deny** `mail.send`, whatever the CEL condition `size(args.to) > 20`.',
+  ],
+  [
+    'allow-small-sends',
+    { id: 'allow-small-sends', outcome: 'allow', tools: ['mail.send'], cel: 'size(args.to) < 3' },
+    '**Allow** no call, because nixie never evaluates the CEL condition `size(args.to) < 3`.',
   ],
 ])('it renders %s as one sentence', (_id, rule, sentence) => {
   expect(renderRule(rule)).toBe(sentence);

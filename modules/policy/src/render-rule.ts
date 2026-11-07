@@ -10,6 +10,10 @@ export function renderRule(rule: Rule): string {
     .with('deny', () => '**Deny**')
     .exhaustive();
 
+  if (rule.cel !== undefined && isAllow) {
+    return `${lead} no call, because nixie never evaluates the CEL condition ${renderCode(rule.cel)}.`;
+  }
+
   const subject =
     rule.tools === undefined ? 'a call' : joinOr(rule.tools.map((tool) => renderTool(tool)));
 
@@ -22,13 +26,17 @@ export function renderRule(rule: Rule): string {
     ...(rule.checks ?? []).map((check) => renderCheck(check)),
     ...(rule.destinations === undefined ? [] : [renderDestinations(rule.destinations, isAllow)]),
     ...(rule.sources === undefined ? [] : [renderSources(rule.sources, isAllow)]),
-    ...(rule.cel === undefined ? [] : [`the CEL condition ${renderCode(rule.cel)} holds`]),
   ];
 
   const when = conditions.length === 0 ? '' : ` when ${joinAnd(conditions)}`;
   const until = rule.expires === undefined ? '' : `, until ${rule.expires}`;
+  const cel = rule.cel === undefined ? '' : `, whatever the CEL condition ${renderCode(rule.cel)}`;
 
-  return `${lead} ${subject}${when}${until}.`;
+  return `${lead} ${subject}${when}${until}${cel}.`;
+}
+
+function renderCode(text: string): string {
+  return `\`${text}\``;
 }
 
 function joinOr(items: readonly string[]): string {
@@ -49,10 +57,6 @@ function renderTool(tool: string): string {
   return variant === '' || variant.includes('*')
     ? renderCode(tool)
     : `starting a task in ${variant}`;
-}
-
-function renderCode(text: string): string {
-  return `\`${text}\``;
 }
 
 function renderEffects(effects: readonly string[], isAllow: boolean): string {
