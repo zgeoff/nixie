@@ -2,6 +2,7 @@ import type { StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { RunStep, StepErrored, TasksContext } from '@heynixie/tasks';
 import type { HostFrame } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import { runClaimedTestStep } from './run-claimed-test-step';
 import { sendTestMessage } from './send-test-message';
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
@@ -27,13 +28,17 @@ export interface ConversationDriver {
   readonly send: (text: string) => Promise<TurnFrame>;
 
   readonly sendForStep: (text: string) => Promise<ConversationStep>;
+
+  readonly retryForStep: () => Promise<ConversationStep>;
 }
 
 export function buildConversationDriver(options: ConversationDriverOptions): ConversationDriver {
-  const sendForStep = async (text: string): Promise<ConversationStep> => {
+  const runForStep = async (
+    runStep: () => Promise<StepErrored | null>,
+  ): Promise<ConversationStep> => {
     const before = { turns: options.guest.turns.length, summaries: options.guest.summaries.length };
 
-    const error = await sendTestMessage(options.context, options.getRunStep(), text);
+    const error = await runStep();
 
     return {
       turns: options.guest.turns.slice(before.turns),
@@ -41,6 +46,9 @@ export function buildConversationDriver(options: ConversationDriverOptions): Con
       error,
     };
   };
+
+  const sendForStep = (text: string): Promise<ConversationStep> =>
+    runForStep(() => sendTestMessage(options.context, options.getRunStep(), text));
 
   return {
     send: async (text) => {
@@ -59,5 +67,6 @@ export function buildConversationDriver(options: ConversationDriverOptions): Con
       return turn;
     },
     sendForStep,
+    retryForStep: () => runForStep(() => runClaimedTestStep(options.context, options.getRunStep())),
   };
 }

@@ -1,5 +1,6 @@
 import type { RunStep, StepErrored, TasksContext } from '@heynixie/tasks';
-import { claimTask, runTaskStep, writeInboxRecords } from '@heynixie/tasks';
+import { writeInboxRecords } from '@heynixie/tasks';
+import { runClaimedTestStep } from './run-claimed-test-step';
 
 export async function sendTestMessage(
   context: TasksContext,
@@ -15,17 +16,5 @@ export async function sendTestMessage(
     },
   ]);
 
-  const claim = await claimTask(context, { holder: 'runner-a', leaseMs: 60_000 });
-
-  if (claim === null) {
-    throw new Error('the conversation had no work to claim');
-  }
-
-  return runTaskStep(context, claim, {
-    runStep,
-    leaseMs: 60_000,
-    maxStepErrors: 1,
-    retryDelayMs: 30_000,
-    maxRetryDelayMs: 300_000,
-  });
+  return runClaimedTestStep(context, runStep);
 }

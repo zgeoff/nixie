@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { buildConversationDriver } from './build-conversation-driver';
 import { startTestConversation } from './start-test-conversation';
@@ -94,6 +94,32 @@ test('it fails a send whose step errored after it sent a turn, with the step err
 
   expect(failure.cause).toMatchObject({
     message: 'the conversation turn passed the context window: prompt_too_long',
+  });
+});
+
+test('it retries a failed step once its backoff passed, and returns the turn the retry sent', async () => {
+  const ctx = await setupTest();
+  const started = await startTestConversation(ctx.server, { context: ctx.server.context });
+
+  const conversation = buildConversationDriver({
+    context: ctx.server.context,
+    guest: ctx.server.guest,
+    getRunStep: () => started.runner.runStep,
+  });
+
+  ctx.server.guest.addReplies({ failure: 'the guest dropped its socket' }, { text: 'Two.' });
+
+  await conversation.sendForStep('How many sugars?');
+
+  setSystemTime(new Date(Date.now() + 60_000));
+  onTestFinished(() => setSystemTime());
+
+  const retry = await conversation.retryForStep();
+
+  expect(retry).toMatchObject({
+    turns: [{ type: 'turn', input: [{ text: expect.toEndWith('How many sugars?') }] }],
+    summaries: [],
+    error: null,
   });
 });
 

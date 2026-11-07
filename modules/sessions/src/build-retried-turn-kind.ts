@@ -16,27 +16,79 @@ export function buildRetriedTurnKind(
   return {
     name: 'retried_turn',
     read: async (range) => {
-      const records = await readRecords(log, {
-        afterSequence: range.after,
-        beforeSequence: range.through + 1,
-        thread: conversationTaskID,
-        kinds: ['task.step_errored'],
-        limit: readLimit,
-      });
+      const [failures, earlier] = await Promise.all([
+        readRecords(log, {
+          afterSequence: range.after,
+          beforeSequence: range.through + 1,
+          thread: conversationTaskID,
+          kinds: ['task.step_errored'],
+          limit: readLimit,
+        }),
+        readRecords(log, {
+          afterSequence: 0,
+          beforeSequence: range.after + 1,
+          thread: conversationTaskID,
+          kinds: ['task.step_errored'],
+          limit: 1,
+          order: 'newest',
+        }),
+      ]);
 
-      return records.flatMap((entry) => {
-        const payload = taskStepErroredCodec.tryDecodePartial(entry.record.payload);
-
-        return payload?.nextState === 'ready'
-          ? [buildRetriedTurn(entry.record, isModelAPIReason(payload.reason))]
-          : [];
-      });
+      return collectRetriedTurns(
+        failures.map((entry) => entry.record),
+        earlier[0]?.record ?? null,
+      );
     },
     render: (detail) =>
       detail.message === null
         ? 'One of your turns failed and was retried.'
         : `One of your turns failed and was retried: "${detail.message}".`,
   };
+}
+
+function collectRetriedTurns(
+  failures: readonly LogRecord[],
+  earlier: LogRecord | null,
+): NotedEvent<RetriedTurn>[] {
+  const decoded = failures.map((record) => ({
+    record,
+    payload: taskStepErroredCodec.tryDecodePartial(record.payload),
+  }));
+
+  if (!isRepeatedFailure(decoded, earlier)) {
+    return [];
+  }
+
+  return decoded.flatMap((failure) =>
+    failure.payload?.nextState === 'ready'
+      ? [buildRetriedTurn(failure.record, isModelAPIReason(failure.payload.reason))]
+      : [],
+  );
+}
+
+interface DecodedFailure {
+  readonly record: LogRecord;
+  readonly payload: ReturnType<typeof taskStepErroredCodec.tryDecodePartial>;
+}
+
+const repeatWindowMs = 60 * 60 * 1000;
+
+function isRepeatedFailure(
+  failures: readonly DecodedFailure[],
+  earlier: LogRecord | null,
+): boolean {
+  const [first] = failures;
+
+  if (first === undefined) {
+    return false;
+  }
+
+  return (
+    failures.length > 1 ||
+    (first.payload?.errors ?? 1) > 1 ||
+    (earlier !== null &&
+      first.record.recordedAt.getTime() - earlier.recordedAt.getTime() <= repeatWindowMs)
+  );
 }
 
 function buildRetriedTurn(record: LogRecord, isTextHidden: boolean): NotedEvent<RetriedTurn> {
