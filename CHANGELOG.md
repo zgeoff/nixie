@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.68.0](https://github.com/zgeoff/nixie/compare/v0.67.0...v0.68.0) (2026-11-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **models:** refuse a role or task whose harness lacks what it needs ([#896](https://github.com/zgeoff/nixie/issues/896))
+* **models:** a models.profiles entry needs harness: agent-sdk.
+
+### Features
+
+* **connectors:** show the start of an off-site link's path in its tag ([#913](https://github.com/zgeoff/nixie/issues/913)) ([1e539f7](https://github.com/zgeoff/nixie/commit/1e539f798967c008228d0bf0ee066f8497c34943))
+* **fetch:** read plain http pages, trying https first ([#904](https://github.com/zgeoff/nixie/issues/904)) ([f73751a](https://github.com/zgeoff/nixie/commit/f73751a76c57a40aa471b371c858c77b5d23003d))
+* **models:** name the harness that runs each model profile's turns ([#895](https://github.com/zgeoff/nixie/issues/895)) ([1531dea](https://github.com/zgeoff/nixie/commit/1531dea439dc65d756af34dfb3858ef36327aee1))
+* **models:** refuse a role or task whose harness lacks what it needs ([#896](https://github.com/zgeoff/nixie/issues/896)) ([12ebe65](https://github.com/zgeoff/nixie/commit/12ebe656a1adba145a92c5a072d6e87e08f4d252))
+
+
+### Bug Fixes
+
+* **pulumi-k8s:** never retry a failed backup job run ([#909](https://github.com/zgeoff/nixie/issues/909)) ([5ced2c1](https://github.com/zgeoff/nixie/commit/5ced2c152354d1916ea85f81e4d3f7af8bf64ce5))
+* **sessions:** keep a turn failure its retry recovers out of the note ([#914](https://github.com/zgeoff/nixie/issues/914)) ([4d783b6](https://github.com/zgeoff/nixie/commit/4d783b6b720cc7de856fef80d3dbb48eb01b4fca))
+
 ## [0.67.0](https://github.com/zgeoff/nixie/compare/v0.66.0...v0.67.0) (2026-11-06)
 
 
