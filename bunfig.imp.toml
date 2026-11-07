@@ -1,0 +1,4 @@
+# The imp tests call a real impd, so this config leaves out the root's web preload, whose mock server
+# and DOM take over fetch and WebSocket. `bun run test:imp` passes it to rig's imp lane.
+[test]
+preload = ["./libs/testing/src/define-test-build.ts", "@zgeoff/bun-test-extended"]

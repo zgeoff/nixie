@@ -4,6 +4,8 @@
   // paths, so no import reaches their files
   "ignore": [".claude/**", "guests/conversation/src/sdk-contract/mods/**"],
   "ignoreWorkspaces": ["research/**"],
+  // the Bun plugin takes its test files from a `bun test` script, and rig runs the root's tests
+  "bun": { "entry": ["**/*.test.{ts,tsx}"] },
   // the shared oxlint config loads the plugin, and the synced skill-gate hook in .claude/ imports
   // the package, so knip sees neither
   "ignoreDependencies": ["@stylistic/eslint-plugin", "@zgeoff/skill-gate"],
@@ -45,15 +47,16 @@
     "guests/conversation": { "entry": ["src/main.ts", "src/check.ts"] },
     // an eval run is a script a contributor runs by its path
     "evals": { "entry": ["*/run-*-eval.ts"] },
-    // TanStack Router loads each route file by its path, Vite loads the PostCSS config by its
-    // name, and the root test:browser script reaches the lane command and its preload through the
-    // memory cap script, which knip does not read, so no import reaches them
-    "apps/web": {
+    // TanStack Router loads each route file by its path, and Vite loads the PostCSS config by its
+    // name, so no import reaches them
+    "apps/web": { "entry": ["src/routes/**/*.tsx", "postcss.config.js"] },
+    // rig loads its config and the lane start hooks by path, and repo-sync delivers the
+    // related-tests runner that test:related replaced
+    ".": {
       "entry": [
-        "src/routes/**/*.tsx",
-        "postcss.config.js",
-        "src/test-utils/run-browser-lane.ts",
-        "src/test-utils/start-browser.ts"
+        "rig.config.ts",
+        "scripts/test-utils/prepare-*-lane.ts",
+        "scripts/run-related-tests.ts"
       ]
     }
   }

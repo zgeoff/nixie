@@ -18,7 +18,7 @@ async function setupTest() {
   // The web preload's mock server and DOM replace fetch and WebSocket, so no call would reach impd.
   invariant(
     !('happyDOM' in globalThis),
-    'the web test preload is loaded; run the file from adapters/sandbox-imp, whose bunfig leaves it out',
+    'the web test preload is loaded; run the file through `bun run test:imp`, whose bunfig leaves it out',
   );
 
   const config = parseImpConfig({

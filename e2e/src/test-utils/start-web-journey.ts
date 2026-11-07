@@ -1,6 +1,6 @@
 import { onTestFinished } from 'bun:test';
 import { startSpawnedNixie } from '@heynixie/server/test-utils';
-import { createBrowserView, startBuiltWeb, startFrontProxy } from '@heynixie/web/test-utils';
+import { startBuiltWeb, startFrontProxy } from '@heynixie/web/test-utils';
 import { startAPIRelay } from './start-api-relay';
 
 type SpawnedNixie = Awaited<ReturnType<typeof startSpawnedNixie>>;
@@ -41,7 +41,8 @@ export async function startWebJourney(): Promise<WebJourney> {
   const web = await startBuiltWeb(relay.url);
 
   const app = startFrontProxy({ apiURL: relay.url, webURL: web.url });
-  const view = createBrowserView();
+
+  const view = new Bun.WebView({ backend: 'chrome' });
 
   onTestFinished(() => {
     view.close();
