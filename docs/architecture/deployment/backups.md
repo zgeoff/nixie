@@ -114,6 +114,29 @@ failed state keeps the forget open, and the next scheduled set covers the forget
 backup interval. An abandoned set leaves the forget due, so the next pass stages a new forget set. A
 set that never gets its receipt keeps the forget pending.
 
+## Backup health
+
+nixie judges its backups from the receipts it records, because the backup job serves no health
+endpoint. Each pass, after it records the receipts, nixie raises a notice for each set since the
+newest published set that needs one:
+
+| Set                                                         | Notice  |
+| ----------------------------------------------------------- | ------- |
+| failed, by its receipt or by nixie's refusal of the receipt | failed  |
+| staged at least one backup interval ago, with no receipt    | missing |
+
+nixie keeps each notice in a table keyed by its set and its cause, so a set raises each cause once,
+across restarts, and a set that goes missing and then fails raises both. A set older than the newest
+published set raises no notice, because that publish shows the backups work again. nixie logs each
+notice as a warning. The client reads the newest notice since the newest published set once a
+minute, and shows it above every signed-in page until a newer set publishes.
+
+Readiness carries backups as a [dependency part](server.md#health). The part turns unready once no
+set has published within twice the backup interval, counted from the newest published receipt, or
+from the backup schedule's start while no set has published. Its details give the age in seconds of
+the newest set that is not abandoned or still staging, and the time nixie recorded the newest
+published receipt. The part is unready until the backup schedule starts, and ready with backups off.
+
 ## Formats
 
 The manifest, the receipt and the staging layout live in the wire library, because both programs
