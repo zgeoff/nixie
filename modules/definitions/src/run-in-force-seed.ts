@@ -5,10 +5,12 @@ import type { Transaction } from 'kysely';
 import { z } from 'zod';
 import { addSeededRules } from './add-seeded-rules';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
+import { buildRuleRevisions } from './build-rule-revisions';
 import { buildRuleSeedPlan } from './build-rule-seed-plan';
 import { buildSkillOverlay } from './build-skill-overlay';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import { readDefinitionsSkills } from './read-definitions-skills';
+import { readRuleProposalChange } from './read-rule-proposal-change';
 import { readRuleStore } from './read-rule-store';
 import { readWrittenSkills } from './read-written-skills';
 import type { SeedResult } from './run-seed';
@@ -45,9 +47,14 @@ export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult>
       runtime: store.runtime,
     });
 
+    const revisions = buildRuleRevisions(store.current, rules.inForce);
+    const now = options.log.writer.clock.now();
+
+    const proposals = await readRuleProposalChange(tx, rules.held, now);
+
     const built = buildDefinitionsSnapshot({
       persona: inForce.persona,
-      policy: addSeededRules(options.buildPolicy(inForce.prompts), rules.inForce),
+      policy: addSeededRules(options.buildPolicy(inForce.prompts), revisions.inForce),
       prompts: inForce.prompts,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
@@ -56,12 +63,14 @@ export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult>
     await writeAdoptedSkills(tx, {
       adopted: overlay.adopted,
       skills: definitions.skills,
-      at: options.log.writer.clock.now(),
+      at: now,
     });
 
     if (
       overlay.adopted.length === 0 &&
       rules.adopted.length === 0 &&
+      proposals.withdrawn === null &&
+      proposals.proposed === null &&
       built.snapshotHash === inForce.snapshotHash
     ) {
       return { status: 'unchanged', inForce };
@@ -85,10 +94,10 @@ export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult>
       rules: {
         plan: rules,
         definitions: null,
-        current: store.current,
-        at: options.log.writer.clock.now(),
+        revisions,
+        at: now,
       },
-      proposals: { withdrawn: null, proposed: null },
+      proposals,
       built,
       previous: inForce,
     });

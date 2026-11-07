@@ -9,6 +9,7 @@ import { createPathSource } from './create-path-source';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import { readResetSeed } from './read-reset-seed';
+import { readRuleProposals } from './read-rule-proposals';
 import { readRulesInForce } from './read-rules-in-force';
 import { ruleStoreTables } from './rule-store-tables';
 import { runInForceSeed } from './run-in-force-seed';
@@ -548,4 +549,50 @@ test('it keeps the rules in force through a reset that keeps the rule store', as
   const rules = await readRulesInForce(ctx.writer.db);
 
   expect(rules).toStrictEqual(before);
+});
+
+test('it proposes a pending widening again at the first seed after a reset', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'rules'));
+
+  await Promise.all([
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n'),
+    writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
+    writeFile(
+      join(ctx.root, 'rules', 'web.yaml'),
+      'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
+    ),
+  ]);
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await runLogReset(ctx.log, {
+    keptTables: ruleStoreTables,
+    readKept: (tx) => readResetSeed(tx),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const proposals = await readRuleProposals(ctx.writer.db);
+
+  expect(
+    proposals.map((entry) => [
+      entry.outcome,
+      entry.proposal.changes.map((change) => change.ruleID),
+    ]),
+  ).toStrictEqual([[null, ['allow-web']]]);
 });

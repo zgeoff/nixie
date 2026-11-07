@@ -4,6 +4,7 @@ import type { PromptOverrides } from '@heynixie/prompts';
 import { addSeededRules } from './add-seeded-rules';
 import { buildDefinitionRule } from './build-definition-rule';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
+import { buildRuleRevisions } from './build-rule-revisions';
 import { buildRuleSeedPlan } from './build-rule-seed-plan';
 import { buildSkillOverlay } from './build-skill-overlay';
 import { parseDefinitions } from './parse-definitions';
@@ -71,9 +72,14 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       runtime: store.runtime,
     });
 
+    const revisions = buildRuleRevisions(store.current, rules.inForce);
+    const now = options.log.writer.clock.now();
+
+    const proposals = await readRuleProposalChange(tx, rules.held, now);
+
     const built = buildDefinitionsSnapshot({
       persona: read.parsed.persona,
-      policy: addSeededRules(options.buildPolicy(read.parsed.prompts), rules.inForce),
+      policy: addSeededRules(options.buildPolicy(read.parsed.prompts), revisions.inForce),
       prompts: read.parsed.prompts,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
@@ -82,13 +88,15 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     await writeAdoptedSkills(tx, {
       adopted: overlay.adopted,
       skills: read.parsed.skills,
-      at: options.log.writer.clock.now(),
+      at: now,
     });
 
     if (
       inForce !== null &&
       overlay.adopted.length === 0 &&
       rules.adopted.length === 0 &&
+      proposals.withdrawn === null &&
+      proposals.proposed === null &&
       isSameSeed(inForce, { ...read, built, sourceID: options.source.id })
     ) {
       return { status: 'unchanged', inForce };
@@ -110,10 +118,10 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       rules: {
         plan: rules,
         definitions,
-        current: store.current,
-        at: options.log.writer.clock.now(),
+        revisions,
+        at: now,
       },
-      proposals: await readRuleProposalChange(tx, rules.held, options.log.writer.clock.now()),
+      proposals,
       built,
       previous: inForce,
     });

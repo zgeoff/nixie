@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter } from '@heynixie/log';
 import { createPathSource } from './create-path-source';
+import { readRuleProposals } from './read-rule-proposals';
 import { readRulesInForce } from './read-rules-in-force';
 import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
@@ -172,4 +173,78 @@ test('it puts the latest of two runtime changes to one rule in force', async () 
   expect(
     rules.map((entry) => [entry.revision, entry.changeID, entry.rule.rule.outcome]),
   ).toStrictEqual([[2, second.changeID, 'ask']]);
+});
+
+test('it gives a rule a new revision when a runtime change brings back an earlier version', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await ctx.seed();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'ask-mail',
+    rule: { outcome: 'deny', tools: ['mail.send'] },
+    changedBy: 'owner',
+    reason: 'No mail this week.',
+  });
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'ask-mail',
+    rule: { outcome: 'ask', tools: ['mail.send'] },
+    changedBy: 'owner',
+    reason: 'Mail can go out again.',
+  });
+
+  const rules = await readRulesInForce(ctx.log.writer.db);
+
+  expect(rules.map((entry) => [entry.revision, entry.origin, entry.changeID])).toStrictEqual([
+    [3, 'definitions', null],
+  ]);
+});
+
+test('it proposes again without a widening that a runtime change put in force', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
+  );
+
+  await ctx.seed();
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\nallow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
+  );
+
+  await ctx.seed();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'ask-mail',
+    rule: { outcome: 'ask', tools: ['mail.send'] },
+    changedBy: 'owner',
+    reason: 'Ask before mail, as the repo says.',
+  });
+
+  const proposals = await readRuleProposals(ctx.log.writer.db);
+
+  expect(
+    proposals.map((entry) => [
+      entry.outcome,
+      entry.proposal.changes.map((change) => change.ruleID),
+    ]),
+  ).toStrictEqual([
+    ['withdrawn', ['allow-web', 'ask-mail']],
+    [null, ['allow-web']],
+  ]);
 });

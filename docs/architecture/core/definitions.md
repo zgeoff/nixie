@@ -226,12 +226,13 @@ sorted and without duplicates. Every object serialises as canonical JSON, with s
 whitespace, so the same definitions always give the same bytes.
 
 The policy holds the fixed rule, the rules in force and every tool declaration in the build's
-registry. A rule enters as its canonical form, so an edit to a rule changes the snapshot hash. When
-a rule last decided a call lives in its own table and never enters the hash. The fixed rule decides
-by a tool's declared effects ([the decision point](../policy/decision-point.md)), so a replay needs
-the declarations that were in force. A release that changes a tool declaration therefore changes the
-snapshot hash over the same files. A probe token follows the source alone, so the change enters with
-the next seed the release runs, which compares the snapshot hash as well as the revision.
+registry. A rule enters with its revision, as [rules in force](../policy/rules.md#rules-in-force)
+describes, so an edit to a rule changes the snapshot hash. When a rule last decided a call lives in
+its own table and never enters the hash. The fixed rule decides by a tool's declared effects
+([the decision point](../policy/decision-point.md)), so a replay needs the declarations that were in
+force. A release that changes a tool declaration therefore changes the snapshot hash over the same
+files. A probe token follows the source alone, so the change enters with the next seed the release
+runs, which compares the snapshot hash as well as the revision.
 
 ## Seeding
 

@@ -116,9 +116,11 @@ A seed compares each rule in the definitions with its seeded version through
 lists it. An edit that widens waits: the seed gathers every widening into one rule change proposal,
 recorded beside the seed record, and the seeded version stays in force. The first seed of a rules
 file follows the same check, so its denies and asks apply and its allows wait for one approval. When
-a later seed holds other widenings, it withdraws the pending proposal and proposes again. An
-approval applies each widened version as seeded. A rejection and a lapse after the shared proposal
-lapse time leave the seeded version in force until the definitions change again.
+a later seed, including a seed of the definitions in force, holds other widenings, it withdraws the
+pending proposal and proposes again. An approval applies each widened version as seeded. After a
+rejection or a lapse, the seeded version stays in force, and nixie asks again only once the set of
+widenings changes. A log reset removes the proposal records, so the first seed after it proposes
+again.
 
 A runtime change stays in force over the seeded version and the definitions' version. It records the
 definitions' version that it changed, its base, so the store tells whether the definitions moved
@@ -137,3 +139,6 @@ definitions in force, as [skills that nixie wrote](../core/definitions.md#skills
 do. Each rule has a revision, which goes up by one each time its version in force changes, and a
 decision names the rule and the revision that decided it. A log reset keeps the rule store, and the
 reset seed restores the rules of the snapshot in force.
+
+The snapshot hash covers each rule in force with its revision, its origin and its runtime change, so
+each snapshot holds the revision of every rule in force.

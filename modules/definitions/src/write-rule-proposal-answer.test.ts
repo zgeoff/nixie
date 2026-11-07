@@ -248,3 +248,35 @@ test('it refuses an approval of a rule change proposal that a later seed withdre
 
   expect(result).toMatchObject({ status: 'refused', code: 'CLOSED' });
 });
+
+test('it asks again about a widening you rejected only once the definitions change it', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'rules', 'web.yaml'),
+    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
+  );
+
+  await ctx.seed();
+
+  const proposalID = await ctx.readProposalID();
+
+  await writeRuleProposalAnswer(ctx.context, { answer: 'reject', proposalID, reason: 'Not yet.' });
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nShort replies.\n');
+
+  await ctx.seed();
+
+  await writeFile(
+    join(ctx.root, 'rules', 'web.yaml'),
+    'allow-web:\n  outcome: allow\n  tools: [web.read]\n',
+  );
+
+  await ctx.seed();
+
+  const proposals = await readRuleProposals(ctx.log.writer.db);
+
+  expect(proposals.map((entry) => entry.outcome)).toStrictEqual(['rejected', null]);
+});

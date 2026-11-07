@@ -1,20 +1,14 @@
 import type { Transaction } from 'kysely';
-import type { PlannedRule, RuleSeedPlan } from './build-rule-seed-plan';
-import type { CurrentRule } from './read-rule-store';
-import type {
-  DefinitionRule,
-  DefinitionsTables,
-  RuleInForce,
-  RuleOrigin,
-  StoredRule,
-} from './types';
+import type { RuleRevisions } from './build-rule-revisions';
+import type { RuleSeedPlan } from './build-rule-seed-plan';
+import type { DefinitionRule, DefinitionsTables, RuleInForce, StoredRule } from './types';
 import { writeRuntimeRuleState } from './write-runtime-rule-state';
 
 export interface RuleStoreWrite {
   readonly plan: RuleSeedPlan;
 
   readonly definitions: readonly DefinitionRule[] | null;
-  readonly current: ReadonlyMap<string, CurrentRule>;
+  readonly revisions: RuleRevisions;
   readonly at: number;
 }
 
@@ -129,62 +123,39 @@ async function writeRuleRevisions(
   write: RuleStoreWrite,
 ): Promise<WrittenRules> {
   const tables = tx.$extendTables<DefinitionsTables>();
-
-  const planned = new Map(write.plan.inForce.map((entry) => [entry.rule.rule.id, entry]));
-
-  const ruleIDs = [...new Set([...write.current.keys(), ...planned.keys()])].toSorted();
-  const inForce: RuleInForce[] = [];
   const revisions: RuleRevision[] = [];
 
-  for (const ruleID of ruleIDs) {
-    const entry = planned.get(ruleID) ?? null;
-    const current = write.current.get(ruleID) ?? null;
-    const hash = entry?.rule.hash ?? null;
-    const origin = pickRuleOrigin(entry, current);
-    const isChanged = (current?.hash ?? null) !== hash;
-    const revision = isChanged ? (current?.revision ?? 0) + 1 : (current?.revision ?? 0);
+  for (const entry of write.revisions.entries) {
+    const row = {
+      revision: entry.revision,
+      rule_hash: entry.hash,
+      origin: entry.origin,
+      updated_at: write.at,
+    };
 
-    if (current === null) {
+    if (entry.current === null) {
       await tables
         .insertInto('rules')
-        .values({
-          rule_id: ruleID,
-          revision,
-          rule_hash: hash,
-          origin,
-          created_at: write.at,
-          updated_at: write.at,
-        })
+        .values({ ...row, rule_id: entry.ruleID, created_at: write.at })
         .execute();
-    } else if (isChanged || current.origin !== origin) {
-      await tables
-        .updateTable('rules')
-        .set({ revision, rule_hash: hash, origin, updated_at: write.at })
-        .where('rule_id', '=', ruleID)
-        .execute();
+    } else if (entry.isChanged || entry.current.origin !== entry.origin) {
+      await tables.updateTable('rules').set(row).where('rule_id', '=', entry.ruleID).execute();
     }
 
-    if (isChanged) {
+    if (entry.isChanged) {
       await tables
         .insertInto('rule_revisions')
-        .values({ rule_id: ruleID, revision, rule_hash: hash, created_at: write.at })
+        .values({
+          rule_id: entry.ruleID,
+          revision: entry.revision,
+          rule_hash: entry.hash,
+          created_at: write.at,
+        })
         .execute();
 
-      revisions.push({ ruleID, revision, hash });
-    }
-
-    if (entry !== null) {
-      inForce.push({ ruleID, revision, rule: entry.rule, origin, changeID: entry.changeID });
+      revisions.push({ ruleID: entry.ruleID, revision: entry.revision, hash: entry.hash });
     }
   }
 
-  return { inForce, revisions };
-}
-
-function pickRuleOrigin(entry: PlannedRule | null, current: CurrentRule | null): RuleOrigin {
-  if (entry === null) {
-    return current?.origin ?? 'definitions';
-  }
-
-  return entry.changeID === null ? 'definitions' : 'nixie';
+  return { inForce: write.revisions.inForce, revisions };
 }
