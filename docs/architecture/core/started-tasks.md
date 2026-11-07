@@ -147,6 +147,12 @@ and writes the same two records, with the counts it reached. The step sleeps the
 with work left, and its commit pauses the task. A step whose guest fails after its calls reach the
 limit asks for the pause too, so the step's retry waits for a raise and spends nothing more.
 
+An interrupted turn ends at its last chain entry, with no `end_turn` from the model, so its work is
+not done, and a task with no unread message would wait after a raise. When the dollar limit cuts
+such a turn, the pause also writes a `task.limit_cut` record into the task's own inbox. That record
+stays unread past the step's commit, so the task pauses in the ready state. After a raise, the next
+step reads it as a system message that tells the model to continue the work where it stopped.
+
 A `task.limit_reached` record holds the task's whole count at its turn's end, with the key of its
 step, and commits before that step's commit. When the step's commit also carries a turn record, the
 turn record counts the turn's spend. A turn that failed, or a step that stopped before its commit,

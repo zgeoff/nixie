@@ -29,6 +29,7 @@ export async function seedHeldTask(context: TasksContext, seed: HeldTaskSeed): P
     startedBy: seed.starter.lease.workID,
     used: seed.limits,
     limits: seed.limits,
+    isWorkCut: false,
   });
 
   await writeStepCommit(context, claim, { next: 'continue', records: [], acknowledged: [] });

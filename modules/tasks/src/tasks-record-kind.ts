@@ -15,6 +15,7 @@ export type TasksRecordKind =
   | 'task.interrupted'
   | 'task.limit_reached'
   | 'task.limit_notice'
+  | 'task.limit_cut'
   | 'task.limits_raised'
   | 'task.wake'
   | 'task_message'

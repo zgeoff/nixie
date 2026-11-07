@@ -104,6 +104,25 @@ test("it reports a reply's model call usage before the reply", async () => {
   ]);
 });
 
+test.each([
+  ['the stop reason a reply sets', { text: 'PEAR', stopReason: 'tool_use' }, 'tool_use'],
+  ['end_turn for a reply that sets none', { text: 'PEAR' }, 'end_turn'],
+])('it ends a turn with %s', async (_case, reply, stopReason) => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies(reply);
+
+  const answered = await runGuestFrame(
+    sandbox,
+    buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Say a fruit.' }],
+    }),
+  );
+
+  expect(answered.frames.at(-1)).toMatchObject({ type: 'ended', stopReason });
+});
+
 test('it replies to a sandbox of a kind with the replies queued for that kind before the shared ones', async () => {
   const ctx = await setupTest();
   const conversation = await ctx.stub.adapter.create(ctx.spec);

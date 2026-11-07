@@ -44,6 +44,7 @@ import type { CallBudget } from './create-call-budget';
 import { createCallBudget } from './create-call-budget';
 import { createWorkerSandbox } from './create-worker-sandbox';
 import { getHarnessImage } from './get-harness-image';
+import { hasFinishedTurn } from './has-finished-turn';
 import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
@@ -402,6 +403,7 @@ async function runGuardedStep(
       startedBy: run.startedBy,
       used,
       limits: run.limits,
+      isWorkCut: false,
     });
 
     if (plan.isImpReleased && held !== undefined) {
@@ -463,6 +465,7 @@ async function runTaskTurn(
     isBudgetReached: budget.signal.aborted,
     spentDollars: budget.getSpentDollars(),
     endedTurns: ended.result === null ? 0 : countEndedTurns(ended.result.records),
+    hasFinishedTurn: ended.result !== null && hasFinishedTurn(ended.result.records),
     next: ended.result?.next ?? null,
   });
 
@@ -473,6 +476,7 @@ async function runTaskTurn(
       startedBy: run.startedBy,
       used: plan.reached,
       limits: run.limits,
+      isWorkCut: plan.isWorkCut,
     });
   }
 
