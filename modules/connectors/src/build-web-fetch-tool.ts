@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { parseLinkMarks } from '@heynixie/wire';
 import { readLinkTarget } from './read-link-target';
-import type { LinkedText } from './render-linked-text';
+import type { LinkedText, LinkedTextLimits } from './render-linked-text';
 import { renderLinkedText } from './render-linked-text';
 import type { LinkNumbering } from './write-link-numbers';
 import { writeLinkNumbers } from './write-link-numbers';
@@ -43,8 +43,11 @@ export interface WebFetchToolOptions {
   // the log whose writer holds the link store
   readonly log: Pick<Log, 'writer'>;
 
-  // the most bytes of text a result holds once its links read as IDs and hosts
+  // the most bytes of text a result holds once its links read as their tags
   readonly textBytes: number;
+
+  // the most characters of an off-site link's path that its tag shows
+  readonly linkPathChars: number;
 }
 
 export function buildWebFetchTool(
@@ -59,8 +62,10 @@ export function buildWebFetchTool(
       'Fetches one public web page and returns its final URL, status code, content type and ' +
       'text. An http URL is tried over https first, and the final URL shows the scheme that ' +
       'answered. The text is the readable text of an HTML page, the text of another text type, and no text for ' +
-      'a binary type. Each link in the text reads as its ID, such as [L12], with its host when ' +
-      'it leaves the site, such as [L40 · example.org]; pass the ID as link to fetch that page. ' +
+      'a binary type. Each link in the text reads as its ID, such as [L12]. A link to another ' +
+      'host shows that host and the start of its path after the ID, such as ' +
+      '[L40 · example.org/docs/…], and never its query string. Pass the ID as link to fetch ' +
+      'that page. ' +
       'An ID lasts for this session only. isTruncated is true when the page passed a size ' +
       "limit. blocked is null, or the reason the site's bot protection answered in place of " +
       'the page, which no retry passes.',
@@ -102,7 +107,8 @@ export function buildWebFetchTool(
           : await writeLinkedText(
               log,
               { url: reply.url, text: reply.text, links: reply.links },
-              { ...session, textBytes: options.textBytes },
+              session,
+              { textBytes: options.textBytes, linkPathChars: options.linkPathChars },
             );
 
       if (linked === sessionEnded) {
@@ -193,9 +199,7 @@ function pickTarget(input: JSONObject): Target {
 }
 
 function parseLinkID(link: string): number | null {
-  const digits = /^\[?L(?<number>\d{1,15})(?: · [^\]]*)?\]?$/iu.exec(link.trim())?.groups?.[
-    'number'
-  ];
+  const digits = /^\[?L(?<number>\d{1,15})(?: · .*)?\]?$/iu.exec(link.trim())?.groups?.['number'];
 
   return digits === undefined ? null : Number(digits);
 }
@@ -210,7 +214,8 @@ interface MarkedPage {
 async function writeLinkedText(
   log: Pick<Log, 'writer'>,
   page: MarkedPage,
-  session: LinkSession & { readonly textBytes: number },
+  session: LinkSession,
+  limits: LinkedTextLimits,
 ): Promise<LinkedText | typeof sessionEnded> {
   const parts = parseLinkMarks(page.text);
 
@@ -229,9 +234,5 @@ async function writeLinkedText(
 
   return numbers === null
     ? sessionEnded
-    : renderLinkedText(
-        parts,
-        { pageURL: page.url, targets: page.links, numbers },
-        session.textBytes,
-      );
+    : renderLinkedText(parts, { pageURL: page.url, targets: page.links, numbers }, limits);
 }

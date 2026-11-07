@@ -5,6 +5,7 @@ import { defaultFetchTextBytes } from '@heynixie/wire';
 export interface WebFetchConfig {
   readonly limits: FetchLimits;
   readonly sandboxLimits: SandboxLimits;
+  readonly linkPathChars: number;
 }
 
 export const webFetchDefaults: WebFetchConfig = {
@@ -15,4 +16,5 @@ export const webFetchDefaults: WebFetchConfig = {
     textBytes: defaultFetchTextBytes,
   },
   sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+  linkPathChars: 24,
 };

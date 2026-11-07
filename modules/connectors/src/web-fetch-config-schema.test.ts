@@ -7,6 +7,7 @@ test('it takes every default when the section is empty', () => {
   expect(result.data).toStrictEqual({
     limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 20_000 },
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+    linkPathChars: 24,
   });
 });
 
@@ -16,11 +17,13 @@ test('it takes the limits the file names', () => {
     timeout_ms: 5000,
     redirects: 0,
     text_bytes: 512,
+    link_path_chars: 12,
   });
 
   expect(result.data).toStrictEqual({
     limits: { bodyBytes: 1024, timeoutMs: 5000, redirects: 0, textBytes: 512 },
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+    linkPathChars: 12,
   });
 });
 
@@ -28,6 +31,12 @@ test('it refuses a limit of zero bytes', () => {
   const result = webFetchConfigSchema.safeParse({ body_bytes: 0 });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['body_bytes'] });
+});
+
+test('it refuses a link path length of zero characters', () => {
+  const result = webFetchConfigSchema.safeParse({ link_path_chars: 0 });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['link_path_chars'] });
 });
 
 test('it refuses an unknown key', () => {

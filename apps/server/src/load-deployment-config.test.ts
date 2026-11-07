@@ -60,6 +60,7 @@ test('it reads every section, with the default of each setting the file leaves o
     web_fetch: {
       limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 20_000 },
       sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+      linkPathChars: 24,
     },
     time: { default_zone: 'Australia/Sydney' },
     tasks: { runners: 3, startedClaimLoops: 2, messaging: { hopLimit: 20 } },
