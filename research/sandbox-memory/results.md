@@ -81,8 +81,11 @@ that runs a model turn needs `MODEL_SECRET`.
 
 The scenarios do this:
 
-- [`guest/turn.ts`](guest/turn.ts) runs one Agent SDK turn with the conversation guest's own query
-  options.
+- [`guest/turn.ts`](guest/turn.ts) runs one Agent SDK turn with only some of the conversation
+  guest's query options. It turns off the same tools, setting sources, skills, memory and auto
+  compaction. It leaves out adaptive thinking, `verbatimPrompts`, the precompute and idle compaction
+  settings, the profile's effort level and cache lifetime, and the tool output limit. The figures
+  here leave out whatever memory those options add to a production turn.
 - The short turn has a 350-token prompt. The large turn's prompt, from
   [`guest/write-large-prompt.ts`](guest/write-large-prompt.ts), comes to 232,776 input tokens. The
   resume continues the large turn's session.

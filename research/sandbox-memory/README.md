@@ -58,7 +58,7 @@ removes the imp.
 
    Expect: 5 `run=` lines, each with `create_to_exec_ms` and 2 wake times.
 
-4. Test the scripts with `bun test --cwd research/sandbox-memory`. Expect: 4 pass.
+4. Test the scripts with `bun test --cwd research/sandbox-memory`. Expect: 11 pass.
 
 ## Results
 

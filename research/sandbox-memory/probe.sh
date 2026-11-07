@@ -15,17 +15,25 @@ if impz ls | grep -q "^$name "; then
   exit 1
 fi
 
-# A failed removal leaves the test imp and its model grant behind, so say so and fail.
+# A failed removal leaves the test imp and its model grant behind, so say so. The script keeps its
+# own failure status, and fails with 1 when only the removal failed.
 remove_imp() {
+  local status=$?
+
   if ! impz rm "$name" > /dev/null; then
     echo "probe.sh: failed to remove the test imp; remove it with: impz rm $name" >&2
-    exit 1
+
+    if [ "$status" -eq 0 ]; then
+      status=1
+    fi
   fi
+
+  exit "$status"
 }
 
-trap remove_imp EXIT
-
 impz new --image "$image" --memory "$memory" --cpus "$vcpus" --policy public "$name" > /dev/null
+# Only an imp this script created is its to remove.
+trap remove_imp EXIT
 
 require=()
 

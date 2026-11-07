@@ -8,12 +8,23 @@ image=$1 memory=$2 vcpus=$3 runs=$4
 
 now_ms() { echo $(($(date +%s%N) / 1000000)); }
 
-# A failed removal leaves the test imp behind, so say so and fail.
+# A failed removal leaves the test imp behind, so say so.
 remove_imp() {
   if ! impz rm "$name" > /dev/null; then
     echo "time-starts.sh: failed to remove the test imp; remove it with: impz rm $name" >&2
-    exit 1
+    return 1
   fi
+}
+
+# The script keeps its own failure status, and fails with 1 when only the removal failed.
+remove_imp_on_exit() {
+  local status=$?
+
+  if ! remove_imp && [ "$status" -eq 0 ]; then
+    status=1
+  fi
+
+  exit "$status"
 }
 
 for n in $(seq 1 "$runs"); do
@@ -22,9 +33,10 @@ for n in $(seq 1 "$runs"); do
     echo "refusing: $name exists" >&2
     exit 1
   fi
-  trap remove_imp EXIT
   t0=$(now_ms)
   impz new --image "$image" --memory "$memory" --cpus "$vcpus" --policy none "$name" > /dev/null
+  # Only an imp this script created is its to remove.
+  trap remove_imp_on_exit EXIT
   impz exec "$name" -- true
   t1=$(now_ms)
   # Touch 64 MiB of guest memory through tmpfs, so the wake restores a used guest. /dev/shm holds
