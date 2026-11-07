@@ -86,7 +86,11 @@ async function setupTest() {
 
   stack.defer(() => memory.stop());
 
-  const app = createAPIApp(context, () => memory).listen({ hostname: '127.0.0.1', port: 0 });
+  const app = createAPIApp(
+    context,
+    () => memory,
+    () => Promise.resolve(),
+  ).listen({ hostname: '127.0.0.1', port: 0 });
 
   stack.defer(async () => {
     await app.stop(true);
@@ -97,7 +101,11 @@ async function setupTest() {
     settings: { ...defaultAPISettings, isBackupEnabled: false },
   };
 
-  const offApp = createAPIApp(offContext, () => memory).listen({ hostname: '127.0.0.1', port: 0 });
+  const offApp = createAPIApp(
+    offContext,
+    () => memory,
+    () => Promise.resolve(),
+  ).listen({ hostname: '127.0.0.1', port: 0 });
 
   stack.defer(async () => {
     await offApp.stop(true);
