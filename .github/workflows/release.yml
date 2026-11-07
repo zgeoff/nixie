@@ -3,9 +3,10 @@
 # goes through one stage per job, each after the one before succeeds: the sandbox images and the
 # backup image, the nixie image with the sandbox digests, the web image, the migrations and the
 # config schema in the release notes, a pull of each sandbox image with no credentials, the version
-# tag on every image, and the counting proxy binary, release.json, config.schema.json and
-# definitions-manifest.schema.json assets, and last the Kubernetes component, with the backup image
-# as its backup job's default, and the API contract on npm at the release's version.
+# tag on every image, and the counting proxy binary, release.json, config.schema.json,
+# definitions-manifest.schema.json and definitions-rules.schema.json assets, and last the Kubernetes
+# component, with the backup image as its backup job's default, and the API contract on npm at the
+# release's version.
 #
 # A manual run on a release tag rebuilds that release from its commit. Re-running the failed
 # jobs of a run resumes from the stage that failed with the same digests.
@@ -368,7 +369,7 @@ jobs:
           TAG: ${{ needs.resolve.outputs.tag }}
         run: bun run --silent ci:release:publish-counting-proxy
 
-      - name: Publish release.json, the config schema and the definitions manifest schema
+      - name: Publish release.json, the config schema and the definitions schemas
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
