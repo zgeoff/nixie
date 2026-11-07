@@ -30,7 +30,7 @@ test('it makes a memory the model proposed active once the user approves it on t
     ctx.api.client,
     { text: 'I took the bees some sugar water today.' },
     'I will ask you before I remember that.',
-    { timeoutMs: 10_000 },
+    { timeoutMs: 5000 },
   );
 
   await ctx.view.navigate(`${ctx.appURL}/memory/proposals`);

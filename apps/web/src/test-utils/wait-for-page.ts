@@ -1,7 +1,8 @@
 import { waitForCondition } from '@heynixie/testing';
 
-// A journey waits on a turn that starts the Agent SDK cold, which takes seconds on a CI runner.
-const defaultTimeoutMs = 10_000;
+// A journey's slowest turn takes about 4.5 s on a CI runner, and the browser lane gives the whole
+// test 10 s, so a wait gives up first and names what the page never showed.
+const defaultTimeoutMs = 5000;
 
 export async function waitForPage(
   view: Bun.WebView,

@@ -5,12 +5,12 @@ bundle. Each lane's command makes the builds its tests read before the tests sta
 before its tests run. A build helper, such as `readWebBuild`, makes a missing build itself, inside
 the test's own time limit, and a build takes longer than that limit.
 
-| Lane     | Files                                              | Command                 |
-| -------- | -------------------------------------------------- | ----------------------- |
-| e2e      | the root `e2e/` folder, except journeys and restic | `bun run test:e2e`      |
-| bundle   | `*.bundle.test.ts`, outside the root `e2e/` folder | `bun run test:bundle`   |
-| journeys | `*.browser.test.ts` in `e2e/journeys/`             | `bun run test:journeys` |
-| restic   | `*.restic.test.ts` in the root `e2e/` folder       | `bun run test:restic`   |
+| Lane     | Files                                                                     | Command                 |
+| -------- | ------------------------------------------------------------------------- | ----------------------- |
+| e2e      | the root `e2e/` folder, except `*.browser.test.ts` and `*.restic.test.ts` | `bun run test:e2e`      |
+| bundle   | `*.bundle.test.ts`, outside the root `e2e/` folder                        | `bun run test:bundle`   |
+| journeys | `*.browser.test.ts` in `e2e/journeys/`                                    | `bun run test:journeys` |
+| restic   | `*.restic.test.ts` in the root `e2e/` folder                              | `bun run test:restic`   |
 
 Run each command from the repo root. rig, the test runner `@zgeoff/rig`, runs the bundle, journeys
 and restic lanes. rig does not run the root `e2e/` folder, so `bun run test:e2e` runs that folder

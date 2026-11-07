@@ -3,8 +3,9 @@ name: project-testing
 description:
   "nixie's test facts, the shared testing rules it replaces for the model API lane and the MSW
   server, and its own test topics: the unit run's prerequisites, the imp and model API lanes, the
-  test build, where a harness lives, the browser lane, the e2e, journeys and restic lanes and the
-  nixie harnesses. Load it beside testing before you design, write, run or review a nixie test."
+  test build, where a harness lives, the browser lane, the e2e, bundle, journeys and restic lanes
+  and the nixie harnesses. Load it beside testing before you design, write, run or review a nixie
+  test."
 metadata:
   kind: rule-set
 ---
@@ -35,9 +36,9 @@ the `zgeoff/max-test-timeout` lint rule reads those limits.
 | Files                                                                                    | Command                                       | Limit per test | In CI             |
 | ---------------------------------------------------------------------------------------- | --------------------------------------------- | -------------- | ----------------- |
 | any other `*.test.ts`                                                                    | `bun run test`                                | 5 s            | in `pr.yml`       |
-| `*.browser.test.ts` outside `e2e/`                                                       | `bun run test:browser`                        | 10 s           | in `pr.yml`       |
+| `*.browser.test.ts` outside `e2e/journeys/` and `e2e/src/`                               | `bun run test:browser`                        | 10 s           | in `pr.yml`       |
 | `*.agent-sdk.test.ts`                                                                    | `bun run test:agent-sdk`                      | 5 s            | in `pr.yml`       |
-| `e2e/**`, except the journeys and the restic suites                                      | `bun run test:e2e`                            | 15 s           | in `pr.yml`       |
+| `e2e/**`, except `*.browser.test.ts` and `*.restic.test.ts`                              | `bun run test:e2e`                            | 15 s           | in `pr.yml`       |
 | `e2e/journeys/*.browser.test.ts`, `e2e/src/test-utils/start-web-journey.browser.test.ts` | `bun run test:journeys`                       | 10 s           | in `journeys.yml` |
 | `*.bundle.test.ts` outside `e2e/`                                                        | `bun run test:bundle`                         | 15 s           | in `pr.yml`       |
 | `e2e/**/*.restic.test.ts`                                                                | `bun run test:restic`                         | 40 s           | in `images.yml`   |
@@ -50,9 +51,14 @@ the `zgeoff/max-test-timeout` lint rule reads those limits.
   Without `bun run models`, a bare `bun test` skips the memory encoder's suites. Without
   `bun run test:bundles`, a test builds a missing bundle itself and runs past its limit. Run
   `bun run test:bundles` again after you change server code.
-- To test one file of a lane that rig runs, pass the file's path to the lane's command, such as
-  `bun run test:agent-sdk <path>`. rig runs only the lane's own files among the paths you pass. The
-  agent SDK lane builds nothing first.
+- To test one file of the browser, agent SDK, bundle or restic lane, pass the file's path to the
+  lane's command, such as `bun run test:agent-sdk <path>`. rig runs only the lane's own files among
+  the paths you pass. Before the bundle and restic tests, rig runs the lane's start hook, which
+  makes the builds they read.
+- To test one journey, run `bun run test:journeys --test-name-pattern='<test name>'`. A path does
+  not narrow that run, because the script passes rig the path of every journey.
+- Put a browser suite under `e2e/` in `e2e/journeys/`. The browser lane leaves out `e2e/src/`, and
+  the journeys lane runs only the start-web-journey suite there.
 - Run the `*.imp.test.ts` suites by hand, as the
   [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) describes. Each needs a
   real impd on a host with `/dev/kvm`. impd is the daemon that runs nixie's sandboxes, and each
@@ -82,12 +88,12 @@ nixie replaces these rules of the shared `testing` skill.
 
 - In place of the shared rule to run the `model-api` lane nightly and on an SDK bump, never run the
   `*.model-api.test.ts` files in CI. They form the
-  [SDK contract suite](../../../evals/sdk-contract/README.md), and nixie's CI does not hold a model
+  [SDK contract suite](../../../evals/sdk-contract/README.md), and nixie's CI holds no model
   credential. A preview service in nixie's private deployment repo runs the suite on each pull
   request that changes the Agent SDK version, and posts the outcome as the `sdk-contract` commit
   status. Run the suite by hand on that pull request as well, with the steps in the
   [SDK contract suite runbook](../../../docs/runbooks/sdk-contract-suite.md), and post its output in
-  a comment. The status does not carry the output, and the Agent SDK bump rule in
+  a comment. The status carries no output, and the Agent SDK bump rule in
   [AGENTS.md](../../../AGENTS.md) needs that comment before the merge.
 - In place of the shared MSW setup in each package's preload, add a package's MSW handlers through
   [`addMockHandlers`](../../../libs/mock-server/src/add-mock-handlers.ts) from
@@ -99,8 +105,8 @@ nixie replaces these rules of the shared `testing` skill.
 - In place of the shared callback for unhandled requests, send a test's real requests only to a
   loopback host, a host under the reserved `.test` domain or a `data:` URL. The catch-all handler
   passes those through, and fails every other unmatched request with `Failed to fetch`. A `.test`
-  name never resolves through a DNS server, and a `data:` URL holds its own contents, so neither
-  reaches the network. The web fetch guest's suites reach `.test` sites through
+  name resolves through no DNS server, and a `data:` URL holds its own contents, so neither reaches
+  the network. The web fetch guest's suites reach `.test` sites through
   [`buildStubResolver`](../../../guests/fetch/src/test-utils/build-stub-resolver.ts).
 
 ## Sockets and shared state
@@ -113,7 +119,7 @@ nixie replaces these rules of the shared `testing` skill.
 
 ## The test build
 
-- In a file that nixie ships, put test-only code inside `if (NIXIE_TEST_BUILD) { … }`. The root
+- Put test-only code that a product file holds inside `if (NIXIE_TEST_BUILD) { … }`. The root
   preloads set `NIXIE_TEST_BUILD` to `true` for every `bun test` from the repo root, and nixie's
   test bundle sets it at build time. Its release bundle sets it to `false`, so the bundler drops the
   code behind it. [Crash tests](../../../docs/architecture/core/crash-tests.md) lists the code that
