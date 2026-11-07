@@ -74,8 +74,10 @@ pre-push:
       run: bun run prose
     # The baseline's chex-test job runs rig related alone, so exclude_tags
     # drops it and this job runs test:related, which builds the models and the
-    # test bundles first. A bunfig.toml reaches the job too, because a change
-    # to it skips the related tests.
+    # test bundles first. lefthook runs it before the baseline's jobs, so an
+    # uncommitted edit fails here or at chex-uncommitted after it. A
+    # bunfig.toml reaches the job too, because a change to it skips the
+    # related tests.
     - name: test
       files:
         unset $(git rev-parse --local-env-vars); bun
