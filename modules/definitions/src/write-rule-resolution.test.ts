@@ -243,9 +243,7 @@ test('it refuses to resolve a rule with no conflict', async () => {
 
   await ctx.seed();
 
-  const resolution = writeRuleResolution(ctx.context, { ruleID: 'ask-mail', keep: 'nixie' });
+  const resolution = await writeRuleResolution(ctx.context, { ruleID: 'ask-mail', keep: 'nixie' });
 
-  await Promise.allSettled([resolution]);
-
-  expect(resolution).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  expect(resolution).toMatchObject({ status: 'refused', code: 'NOT_FOUND' });
 });

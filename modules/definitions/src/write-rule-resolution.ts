@@ -1,7 +1,6 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { match } from 'ts-pattern';
-import { RuleConflictError } from './rule-conflict-error';
 import { rulesConflictResolvedCodec } from './rules-conflict-resolved-codec';
 import type { DefinitionsTables } from './types';
 import type { RuleContext } from './write-runtime-rule';
@@ -12,50 +11,63 @@ export interface RuleResolution {
   readonly keep: 'nixie' | 'repo';
 }
 
+export type RuleResolutionResult =
+  | { readonly status: 'resolved'; readonly changeID: string }
+  | { readonly status: 'refused'; readonly code: 'NOT_FOUND'; readonly reason: string };
+
 export async function writeRuleResolution(
   context: RuleContext,
   resolution: RuleResolution,
-): Promise<{ readonly changeID: string }> {
-  const changeID = await withWriteTransaction(context.log.writer, async (tx) => {
-    const at = context.clock.now();
+): Promise<RuleResolutionResult> {
+  const result = await withWriteTransaction(
+    context.log.writer,
+    async (tx): Promise<RuleResolutionResult> => {
+      const at = context.clock.now();
 
-    const change = await tx
-      .$extendTables<DefinitionsTables>()
-      .selectFrom('runtime_rules')
-      .select(['change_id', 'base_hash', 'definitions_hash'])
-      .where('rule_id', '=', resolution.ruleID)
-      .where('state', '=', 'in_force')
-      .executeTakeFirst();
+      const change = await tx
+        .$extendTables<DefinitionsTables>()
+        .selectFrom('runtime_rules')
+        .select(['change_id', 'base_hash', 'definitions_hash'])
+        .where('rule_id', '=', resolution.ruleID)
+        .where('state', '=', 'in_force')
+        .executeTakeFirst();
 
-    if (change === undefined || change.base_hash === change.definitions_hash) {
-      throw new RuleConflictError(resolution.ruleID);
-    }
+      if (change === undefined || change.base_hash === change.definitions_hash) {
+        return {
+          status: 'refused',
+          code: 'NOT_FOUND',
+          reason: `the rule ${resolution.ruleID} has no conflict between nixie's version and the repo's`,
+        };
+      }
 
-    await match(resolution.keep)
-      .with('nixie', () => writeNixieKept(tx, change.change_id, at))
-      .with('repo', () =>
-        writeRepoKept(tx, { ruleID: resolution.ruleID, changeID: change.change_id, at }),
-      )
-      .exhaustive();
+      await match(resolution.keep)
+        .with('nixie', () => writeNixieKept(tx, change.change_id, at))
+        .with('repo', () =>
+          writeRepoKept(tx, { ruleID: resolution.ruleID, changeID: change.change_id, at }),
+        )
+        .exhaustive();
 
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: rulesConflictResolvedCodec.kind,
-        definitions: context.definitions(),
-        payload: rulesConflictResolvedCodec.encode({
-          changeID: change.change_id,
-          ruleID: resolution.ruleID,
-          keep: resolution.keep,
-        }),
-      },
-    ]);
+      await writeRecordsInTransaction(tx, context.log, [
+        {
+          kind: rulesConflictResolvedCodec.kind,
+          definitions: context.definitions(),
+          payload: rulesConflictResolvedCodec.encode({
+            changeID: change.change_id,
+            ruleID: resolution.ruleID,
+            keep: resolution.keep,
+          }),
+        },
+      ]);
 
-    return change.change_id;
-  });
+      return { status: 'resolved', changeID: change.change_id };
+    },
+  );
 
-  await context.seedInForce();
+  if (result.status === 'resolved') {
+    await context.seedInForce();
+  }
 
-  return { changeID };
+  return result;
 }
 
 async function writeNixieKept(tx: Transaction<unknown>, changeID: string, at: number) {
