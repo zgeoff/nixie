@@ -9,6 +9,8 @@ import { createPathSource } from './create-path-source';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import { readResetSeed } from './read-reset-seed';
+import { readRulesInForce } from './read-rules-in-force';
+import { ruleStoreTables } from './rule-store-tables';
 import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
 import { createStubGitSyncWorktree } from './test-utils/create-stub-git-sync-worktree';
@@ -509,4 +511,41 @@ test("it puts your definitions' version back after a reset when you retire nixie
   const retired = await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   expect(retired.inForce?.skills).toStrictEqual(first.inForce?.skills);
+});
+
+test('it keeps the rules in force through a reset that keeps the rule store', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'rules'));
+
+  await Promise.all([
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n'),
+    writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
+    writeFile(
+      join(ctx.root, 'rules', 'mail.yaml'),
+      'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+    ),
+  ]);
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const before = await readRulesInForce(ctx.writer.db);
+
+  await runLogReset(ctx.log, {
+    keptTables: ruleStoreTables,
+    readKept: (tx) => readResetSeed(tx),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  const rules = await readRulesInForce(ctx.writer.db);
+
+  expect(rules).toStrictEqual(before);
 });

@@ -1,4 +1,5 @@
 import { createShortID } from '@heynixie/db';
+import { proposalLapseMs } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import { buildRuleProposal } from './build-rule-proposal';
 import type { RuleEdit } from './build-rule-seed-plan';
@@ -10,10 +11,14 @@ import type { RuleProposalChange } from './write-seed';
 export async function readRuleProposalChange(
   db: Kysely<unknown>,
   held: readonly RuleEdit[],
+  now: number,
 ): Promise<RuleProposalChange> {
   const proposals = await readRuleProposals(db);
 
-  const pending = proposals.findLast((state) => state.outcome === null);
+  const pending = proposals.findLast(
+    (state) => state.outcome === null && state.proposedAt + proposalLapseMs > now,
+  );
+
   const proposed = held.length === 0 ? null : buildRuleProposal(createShortID(), held);
 
   if (pending?.proposal.proposalHash === proposed?.proposalHash) {

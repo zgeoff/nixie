@@ -83,5 +83,9 @@ export type {
 
 export { writeResetSeed } from './write-reset-seed';
 export { ruleStoreTables } from './rule-store-tables';
+export { ruleFiresProjection } from './rule-fires-projection';
+export type { RuleInForceEntry } from './read-rules-in-force';
+export { readRulesInForce } from './read-rules-in-force';
+export { readRuleConflicts } from './read-rule-conflicts';
 export type { DefinitionsRecordKind } from './definitions-record-kind';
 export type { RulesRecordKind } from './rules-record-kind';

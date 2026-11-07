@@ -62,7 +62,11 @@ export async function readRuleStore(db: Kysely<unknown>): Promise<RuleStore> {
   const find = (hash: string | null): StoredRule | null => (hash === null ? null : get(hash));
 
   return {
-    definitions: definitions.map((row) => ({ path: row.path, ...get(row.rule_hash) })),
+    definitions: definitions.map((row) => {
+      const stored = get(row.rule_hash);
+
+      return { hash: stored.hash, rule: stored.rule, path: row.path };
+    }),
     seeded: seeded.map((row) => get(row.rule_hash)),
     runtime: runtime.map((row) => ({
       changeID: row.change_id,

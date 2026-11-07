@@ -113,7 +113,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
         current: store.current,
         at: options.log.writer.clock.now(),
       },
-      proposals: await readRuleProposalChange(tx, rules.held),
+      proposals: await readRuleProposalChange(tx, rules.held, options.log.writer.clock.now()),
       built,
       previous: inForce,
     });
