@@ -30,9 +30,11 @@ export function pickForgetBackup(newestFirst: readonly ForgetCoveringSet[]): For
 }
 
 function parseSetFailure(set: ForgetCoveringSet): string {
-  invariant(set.receipt, `failed backup set ${String(set.sequence)} keeps its receipt`);
+  const receipt = set.receipt;
 
-  const parsed = parseBackupFile(set.receipt, backupReceiptSchema);
+  invariant(receipt !== null, `failed backup set ${String(set.sequence)} keeps its receipt`);
+
+  const parsed = parseBackupFile(receipt, backupReceiptSchema);
 
   if ('refused' in parsed) {
     return `nixie refused the set's receipt: ${parsed.refused}`;
@@ -42,7 +44,9 @@ function parseSetFailure(set: ForgetCoveringSet): string {
     return `nixie refused the set's receipt: it names set ${String(parsed.value.sequence)}`;
   }
 
-  invariant(parsed.value.failure, `failed backup set ${String(set.sequence)} has a failed receipt`);
+  const failure = parsed.value.failure;
 
-  return parsed.value.failure;
+  invariant(failure !== null, `failed backup set ${String(set.sequence)} has a failed receipt`);
+
+  return failure;
 }
