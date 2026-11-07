@@ -53,8 +53,6 @@ export function RuleProposals(): ReactNode {
 const answerNotices: Readonly<Record<string, string>> = {
   NOT_FOUND: 'That rule change is gone, so nothing changed.',
   PROPOSAL_CLOSED: 'That rule change is answered, withdrawn or lapsed, so nothing changed.',
-  STALE_BASE:
-    'The rules moved after nixie proposed that change, so nothing changed. The next seed proposes it again.',
 };
 
 function getAnswerNotice(error: unknown): string {

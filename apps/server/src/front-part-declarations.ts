@@ -57,7 +57,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         apiContext: parts.get('context').apiContext,
         gate: parts.get('api_gate'),
         readMemory: () => parts.find('memory'),
-        seedInForce: () =>
+        runInForceSeed: () =>
           runApprovedSkillsSeed(parts.find('server_parts'), parts.find('definitions_exports')),
       });
 

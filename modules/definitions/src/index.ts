@@ -94,7 +94,6 @@ export { readPendingRuleProposals } from './read-pending-rule-proposals';
 export type { RuleContext } from './write-runtime-rule';
 export { writeRuntimeRule } from './write-runtime-rule';
 export { writeRuleResolution } from './write-rule-resolution';
-export { RuleConflictError } from './rule-conflict-error';
 export type { RuleProposalAnswer, RuleProposalResult } from './write-rule-proposal-answer';
 export { writeRuleProposalAnswer } from './write-rule-proposal-answer';
 export { startRuleLapseSweep } from './start-rule-lapse-sweep';

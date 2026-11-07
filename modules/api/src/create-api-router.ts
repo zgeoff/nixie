@@ -14,7 +14,7 @@ import type { APIContext, ReadViewMemory } from './types';
 export function createAPIRouter(
   context: APIContext,
   readMemory: ReadViewMemory,
-  seedInForce: () => Promise<void>,
+  runInForceSeed: () => Promise<void>,
 ) {
   return apiImplementer.router({
     backups: createBackupProcedures(context),
@@ -24,7 +24,7 @@ export function createAPIRouter(
       ...createMemoryViewRouter(context, readMemory),
     },
     ...createRecordProcedures(context),
-    rules: createRuleProposalProcedures({ ...context, seedInForce }),
+    rules: createRuleProposalProcedures({ ...context, runInForceSeed }),
     sessions: {
       enrol: createEnrolProcedure(context),
       revoke: createRevokeProcedure(context),

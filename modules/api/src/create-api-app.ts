@@ -12,9 +12,9 @@ interface RouteContext {
 export function createAPIApp(
   context: APIContext,
   readMemory: ReadViewMemory,
-  seedInForce: () => Promise<void>,
+  runInForceSeed: () => Promise<void>,
 ) {
-  const handler = new RPCHandler(createAPIRouter(context, readMemory, seedInForce), {
+  const handler = new RPCHandler(createAPIRouter(context, readMemory, runInForceSeed), {
     // The web client treats a live stream that misses three keepalives in a row as dead.
     eventIteratorKeepAliveInterval: 5000,
     plugins: [new ResponseHeadersPlugin()],

@@ -6,7 +6,7 @@ import { requireCaller } from './require-caller';
 import { runRuleProposalAnswer } from './run-rule-proposal-answer';
 import type { APIContext } from './types';
 
-type RuleProposalContext = APIContext & Pick<RuleContext, 'seedInForce'>;
+type RuleProposalContext = APIContext & Pick<RuleContext, 'runInForceSeed'>;
 
 export function createRuleProposalProcedures(context: RuleProposalContext) {
   const rules = apiImplementer.rules;

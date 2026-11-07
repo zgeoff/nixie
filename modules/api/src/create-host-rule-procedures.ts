@@ -38,6 +38,12 @@ export function createHostRuleProcedures(context: RuleContext) {
     resolve: rules.resolve.handler(async (options) => {
       const resolved = await writeRuleResolution(context, options.input);
 
+      if (resolved.status === 'refused') {
+        const buildNotFound = options.errors.NOT_FOUND;
+
+        throw buildNotFound({ message: resolved.reason });
+      }
+
       return {
         ruleID: options.input.ruleID,
         changeID: resolved.changeID,

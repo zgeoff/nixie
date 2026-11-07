@@ -6,7 +6,7 @@ interface RuleAnswerErrorOptions {
 }
 
 type RuleAnswerErrors = Readonly<
-  Record<'NOT_FOUND' | 'PROPOSAL_CLOSED' | 'STALE_BASE', (options: RuleAnswerErrorOptions) => Error>
+  Record<'NOT_FOUND' | 'PROPOSAL_CLOSED', (options: RuleAnswerErrorOptions) => Error>
 >;
 
 export async function runRuleProposalAnswer(

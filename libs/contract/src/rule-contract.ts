@@ -22,7 +22,6 @@ const ruleAnswer = signedIn.errors({
     message: 'The rule change proposal is answered, withdrawn or lapsed',
     status: 409,
   },
-  STALE_BASE: { message: 'The seeded rules have moved past the proposal', status: 409 },
 });
 
 const proposalIDSchema = z.string().min(1).max(200);

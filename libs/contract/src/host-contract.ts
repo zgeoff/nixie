@@ -304,7 +304,6 @@ const ruleProposalRejectionSchema = ruleProposalAnswerSchema.extend({
 const ruleProposalErrors = {
   NOT_FOUND: { message: 'nothing has that ID', status: 404 },
   PROPOSAL_CLOSED: { message: 'the proposal is answered, withdrawn or lapsed', status: 409 },
-  STALE_BASE: { message: 'the seeded rules moved past the proposal', status: 409 },
 } as const;
 
 const rules = oc.errors(ruleProposalErrors);

@@ -52,7 +52,7 @@ export function createHostRouter(options: HostRouterOptions) {
     rules: hostImplementer.rules
       .use(gated)
       .router(
-        createHostRuleProcedures({ ...options.context, seedInForce: options.seedWrittenSkills }),
+        createHostRuleProcedures({ ...options.context, runInForceSeed: options.seedWrittenSkills }),
       ),
     prompts: hostImplementer.prompts.use(gated).router({
       proposals: createHostPromptProposalProcedures(promptContext),

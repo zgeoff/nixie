@@ -16379,31 +16379,6 @@
                       "type": "object",
                       "properties": {
                         "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "STALE_BASE"
-                        },
-                        "status": {
-                          "const": 409
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The seeded rules have moved past the proposal"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
                           "const": false
                         },
                         "code": {
@@ -16621,31 +16596,6 @@
                         "message": {
                           "type": "string",
                           "default": "The rule change proposal is answered, withdrawn or lapsed"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "STALE_BASE"
-                        },
-                        "status": {
-                          "const": 409
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The seeded rules have moved past the proposal"
                         },
                         "data": {}
                       },
