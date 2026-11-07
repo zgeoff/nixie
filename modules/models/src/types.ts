@@ -1,12 +1,7 @@
 import type { HarnessID } from '@heynixie/wire';
+import type { modelRoles } from './model-roles';
 
-export type ModelRole =
-  | 'conversation'
-  | 'task'
-  | 'worker'
-  | 'checker'
-  | 'memory-writer'
-  | 'memory-consolidator';
+export type ModelRole = (typeof modelRoles)[number];
 
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 

@@ -6,6 +6,7 @@ import { buildTaskStartBounds } from './build-task-start-bounds';
 test('it offers each selectable model that does not ask, with the task run limits', () => {
   const bounds = buildTaskStartBounds(
     buildMockModelsConfig({
+      profiles: { 'chat-direct': {}, big: {}, 'router-b': {} },
       selectable: [
         { name: 'deep-think', profile: 'big', description: 'Most capable', isAsked: true },
         { name: 'second-look', profile: 'router-b', description: 'Another family', isAsked: false },
@@ -16,7 +17,9 @@ test('it offers each selectable model that does not ask, with the task run limit
   );
 
   expect(bounds).toStrictEqual({
-    models: [{ name: 'second-look', profile: 'router-b', description: 'Another family' }],
+    models: [
+      { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
+    ],
     limits: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
     memoryTools: { read: [], write: [] },
     conversationTools: [],

@@ -29,7 +29,7 @@ writes nothing when one fails, and tells the model why:
 
 | Option    | Values                       | When the start leaves it out            | The start refuses                                                                 |
 | --------- | ---------------------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
-| `model`   | a name of a selectable model | the `task` role's profile               | a name that is not a choice                                                       |
+| `model`   | a name of a selectable model | the `task` role's profile               | a name that is not a choice, or a model whose harness lacks what a task needs     |
 | `persona` | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                 |
 | `memory`  | `none` or `read`             | `none`                                  | a memory tool that the value leaves out, or `read` from a starter that reads none |
 | `tools`   | names of tools               | the clock                               | a tool that the starter does not hold, under either of its names                  |

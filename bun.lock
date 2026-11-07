@@ -679,6 +679,7 @@
         "@heynixie/retry": "workspace:*",
         "@heynixie/task-control": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
         "ts-pattern": "catalog:",
         "zod": "catalog:",

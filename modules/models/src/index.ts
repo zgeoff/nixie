@@ -2,6 +2,8 @@ export type { CallUsage } from './build-call-cost';
 export { buildCallCost } from './build-call-cost';
 export type { ModelRecordSource } from './build-model-record';
 export { buildModelRecord } from './build-model-record';
+export type { HarnessFit } from './check-harness-fit';
+export { checkHarnessFit } from './check-harness-fit';
 export { deriveModelSecret } from './derive-model-secret';
 export { modelPricesSchema } from './model-prices-schema';
 export { memoryRefsSchema } from './memory-refs-schema';
@@ -20,6 +22,7 @@ export { getCLIContextWindow } from './get-cli-context-window';
 export { getHarness } from './get-harness';
 export type { HarnessDescriptor, HarnessEntry, HarnessGuest, ModelAPI } from './harness-types';
 export { resolveRoleProfile } from './resolve-role-profile';
+export { roleNeeds } from './role-needs';
 
 export type {
   ModelPrices,

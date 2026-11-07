@@ -142,6 +142,7 @@ function buildConfigLines(
       '      auth_header: x-api-key',
       '      model: claude-test-1',
       '      effort: low',
+      '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
     ]),
     ...selectableModels.flatMap(([name, url]) => [
       `    selectable-${name}:`,
