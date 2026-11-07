@@ -3,6 +3,8 @@ import { defineRig } from '@zgeoff/rig';
 // The project-testing skill names the real system each lane runs. Each restic and bundle test reads
 // a build that its lane's start hook makes first, because a build outlasts a test's limit.
 export default defineRig({
+  // spikes run by hand, and CI only typechecks them
+  ignore: ['docs/design/**', 'research/**'],
   lanes: {
     browser: { memory: '8G' },
     imp: { limit: '14s' },

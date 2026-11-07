@@ -68,9 +68,9 @@ the `zgeoff/max-test-timeout` lint rule reads those limits.
   varies by test.
 - Install the Bun version in `.bun-version` before you change a test that asserts on an error Bun
   raises, such as the code of a refused connection. That error can change between Bun releases.
-- When you add a pattern to `pathIgnorePatterns` in the root `bunfig.toml`, add it as a
-  `--path-ignore-patterns` flag to each root `package.json` script that already passes that flag,
-  such as `test`. A `--path-ignore-patterns` flag replaces the config's list.
+- When you add a pattern to `pathIgnorePatterns` in the root `bunfig.toml`, add it to the `ignore`
+  list in `rig.config.ts` as well. rig passes each lane its patterns as flags, and a
+  `--path-ignore-patterns` flag replaces the bunfig's list.
 - Read nixie's test bundle or its release bundle in a unit test through
   [`readTestBundle`](../../../apps/server/src/test-utils/read-test-bundle.ts), never by building
   one. A whole-server build takes seconds. To start nixie as a process, call `startSpawnedNixie`,
