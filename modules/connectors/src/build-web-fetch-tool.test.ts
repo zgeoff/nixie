@@ -1337,7 +1337,9 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
   );
 
   const parts = outcomes.map((outcome) =>
-    outcome.status === 'ok' ? outcome.result['text'] : null,
+    outcome.status === 'ok' && typeof outcome.result['text'] === 'string'
+      ? outcome.result['text']
+      : null,
   );
 
   const fullText = targets
