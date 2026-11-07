@@ -2,7 +2,7 @@ import type { PlannedRule } from './build-rule-seed-plan';
 import type { CurrentRule } from './read-rule-store';
 import type { RuleInForce, RuleOrigin } from './types';
 
-export interface RuleRevisionEntry {
+interface RuleRevisionEntry {
   readonly ruleID: string;
   readonly revision: number;
   readonly hash: string | null;

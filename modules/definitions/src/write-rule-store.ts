@@ -12,7 +12,7 @@ export interface RuleStoreWrite {
   readonly at: number;
 }
 
-export interface RuleRevision {
+interface RuleRevision {
   readonly ruleID: string;
   readonly revision: number;
   readonly hash: string | null;

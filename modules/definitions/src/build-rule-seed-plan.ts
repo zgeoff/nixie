@@ -10,7 +10,7 @@ export interface RuleEdit {
   readonly change: RuleChange;
 }
 
-export interface OverlaidRule {
+interface OverlaidRule {
   readonly change: RuntimeRule;
   readonly beneath: StoredRule | null;
 }

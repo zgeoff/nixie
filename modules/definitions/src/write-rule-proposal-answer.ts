@@ -12,7 +12,7 @@ export type RuleProposalAnswer =
   | { readonly answer: 'approve'; readonly proposalID: string }
   | { readonly answer: 'reject'; readonly proposalID: string; readonly reason: string };
 
-export type RuleProposalRefusal = 'NOT_FOUND' | 'CLOSED' | 'STALE';
+type RuleProposalRefusal = 'NOT_FOUND' | 'CLOSED' | 'STALE';
 
 export type RuleProposalResult =
   | { readonly status: 'approved' | 'rejected'; readonly proposalID: string }
