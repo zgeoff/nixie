@@ -80,7 +80,7 @@ export interface CLIFlags {
 
   readonly entry?: string;
 
-  readonly keep?: 'nixie' | 'definitions';
+  readonly keep?: 'nixie' | 'definitions' | 'repo';
 
   readonly 'keep-sessions': boolean;
   readonly only?: 'memories' | 'conversations';

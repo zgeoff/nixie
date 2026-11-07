@@ -116,7 +116,11 @@ async function runSkillResolve(host: HostTransport, call: CommandCall): Promise<
   const [approvalID, ...extra] = call.args;
   const keep = call.flags.keep;
 
-  if (approvalID === undefined || extra.length > 0 || keep === undefined) {
+  if (
+    approvalID === undefined ||
+    extra.length > 0 ||
+    (keep !== 'nixie' && keep !== 'definitions')
+  ) {
     call.io.print('nixie skill-resolve takes an approval ID and --keep nixie|definitions');
 
     return 2;

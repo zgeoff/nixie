@@ -628,7 +628,7 @@ test('it refuses a resolve that keeps neither side while it reads the arguments'
   expect(exitCode).toBe(1);
 
   expect(io.print).toHaveBeenCalledExactlyOnceWith(
-    `nixie: Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions"] values`,
+    `nixie: Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions", "repo"] values`,
   );
 });
 

@@ -610,7 +610,7 @@ test('it refuses a --keep outside its choices', async () => {
 
   expect(parsed).toStrictEqual({
     kind: 'invalid-flags',
-    message: `Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions"] values`,
+    message: `Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions", "repo"] values`,
   });
 });
 

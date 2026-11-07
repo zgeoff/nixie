@@ -28,7 +28,7 @@ const CLI_OPTIONS = {
   reason: { type: 'string' },
   files: { type: 'string' },
   entry: { type: 'string' },
-  keep: { type: 'enum', choices: ['nixie', 'definitions'] },
+  keep: { type: 'enum', choices: ['nixie', 'definitions', 'repo'] },
   'keep-sessions': { type: 'boolean', default: false },
   only: { type: 'enum', choices: ['memories', 'conversations'] },
   yes: { type: 'boolean', default: false },
