@@ -27,7 +27,7 @@ export function buildRuleChangeKind(): DefinitionsChangeKind {
     readClosing: readClosingRules,
     probeInForce: probeRuleExportInForce,
     probePullRequestHeld: probeRulePullRequestHeld,
-    writeState: (tx, move) => writeRuleExportState(tx, move),
+    writeState: writeRuleExportState,
   };
 }
 
