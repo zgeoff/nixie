@@ -1,15 +1,12 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { match } from 'ts-pattern';
+import type { RuleResolution } from './pick-rule-resolution-move';
+import { pickRuleResolutionMove } from './pick-rule-resolution-move';
 import { rulesConflictResolvedCodec } from './rules-conflict-resolved-codec';
 import type { DefinitionsTables } from './types';
 import type { RuleContext } from './write-runtime-rule';
 import { writeRuntimeRuleState } from './write-runtime-rule-state';
-
-export interface RuleResolution {
-  readonly ruleID: string;
-  readonly keep: 'nixie' | 'repo';
-}
 
 export type RuleResolutionResult =
   | { readonly status: 'resolved'; readonly changeID: string }
@@ -23,27 +20,40 @@ export async function writeRuleResolution(
     context.log.writer,
     async (tx): Promise<RuleResolutionResult> => {
       const at = context.clock.now();
+      const tables = tx.$extendTables<DefinitionsTables>();
 
-      const change = await tx
-        .$extendTables<DefinitionsTables>()
+      const change = await tables
         .selectFrom('runtime_rules')
         .select(['change_id', 'base_hash', 'definitions_hash'])
         .where('rule_id', '=', resolution.ruleID)
         .where('state', '=', 'in_force')
         .executeTakeFirst();
 
-      if (change === undefined || change.base_hash === change.definitions_hash) {
-        return {
-          status: 'refused',
-          code: 'NOT_FOUND',
-          reason: `the rule ${resolution.ruleID} has no conflict between nixie's version and the repo's`,
-        };
+      const definitions = await tables
+        .selectFrom('definition_rules')
+        .select('rule_hash')
+        .where('rule_id', '=', resolution.ruleID)
+        .executeTakeFirst();
+
+      const move = pickRuleResolutionMove({
+        change: change ?? null,
+        definitionsHash: definitions?.rule_hash ?? null,
+        resolution,
+      });
+
+      if (move.status === 'refused') {
+        return move;
       }
 
-      await match(resolution.keep)
-        .with('nixie', () => writeNixieKept(tx, change.change_id, at))
-        .with('repo', () =>
-          writeRepoKept(tx, { ruleID: resolution.ruleID, changeID: change.change_id, at }),
+      await match(move)
+        .with({ status: 'keep-nixie' }, (kept) => writeNixieKept(tx, kept.changeID, at))
+        .with({ status: 'keep-repo' }, (kept) =>
+          writeRepoKept(tx, {
+            ruleID: resolution.ruleID,
+            changeID: kept.changeID,
+            seededHash: kept.seededHash,
+            at,
+          }),
         )
         .exhaustive();
 
@@ -52,14 +62,14 @@ export async function writeRuleResolution(
           kind: rulesConflictResolvedCodec.kind,
           definitions: context.definitions(),
           payload: rulesConflictResolvedCodec.encode({
-            changeID: change.change_id,
+            changeID: move.changeID,
             ruleID: resolution.ruleID,
             keep: resolution.keep,
           }),
         },
       ]);
 
-      return { status: 'resolved', changeID: change.change_id };
+      return { status: 'resolved', changeID: move.changeID };
     },
   );
 
@@ -82,6 +92,7 @@ async function writeNixieKept(tx: Transaction<unknown>, changeID: string, at: nu
 interface RepoKept {
   readonly ruleID: string;
   readonly changeID: string;
+  readonly seededHash: string | null;
   readonly at: number;
 }
 
@@ -92,18 +103,12 @@ async function writeRepoKept(tx: Transaction<unknown>, kept: RepoKept) {
 
   await writeRuntimeRuleState(tx, { changeID: kept.changeID, to: 'retired', at: kept.at });
 
-  const definitions = await tables
-    .selectFrom('definition_rules')
-    .select('rule_hash')
-    .where('rule_id', '=', kept.ruleID)
-    .executeTakeFirst();
-
   await tables.deleteFrom('seeded_rules').where('rule_id', '=', kept.ruleID).execute();
 
-  if (definitions !== undefined) {
+  if (kept.seededHash !== null) {
     await tables
       .insertInto('seeded_rules')
-      .values({ rule_id: kept.ruleID, rule_hash: definitions.rule_hash })
+      .values({ rule_id: kept.ruleID, rule_hash: kept.seededHash })
       .execute();
   }
 }
