@@ -288,20 +288,20 @@ const ruleProposalChangeSchema = z.object({
   after: ruleVersionSchema,
 });
 
-export const pendingRuleProposalSchema = z.object({
+const pendingRuleProposalSchema = z.object({
   proposalID: z.string(),
   changes: z.array(ruleProposalChangeSchema),
   createdAt: z.date(),
   lapseAt: z.date(),
 });
 
-export const ruleProposalAnswerSchema = z.strictObject({ proposalID: z.string().min(1) });
+const ruleProposalAnswerSchema = z.strictObject({ proposalID: z.string().min(1) });
 
-export const ruleProposalRejectionSchema = ruleProposalAnswerSchema.extend({
+const ruleProposalRejectionSchema = ruleProposalAnswerSchema.extend({
   reason: z.string().max(500).regex(/\S/u),
 });
 
-export const ruleProposalErrors = {
+const ruleProposalErrors = {
   NOT_FOUND: { message: 'nothing has that ID', status: 404 },
   PROPOSAL_CLOSED: { message: 'the proposal is answered, withdrawn or lapsed', status: 409 },
   STALE_BASE: { message: 'the seeded rules moved past the proposal', status: 409 },

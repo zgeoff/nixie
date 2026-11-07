@@ -21,6 +21,8 @@ export interface HTTPServerOptions {
 
   readonly readMemory: ReadViewMemory;
 
+  readonly seedInForce: () => Promise<void>;
+
   readonly gate: APIGate;
 }
 
@@ -35,7 +37,9 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
     log: options.log,
   });
 
-  const app = new Elysia().use(health).use(createAPIApp(options.apiContext, options.readMemory));
+  const app = new Elysia()
+    .use(health)
+    .use(createAPIApp(options.apiContext, options.readMemory, options.seedInForce));
 
   const answerRequest = (request: Request) =>
     options.gate.run(request, (passed) => app.handle(passed));

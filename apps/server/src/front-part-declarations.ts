@@ -46,7 +46,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'http',
     needs: ['inputs', 'state', 'context', 'tools', 'api_gate'],
-    uses: ['memory'],
+    uses: ['memory', 'server_parts', 'definitions_exports'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
@@ -57,6 +57,8 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         apiContext: parts.get('context').apiContext,
         gate: parts.get('api_gate'),
         readMemory: () => parts.find('memory'),
+        seedInForce: () =>
+          runApprovedSkillsSeed(parts.find('server_parts'), parts.find('definitions_exports')),
       });
 
       options.log('http.listening', { port });
