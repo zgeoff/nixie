@@ -1,43 +1,55 @@
 # The browser lane
 
-The web app's browser suites, the `*.browser.test.ts` files, drive a headless Chrome or Chromium
-through `Bun.WebView`. Run them with `bun run test:browser` from the repo root, which runs every
-browser suite in one test process, one file after another, with one global object and one Chrome.
+Write, run and debug the web app's browser suites, the `*.browser.test.ts` files, with the rules
+below. Each suite drives a headless Chrome or Chromium through `Bun.WebView`. The traps: a suite
+started outside the lane has no web build, a view's options never reach Chrome, and every file
+shares one Chrome and one global object.
+
+rig, the test runner `@zgeoff/rig`, runs the lane:
+
+- `bun run test:browser` runs every browser suite outside `e2e/`.
+- `bun run test:journeys` runs the user journeys in `e2e/journeys/`, as
+  [Journeys](./e2e-and-restic-lanes.md#journeys) describes.
+
+Each command first runs the `build:browser` script, which builds the web client. It then runs the
+suites one file after another in one test process. A test preload of rig's, a module that Bun loads
+before the first test file, starts one Chrome for that process. Run the command again after you
+change the web client: each run builds it once, at its start.
 
 ## Traps
 
-- **Start the suites only through `bun run test:browser`.** The lane script,
-  [`run-browser-lane.ts`](../../../../apps/web/src/test-utils/run-browser-lane.ts), builds the web
-  client before the tests start. The browser preload,
-  [`start-browser.ts`](../../../../apps/web/src/test-utils/start-browser.ts), refuses a test process
-  that has no such build.
-- **Read the lane's result on CI when your host has no browser.** Bun looks for Chrome or Chromium
-  on `PATH`, in a standard install location, or at `BUN_CHROME_PATH`. Outside CI,
-  [`checkBrowserSkip`](../../../../apps/web/src/test-utils/check-browser-skip.ts) skips every suite
-  when Chrome fails to start, so the lane passes with no test run. In CI the same function fails the
-  lane.
-- **Open every view through
-  [`createBrowserView()`](../../../../apps/web/src/test-utils/create-browser-view.ts).** The test
-  process runs one Chrome, which starts with the options of the first view any suite opens. Bun
-  ignores the options of each later view, and `createBrowserView()` gives every view the same ones.
+- **Start a browser suite only through one of the 2 commands.**
+  [`write-browser-build.ts`](../../../../apps/web/src/test-utils/write-browser-build.ts), the
+  `build:browser` script, writes the web build to the folder that rig sets in
+  `RIG_BROWSER_BUILD_DIR`. A suite reads the build through
+  [`readBrowserBuild`](../../../../apps/web/src/test-utils/read-browser-build.ts), which throws when
+  that variable is not set.
+- **When your host has no Chrome or Chromium, push the branch and read the lane's result on CI.**
+  Bun looks for the browser on `PATH`, in a standard install location, or at `BUN_CHROME_PATH`.
+  rig's preload fails the lane when Chrome does not start.
+- **Open every view with `new Bun.WebView({ backend: 'chrome' })`.** `backend: 'chrome'` picks the
+  engine. The one Chrome starts with the options of the first view, which rig's preload opens, and
+  Bun ignores every other option of a later view.
 - **Clear the cookies before each test.** Every view shares the one Chrome's cookie jar, across
   files too.
-- **Undo in `onTestFinished` each global your suite changes.** The next file runs on the same global
-  object, and the root preloads reset only what they set up.
-- **Keep a child process's `TMPDIR` short.** Chrome stops at startup when
-  `<TMPDIR>/org.chromium.Chromium.XXXXXX/SingletonSocket` passes 107 bytes. The lane picks a short
-  `TMPDIR` for its own test process, so the limit matters only for a suite that starts Chrome in a
-  child process.
+- **Undo in `onTestFinished` each change your suite makes to `globalThis`, such as a stubbed
+  `fetch`.** The next file runs in the same process, and the preloads in the root `bunfig.toml`
+  reset only what they set up.
+- **When a suite starts Chrome in a child process, give the child a `TMPDIR` of 50 bytes or fewer.**
+  Chrome stops at startup when the path `<TMPDIR>/org.chromium.Chromium.XXXXXX/SingletonSocket`
+  passes 107 bytes. rig gives the lane's own test process a short `TMPDIR`.
 
 ## Write a suite
 
 Start from an existing suite, such as
-[`memory.browser.test.ts`](../../../../apps/web/src/routes/memory.browser.test.ts):
+[`memory.browser.test.ts`](../../../../apps/web/src/routes/memory.browser.test.ts), and copy how it
+serves the web build and opens its page.
 
-1. At module level, await `checkBrowserSkip()`, and pass its `isSkipped` to each `test.skipIf`.
-2. In `setupTest()`, open the view through `createBrowserView()`, and close it in `onTestFinished`.
-3. Still in `setupTest()`, navigate the view to `about:blank`, then clear the cookies with
+1. In `setupTest()`, open the view with `new Bun.WebView({ backend: 'chrome' })`, and close it in
+   `onTestFinished`.
+2. Still in `setupTest()`, navigate the view to `about:blank`, then clear the cookies with
    `view.cdp('Network.clearBrowserCookies')`.
-4. Run code in the page through [`runInPage`](../../../../apps/web/src/test-utils/run-in-page.ts),
-   which takes a typed function and a zod schema for its result. Keep `view.evaluate` for a one-line
+3. Run code in the page through `runInPage(view, pageFunction, argument, schema)` from
+   `@zgeoff/rig`. `pageFunction` is an arrow function that sees only `argument` and the page's
+   globals, and `schema` is a zod schema for its result. Keep `view.evaluate` for a one-line
    expression.

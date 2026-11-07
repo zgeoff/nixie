@@ -1,16 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import { store } from '../mocks/store';
-import { checkBrowserSkip } from '../test-utils/check-browser-skip';
-import { createBrowserView } from '../test-utils/create-browser-view';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
 import { startStubAPI } from '../test-utils/start-stub-api';
-
-// Bun 1.4.2's skipIf takes a boolean and has no in-body skip, so the suite checks the browser
-// before its tests start.
-const browserSkip = await checkBrowserSkip();
 
 async function setupTest() {
   const api = startStubAPI();
@@ -18,7 +12,8 @@ async function setupTest() {
   const web = await startBuiltWeb(api.url);
 
   const app = startFrontProxy({ apiURL: api.url, webURL: web.url });
-  const view = createBrowserView();
+
+  const view = new Bun.WebView({ backend: 'chrome' });
 
   onTestFinished(() => {
     view.close();
@@ -32,30 +27,27 @@ async function setupTest() {
   return { appURL: app.url, view };
 }
 
-test.skipIf(browserSkip.isSkipped)(
-  'it opens the item a notice links to at the top of the memory page',
-  async () => {
-    const ctx = await setupTest();
-    const session = await store.sessions.create({});
+test('it opens the item a notice links to at the top of the memory page', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
 
-    const item = await store.memoryItems.create({
-      shortID: 'k3m9qa',
-      versions: [{ text: 'Plays the cello' }],
-    });
+  const item = await store.memoryItems.create({
+    shortID: 'k3m9qa',
+    versions: [{ text: 'Plays the cello' }],
+  });
 
-    await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
 
-    await ctx.view.navigate(`${ctx.appURL}/memory?item=${item.itemID}`);
+  await ctx.view.navigate(`${ctx.appURL}/memory?item=${item.itemID}`);
 
-    await waitFor(
-      async () => {
-        const opened: unknown = await ctx.view.evaluate(
-          "document.querySelector('[aria-label=\"Opened item\"]')?.innerText ?? ''",
-        );
+  await waitFor(
+    async () => {
+      const opened: unknown = await ctx.view.evaluate(
+        "document.querySelector('[aria-label=\"Opened item\"]')?.innerText ?? ''",
+      );
 
-        expect(opened).toInclude('Plays the cello');
-      },
-      { timeout: 10_000 },
-    );
-  },
-);
+      expect(opened).toInclude('Plays the cello');
+    },
+    { timeout: 10_000 },
+  );
+});

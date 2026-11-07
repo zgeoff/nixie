@@ -46,7 +46,7 @@ never calls the model. With it and neither credential variable set, every probe 
 3. Run the probes, with a placeholder credential:
 
    ```bash
-   ANTHROPIC_AUTH_TOKEN=imp-broker-placeholder NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract
+   ANTHROPIC_AUTH_TOKEN=imp-broker-placeholder NIXIE_SDK_CONTRACT=1 bun run test:model-api
    ```
 
    Expect `0 fail`, and no `skip` line. The suite takes about 8 minutes on an agent's imp.
