@@ -19,6 +19,37 @@ test("it answers a request with an unknown key with 401 and the error envelope o
   });
 });
 
+test.each([
+  ['another key', { authorization: 'Bearer kagi-key-b' }],
+  ['its key without the scheme', { authorization: 'kagi-key-a' }],
+  ['its key under another scheme', { authorization: 'Bot kagi-key-a' }],
+  ['a key that only starts with its key', { authorization: 'Bearer kagi-key-ab' }],
+  ['an empty bearer key', { authorization: 'Bearer ' }],
+  ['no authorization header', {}],
+])('it answers a request with %s with 401', async (_, headers) => {
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  const response = await fetch(`${kagiAPIURL}/search`, {
+    method: 'POST',
+    headers: { ...headers, 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'tide times', workflow: 'search', limit: 10 }),
+  });
+
+  expect(response.status).toBe(401);
+});
+
+test('it answers a request with its key with 200', async () => {
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  const response = await fetch(`${kagiAPIURL}/search`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer kagi-key-a', 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'tide times', workflow: 'search', limit: 10 }),
+  });
+
+  expect(response.status).toBe(200);
+});
+
 test('it answers a request with no query with 400', async () => {
   await kagiStore.keys.create({ key: 'kagi-key-a' });
 
