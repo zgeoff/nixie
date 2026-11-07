@@ -71,10 +71,10 @@ test('it holds a definitions edit that widens and keeps the seeded version in fo
   });
 });
 
-test.each<[string, 'allow' | 'deny', string, string[]]>([
-  ['an allow', 'allow', 'narrowing', []],
-  ['a deny', 'deny', 'widening', ['web']],
-])('it plans the removal of %s from the definitions as a %s', (_name, outcome, change, inForce) => {
+test.each<[string, string, 'allow' | 'deny', string[]]>([
+  ['an allow', 'narrowing', 'allow', []],
+  ['a deny', 'widening', 'deny', ['web']],
+])('it plans the removal of %s from the definitions as a %s', (_name, change, outcome, inForce) => {
   const plan = buildRuleSeedPlan({
     definitions: [],
     seeded: [{ hash: 'h-web', rule: { id: 'web', outcome, tools: ['web.fetch'] } }],
