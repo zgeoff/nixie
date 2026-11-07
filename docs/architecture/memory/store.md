@@ -260,10 +260,11 @@ key backup state: off, pending, failed with a reason, or complete. A forget or a
 with this state, and `memory.readForgetStatus` reads it again for the same items.
 
 - The state reads off when the deployment turned the backup schedule off.
-- It reads pending while any item still waits on its cleanup.
+- It reads pending until a forget has deleted every item asked about. An item that no forget took,
+  or an unknown item ID, keeps it pending.
 - Otherwise nixie reads it from the backup sets at or after the newest forgotten record among the
   items, as [a forget's backup state](../deployment/backups.md#a-forgets-backup-state) describes.
-- A forget that deleted no item reads complete, because it removed no key.
+- A bulk forget that found no item to delete reads complete, because it removed no key.
 
 The answer reads pending in most cases, because the forget's own set publishes at the backup job's
 next job run.
