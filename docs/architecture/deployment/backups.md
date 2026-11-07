@@ -82,9 +82,10 @@ repositories and passwords from a secret that nixie's container never mounts. Be
 init container that holds no secret mounts the whole data volume to create the staging folder.
 Kubernetes never restarts or retries a failed job run, so its Job ends failed. A second job run
 would skip the failed set, because the set holds its receipt, and exit with success, so the Job
-would end as a success. The reference Compose recipe runs no backup job. Its CI overlay runs the job
-as a container that loops and mounts the staging folder as a subpath of the data volume, as the
-[Compose recipe's README](../../../deploy/compose/README.md) describes.
+would end as a success. The reference Compose recipe runs no backup job, and its configuration turns
+backups off. Its CI overlay runs the job as a container that loops and mounts the staging folder as
+a subpath of the data volume, as the [Compose recipe's README](../../../deploy/compose/README.md)
+describes.
 
 ## Receipts in nixie
 
