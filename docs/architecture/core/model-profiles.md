@@ -65,13 +65,12 @@ Only the `agent-sdk` harness has a record, so the schema refuses a profile on an
 
 The wire library holds every harness ID and the features each harness declares, such as resuming a
 session at an entry or returning structured output. Each role declares the features its loop needs,
-and nixie checks a profile's harness against those needs in 3 places:
+and nixie checks a profile's harness against those needs in 2 places:
 
 | Where             | What it checks                                                                                                     | On a misfit                                                                                                |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | The config's load | each role's profile, an unset role on the conversation's profile, and each selectable model against a task's needs | the schema refuses the file, naming the role or the selectable model, the profile and each missing feature |
 | A task's start    | the chosen selectable model against a task's needs                                                                 | the start writes nothing, and tells the model each missing feature                                         |
-| A task step       | the task's profile against a task's needs                                                                          | the step errors before its turn                                                                            |
 
 The turn profile that the host sends a guest, and each session point, name their harness too. nixie
 reads a stored session point that names no harness as an Agent SDK point.

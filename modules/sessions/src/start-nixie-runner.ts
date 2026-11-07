@@ -6,13 +6,11 @@ import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import type { HarnessDescriptor, ResolvedProfile } from '@heynixie/models';
 import {
-  checkHarnessFit,
   deriveModelSecret,
   getHarness,
   modelSessionCleanupCompletedCodec,
   modelSessionInvalidatedCodec,
   resolveModelCredentials,
-  roleNeeds,
 } from '@heynixie/models';
 import type { GrantSpec, GuestCommand, Sandbox } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
@@ -390,15 +388,7 @@ async function runGuardedStep(
     used,
     limits: run.limits,
     isImpAwake: held?.getSnapshot().matches('awake') === true,
-    missing: checkHarnessFit(run.profile.profile, roleNeeds.task).missing,
   });
-
-  // A config change since the task started can move its profile to a harness that misfits a task.
-  if (plan.kind === 'refuse') {
-    throw new Error(
-      `the task's profile ${run.profile.profile.id} runs on the ${run.profile.profile.harness} harness, which lacks ${plan.missing.join(', ')}`,
-    );
-  }
 
   if (plan.kind === 'pause') {
     await writeTaskLimitPause(context, {
