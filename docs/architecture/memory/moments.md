@@ -74,15 +74,21 @@ no prose. `moment.find` decrypts every candidate's text in process memory, a bat
 matches each query word against it, because a full-text index on disk would keep a destroyed
 moment's words.
 
-`moment.find` also ranks moments by meaning, through a moment vector index that holds one vector per
-active or retired moment, encoded from its title, note and reflections together. The index works
-like the [item vector index](./store.md#the-indexes): it lives in process memory, rebuilds in the
-background after each start, and leaves a search on keywords alone until the rebuild ends. Before
-each search, the store encodes every moment kept or changed since the last search and drops every
-moment whose destroy started, so a moment kept on one turn matches by meaning on the next, whichever
-path kept it. A destroy also drops the moment's vector once its cleanup completes. A moment matches
-by meaning when its similarity reaches 0.3, the floor that `memory.recall` uses, because the model
-asked for the search. The search merges the keyword and meaning rankings by rank, as recall does.
+`moment.find` also ranks moments by meaning. The store keeps a vector index for moments alone, with
+one vector for each active or retired moment, encoded from its title, note and reflections together.
+That index works like the [item vector index](./store.md#the-indexes): it lives in process memory,
+rebuilds in the background after each start, and leaves each search on keywords alone until the
+rebuild ends.
+
+Before each search, the store reads every moment kept or changed since the last search, whether a
+tool call or a client action changed it. It encodes each active or retired moment among them, and
+drops the vector of each moment whose destroy started. A moment kept on one turn therefore matches
+by meaning on the next. A destroy that completes also drops the moment's vector at once, without
+waiting for the next search.
+
+A moment matches by meaning when its similarity to the query reaches 0.3, the same floor as the
+`memory.recall` tool. As in [recall](./store.md#recall), reciprocal rank fusion merges the keyword
+ranking and the meaning ranking.
 
 `moment.read` returns the conversation of the span by default: the user's messages and the model's
 replies, in order. The raw fields of tool calls, tool results and step markers bury those words, so
@@ -109,8 +115,8 @@ them.
 `memory.recall` returns each item's links to active moments as short IDs and titles, and its result
 record holds the linked moments' IDs only. The tool descriptions of `memory.recall` and
 `moment.read` tell the model to read a linked moment when the reason behind a fact matters. Per-turn
-retrieval runs the store's own recall, which returns no links and never reads the moment vector
-index, so no moment text reaches a turn that way.
+retrieval calls the store's recall directly, without the links that the `memory.recall` tool adds,
+and never searches moments, so a turn never receives moment text that way.
 
 nixie counts the moments kept over the week before an instant, across every thread, and leaves out
 destroyed ones. The count shows in three places and never blocks a keep:
