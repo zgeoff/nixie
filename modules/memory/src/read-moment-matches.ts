@@ -73,9 +73,15 @@ export async function readMomentMatches(
   const rows = new Map(vectorMatches.map((match) => [match.row.moment_id, match.row]));
 
   const matches = await Promise.all(
-    ranked.map(
-      (match) => titled.get(match.itemID) ?? readTitledMatch(parts.log, rows, match.itemID),
-    ),
+    ranked.map(async (match) => {
+      const keywordMatch = titled.get(match.itemID);
+
+      if (keywordMatch !== undefined) {
+        return keywordMatch;
+      }
+
+      return await readTitledMatch(parts.log, rows, match.itemID);
+    }),
   );
 
   return { matches, next: null };

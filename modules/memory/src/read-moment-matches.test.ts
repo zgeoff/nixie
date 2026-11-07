@@ -555,7 +555,7 @@ test('it no longer finds a moment by the meaning of a reflection the user remove
 
   const reflectionID = view?.reflections[0]?.reflectionID;
 
-  invariant(reflectionID);
+  invariant(reflectionID !== undefined);
 
   await ctx.memory.store.moments.edit({
     caller: { kind: 'owner' },
