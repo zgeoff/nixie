@@ -147,7 +147,7 @@ test('it renders every rule of the starter template as one sentence', async () =
     ['ask-permanent-deletes', '**Ask** before a call when it has the effect `delete`.'],
     [
       'ask-stranger-with-memory',
-      '**Ask** before `task.start/nixie` when `memory` is `read` and `persona` is `none`.',
+      '**Ask** before starting a task in nixie when `memory` is `read` and `persona` is `none`.',
     ],
   ]);
 });
