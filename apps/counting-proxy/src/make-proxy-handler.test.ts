@@ -176,6 +176,51 @@ test.each([
   },
 );
 
+test('it refuses a background Responses request, whose reply holds no usage, and sends nothing on', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
+  const handler = makeProxyHandler({
+    routes: {
+      review: {
+        api: 'openai-responses',
+        upstream: ctx.model.url,
+        model: 'model-o',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store,
+    sendUpstream: fetch,
+    log: ctx.log,
+  });
+
+  const response = await handler(
+    new Request('http://proxy.test/review/v1/responses', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-o', background: true, input: 'Review the plan.' }),
+    }),
+  );
+
+  const refusal: unknown = await response.json();
+
+  expect({ status: response.status, refusal, requests: ctx.model.requests.length }).toStrictEqual({
+    status: 400,
+    refusal: {
+      type: 'error',
+      error: {
+        type: 'invalid_request_error',
+        message:
+          'the counting proxy needs a JSON body that names its model and asks for no background response for responses',
+      },
+    },
+    requests: 0,
+  });
+});
+
 test('it refuses a Messages request on a Responses route and sends nothing on', async () => {
   const ctx = await setupTest();
 

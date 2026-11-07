@@ -58,16 +58,26 @@ test.each([
 });
 
 test('it reads a message body that names its model', () => {
-  const result = findProxyEndpoint('anthropic-messages', 'POST', '/v1/messages')?.body?.safeParse({
+  const result = findProxyEndpoint(
+    'anthropic-messages',
+    'POST',
+    '/v1/messages',
+  )?.body?.schema.safeParse({
     model: 'model-small',
     messages: [],
   });
 
-  expect(result?.data).toStrictEqual({ model: 'model-small', messages: [] });
+  expect(result).toStrictEqual(
+    expect.objectContaining({ success: true, data: { model: 'model-small', messages: [] } }),
+  );
 });
 
 test('it refuses a message body with no model', () => {
-  const result = findProxyEndpoint('anthropic-messages', 'POST', '/v1/messages')?.body?.safeParse({
+  const result = findProxyEndpoint(
+    'anthropic-messages',
+    'POST',
+    '/v1/messages',
+  )?.body?.schema.safeParse({
     messages: [],
   });
 
@@ -75,11 +85,29 @@ test('it refuses a message body with no model', () => {
 });
 
 test('it refuses a Responses body with no model', () => {
-  const result = findProxyEndpoint('openai-responses', 'POST', '/v1/responses')?.body?.safeParse({
+  const result = findProxyEndpoint(
+    'openai-responses',
+    'POST',
+    '/v1/responses',
+  )?.body?.schema.safeParse({
     input: 'Hi.',
   });
 
   expect(result?.error?.issues).toPartiallyContain({ path: ['model'] });
+});
+
+test('it refuses a Responses body that asks for a background response', () => {
+  const result = findProxyEndpoint(
+    'openai-responses',
+    'POST',
+    '/v1/responses',
+  )?.body?.schema.safeParse({
+    model: 'model-o',
+    input: 'Hi.',
+    background: true,
+  });
+
+  expect(result?.success).toBeFalse();
 });
 
 test('it reads no body for the model list', () => {

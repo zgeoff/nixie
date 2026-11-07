@@ -3,6 +3,7 @@ import { toErrorFields } from '@heynixie/logger';
 import { buildCallCost } from '@heynixie/models';
 import type { ModelCallUsage } from '@heynixie/wire';
 import { parseJSONOrNull } from '@heynixie/wire';
+import invariant from 'tiny-invariant';
 import { buildCallTokens } from './build-call-tokens';
 import { buildCountedStream } from './build-counted-stream';
 import { findProxyEndpoint } from './find-proxy-endpoint';
@@ -115,18 +116,21 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(403, 'permission_error', formatLimitRefusal(totals, deps.limits));
     }
 
-    const body = endpoint.body === null ? null : await request.arrayBuffer();
+    const rule = endpoint.body;
+    const body = rule === null ? null : await request.arrayBuffer();
 
     const parsed =
-      endpoint.body === null || body === null
+      rule === null || body === null
         ? null
-        : endpoint.body.safeParse(parseJSONOrNull(new TextDecoder().decode(body)));
+        : rule.schema.safeParse(parseJSONOrNull(new TextDecoder().decode(body)));
 
     if (parsed?.success === false) {
+      invariant(rule !== null, 'only an endpoint with a body rule parses a body');
+
       return renderAPIError(
         400,
         'invalid_request_error',
-        `the counting proxy needs a JSON body that names its model for ${endpoint.name}`,
+        `the counting proxy needs a JSON body that ${rule.needs} for ${endpoint.name}`,
       );
     }
 
