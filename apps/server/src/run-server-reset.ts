@@ -23,7 +23,9 @@ export interface ServerReset {
 }
 
 export async function runServerReset(options: ServerResetOptions): Promise<ServerReset> {
-  if ((await readResetSeed(options.context.log.writer.db)) === null) {
+  const start = await readResetSeed(options.context.log.writer.db, options.context.clock.now());
+
+  if (start === null) {
     throw new Error('no definitions are in force yet, so the reset has nothing to start from');
   }
 
@@ -42,7 +44,7 @@ export async function runServerReset(options: ServerResetOptions): Promise<Serve
   const reset = await runLogReset(options.context.log, {
     keptTables: ['identities', ...ruleStoreTables],
     readKept: async (tx) => ({
-      seed: await readResetSeed(tx),
+      seed: await readResetSeed(tx, options.context.clock.now()),
       sessions: await readKeptSessions(tx, options.context),
     }),
     writeFirstRecords: async (tx, read, logReset) => {

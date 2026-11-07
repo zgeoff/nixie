@@ -41,7 +41,7 @@ async function setupTest() {
 
 test('it finds nothing before the first seed', async () => {
   const ctx = await setupTest();
-  const seed = await readResetSeed(ctx.writer.db);
+  const seed = await readResetSeed(ctx.writer.db, 0);
 
   expect(seed).toBeNull();
 });
@@ -64,7 +64,7 @@ test('it reads the seed in force with its snapshot row and the payload of its re
     policy,
   });
 
-  const seed = await readResetSeed(ctx.writer.db);
+  const seed = await readResetSeed(ctx.writer.db, 0);
 
   invariant(seeded.inForce);
 

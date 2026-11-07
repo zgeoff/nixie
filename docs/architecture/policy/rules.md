@@ -121,7 +121,8 @@ pending proposal and proposes again. An approval applies each widened version as
 rejection or a lapse, the seeded version stays in force, and nixie asks again only once the set of
 widenings changes. An approved set held again means the definitions narrowed it since, so nixie asks
 again at once. A log reset removes the proposal records but keeps each set of widenings you rejected
-or left to lapse, so the first seed after it proposes again only a set that was pending.
+or left to lapse, including a set past its lapse time that the hourly sweep has not yet closed. The
+first seed after the reset proposes again only a set that was pending.
 
 A runtime change stays in force over the seeded version and the definitions' version. It records the
 definitions' version that it changed, its base, so the store tells whether the definitions moved
