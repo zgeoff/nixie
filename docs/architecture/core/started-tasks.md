@@ -151,7 +151,7 @@ An interrupted turn ends at its last chain entry, with no `end_turn` from the mo
 not done, and a task with no unread message would wait after a raise. When the dollar limit cuts
 such a turn, the pause also writes a `task.limit_cut` record into the task's own inbox. That record
 stays unread past the step's commit, so the task pauses in the ready state. After a raise, the next
-step reads it as a system message that tells the model to continue the work where it stopped.
+step reads it as a system message that tells the model to continue the work that is not done yet.
 
 A `task.limit_reached` record holds the task's whole count at its turn's end, with the key of its
 step, and commits before that step's commit. When the step's commit also carries a turn record, the

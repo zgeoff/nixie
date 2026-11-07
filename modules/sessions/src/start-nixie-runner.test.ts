@@ -1030,7 +1030,45 @@ test('it resumes the work of a task turn that its dollar limit cut short once th
       .join('\n') ?? '';
 
   expect(ctx.guest.turns).toHaveLength(2);
-  expect(input).toInclude('Continue that work from where it stopped.');
+  expect(input).toInclude('Continue the work that is not done yet.');
+});
+
+test('it leaves waiting after a raise a task whose turn finished its work at its dollar limit', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'The high tide is at 14:10.',
+    stopReason: 'end_turn',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.runNextStep(runner);
+
+  const raised = await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 1 } });
+
+  expect(raised).toStrictEqual({
+    status: 'raised',
+    state: 'waiting',
+    isPauseRequested: false,
+    limits: { turns: 25, dollars: 1 },
+  });
 });
 
 test('it interrupts a task turn on the call that reaches its dollar limit with the spend of its earlier turns', async () => {

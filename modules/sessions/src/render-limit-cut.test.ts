@@ -17,6 +17,6 @@ test('it renders a cut turn as a system message that tells the model to continue
   });
 
   expect(rendered).toMatch(
-    /^<system-message type="task-limit" id="[\da-f]{12}" at="[^"]+">\n\[#518\] Your last turn stopped at your dollar limit before its work was done, and the limit was raised\. Continue that work from where it stopped\.\n<\/system-message id="[\da-f]{12}">$/u,
+    /^<system-message type="task-limit" id="[\da-f]{12}" at="[^"]+">\n\[#518\] Your dollar limit stopped a turn of yours before its work was done, and the limit was raised\. Continue the work that is not done yet\.\n<\/system-message id="[\da-f]{12}">$/u,
   );
 });

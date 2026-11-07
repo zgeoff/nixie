@@ -63,7 +63,7 @@ test.each([
         endedTurns: 1,
         hasFinishedTurn,
         next: 'wait',
-      }).isWorkCut,
-    ).toBe(isWorkCut);
+      }),
+    ).toStrictEqual({ reached: { turns: 4, dollars: 0.75 }, isImpReleased: true, isWorkCut });
   },
 );

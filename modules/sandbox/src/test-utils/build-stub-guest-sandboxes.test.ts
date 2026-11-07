@@ -120,7 +120,9 @@ test.each([
     }),
   );
 
-  expect(answered.frames.at(-1)).toMatchObject({ type: 'ended', stopReason });
+  expect(answered.frames.at(-1)).toStrictEqual(
+    expect.objectContaining({ type: 'ended', stopReason }),
+  );
 });
 
 test('it replies to a sandbox of a kind with the replies queued for that kind before the shared ones', async () => {
