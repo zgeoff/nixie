@@ -1,5 +1,4 @@
 import { expect, mock, test } from 'bun:test';
-import { waitFor } from '@testing-library/react';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -54,7 +53,7 @@ test('it shows the backup notice above the page of a live session', async () => 
     </SignedInPage>,
   );
 
-  await waitFor(() => {
-    expect(rendered.getByRole('alert')).toHaveTextContent(/^nixie found a failed backup at /u);
-  });
+  const notice = await rendered.findByRole('alert');
+
+  expect(notice).toHaveTextContent(/^nixie found a failed backup at /u);
 });
