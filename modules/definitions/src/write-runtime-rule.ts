@@ -8,7 +8,7 @@ import type { DefinitionsTables, RuleChanger } from './types';
 import { writeRuntimeRuleState } from './write-runtime-rule-state';
 
 export interface RuleContext extends ProposalContext {
-  readonly seedInForce: () => Promise<unknown>;
+  readonly runInForceSeed: () => Promise<unknown>;
 }
 
 export interface RuntimeRuleInput {
@@ -90,7 +90,7 @@ export async function writeRuntimeRule(
     ]);
   });
 
-  await context.seedInForce();
+  await context.runInForceSeed();
 
   return { changeID };
 }

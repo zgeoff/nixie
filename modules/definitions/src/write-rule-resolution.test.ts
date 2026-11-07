@@ -51,7 +51,7 @@ async function setupTest() {
       log,
       clock,
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      seedInForce: () => runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) }),
+      runInForceSeed: () => runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) }),
     },
   };
 }

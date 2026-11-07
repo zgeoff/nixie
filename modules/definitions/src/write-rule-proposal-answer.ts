@@ -74,7 +74,7 @@ export async function writeRuleProposalAnswer(
   );
 
   if (result.status === 'approved') {
-    await context.seedInForce();
+    await context.runInForceSeed();
   }
 
   return result;

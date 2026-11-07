@@ -64,7 +64,7 @@ export async function writeRuleResolution(
   );
 
   if (result.status === 'resolved') {
-    await context.seedInForce();
+    await context.runInForceSeed();
   }
 
   return result;
