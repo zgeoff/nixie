@@ -1313,6 +1313,7 @@ test('#memory.writerStatus reports the writer as off when the deployment turns i
     lastSeenIntervalMs: 60_000,
     isMemoryWriterEnabled: false,
     isMemoryConsolidatorEnabled: true,
+    isBackupEnabled: true,
     taskDirectory: [],
   });
 
@@ -1338,6 +1339,7 @@ test('#memory.consolidatorStatus reports the consolidator as off when the deploy
     lastSeenIntervalMs: 60_000,
     isMemoryWriterEnabled: true,
     isMemoryConsolidatorEnabled: false,
+    isBackupEnabled: true,
     taskDirectory: [],
   });
 

@@ -133,7 +133,7 @@ test('#memory.forget forgets the item at the version its preview showed, so ever
 
   const history = await ctx.memory.readHistory(item.itemID);
 
-  expect(forgotten).toStrictEqual({ itemID: item.itemID });
+  expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
   expect(history).toMatchObject({ state: 'forgotten', versions: [{ status: 'shredded' }] });
 });
 
@@ -210,7 +210,7 @@ test('#memory.forget completes a forget on the retry after its session cleanup f
   const history = await ctx.memory.readHistory(item.itemID);
 
   expect(failed).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
-  expect(retried).toStrictEqual({ itemID: item.itemID });
+  expect(retried).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
   expect(history?.state).toBe('forgotten');
 });
 
@@ -465,6 +465,7 @@ test('#memory.forgetRetired deletes the confirmed set, with a forgotten record f
   expect(status).toStrictEqual({
     deleted: preview.items.map((item) => item.itemID),
     pending: [],
+    backup: { state: 'pending' },
   });
 
   expect(
@@ -571,7 +572,11 @@ test('#memory.forgetRetired leaves alone an item retired after the preview', asy
 
   const left = await client.memory.previewForgetRetired();
 
-  expect(status).toStrictEqual({ deleted: [first.itemID], pending: [] });
+  expect(status).toStrictEqual({
+    deleted: [first.itemID],
+    pending: [],
+    backup: { state: 'pending' },
+  });
 
   expect(left.items).toMatchObject([
     { itemID: second.itemID, status: 'readable', text: 'Grows chillies on the balcony' },
@@ -643,8 +648,13 @@ test('#memory.forgetRetired finishes the pending items on the retry after a clea
   const retried = await client.memory.forgetRetired(input);
 
   expect(failed).toMatchObject({ code: 'INTERNAL_SERVER_ERROR' });
-  expect(pending).toStrictEqual({ deleted: [], pending: itemIDs });
-  expect(retried).toStrictEqual({ deleted: itemIDs, pending: [] });
+  expect(pending).toStrictEqual({ deleted: [], pending: itemIDs, backup: { state: 'pending' } });
+
+  expect(retried).toStrictEqual({
+    deleted: itemIDs,
+    pending: [],
+    backup: { state: 'pending' },
+  });
 });
 
 test('#memory.forgetRetired refuses a caller with no session, and deletes and records nothing', async () => {

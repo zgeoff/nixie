@@ -178,6 +178,7 @@ test('it runs both resets while the gate is closed', async () => {
         resetAt: new Date('2026-10-11T12:20:00.000Z'),
         lastSequence: 57,
         shreddedRecords: 14,
+        backup: { state: 'pending' },
       }),
     gate: { runCall: (_call, onClosed) => onClosed() },
   });
@@ -201,5 +202,6 @@ test('it runs both resets while the gate is closed', async () => {
     resetAt: new Date('2026-10-11T12:20:00.000Z'),
     lastSequence: 57,
     shreddedRecords: 14,
+    backup: { state: 'pending' },
   });
 });

@@ -96,6 +96,7 @@ test('it serves the API with the settings the test gives', async () => {
     lastSeenIntervalMs: 1000,
     isMemoryWriterEnabled: false,
     isMemoryConsolidatorEnabled: false,
+    isBackupEnabled: false,
     taskDirectory: [],
   });
 
@@ -106,6 +107,7 @@ test('it serves the API with the settings the test gives', async () => {
     lastSeenIntervalMs: 1000,
     isMemoryWriterEnabled: false,
     isMemoryConsolidatorEnabled: false,
+    isBackupEnabled: false,
     taskDirectory: [],
   });
 });

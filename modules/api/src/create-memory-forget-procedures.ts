@@ -1,5 +1,7 @@
 import { apiImplementer } from './api-implementer';
 import { ownerProvenance } from './owner-provenance';
+import { readForgetBackupState } from './read-forget-backup-state';
+import { readForgetStatusReply } from './read-forget-status-reply';
 import { requireCaller } from './require-caller';
 import { requireViewMemory } from './require-view-memory';
 import { runMemoryChange } from './run-memory-change';
@@ -41,9 +43,12 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
           memoryStore.forget({ target, provenance: ownerProvenance, writeInTransaction }),
       }));
 
-      await store.finishForget(target.itemID);
+      const status = await store.finishForgets([target.itemID]);
 
-      return result;
+      return {
+        ...result,
+        backup: await readForgetBackupState(context, status),
+      };
     }),
 
     previewForgetRetired: memory.previewForgetRetired.handler(async (options) => {
@@ -78,7 +83,7 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
 
       const status = await store.finishForgets(itemIDs);
 
-      return { deleted: [...status.deleted], pending: [...status.pending] };
+      return readForgetStatusReply(context, status);
     }),
 
     readForgetStatus: memory.readForgetStatus.handler(async (options) => {
@@ -88,7 +93,7 @@ export function createMemoryForgetProcedures(context: APIContext, readMemory: Re
 
       const status = await store.view.readForgetStatus(options.input.itemIDs);
 
-      return { deleted: [...status.deleted], pending: [...status.pending] };
+      return readForgetStatusReply(context, status);
     }),
   };
 }

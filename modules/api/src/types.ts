@@ -1,3 +1,4 @@
+import type { ForgetBackup } from '@heynixie/backup';
 import type { ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { RecordKind } from '@heynixie/log';
@@ -24,6 +25,8 @@ export interface APISettings {
   readonly isMemoryWriterEnabled: boolean;
 
   readonly isMemoryConsolidatorEnabled: boolean;
+
+  readonly isBackupEnabled: boolean;
 
   readonly taskDirectory: readonly TaskProfile[];
 }
@@ -105,10 +108,13 @@ interface HostReset {
   readonly keptSessions: number;
 }
 
+export type ForgetBackupState = ForgetBackup | { readonly state: 'off' };
+
 interface HostConversationReset {
   readonly resetAt: Date;
   readonly lastSequence: number;
   readonly shreddedRecords: number;
+  readonly backup: ForgetBackupState;
 }
 
 export interface APIRequestContext extends ResponseHeadersPluginContext {

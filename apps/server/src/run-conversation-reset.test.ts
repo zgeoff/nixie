@@ -20,7 +20,7 @@ async function setupTest() {
   return { ...server, context };
 }
 
-test('it shreds every record on the conversation thread, then records the reset there', async () => {
+test('it shreds every record on the conversation thread, records the reset there, and reports its key backups as pending', async () => {
   const ctx = await setupTest();
 
   await runTestSeed(ctx.context.log, ctx.dataDir);
@@ -53,6 +53,7 @@ test('it shreds every record on the conversation thread, then records the reset 
     resetAt: expect.toBeValidDate(),
     lastSequence: 5,
     shreddedRecords: 2,
+    backup: { state: 'pending' },
   });
 
   expect(read.map((entry) => entry.record).slice(2)).toMatchObject([

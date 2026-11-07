@@ -1,7 +1,7 @@
 import type { MemorySubjectCounts } from '@heynixie/db';
 import type { ChangeOutcome, ConsolidationDiff, MemoryConsolidations } from './consolidation-types';
 import type { ApprovalResult, MemoryProposal, MemoryProposals } from './gate-types';
-import type { MemoryStore, Provenance, VersionRef } from './types';
+import type { ForgetStatus, MemoryStore, Provenance, VersionRef } from './types';
 import type { ItemHistory } from './view-types';
 
 export type HostMemoryStore = Pick<
@@ -12,6 +12,7 @@ export type HostMemoryStore = Pick<
   | 'pin'
   | 'forget'
   | 'forgetAll'
+  | 'finishForgets'
   | 'readHistory'
   | 'readSubjectCounts'
 > & { readonly proposals: MemoryProposals; readonly consolidations: MemoryConsolidations };
@@ -49,9 +50,9 @@ export interface HostMemory {
   readonly restore: (target: VersionRef) => Promise<VersionRef>;
   readonly pin: (itemID: string, isPinned: boolean) => Promise<void>;
 
-  readonly forget: (target: VersionRef) => Promise<void>;
+  readonly forget: (target: VersionRef) => Promise<ForgetStatus>;
 
-  readonly forgetAll: () => Promise<readonly string[]>;
+  readonly forgetAll: () => Promise<ForgetStatus>;
   readonly readDiff: () => Promise<ConsolidationDiff | null>;
   readonly approveChanges: (
     answers: readonly HostChangeAnswer[],
@@ -83,8 +84,16 @@ export function buildHostMemory(store: HostMemoryStore): HostMemory {
     retire: (target) => store.retire({ target, provenance: ownerProvenance }),
     restore: (target) => store.restore({ target, provenance: ownerProvenance }),
     pin: (itemID, isPinned) => store.pin({ itemID, isPinned, provenance: ownerProvenance }),
-    forget: (target) => store.forget({ target, provenance: ownerProvenance }),
-    forgetAll: () => store.forgetAll({ provenance: ownerProvenance }),
+    forget: async (target) => {
+      await store.forget({ target, provenance: ownerProvenance });
+
+      return store.finishForgets([target.itemID]);
+    },
+    forgetAll: async () => {
+      const itemIDs = await store.forgetAll({ provenance: ownerProvenance });
+
+      return store.finishForgets(itemIDs);
+    },
     readDiff: () => store.consolidations.readPending(),
     approveChanges: (answers) =>
       store.consolidations.approveAll(

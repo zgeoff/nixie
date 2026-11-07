@@ -1,3 +1,5 @@
+import type { ForgetBackupState } from '@heynixie/api';
+import { readForgetBackupState } from '@heynixie/api';
 import { removeWebFetchThread } from '@heynixie/connectors';
 import { removeThreadKeys, writeRecords } from '@heynixie/log';
 import { modelSessionInvalidatedCodec } from '@heynixie/models';
@@ -9,6 +11,7 @@ export interface ConversationReset {
   readonly resetAt: Date;
   readonly lastSequence: number;
   readonly shreddedRecords: number;
+  readonly backup: ForgetBackupState;
 }
 
 export async function runConversationReset(
@@ -41,7 +44,7 @@ export async function runConversationReset(
 
   const resetAt = new Date();
 
-  await writeRecords(log, [
+  const [logReset] = await writeRecords(log, [
     {
       kind: 'log_reset',
       definitions: options.context.definitions(),
@@ -55,5 +58,12 @@ export async function runConversationReset(
     },
   ]);
 
-  return { resetAt, lastSequence: invalidated.sequence, shreddedRecords };
+  invariant(logReset, 'the log wrote no log_reset record');
+
+  const backup = await readForgetBackupState(options.context, {
+    pending: [],
+    forgottenSequence: logReset.sequence,
+  });
+
+  return { resetAt, lastSequence: invalidated.sequence, shreddedRecords, backup };
 }

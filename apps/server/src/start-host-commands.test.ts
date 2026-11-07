@@ -58,6 +58,7 @@ test('it runs the reset of the conversations itself once the gate is closed', as
     resetAt: new Date(2_000_000),
     lastSequence: 31,
     shreddedRecords: 9,
+    backup: { state: 'pending' },
   });
 
   await ctx.gate.close();
@@ -68,6 +69,7 @@ test('it runs the reset of the conversations itself once the gate is closed', as
     resetAt: new Date(2_000_000),
     lastSequence: 31,
     shreddedRecords: 9,
+    backup: { state: 'pending' },
   });
 });
 

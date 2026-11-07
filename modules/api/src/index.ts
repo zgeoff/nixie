@@ -4,6 +4,7 @@ export { createEnrolmentCode } from './create-enrolment-code';
 export { createFirstEnrolmentCode } from './create-first-enrolment-code';
 export { defaultAPISettings } from './default-api-settings';
 export { makeHostResponder } from './make-host-responder';
+export { readForgetBackupState } from './read-forget-backup-state';
 export type { KeptSession } from './read-kept-sessions';
 export { readKeptSessions } from './read-kept-sessions';
 export { readSessions } from './read-sessions';
@@ -15,6 +16,7 @@ export type {
   APIContext,
   APISettings,
   CleanupRecordSessions,
+  ForgetBackupState,
   HostRouterOptions,
   Identity,
   ReadViewMemory,

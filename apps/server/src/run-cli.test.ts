@@ -217,7 +217,7 @@ test('it refuses a reset of the conversations without --yes, and says what it ke
   ]);
 });
 
-test('it prints what a reset of the conversations shredded, and that the server restarts', async () => {
+test('it prints what a reset of the conversations shredded, that the server restarts, and the key backup state', async () => {
   const ctx = await setupTest();
 
   const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
@@ -241,6 +241,7 @@ test('it prints what a reset of the conversations shredded, and that the server 
           resetAt: new Date('2026-10-20T07:45:00.000Z'),
           lastSequence: 88,
           shreddedRecords: 14,
+          backup: { state: 'pending' },
         }),
       gate: buildAPIGate(),
     }),
@@ -260,13 +261,13 @@ test('it prints what a reset of the conversations shredded, and that the server 
       [
         'nixie shredded 14 records of the conversation up to sequence 88 at 2026-10-20T07:45:00.000Z.',
         'The server restarts now, and its next turn starts with no history.',
-        'Backups from before the reset still hold the old data until they age out.',
+        'Key backups: pending. The next backup job run removes the old keys from the key backups, within the backup interval.',
       ].join('\n'),
     ],
   ]);
 });
 
-test('it forgets every memory item through a reset of the memories, and prints how many', async () => {
+test('it forgets every memory item through a reset of the memories, and prints how many and the key backup state', async () => {
   const ctx = await setupTest();
 
   const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
@@ -321,7 +322,7 @@ test('it forgets every memory item through a reset of the memories, and prints h
     [
       [
         'nixie forgot 2 memory items.',
-        'Backups from before the reset still hold the old data until they age out.',
+        'Key backups: pending. The next backup job run removes the old keys from the key backups, within the backup interval.',
       ].join('\n'),
     ],
   ]);

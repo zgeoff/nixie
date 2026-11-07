@@ -136,6 +136,7 @@ export interface AllForgetRequest {
 export interface ForgetStatus {
   readonly deleted: readonly string[];
   readonly pending: readonly string[];
+  readonly forgottenSequence: number | null;
 }
 
 export interface VersionRef {

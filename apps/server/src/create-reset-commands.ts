@@ -1,3 +1,4 @@
+import { formatForgetBackup } from './format-forget-backup';
 import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
 export function createResetCommands(host: HostTransport): readonly (readonly [string, Command])[] {
@@ -71,7 +72,9 @@ async function runMemoriesReset(host: HostTransport, flags: CLIFlags, io: CLIIO)
     client.memory.items.forgetAll(),
   );
 
-  io.print(`nixie forgot ${forgotten.itemIDs.length} memory items.\n${backupNote}`);
+  io.print(
+    `nixie forgot ${forgotten.itemIDs.length} memory items.\n${formatForgetBackup(forgotten.backup)}`,
+  );
 
   return 0;
 }
@@ -103,7 +106,7 @@ async function runConversationsReset(
     [
       `nixie shredded ${reset.shreddedRecords} records of the conversation up to sequence ${reset.lastSequence} at ${reset.resetAt.toISOString()}.`,
       'The server restarts now, and its next turn starts with no history.',
-      backupNote,
+      formatForgetBackup(reset.backup),
     ].join('\n'),
   );
 

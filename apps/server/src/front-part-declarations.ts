@@ -32,6 +32,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           ...defaultAPISettings,
           isMemoryWriterEnabled: options.config.memory_writer.isEnabled,
           isMemoryConsolidatorEnabled: options.config.memory_consolidation.isEnabled,
+          isBackupEnabled: options.config.backup.isEnabled,
           taskDirectory: buildTaskMessaging(options.config).directory,
         },
       );

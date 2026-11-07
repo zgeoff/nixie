@@ -250,9 +250,26 @@ describes, so neither the key store file nor its write-ahead log keeps the wrapp
 rows and their records stay as ciphertext, and the memory view reads every version of a forgotten
 item as a gap with its date and provenance.
 
-With no key backup registered, a forget completes after local cleanup. The session cleanup is the
-one the server passes in from the conversation, and
+The session cleanup is the one the server passes in from the conversation, and
 [memory in context](./context.md#forgetting-and-the-live-session) covers what it removes.
+
+### A forget and the key backups
+
+A backup copied before a forget still holds the forgotten item's key, so a forget also reports its
+key backup state, from the forgotten record of each item it deleted:
+
+- **off:** the deployment turned the backup schedule off, so nixie stages no backup to wait on.
+- **pending:** an item still waits on its cleanup, or no backup set copied after its forgotten
+  record has published.
+- **failed:** the newest such set failed, and the report carries the backup job's failure.
+- **complete:** such a set published, so its job run pruned every key copy that held the item.
+
+A forget or a bulk forget answers with this state, and `memory.readForgetStatus` reads it again for
+the same items. The answer reads pending in most cases, because the forget's own set publishes at
+the backup job's next job run. A failed state keeps the forget open, and the next scheduled set
+covers it again. A restart keeps the wait, because nixie reads the state from the log and the backup
+sets' rows. [A forget's backup state](../deployment/backups.md#a-forgets-backup-state) gives the
+rule for each set state.
 
 ### Forgetting retired items in bulk
 
