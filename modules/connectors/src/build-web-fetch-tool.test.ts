@@ -301,6 +301,7 @@ test.each([
   [' L1 '],
   ['[L1 · bakery.test]'],
   ['[L1 · bakery.test/breads/…]'],
+  ['[L1 · [2001:db8::1]/breads]'],
 ])('it reads %p as the ID of link 1', async (link) => {
   const ctx = await setupTest();
 

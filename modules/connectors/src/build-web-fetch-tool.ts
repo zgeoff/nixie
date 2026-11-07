@@ -199,9 +199,7 @@ function pickTarget(input: JSONObject): Target {
 }
 
 function parseLinkID(link: string): number | null {
-  const digits = /^\[?L(?<number>\d{1,15})(?: · [^\]]*)?\]?$/iu.exec(link.trim())?.groups?.[
-    'number'
-  ];
+  const digits = /^\[?L(?<number>\d{1,15})(?: · .*)?\]?$/iu.exec(link.trim())?.groups?.['number'];
 
   return digits === undefined ? null : Number(digits);
 }
