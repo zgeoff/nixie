@@ -1,8 +1,9 @@
 # Run the Agent SDK contract suite
 
-The [Agent SDK contract suite](../../evals/sdk-contract/README.md) is a set of probes. Each probe
-runs the Agent SDK version that `bun.lock` pins, sends the model one query, and checks one behaviour
-that nixie relies on. No CI job runs the suite, because nixie's CI holds no model credential.
+The [Agent SDK contract suite](../architecture/core/sdk-contract-suite.md) is a set of probes. Each
+probe runs the Agent SDK version that `bun.lock` pins, sends the model one query, and checks one
+behaviour that nixie relies on. No CI job runs the suite, because nixie's CI holds no model
+credential.
 
 When a pull request changes the `@anthropic-ai/claude-agent-sdk` version, run the suite by hand at
 its head commit. Post the output on the pull request. Merge the pull request only after that comment
@@ -68,7 +69,7 @@ A probe that fails on a new SDK version shows that a behaviour nixie relies on c
 
 1. Read the failing assertion.
 2. Find the code or design that relies on it in the suite's
-   [list of probes](../../evals/sdk-contract/README.md#the-probes).
+   [list of probes](../architecture/core/sdk-contract-suite.md#the-probes).
 3. If nixie needs the old behaviour, change that code before the bump merges. If nixie no longer
    needs it, rewrite the probe to the new behaviour.
 4. Run the suite again. Post the new output on the pull request.

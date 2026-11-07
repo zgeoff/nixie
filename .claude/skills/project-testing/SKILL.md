@@ -88,10 +88,10 @@ nixie replaces these rules of the shared `testing` skill.
 
 - In place of the shared rule to run the `model-api` lane nightly and on an SDK bump, never run the
   `*.model-api.test.ts` files in CI. They form the
-  [SDK contract suite](../../../evals/sdk-contract/README.md), and nixie's CI holds no model
-  credential. A preview service in nixie's private deployment repo runs the suite on each pull
-  request that changes the Agent SDK version, and posts the outcome as the `sdk-contract` commit
-  status. Run the suite by hand on that pull request as well, with the steps in the
+  [SDK contract suite](../../../docs/architecture/core/sdk-contract-suite.md), and nixie's CI holds
+  no model credential. A preview service in nixie's private deployment repo runs the suite on each
+  pull request that changes the Agent SDK version, and posts the outcome as the `sdk-contract`
+  commit status. Run the suite by hand on that pull request as well, with the steps in the
   [SDK contract suite runbook](../../../docs/runbooks/sdk-contract-suite.md), and post its output in
   a comment. The status carries no output, and the Agent SDK bump rule in
   [AGENTS.md](../../../AGENTS.md) needs that comment before the merge.

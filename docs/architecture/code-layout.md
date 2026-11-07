@@ -187,7 +187,7 @@ module and the conversation guest.
 
 The product tests that run the Agent SDK's `query()` live in `guests/conversation`, the one product
 package that imports the SDK. They run against the guest's own stub model, so none of them needs an
-imp or a real model. Each probe of the [SDK contract suite](../../evals/sdk-contract/README.md) is a
+imp or a real model. Each probe of the [SDK contract suite](core/sdk-contract-suite.md) is a
 function in the guest's `sdk-contract` folder: the guest's tests run it against the stub model, and
 the suite in `evals/` runs it against a real model, to check the SDK behaviours nixie relies on. The
 suite's README lists the probes that only the real model can check, which no guest test runs. The

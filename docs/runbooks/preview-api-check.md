@@ -1,7 +1,7 @@
 # Check a turn on a preview through the API
 
-A check on a [preview](../../preview/README.md) can send one turn through nixie's API and read the
-records that turn wrote, so it confirms the turn from the event log as well as from the reply. The
+A check on a [preview](preview.md) can send one turn through nixie's API and read the records that
+turn wrote, so it confirms the turn from the event log as well as from the reply. The
 [API](../architecture/channels/api.md) is oRPC under `/rpc`. Every call is a `POST` to
 `/rpc/<procedure>`, such as `/rpc/conversation/send`, with a JSON body of `{"json": <input>}`, and
 the answer is `{"json": <output>}`. The answer's `meta` list marks each date, which arrives as an
@@ -14,9 +14,8 @@ HTTP 403 with the text `the client header is missing`. The commands below use `c
 
 ## Send one turn and read its records
 
-1. Start the preview and read a sign-in code, as [Run it](../../preview/README.md#run-it) says.
-   Leave the code off the sign-in page: a code signs in one device, once, and this check enrols its
-   own.
+1. Start the preview and read a sign-in code, as [Run it](preview.md#run-it) says. Leave the code
+   off the sign-in page: a code signs in one device, once, and this check enrols its own.
 
 2. Set the origin that the preview listens on:
 

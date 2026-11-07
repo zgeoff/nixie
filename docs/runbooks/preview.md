@@ -1,8 +1,8 @@
 # Preview recipe
 
-The files here run a throwaway nixie for one pull request: a test build of the branch's source, the
-web client, and one origin in front of both. Each new Compose project starts with a fresh database
-and a fresh deployment key, and holds invented data only.
+The files in [`preview/`](../../preview/) run a throwaway nixie for one pull request: a test build
+of the branch's source, the web client, and one origin in front of both. Each new Compose project
+starts with a fresh database and a fresh deployment key, and holds invented data only.
 
 The preview runs every sandbox in the test sandbox, which runs each guest as a local process beside
 nixie. The test sandbox is not a security boundary: a guest reads whatever nixie's user can and
@@ -11,8 +11,8 @@ must not reach, such as an imp of its own.
 
 ## Run it
 
-1. Start the preview from this folder. On a PC, keep the origin on the loopback address, so the test
-   sandbox stays off your network:
+1. Start the preview from the `preview/` folder. On a PC, keep the origin on the loopback address,
+   so the test sandbox stays off your network:
 
    ```bash
    NIXIE_PREVIEW_BIND=127.0.0.1 docker compose up --build --wait
@@ -46,7 +46,7 @@ defaults to `0.0.0.0`, so a preview environment's proxy reaches the origin from 
 To confirm a turn from its records, enrol a device with the sign-in code through `sessions/enrol`,
 send one message with `conversation/send`, and read the conversation with `conversation/read`: its
 `owner_message`, each `model.reply`, `model.turn_ended` and the `task.step_*` records of its step.
-The [preview API check](../docs/runbooks/preview-api-check.md) gives each request and a worked turn.
+The [preview API check](preview-api-check.md) gives each request and a worked turn.
 
 ## Model calls
 
@@ -58,9 +58,9 @@ sets both, so every `docker compose` command there keeps the broker in place. Wi
 starts and reports ready, and each turn fails at its model call.
 
 A host that caps each preview's model spend with a
-[counting proxy](../docs/architecture/policy/counting-proxy.md) of its own sends the model API's
-host to that proxy and names the preview's route in `PREVIEW_MODEL_ROUTE`. nixie then runs on a copy
-of `config.yaml` with the route on the end of each model profile's base URL.
+[counting proxy](../architecture/policy/counting-proxy.md) of its own sends the model API's host to
+that proxy and names the preview's route in `PREVIEW_MODEL_ROUTE`. nixie then runs on a copy of
+`config.yaml` with the route on the end of each model profile's base URL.
 
 ## Files
 

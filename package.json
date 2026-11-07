@@ -140,7 +140,7 @@
     "ci:release:write-release-notes": "bun scripts/release/write-release-notes.ts",
     "test:model-api": "rig model-api",
     "test:imp": "rig imp --config=bunfig.imp.toml",
-    "check:docs": "chex prose length links skill"
+    "check:docs": "chex prose length links readmes skill"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

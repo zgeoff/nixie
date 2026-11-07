@@ -120,6 +120,10 @@ below, and planned work lives in Linear.
   that shreds only the moment's own text
 - [Memory in context](architecture/memory/context.md) — the pinned core in the system prompt, the
   items each turn retrieves, and the session cleanup a forget runs
+- [The memory checker eval](architecture/memory/checker-eval.md) — the labelled sets, wrong
+  confirmations and misses, and the results per set
+- [The memory writer eval](architecture/memory/writer-eval.md) — the cases, the rule each run must
+  meet, and the results per prompt
 
 ### Deployment
 
@@ -145,11 +149,17 @@ below, and planned work lives in Linear.
   a pinned commit, compute its content hash and add its lock entry
 - [Overriding a prompt](guides/overriding-a-prompt.md) — replace a part or the template of a
   built-in prompt from your definitions, and the parts and paths each prompt has
+- [Run nixie with Docker Compose](guides/compose.md) — the reference recipe, its placeholders and
+  secrets, signing in, and how CI checks it
+- [Run nixie on Kubernetes](guides/kubernetes.md) — the reference manifests, their placeholders and
+  secrets, and validating them
 
 ## Runbooks
 
 - [Releasing](runbooks/releasing.md) — the release App, cutting a release, making a sandbox image
   public, checking an attestation and repairing a failed release
+- [Run a preview](runbooks/preview.md) — a throwaway nixie for one pull request, signing in, and its
+  model calls
 - [Check a turn on a preview through the API](runbooks/preview-api-check.md) — enrol a device, send
   one turn and read the records it wrote, then reset the preview
 - [Run the memory checker eval](runbooks/memory-checker-eval.md) — score a set through the
@@ -158,8 +168,9 @@ below, and planned work lives in Linear.
   model on an imp for each Agent SDK bump, and act on one that fails
 - [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a
   fetch sandbox reach, on a host with impd
-- [The Agent SDK contract suite](../evals/sdk-contract/README.md) — the SDK behaviours nixie relies
-  on, checked against a stub model on every pull request and against the model on every SDK bump
+- [The Agent SDK contract suite](architecture/core/sdk-contract-suite.md) — the SDK behaviours nixie
+  relies on, checked against a stub model on every pull request and against the model on every SDK
+  bump
 
 ## Design
 

@@ -1,15 +1,15 @@
 # The memory writer eval
 
-This eval checks that the [memory writer](../../docs/architecture/memory/writer.md) keeps track of
-who is who: it files a fact about you as yours, files something between you and the assistant as
-shared, flags what you say about the assistant instead of writing it in your name, gives a fact you
-say ends an end time, and marks an address you give sensitive. Each case is one invented batch with
-the rule that every run of it must meet, and the patterns that the text of the write the rule asks
-for must match, such as the exception a correction adds.
+This eval checks that the [memory writer](writer.md) keeps track of who is who: it files a fact
+about you as yours, files something between you and the assistant as shared, flags what you say
+about the assistant instead of writing it in your name, gives a fact you say ends an end time, and
+marks an address you give sensitive. Each case is one invented batch with the rule that every run of
+it must meet, and the patterns that the text of the write the rule asks for must match, such as the
+exception a correction adds.
 
-[cases.json](cases.json) holds 12 cases, sent from one time zone. The two time-limit cases send
-their messages in 2030, because Claude Code gives the model the real date, and a model that sees the
-end of an invented week already past skips the fact as lapsed:
+[cases.json](../../../evals/memory-writer/cases.json) holds 12 cases, sent from one time zone. The
+two time-limit cases send their messages in 2030, because Claude Code gives the model the real date,
+and a model that sees the end of an invented week already past skips the fact as lapsed:
 
 | Case                      | Every run must                                            |
 | ------------------------- | --------------------------------------------------------- |
@@ -35,7 +35,7 @@ was written before any run.
 
 The run sends each case through the production system prompt, batch prompt and tools, 3 times each,
 with the query options the guest uses and your local Claude Code login. It rewrites
-[report.json](report.json), which `bun test` then checks.
+[report.json](../../../evals/memory-writer/report.json), which `bun test` then checks.
 
 ```bash
 env -u ANTHROPIC_API_KEY bun evals/memory-writer/run-memory-writer-eval.ts

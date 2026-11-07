@@ -1,6 +1,6 @@
 # Run the memory checker eval
 
-The [memory checker eval](../../evals/memory-checker/README.md) scores the memory checker on
+The [memory checker eval](../architecture/memory/checker-eval.md) scores the memory checker on
 labelled sets of messages and memories. A run calls the production checker with the production
 prompt, on the input the content gate renders for each pair, 3 times each, through the check guest's
 query and your local Claude Code login.
