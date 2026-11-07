@@ -1,4 +1,5 @@
 import type { SearchHit, SearchProvider, SearchReply, SearchRequest } from '@heynixie/connectors';
+import { parseJSONOrNull } from '@heynixie/wire';
 import { z } from 'zod';
 import type { KagiSearchRequest } from './kagi-contract';
 import { kagiErrorSchema, kagiSearchResponseSchema } from './kagi-contract';
@@ -55,7 +56,7 @@ function buildKagiRequest(request: SearchRequest): KagiSearchRequest {
 const kagiSearchCostUSD = 0.012;
 
 function parseKagiResponse(status: number, text: string): SearchReply {
-  const body = parseJSON(text);
+  const body = parseJSONOrNull(text);
 
   if (status !== 200) {
     const error = kagiErrorSchema.safeParse(body);
@@ -81,14 +82,6 @@ function parseKagiResponse(status: number, text: string): SearchReply {
         costUSD: kagiSearchCostUSD,
       }
     : { kind: 'failed', reason: 'Kagi answered with results nixie cannot read' };
-}
-
-function parseJSON(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
 }
 
 const dateTimeSchema = z.iso.datetime({ offset: true });
