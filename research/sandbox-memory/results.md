@@ -55,9 +55,10 @@ Each guest script runs its command under [`guest/measure.sh`](guest/measure.sh),
   imp's size, so compare `used` only at one size.
 - `anon` is `AnonPages`, the guest's anonymous memory. Compare this figure across sizes.
 - `cgroup_peak` and `cgroup_max` are the peak and the limit of the cgroup that holds the guest's
-  processes. impd sets the limit to `MemTotal` less 64 MiB, which it keeps for its own agent, and
-  sets no limit when that leaves too little [measured]. The peak covers the guest's whole life, and
-  counts file cache, which the kernel takes back at the limit.
+  processes, and `cgroup_max_hits` counts the times the step reached that limit. impd sets the limit
+  to `MemTotal` less 64 MiB, which it keeps for its own agent, and sets no limit when that leaves
+  too little [measured]. The peak covers the guest's whole life, and counts file cache, which the
+  kernel takes back at the limit.
 - The summary line also gives the command's exit status, and each fetch scenario checks that every
   reply is a page.
 - Each process over 5 MiB appears with its peak resident memory (RSS), which counts the pages of its
@@ -134,12 +135,14 @@ the size, and the 4 at once size a [shared imp](#shared-imps).
 | Size    | Guest's `MemTotal` | Cgroup limit | Largest single fetch, `used` | Its `anon` | 4 at once, `used` | 4 at once, `anon` | OOM kills, single | OOM kills, 4 at once |
 | ------- | ------------------ | ------------ | ---------------------------- | ---------- | ----------------- | ----------------- | ----------------- | -------------------- |
 | 512 MiB | 480 MiB            | 415 MiB      | 101 MiB                      | 69 MiB     | 101 MiB           | 68 MiB            | 0                 | 0                    |
-| 192 MiB | 164 MiB            | 100 MiB      | 97 MiB                       | 68 MiB     | 105 MiB           | 77 MiB            | 0                 | 0                    |
+| 192 MiB | 164 MiB            | 100 MiB      | 86–97 MiB                    | 59–68 MiB  | 92–114 MiB        | 64–86 MiB         | 0                 | 0                    |
 | 128 MiB | 102 MiB            | none         | 92 MiB                       | 65 MiB     | 100 MiB           | 71 MiB            | 0                 | 1                    |
 
-- At 192 MiB, the cgroup reached its 100 MiB limit on the 2 largest pages, alone and 4 at once. The
-  kernel took back file cache, and every fetch returned its page with no OOM kill [measured]. The
-  headroom is the 23 to 32 MiB between the anonymous peak and that limit.
+- The 192 MiB row gives the range over 3 probes. In the last, the cgroup reached its 100 MiB limit
+  11 and 39 times on the 2 largest pages alone, and 157 times with 4 at once. Each time the kernel
+  took back file cache, and every fetch returned its page with no OOM kill [measured].
+- The headroom at 192 MiB is the gap between the anonymous peak and the 100 MiB limit: 32 to 41 MiB
+  for one fetch, and 14 MiB for 4 at once [measured].
 - At 128 MiB, impd set no cgroup limit. With 4 at once, the guest OOM-killed one fetcher, and 2 of
   the 4 replies failed [measured].
 - The fetcher's `bun` process peaked at 38 to 81 MiB RSS, highest on the largest page [measured].
@@ -272,8 +275,8 @@ A busy deployment then takes 512 + 2 × 384 + 4 × 192 = 2048 MiB, against 6144 
 - A system task passed a check at 384 MiB, and runs tool loops that peaked at 184 MiB anonymous in a
   320 MiB conversation imp.
 - A fetch at 192 MiB passed alone and 4 at once. Its cgroup limit of 100 MiB leaves 32 MiB over the
-  anonymous peak of one fetch, which a page heavier to parse than the HTML spec could use up. 256
-  MiB would raise the limit to about 164 MiB, and a busy deployment to 2304 MiB.
+  highest anonymous peak of one fetch, which a page heavier to parse than the HTML spec could use
+  up. 256 MiB would raise the limit to about 164 MiB, and a busy deployment to 2304 MiB.
 - Bundle the conversation's code with `bun build`, which cuts its `bun` process by about 15 MiB in
   each conversation and system task imp.
 

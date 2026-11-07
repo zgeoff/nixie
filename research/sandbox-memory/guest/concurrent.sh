@@ -7,9 +7,15 @@ echo "Call read_ledger for pages 1 to 8, one call at a time, then say how many p
 
 cat > three.sh << 'EOF'
 PROMPT_FILE=large-prompt.txt bun turn.ts > one.out 2>&1 &
+one=$!
 MCP_URL=http://127.0.0.1:8901/mcp PROMPT_FILE=tools-prompt.txt bun turn.ts > two.out 2>&1 &
+two=$!
 MCP_URL=http://127.0.0.1:8901/mcp PROMPT_FILE=tools-prompt.txt bun turn.ts > three.out 2>&1 &
-wait
+three=$!
+status=0
+# A bare wait returns 0 whatever each turn returns, so wait for each one.
+for pid in $one $two $three; do wait "$pid" || status=1; done
+exit "$status"
 EOF
 
 sh measure.sh three sh three.sh | tail -1

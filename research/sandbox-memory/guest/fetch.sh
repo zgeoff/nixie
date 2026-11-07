@@ -22,13 +22,16 @@ for url in "$@"; do
   check_reply "reply$n.bin"
 done
 
-: > together.sh
+echo 'pids=""' > together.sh
 
 for i in $(seq 1 "$n"); do
-  echo "bun /app/fetch.js < request$i.bin > together$i.bin &" >> together.sh
+  echo "bun /app/fetch.js < request$i.bin > together$i.bin & pids=\"\$pids \$!\"" >> together.sh
 done
 
-echo wait >> together.sh
+# A bare wait returns 0 whatever each fetcher returns, so wait for each one. together.sh expands
+# $pids when it runs, so this line writes it unexpanded.
+# shellcheck disable=SC2016
+echo 'status=0; for pid in $pids; do wait "$pid" || status=1; done; exit "$status"' >> together.sh
 sh measure.sh together sh together.sh | tail -1
 
 for i in $(seq 1 "$n"); do
