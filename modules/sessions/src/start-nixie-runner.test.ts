@@ -5,6 +5,7 @@ import { modelsConfigSchema } from '@heynixie/models';
 import {
   claimTask,
   runTaskStep,
+  taskLimitNoticeCodec,
   writeInboxRecords,
   writeStepCommit,
   writeTaskControl,
@@ -1113,10 +1114,13 @@ test("it gives the retry of a failed turn only the dollars that the turn's spend
 
   const notices = await ctx.readKinds('task.limit_notice');
 
-  expect(notices.map((notice) => notice.payload['used'])).toStrictEqual([
-    { turns: 0, dollars: 0.03 },
-    { turns: 1, dollars: expect.closeTo(0.042, 6) },
-  ]);
+  const [failed, retried] = notices.map(
+    (notice) => taskLimitNoticeCodec.decode(notice.payload).used,
+  );
+
+  expect(failed).toStrictEqual({ turns: 0, dollars: 0.03 });
+  expect(retried?.turns).toBe(1);
+  expect(retried?.dollars).toBeCloseTo(0.042, 6);
 });
 
 test('it caps each task turn at 100 model calls', async () => {
