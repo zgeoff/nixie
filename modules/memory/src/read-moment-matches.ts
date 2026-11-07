@@ -73,14 +73,12 @@ export async function readMomentMatches(
   const rows = new Map(vectorMatches.map((match) => [match.row.moment_id, match.row]));
 
   const matches = await Promise.all(
-    ranked.map(async (match) => {
+    ranked.map((match) => {
       const keywordMatch = titled.get(match.itemID);
 
-      if (keywordMatch !== undefined) {
-        return keywordMatch;
-      }
-
-      return await readTitledMatch(parts.log, rows, match.itemID);
+      return keywordMatch === undefined
+        ? readTitledMatch(parts.log, rows, match.itemID)
+        : Promise.resolve(keywordMatch);
     }),
   );
 
