@@ -1,4 +1,5 @@
 import type { ContractOutputs } from '@heynixie/contract';
+import { ORPCError } from '@orpc/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -31,9 +32,7 @@ export function RuleProposals(): ReactNode {
       {listed.isError ? (
         <p role="alert">The rule changes did not load. Reload to try again.</p>
       ) : null}
-      {answer.isError ? (
-        <p role="alert">The answer did not apply, because the rule change is no longer open.</p>
-      ) : null}
+      {answer.isError ? <p role="alert">{getAnswerNotice(answer.error)}</p> : null}
       {listed.isSuccess && proposals.length === 0 ? <p>No rule change waits for you.</p> : null}
       <ul aria-label="Pending rule changes">
         {proposals.map((proposal) => (
@@ -49,6 +48,22 @@ export function RuleProposals(): ReactNode {
       </ul>
     </section>
   );
+}
+
+const answerNotices: Readonly<Record<string, string>> = {
+  NOT_FOUND: 'That rule change is gone, so nothing changed.',
+  PROPOSAL_CLOSED: 'That rule change is answered, withdrawn or lapsed, so nothing changed.',
+  STALE_BASE:
+    'The rules moved after nixie proposed that change, so nothing changed. The next seed proposes it again.',
+};
+
+function getAnswerNotice(error: unknown): string {
+  const notice =
+    error instanceof ORPCError && typeof error.code === 'string'
+      ? answerNotices[error.code]
+      : undefined;
+
+  return notice ?? 'The answer did not finish. Try again.';
 }
 
 type RuleProposal = ContractOutputs['rules']['listProposals']['proposals'][number];

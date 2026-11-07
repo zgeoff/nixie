@@ -127,3 +127,38 @@ test('it keeps Reject off until you give a reason', async () => {
 
   expect(rendered.getByRole('button', { name: 'Reject' })).toBeDisabled();
 });
+
+test('it says a rule change closed when another device answered it first', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.ruleProposals.create({
+    proposalID: 'p7rk2m9x4q',
+    changes: [
+      {
+        ruleID: 'allow-web',
+        before: null,
+        after: { ruleHash: 'sha256:cc33', sentence: 'Allow fetching web pages.' },
+      },
+    ],
+  });
+
+  const rendered = render(<RuleProposals />);
+
+  await rendered.findByRole('listitem', { name: 'Rule change p7rk2m9x4q' });
+
+  await store.ruleProposals.update((query) => query.where({ proposalID: 'p7rk2m9x4q' }), {
+    data(draft) {
+      draft.status = 'rejected';
+    },
+  });
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Approve' }));
+
+  const notice = await rendered.findByRole('alert');
+
+  expect(notice).toHaveTextContent(
+    'That rule change is answered, withdrawn or lapsed, so nothing changed.',
+  );
+});
