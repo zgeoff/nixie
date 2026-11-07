@@ -15,7 +15,9 @@ const stagingFolder = 'backup';
 // container with no credentials creates the staging folder first, as nixie's user.
 export function buildBackupJobPodSpec(inputs: BackupJobPodInputs): types.input.core.v1.PodSpec {
   return {
-    restartPolicy: 'OnFailure',
+    // a rerun skips each set that holds a receipt, a failed one included, and exits 0, so a
+    // restart would turn a failed job run into a success
+    restartPolicy: 'Never',
     securityContext: {
       runAsNonRoot: true,
       runAsUser: 10_001,

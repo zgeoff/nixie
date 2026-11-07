@@ -79,9 +79,11 @@ the data snapshots.
 On Kubernetes, the [Pulumi component](kubernetes.md#the-pulumi-component) runs the job as a CronJob,
 as nixie's user. The job's container mounts only the staging folder, and takes the backup
 repositories and passwords from a secret that nixie's container never mounts. Before it starts, an
-init container that holds no secret mounts the whole data volume to create the staging folder. The
-reference Compose recipe runs no backup job. Its CI overlay runs the job as a container that loops
-and mounts the staging folder as a subpath of the data volume, as the
+init container that holds no secret mounts the whole data volume to create the staging folder.
+Kubernetes never restarts or retries a failed job run, so its Job ends failed. A second job run
+would skip the failed set, because the set holds its receipt, and exit with success, so the Job
+would end as a success. The reference Compose recipe runs no backup job. Its CI overlay runs the job
+as a container that loops and mounts the staging folder as a subpath of the data volume, as the
 [Compose recipe's README](../../../deploy/compose/README.md) describes.
 
 ## Receipts in nixie

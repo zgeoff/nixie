@@ -1,5 +1,6 @@
 // the package root, because Node's ESM loader and TypeScript's node16 resolution refuse the SDK's
 // directory subpaths, which it ships with no exports map
+import type { types } from '@pulumi/kubernetes';
 import { apps, batch, core } from '@pulumi/kubernetes';
 import type { ComponentResourceOptions, CustomResourceOptions, Input } from '@pulumi/pulumi';
 import { ComponentResource, interpolate, rootStackResource, secret } from '@pulumi/pulumi';
@@ -209,21 +210,33 @@ function createBackupJob(
           opts,
         );
 
-  const podSpec =
+  const jobSpec: types.input.batch.v1.JobSpec =
     script === null
-      ? buildBackupJobPodSpec({
-          image,
-          claim: dataClaim,
-          envSecret: backupEnvSecret,
-          pullSecret: backup.pullSecret,
-        })
-      : buildBackupPodSpec({
-          image,
-          claim: dataClaim,
-          scriptConfigMap: backupScriptConfigMap,
-          envSecret: backupEnvSecret,
-          pullSecret: backup.pullSecret,
-        });
+      ? {
+          // a new pod skips the failed set for its receipt and exits 0, so a retry would end the
+          // Job as a success
+          backoffLimit: 0,
+          template: {
+            spec: buildBackupJobPodSpec({
+              image,
+              claim: dataClaim,
+              envSecret: backupEnvSecret,
+              pullSecret: backup.pullSecret,
+            }),
+          },
+        }
+      : {
+          backoffLimit: 2,
+          template: {
+            spec: buildBackupPodSpec({
+              image,
+              claim: dataClaim,
+              scriptConfigMap: backupScriptConfigMap,
+              envSecret: backupEnvSecret,
+              pullSecret: backup.pullSecret,
+            }),
+          },
+        };
 
   return new batch.v1.CronJob(
     'nixie-backup',
@@ -234,7 +247,7 @@ function createBackupJob(
         timeZone: backup.timeZone ?? 'Etc/UTC',
         suspend: false,
         concurrencyPolicy: 'Forbid',
-        jobTemplate: { spec: { backoffLimit: 2, template: { spec: podSpec } } },
+        jobTemplate: { spec: jobSpec },
       },
     },
     { ...opts, dependsOn: script === null ? [env, statefulSet] : [env, script, statefulSet] },

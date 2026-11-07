@@ -690,7 +690,7 @@ test("it registers the backup CronJob on nixie's data volume, with the deploymen
   });
 });
 
-test("it runs the image's own job on the staging folder alone, every 5 minutes in UTC, when the deployment sets no script", async () => {
+test("it runs the image's own job on the staging folder alone, every 5 minutes in UTC, with no retry of a failed run, when the deployment sets no script", async () => {
   const ctx = await setupTest();
 
   createNixie('nixie', {
@@ -737,10 +737,10 @@ test("it runs the image's own job on the staging folder alone, every 5 minutes i
       concurrencyPolicy: 'Forbid',
       jobTemplate: {
         spec: {
-          backoffLimit: 2,
+          backoffLimit: 0,
           template: {
             spec: {
-              restartPolicy: 'OnFailure',
+              restartPolicy: 'Never',
               securityContext: {
                 runAsNonRoot: true,
                 runAsUser: 10_001,
