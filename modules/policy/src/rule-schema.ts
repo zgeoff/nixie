@@ -48,6 +48,7 @@ export const ruleBodySchema = z
   .refine((rule) => rule.mandate === undefined || rule.expires !== undefined, {
     message: 'a mandate rule needs expires',
     path: ['expires'],
-  });
+  })
+  .meta({ dependentRequired: { mandate: ['expires'] } });
 
 export const rulesFileSchema = z.record(z.string().regex(ruleIDPattern), ruleBodySchema);

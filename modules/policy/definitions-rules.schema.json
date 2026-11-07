@@ -205,7 +205,12 @@
     "required": [
       "outcome"
     ],
-    "additionalProperties": false
+    "additionalProperties": false,
+    "dependentRequired": {
+      "mandate": [
+        "expires"
+      ]
+    }
   },
   "title": "nixie rules file",
   "description": "A YAML file under rules/ in the definitions, which maps each rule ID to its rule. An ID names one rule across every file."

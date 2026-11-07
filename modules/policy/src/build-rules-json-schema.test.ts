@@ -55,6 +55,11 @@ test.each([
   ],
   ['an ID with capitals', 'Allow-Reads:\n  outcome: allow\n', ''],
   ['no outcome', 'allow-reads:\n  effects: [read]\n', '/allow-reads'],
+  [
+    'a mandate rule without an expiry',
+    'allow-invites:\n  outcome: allow\n  tools: [calendar.invite]\n  mandate: invites-today\n',
+    '/allow-invites',
+  ],
 ])('it refuses a rules file with %s', (_label, text, instancePath) => {
   const ctx = setupTest();
 
