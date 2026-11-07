@@ -1,9 +1,9 @@
 # The e2e, bundle, journeys and restic lanes
 
 Write and run the tests that read a build: nixie's test bundle, the web build or the backup job's
-bundle. Each lane's script makes the builds its tests read before the tests start. Make each build
-before its tests run: a build helper, such as `readWebBuild`, makes a missing build itself, inside
-the test's own limit, and the test fails.
+bundle. Each lane's command makes the builds its tests read before the tests start. Make each build
+before its tests run. A build helper, such as `readWebBuild`, makes a missing build itself, inside
+the test's own time limit, and a build takes longer than that limit.
 
 | Lane     | Files                                              | Command                 |
 | -------- | -------------------------------------------------- | ----------------------- |
@@ -14,11 +14,12 @@ the test's own limit, and the test fails.
 
 Run each command from the repo root. rig, the test runner `@zgeoff/rig`, runs the bundle, journeys
 and restic lanes. rig does not run the root `e2e/` folder, so `bun run test:e2e` runs that folder
-through `bun test` with a 15 s limit, then runs `bun run test:bundle`.
+through `bun test` with a limit of 15 s per test. It then runs the bundle lane through
+`bun run test:bundle`.
 
 - Give a test outside the root `e2e/` folder the suffix `*.bundle.test.ts` when it reads the web
-  build or the backup job's bundle. Keep a test outside that folder that reads only nixie's test
-  bundle in the unit run, `bun run test`, which builds that bundle first.
+  build or the backup job's bundle. When such a test reads only nixie's test bundle, give it the
+  plain `*.test.ts` suffix: `bun run test` runs the unit tests, and builds that bundle first.
 - Stop each process and remove each folder that a test makes. The files of a lane share one process,
   so anything a file leaves behind stays for every later file.
 - To run one bundle or restic file again, pass its path: `bun run test:bundle <path>` or
@@ -47,9 +48,9 @@ bundle lane. A file needs each build whose helper it imports.
 - Run a build command again after you change a file the build is made from. Each build helper keeps
   its build in a folder under `node_modules/.cache/nixie-test-bundles/`, named by a hash of those
   files, so a change leaves the build missing.
-- Give `startSpawnedNixie` a `release` path only in a suite that checks the release bundle. A
-  release build of the server ships that bundle, which leaves out the test-only code. The `release`
-  path is the bundle's entry file. The suite writes its own release bundle, as
+- Give `startSpawnedNixie` a `release` path only in a suite that checks the release bundle. The
+  release bundle is the one nixie ships, with the test-only code left out. The `release` path is the
+  bundle's entry file. The suite writes its own release bundle, as
   [`write-release-bundle.test.ts`](../../../../e2e/write-release-bundle.test.ts) does.
 
 ## Journeys
@@ -60,19 +61,20 @@ reset. A journey drives the web app in Chrome against nixie's test bundle. rig r
 its [browser lane](./browser-lane.md), with that lane's limit of 10 s per test. `bun run test:e2e`
 and `bun run test:browser` leave the journeys out.
 
-- **Run one journey with `bun run test:journeys --test-name-pattern='<test name>'`.** rig reads each
-  argument that has no leading `-` as a path, so `-t '<test name>'` selects no test. The script
-  builds nixie's test bundle, then runs the browser lane, which makes its own web build and starts
-  Chrome. A journey never calls `readWebBuild`.
+- **Run one journey with `bun run test:journeys --test-name-pattern='<test name>'`.** With
+  `-t '<test name>'`, rig reads `<test name>` as a path, because it has no leading `-`, and the
+  filter does not select a test. The script builds nixie's test bundle, then runs the browser lane,
+  which makes its own web build and starts Chrome. A journey never calls `readWebBuild`.
 - **Add a path to the `changes` job of [`journeys.yml`](../../../../.github/workflows/journeys.yml)
   when a journey reads a file outside the job's paths.** CI runs the journeys there, and only on a
   pull request that changes a listed path.
 - **Start each journey with
   [`startWebJourney`](../../../../e2e/src/test-utils/start-web-journey.ts).** It starts nixie, the
   web server and a proxy that serves both on one origin, as a deployment does, and opens a Chrome
-  view. It stops each of them when the test finishes. Its return type lists what a journey gets.
-  After nixie exits, such as after a reset, call the journey's `startServer`. It starts a new nixie
-  process on the same data and returns it, and the web server's requests then reach that process.
+  view. It stops each of them when the test finishes. Read the fields of the journey it returns in
+  its `WebJourney` type. `journey.server` is the first nixie process, never the web server. After
+  nixie exits, such as after a reset, call `journey.startServer`. It starts a new nixie process on
+  the same data and returns it, and the web server's requests then reach that process.
 - **Wait for the page to hydrate before you click a submit button.** A click before hydration
   submits the form as plain HTML, and React never sees it. On the conversation page, wait for an
   enabled `input[type=file]`: the image pickers stay disabled until the page hydrates. On any other
@@ -97,7 +99,7 @@ and `bun run test:browser` leave the journeys out.
   `NIXIE_RESTIC_BINARY=<path-to-restic> bun run test:restic`. In a new suite, copy the skip check
   from [`backup-retention.restic.test.ts`](../../../../e2e/backup-retention.restic.test.ts).
 - **Read the restic lane's result in the `rehearse` job of
-  [`images.yml`](../../../../.github/workflows/images.yml).** `pr.yml` runs no restic suite.
+  [`images.yml`](../../../../.github/workflows/images.yml).** `pr.yml` does not run a restic suite.
   `images.yml` runs only on a pull request that changes a path in its `changes` job, and runs the
   lane on the restic that the backup image ships.
 - **Plan each restic test around 500 ms for each restic command that opens a repository.** restic

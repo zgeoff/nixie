@@ -2,23 +2,23 @@
 
 Write, run and debug the web app's browser suites, the `*.browser.test.ts` files, with the rules
 below. Each suite drives a headless Chrome or Chromium through `Bun.WebView`. The traps: a suite
-started outside the lane has no web build, a view's options never reach Chrome, and every file
+started outside the lane has no web build, a later view's options never reach Chrome, and every file
 shares one Chrome and one global object.
 
 rig, the test runner `@zgeoff/rig`, runs the lane:
 
-- `bun run test:browser` runs every browser suite outside `e2e/`.
-- `bun run test:journeys` runs the user journeys in `e2e/journeys/`, as
+- `bun run test:browser` runs every browser suite outside the root `e2e/` folder.
+- `bun run test:journeys` runs the user journeys in the root `e2e/journeys/` folder, as
   [Journeys](./e2e-and-restic-lanes.md#journeys) describes.
 
 Each command first runs the `build:browser` script, which builds the web client. It then runs the
-suites one file after another in one test process. A test preload of rig's, a module that Bun loads
-before the first test file, starts one Chrome for that process. Run the command again after you
-change the web client: each run builds it once, at its start.
+suites one file after another in one test process. Before the first file, rig's browser preload
+starts one Chrome for that process. Bun loads a preload module before any test file. Run the command
+again after you change the web client: each command builds the client once, when it starts.
 
 ## Traps
 
-- **Start a browser suite only through one of the 2 commands.**
+- **Start a browser suite only through `bun run test:browser` or `bun run test:journeys`.**
   [`write-browser-build.ts`](../../../../apps/web/src/test-utils/write-browser-build.ts), the
   `build:browser` script, writes the web build to the folder that rig sets in
   `RIG_BROWSER_BUILD_DIR`. A suite reads the build through
@@ -27,9 +27,9 @@ change the web client: each run builds it once, at its start.
 - **When your host has no Chrome or Chromium, push the branch and read the lane's result on CI.**
   Bun looks for the browser on `PATH`, in a standard install location, or at `BUN_CHROME_PATH`.
   rig's preload fails the lane when Chrome does not start.
-- **Open every view with `new Bun.WebView({ backend: 'chrome' })`.** `backend: 'chrome'` picks the
-  engine. The one Chrome starts with the options of the first view, which rig's preload opens, and
-  Bun ignores every other option of a later view.
+- **Open every view with `new Bun.WebView({ backend: 'chrome' })`.** `backend: 'chrome'` picks
+  Chrome as the view's engine. Pass no other option: the one Chrome starts with the options of the
+  first view, which rig's preload opens, and Bun ignores the options of each later view.
 - **Clear the cookies before each test.** Every view shares the one Chrome's cookie jar, across
   files too.
 - **Undo in `onTestFinished` each change your suite makes to `globalThis`, such as a stubbed

@@ -39,7 +39,7 @@ the `zgeoff/max-test-timeout` lint rule reads those limits.
 | `*.agent-sdk.test.ts`                                                                    | `bun run test:agent-sdk`                      | 5 s            | in `pr.yml`       |
 | `e2e/**`, except the journeys and the restic suites                                      | `bun run test:e2e`                            | 15 s           | in `pr.yml`       |
 | `e2e/journeys/*.browser.test.ts`, `e2e/src/test-utils/start-web-journey.browser.test.ts` | `bun run test:journeys`                       | 10 s           | in `journeys.yml` |
-| `*.bundle.test.ts`                                                                       | `bun run test:bundle`                         | 15 s           | in `pr.yml`       |
+| `*.bundle.test.ts` outside `e2e/`                                                        | `bun run test:bundle`                         | 15 s           | in `pr.yml`       |
 | `e2e/**/*.restic.test.ts`                                                                | `bun run test:restic`                         | 40 s           | in `images.yml`   |
 | `*.imp.test.ts`                                                                          | `bun run test:imp` in the package             | 14 s           | no                |
 | `*.model-api.test.ts`                                                                    | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | 120 s          | no                |
@@ -47,17 +47,17 @@ the `zgeoff/max-test-timeout` lint rule reads those limits.
 - Run the unit tests through `bun run test`. It first runs `bun run models`, which fetches the
   memory encoder's model files, and `bun run test:bundles`, which builds nixie's test bundle and its
   release bundle. To test one file, run those 2 commands, then `bun test <path>` from the repo root.
-- Run both commands before a bare `bun test`. Without `bun run models`, it skips the memory
-  encoder's suites. Without `bun run test:bundles`, a test builds a missing bundle itself and runs
-  past its limit. Run `bun run test:bundles` again after you change server code.
+  Without `bun run models`, a bare `bun test` skips the memory encoder's suites. Without
+  `bun run test:bundles`, a test builds a missing bundle itself and runs past its limit. Run
+  `bun run test:bundles` again after you change server code.
 - To test one file of a lane that rig runs, pass the file's path to the lane's command, such as
   `bun run test:agent-sdk <path>`. rig runs only the lane's own files among the paths you pass. The
   agent SDK lane builds nothing first.
 - Run the `*.imp.test.ts` suites by hand, as the
   [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) describes. Each needs a
-  real impd, the daemon that runs nixie's sandboxes, each an [imp](../../../docs/glossary.md), on a
-  host with `/dev/kvm`. They skip until the runbook's variables are set, and a suite that skips does
-  not count as run.
+  real impd on a host with `/dev/kvm`. impd is the daemon that runs nixie's sandboxes, and each
+  sandbox is an [imp](../../../docs/glossary.md). They skip until the runbook's variables are set,
+  and a suite that skips does not count as run.
 - Keep a `*.imp.test.ts` suite for what only a real impd shows, such as an imp that reaches the
   model host through the broker. Test every other case of the imp adapter in the unit run, on
   `startTestImpd` from `@impz/testing`. It runs impd's own API on stand-ins for the VMs and the
@@ -113,7 +113,7 @@ nixie replaces these rules of the shared `testing` skill.
 
 ## The test build
 
-- Put test-only code in a file that nixie ships inside `if (NIXIE_TEST_BUILD) { … }`. The root
+- In a file that nixie ships, put test-only code inside `if (NIXIE_TEST_BUILD) { … }`. The root
   preloads set `NIXIE_TEST_BUILD` to `true` for every `bun test` from the repo root, and nixie's
   test bundle sets it at build time. Its release bundle sets it to `false`, so the bundler drops the
   code behind it. [Crash tests](../../../docs/architecture/core/crash-tests.md) lists the code that
