@@ -4,7 +4,7 @@ export { buildTimeTool } from './build-time-tool';
 export { buildWebFetchTool } from './build-web-fetch-tool';
 export { readLinkTarget } from './read-link-target';
 export { readMessageTimeZone } from './read-message-time-zone';
-export { removeThreadLinks } from './remove-thread-links';
+export { removeWebFetchThread } from './remove-web-fetch-thread';
 export type { FetchSandbox, FetchSandboxOptions } from './start-fetch-sandbox';
 export { fetchSandboxOwner, startFetchSandbox } from './start-fetch-sandbox';
 export { timeConfigSchema } from './time-config-schema';

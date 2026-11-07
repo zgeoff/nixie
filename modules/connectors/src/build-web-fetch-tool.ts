@@ -1,23 +1,37 @@
-import type { JSONObject, Log } from '@heynixie/log';
+import type { Log } from '@heynixie/log';
 import type { ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
-import { parseLinkMarks } from '@heynixie/wire';
+import { match } from 'ts-pattern';
+import type { PageView, WebFetchRequest } from './parse-web-fetch-request';
+import { parseWebFetchRequest } from './parse-web-fetch-request';
+import { pickPageView } from './pick-page-view';
 import { readLinkTarget } from './read-link-target';
-import type { LinkedText, LinkedTextLimits } from './render-linked-text';
-import { renderLinkedText } from './render-linked-text';
-import type { LinkNumbering } from './write-link-numbers';
-import { writeLinkNumbers } from './write-link-numbers';
+import { readWebFetchPage } from './read-web-fetch-page';
+import type { PageLimits, PageSession } from './write-web-fetch-page';
+import { writeWebFetchPage } from './write-web-fetch-page';
 
-// no required key, since a call names a page by url or by link, and the run checks it names one
+// no required key, since a call names a page by url, link or page, and the run checks the mix
 const webFetchInput = {
   type: 'object',
   properties: {
-    url: { type: 'string', description: 'the http or https URL of the page; give url or link' },
+    url: { type: 'string', description: 'the http or https URL of a page to fetch' },
     link: {
       type: 'string',
       description:
-        'the ID of a link a page fetched earlier in this session showed, such as L12; give url ' +
-        'or link',
+        'the ID of a link a page fetched earlier in this session showed, such as L12, to fetch ' +
+        'the page it goes to',
+    },
+    page: {
+      type: 'string',
+      description:
+        'the ID of a page this session fetched, such as tz4a98xxat, to read its stored copy ' +
+        'with no new fetch; give part or find with it',
+    },
+    part: { type: 'integer', minimum: 1, description: 'the number of the part to read, from 1' },
+    find: {
+      type: 'string',
+      minLength: 1,
+      description: 'text to look for, in any case; the result is the part of its first match',
     },
   },
   additionalProperties: false,
@@ -29,25 +43,48 @@ const webFetchOutput = {
     url: { type: 'string' },
     status: { type: 'integer', 'x-endorsed': true },
     contentType: { type: ['string', 'null'] },
+    page: { type: ['string', 'null'] },
+    part: { type: ['integer', 'null'], 'x-endorsed': true },
+    parts: { type: 'integer', 'x-endorsed': true },
     text: { type: ['string', 'null'] },
     isTruncated: { type: 'boolean', 'x-endorsed': true },
     blocked: { type: ['string', 'null'] },
+    matches: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { part: { type: 'integer' }, snippet: { type: 'string' } },
+        required: ['part', 'snippet'],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ['url', 'status', 'contentType', 'text', 'isTruncated', 'blocked'],
+  required: [
+    'url',
+    'status',
+    'contentType',
+    'page',
+    'part',
+    'parts',
+    'text',
+    'isTruncated',
+    'blocked',
+  ],
   additionalProperties: false,
 };
 
-const sessionEnded = Symbol('session ended');
-
 export interface WebFetchToolOptions {
-  // the log whose writer holds the link store
+  // the log whose writer holds the link and page stores
   readonly log: Pick<Log, 'writer'>;
 
-  // the most bytes of text a result holds once its links read as their tags
+  // the most bytes of text one part of a page holds once its links read as their tags
   readonly textBytes: number;
 
   // the most characters of an off-site link's path that its tag shows
   readonly linkPathChars: number;
+
+  // the most bytes of parts one session's stored pages hold before the oldest goes
+  readonly pageStoreBytes: number;
 }
 
 export function buildWebFetchTool(
@@ -56,19 +93,29 @@ export function buildWebFetchTool(
 ): ToolDefinition {
   const log = options.log;
 
+  const limits: PageLimits = {
+    textBytes: options.textBytes,
+    linkPathChars: options.linkPathChars,
+    storeBytes: options.pageStoreBytes,
+  };
+
   return {
     name: 'web_fetch',
     description:
       'Fetches one public web page and returns its final URL, status code, content type and ' +
       'text. An http URL is tried over https first, and the final URL shows the scheme that ' +
-      'answered. The text is the readable text of an HTML page, the text of another text type, and no text for ' +
-      'a binary type. Each link in the text reads as its ID, such as [L12]. A link to another ' +
-      'host shows that host and the start of its path after the ID, such as ' +
+      'answered. The text is the readable text of an HTML page, the text of another text type, ' +
+      'and no text for a binary type. Each link in the text reads as its ID, such as [L12]. A ' +
+      'link to another host shows that host and the start of its path after the ID, such as ' +
       '[L40 · example.org/docs/…], and never its query string. Pass the ID as link to fetch ' +
       'that page. ' +
-      'An ID lasts for this session only. isTruncated is true when the page passed a size ' +
-      "limit. blocked is null, or the reason the site's bot protection answered in place of " +
-      'the page, which no retry passes.',
+      'A long page comes in parts: the result shows the page ID, the part and the count of ' +
+      'parts, and holds the text of part 1, or of the part you name. Pass the page ID as page ' +
+      'with a part to read another part, or with find to read the part where some text first ' +
+      'appears, with up to 10 matches and the text around each; neither fetches the page again. ' +
+      'Link and page IDs last for this session only. isTruncated is true when the page passed ' +
+      "the fetch's size limit, so no part holds its end. blocked is null, or the reason the " +
+      "site's bot protection answered in place of the page, which no retry passes.",
     input: webFetchInput,
     output: webFetchOutput,
     declaration: {
@@ -80,159 +127,131 @@ export function buildWebFetchTool(
         url: 'untrusted',
         status: 'untrusted',
         contentType: 'untrusted',
+        page: 'untrusted',
+        part: 'untrusted',
+        parts: 'untrusted',
         text: 'untrusted',
         isTruncated: 'untrusted',
         blocked: 'untrusted',
+        matches: 'untrusted',
       },
     },
     execution: 'direct',
-    run: async (call, context) => {
-      const session = getLinkSession(context.run);
-
-      const target = await readTargetURL(log, call.input, session.sessionKey);
-
-      if (target.status === 'error') {
-        return target;
-      }
-
-      const reply = await readPage(target.url);
-
-      if (reply.kind !== 'page') {
-        return { status: 'error', message: reply.reason };
-      }
-
-      const linked =
-        reply.text === null
-          ? { text: null, isCut: false }
-          : await writeLinkedText(
-              log,
-              { url: reply.url, text: reply.text, links: reply.links },
-              session,
-              { textBytes: options.textBytes, linkPathChars: options.linkPathChars },
-            );
-
-      if (linked === sessionEnded) {
-        return {
-          status: 'error',
-          message: 'the session ended while the page was fetched, so fetch it again by its url',
-        };
-      }
-
-      return {
-        status: 'ok',
-        result: {
-          url: reply.url,
-          status: reply.status,
-          contentType: reply.contentType,
-          text: linked.text,
-          isTruncated: reply.isTruncated || linked.isCut,
-          blocked: reply.blocked,
-        },
-      };
-    },
+    run: (call, context) =>
+      runWebFetchCall(
+        { log, readPage, session: getPageSession(context.run), limits },
+        parseWebFetchRequest(call.input),
+      ),
   };
 }
 
-type LinkSession = Omit<LinkNumbering, 'urls'>;
+interface PageFetch {
+  readonly log: Pick<Log, 'writer'>;
+  readonly readPage: (url: string) => Promise<FetchReply>;
+  readonly session: PageSession;
+  readonly limits: PageLimits;
+}
+
+function runWebFetchCall(fetching: PageFetch, request: WebFetchRequest): Promise<ToolOutcome> {
+  return match(request)
+    .with({ kind: 'refused' }, (refused) =>
+      Promise.resolve<ToolOutcome>({ status: 'error', message: refused.message }),
+    )
+    .with({ kind: 'page' }, (page) => readStoredView(fetching, page.pageID, page.view))
+    .with({ kind: 'url' }, (url) => runPageFetch(fetching, url.url, url.view))
+    .with({ kind: 'link' }, (link) => runLinkFetch(fetching, link.number, link.view))
+    .exhaustive();
+}
+
+async function readStoredView(
+  fetching: PageFetch,
+  pageID: string,
+  view: PageView,
+): Promise<ToolOutcome> {
+  const page = await readWebFetchPage(fetching.log, {
+    sessionKey: fetching.session.sessionKey,
+    pageID,
+  });
+
+  return page === null
+    ? {
+        status: 'error',
+        message:
+          `${pageID} is not a page of this session. A page ID works only in the session that ` +
+          'fetched it, so fetch the page again by its url.',
+      }
+    : pickPageView(page, view);
+}
+
+async function runPageFetch(
+  fetching: PageFetch,
+  url: string,
+  view: PageView,
+): Promise<ToolOutcome> {
+  const reply = await fetching.readPage(url);
+
+  if (reply.kind !== 'page') {
+    return { status: 'error', message: reply.reason };
+  }
+
+  if (reply.text === null) {
+    return {
+      status: 'ok',
+      result: {
+        url: reply.url,
+        status: reply.status,
+        contentType: reply.contentType,
+        page: null,
+        part: null,
+        parts: 0,
+        text: null,
+        isTruncated: reply.isTruncated,
+        blocked: reply.blocked,
+      },
+    };
+  }
+
+  const stored = await writeWebFetchPage(
+    fetching.log,
+    { ...reply, text: reply.text },
+    fetching.session,
+    fetching.limits,
+  );
+
+  return stored === null
+    ? {
+        status: 'error',
+        message: 'the session ended while the page was fetched, so fetch it again by its url',
+      }
+    : pickPageView(stored, view);
+}
+
+async function runLinkFetch(
+  fetching: PageFetch,
+  number: number,
+  view: PageView,
+): Promise<ToolOutcome> {
+  const url = await readLinkTarget(fetching.log, {
+    sessionKey: fetching.session.sessionKey,
+    number,
+  });
+
+  return url === null
+    ? {
+        status: 'error',
+        message:
+          `L${number} is not a link from this session. An ID works only in the session whose ` +
+          'page showed it, so fetch that page again by its url.',
+      }
+    : runPageFetch(fetching, url, view);
+}
 
 // a call under the run's own token runs in no conversation session, so the run keys its links and
-// no forget fences them
-function getLinkSession(run: ToolRun): LinkSession {
+// pages, and no forget fences them
+function getPageSession(run: ToolRun): PageSession {
   return {
     sessionKey: run.session?.key ?? run.runID,
     thread: run.thread,
     invalidatedThrough: run.session?.invalidatedThrough ?? null,
   };
-}
-
-type TargetURL =
-  | { readonly status: 'ok'; readonly url: string }
-  | Exclude<ToolOutcome, { status: 'ok' }>;
-
-async function readTargetURL(
-  log: Pick<Log, 'writer'>,
-  input: JSONObject,
-  sessionKey: string,
-): Promise<TargetURL> {
-  const target = pickTarget(input);
-
-  if (target.kind !== 'link') {
-    return target.kind === 'url'
-      ? { status: 'ok', url: target.url }
-      : { status: 'error', message: target.message };
-  }
-
-  const linkURL = await readLinkTarget(log, { sessionKey, number: target.number });
-
-  return linkURL === null
-    ? {
-        status: 'error',
-        message:
-          `L${target.number} is not a link from this session. An ID works only in the session ` +
-          'whose page showed it, so fetch that page again by its url.',
-      }
-    : { status: 'ok', url: linkURL };
-}
-
-type Target =
-  | { readonly kind: 'url'; readonly url: string }
-  | { readonly kind: 'link'; readonly number: number }
-  | { readonly kind: 'refused'; readonly message: string };
-
-function pickTarget(input: JSONObject): Target {
-  const url = input['url'];
-  const link = input['link'];
-
-  if (typeof url === 'string' && link === undefined) {
-    return { kind: 'url', url };
-  }
-
-  if (typeof link !== 'string' || url !== undefined) {
-    return { kind: 'refused', message: 'give either the url of a page or the ID of a link' };
-  }
-
-  const number = parseLinkID(link);
-
-  return number === null
-    ? { kind: 'refused', message: `${link} is not a link ID; an ID reads like L12` }
-    : { kind: 'link', number };
-}
-
-function parseLinkID(link: string): number | null {
-  const digits = /^\[?L(?<number>\d{1,15})(?: · .*)?\]?$/iu.exec(link.trim())?.groups?.['number'];
-
-  return digits === undefined ? null : Number(digits);
-}
-
-// a page's final URL, its text with a mark where each link ends, and each link's target
-interface MarkedPage {
-  readonly url: string;
-  readonly text: string;
-  readonly links: readonly string[];
-}
-
-async function writeLinkedText(
-  log: Pick<Log, 'writer'>,
-  page: MarkedPage,
-  session: LinkSession,
-  limits: LinkedTextLimits,
-): Promise<LinkedText | typeof sessionEnded> {
-  const parts = parseLinkMarks(page.text);
-
-  const urls = parts.flatMap((part) => {
-    const target = typeof part === 'string' ? undefined : page.links[part.link];
-
-    return target === undefined ? [] : [target];
-  });
-
-  const numbers = await writeLinkNumbers(log, {
-    sessionKey: session.sessionKey,
-    thread: session.thread,
-    invalidatedThrough: session.invalidatedThrough,
-    urls,
-  });
-
-  return numbers === null
-    ? sessionEnded
-    : renderLinkedText(parts, { pageURL: page.url, targets: page.links, numbers }, limits);
 }

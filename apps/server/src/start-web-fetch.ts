@@ -50,7 +50,12 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
     sandboxLimits: config.sandboxLimits,
   };
 
-  const fetchSandbox = startFetchSandbox({ ...sandbox, limits: config.limits });
+  // the tool stores the whole page and cuts it into parts of the text limit, so the fetcher's text
+  // stops only where its body does
+  const fetchSandbox = startFetchSandbox({
+    ...sandbox,
+    limits: { ...config.limits, textBytes: config.limits.bodyBytes },
+  });
 
   const skillSandbox = startFetchSandbox({
     ...sandbox,
@@ -63,6 +68,7 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
       log: options.log,
       textBytes: config.limits.textBytes,
       linkPathChars: config.linkPathChars,
+      pageStoreBytes: config.pageStoreBytes,
     }),
     readSkillPage: skillSandbox.readPage,
     stop: async () => {

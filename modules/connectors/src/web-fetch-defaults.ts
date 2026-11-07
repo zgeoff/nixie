@@ -6,6 +6,7 @@ export interface WebFetchConfig {
   readonly limits: FetchLimits;
   readonly sandboxLimits: SandboxLimits;
   readonly linkPathChars: number;
+  readonly pageStoreBytes: number;
 }
 
 export const webFetchDefaults: WebFetchConfig = {
@@ -17,4 +18,5 @@ export const webFetchDefaults: WebFetchConfig = {
   },
   sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
   linkPathChars: 24,
+  pageStoreBytes: 20_971_520,
 };

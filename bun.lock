@@ -469,6 +469,7 @@
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
