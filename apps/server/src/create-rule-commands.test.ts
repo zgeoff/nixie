@@ -98,13 +98,23 @@ test.each([
     'a resolve with a second rule ID',
     ['rules', 'resolve', 'deny-shell', 'allow-web', '--keep', 'repo'],
   ],
-  ['an unknown rules action', ['rules', 'show']],
   ['a rejection with no --reason', ['proposals', 'reject', 'p-rule-1']],
   ['an answer with no proposal ID', ['proposals', 'approve']],
-])('it refuses %s with its usage before it reaches the server', async (_name, argv) => {
+])('it refuses %s while it reads the arguments', async (_name, argv) => {
   const io = { log: mock(), print: mock(), waitForSignal: mock() };
 
   const exitCode = await runCLI([...argv, '--config', '/nonexistent/config.yaml'], io);
+
+  expect({ exitCode, printed: io.print.mock.calls.length }).toStrictEqual({
+    exitCode: 1,
+    printed: 1,
+  });
+});
+
+test('it refuses an unknown rules action as an unknown command', async () => {
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await runCLI(['rules', 'show', '--config', '/nonexistent/config.yaml'], io);
 
   expect({ exitCode, printed: io.print.mock.calls.length }).toStrictEqual({
     exitCode: 2,

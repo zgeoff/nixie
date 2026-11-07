@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { readCLIArgs } from './read-cli-args';
 
 test('it serves with every default when the command line is empty', async () => {
@@ -610,7 +611,7 @@ test('it refuses a --keep outside its choices', async () => {
 
   expect(parsed).toStrictEqual({
     kind: 'invalid-flags',
-    message: `Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions", "repo"] values`,
+    message: `Optional argument '--keep' should be chosen from 'enum' ["nixie", "definitions"] values`,
   });
 });
 
@@ -636,6 +637,41 @@ test('it reads the task ID of a task command as its flag, with no words left ove
     flags: { config: '/srv/nixie.yaml', taskID: 'r4kq9wz2ma' },
     args: [],
   });
+});
+
+test('it reads an action under its command, with its own ID and choice', async () => {
+  const parsed = await readCLIArgs(
+    ['rules', 'resolve', 'ask-mail', '--keep', 'repo'],
+    ['rules list', 'rules resolve'],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  expect({
+    command: parsed.command,
+    ruleID: parsed.flags.ruleID,
+    keep: parsed.flags.keep,
+    args: parsed.args,
+  }).toStrictEqual({ command: 'rules resolve', ruleID: 'ask-mail', keep: 'repo', args: [] });
+});
+
+test.each([
+  ['no --keep', ['rules', 'resolve', 'ask-mail'], "Optional argument '--keep' is required"],
+  [
+    'a --keep of the definitions',
+    ['rules', 'resolve', 'ask-mail', '--keep', 'definitions'],
+    `Optional argument '--keep' should be chosen from 'enum' ["nixie", "repo"] values`,
+  ],
+  [
+    'a second rule ID',
+    ['rules', 'resolve', 'ask-mail', 'allow-web', '--keep', 'repo'],
+    'rules takes list, resolve',
+  ],
+  ['no action', ['rules'], 'rules takes list, resolve'],
+])('it refuses a rules action given %s', async (_label, argv, message) => {
+  const parsed = await readCLIArgs(argv, ['rules list', 'rules resolve']);
+
+  expect(parsed).toStrictEqual({ kind: 'invalid-flags', message });
 });
 
 test.each([

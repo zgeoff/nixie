@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
@@ -116,15 +117,13 @@ async function runSkillResolve(host: HostTransport, call: CommandCall): Promise<
   const [approvalID, ...extra] = call.args;
   const keep = call.flags.keep;
 
-  if (
-    approvalID === undefined ||
-    extra.length > 0 ||
-    (keep !== 'nixie' && keep !== 'definitions')
-  ) {
+  if (approvalID === undefined || extra.length > 0 || keep === undefined) {
     call.io.print('nixie skill-resolve takes an approval ID and --keep nixie|definitions');
 
     return 2;
   }
+
+  invariant(keep !== 'repo', 'the CLI parser gives skill-resolve only --keep nixie or definitions');
 
   const socketPath = await host.resolveSocketPath(call.flags.config);
 

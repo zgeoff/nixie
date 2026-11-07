@@ -1,122 +1,105 @@
+import invariant from 'tiny-invariant';
 import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
 export function createRuleCommands(host: HostTransport): readonly (readonly [string, Command])[] {
   return [
-    ['rules', (flags, io, args) => runRules(host, { flags, io, args })],
-    ['proposals', (flags, io, args) => runProposals(host, { flags, io, args })],
+    ['rules list', (flags, io) => runRulesList(host, flags, io)],
+    ['rules conflicts', (flags, io) => runRuleConflicts(host, flags, io)],
+    ['rules resolve', (flags, io) => runRuleResolve(host, flags, io)],
+    ['proposals list', (flags, io) => runProposalsList(host, flags, io)],
+    ['proposals approve', (flags, io) => runProposalApprove(host, flags, io)],
+    ['proposals reject', (flags, io) => runProposalReject(host, flags, io)],
   ];
 }
 
-interface CommandCall {
-  readonly flags: CLIFlags;
-  readonly io: CLIIO;
-  readonly args: readonly string[];
+async function runRulesList(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
+  const socketPath = await host.resolveSocketPath(flags.config);
+
+  const listed = await host.sendHostRequest(socketPath, 'rules list', (client) =>
+    client.rules.list(),
+  );
+
+  io.print(JSON.stringify(listed));
+
+  return 0;
 }
 
-const rulesUsage = 'nixie rules takes list, conflicts, or resolve <rule ID> --keep nixie|repo';
+async function runRuleConflicts(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
+  const socketPath = await host.resolveSocketPath(flags.config);
 
-async function runRules(host: HostTransport, call: CommandCall): Promise<number> {
-  const [action, ruleID, ...extra] = call.args;
+  const conflicts = await host.sendHostRequest(socketPath, 'rules conflicts', (client) =>
+    client.rules.conflicts(),
+  );
 
-  if (action === 'list' && ruleID === undefined) {
-    const socketPath = await host.resolveSocketPath(call.flags.config);
+  io.print(JSON.stringify(conflicts));
 
-    const listed = await host.sendHostRequest(socketPath, 'rules list', (client) =>
-      client.rules.list(),
-    );
+  return 0;
+}
 
-    call.io.print(JSON.stringify(listed));
+async function runRuleResolve(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
+  const ruleID = flags.ruleID;
+  const keep = flags.keep;
 
-    return 0;
-  }
+  invariant(ruleID !== undefined, 'the CLI parser requires a rule ID');
+  invariant(keep === 'nixie' || keep === 'repo', 'the CLI parser requires --keep nixie or repo');
 
-  if (action === 'conflicts' && ruleID === undefined) {
-    const socketPath = await host.resolveSocketPath(call.flags.config);
-
-    const conflicts = await host.sendHostRequest(socketPath, 'rules conflicts', (client) =>
-      client.rules.conflicts(),
-    );
-
-    call.io.print(JSON.stringify(conflicts));
-
-    return 0;
-  }
-
-  const keep = call.flags.keep;
-
-  if (
-    action !== 'resolve' ||
-    ruleID === undefined ||
-    extra.length > 0 ||
-    (keep !== 'nixie' && keep !== 'repo')
-  ) {
-    call.io.print(rulesUsage);
-
-    return 2;
-  }
-
-  const socketPath = await host.resolveSocketPath(call.flags.config);
+  const socketPath = await host.resolveSocketPath(flags.config);
 
   const resolved = await host.sendHostRequest(socketPath, 'rules resolve', (client) =>
     client.rules.resolve({ ruleID, keep }),
   );
 
-  call.io.print(JSON.stringify(resolved));
+  io.print(JSON.stringify(resolved));
 
   return 0;
 }
 
-const proposalsUsage =
-  'nixie proposals takes list, approve <proposal ID>, or reject <proposal ID> --reason <why>';
+async function runProposalsList(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
+  const socketPath = await host.resolveSocketPath(flags.config);
 
-async function runProposals(host: HostTransport, call: CommandCall): Promise<number> {
-  const [action, proposalID, ...extra] = call.args;
+  const pending = await host.sendHostRequest(socketPath, 'proposals list', (client) =>
+    client.rules.proposals.list(),
+  );
 
-  if (action === 'list' && proposalID === undefined) {
-    const socketPath = await host.resolveSocketPath(call.flags.config);
+  io.print(JSON.stringify(pending));
 
-    const pending = await host.sendHostRequest(socketPath, 'proposals list', (client) =>
-      client.rules.proposals.list(),
-    );
+  return 0;
+}
 
-    call.io.print(JSON.stringify(pending));
+async function runProposalApprove(
+  host: HostTransport,
+  flags: CLIFlags,
+  io: CLIIO,
+): Promise<number> {
+  const proposalID = flags.proposalID;
 
-    return 0;
-  }
+  invariant(proposalID !== undefined, 'the CLI parser requires a proposal ID');
 
-  if (proposalID === undefined || extra.length > 0) {
-    call.io.print(proposalsUsage);
+  const socketPath = await host.resolveSocketPath(flags.config);
 
-    return 2;
-  }
+  const approved = await host.sendHostRequest(socketPath, 'proposals approve', (client) =>
+    client.rules.proposals.approve({ proposalID }),
+  );
 
-  const reason = call.flags.reason;
+  io.print(JSON.stringify(approved));
 
-  if (action === 'approve') {
-    const socketPath = await host.resolveSocketPath(call.flags.config);
+  return 0;
+}
 
-    const approved = await host.sendHostRequest(socketPath, 'proposals approve', (client) =>
-      client.rules.proposals.approve({ proposalID }),
-    );
+async function runProposalReject(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
+  const proposalID = flags.proposalID;
+  const reason = flags.reason;
 
-    call.io.print(JSON.stringify(approved));
+  invariant(proposalID !== undefined, 'the CLI parser requires a proposal ID');
+  invariant(reason !== undefined, 'the CLI parser requires --reason');
 
-    return 0;
-  }
-
-  if (action !== 'reject' || reason === undefined) {
-    call.io.print(proposalsUsage);
-
-    return 2;
-  }
-
-  const socketPath = await host.resolveSocketPath(call.flags.config);
+  const socketPath = await host.resolveSocketPath(flags.config);
 
   const rejected = await host.sendHostRequest(socketPath, 'proposals reject', (client) =>
     client.rules.proposals.reject({ proposalID, reason }),
   );
 
-  call.io.print(JSON.stringify(rejected));
+  io.print(JSON.stringify(rejected));
 
   return 0;
 }
