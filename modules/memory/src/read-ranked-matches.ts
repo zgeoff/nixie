@@ -1,4 +1,5 @@
 import { buildVectorQuery } from './build-vector-query';
+import { defaultMinSimilarity } from './default-min-similarity';
 import type { RankedMatch } from './merge-rankings';
 import { mergeRankings } from './merge-rankings';
 import type { VectorMatch } from './start-vector-index';
@@ -41,8 +42,6 @@ export async function readRankedMatches(
     searchMode: pickSearchMode(parts, vectorMatches),
   };
 }
-
-const defaultMinSimilarity = 0.3;
 
 function readVectorMatches(
   parts: StoreParts,

@@ -23,7 +23,7 @@ export function buildMomentFindTool(moments: Pick<MomentStore, 'readMatches'>): 
     name: 'moment.find',
     description:
       'Finds kept moments. Pass query for moments whose title, note or reflections hold the ' +
-      'words, best match first; leave it out to list moments newest first, a page at a time, ' +
+      'words or match them by meaning, best match first; leave it out to list moments newest first, a page at a time, ' +
       'with before set to the next cursor of the page before. from and to narrow either one to ' +
       'when the moment was kept. Each moment comes with its momentID and title; read one whole ' +
       'with moment.read when the reason behind a fact matters.',
@@ -89,7 +89,7 @@ export function buildMomentFindTool(moments: Pick<MomentStore, 'readMatches'>): 
       }
 
       const page = await moments.readMatches({
-        words: input.query === undefined ? [] : input.query.split(/\s+/u),
+        query: input.query ?? '',
         from,
         to,
         includeRetired: input.includeRetired === true,

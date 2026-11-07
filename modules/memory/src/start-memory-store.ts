@@ -36,11 +36,15 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
     ...buildItemIDStore(parts),
     ...buildMemoryGate(parts),
     writeBatch: (publication) => writeMemoryBatch(parts, publication),
-    moments: buildMomentStore(context),
+    moments: buildMomentStore(context, parts.moments),
     waitForSemanticIndex: async () => {
       const isReady = await updated.rebuilt;
 
-      await Promise.all([parts.vectors?.waitForIdle(), parts.messages.vectors?.waitForIdle()]);
+      await Promise.all([
+        parts.vectors?.waitForIdle(),
+        parts.messages.vectors?.waitForIdle(),
+        parts.moments.vectors?.waitForIdle(),
+      ]);
 
       return isReady;
     },
@@ -68,5 +72,6 @@ async function stopIndexes(parts: StoreParts): Promise<void> {
     parts.vectors?.stop(),
     parts.messages.index.stop(),
     parts.messages.vectors?.stop(),
+    parts.moments.vectors?.stop(),
   ]);
 }

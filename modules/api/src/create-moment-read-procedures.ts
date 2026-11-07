@@ -22,7 +22,7 @@ export function createMomentReadProcedures(context: APIContext, readMemory: Read
       const input = options.input;
 
       const page = await store.moments.readMatches({
-        words: (input.query ?? '').split(/\s+/u).filter((word) => word !== ''),
+        query: input.query ?? '',
         from: null,
         to: null,
         includeRetired: input.includeRetired,
