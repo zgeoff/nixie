@@ -27,11 +27,11 @@ async function setupTest() {
       const step = await seedConversationStep(tasks.context);
 
       await runTaskStep(tasks.context, step.claim, {
-        runStep: (input) =>
+        runStep: () =>
           Promise.resolve({
             next: 'wait',
             records: [],
-            acknowledged: input.inbox.map((record) => record.sequence),
+            acknowledged: [step.messageSequence],
             sessionBoundary: boundary,
           }),
         leaseMs: 60_000,
