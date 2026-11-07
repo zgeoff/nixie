@@ -209,14 +209,14 @@ counts in nixie's own form: uncached input, cache reads, cache writes split by l
 The CLI copies a call's opening usage onto the message of each content block it streams, so those
 messages undercount the output. The guest therefore reads the counts from the stream's own events,
 and writes the frame when the call's stream stops. A call that reports its cache writes with no
-split by lifetime counts each such write as a 1-hour write, which costs more. The host hands each
-call frame to the step before it reads the guest's next frame, so an interrupt that the step raises
-reaches the guest before its next call ends.
+split by lifetime counts each such write at the longer lifetime, which costs more. The host hands
+each call frame to the step before it reads the guest's next frame, so the step can interrupt the
+turn on the call that reaches a limit.
 
 The turn frame holds a limit of model calls. The guest gives a set limit to the SDK as the query's
 maximum turns, and a turn that reaches it ends at its last chain entry, as an interrupted turn does.
-A conversation turn has no limit, and a started task's turn stops at 100 calls, because no one
-watches it.
+A conversation turn has no limit. A started task's turn has a fixed limit, because no one watches
+it.
 
 ## System messages
 
