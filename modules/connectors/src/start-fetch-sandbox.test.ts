@@ -25,7 +25,7 @@ test("it sends the fetcher the URL, the limits and the deployment's ranges, and 
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: ['10.96.0.0/12'],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -47,7 +47,7 @@ test("it sends the fetcher the URL, the limits and the deployment's ranges, and 
 
   expect(answer).toHaveBeenCalledExactlyOnceWith({
     url: 'https://example.com/',
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: ['10.96.0.0/12'],
   });
 });
@@ -70,7 +70,7 @@ test('it creates a fetch sandbox with public egress, no grants and no tool route
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -113,7 +113,7 @@ test('it runs two fetches in a row in two different sandboxes, and destroys each
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -162,7 +162,7 @@ test("it starts the next fetch only once the last fetch's destroy ends, and swee
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     sandboxCallTimeoutMs: 30_000,
@@ -210,7 +210,7 @@ test("it returns a fetch's reply before its sandbox's destroy ends", async () =>
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -249,7 +249,7 @@ test('it destroys a sandbox that a create makes after its time limit, as soon as
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     sandboxCallTimeoutMs: 30_000,
@@ -303,7 +303,7 @@ test('it destroys nothing and creates nothing for a fetch whose sweep listed aft
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     sandboxCallTimeoutMs: 30_000,
@@ -383,7 +383,7 @@ test('it creates nothing for a fetch whose sweep destroyed its leftovers after i
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     sandboxCallTimeoutMs: 30_000,
@@ -431,7 +431,7 @@ test('it sweeps before the next fetch after a create that failed, which can leav
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -487,7 +487,7 @@ test('it lists no sandboxes for a fetch after one whose sandbox it destroyed', a
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -520,7 +520,13 @@ test('it reads a reply whose text and link targets fill their limits with charac
     ),
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 2_000_000, timeoutMs: 1000, redirects: 2, textBytes: 20_000 },
+    limits: {
+      bodyBytes: 2_000_000,
+      timeoutMs: 1000,
+      redirects: 2,
+      textBytes: 20_000,
+      imageBytes: 2_000_000,
+    },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -530,6 +536,39 @@ test('it reads a reply whose text and link targets fill their limits with charac
   const reply = await fetchSandbox.readPage('https://quay.test/');
 
   expect(reply).toMatchObject({ kind: 'page', text, links });
+});
+
+test('it reads an image reply that fills the image limit, past the size of a reply of text', async () => {
+  const base64 = Buffer.alloc(300_000, 0xff).toString('base64');
+
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(
+      makeStubFetcher((request) => ({
+        kind: 'image',
+        url: request.url,
+        status: 200,
+        contentType: 'image/jpeg',
+        base64,
+      })),
+    ),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 300_000 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const reply = await fetchSandbox.readPage('https://quay.test/chart.jpg');
+
+  expect(reply).toStrictEqual({
+    kind: 'image',
+    url: 'https://quay.test/chart.jpg',
+    status: 200,
+    contentType: 'image/jpeg',
+    base64,
+  });
 });
 
 test.each([
@@ -555,7 +594,7 @@ test.each([
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -578,7 +617,7 @@ test('it destroys the sandbox of a fetch whose reply is not a fetch reply', asyn
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -605,7 +644,7 @@ test('it fails a fetch whose fetcher exits with no reply, and destroys its sandb
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -633,7 +672,7 @@ test('it stops a fetcher that sends no reply in time', async () => {
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     replyGraceMs: 500,
@@ -664,7 +703,7 @@ test('it destroys the sandbox of a fetch whose fetcher sends no reply in time', 
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     replyGraceMs: 500,
@@ -694,7 +733,7 @@ test('it waits on a fetcher that sends no reply until the time limit passes', as
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     replyGraceMs: 500,
@@ -742,7 +781,7 @@ test('it fails a fetch whose time limit passed before its fetcher exited', async
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     replyGraceMs: 500,
@@ -788,7 +827,7 @@ test('it removes the fetch sandboxes a past process left before it creates one',
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -835,7 +874,7 @@ test('it never removes a sandbox of another owner, and creates its own under its
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     owner: 'skill_fetch',
@@ -878,7 +917,7 @@ test('it runs one fetch at a time', async () => {
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -920,7 +959,7 @@ test('it fails the fetch when the sandbox cannot be created, and tries again on 
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -959,7 +998,7 @@ test('it fails a fetch whose sandbox never finishes creating', async () => {
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     sandboxCallTimeoutMs: 30_000,
@@ -1003,7 +1042,7 @@ test('it waits on a sandbox that never finishes creating until the time limit pa
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     sandboxCallTimeoutMs: 30_000,
@@ -1047,7 +1086,7 @@ test('it serves the next fetch after a sandbox that never finished creating', as
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     sandboxCallTimeoutMs: 30_000,
@@ -1087,7 +1126,7 @@ test('it fails a fetch after it stops, and creates no sandbox', async () => {
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -1118,7 +1157,7 @@ test("it destroys the last fetch's sandbox before it finishes stopping", async (
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -1153,7 +1192,7 @@ test("it waits on the last fetch's destroy before it finishes stopping", async (
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     sandboxCallTimeoutMs: 30_000,

@@ -1,7 +1,8 @@
 import type { Log } from '@heynixie/log';
-import type { ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
+import type { ToolDefinition, ToolImage, ToolOutcome, ToolRun } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
+import { fitFetchedImage } from './fit-fetched-image';
 import type { PageView, WebFetchRequest } from './parse-web-fetch-request';
 import { parseWebFetchRequest } from './parse-web-fetch-request';
 import { pickPageView } from './pick-page-view';
@@ -49,6 +50,16 @@ const webFetchOutput = {
     text: { type: ['string', 'null'] },
     isTruncated: { type: 'boolean', 'x-endorsed': true },
     blocked: { type: ['string', 'null'] },
+    image: {
+      type: 'object',
+      properties: {
+        mediaType: { type: 'string' },
+        width: { type: 'integer' },
+        height: { type: 'integer' },
+      },
+      required: ['mediaType', 'width', 'height'],
+      additionalProperties: false,
+    },
     matches: {
       type: 'array',
       items: {
@@ -85,6 +96,9 @@ export interface WebFetchToolOptions {
 
   // the most bytes of parts one session's stored pages hold before the oldest goes
   readonly pageStoreBytes: number;
+
+  // the most pixels of an image's longer side; a larger image returns downscaled
+  readonly imageLongEdge: number;
 }
 
 export function buildWebFetchTool(
@@ -105,7 +119,10 @@ export function buildWebFetchTool(
       'Fetches one public web page and returns its final URL, status code, content type and ' +
       'text. An http URL is tried over https first, and the final URL shows the scheme that ' +
       'answered. The text is the readable text of an HTML page, the text of another text type, ' +
-      'and no text for a binary type. Each link in the text reads as its ID, such as [L12]. A ' +
+      'and no text for a binary type. An image comes back as an image you can see, with no ' +
+      'text, its media type and its size in pixels, downscaled when it is large; an image past ' +
+      "the fetch's image size limit comes back with no image and isTruncated true. Each link " +
+      'in the text reads as its ID, such as [L12]. A ' +
       'link to another host shows that host and the start of its path after the ID, such as ' +
       '[L40 · example.org/docs/…], and never its query string. Pass the ID as link to fetch ' +
       'that page. ' +
@@ -133,13 +150,21 @@ export function buildWebFetchTool(
         text: 'untrusted',
         isTruncated: 'untrusted',
         blocked: 'untrusted',
+        image: 'untrusted',
         matches: 'untrusted',
       },
     },
     execution: 'direct',
     run: (call, context) =>
       runWebFetchCall(
-        { log, readPage, session: getPageSession(context.run), limits },
+        {
+          log,
+          readPage,
+          session: getPageSession(context.run),
+          limits,
+          imageLongEdge: options.imageLongEdge,
+          reserveImages: context.run.session?.reserveImages ?? null,
+        },
         parseWebFetchRequest(call.input),
       ),
   };
@@ -150,6 +175,10 @@ interface PageFetch {
   readonly readPage: (url: string) => Promise<FetchReply>;
   readonly session: PageSession;
   readonly limits: PageLimits;
+  readonly imageLongEdge: number;
+
+  // null for a call under the run's own token, which holds no session to show an image in
+  readonly reserveImages: ((images: readonly ToolImage[]) => boolean) | null;
 }
 
 function runWebFetchCall(fetching: PageFetch, request: WebFetchRequest): Promise<ToolOutcome> {
@@ -190,10 +219,66 @@ async function runPageFetch(
 ): Promise<ToolOutcome> {
   const reply = await fetching.readPage(url);
 
-  if (reply.kind !== 'page') {
-    return { status: 'error', message: reply.reason };
+  return match(reply)
+    .with({ kind: 'refused' }, { kind: 'failed' }, (refused) =>
+      Promise.resolve<ToolOutcome>({ status: 'error', message: refused.reason }),
+    )
+    .with({ kind: 'image' }, (image) => runImageResult(fetching, image))
+    .with({ kind: 'page' }, (page) => runPageResult(fetching, page, view))
+    .exhaustive();
+}
+
+type ImageReply = Extract<FetchReply, { readonly kind: 'image' }>;
+
+async function runImageResult(fetching: PageFetch, reply: ImageReply): Promise<ToolOutcome> {
+  const fitted = await fitFetchedImage(Buffer.from(reply.base64, 'base64'), fetching.imageLongEdge);
+
+  if (fitted.kind === 'unreadable') {
+    return {
+      status: 'error',
+      message: `${reply.url} sent ${reply.contentType ?? 'a body'} that is no image the model can see: ${fitted.reason}`,
+    };
   }
 
+  if (fetching.reserveImages === null) {
+    return {
+      status: 'error',
+      message: `${reply.url} is an image, and a call outside a conversation session has no session to show it in`,
+    };
+  }
+
+  if (!fetching.reserveImages([fitted.image])) {
+    return {
+      status: 'error',
+      message: `${reply.url} is an image, and this session holds as many images as it can take`,
+    };
+  }
+
+  return {
+    status: 'ok',
+    result: {
+      url: reply.url,
+      status: reply.status,
+      contentType: reply.contentType,
+      page: null,
+      part: null,
+      parts: 0,
+      text: null,
+      isTruncated: false,
+      blocked: null,
+      image: { mediaType: fitted.image.mediaType, width: fitted.width, height: fitted.height },
+    },
+    images: [fitted.image],
+  };
+}
+
+type PageReply = Extract<FetchReply, { readonly kind: 'page' }>;
+
+async function runPageResult(
+  fetching: PageFetch,
+  reply: PageReply,
+  view: PageView,
+): Promise<ToolOutcome> {
   if (reply.text === null) {
     return {
       status: 'ok',

@@ -249,7 +249,7 @@ async function runFetcher(
   const stream = await waitOrTimeOut(
     sandbox.spawn({
       argv: options.argv,
-      maxMessageBytes: getReplyLimit(options.limits.textBytes),
+      maxMessageBytes: getReplyLimit(options.limits),
     }),
     limit,
   );
@@ -269,9 +269,15 @@ async function runFetcher(
 const replyOverheadBytes = 65_536;
 
 // JSON escapes a byte of text as at most 6 bytes and a byte of a serialized URL as at most 2, and
-// each target's quotes and comma take 3 bytes beside a mark of at least 7 bytes in the text
-function getReplyLimit(textBytes: number): number {
-  return textBytes * 6 + getLinkTargetLimit(textBytes) * 2 + textBytes + replyOverheadBytes;
+// each target's quotes and comma take 3 bytes beside a mark of at least 7 bytes in the text. A reply
+// holds text or an image, never both, and base64 writes 3 bytes of an image as 4.
+function getReplyLimit(limits: FetchLimits): number {
+  const textReplyBytes =
+    limits.textBytes * 6 + getLinkTargetLimit(limits.textBytes) * 2 + limits.textBytes;
+
+  const imageReplyBytes = Math.ceil(limits.imageBytes / 3) * 4;
+
+  return Math.max(textReplyBytes, imageReplyBytes) + replyOverheadBytes;
 }
 
 async function sendFetchRequest(

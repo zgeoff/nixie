@@ -21,7 +21,7 @@ function isStringList(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every((item: unknown) => typeof item === 'string');
 }
 
-const limitNames = ['bodyBytes', 'timeoutMs', 'redirects', 'textBytes'] as const;
+const limitNames = ['bodyBytes', 'timeoutMs', 'redirects', 'textBytes', 'imageBytes'] as const;
 
 function decodeLimits(value: unknown): FetchLimits {
   if (typeof value !== 'object' || value === null) {
@@ -43,5 +43,6 @@ function decodeLimits(value: unknown): FetchLimits {
     timeoutMs: Number(limits.get('timeoutMs')),
     redirects: Number(limits.get('redirects')),
     textBytes: Number(limits.get('textBytes')),
+    imageBytes: Number(limits.get('imageBytes')),
   };
 }

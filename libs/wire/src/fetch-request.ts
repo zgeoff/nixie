@@ -6,6 +6,9 @@ export interface FetchLimits {
   readonly redirects: number;
 
   readonly textBytes: number;
+
+  // the most body bytes of an image/* type; a longer body returns no image
+  readonly imageBytes: number;
 }
 
 export interface FetchRequest {

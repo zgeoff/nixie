@@ -14,5 +14,15 @@ export type FetchReply =
 
       readonly blocked: string | null;
     }
+  | {
+      readonly kind: 'image';
+
+      readonly url: string;
+      readonly status: number;
+      readonly contentType: string | null;
+
+      // the whole body, as the site sent it, within the image limit
+      readonly base64: string;
+    }
   | { readonly kind: 'refused'; readonly reason: string }
   | { readonly kind: 'failed'; readonly reason: string };

@@ -12,7 +12,7 @@ test('it answers a page whose text holds the bytes the URL names', async () => {
     stdin: encodeFrame(
       encodeFetchMessage({
         url: 'https://pages.test/files/12',
-        limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 100 },
+        limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 100, imageBytes: 100 },
         deniedRanges: [],
       }),
     ),
@@ -42,7 +42,7 @@ test("it cuts the text at the request's text limit and marks it truncated, as th
     stdin: encodeFrame(
       encodeFetchMessage({
         url: 'https://pages.test/files/12',
-        limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 5 },
+        limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 5, imageBytes: 100 },
         deniedRanges: [],
       }),
     ),
