@@ -5,8 +5,6 @@ import type { Rule, RuleCall, RuleCheck } from './types';
 export function isRuleMatch(rule: Rule, call: RuleCall): boolean {
   const isAllow = rule.outcome === 'allow';
 
-  // nixie evaluates no CEL, so a CEL rule fails closed: an allow never covers a call, and an ask or
-  // a deny catches on its other fields alone.
   if (rule.cel !== undefined && isAllow) {
     return false;
   }
