@@ -320,6 +320,29 @@ test("it removes the pages of the thread's ended sessions when a new session sto
     limits,
   );
 
+  await writeRecords(ctx.log, [
+    {
+      kind: modelSessionOpenedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: modelSessionOpenedCodec.encode({
+        model: 'model-a',
+        profile: 'chat-direct',
+        kind: 'compaction',
+        reason: null,
+        lostSessionID: null,
+        summarySequence: null,
+        recentRecords: 0,
+        recentEvents: 0,
+        recalledThrough: 0,
+        status: {},
+        personaHash: 'sha256:persona',
+        policyHash: 'sha256:policy',
+        sessionKey: '00000000-0000-4000-8000-00000000000b',
+      }),
+    },
+  ]);
+
   await writeWebFetchPage(
     ctx.log,
     {
@@ -342,6 +365,77 @@ test("it removes the pages of the thread's ended sessions when a new session sto
   const pages = await sql`select session_key from web_fetch_pages`.execute(ctx.log.writer.db);
 
   expect(pages.rows).toStrictEqual([{ session_key: '00000000-0000-4000-8000-00000000000b' }]);
+});
+
+test("it keeps the live session's pages when a call under the run's own token stores a page on the thread", async () => {
+  const ctx = await setupTest();
+
+  const limits = { textBytes: 100, linkPathChars: 24, storeBytes: 1000 };
+
+  await writeRecords(ctx.log, [
+    {
+      kind: modelSessionOpenedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: modelSessionOpenedCodec.encode({
+        model: 'model-a',
+        profile: 'chat-direct',
+        kind: 'first',
+        reason: null,
+        lostSessionID: null,
+        summarySequence: null,
+        recentRecords: 0,
+        recentEvents: 0,
+        recalledThrough: 0,
+        status: {},
+        personaHash: 'sha256:persona',
+        policyHash: 'sha256:policy',
+        sessionKey: '00000000-0000-4000-8000-00000000000a',
+      }),
+    },
+  ]);
+
+  await writeWebFetchPage(
+    ctx.log,
+    {
+      url: 'https://harbour.test/a',
+      status: 200,
+      contentType: 'text/plain',
+      isTruncated: false,
+      blocked: null,
+      text: 'Pier one.',
+      links: [],
+    },
+    {
+      sessionKey: '00000000-0000-4000-8000-00000000000a',
+      thread: 'conversation',
+      invalidatedThrough: null,
+    },
+    limits,
+  );
+
+  await writeWebFetchPage(
+    ctx.log,
+    {
+      url: 'https://harbour.test/b',
+      status: 200,
+      contentType: 'text/plain',
+      isTruncated: false,
+      blocked: null,
+      text: 'Pier two.',
+      links: [],
+    },
+    { sessionKey: 'conversation', thread: 'conversation', invalidatedThrough: null },
+    limits,
+  );
+
+  const pages = await sql`select session_key from web_fetch_pages
+    order by session_key`.execute(ctx.log.writer.db);
+
+  expect(pages.rows).toStrictEqual([
+    { session_key: '00000000-0000-4000-8000-00000000000a' },
+    { session_key: 'conversation' },
+  ]);
 });
 
 test("it keeps the thread's pages of a key no session opening names, such as a run's", async () => {

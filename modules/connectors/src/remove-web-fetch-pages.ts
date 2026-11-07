@@ -54,8 +54,8 @@ export async function removeWebFetchPages(
 }
 
 // a conversation session's opening record keeps its key, and a thread runs one session at a time,
-// so a key an opening names that is not the caller's belongs to an ended session; a call under a
-// run's own token keys its pages by the run, which no opening names
+// so every opening before the newest names an ended session; a call under a run's own token keys
+// its pages by the run, which no opening names, and it can run beside the live session
 const openedKind: ModelsRecordKind = 'model.session_opened';
 
 async function removeEndedSessionPages(
@@ -83,6 +83,7 @@ async function removeEndedSessionPages(
     .select('payload')
     .where('thread', '=', thread)
     .where('kind', '=', openedKind)
+    .orderBy('sequence')
     .execute();
 
   const ended = collectEndedSessionKeys(
@@ -101,17 +102,17 @@ async function removeEndedSessionPages(
 
 function collectEndedSessionKeys(
   candidates: readonly string[],
-  openingPayloads: readonly string[],
+  oldestFirstOpenings: readonly string[],
 ): string[] {
-  const openedKeys = new Set(
-    openingPayloads.flatMap((payload) => {
-      const key = modelSessionOpenedCodec.tryDecodePartial(parseJSONObject(payload))?.sessionKey;
-
-      return key === undefined ? [] : [key];
-    }),
+  const keys = oldestFirstOpenings.map(
+    (payload) => modelSessionOpenedCodec.tryDecodePartial(parseJSONObject(payload))?.sessionKey,
   );
 
-  return candidates.filter((candidate) => openedKeys.has(candidate));
+  const liveKey = keys.at(-1);
+
+  const endedKeys = new Set(keys.slice(0, -1).filter((key) => key !== liveKey));
+
+  return candidates.filter((candidate) => endedKeys.has(candidate));
 }
 
 interface StoredPageSize {
