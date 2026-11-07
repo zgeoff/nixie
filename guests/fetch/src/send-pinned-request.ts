@@ -1,6 +1,7 @@
 import type { ClientRequest, IncomingMessage } from 'node:http';
 import type { LookupFunction } from 'node:net';
 import { isIP } from 'node:net';
+import { ConnectionNotOpenError } from './connection-not-open-error';
 import type { WebTransports } from './create-web-transports';
 import { toBareHost } from './to-bare-host';
 
@@ -67,13 +68,14 @@ export function sendPinnedRequest(
         response.resolve,
       );
 
-  outgoing.on('error', response.reject);
-
   const openEvent = isHTTPS ? 'secureConnect' : 'connect';
+  const connection = watchConnection(outgoing, openEvent, options.connectTimeoutMs);
 
-  if (options.connectTimeoutMs !== undefined) {
-    limitConnectTime(outgoing, openEvent, options.connectTimeoutMs);
-  }
+  outgoing.on('error', (error) => {
+    const failure = connection.isOpen() ? error : new ConnectionNotOpenError(error);
+
+    response.reject(failure);
+  });
 
   outgoing.end();
 
@@ -92,17 +94,24 @@ function makePinnedLookup(address: string): LookupFunction {
   };
 }
 
-function limitConnectTime(
+function watchConnection(
   outgoing: ClientRequest,
   openEvent: 'connect' | 'secureConnect',
-  timeoutMs: number,
-): void {
-  const timer = setTimeout(() => {
-    outgoing.destroy(new Error(`the connection did not open within ${timeoutMs} ms`));
-  }, timeoutMs);
+  connectTimeoutMs: number | undefined,
+): { readonly isOpen: () => boolean } {
+  const state = { isOpen: false };
+
+  const timer =
+    connectTimeoutMs === undefined
+      ? undefined
+      : setTimeout(() => {
+          outgoing.destroy(new Error(`the connection did not open within ${connectTimeoutMs} ms`));
+        }, connectTimeoutMs);
 
   outgoing.once('socket', (socket) => {
     socket.once(openEvent, () => {
+      state.isOpen = true;
+
       clearTimeout(timer);
     });
   });
@@ -110,4 +119,6 @@ function limitConnectTime(
   outgoing.once('close', () => {
     clearTimeout(timer);
   });
+
+  return { isOpen: () => state.isOpen };
 }

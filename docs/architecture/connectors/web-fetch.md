@@ -100,12 +100,12 @@ The fetcher's checks run on every hop, the first request and each redirect alike
    request, and an `https` certificate must still match the host name.
 
 For an `http` URL that names no port, the fetcher tries `https` first, on the address it checked. It
-fetches over `http` when the `https` request fails before a response arrives, such as on a refused
-connection or a failed TLS handshake. The `https` try has a fifth of the time limit to open its
-connection, so a host that drops packets to port 443 still gets its `http` fetch within the limit.
-An `https` server that connects and never answers fails the fetch at the time limit, with no `http`
-try. A redirect goes to the URL it names, `http` included, with no `https` try first, so a site that
-redirects from `https` to `http` cannot loop. The reply's final URL shows the scheme that answered.
+fetches over `http` only when the `https` connection fails to open, such as on a refused connection
+or a failed TLS handshake. The `https` try has a fifth of the time limit to open its connection, so
+a host that drops packets to port 443 still gets its `http` fetch within the limit. Once the `https`
+connection opens, an error or a missing answer fails the fetch, with no `http` try. A redirect goes
+to the URL it names, `http` included, with no `https` try first, so a site that redirects from
+`https` to `http` cannot loop. The reply's final URL shows the scheme that answered.
 
 A request carries no credential, cookie or stored header, and never goes through a proxy, because a
 proxy resolves the host itself and would skip the pinned address. The fetcher refuses the non-public

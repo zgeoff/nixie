@@ -7,6 +7,7 @@ import { makeAddressCheck } from './make-address-check';
 import { readPage } from './read-page';
 import { buildStubResolver } from './test-utils/build-stub-resolver';
 import { readClosedPort } from './test-utils/read-closed-port';
+import { startResettingSite } from './test-utils/start-resetting-site';
 import { startSilentListener } from './test-utils/start-silent-listener';
 import { startTestSite } from './test-utils/start-test-site';
 
@@ -220,6 +221,28 @@ test('it returns the http page within the time limit for an http URL whose host 
   });
 
   expect(silent.chunks).not.toStrictEqual([]);
+});
+
+test('it fails with the https error, with no http request, when https connects and then drops the request', async () => {
+  const secure = await startResettingSite(['site.test']);
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('Plain notices', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage('http://site.test/notices', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
+  });
+
+  expect(reply).toStrictEqual({ kind: 'failed', reason: expect.any(String) });
+  expect(plain.requests).toStrictEqual([]);
 });
 
 test('it returns the http page for an http URL whose host fails the https handshake', async () => {

@@ -1,5 +1,6 @@
 import type { IncomingMessage } from 'node:http';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
+import { ConnectionNotOpenError } from './connection-not-open-error';
 import type { WebTransports } from './create-web-transports';
 import type { AddressCheck } from './make-address-check';
 import { planHop } from './plan-hop';
@@ -148,7 +149,7 @@ async function sendHopAttempt(
       ),
     };
   } catch (error) {
-    if (options.signal.aborted) {
+    if (!(error instanceof ConnectionNotOpenError) || options.signal.aborted) {
       throw error;
     }
 
