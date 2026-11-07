@@ -11,6 +11,7 @@
     "@heynixie/models": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "gunshi": "catalog:",
+    "tiny-invariant": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

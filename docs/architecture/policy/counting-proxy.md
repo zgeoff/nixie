@@ -42,7 +42,8 @@ other endpoint with a 403:
 
 A message batch, for one, spends after its reply and names its models inside each request, out of
 reach of both the count and the model check. A stored response read back by its ID spends nothing
-that the proxy could count.
+that the proxy could count. The proxy refuses a request for a background response with a 400 too,
+because that response spends after its reply, and the reply holds no usage.
 
 The proxy passes every header through except the hop-by-hop ones, and asks the upstream for an
 uncompressed reply so that it can read the usage as the reply passes. It never adds or reads a
