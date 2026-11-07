@@ -38,7 +38,9 @@ async function readRedirectChain(
   const hop = { url, count: 0 };
 
   for (;;) {
-    const step = await readHop(hop.url, hop.count === 0, { ...options, signal });
+    const mayTryHTTPS = hop.count === 0 && !hasExplicitPort(hop.url);
+
+    const step = await readHop(hop.url, mayTryHTTPS, { ...options, signal });
 
     if (step.kind !== 'redirect') {
       return step;
@@ -53,11 +55,21 @@ async function readRedirectChain(
   }
 }
 
+// URL parsing drops a port that is the scheme's default, so an explicit :80 shows only in the text.
+function hasExplicitPort(text: string): boolean {
+  const authority =
+    /^\s*[a-z][\w+.-]*:[/\\]*(?<authority>[^/\\?#]*)/iu.exec(text)?.groups?.['authority'] ?? '';
+
+  const hostAndPort = authority.slice(authority.lastIndexOf('@') + 1).replace(/^\[[^\]]*\]/u, '');
+
+  return /:\d+$/u.test(hostAndPort);
+}
+
 const redirectStatuses: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
 
 async function readHop(
   url: string,
-  isFirstHop: boolean,
+  mayTryHTTPS: boolean,
   options: PageReaderOptions & { readonly signal: AbortSignal },
 ): Promise<FetchReply | { readonly kind: 'redirect'; readonly location: string }> {
   const planned = await planHop(url, options);
@@ -66,7 +78,7 @@ async function readHop(
     return planned;
   }
 
-  const attempt = pickHopAttempt(planned.url, isFirstHop, options.limits.timeoutMs);
+  const attempt = pickHopAttempt(planned.url, mayTryHTTPS, options.limits.timeoutMs);
 
   const answered = await sendHopAttempt(attempt, planned.address, options);
 
@@ -96,8 +108,8 @@ const httpsTryConnectShare = 0.2;
 
 // A redirect to http is followed as sent: a site that sends https to http would loop if its
 // redirect were tried over https again.
-function pickHopAttempt(url: URL, isFirstHop: boolean, timeoutMs: number): HopAttempt {
-  if (!isFirstHop || url.protocol !== 'http:' || url.port !== '') {
+function pickHopAttempt(url: URL, mayTryHTTPS: boolean, timeoutMs: number): HopAttempt {
+  if (!mayTryHTTPS || url.protocol !== 'http:') {
     return { kind: 'direct', url };
   }
 

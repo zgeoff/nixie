@@ -275,6 +275,41 @@ test('it fetches an http URL that names a port over http without trying https', 
   expect(secure.requests).toStrictEqual([]);
 });
 
+test.each([
+  'http://site.test:80/buoys',
+  'HTTP://reader@site.test:80/buoys',
+  'http:site.test:80/buoys',
+])('it fetches %s, which names port 80, over http without trying https', async (url) => {
+  const secure = await startTestSite({ names: ['site.test'], respond: () => new Response('x') });
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('Buoy readings', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage(url, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: 'http://site.test/buoys',
+    status: 200,
+    contentType: 'text/plain',
+    text: 'Buoy readings',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(secure.requests).toStrictEqual([]);
+});
+
 test('it fails at the time limit, with no http request, when https connects but never answers', async () => {
   const held = Promise.withResolvers<void>();
 
