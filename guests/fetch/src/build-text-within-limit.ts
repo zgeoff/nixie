@@ -9,7 +9,7 @@ const linkMarkPattern = /\u{E000}(?<index>\d+)\u{E001}/gu;
 
 // Builds the text cut to at most limit bytes of UTF-8, never inside a character, with the targets of
 // its marks within the link target limit, so long links cannot pass the reply's size limit. Indexes
-// follow the text's order, so the kept targets run from the first, and later marks leave the text.
+// follow the text's order, so the kept targets run from the first.
 export function buildTextWithinLimit(readable: ReadableText, limit: number): TextWithinLimit {
   const written = new TextEncoder().encodeInto(readable.text, new Uint8Array(limit));
 

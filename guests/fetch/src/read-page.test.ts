@@ -612,7 +612,7 @@ test('it resolves the links of a page against its final URL after a redirect', a
   });
 });
 
-test('it returns a page within the text limit whole and unmarked when its link targets pass their limit', async () => {
+test('it returns a page within the text limit whole and not truncated when its link targets pass their limit', async () => {
   const site = await startTestSite({
     names: ['site.test'],
     respond: () =>
