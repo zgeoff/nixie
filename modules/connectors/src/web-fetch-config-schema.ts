@@ -12,6 +12,8 @@ export const webFetchConfigSchema = z
     text_bytes: countSchema.default(webFetchDefaults.limits.textBytes),
     link_path_chars: countSchema.default(webFetchDefaults.linkPathChars),
     page_store_bytes: countSchema.default(webFetchDefaults.pageStoreBytes),
+    image_bytes: countSchema.default(webFetchDefaults.limits.imageBytes),
+    image_long_edge: countSchema.default(webFetchDefaults.imageLongEdge),
   })
   .transform((config): WebFetchConfig => ({
     limits: {
@@ -19,8 +21,10 @@ export const webFetchConfigSchema = z
       timeoutMs: config.timeout_ms,
       redirects: config.redirects,
       textBytes: config.text_bytes,
+      imageBytes: config.image_bytes,
     },
     sandboxLimits: webFetchDefaults.sandboxLimits,
     linkPathChars: config.link_path_chars,
     pageStoreBytes: config.page_store_bytes,
+    imageLongEdge: config.image_long_edge,
   }));

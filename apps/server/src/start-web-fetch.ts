@@ -60,9 +60,15 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
     limits: { ...config.limits, textBytes: config.limits.bodyBytes * textBytesPerBodyByte },
   });
 
+  // a skill holds only text files, so the skill fetch reads no image body
   const skillSandbox = startFetchSandbox({
     ...sandbox,
-    limits: { ...config.limits, bodyBytes: skillFetchBytes, textBytes: skillFetchBytes },
+    limits: {
+      ...config.limits,
+      bodyBytes: skillFetchBytes,
+      textBytes: skillFetchBytes,
+      imageBytes: 0,
+    },
     owner: 'skill_fetch',
   });
 
@@ -72,6 +78,7 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
       textBytes: config.limits.textBytes,
       linkPathChars: config.linkPathChars,
       pageStoreBytes: config.pageStoreBytes,
+      imageLongEdge: config.imageLongEdge,
     }),
     readSkillPage: skillSandbox.readPage,
     stop: async () => {

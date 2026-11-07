@@ -221,10 +221,17 @@ test('it keeps the whole text of a page whose text decodes to 3 times its body b
     deniedRanges: [],
     log: ctx.log,
     config: {
-      limits: { bodyBytes: 1000, timeoutMs: 15_000, redirects: 5, textBytes: 1000 },
+      limits: {
+        bodyBytes: 1000,
+        timeoutMs: 15_000,
+        redirects: 5,
+        textBytes: 1000,
+        imageBytes: 1000,
+      },
       sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
     },
   });
 

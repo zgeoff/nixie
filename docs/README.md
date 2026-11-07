@@ -91,6 +91,8 @@ below, and planned work lives in Linear.
   route, the imp adapter and the test sandbox
 - [Web fetch](architecture/connectors/web-fetch.md) — the fetch sandbox, the fetcher's address
   checks, the limits and the result
+- [Web fetch images](architecture/connectors/web-fetch-images.md) — a fetched image as image
+  content, its limits, and how the host downscales it
 - [Time](architecture/connectors/time.md) — the time zone on each message, and the time tool that
   answers in the user's newest zone
 - [Search](architecture/connectors/search.md) — the search tool on the host, its daily call cap, the

@@ -8,6 +8,10 @@ export interface CrashHarness {
 
   readonly providerURL: string;
 
+  // the program each fetch sandbox runs in place of the fetcher, which refuses every address a
+  // test can serve; null keeps the fetcher
+  readonly fetchArgv: readonly string[] | null;
+
   readonly stopDescendants: () => void;
 }
 
@@ -26,6 +30,7 @@ export function joinCrashHarness(
   }
 
   const link = startHarnessLink(env);
+  const fetcher = env['NIXIE_TEST_FETCHER'];
 
   setFaultPointHandler((id, work) => link.waitAtFaultPoint(id, work));
   setWorkTracker(link.workTracker);
@@ -33,6 +38,7 @@ export function joinCrashHarness(
   return {
     link,
     providerURL,
+    fetchArgv: fetcher === undefined ? null : [process.execPath, fetcher],
 
     // A guest leads its own process group, so it outlives a nixie that exits. A host that loses
     // nixie loses its sandboxes too, so nixie stops every process it started before it exits.

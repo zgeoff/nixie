@@ -1,6 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { waitForCondition } from '@heynixie/testing';
+import type { ToolImage } from '@heynixie/tools';
 import { buildToolRegistry } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { sql } from 'kysely';
@@ -9,6 +10,7 @@ import { buildWebFetchTool } from './build-web-fetch-tool';
 import { removeWebFetchThread } from './remove-web-fetch-thread';
 import { startFetchSandbox } from './start-fetch-sandbox';
 import { buildStubSandboxAdapter } from './test-utils/build-stub-sandbox-adapter';
+import { encodeTestImage } from './test-utils/encode-test-image';
 import { makeStubFetcher } from './test-utils/make-stub-fetcher';
 import { startTestLog } from './test-utils/start-test-log';
 
@@ -34,7 +36,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
     ),
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -46,6 +48,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -96,6 +99,7 @@ test("it writes each link in the page's text as an ID the session numbers from 1
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -160,7 +164,13 @@ test('it gives a URL one ID across the pages of one session', async () => {
 
   const tool = buildWebFetchTool(
     (url) => Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page' }),
-    { log: ctx.log, textBytes: 20_000, linkPathChars: 24, pageStoreBytes: 20_971_520 },
+    {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
   );
 
   const run = {
@@ -230,6 +240,7 @@ test('it shows the host and path, with no query string, only for a link that lea
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -301,6 +312,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const run = {
@@ -372,6 +384,7 @@ test.each([
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const run = {
@@ -421,6 +434,7 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const run = {
@@ -477,6 +491,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   await tool.run(
@@ -542,6 +557,7 @@ test('it refuses a page whose session a forget ended while it was fetched, and s
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const running = tool.run(
@@ -609,6 +625,7 @@ test("it numbers a new session's links from 1 again", async () => {
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const otherReply: FetchReply = {
@@ -627,6 +644,7 @@ test("it numbers a new session's links from 1 again", async () => {
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   }).run(
     {
       callID: 'call-1',
@@ -700,6 +718,7 @@ test('it keys the links of a call under the run token by the run', async () => {
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const run = {
@@ -742,6 +761,7 @@ test.each([
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -775,6 +795,7 @@ test('it refuses a link that does not read as a link ID', async () => {
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -831,6 +852,7 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -887,7 +909,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
     ),
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -900,6 +922,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
       textBytes: 20_000,
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
     }),
   ]).findTool('web_fetch');
 
@@ -954,6 +977,7 @@ test('it returns a page result that the registry checks against the output schem
       textBytes: 20_000,
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
     }),
   ]).findTool('web_fetch');
 
@@ -993,6 +1017,7 @@ test.each([
       textBytes: 20_000,
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
     }),
   ]).findTool('web_fetch');
 
@@ -1020,6 +1045,7 @@ test('it returns a binary page with no text', async () => {
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -1065,7 +1091,7 @@ test.each([
     adapter: buildStubSandboxAdapter(makeStubFetcher(() => ({ kind, reason }))),
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -1077,6 +1103,7 @@ test.each([
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -1102,6 +1129,7 @@ test('it declares only the fetch effect and no destination, so it runs direct', 
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   expect(tool.execution).toBe('direct');
@@ -1123,6 +1151,7 @@ test('it marks every result field as outside content', async () => {
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   expect(tool.declaration.results).toStrictEqual({
@@ -1135,6 +1164,7 @@ test('it marks every result field as outside content', async () => {
     text: 'untrusted',
     isTruncated: 'untrusted',
     blocked: 'untrusted',
+    image: 'untrusted',
     matches: 'untrusted',
   });
 });
@@ -1147,6 +1177,7 @@ test('it endorses only the status code, the part numbers and the truncated mark'
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   expect(tool.output['properties']).toStrictEqual({
@@ -1159,6 +1190,16 @@ test('it endorses only the status code, the part numbers and the truncated mark'
     text: { type: ['string', 'null'] },
     isTruncated: { type: 'boolean', 'x-endorsed': true },
     blocked: { type: ['string', 'null'] },
+    image: {
+      type: 'object',
+      properties: {
+        mediaType: { type: 'string' },
+        width: { type: 'integer' },
+        height: { type: 'integer' },
+      },
+      required: ['mediaType', 'width', 'height'],
+      additionalProperties: false,
+    },
     matches: {
       type: 'array',
       items: {
@@ -1179,6 +1220,7 @@ test('it is a tool the registry accepts', async () => {
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   expect(() => buildToolRegistry([tool])).not.toThrow();
@@ -1204,7 +1246,7 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
     adapter,
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
-    limits: { bodyBytes: 1000, timeoutMs: 1000, redirects: 2, textBytes: 1000 },
+    limits: { bodyBytes: 1000, timeoutMs: 1000, redirects: 2, textBytes: 1000, imageBytes: 1000 },
     deniedRanges: [],
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
@@ -1216,6 +1258,7 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
     textBytes: 40,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const run = {
@@ -1294,6 +1337,7 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
     textBytes: 64,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const run = {
@@ -1384,6 +1428,7 @@ test('it fetches the page again for a url with a part, and returns that part', a
     textBytes: 20,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -1437,7 +1482,13 @@ test('it refuses a part past the end of a page, and names its count of parts', a
         isTruncated: false,
         blocked: null,
       }),
-    { log: ctx.log, textBytes: 20, linkPathChars: 24, pageStoreBytes: 20_971_520 },
+    {
+      log: ctx.log,
+      textBytes: 20,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
   );
 
   const run = {
@@ -1494,6 +1545,7 @@ test('it returns the part that holds the first match of find, with every match, 
     textBytes: 20,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const run = {
@@ -1560,7 +1612,13 @@ test('it says a find with no match found none, with the count of parts', async (
         isTruncated: false,
         blocked: null,
       }),
-    { log: ctx.log, textBytes: 20, linkPathChars: 24, pageStoreBytes: 20_971_520 },
+    {
+      log: ctx.log,
+      textBytes: 20,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
   );
 
   const run = {
@@ -1606,6 +1664,7 @@ test('it refuses a page ID no session stored, and fetches nothing', async () => 
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -1651,7 +1710,13 @@ test('it refuses the page ID of an earlier session, and never returns another pa
         isTruncated: false,
         blocked: null,
       }),
-    { log: ctx.log, textBytes: 20_000, linkPathChars: 24, pageStoreBytes: 20_971_520 },
+    {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
   );
 
   const first = await tool.run(
@@ -1725,7 +1790,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
 
   const tool = buildWebFetchTool(
     (url) => Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page' }),
-    { log: ctx.log, textBytes: 20_000, linkPathChars: 24, pageStoreBytes: 20 },
+    { log: ctx.log, textBytes: 20_000, linkPathChars: 24, pageStoreBytes: 20, imageLongEdge: 1568 },
   );
 
   const run = {
@@ -1803,6 +1868,7 @@ test('it refuses a page ID given as a link, and names the kind it expected', asy
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -1841,6 +1907,7 @@ test.each([
       textBytes: 20_000,
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
     });
 
     const outcome = await tool.run(
@@ -1869,6 +1936,7 @@ test('it refuses a link ID given as a page, and names the kind it expected', asy
     textBytes: 20_000,
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
   });
 
   const outcome = await tool.run(
@@ -1905,7 +1973,13 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
         isTruncated: false,
         blocked: null,
       }),
-    { log: ctx.log, textBytes: 20_000, linkPathChars: 24, pageStoreBytes: 20_971_520 },
+    {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
   );
 
   const run = {
@@ -1945,5 +2019,378 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
     message:
       `${first.result['page']} is not a page of this session. A page ID works only in the ` +
       'session that fetched it, so fetch the page again by its url.',
+  });
+});
+
+test('it returns a PNG under the image limit as image content with its media type', async () => {
+  const ctx = await setupTest();
+  const png = await encodeTestImage({ width: 40, height: 30 }, 'png');
+
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(
+      makeStubFetcher((request) => ({
+        kind: 'image',
+        url: request.url,
+        status: 200,
+        contentType: 'image/png',
+        base64: Buffer.from(png).toString('base64'),
+      })),
+    ),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 4096 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const tool = buildWebFetchTool(fetchSandbox.readPage, {
+    log: ctx.log,
+    textBytes: 20_000,
+    linkPathChars: 24,
+    pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
+  });
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://tide-charts.test/harbour.png' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      url: 'https://tide-charts.test/harbour.png',
+      status: 200,
+      contentType: 'image/png',
+      page: null,
+      part: null,
+      parts: 0,
+      text: null,
+      isTruncated: false,
+      blocked: null,
+      image: { mediaType: 'image/png', width: 40, height: 30 },
+    },
+    images: [{ mediaType: 'image/png', bytes: expect.any(Uint8Array) }],
+  });
+});
+
+test('it returns a result with no image, marked truncated, for an image the fetcher cut at the image limit', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildWebFetchTool(
+    () =>
+      Promise.resolve({
+        kind: 'page',
+        url: 'https://tide-charts.test/coast.png',
+        status: 200,
+        contentType: 'image/png',
+        text: null,
+        links: [],
+        isTruncated: true,
+        blocked: null,
+      }),
+    {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
+  );
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://tide-charts.test/coast.png' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      url: 'https://tide-charts.test/coast.png',
+      status: 200,
+      contentType: 'image/png',
+      page: null,
+      part: null,
+      parts: 0,
+      text: null,
+      isTruncated: true,
+      blocked: null,
+    },
+  });
+});
+
+test('it returns an image past the long edge downscaled to fit it', async () => {
+  const ctx = await setupTest();
+  const png = await encodeTestImage({ width: 3000, height: 1500 }, 'png');
+
+  const tool = buildWebFetchTool(
+    () =>
+      Promise.resolve({
+        kind: 'image',
+        url: 'https://tide-charts.test/estuary.png',
+        status: 200,
+        contentType: 'image/png',
+        base64: Buffer.from(png).toString('base64'),
+      }),
+    {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
+  );
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://tide-charts.test/estuary.png' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
+      },
+    },
+  );
+
+  invariant(outcome.status === 'ok');
+
+  const [image] = outcome.images ?? [];
+
+  invariant(image);
+
+  expect(outcome.result['image']).toStrictEqual({
+    mediaType: 'image/png',
+    width: 1568,
+    height: 784,
+  });
+
+  expect(new Bun.Image(image.bytes).metadata()).resolves.toStrictEqual({
+    width: 1568,
+    height: 784,
+    format: 'png',
+  });
+});
+
+test('it counts the image it returns against the session image budget', async () => {
+  const ctx = await setupTest();
+  const png = await encodeTestImage({ width: 40, height: 30 }, 'png');
+
+  const reserveImages = mock<(images: readonly ToolImage[]) => boolean>(() => true);
+
+  const tool = buildWebFetchTool(
+    () =>
+      Promise.resolve({
+        kind: 'image',
+        url: 'https://tide-charts.test/harbour.png',
+        status: 200,
+        contentType: 'image/png',
+        base64: Buffer.from(png).toString('base64'),
+      }),
+    {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
+  );
+
+  await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://tide-charts.test/harbour.png' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0, reserveImages },
+      },
+    },
+  );
+
+  expect(reserveImages.mock.calls).toStrictEqual([
+    [[{ mediaType: 'image/png', bytes: expect.any(Uint8Array) }]],
+  ]);
+});
+
+test('it returns an error, with no image, once the session holds as many images as it can take', async () => {
+  const ctx = await setupTest();
+  const png = await encodeTestImage({ width: 40, height: 30 }, 'png');
+
+  const tool = buildWebFetchTool(
+    () =>
+      Promise.resolve({
+        kind: 'image',
+        url: 'https://tide-charts.test/harbour.png',
+        status: 200,
+        contentType: 'image/png',
+        base64: Buffer.from(png).toString('base64'),
+      }),
+    {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
+  );
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://tide-charts.test/harbour.png' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => false },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'https://tide-charts.test/harbour.png is an image, and this session holds as many images ' +
+      'as it can take',
+  });
+});
+
+test('it returns an error, with no image, for an image fetched under the run token, which holds no session', async () => {
+  const ctx = await setupTest();
+  const png = await encodeTestImage({ width: 40, height: 30 }, 'png');
+
+  const tool = buildWebFetchTool(
+    () =>
+      Promise.resolve({
+        kind: 'image',
+        url: 'https://tide-charts.test/harbour.png',
+        status: 200,
+        contentType: 'image/png',
+        base64: Buffer.from(png).toString('base64'),
+      }),
+    {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
+  );
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://tide-charts.test/harbour.png' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'https://tide-charts.test/harbour.png is an image, and this call cannot show the model an ' +
+      'image',
+  });
+});
+
+test('it returns an error for an image body that is no image the model can see', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildWebFetchTool(
+    () =>
+      Promise.resolve({
+        kind: 'image',
+        url: 'https://tide-charts.test/missing.png',
+        status: 404,
+        contentType: 'image/png',
+        base64: Buffer.from('<html>no such chart</html>').toString('base64'),
+      }),
+    {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
+  );
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://tide-charts.test/missing.png' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'https://tide-charts.test/missing.png sent image/png that is no image the model can see: ' +
+      'ERR_IMAGE_UNKNOWN_FORMAT',
   });
 });

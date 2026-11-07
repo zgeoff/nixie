@@ -25,7 +25,13 @@ test('it answers one request in a process of its own and leaves its temporary di
     stdin: encodeFrame(
       encodeFetchMessage({
         url: 'https://localhost/',
-        limits: { bodyBytes: 1000, timeoutMs: 5000, redirects: 1, textBytes: 1000 },
+        limits: {
+          bodyBytes: 1000,
+          timeoutMs: 5000,
+          redirects: 1,
+          textBytes: 1000,
+          imageBytes: 1000,
+        },
         deniedRanges: [],
       }),
     ),
