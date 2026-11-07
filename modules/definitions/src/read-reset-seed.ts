@@ -6,6 +6,7 @@ import { loadSkillVersions } from './load-skill-versions';
 import type { SnapshotSkill } from './load-snapshot-skills';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
+import { readRuleProposals } from './read-rule-proposals';
 import type {
   DefinitionsInForce,
   DefinitionsTables,
@@ -28,6 +29,7 @@ export interface ResetSeed {
   readonly beneath: readonly SkillVersion[];
 
   readonly rules: readonly SnapshotRuleRow[];
+  readonly closedProposalHashes: readonly string[];
 }
 
 type SeedRecordTables = Readonly<{
@@ -80,6 +82,8 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     .orderBy('rule_id')
     .execute();
 
+  const proposals = await readRuleProposals(db);
+
   return {
     inForce,
     policyHash: snapshot.policy_hash,
@@ -91,5 +95,10 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     written,
     beneath: [...beneath.values()],
     rules,
+    closedProposalHashes: proposals.flatMap((state) =>
+      state.outcome === 'rejected' || state.outcome === 'lapsed'
+        ? [state.proposal.proposalHash]
+        : [],
+    ),
   };
 }

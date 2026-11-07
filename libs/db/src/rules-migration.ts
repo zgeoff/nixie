@@ -66,5 +66,9 @@ export const rulesMigration: Migration = {
       rule_id text primary key,
       last_fired_at integer not null
     ) strict`.execute(tx);
+
+    await sql`create table if not exists closed_rule_proposals (
+      proposal_hash text primary key
+    ) strict`.execute(tx);
   },
 };

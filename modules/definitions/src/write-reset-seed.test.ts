@@ -16,6 +16,7 @@ import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
 import { createStubGitSyncWorktree } from './test-utils/create-stub-git-sync-worktree';
 import { writeResetSeed } from './write-reset-seed';
+import { writeRuleProposalAnswer } from './write-rule-proposal-answer';
 import { writeWrittenSkill } from './write-written-skill';
 import { writeWrittenSkillState } from './write-written-skill-state';
 
@@ -595,4 +596,59 @@ test('it proposes a pending widening again at the first seed after a reset', asy
       entry.proposal.changes.map((change) => change.ruleID),
     ]),
   ).toStrictEqual([[null, ['allow-web']]]);
+});
+
+test('it asks again about no widening you rejected before a reset', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'rules'));
+
+  await Promise.all([
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n'),
+    writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
+    writeFile(
+      join(ctx.root, 'rules', 'web.yaml'),
+      'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
+    ),
+  ]);
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const [pending] = await readRuleProposals(ctx.writer.db);
+
+  invariant(pending);
+
+  await writeRuleProposalAnswer(
+    {
+      log: ctx.log,
+      clock: { now: () => Date.now() },
+      definitions: () => ({ snapshotHash: 'snapshot-a' }),
+      runInForceSeed: () => Promise.resolve(),
+    },
+    { answer: 'reject', proposalID: pending.proposal.proposalID, reason: 'Not yet.' },
+  );
+
+  await runLogReset(ctx.log, {
+    keptTables: ruleStoreTables,
+    readKept: (tx) => readResetSeed(tx),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const proposals = await readRuleProposals(ctx.writer.db);
+
+  expect(proposals).toStrictEqual([]);
 });

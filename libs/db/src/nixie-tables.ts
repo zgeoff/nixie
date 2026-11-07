@@ -41,6 +41,9 @@ export interface NixieTables {
     readonly result: string;
     readonly recorded_at: number;
   };
+  readonly closed_rule_proposals: {
+    readonly proposal_hash: string;
+  };
   readonly definition_rules: {
     readonly rule_id: string;
     readonly rule_hash: string;

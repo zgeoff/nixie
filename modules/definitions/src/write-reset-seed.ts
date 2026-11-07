@@ -28,6 +28,15 @@ export async function writeResetSeed(
       .execute();
   }
 
+  if (seed.closedProposalHashes.length > 0) {
+    await tx
+      .$extendTables<DefinitionsTables>()
+      .insertInto('closed_rule_proposals')
+      .values(seed.closedProposalHashes.map((hash) => ({ proposal_hash: hash })))
+      .onConflict((conflict) => conflict.doNothing())
+      .execute();
+  }
+
   if (seed.written.length > 0) {
     await tx
       .$extendTables<DefinitionsTables>()

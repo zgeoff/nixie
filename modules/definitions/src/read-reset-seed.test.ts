@@ -94,5 +94,6 @@ test('it reads the seed in force with its snapshot row and the payload of its re
     written: [],
     beneath: [],
     rules: [],
+    closedProposalHashes: [],
   });
 });

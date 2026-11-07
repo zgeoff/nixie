@@ -407,5 +407,6 @@ export type DefinitionsTables = CheckedTables<
     runtime_rules: RuntimeRuleRow;
     snapshot_rules: SnapshotRuleRow;
     rule_fires: RuleFireRow;
+    closed_rule_proposals: { readonly proposal_hash: string };
   }>
 >;
