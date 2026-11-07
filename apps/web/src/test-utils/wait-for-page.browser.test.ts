@@ -35,6 +35,18 @@ test('it rejects with the expression when the page never makes it true', async (
   expect(waited).rejects.toThrow("document.title === 'kettle boiled'");
 });
 
+test('it gives up after 5 s when the caller passes no timeout', async () => {
+  const ctx = await setupTest();
+
+  const waited = waitForPage(ctx.view, "document.title === 'kettle boiled'");
+
+  await Promise.allSettled([waited]);
+
+  expect(waited).rejects.toThrow(
+    "the page never made this true within 5000 ms: document.title === 'kettle boiled'",
+  );
+});
+
 test('it keeps waiting while the expression gives a truthy value other than true', async () => {
   const ctx = await setupTest();
 

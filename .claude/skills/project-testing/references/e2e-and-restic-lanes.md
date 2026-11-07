@@ -81,8 +81,9 @@ and `bun run test:browser` leave the journeys out.
   page, wait with `waitForPage` for a key that starts with `_reactListening` on `document`, which
   React adds as it hydrates.
 - **Wait on the page with `waitForPage(view, expression)`** from `@heynixie/web/test-utils`. It runs
-  the expression, a string of JavaScript, in the page until it gives `true`. After 10 s it throws
-  with the expression.
+  the expression, a string of JavaScript, in the page until it gives `true`. After 5 s it throws
+  with the expression, so a failed wait reports itself inside the browser lane's 10 s limit. Keep
+  any `timeoutMs` you pass under that limit too.
 - **In a journey that resets during a turn, hold the model reply only until the reset starts.** Pass
   the reply as `{ text, gate }` to `journey.nixie.model.addReplies`, where `gate` is a promise.
   Resolve it once `journey.server.waitForLogEvent('reset.started')` returns. The reset command waits
