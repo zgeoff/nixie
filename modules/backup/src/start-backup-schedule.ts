@@ -1,7 +1,7 @@
 import { subscribeToRecordCommits } from '@heynixie/log';
 import { createActor, toPromise } from 'xstate';
+import { BackupPassError } from './backup-pass-error';
 import { backupScheduleMachine } from './backup-schedule-machine';
-import { BackupStageError } from './backup-stage-error';
 import { removeAbandonedSets } from './remove-abandoned-sets';
 import type { BackupPass } from './run-backup-pass';
 import { runBackupPass } from './run-backup-pass';
@@ -38,14 +38,19 @@ export function startBackupSchedule(options: BackupScheduleOptions): BackupSched
       pollMs,
       onPass: options.onPass,
       onError: (error) => {
-        if (error instanceof BackupStageError) {
-          options.onPass(error.pass);
-          options.onError(error.cause);
+        if (!(error instanceof BackupPassError)) {
+          options.onError(error);
 
           return;
         }
 
-        options.onError(error);
+        try {
+          options.onPass(error.pass);
+        } catch (passError) {
+          options.onError(passError);
+        }
+
+        options.onError(error.cause);
       },
     },
   });

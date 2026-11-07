@@ -1,5 +1,5 @@
 import type { BackupSetManifest } from '@heynixie/wire';
-import { BackupStageError } from './backup-stage-error';
+import { BackupPassError } from './backup-pass-error';
 import { pickBackupSetKind } from './pick-backup-set-kind';
 import { readBackupDue } from './read-backup-due';
 import type { BackupHealth } from './read-backup-health';
@@ -14,27 +14,35 @@ export interface BackupPass {
   readonly received: readonly ReceivedReceipt[];
   readonly staged: BackupSetManifest | null;
   readonly noticed: readonly BackupNotice[];
-  readonly health: BackupHealth;
+  readonly health: BackupHealth | null;
 }
 
+// The pass removes each recorded receipt's set folder, so a failure after that throws the receipts
+// with it, or their refusals and failures would never reach the log.
 export async function runBackupPass(
   context: BackupContext,
   intervalMs: number,
 ): Promise<BackupPass> {
   const received = await writeReceivedReceipts(context);
-  const noticed = await writeBackupNotices(context, intervalMs);
-  const due = await readBackupDue(context.writer);
 
-  const kind = pickBackupSetKind(due, context.writer.clock.now(), intervalMs);
+  const done: { noticed: readonly BackupNotice[]; staged: BackupSetManifest | null } = {
+    noticed: [],
+    staged: null,
+  };
 
-  const staged =
-    kind === null
-      ? null
-      : await writeSnapshotSet(context, kind).catch(async (error: unknown) => {
-          const health = await readBackupHealth(context.writer);
+  try {
+    done.noticed = await writeBackupNotices(context, intervalMs);
 
-          throw new BackupStageError({ received, noticed, staged: null, health }, error);
-        });
+    const due = await readBackupDue(context.writer);
 
-  return { received, noticed, staged, health: await readBackupHealth(context.writer) };
+    const kind = pickBackupSetKind(due, context.writer.clock.now(), intervalMs);
+
+    done.staged = kind === null ? null : await writeSnapshotSet(context, kind);
+
+    return { received, ...done, health: await readBackupHealth(context.writer) };
+  } catch (error) {
+    const health = await readBackupHealth(context.writer).catch(() => null);
+
+    throw new BackupPassError({ received, ...done, health }, error);
+  }
 }

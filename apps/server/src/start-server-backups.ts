@@ -30,8 +30,11 @@ export async function startServerBackups(parts: ServerBackupParts): Promise<void
       parts.log('backup.sets_abandoned', { sequences: sequences.join(',') });
     },
     onPass: (pass) => {
+      const watch = parts.state.read().backups;
+      const lastHealth = watch.state === 'on' ? watch.health : null;
+
       parts.state.update({
-        backups: { state: 'on', intervalMs, startedAt, health: pass.health },
+        backups: { state: 'on', intervalMs, startedAt, health: pass.health ?? lastHealth },
       });
 
       for (const notice of pass.noticed) {

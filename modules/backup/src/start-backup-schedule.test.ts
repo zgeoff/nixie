@@ -204,6 +204,71 @@ test('it passes the health of a pass whose staging fails to onPass, and the stag
   });
 });
 
+test('it passes the receipts of a pass that fails after it records them to onPass, with no health', async () => {
+  const ctx = await setupTest();
+
+  const schedule = startBackupSchedule({
+    context: { writer: ctx.writer, storage: localDataStorage },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+  );
+
+  await sql`drop table backup_notices`.execute(ctx.writer.db);
+
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: 1, status: 'published' });
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() => ctx.onError.mock.calls.length === 1);
+
+  expect(ctx.onPass.mock.calls[1]?.[0]).toStrictEqual({
+    received: [{ sequence: 1, status: 'published', failure: null }],
+    noticed: [],
+    staged: null,
+    health: null,
+  });
+
+  expect(ctx.onError.mock.calls[0]?.[0]).toMatchObject({
+    message: expect.stringContaining('no such table: backup_notices'),
+  });
+});
+
+test('it passes the failure of a pass to onError when onPass throws on that pass', async () => {
+  const ctx = await setupTest();
+
+  const onPass = mock<(pass: BackupPass) => void>(() => {
+    throw new Error('the stub onPass fails');
+  });
+
+  const schedule = startBackupSchedule({
+    context: {
+      writer: ctx.writer,
+      storage: buildStubFailingStorage(localDataStorage, 'complete', 'write'),
+    },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(() => ctx.onError.mock.calls.length === 2);
+
+  expect(ctx.onError.mock.calls.map((call) => call[0])).toMatchObject([
+    { message: 'the stub onPass fails' },
+    { message: 'the stub fails the write of complete' },
+  ]);
+});
+
 test('it raises one notice for a failed receipt, however many passes follow it', async () => {
   const ctx = await setupTest();
 
