@@ -1,4 +1,5 @@
 import { onTestFinished } from 'bun:test';
+import { buildEndingResponse } from './build-ending-response';
 
 interface FrontProxyTargets {
   readonly apiURL: string;
@@ -32,27 +33,4 @@ export function startFrontProxy(targets: FrontProxyTargets) {
   });
 
   return { url: `http://127.0.0.1:${server.port}` };
-}
-
-function buildEndingResponse(response: Response): Response {
-  if (response.body === null) {
-    return response;
-  }
-
-  const reader = response.body.getReader();
-
-  const body = new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      const chunk = await reader.read().catch(() => ({ done: true, value: undefined }));
-
-      if (chunk.done) {
-        controller.close();
-      } else {
-        controller.enqueue(chunk.value);
-      }
-    },
-    cancel: (reason) => reader.cancel(reason),
-  });
-
-  return new Response(body, response);
 }

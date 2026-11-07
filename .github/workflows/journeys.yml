@@ -1,0 +1,63 @@
+# Drives the user's core journeys through the built web app in Chrome, against a running nixie:
+# signing in, a chat turn, approving a memory proposal and a reset. A pull request runs them only
+# when it changes a file the server, the web app or the journeys read; every push to main runs them.
+name: Journeys
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# a push to main keeps each run, so every merged commit gets its journeys run
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@da150db37d32fbc5c29fcce9fb3f5ba3761c4355 # main
+    with:
+      paths: |
+        .github/workflows/journeys.yml
+        .bun-version
+        bun.lock
+        bunfig.toml
+        package.json
+        tsconfig*.json
+        adapters/**
+        apps/**
+        e2e/**
+        guests/**
+        libs/**
+        modules/**
+        scripts/run-memory-capped.sh
+
+  journeys:
+    needs: changes
+    # != 'false', so a failed changes job still runs the journeys
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # CI never commits; skip hook install and execution.
+      LEFTHOOK: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      # the install runs the web app's style codegen, which its build reads
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Journeys
+        run: bun run test:journeys
