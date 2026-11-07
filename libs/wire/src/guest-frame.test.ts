@@ -6,6 +6,7 @@ test('it accepts an ended frame that marks a model API error', () => {
   const frame: GuestFrame = {
     type: 'ended',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
@@ -23,6 +24,7 @@ test('it accepts an ended frame from a guest that sends no error mark', () => {
   const frame: GuestFrame = {
     type: 'ended',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
@@ -39,6 +41,7 @@ test('it accepts an ended frame with the context of its last model call', () => 
   const frame: GuestFrame = {
     type: 'ended',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
@@ -94,6 +97,7 @@ test('it accepts an ended frame with the reason the SDK gave for its end', () =>
   const frame: GuestFrame = {
     type: 'ended',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
@@ -131,6 +135,7 @@ test('it accepts a summarized frame with the summary, its chain entry and its to
   const frame: GuestFrame = {
     type: 'summarized',
     boundary: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },

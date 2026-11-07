@@ -38,7 +38,7 @@ export function runStubGuestSummary(
   return [
     {
       type: 'summarized',
-      boundary: { sessionID, messageID: summary.uuid },
+      boundary: { harness: 'agent-sdk', sessionID, messageID: summary.uuid },
       text,
       usage: {
         inputTokens: instruction.tokens,

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { createRunServer } from './create-run-server';
 import type { ToolCallOptions } from './run-tool-call';
-import type { RunEndpoint, ToolEndpoint, ToolRun } from './types';
+import type { GuestToolRun, RunEndpoint, ToolEndpoint } from './types';
 
 export interface ToolEndpointOptions extends Omit<ToolCallOptions, 'queuedWaitMs'> {
   readonly socketDir: string;
@@ -59,7 +59,7 @@ function buildSocketName(key: string): string {
 }
 
 interface RunEndpointSpec {
-  readonly run: ToolRun;
+  readonly run: GuestToolRun;
   readonly socketPath: string;
   readonly options: ToolCallOptions;
   readonly onStop: () => void;
@@ -162,7 +162,7 @@ function makeStepStarter(
   return (stepRunID, session) => {
     const token = randomBytes(32).toString('base64url');
 
-    const stepRun: ToolRun = {
+    const stepRun: GuestToolRun = {
       ...spec.run,
       stepRunID,
       ...(session === undefined ? {} : { session }),

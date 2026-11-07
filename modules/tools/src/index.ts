@@ -10,6 +10,7 @@ export { toSDKToolName } from './to-sdk-tool-name';
 export type {
   ActionOutcome,
   ActionQueue,
+  GuestToolRun,
   JsonSchema,
   QueuedAction,
   RegisteredTool,

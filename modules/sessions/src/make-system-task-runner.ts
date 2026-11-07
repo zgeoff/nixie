@@ -1,20 +1,28 @@
-import type { ModelRole, ModelSecrets, ModelsConfig, ResolvedProfile } from '@heynixie/models';
-import { resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
+import type {
+  HarnessEntry,
+  ModelRole,
+  ModelSecrets,
+  ModelsConfig,
+  ResolvedProfile,
+} from '@heynixie/models';
+import { getHarness, resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import type { GuestCommand, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import invariant from 'tiny-invariant';
 import { buildGuestCommand } from './build-guest-command';
-import type { GuestEntry } from './types';
+import { getHarnessImage } from './get-harness-image';
 
 export interface SystemTaskOptions {
   readonly models: ModelsConfig;
   readonly secrets: ModelSecrets;
   readonly sandboxes: SandboxAdapter;
 
-  readonly image: string;
+  // each harness's image, under the key its record names
+  readonly images: Readonly<Record<string, string>>;
 }
 
 export interface SystemTaskSession {
   readonly profile: ResolvedProfile;
+  readonly image: string;
   readonly limits: SandboxLimits;
   readonly command: GuestCommand;
 
@@ -23,7 +31,7 @@ export interface SystemTaskSession {
 
 export interface SystemTaskSpec<Options extends SystemTaskOptions, Task> {
   readonly role: ModelRole;
-  readonly entry: GuestEntry;
+  readonly entry: HarnessEntry;
   readonly start: (options: Options, session: SystemTaskSession) => Promise<Task>;
 }
 
@@ -36,10 +44,14 @@ export function makeSystemTaskRunner<Options extends SystemTaskOptions, Task ext
     const started = new AsyncDisposableStack();
 
     try {
+      const profile = resolveRoleCredential(options, spec.role);
+      const harness = getHarness(profile.profile.harness);
+
       const task = await spec.start(options, {
-        profile: resolveRoleCredential(options, spec.role),
+        profile,
+        image: getHarnessImage(options.images, harness.imageKey),
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
-        command: buildGuestCommand(options.sandboxes, spec.entry),
+        command: buildGuestCommand(options.sandboxes, harness.guest, spec.entry),
         defer: (stop) => {
           started.defer(stop);
         },

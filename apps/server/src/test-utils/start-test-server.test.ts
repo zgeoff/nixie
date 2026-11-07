@@ -109,6 +109,7 @@ test('it serves the tools it is given, and passes each call through the decision
   });
 
   const run = await server.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'conversation',
     tools: ['notes_read'],

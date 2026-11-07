@@ -1,3 +1,5 @@
+import type { HarnessID } from '@heynixie/wire';
+
 export type ModelRole =
   | 'conversation'
   | 'task'
@@ -29,6 +31,7 @@ export interface ModelPrices extends PriceRates {
 
 export interface ModelProfile {
   readonly id: string;
+  readonly harness: HarnessID;
   readonly baseURL: string;
 
   readonly credential: string;

@@ -5,6 +5,7 @@ import { buildMockModelProfile } from './test-utils/build-mock-model-profile';
 test('it derives the frozen secret for a profile host and header', () => {
   const secret = deriveModelSecret({
     profile: {
+      harness: 'agent-sdk',
       id: 'chat',
       baseURL: 'https://gateway.example:8443/anthropic',
       credential: 'deployment:gateway',
@@ -64,6 +65,7 @@ test('it gives a changed credential that nixie holds a new name', () => {
 test('it names a secret the sandbox backend holds from the profile, header and host alone', () => {
   const secret = deriveModelSecret({
     profile: {
+      harness: 'agent-sdk',
       id: 'chat',
       baseURL: 'https://gateway.example:8443/anthropic',
       credential: 'deployment:gateway',

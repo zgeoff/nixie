@@ -10,6 +10,7 @@ test('it answers each summary call with the next answer in order', async () => {
   const frame = {
     type: 'summarize',
     profile: {
+      harness: 'agent-sdk',
       model: 'claude-test',
       baseURL: 'https://models.example.test',
       effort: 'medium',
@@ -18,6 +19,7 @@ test('it answers each summary call with the next answer in order', async () => {
       cacheTTL: '5m',
     },
     resume: {
+      harness: 'agent-sdk',
       sessionID: '5d1e7a90-2c4b-4f8e-9a3d-6b0c1e2f3a41',
       messageID: '8f2a6c13-4b7d-4e9f-a1c2-3d5e7f9b0c52',
     },
@@ -41,6 +43,7 @@ test('it throws on a summary call past the last answer', () => {
     answer({
       type: 'summarize',
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-test',
         baseURL: 'https://models.example.test',
         effort: 'medium',
@@ -49,6 +52,7 @@ test('it throws on a summary call past the last answer', () => {
         cacheTTL: '5m',
       },
       resume: {
+        harness: 'agent-sdk',
         sessionID: '5d1e7a90-2c4b-4f8e-9a3d-6b0c1e2f3a41',
         messageID: '8f2a6c13-4b7d-4e9f-a1c2-3d5e7f9b0c52',
       },

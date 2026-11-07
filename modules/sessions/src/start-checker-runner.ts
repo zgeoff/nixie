@@ -1,6 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/logger';
-import { buildModelGrant, deriveModelSecret } from '@heynixie/models';
+import { deriveModelSecret, getHarness } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
 import type {
   GuestCommand,
@@ -39,7 +39,7 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
     image: options.image,
     owner: checkerOwner,
     limits: options.limits,
-    modelGrant: buildModelGrant(secret),
+    modelGrant: getHarness(options.profile.profile.harness).buildGrant(secret),
   });
 
   const sandbox = await createCheckerSandbox(options.sandboxes, spec);

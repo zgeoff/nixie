@@ -41,7 +41,11 @@ export function buildStubSessionScript(outcomes: readonly StubSessionOutcome[]):
       ];
     }
 
-    boundary = { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() };
+    boundary = {
+      harness: 'agent-sdk',
+      sessionID: crypto.randomUUID(),
+      messageID: crypto.randomUUID(),
+    };
 
     unanswered.clear();
 

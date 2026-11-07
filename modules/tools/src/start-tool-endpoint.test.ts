@@ -44,6 +44,7 @@ test("it lists only the run's tools, each with its name, description and input s
   });
 
   const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -76,6 +77,7 @@ test('it denies a registered tool missing from the run list at the scope stage w
   });
 
   const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -96,11 +98,12 @@ test('it denies a registered tool missing from the run list at the scope stage w
   expect(entries[0]?.record.decision).toStrictEqual({ outcome: 'deny', stage: 2, rule: null });
 });
 
-test('it records the tool-use ID that the call carries in _meta', async () => {
+test("it records the tool-use ID that the call carries under the run's _meta key", async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
+    toolUseMetaKey: 'example/toolUseId',
     thread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
@@ -111,7 +114,7 @@ test('it records the tool-use ID that the call carries in _meta', async () => {
   await client.callTool({
     name: 'notes_read',
     arguments: { query: 'milk' },
-    _meta: { 'claudecode/toolUseId': 'toolu_b44b20cd' },
+    _meta: { 'example/toolUseId': 'toolu_b44b20cd', 'claudecode/toolUseId': 'toolu_c55c31de' },
   });
 
   const entries = await readRecords(ctx.log, { afterSequence: 0 });
@@ -124,10 +127,40 @@ test('it records the tool-use ID that the call carries in _meta', async () => {
   ]);
 });
 
+test('it records no tool-use ID for a run whose guest sends none', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
+  const run = await ctx.endpoint.startRun({
+    runID: 'run-1',
+    toolUseMetaKey: null,
+    thread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+
+  await client.callTool({
+    name: 'notes_read',
+    arguments: { query: 'milk' },
+    _meta: { 'example/toolUseId': 'toolu_b44b20cd', 'claudecode/toolUseId': 'toolu_c55c31de' },
+  });
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(
+    entries.map((entry) => [entry.record.kind, entry.record.payload['toolUseID']]),
+  ).toStrictEqual([
+    ['tool_called', null],
+    ['tool_result', null],
+  ]);
+});
+
 test('it returns a typed result to the client as structured content with no text block', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -144,6 +177,7 @@ test('it refuses a request with no bearer token', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -164,6 +198,7 @@ test("it refuses another run's token on this run's socket", async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const runA = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-a',
     thread: 'task-a',
     tools: ['notes_read'],
@@ -171,6 +206,7 @@ test("it refuses another run's token on this run's socket", async () => {
   });
 
   const runB = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-b',
     thread: 'task-b',
     tools: ['notes_read'],
@@ -191,6 +227,7 @@ test('it revokes the run token when the run ends, so a restarted run refuses the
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const ended = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -200,6 +237,7 @@ test('it revokes the run token when the run ends, so a restarted run refuses the
   await ended.stop();
 
   const restarted = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -223,6 +261,7 @@ test('it hands each call the run identity of the step whose token the call carri
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
 
   const endpoint = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -252,6 +291,7 @@ test('it hands each call the session its step token names', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
 
   const endpoint = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -282,6 +322,7 @@ test('it hands a call under the run token no step run identity', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
 
   const endpoint = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -308,6 +349,7 @@ test('it refuses a step token once its step stops', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const endpoint = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -332,6 +374,7 @@ test('it keeps the run token when a step stops', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const endpoint = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -352,6 +395,7 @@ test("it keeps another step's token when one step stops", async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const endpoint = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -373,6 +417,7 @@ test('it stops listening on the run socket when the run ends', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -394,6 +439,7 @@ test('it refuses a second endpoint for a run that has one', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -402,6 +448,7 @@ test('it refuses a second endpoint for a run that has one', async () => {
 
   expect(
     ctx.endpoint.startRun({
+      toolUseMetaKey: null,
       runID: 'run-1',
       thread: 'task-1',
       tools: ['notes_read'],
@@ -430,6 +477,7 @@ test("it leaves a later writer's socket for the same run in place when its run s
   onTestFinished(() => other.stop());
 
   const stale = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'conversation',
     thread: 'conversation',
     tools: ['notes_read'],
@@ -437,6 +485,7 @@ test("it leaves a later writer's socket for the same run in place when its run s
   });
 
   const live = await other.startRun({
+    toolUseMetaKey: null,
     runID: 'conversation',
     thread: 'conversation',
     tools: ['notes_read'],
@@ -459,6 +508,7 @@ test('it gives a sandbox the socket of the run that owns it', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -490,6 +540,7 @@ test('it gives a sandbox the socket of a run that another endpoint of the same w
   onTestFinished(() => other.stop());
 
   const run = await other.startRun({
+    toolUseMetaKey: null,
     runID: 'memory-writer',
     thread: 'memory-writer',
     tools: ['notes_read'],
@@ -505,6 +556,7 @@ test('it sends the listen acknowledgement while the listen stream stays open', a
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 
   const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],

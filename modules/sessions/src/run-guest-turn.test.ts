@@ -47,7 +47,11 @@ test('it drops the reads and replies a guest sent after its last result when it 
     { type: 'assistant', messageID: replyID, text: 'Hello.', toolUses: [] },
     {
       type: 'ended',
-      boundary: { sessionID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f', messageID: replyID },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
+        messageID: replyID,
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 1,
@@ -138,7 +142,11 @@ test('it reports the mark it read at the last result, before a guest that died s
     { type: 'assistant', messageID: replyID, text: 'Hello.', toolUses: [] },
     {
       type: 'ended',
-      boundary: { sessionID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f', messageID: replyID },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
+        messageID: replyID,
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 1,

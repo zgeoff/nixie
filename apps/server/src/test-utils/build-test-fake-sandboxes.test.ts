@@ -51,6 +51,7 @@ test("it gives a tool use of the guest's reply the result of the run's real endp
   });
 
   const run = await server.endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'conversation',
     thread: 'conversation',
     tools: ['notes_read'],

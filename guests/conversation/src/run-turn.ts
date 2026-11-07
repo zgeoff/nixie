@@ -266,7 +266,7 @@ async function emitAssistant(
     return 'stop';
   }
 
-  state.boundary = { sessionID: message.session_id, messageID: message.uuid };
+  state.boundary = { harness: 'agent-sdk', sessionID: message.session_id, messageID: message.uuid };
 
   if (message.error === undefined) {
     state.committed = state.boundary;
@@ -308,7 +308,7 @@ function updateUserBoundary(
   const sessionID = message.session_id;
 
   if (message.parent_tool_use_id === null && messageID !== undefined && sessionID !== undefined) {
-    state.boundary = { sessionID, messageID };
+    state.boundary = { harness: 'agent-sdk', sessionID, messageID };
     state.committed = state.boundary;
   }
 }

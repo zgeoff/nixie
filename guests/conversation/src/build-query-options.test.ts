@@ -117,6 +117,7 @@ test('it resumes at the boundary on a fork of the session', () => {
     buildMockTurnFrame({
       profile: { authHeader: 'x-api-key' },
       resume: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -139,6 +140,7 @@ test('it gives a summary no tools and one model call, on a fork of the session a
     buildMockSummarizeFrame({
       profile: { authHeader: 'x-api-key' },
       resume: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -163,6 +165,7 @@ test('it gives a summary no prompt dispatch, no SDK skills and no bundled skills
     buildMockSummarizeFrame({
       profile: { authHeader: 'x-api-key' },
       resume: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },

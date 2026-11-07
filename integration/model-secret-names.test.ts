@@ -37,6 +37,7 @@ test('it uses the secret impd holds under the fixed name of a profile with no cr
     {
       profiles: {
         opus: {
+          harness: 'agent-sdk',
           id: 'opus',
           baseURL: 'https://api.anthropic.com',
           credential: 'deployment:anthropic',
@@ -76,6 +77,7 @@ test('it refuses the fixed-name secret of a profile with no credential in the se
     {
       profiles: {
         opus: {
+          harness: 'agent-sdk',
           id: 'opus',
           baseURL: 'https://api.anthropic.com',
           credential: 'deployment:anthropic',

@@ -1,45 +1,15 @@
 import { z } from 'zod';
-import { getCLIContextWindow } from './get-cli-context-window';
-import { modelPricesSchema } from './model-prices-schema';
-import type { ModelProfile, ModelsConfig, SelectableModel } from './types';
+import { agentSDKProfileSchema } from './agent-sdk-profile-schema';
+import type { ModelsConfig, SelectableModel } from './types';
 
 const profileIDSchema = z
   .string()
   .regex(/^[a-z0-9][a-z0-9-]*$/u, 'a profile ID is a lowercase slug');
 
-const credentialSchema = z
-  .string()
-  .regex(/^deployment:[\w-]+$/u, 'a credential reference reads deployment:<name>');
-
-// The CLI's auto-compact window takes an integer in this range and clamps any other value.
-const contextTokensSchema = z.int().min(100_000).max(1_000_000);
-
-const profileSchema = z
-  .strictObject({
-    base_url: z.url({ protocol: /^https?$/u }),
-    credential: credentialSchema,
-    auth_header: z.enum(['bearer', 'x-api-key']),
-    model: z.string().min(1),
-    effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
-    provider_pin: z.string().min(1).optional(),
-    context_tokens: contextTokensSchema.optional(),
-    cache_ttl: z.enum(['5m', '1h']).optional(),
-    prices: modelPricesSchema.optional(),
-  })
-
-  // With auto-compaction off, the CLI ignores the cap and refuses a call only against the window it
-  // assumes for the model.
-  .superRefine((profile, issues) => {
-    const window = getCLIContextWindow(profile.model);
-
-    if (profile.context_tokens !== undefined && profile.context_tokens > window) {
-      issues.addIssue({
-        code: 'custom',
-        path: ['context_tokens'],
-        message: `the context cap of ${String(profile.context_tokens)} tokens is larger than the ${String(window)}-token window the Claude CLI assumes for ${profile.model}`,
-      });
-    }
-  });
+// A harness's profile schema goes in this tuple, because zod builds a union only from a tuple.
+const profileSchema = z.discriminatedUnion('harness', [agentSDKProfileSchema], {
+  error: (issue) => formatHarnessIssue(issue.path ?? [], issue.input),
+});
 
 const rolesSchema = z.strictObject({
   conversation: profileIDSchema.optional(),
@@ -119,7 +89,7 @@ export const modelsConfigSchema = z
           path: ['selectable', name, 'profile'],
           message: `the selectable model ${name} names the profile ${entry.profile}, which is not defined`,
         });
-      } else if (profile.prices === undefined) {
+      } else if (profile.prices === null) {
         issues.addIssue({
           code: 'custom',
           path: ['selectable', name, 'profile'],
@@ -130,7 +100,7 @@ export const modelsConfigSchema = z
   })
   .transform((config): ModelsConfig => ({
     profiles: Object.fromEntries(
-      Object.entries(config.profiles).map(([id, profile]) => [id, toProfile(id, profile)]),
+      Object.entries(config.profiles).map(([id, profile]) => [id, { id, ...profile }]),
     ),
     roles: {
       ...Object.fromEntries(
@@ -147,19 +117,11 @@ export const modelsConfigSchema = z
     limits: config.limits,
   }));
 
-function toProfile(id: string, input: z.infer<typeof profileSchema>): ModelProfile {
-  return {
-    id,
-    baseURL: input.base_url,
-    credential: input.credential,
-    authHeader: input.auth_header,
-    model: input.model,
-    effort: input.effort,
-    providerPin: input.provider_pin ?? null,
-    contextTokens: input.context_tokens ?? null,
+function formatHarnessIssue(path: readonly PropertyKey[], input: unknown): string {
+  const profileID = String(path.at(-2) ?? '');
+  const harness = z.object({ harness: z.string() }).safeParse(input).data?.harness;
 
-    // The CLI writes 5-minute entries on an API-key or bearer profile unless told otherwise.
-    cacheTTL: input.cache_ttl ?? '5m',
-    prices: input.prices ?? null,
-  };
+  return harness === undefined
+    ? `the profile ${profileID} names no harness; add harness: agent-sdk`
+    : `the profile ${profileID} names the harness ${harness}, which nixie does not run; use harness: agent-sdk`;
 }

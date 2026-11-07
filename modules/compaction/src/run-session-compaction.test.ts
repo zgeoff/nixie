@@ -24,6 +24,7 @@ test('it summarizes a task session and returns the summary record through its la
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
     turnProfile: {
+      harness: 'agent-sdk',
       model: 'claude-test',
       baseURL: 'https://models.example.test',
       effort: 'medium',
@@ -44,6 +45,7 @@ test('it summarizes a task session and returns the summary record through its la
     {
       taskID: 'task-7',
       resume: {
+        harness: 'agent-sdk',
         sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
         messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
       },
@@ -90,6 +92,7 @@ test('it sends the summary call the task profile, the system prompt and an instr
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
     turnProfile: {
+      harness: 'agent-sdk',
       model: 'claude-test',
       baseURL: 'https://models.example.test',
       effort: 'medium',
@@ -106,6 +109,7 @@ test('it sends the summary call the task profile, the system prompt and an instr
     {
       taskID: 'task-7',
       resume: {
+        harness: 'agent-sdk',
         sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
         messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
       },
@@ -125,6 +129,7 @@ test('it sends the summary call the task profile, the system prompt and an instr
       type: 'summarize',
       profile: run.turnProfile,
       resume: {
+        harness: 'agent-sdk',
         sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
         messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
       },
@@ -142,6 +147,7 @@ test('it sends the summary call the compaction template that the definitions ove
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
     turnProfile: {
+      harness: 'agent-sdk',
       model: 'claude-test',
       baseURL: 'https://models.example.test',
       effort: 'medium',
@@ -158,6 +164,7 @@ test('it sends the summary call the compaction template that the definitions ove
     {
       taskID: 'task-7',
       resume: {
+        harness: 'agent-sdk',
         sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
         messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
       },
@@ -187,6 +194,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
     turnProfile: {
+      harness: 'agent-sdk',
       model: 'claude-test',
       baseURL: 'https://models.example.test',
       effort: 'medium',
@@ -206,6 +214,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
         {
           type: 'summarized',
           boundary: {
+            harness: 'agent-sdk',
             sessionID: 'c3d4e5f6-1a2b-4c3d-8e4f-5a6b7c8d9e02',
             messageID: '9e8d7c6b-5a4f-4e3d-9c2b-1a0f9e8d7c10',
           },
@@ -217,6 +226,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
         {
           type: 'summarized',
           boundary: {
+            harness: 'agent-sdk',
             sessionID: 'c3d4e5f6-1a2b-4c3d-8e4f-5a6b7c8d9e02',
             messageID: '9e8d7c6b-5a4f-4e3d-9c2b-1a0f9e8d7c10',
           },
@@ -232,6 +242,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
     {
       taskID: 'task-7',
       resume: {
+        harness: 'agent-sdk',
         sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
         messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
       },
@@ -266,6 +277,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
   });
 
   expect(ctx.sandboxes.summaries.at(1)?.resume).toStrictEqual({
+    harness: 'agent-sdk',
     sessionID: 'c3d4e5f6-1a2b-4c3d-8e4f-5a6b7c8d9e02',
     messageID: '9e8d7c6b-5a4f-4e3d-9c2b-1a0f9e8d7c10',
   });
@@ -279,6 +291,7 @@ test('it keeps the long summary and its call usage when the cut fails', async ()
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
     turnProfile: {
+      harness: 'agent-sdk',
       model: 'claude-test',
       baseURL: 'https://models.example.test',
       effort: 'medium',
@@ -298,6 +311,7 @@ test('it keeps the long summary and its call usage when the cut fails', async ()
         {
           type: 'summarized',
           boundary: {
+            harness: 'agent-sdk',
             sessionID: 'c3d4e5f6-1a2b-4c3d-8e4f-5a6b7c8d9e02',
             messageID: '9e8d7c6b-5a4f-4e3d-9c2b-1a0f9e8d7c10',
           },
@@ -314,6 +328,7 @@ test('it keeps the long summary and its call usage when the cut fails', async ()
     {
       taskID: 'task-7',
       resume: {
+        harness: 'agent-sdk',
         sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
         messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
       },
@@ -356,6 +371,7 @@ test('it returns a failure record with the count in a row when the summary call 
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
     turnProfile: {
+      harness: 'agent-sdk',
       model: 'claude-test',
       baseURL: 'https://models.example.test',
       effort: 'medium',
@@ -376,6 +392,7 @@ test('it returns a failure record with the count in a row when the summary call 
     {
       taskID: 'task-7',
       resume: {
+        harness: 'agent-sdk',
         sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
         messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
       },
@@ -417,6 +434,7 @@ test('it throws the abort reason instead of a failure record when the signal abo
     context: { log: ctx.log.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     model: { model: 'claude-test', profile: 'task-direct' },
     turnProfile: {
+      harness: 'agent-sdk',
       model: 'claude-test',
       baseURL: 'https://models.example.test',
       effort: 'medium',
@@ -433,6 +451,7 @@ test('it throws the abort reason instead of a failure record when the signal abo
     {
       taskID: 'task-7',
       resume: {
+        harness: 'agent-sdk',
         sessionID: '0b6f1c52-3a1e-4f7e-9c2d-5e8a7b1c4d01',
         messageID: '6a2e9f41-7c3b-4d8e-a1f5-2b9c8d7e6f09',
       },

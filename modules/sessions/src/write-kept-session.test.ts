@@ -42,7 +42,12 @@ test("it carries the session under the project folder that the destination guest
     },
   ]);
 
-  await writeKeptSession({ from, to, command: { argv: ['guest'], env: {} }, sessionID });
+  await writeKeptSession({
+    from,
+    to,
+    command: { argv: ['guest'], env: {} },
+    files: [`${sessionID}.jsonl`, `${sessionID}/`],
+  });
 
   const landed = await to.readFilePaths('/.claude/projects');
 
@@ -81,7 +86,7 @@ test('it carries the transcript and side folder into the replacement, with no st
     from,
     to,
     command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
-    sessionID,
+    files: [`${sessionID}.jsonl`, `${sessionID}/`],
   });
 
   const landed = await to.readFilePaths('/home/nixie/.claude/projects');
@@ -135,7 +140,7 @@ test("it lists only the transcripts and the session's own side folder, and copie
     from: { ...source, readFilePaths: lists },
     to,
     command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
-    sessionID,
+    files: [`${sessionID}.jsonl`, `${sessionID}/`],
   });
 
   const landed = await to.readFilePaths('/home/nixie/.claude/projects');
@@ -173,7 +178,7 @@ test('it wakes a sleeping old sandbox before it lists the session', async () => 
     from,
     to,
     command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
-    sessionID,
+    files: [`${sessionID}.jsonl`, `${sessionID}/`],
   });
 
   const landed = await to.readFilePaths('/home/nixie/.claude/projects');
@@ -199,14 +204,14 @@ test('it refuses to carry a session from a sandbox that holds no transcript of i
     from,
     to,
     command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
-    sessionID,
+    files: [`${sessionID}.jsonl`, `${sessionID}/`],
   }).then(
     () => null,
     (error: unknown) => error,
   );
 
   expect(failure).toStrictEqual(
-    new Error(`the sandbox ${from.id} holds no transcript of session ${sessionID}`),
+    new Error(`the sandbox ${from.id} holds no transcript ${sessionID}.jsonl`),
   );
 });
 
@@ -235,7 +240,7 @@ test('it leaves no resumable transcript when the move of the staged copy fails',
     from,
     to,
     command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
-    sessionID,
+    files: [`${sessionID}.jsonl`, `${sessionID}/`],
   }).then(
     () => null,
     (error: unknown) => error,

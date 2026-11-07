@@ -11,6 +11,7 @@ export function buildTestModelsConfig(options: TestModelsConfigOptions): ModelsC
   return modelsConfigSchema.parse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: options.modelURL,
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',

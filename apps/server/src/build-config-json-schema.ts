@@ -26,6 +26,8 @@ const releaseRules: readonly ReleaseRule[] = [
       'properties',
       'profiles',
       'additionalProperties',
+      'oneOf',
+      '0',
       'properties',
       'base_url',
     ],
@@ -69,9 +71,12 @@ function getSchemaNode(schema: unknown, path: readonly string[]): Record<string,
   let node = schema;
 
   for (const key of path) {
-    invariant(isSchemaNode(node), `the config schema has no node at ${path.join('.')}`);
+    invariant(
+      isSchemaNode(node) || Array.isArray(node),
+      `the config schema has no node at ${path.join('.')}`,
+    );
 
-    node = node[key];
+    node = Array.isArray(node) ? node[Number(key)] : node[key];
   }
 
   invariant(isSchemaNode(node), `the config schema has no node at ${path.join('.')}`);

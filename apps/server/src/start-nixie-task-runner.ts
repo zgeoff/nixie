@@ -2,6 +2,7 @@ import type { StartedMemoryStore } from '@heynixie/memory';
 import type { NixieRunner } from '@heynixie/sessions';
 import { startNixieRunner } from '@heynixie/sessions';
 import { buildTaskMessaging } from './build-task-messaging';
+import { toImageNames } from './to-image-names';
 import { toSessionDefinitions } from './to-session-definitions';
 import type { ServerParts } from './types';
 
@@ -14,7 +15,7 @@ export async function startNixieTaskRunner(
     models: parts.config.models,
     secrets: parts.modelSecrets,
     sandboxes: parts.tools.adapter,
-    image: parts.images.conversation.name,
+    images: toImageNames(parts.images),
     tools: parts.tools.endpoint,
     getDefinitions: () => toSessionDefinitions(parts.inForce.read()),
     memory,

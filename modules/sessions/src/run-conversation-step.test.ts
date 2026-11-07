@@ -114,6 +114,7 @@ test('it records the summary with its text in erasable fields and the sequence a
   const runner = await ctx.startRunner();
 
   const boundary = {
+    harness: 'agent-sdk' as const,
     sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
     messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
   };
@@ -141,7 +142,7 @@ test('it records the summary with its text in erasable fields and the sequence a
         model: expect.toBeString(),
         profile: expect.toBeString(),
         throughSequence: ended?.sequence,
-        boundary,
+        boundary: { sessionID: boundary.sessionID, messageID: boundary.messageID },
         trigger: 'threshold',
         contextSize: 165_000,
         summaryTokens: 5,
@@ -160,6 +161,7 @@ test('it never compacts a session whose last turn ended under the threshold', as
   const runner = await ctx.startRunner();
 
   const boundary = {
+    harness: 'agent-sdk' as const,
     sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
     messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
   };
@@ -183,6 +185,7 @@ test('it leaves one summary when the compaction step dies before its commit and 
   ctx.sandboxes.setGuestScript(
     buildStubTurnScript(() => ({
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -222,6 +225,7 @@ test('it records a failed summary call and goes back to waiting, with the sessio
   ctx.sandboxes.setGuestScript(
     buildStubTurnScript(() => ({
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -260,6 +264,7 @@ test('it records a failed summary call and goes back to waiting, with the sessio
   expect(committed.at(-1)?.payload).toMatchObject({
     nextState: 'waiting',
     sessionBoundary: JSON.stringify({
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     }),
@@ -276,6 +281,7 @@ test('it serves your next message on the old session after the summary call fail
   ctx.sandboxes.setGuestScript(
     buildStubTurnScript(() => ({
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -300,6 +306,7 @@ test('it serves your next message on the old session after the summary call fail
 
   expect(ctx.sandboxes.turns.at(-1)).toMatchObject({
     resume: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
@@ -317,6 +324,7 @@ test('it asks once to cut a summary past the token cap, on the summary fork, and
   const runner = await ctx.startRunner(100);
 
   const fork = {
+    harness: 'agent-sdk' as const,
     sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d003',
     messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d004',
   };
@@ -425,7 +433,11 @@ test('it commits a summary still past the cap after its one cut, with its size',
   ctx.sandboxes.setSummaryScript(() => [
     {
       type: 'summarized',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       text: 'Open threads: the gauge report. '.repeat(20),
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
@@ -450,6 +462,7 @@ test('it compacts the session from its boundary when a turn overflows, and runs 
   ctx.sandboxes.setGuestScript(
     buildStubTurnScript((turn) => ({
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -524,6 +537,7 @@ test('it records a failed overflow summary, with its cause and count, before the
   ctx.sandboxes.setGuestScript(
     buildStubTurnScript((turn) => ({
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -580,6 +594,7 @@ test('it keeps a failed threshold summary when the turn after it overflows and t
   ctx.sandboxes.setGuestScript(
     buildStubTurnScript((turn) => ({
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },

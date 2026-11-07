@@ -9,6 +9,7 @@ test('it decodes a turn frame the host sent', () => {
   const frame: HostFrame = {
     type: 'turn',
     profile: {
+      harness: 'agent-sdk',
       model: 'model-a',
       baseURL: 'https://api.anthropic.com',
       effort: 'low',
@@ -18,6 +19,7 @@ test('it decodes a turn frame the host sent', () => {
     },
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
@@ -34,6 +36,7 @@ test('it refuses a turn frame whose input message has no uuid', () => {
   const frame = {
     type: 'turn',
     profile: {
+      harness: 'agent-sdk',
       model: 'model-a',
       baseURL: 'https://api.anthropic.com',
       effort: 'low',
@@ -56,6 +59,7 @@ test('it refuses a turn frame with an empty inbox', () => {
   const frame = {
     type: 'turn',
     profile: {
+      harness: 'agent-sdk',
       model: 'model-a',
       baseURL: 'https://api.anthropic.com',
       effort: 'low',

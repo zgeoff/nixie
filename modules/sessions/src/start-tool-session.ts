@@ -10,7 +10,6 @@ import { startSessionRunner } from './start-session-runner';
 export interface ToolSessionOptions {
   readonly context: TasksContext;
   readonly sandboxes: SandboxAdapter;
-  readonly image: string;
 
   readonly socketDir: string;
 
@@ -49,7 +48,7 @@ export async function startToolSession(
     tools: endpoint,
     toolNames: request.tools.map((tool) => tool.name),
     taskID: request.taskID,
-    image: options.image,
+    image: session.image,
     limits: session.limits,
     command: session.command,
   });

@@ -4,6 +4,7 @@ import type { ModelProfile } from '../types';
 export function buildMockModelProfile(overrides: Partial<ModelProfile> = {}): ModelProfile {
   return {
     id: faker.helpers.slugify(faker.lorem.words(2)),
+    harness: 'agent-sdk',
     baseURL: faker.internet.url({ protocol: 'https', appendSlash: false }),
     credential: `deployment:${faker.lorem.word()}`,
     authHeader: 'x-api-key',

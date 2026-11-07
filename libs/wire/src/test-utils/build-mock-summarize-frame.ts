@@ -14,6 +14,7 @@ export function buildMockSummarizeFrame(overrides: SummarizeFrameOverrides = {})
   return {
     type: 'summarize',
     profile: {
+      harness: 'agent-sdk',
       model: faker.string.alphanumeric(12),
       baseURL: faker.internet.url(),
       effort: 'medium',
@@ -22,7 +23,11 @@ export function buildMockSummarizeFrame(overrides: SummarizeFrameOverrides = {})
       cacheTTL: '5m',
       ...overrides.profile,
     },
-    resume: overrides.resume ?? { sessionID: faker.string.uuid(), messageID: faker.string.uuid() },
+    resume: overrides.resume ?? {
+      harness: 'agent-sdk',
+      sessionID: faker.string.uuid(),
+      messageID: faker.string.uuid(),
+    },
     systemPrompt: overrides.systemPrompt ?? faker.lorem.sentence(),
     instruction: overrides.instruction ?? faker.lorem.sentence(),
   };

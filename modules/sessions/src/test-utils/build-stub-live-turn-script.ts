@@ -23,7 +23,11 @@ export function buildStubLiveTurnScript(arrive: () => Promise<unknown>): StubLiv
         { type: 'read', uuids: [...turn.input.map((input) => input.uuid), message.uuid] },
         {
           type: 'ended',
-          boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+          boundary: {
+            harness: 'agent-sdk',
+            sessionID: crypto.randomUUID(),
+            messageID: crypto.randomUUID(),
+          },
           subtype: 'success',
           stopReason: 'end_turn',
           turns: 1,

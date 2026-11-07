@@ -127,6 +127,7 @@ test('it records each reply with the model and the profile in force, never what 
     {
       type: 'ended',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -183,6 +184,7 @@ test('it records the reply with the turn summary in its erasable fields and the 
     {
       type: 'ended',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -260,6 +262,7 @@ test('it joins the turn summaries onto the last reply and records the thinking t
     {
       type: 'ended',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d021',
       },
@@ -526,7 +529,11 @@ test('it records the model and the profile on the turn end and on every tool cal
   ctx.sandboxes.setGuestScript(() => [
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 2,
@@ -555,6 +562,7 @@ test('it records the model and the profile on the turn end and on every tool cal
 
   expect(ctx.runs).toStrictEqual([
     {
+      toolUseMetaKey: 'claudecode/toolUseId',
       runID: 'conversation',
       thread: 'conversation',
       tools: ['notes_read'],
@@ -577,7 +585,11 @@ test('it records the context of the last model call that reported one on the tur
   ctx.sandboxes.setGuestScript(() => [
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 1,
@@ -586,7 +598,11 @@ test('it records the context of the last model call that reported one on the tur
     },
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 1,
@@ -626,7 +642,11 @@ test('it records no context on a turn end whose model calls reported none', asyn
   ctx.sandboxes.setGuestScript(() => [
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'stop_sequence',
       isError: true,
@@ -658,7 +678,11 @@ test('it records the reason each turn ended on its turn end', async () => {
   ctx.sandboxes.setGuestScript(() => [
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       terminalReason: 'completed',
@@ -672,7 +696,11 @@ test('it records the reason each turn ended on its turn end', async () => {
   ctx.sandboxes.setGuestScript(() => [
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'stop_sequence',
       isError: true,
@@ -707,6 +735,7 @@ test('it commits the session boundary and resumes the next turn at it', async ()
     {
       type: 'ended',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -723,12 +752,13 @@ test('it commits the session boundary and resumes the next turn at it', async ()
   const task = await readTestTaskProgress(ctx.context, 'conversation');
 
   expect(task.sessionBoundary).toBe(
-    '{"sessionID":"7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001","messageID":"7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002"}',
+    '{"harness":"agent-sdk","sessionID":"7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001","messageID":"7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002"}',
   );
 
   expect(ctx.sandboxes.turns.map((turn) => turn.resume)).toStrictEqual([
     null,
     {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
@@ -750,7 +780,11 @@ test('it sends each inbox record with its sequence as the message uuid and at th
     { type: 'read', uuids: [turn.input[0]?.uuid ?? ''] },
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 1,
@@ -1044,6 +1078,7 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
           {
             type: 'ended',
             boundary: {
+              harness: 'agent-sdk',
               sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
               messageID: crypto.randomUUID(),
             },
@@ -1135,6 +1170,7 @@ test('it records the opening and the session it replaced when the guest has lost
           {
             type: 'ended',
             boundary: {
+              harness: 'agent-sdk',
               sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
               messageID: crypto.randomUUID(),
             },
@@ -1185,6 +1221,7 @@ test('it rebuilds the session when your next images would pass the images the se
     {
       type: 'ended',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5e2a9c71-4b0d-4f6e-8a3b-2d7c1e9f0a11',
         messageID: crypto.randomUUID(),
       },
@@ -1240,6 +1277,7 @@ test('it rebuilds the session when your next images would pass the 100 it can ho
     {
       type: 'ended',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '8b4e2f60-1c7a-4d93-b5e8-3f0a6c2d9e17',
         messageID: crypto.randomUUID(),
       },
@@ -1294,6 +1332,7 @@ test('it resumes the session for a photo while the images it holds leave room', 
     {
       type: 'ended',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5e2a9c71-4b0d-4f6e-8a3b-2d7c1e9f0a11',
         messageID: crypto.randomUUID(),
       },
@@ -1351,6 +1390,7 @@ test("it counts an image a tool returns in the turn's image tally, and refuses o
       {
         type: 'ended',
         boundary: {
+          harness: 'agent-sdk',
           sessionID: '6d1f8b30-2e4c-4a7b-9c5d-0e3f7a1b2c48',
           messageID: crypto.randomUUID(),
         },
@@ -1526,7 +1566,7 @@ test('it resumes the same session on the turn after a change to the policy alone
 
   expect(ctx.sandboxes.turns).toMatchObject([
     { resume: null },
-    { resume: { sessionID: expect.toBeString() } },
+    { resume: { harness: 'agent-sdk', sessionID: expect.toBeString() } },
   ]);
 
   expect(opened).toMatchObject([
@@ -1630,6 +1670,7 @@ test('it opens a session from before opening records again as a rebuild, because
       records: [],
       acknowledged: [],
       sessionBoundary: JSON.stringify({
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
       }),
@@ -2073,6 +2114,7 @@ test('it runs the turn after a refused call from the boundary before it, with no
   });
 
   const before = {
+    harness: 'agent-sdk' as const,
     sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
     messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
   };
@@ -2190,6 +2232,7 @@ test('it answers your next message after 4 turns failed in a row, past the error
     {
       type: 'ended',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
@@ -2237,7 +2280,11 @@ test('it passes a message that lands during the turn into it and acknowledges it
       { type: 'read', uuids: [turn.input[0]?.uuid ?? '', message.uuid] },
       {
         type: 'ended',
-        boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+        boundary: {
+          harness: 'agent-sdk',
+          sessionID: crypto.randomUUID(),
+          messageID: crypto.randomUUID(),
+        },
         subtype: 'success',
         stopReason: 'end_turn',
         turns: 1,
@@ -2603,7 +2650,11 @@ test('it ends a turn that a task report alone woke with no reply, and records th
       },
       {
         type: 'ended',
-        boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+        boundary: {
+          harness: 'agent-sdk',
+          sessionID: crypto.randomUUID(),
+          messageID: crypto.randomUUID(),
+        },
         subtype: 'success',
         stopReason: 'end_turn',
         turns: 2,
@@ -2810,7 +2861,11 @@ test('it passes a message from you that lands after a silent end only to the nex
       { type: 'read', uuids: [...turn.input, ...delivered].map((message) => message.uuid) },
       {
         type: 'ended',
-        boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+        boundary: {
+          harness: 'agent-sdk',
+          sessionID: crypto.randomUUID(),
+          messageID: crypto.randomUUID(),
+        },
         subtype: 'success',
         stopReason: 'end_turn',
         turns: 1,

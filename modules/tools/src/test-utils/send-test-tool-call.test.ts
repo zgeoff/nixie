@@ -38,6 +38,7 @@ test('it calls a tool on the run endpoint with the run token and returns its res
   onTestFinished(() => endpoint.stop());
 
   const run = await endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -74,6 +75,7 @@ test('it rejects a call that carries a token the endpoint does not know', async 
   onTestFinished(() => endpoint.stop());
 
   const run = await endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],

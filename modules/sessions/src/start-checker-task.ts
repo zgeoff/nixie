@@ -22,7 +22,7 @@ export const startCheckerTask = makeSystemTaskRunner<CheckerTaskOptions, Checker
     const check = await startCheckerRunner({
       profile: session.profile,
       sandboxes: options.sandboxes,
-      image: options.image,
+      image: session.image,
       limits: session.limits,
       command: session.command,
       timeoutMs: options.timeoutMs,

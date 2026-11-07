@@ -87,6 +87,7 @@ test("it sends a tool call of the stub guest's turn to the run endpoint of the s
   onTestFinished(() => endpoint.stop());
 
   const run = await endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'task-1',
     thread: 'task-1',
     tools: ['notes_read'],
@@ -133,6 +134,7 @@ test('it reads the names of the tools a turn of the stub guest is offered', asyn
   onTestFinished(() => endpoint.stop());
 
   const run = await endpoint.startRun({
+    toolUseMetaKey: null,
     runID: 'task-1',
     thread: 'task-1',
     tools: ['notes_search'],

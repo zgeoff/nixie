@@ -101,7 +101,11 @@ function buildHelloTurn(turn: TurnFrame): readonly GuestFrame[] {
     { type: 'assistant', messageID: crypto.randomUUID(), text: 'Hello.', toolUses: [] },
     {
       type: 'ended',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 1,
@@ -114,7 +118,11 @@ function buildSummary(): readonly GuestFrame[] {
   return [
     {
       type: 'summarized',
-      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: crypto.randomUUID(),
+        messageID: crypto.randomUUID(),
+      },
       text: 'Open threads: none.',
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },

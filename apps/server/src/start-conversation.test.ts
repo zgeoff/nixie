@@ -51,7 +51,7 @@ async function setupTest(options: TestOptions = {}) {
         sandboxes: server.sandboxes,
         tools: server.endpoint,
         toolNames: config.toolNames ?? [],
-        image: config.image,
+        images: { conversation: config.image },
         getDefinitions:
           config.getDefinitions ??
           (() => ({
@@ -116,7 +116,11 @@ test('it runs each turn in the conversation guest on the role profile and resume
   expect(first.resume).toBeNull();
 
   expect(second).toMatchObject({
-    resume: { sessionID: expect.toBeString(), messageID: replies[0]?.payload['messageID'] },
+    resume: {
+      harness: 'agent-sdk',
+      sessionID: expect.toBeString(),
+      messageID: replies[0]?.payload['messageID'],
+    },
   });
 });
 
@@ -164,6 +168,7 @@ test('it resumes the session after a change to the policy alone, and decides the
   });
 
   expect(second.resume).toStrictEqual({
+    harness: 'agent-sdk',
     sessionID: expect.toBeString(),
     messageID: expect.toBeString(),
   });
@@ -403,7 +408,11 @@ test('it summarizes a session past 0.8 of its window in the guest, and opens the
 
   expect(compaction.summaries).toMatchObject([
     {
-      resume: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+      resume: {
+        harness: 'agent-sdk',
+        sessionID: expect.toBeString(),
+        messageID: expect.toBeString(),
+      },
       instruction: expect.toInclude('nixie is closing this session now'),
     },
   ]);
@@ -530,7 +539,11 @@ test('it resumes the session on a sandbox that a new image replaced between two 
   ]);
 
   expect(turn).toMatchObject({
-    resume: { sessionID: expect.toBeString(), messageID: reply?.payload['messageID'] },
+    resume: {
+      harness: 'agent-sdk',
+      sessionID: expect.toBeString(),
+      messageID: reply?.payload['messageID'],
+    },
   });
 });
 

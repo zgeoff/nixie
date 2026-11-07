@@ -106,7 +106,7 @@ async function runConversation(): Promise<readonly SessionResult[]> {
     {},
   );
   const results: SessionResult[] = [];
-  let resume: { sessionID: string; messageID: string } | null = null;
+  let resume: { harness: 'agent-sdk'; sessionID: string; messageID: string } | null = null;
 
   for (const [index, message] of fixtures.conversation.entries()) {
     const record = buildOwnerRecord(ownerSequence(index), fixtures.day + index * 600_000, message.text);
@@ -325,7 +325,7 @@ interface GuestSession {
   readonly home: string;
   readonly systemPrompt: string;
   readonly input: readonly InboxMessage[];
-  readonly resume: { sessionID: string; messageID: string } | null;
+  readonly resume: { harness: 'agent-sdk'; sessionID: string; messageID: string } | null;
 }
 
 // runs one turn of the production guest against the scripted tool server and the counting proxy
@@ -333,7 +333,7 @@ async function runGuestSession(
   label: string,
   tools: ToolSet,
   session: GuestSession,
-): Promise<{ session: SessionResult; boundary: { sessionID: string; messageID: string } | null }> {
+): Promise<{ session: SessionResult; boundary: { harness: 'agent-sdk'; sessionID: string; messageID: string } | null }> {
   const server = startToolServer(buildRoleTools(tools), (name, input) =>
     fixtures.answerCall(tools, name, input),
   );
@@ -345,6 +345,7 @@ async function runGuestSession(
       {
         type: 'turn',
         profile: {
+          harness: 'agent-sdk',
           model,
           baseURL: `${proxy.url}/${label}`,
           effort: effort as Effort,

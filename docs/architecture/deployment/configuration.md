@@ -17,7 +17,8 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
   it logs
 - the user's name and pronouns, and the names the user calls the agent by
 - the [model profiles and the role map](../core/model-profiles.md#the-role-map), with each profile's
-  credential as a reference, and when [compaction](../core/compaction.md) runs
+  [harness](../core/model-profiles.md#harnesses) and its credential as a reference, and when
+  [compaction](../core/compaction.md) runs
 - the sandbox adapter, and for imp, impd's address and the address ranges for
   [public egress](../connectors/sandboxes.md#the-imp-adapter)
 - the [definitions](../core/definitions.md) source, how often nixie probes it, and the GitHub repo

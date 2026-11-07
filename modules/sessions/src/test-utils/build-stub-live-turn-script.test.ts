@@ -25,7 +25,11 @@ test('it lets a message arrive, then reads the opening messages and the live one
     },
     {
       type: 'ended',
-      boundary: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: expect.toBeString(),
+        messageID: expect.toBeString(),
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 1,

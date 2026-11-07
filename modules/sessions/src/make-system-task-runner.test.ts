@@ -9,7 +9,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
 
   const startTask = makeSystemTaskRunner({
     role: 'memory-writer',
-    entry: 'main',
+    entry: 'turn',
     start: (_options, session) => {
       sessions.push(session);
 
@@ -21,6 +21,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
+          harness: 'agent-sdk',
           base_url: 'http://127.0.0.1:1',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -28,6 +29,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
           effort: 'low',
         },
         'writer-direct': {
+          harness: 'agent-sdk',
           base_url: 'http://127.0.0.1:1',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -39,7 +41,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: buildStubSandboxes().adapter,
-    image: 'nixie-conversation-0123456789ab',
+    images: { conversation: 'nixie-conversation-0123456789ab' },
   });
 
   expect(runner.name).toBe('writer');
@@ -47,6 +49,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
   expect(sessions).toMatchObject([
     {
       profile: { profile: { id: 'writer-direct', model: 'claude-test-writer' } },
+      image: 'nixie-conversation-0123456789ab',
       limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
       command: { argv: ['bun', '/app/guests/conversation/src/main.ts'] },
     },
@@ -70,6 +73,7 @@ test('it runs the check guest for a task whose entry is the check', async () => 
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
+          harness: 'agent-sdk',
           base_url: 'http://127.0.0.1:1',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -81,7 +85,7 @@ test('it runs the check guest for a task whose entry is the check', async () => 
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: buildStubSandboxes().adapter,
-    image: 'nixie-conversation-0123456789ab',
+    images: { conversation: 'nixie-conversation-0123456789ab' },
   });
 
   expect(commands).toStrictEqual([
@@ -94,7 +98,7 @@ test('it stops the parts the start registered, the last registered first, when t
 
   const startTask = makeSystemTaskRunner({
     role: 'memory-consolidator',
-    entry: 'main',
+    entry: 'turn',
     start: (_options, session) => {
       session.defer(() => {
         stopped.push('endpoint');
@@ -116,6 +120,7 @@ test('it stops the parts the start registered, the last registered first, when t
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
+          harness: 'agent-sdk',
           base_url: 'http://127.0.0.1:1',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -127,7 +132,7 @@ test('it stops the parts the start registered, the last registered first, when t
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: buildStubSandboxes().adapter,
-    image: 'nixie-conversation-0123456789ab',
+    images: { conversation: 'nixie-conversation-0123456789ab' },
   });
 
   await runner.stop();
@@ -140,7 +145,7 @@ test('it stops the parts a failed start registered, then rethrows its error', as
 
   const startTask = makeSystemTaskRunner({
     role: 'memory-writer',
-    entry: 'main',
+    entry: 'turn',
     start: (_options, session) => {
       session.defer(() => {
         stopped.push('endpoint');
@@ -156,6 +161,7 @@ test('it stops the parts a failed start registered, then rethrows its error', as
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
+          harness: 'agent-sdk',
           base_url: 'http://127.0.0.1:1',
           credential: 'deployment:anthropic',
           auth_header: 'x-api-key',
@@ -167,7 +173,7 @@ test('it stops the parts a failed start registered, then rethrows its error', as
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: buildStubSandboxes().adapter,
-    image: 'nixie-conversation-0123456789ab',
+    images: { conversation: 'nixie-conversation-0123456789ab' },
   });
 
   await start.catch(() => {});

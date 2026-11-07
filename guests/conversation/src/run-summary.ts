@@ -48,7 +48,11 @@ async function readSummaryFrame(session: AsyncIterable<SDKMessage>): Promise<Gue
 
 function collectSummaryFrame(message: SDKMessage, state: SummaryState): GuestFrame | null {
   if (message.type === 'assistant' && message.parent_tool_use_id === null) {
-    state.boundary = { sessionID: message.session_id, messageID: message.uuid };
+    state.boundary = {
+      harness: 'agent-sdk',
+      sessionID: message.session_id,
+      messageID: message.uuid,
+    };
 
     if (message.error === undefined) {
       state.texts.push(

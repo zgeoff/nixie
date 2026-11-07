@@ -12,7 +12,8 @@ secrets.
 
 1. Copy this folder into your deployment repo.
 2. Replace every placeholder in `config.yaml`: impd's URL, the host's addresses, and the model
-   profiles. Add any network your Docker daemon uses outside its default ranges to the egress deny
+   profiles. Keep `harness: agent-sdk` on each profile, because nixie refuses a profile with no
+   harness. Add any network your Docker daemon uses outside its default ranges to the egress deny
    list.
 3. Replace the persona in `definitions/` with your own.
 4. Encrypt your secrets file with sops to your host's age key and your recovery key. It holds the

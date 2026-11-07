@@ -5,6 +5,7 @@ test('it reads a direct profile with its context tokens, cache lifetime and pric
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -22,6 +23,7 @@ test('it reads a direct profile with its context tokens, cache lifetime and pric
     profiles: {
       'chat-direct': {
         id: 'chat-direct',
+        harness: 'agent-sdk',
         baseURL: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         authHeader: 'x-api-key',
@@ -45,6 +47,7 @@ test('it reads an aggregator profile with its provider pin and the role map into
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'background-aggregator': {
+        harness: 'agent-sdk',
         base_url: 'https://gateway.example/anthropic',
         credential: 'deployment:gateway',
         auth_header: 'bearer',
@@ -60,6 +63,7 @@ test('it reads an aggregator profile with its provider pin and the role map into
     profiles: {
       'background-aggregator': {
         id: 'background-aggregator',
+        harness: 'agent-sdk',
         baseURL: 'https://gateway.example/anthropic',
         credential: 'deployment:gateway',
         authHeader: 'bearer',
@@ -90,6 +94,7 @@ test.each([
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -116,6 +121,7 @@ test.each([
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -134,6 +140,7 @@ test('it refuses a context cap larger than the window the CLI assumes for the mo
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -156,6 +163,7 @@ test('it refuses a cache lifetime the CLI does not take', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -176,6 +184,7 @@ test('it refuses a config with the conversation role unset', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -196,6 +205,7 @@ test('it refuses a role that names no profile', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -213,6 +223,7 @@ test('it refuses a credential reference outside the secrets file', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'vault:anthropic',
         auth_header: 'x-api-key',
@@ -232,6 +243,7 @@ test('it refuses a price table without the 1-hour cache write price', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -252,6 +264,7 @@ test('it reads the profile the memory consolidator role names', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -272,6 +285,7 @@ test('it reads the selectable models and the task run limits into their typed sh
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -280,6 +294,7 @@ test('it reads the selectable models and the task run limits into their typed sh
         prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
       },
       'router-b': {
+        harness: 'agent-sdk',
         base_url: 'https://router.example/anthropic',
         credential: 'deployment:router',
         auth_header: 'bearer',
@@ -316,6 +331,7 @@ test('it refuses a selectable model that names an undefined profile', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -337,6 +353,7 @@ test('it refuses a selectable model whose profile sets no prices', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -361,6 +378,7 @@ test.each([
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -381,6 +399,7 @@ test('it refuses an unknown key, so a typo never passes as a default', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
+        harness: 'agent-sdk',
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
@@ -392,4 +411,50 @@ test('it refuses an unknown key, so a typo never passes as a default', () => {
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['profiles', 'chat-direct'] });
+});
+
+test('it refuses a profile that names no harness, and names the profile and the fix', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+  });
+
+  expect(result.error?.issues).toStrictEqual([
+    expect.objectContaining({
+      path: ['profiles', 'chat-direct', 'harness'],
+      message: 'the profile chat-direct names no harness; add harness: agent-sdk',
+    }),
+  ]);
+});
+
+test('it refuses a profile on a harness that has no record', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'codex',
+        base_url: 'https://api.openai.example.test',
+        credential: 'deployment:openai',
+        auth_header: 'bearer',
+        model: 'gpt-test-1',
+        effort: 'medium',
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+  });
+
+  expect(result.error?.issues).toStrictEqual([
+    expect.objectContaining({
+      path: ['profiles', 'chat-direct', 'harness'],
+      message:
+        'the profile chat-direct names the harness codex, which nixie does not run; use harness: agent-sdk',
+    }),
+  ]);
 });

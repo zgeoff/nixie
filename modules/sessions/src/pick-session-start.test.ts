@@ -16,6 +16,7 @@ test('it rebuilds an invalidated session for the forget, naming the session it l
     pickSessionStart({
       state: 'invalidated',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
@@ -43,6 +44,7 @@ test('it rebuilds a session that a persona change invalidated for the persona, n
     pickSessionStart({
       state: 'invalidated',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
@@ -60,6 +62,7 @@ test('it rebuilds a lost session, naming the session it loses', () => {
     pickSessionStart({
       state: 'lost',
       boundary: {
+        harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },

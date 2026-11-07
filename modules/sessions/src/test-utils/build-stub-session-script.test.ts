@@ -53,7 +53,11 @@ test('it answers a retry that resumes where the session was and carries the refu
     },
     {
       type: 'ended',
-      boundary: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: expect.toBeString(),
+        messageID: expect.toBeString(),
+      },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 1,
@@ -98,6 +102,7 @@ test('it fails a turn that resumes somewhere other than the last answered turn',
   const frames = await script(
     buildMockTurnFrame({
       resume: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },

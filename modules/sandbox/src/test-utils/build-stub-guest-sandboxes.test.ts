@@ -89,7 +89,11 @@ test('it fails a turn that resumes a session the sandbox does not hold', async (
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
 
-  const resume = { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() };
+  const resume = {
+    harness: 'agent-sdk' as const,
+    sessionID: crypto.randomUUID(),
+    messageID: crypto.randomUUID(),
+  };
 
   const run = await runGuestFrame(sandbox, buildMockTurnFrame({ resume }));
 
@@ -109,7 +113,11 @@ test('it fails a turn that resumes a chain entry the session does not hold', asy
 
   invariant(first.ended !== null);
 
-  const resume = { sessionID: first.ended.boundary.sessionID, messageID: crypto.randomUUID() };
+  const resume = {
+    harness: 'agent-sdk' as const,
+    sessionID: first.ended.boundary.sessionID,
+    messageID: crypto.randomUUID(),
+  };
 
   const run = await runGuestFrame(sandbox, buildMockTurnFrame({ resume }));
 
@@ -357,7 +365,11 @@ test('it summarizes the session at the resume point from its own transcript, at 
   expect(run.frames).toStrictEqual([
     {
       type: 'summarized',
-      boundary: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: expect.toBeString(),
+        messageID: expect.toBeString(),
+      },
       text: 'Summary of the session: 2 entries, the last reply was "The gauge reads 3.2 m.".',
       usage: expect.toBeObject(),
     },
@@ -446,7 +458,7 @@ test('it fails a turn that resumes a malformed transcript, and ends its output',
     },
   ]);
 
-  const resume = { sessionID, messageID: crypto.randomUUID() };
+  const resume = { harness: 'agent-sdk' as const, sessionID, messageID: crypto.randomUUID() };
 
   const run = await runGuestFrame(sandbox, buildMockTurnFrame({ resume }));
 

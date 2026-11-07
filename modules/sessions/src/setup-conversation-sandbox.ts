@@ -1,5 +1,5 @@
 import type { Logger } from '@heynixie/logger';
-import { buildModelGrant } from '@heynixie/models';
+import type { HarnessDescriptor } from '@heynixie/models';
 import type {
   GuestCommand,
   Sandbox,
@@ -18,6 +18,7 @@ export interface ConversationSandboxSpec {
   readonly image: string;
   readonly limits: SandboxLimits;
   readonly command: GuestCommand;
+  readonly harness: HarnessDescriptor;
 
   readonly log: Logger;
 }
@@ -31,7 +32,7 @@ export async function setupConversationSandbox(
     image: options.image,
     owner: conversationTaskID,
     limits: options.limits,
-    modelGrant: buildModelGrant(secret),
+    modelGrant: options.harness.buildGrant(secret),
   });
 
   const existing = await options.sandboxes.list(conversationTaskID);
@@ -41,7 +42,12 @@ export async function setupConversationSandbox(
 
   const target = await (kept ?? options.sandboxes.create(spec));
 
-  await writeReplacedSession({ ...options, replaced, target });
+  await writeReplacedSession({
+    ...options,
+    listSessionFiles: options.harness.listSessionFiles,
+    replaced,
+    target,
+  });
 
   await Promise.all(replaced.map((old) => old.destroy()));
 

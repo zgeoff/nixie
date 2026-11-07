@@ -297,6 +297,7 @@ test('it runs a stranger that the conversation starts on another model, and its 
   invariant(taskTurn);
 
   expect(taskTurn.frame.profile).toStrictEqual({
+    harness: 'agent-sdk',
     model: 'second-look-test-model',
     baseURL: 'http://127.0.0.1:4060',
     authHeader: 'bearer',

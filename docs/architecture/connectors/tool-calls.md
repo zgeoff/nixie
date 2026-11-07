@@ -104,12 +104,14 @@ the model reads its outcome as a result.
 ## Records
 
 The call record holds a random call ID, the run, the model's tool-use ID and the tool, with the
-input in its erasable fields. Claude Code sends the tool-use ID with every call, so a call's record
-joins to the model's turn. The result record holds the outcome, the action ID for a queued call, and
-the source of content of each result field, with the result or the message in its erasable fields.
-Both records sit on the run's thread and carry one snapshot hash, taken once per call, so a replay
-reads the decision under the definitions it ran under. The call record's plain payload holds the
-model ID and the profile's ID that the run started with, because the call is model output
+input in its erasable fields. The guest sends the tool-use ID with every call, in the MCP `_meta`
+key that its [harness record](../core/model-profiles.md#harnesses) names, so a call's record joins
+to the model's turn. A call from a guest whose harness names no key holds no tool-use ID. The result
+record holds the outcome, the action ID for a queued call, and the source of content of each result
+field, with the result or the message in its erasable fields. Both records sit on the run's thread
+and carry one snapshot hash, taken once per call, so a replay reads the decision under the
+definitions it ran under. The call record's plain payload holds the model ID and the profile's ID
+that the run started with, because the call is model output
 ([model profiles](../core/model-profiles.md#records-of-model-output)). The result record's parent is
 the call record.
 

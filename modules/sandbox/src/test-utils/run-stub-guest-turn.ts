@@ -130,7 +130,7 @@ async function runInputs(
 
     invariant(last, 'an answered input leaves an entry');
 
-    progress.committed = { sessionID: fork.sessionID, messageID: last.uuid };
+    progress.committed = { harness: 'agent-sdk', sessionID: fork.sessionID, messageID: last.uuid };
 
     frames.push(buildEnded(turn, entries, { start, point: progress.committed }));
     run.disk.writeSession(run.home, fork.sessionID, entries);
@@ -256,7 +256,11 @@ async function runInputCall(
 
         state.entries.push(result);
 
-        state.progress.committed = { sessionID: state.fork.sessionID, messageID: result.uuid };
+        state.progress.committed = {
+          harness: 'agent-sdk',
+          sessionID: state.fork.sessionID,
+          messageID: result.uuid,
+        };
 
         return null;
       })
@@ -388,7 +392,11 @@ function buildOverflowEnded(
 
   return {
     type: 'ended',
-    boundary: state.committed ?? { sessionID: state.fork.sessionID, messageID: message.uuid },
+    boundary: state.committed ?? {
+      harness: 'agent-sdk',
+      sessionID: state.fork.sessionID,
+      messageID: message.uuid,
+    },
     subtype: 'success',
     stopReason: 'stop_sequence',
     isError: true,

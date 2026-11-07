@@ -100,7 +100,7 @@ async function runConversation(): Promise<readonly TurnResult[]> {
     body: renderPinnedMemory(fixtures.coreItems, lines),
   });
   const results: TurnResult[] = [];
-  let resume: { sessionID: string; messageID: string } | null = null;
+  let resume: { harness: 'agent-sdk'; sessionID: string; messageID: string } | null = null;
 
   for (const [index, message] of fixtures.conversation.slice(0, 8).entries()) {
     if (index === 6 && pauseSeconds > 0) {
@@ -132,8 +132,8 @@ async function runConversation(): Promise<readonly TurnResult[]> {
 // runs one turn of the production guest against the scripted tool server and the counting proxy
 async function runGuestTurn(
   label: string,
-  session: { home: string; systemPrompt: string; text: string; resume: { sessionID: string; messageID: string } | null },
-): Promise<{ turn: TurnResult; boundary: { sessionID: string; messageID: string } | null }> {
+  session: { home: string; systemPrompt: string; text: string; resume: { harness: 'agent-sdk'; sessionID: string; messageID: string } | null },
+): Promise<{ turn: TurnResult; boundary: { harness: 'agent-sdk'; sessionID: string; messageID: string } | null }> {
   const server = startToolServer(buildRoleTools('conversation'), (name, input) =>
     fixtures.answerCall('conversation', name, input),
   );
@@ -147,6 +147,7 @@ async function runGuestTurn(
       {
         type: 'turn',
         profile: {
+          harness: 'agent-sdk',
           model,
           baseURL: `${proxy.url}/${label}`,
           effort,

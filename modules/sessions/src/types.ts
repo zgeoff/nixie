@@ -295,5 +295,3 @@ export type EventRegistry = readonly {
   readonly isUncapped: boolean;
   readonly isSessionBound: boolean;
 }[];
-
-export type GuestEntry = 'check' | 'main';

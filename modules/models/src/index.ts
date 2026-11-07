@@ -1,6 +1,5 @@
 export type { CallUsage } from './build-call-cost';
 export { buildCallCost } from './build-call-cost';
-export { buildModelGrant } from './build-model-grant';
 export type { ModelRecordSource } from './build-model-record';
 export { buildModelRecord } from './build-model-record';
 export { deriveModelSecret } from './derive-model-secret';
@@ -18,8 +17,9 @@ export { modelTurnEndedCodec } from './model-turn-ended-codec';
 export { modelsConfigSchema } from './models-config-schema';
 export { resolveModelCredentials } from './resolve-model-credentials';
 export { getCLIContextWindow } from './get-cli-context-window';
+export { getHarness } from './get-harness';
+export type { HarnessDescriptor, HarnessEntry, HarnessGuest, ModelAPI } from './harness-types';
 export { resolveRoleProfile } from './resolve-role-profile';
-export { toTurnProfile } from './to-turn-profile';
 
 export type {
   ModelPrices,

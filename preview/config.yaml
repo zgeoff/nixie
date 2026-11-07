@@ -10,6 +10,7 @@ owner:
 models:
   profiles:
     preview:
+      harness: agent-sdk
       base_url: https://api.anthropic.com
       # a placeholder that the host's credential broker replaces in the authorization header on the
       # way out

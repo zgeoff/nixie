@@ -19,6 +19,7 @@ data:
     models:
       profiles:
         chat:
+          harness: agent-sdk
           base_url: https://api.anthropic.com
           credential: deployment:anthropic
           auth_header: x-api-key

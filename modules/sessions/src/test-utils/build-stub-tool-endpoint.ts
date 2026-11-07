@@ -1,4 +1,4 @@
-import type { ToolEndpoint, ToolRun, ToolSession } from '@heynixie/tools';
+import type { GuestToolRun, ToolEndpoint, ToolSession } from '@heynixie/tools';
 
 interface StubStepToken {
   readonly stepRunID: string;
@@ -10,7 +10,7 @@ interface StubStepToken {
 export interface StubToolEndpoint {
   readonly endpoint: Pick<ToolEndpoint, 'startRun'>;
 
-  readonly runs: readonly ToolRun[];
+  readonly runs: readonly GuestToolRun[];
 
   readonly steps: readonly StubStepToken[];
 }
@@ -21,7 +21,7 @@ export interface StubToolEndpointOptions {
 }
 
 export function buildStubToolEndpoint(options: StubToolEndpointOptions = {}): StubToolEndpoint {
-  const runs: ToolRun[] = [];
+  const runs: GuestToolRun[] = [];
   const steps: StubStepToken[] = [];
 
   return {

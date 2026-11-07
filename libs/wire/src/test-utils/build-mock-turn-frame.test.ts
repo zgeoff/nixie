@@ -8,6 +8,7 @@ test('it builds a default turn frame', () => {
   expect(frame).toStrictEqual({
     type: 'turn',
     profile: {
+      harness: 'agent-sdk',
       model: expect.toBeString(),
       baseURL: expect.toStartWith('https://'),
       effort: 'medium',
@@ -29,6 +30,7 @@ test('it applies overrides on top of the defaults', () => {
     profile: { model: 'glm-5.3', authHeader: 'bearer' },
     tools: { token: 'run-token' },
     resume: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
@@ -38,6 +40,7 @@ test('it applies overrides on top of the defaults', () => {
   expect(frame).toStrictEqual({
     type: 'turn',
     profile: {
+      harness: 'agent-sdk',
       model: 'glm-5.3',
       baseURL: expect.toStartWith('https://'),
       effort: 'medium',
@@ -47,6 +50,7 @@ test('it applies overrides on top of the defaults', () => {
     },
     tools: { url: expect.toStartWith('https://'), token: 'run-token' },
     resume: {
+      harness: 'agent-sdk',
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },

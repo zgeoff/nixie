@@ -61,7 +61,11 @@ test('it reports the summary with its own chain entry and the token counts of it
   expect(ctx.io.frames).toStrictEqual([
     {
       type: 'summarized',
-      boundary: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: expect.toBeString(),
+        messageID: expect.toBeString(),
+      },
       text: 'Open threads: the gauge read 3.2 metres.',
       usage: {
         inputTokens: 10,
@@ -170,6 +174,7 @@ test('it reports a session to resume that is not on the guest disk as missing', 
     buildMockSummarizeFrame({
       profile: { baseURL: ctx.model.url },
       resume: {
+        harness: 'agent-sdk',
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },

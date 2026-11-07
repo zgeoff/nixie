@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sessionPointSchema } from './session-point';
 
 const inboxImageSchema = z
   .object({
@@ -23,8 +24,9 @@ export type InboxMessage = z.infer<typeof inboxMessageSchema>;
 
 // The guest never sees the profile's credential: the sandbox's grant injects it, and the guest holds
 // a placeholder.
-const turnProfileSchema = z
+const agentSDKTurnProfileSchema = z
   .object({
+    harness: z.literal('agent-sdk'),
     model: z.string().min(1),
     baseURL: z.url(),
     effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
@@ -35,16 +37,9 @@ const turnProfileSchema = z
   })
   .readonly();
 
+const turnProfileSchema = z.discriminatedUnion('harness', [agentSDKTurnProfileSchema]);
+
 export type TurnProfile = z.infer<typeof turnProfileSchema>;
-
-const sessionPointSchema = z
-  .object({
-    sessionID: z.uuid(),
-    messageID: z.uuid(),
-  })
-  .readonly();
-
-export type SessionPoint = z.infer<typeof sessionPointSchema>;
 
 const toolRouteSchema = z.object({ url: z.url(), token: z.string().min(1) }).readonly();
 

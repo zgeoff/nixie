@@ -78,6 +78,7 @@ test('it gives each selectable model a priced profile of its own at the URL it n
 
   expect(config.models.profiles['selectable-second-look']).toStrictEqual({
     id: 'selectable-second-look',
+    harness: 'agent-sdk',
     baseURL: 'http://127.0.0.1:4050',
     credential: 'deployment:scripted',
     authHeader: 'bearer',

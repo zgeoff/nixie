@@ -37,7 +37,10 @@ test('it reads the entries up to the resume point', () => {
   disk.writeSession(home, 'one', [first, second, third]);
 
   expect(
-    readStubGuestHistory({ disk, home }, { sessionID: 'one', messageID: second.uuid }),
+    readStubGuestHistory(
+      { disk, home },
+      { harness: 'agent-sdk', sessionID: 'one', messageID: second.uuid },
+    ),
   ).toStrictEqual({ history: [first, second] });
 });
 
@@ -48,7 +51,7 @@ test('it fails with session_missing for a session the disk lacks', () => {
   expect(
     readStubGuestHistory(
       { disk, home },
-      { sessionID: 'one', messageID: '6e697869-0000-8000-8000-000000000001' },
+      { harness: 'agent-sdk', sessionID: 'one', messageID: '6e697869-0000-8000-8000-000000000001' },
     ),
   ).toStrictEqual({
     failure: {
@@ -70,7 +73,7 @@ test('it fails for a point the session lacks', () => {
   expect(
     readStubGuestHistory(
       { disk, home },
-      { sessionID: 'one', messageID: '6e697869-0000-8000-8000-000000000003' },
+      { harness: 'agent-sdk', sessionID: 'one', messageID: '6e697869-0000-8000-8000-000000000003' },
     ),
   ).toStrictEqual({
     failure: {

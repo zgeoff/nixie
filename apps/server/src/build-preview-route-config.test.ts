@@ -12,6 +12,7 @@ test('it puts the route on the end of each model profile base URL and keeps ever
       'models:',
       '  profiles:',
       '    quick:',
+      '      harness: agent-sdk',
       '      base_url: "https://api.anthropic.com/"',
       '      credential: deployment:broker',
       '      auth_header: bearer',
@@ -37,6 +38,7 @@ test('it puts the route on the end of each model profile base URL and keeps ever
     models: {
       profiles: {
         quick: {
+          harness: 'agent-sdk',
           base_url: 'https://api.anthropic.com/preview-a',
           credential: 'deployment:broker',
           auth_header: 'bearer',
@@ -64,6 +66,7 @@ test.each(['Preview-A', 'preview/a', '-preview', 'preview a', ''])(
         'models:',
         '  profiles:',
         '    quick:',
+        '      harness: agent-sdk',
         '      base_url: https://api.anthropic.com',
         '      credential: deployment:broker',
         '      auth_header: bearer',
