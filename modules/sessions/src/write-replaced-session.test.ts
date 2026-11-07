@@ -65,7 +65,7 @@ test('it carries the session files the harness lists into the replacement sandbo
     context: ctx.context,
     command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
     listSessionFiles: (point) => [`${point.sessionID}.jsonl`],
-    log: mock(),
+    log: mock(() => {}),
     replaced: [from],
     target: to,
   });
@@ -93,7 +93,7 @@ test('it carries nothing for a harness that keeps no session a new sandbox can r
     },
   ]);
 
-  const log = mock();
+  const log = mock(() => {});
 
   await writeReplacedSession({
     context: ctx.context,

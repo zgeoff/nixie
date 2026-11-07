@@ -6,7 +6,7 @@ export function getHarnessImage(
 ): string {
   const image = images[imageKey];
 
-  invariant(image, `the sandbox manifest holds no ${imageKey} image`);
+  invariant(image !== undefined, `the sandbox manifest holds no ${imageKey} image`);
 
   return image;
 }
