@@ -612,6 +612,38 @@ test('it resolves the links of a page against its final URL after a redirect', a
   });
 });
 
+test('it returns a page within the text limit whole and not truncated when its link targets pass their limit', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: () =>
+      new Response(
+        '<main><p><a href="soup">Soup</a> <a href="salad">Salad</a> <a href="bread">Bread</a> daily.</p></main>',
+        { headers: { 'content-type': 'text/html' } },
+      ),
+  });
+
+  const directory = `https://site.test:${site.port}/${'menu'.repeat(25)}/`;
+
+  const reply = await readPage(directory, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 80 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: site.ca,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: directory,
+    status: 200,
+    contentType: 'text/html',
+    text: 'Soup \u{E000}0\u{E001} Salad \u{E000}1\u{E001} Bread  daily.',
+    links: [`${directory}soup`, `${directory}salad`],
+    isTruncated: false,
+    blocked: null,
+  });
+});
+
 test('it cuts the list of other links before the text of the page at the text limit', async () => {
   const site = await startTestSite({
     names: ['site.test'],
