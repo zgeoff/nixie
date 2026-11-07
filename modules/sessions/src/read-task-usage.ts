@@ -5,22 +5,25 @@ import { buildCallCost, modelSessionSummarizedCodec, modelTurnEndedCodec } from 
 import type { TaskLimits, TasksContext } from '@heynixie/tasks';
 import {
   taskLimitReachedCodec,
-  taskLimitsRaisedCodec,
   taskStepCommittedCodec,
+  taskStepErroredCodec,
+  taskStepInterruptedCodec,
 } from '@heynixie/tasks';
 
 const pageSize = 500;
 
 interface HeldPause {
   readonly stepKey: string;
-  readonly reached: TaskLimits;
   readonly turnsBefore: number;
+
+  // the dollars the pause counted past the records before it: its turn's priced calls
+  readonly dollars: number;
 }
 
 interface UsageCount {
   readonly used: TaskLimits;
 
-  // the newest pause whose step has not committed yet
+  // the newest pause whose step has not ended yet
   readonly pause: HeldPause | null;
 }
 
@@ -44,8 +47,9 @@ export async function readTaskUsage(
         'model.turn_ended',
         'model.session_summarized',
         'task.limit_reached',
-        'task.limits_raised',
         'task.step_committed',
+        'task.step_errored',
+        'task.step_interrupted',
       ],
       limit: pageSize,
     });
@@ -58,12 +62,11 @@ export async function readTaskUsage(
     isLastPage = page.length < pageSize;
   }
 
-  return buildSettledUsage(count);
+  return buildUsageWithPause(count);
 }
 
-// A pause records the task's whole use at its turn's end, and commits before its step's commit. A
-// step that commits a turn record counts that turn's spend through it. A pause whose step commits
-// no turn record, or never commits, holds the only count of that turn's spend.
+// A retry takes its step's key, so each pause settles at its own step's end: the step's error,
+// interrupt or commit, which carries the turn record that counts the turn's spend, if it has one.
 function buildCountAfterRecord(
   count: UsageCount,
   record: LogRecord,
@@ -71,25 +74,31 @@ function buildCountAfterRecord(
 ): UsageCount {
   if (record.kind === taskLimitReachedCodec.kind) {
     const pause = taskLimitReachedCodec.tryDecodePartial(record.payload);
-    const used = buildSettledUsage(count);
+    const used = buildUsageWithPause(count);
 
     return pause?.stepKey === undefined || pause.used === undefined
       ? { used, pause: null }
-      : { used, pause: { stepKey: pause.stepKey, reached: pause.used, turnsBefore: used.turns } };
+      : {
+          used,
+          pause: {
+            stepKey: pause.stepKey,
+            turnsBefore: used.turns,
+            dollars: Math.max(0, pause.used.dollars - used.dollars),
+          },
+        };
   }
 
-  if (record.kind === taskLimitsRaisedCodec.kind) {
-    return { used: buildSettledUsage(count), pause: null };
-  }
+  const endedStepKey = findEndedStepKey(record);
 
-  if (record.kind === taskStepCommittedCodec.kind) {
-    if (count.pause?.stepKey !== record.stepKey) {
+  if (endedStepKey !== null) {
+    if (count.pause?.stepKey !== endedStepKey) {
       return count;
     }
 
-    return count.used.turns > count.pause.turnsBefore
-      ? { used: count.used, pause: null }
-      : { used: buildSettledUsage(count), pause: null };
+    const isTurnRecorded =
+      record.kind === taskStepCommittedCodec.kind && count.used.turns > count.pause.turnsBefore;
+
+    return { used: isTurnRecorded ? count.used : buildUsageWithPause(count), pause: null };
   }
 
   const counted = buildRecordUsage(record, prices);
@@ -103,10 +112,24 @@ function buildCountAfterRecord(
   };
 }
 
-function buildSettledUsage(count: UsageCount): TaskLimits {
-  const reached = count.pause?.reached.dollars ?? 0;
+function buildUsageWithPause(count: UsageCount): TaskLimits {
+  return { turns: count.used.turns, dollars: count.used.dollars + (count.pause?.dollars ?? 0) };
+}
 
-  return reached > count.used.dollars ? { ...count.used, dollars: reached } : count.used;
+function findEndedStepKey(record: LogRecord): string | null {
+  if (record.kind === taskStepCommittedCodec.kind) {
+    return record.stepKey;
+  }
+
+  if (record.kind === taskStepErroredCodec.kind) {
+    return taskStepErroredCodec.tryDecodePartial(record.payload)?.stepKey ?? null;
+  }
+
+  if (record.kind === taskStepInterruptedCodec.kind) {
+    return taskStepInterruptedCodec.tryDecodePartial(record.payload)?.stepKey ?? null;
+  }
+
+  return null;
 }
 
 // A record from an earlier release can lack a field that a later one added, so each read takes

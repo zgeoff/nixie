@@ -5,6 +5,8 @@ import {
   taskLimitReachedCodec,
   taskLimitsRaisedCodec,
   taskStepCommittedCodec,
+  taskStepErroredCodec,
+  taskStepInterruptedCodec,
 } from '@heynixie/tasks';
 import { readTaskUsage } from './read-task-usage';
 import { startTestTasks } from './test-utils/start-test-tasks';
@@ -257,7 +259,42 @@ test('it counts a turn whose pause came before its turn record once', async () =
   expect(used).toStrictEqual({ turns: 1, dollars: 3 });
 });
 
-test('it counts the dollars of a pause whose step never committed, though a later step committed a turn', async () => {
+test.each([
+  [
+    'a raise, so the turn record is its own',
+    {
+      kind: taskLimitsRaisedCodec.kind,
+      payload: taskLimitsRaisedCodec.encode({
+        taskID: 'tide-tables',
+        limits: { turns: 25, dollars: 10 },
+      }),
+    },
+    3,
+  ],
+  [
+    "the step's error, so the turn record is its retry's",
+    {
+      kind: taskStepErroredCodec.kind,
+      payload: taskStepErroredCodec.encode({
+        taskID: 'tide-tables',
+        stepKey: 'tide-tables:1',
+        nextState: 'ready',
+        errors: 1,
+        errorLimit: 3,
+        claimableAt: 0,
+      }),
+    },
+    6.5,
+  ],
+  [
+    "the step's interrupt, so the turn record is its retry's",
+    {
+      kind: taskStepInterruptedCodec.kind,
+      payload: taskStepInterruptedCodec.encode({ taskID: 'tide-tables', stepKey: 'tide-tables:1' }),
+    },
+    6.5,
+  ],
+])('it counts the dollars of a pause followed by %s', async (_case, between, dollars) => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.tasks.context.log, [
@@ -272,15 +309,7 @@ test('it counts the dollars of a pause whose step never committed, though a late
         limits: { turns: 25, dollars: 2 },
       }),
     },
-    {
-      kind: taskLimitsRaisedCodec.kind,
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'tide-tables',
-      payload: taskLimitsRaisedCodec.encode({
-        taskID: 'tide-tables',
-        limits: { turns: 25, dollars: 10 },
-      }),
-    },
+    { ...between, definitions: { snapshotHash: 'sha256:test' }, thread: 'tide-tables' },
     {
       kind: modelTurnEndedCodec.kind,
       definitions: { snapshotHash: 'sha256:test' },
@@ -324,5 +353,5 @@ test('it counts the dollars of a pause whose step never committed, though a late
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 1, dollars: 6.5 });
+  expect(used).toStrictEqual({ turns: 1, dollars });
 });
