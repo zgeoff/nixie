@@ -6,7 +6,7 @@ import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 
-test('#backups.readNotice reads no notice while the backups work', async () => {
+test('#backups.readNotice reads no notice before any backup set stages', async () => {
   const api = await startTestAPI();
   const laptop = await createDeviceSession(api.context, 'laptop');
   const read = await buildTestClient(api.url, laptop.token).backups.readNotice();

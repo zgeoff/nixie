@@ -299,7 +299,7 @@ test('it reports backups ready within twice the interval of a restart, after an 
   });
 });
 
-test('it reports backups ready again once a receipt arrives', async () => {
+test('it reports backups ready once a newer upload replaces one older than twice the interval', async () => {
   const state = buildStartState({ isReady: true, reason: null });
   const clock = buildTestClock(Date.parse('2026-11-02T08:00:00Z'));
 

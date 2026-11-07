@@ -119,6 +119,34 @@ test('it reports backups ready again once a published receipt arrives', async ()
   });
 });
 
+test('it keeps the last backup health in readiness after a pass that fails to read it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.startBackups({ isEnabled: true, intervalMs: 3_600_000 });
+
+  await waitForCondition(
+    () =>
+      ctx.logged.mock.calls.some((call) => call[0] === 'backup.set_staged') &&
+      ctx.clock.countSleepers() === 1,
+  );
+
+  await ctx.writer.db.schema.dropTable('backup_notices').execute();
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() =>
+    ctx.logged.mock.calls.some((call) => call[0] === 'backup.pass_failed'),
+  );
+
+  const report = await ctx.checks.dependencies.backups();
+
+  expect(report).toStrictEqual({
+    isReady: true,
+    reason: null,
+    details: { newest_set_age_seconds: 60, last_upload_at: null },
+  });
+});
+
 test('it logs a notice for a set with no receipt an interval after it staged', async () => {
   const ctx = await setupTest();
 
