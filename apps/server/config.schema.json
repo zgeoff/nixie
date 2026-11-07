@@ -554,6 +554,40 @@
       },
       "additionalProperties": false
     },
+    "search": {
+      "default": {
+        "daily_call_cap": 200,
+        "credential": null,
+        "api_url": "https://kagi.com/api/v1"
+      },
+      "type": "object",
+      "properties": {
+        "daily_call_cap": {
+          "default": 200,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "credential": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^deployment:.+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "api_url": {
+          "default": "https://kagi.com/api/v1",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
     "time": {
       "default": {
         "default_zone": "Australia/Sydney"

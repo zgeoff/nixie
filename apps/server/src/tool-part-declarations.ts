@@ -85,6 +85,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         },
         {
           webFetch: parts.get('web_fetch').tool,
+          search: options.search,
           testTools: NIXIE_TEST_BUILD && options.harness !== undefined ? [buildTestSendTool()] : [],
           queue: parts.get('actions').queue,
           readStore: () => parts.find('memory'),

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { githubAPIURL } from '@heynixie/definitions-github/mocks';
+import { kagiAPIURL, kagiStore } from '@heynixie/search-kagi/mocks';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -255,4 +256,151 @@ test('it puts no task board in the turn after a task starts, and keeps the syste
   expect(second.systemPrompt).toBe(first.systemPrompt);
   expect(second.systemPrompt).not.toInclude('Seed order');
   expect(JSON.stringify(second.input)).not.toInclude('Seed order');
+});
+
+test("it serves search to the conversation with the key from the secrets file, and keeps the search's cost on the call's record", async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: ['search:', '  credential: deployment:search', `  api_url: ${kagiAPIURL}`],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  await kagiStore.results.create({
+    query: 'low tide today',
+    url: 'https://tides.test/bondi',
+    title: 'Bondi tide times',
+    snippet: 'Low tide at 13:40.',
+    time: '2026-11-06T21:00:00Z',
+  });
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'low tide today' } } },
+    { text: 'Low tide is at 13:40.' },
+  );
+
+  const records = await sendClientMessage(
+    api.client,
+    { text: 'When is low tide at Bondi?' },
+    'Low tide is at 13:40.',
+  );
+
+  expect(records.find((record) => record.kind === 'tool_result')?.toolCall).toMatchObject({
+    outcome: 'result',
+    content: {
+      result: {
+        hits: [
+          {
+            title: 'Bondi tide times',
+            url: 'https://tides.test/bondi',
+            snippet: 'Low tide at 13:40.',
+            publishedAt: '2026-11-06T21:00:00Z',
+          },
+        ],
+        costUSD: 0.012,
+      },
+    },
+  });
+});
+
+test('it keeps the search key out of every record, log event and sandbox', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: ['search:', '  credential: deployment:search', `  api_url: ${kagiAPIURL}`],
+    extraSecrets: ['connector_credentials:', '  search: invented-search-key'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  await kagiStore.keys.create({ key: 'invented-search-key' });
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
+    { text: 'No ferries found.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'When is the next ferry?' }, 'No ferries found.');
+
+  nixie.signalStop();
+
+  await nixie.waitForExit();
+
+  const files = await nixie.readDataFiles();
+
+  expect({
+    files: files
+      .filter((file) => file.text.includes('invented-search-key'))
+      .map((file) => file.name),
+    logEvents: JSON.stringify(nixie.readLogEvents()).includes('invented-search-key'),
+    sandboxFiles: nixie.guest.collectFilesWithText('invented-search-key'),
+    sandboxFrames: JSON.stringify(nixie.guest.received).includes('invented-search-key'),
+  }).toStrictEqual({ files: [], logEvents: false, sandboxFiles: [], sandboxFrames: false });
+});
+
+test('it refuses the second search of a day under the cap of 1 the configuration sets', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'search:',
+      '  daily_call_cap: 1',
+      '  credential: deployment:search',
+      `  api_url: ${kagiAPIURL}`,
+    ],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
+    { toolUse: { name: 'search', input: { query: 'bus timetable' } } },
+    { text: 'Searched twice.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'How do I get to Manly?' }, 'Searched twice.');
+
+  const refused = nixie.toolResults.at(-1);
+
+  expect({ name: refused?.name, result: JSON.parse(refused?.result ?? '{}') }).toMatchObject({
+    name: 'search',
+    result: {
+      isError: true,
+      content: [
+        {
+          type: 'text',
+          text: expect.toStartWith('the search cap of 1 calls a day is reached'),
+        },
+      ],
+    },
+  });
+});
+
+test('it offers no search tool when the configuration names no search credential', async () => {
+  const nixie = await startInProcessNixie();
+  const api = await createTestClient(nixie);
+
+  const gate = Promise.withResolvers<void>();
+
+  nixie.guest.addReplies({ text: 'Hello.', gate: () => gate.promise });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hi.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(() => nixie.guest.turns.length === 1);
+
+  const [received] = nixie.guest.received;
+
+  invariant(received);
+
+  const names = await nixie.readToolNames(received);
+
+  gate.resolve();
+
+  expect(names).not.toContain('search');
 });

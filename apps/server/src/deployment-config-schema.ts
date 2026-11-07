@@ -1,6 +1,6 @@
 import { actionsConfigSchema } from '@heynixie/actions';
 import { backupConfigSchema } from '@heynixie/backup';
-import { timeConfigSchema, webFetchConfigSchema } from '@heynixie/connectors';
+import { searchConfigSchema, timeConfigSchema, webFetchConfigSchema } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
 import {
   consolidationConfigSchema,
@@ -23,6 +23,7 @@ export const deploymentConfigSchema = z
     ...sandboxSections,
     definitions: definitionsConfigSchema,
     web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),
+    search: searchConfigSchema.default(searchConfigSchema.parse({})),
     time: timeConfigSchema.default(timeConfigSchema.parse({})),
     tasks: tasksConfigSchema.default(tasksConfigSchema.parse({})),
     actions: actionsConfigSchema.default(actionsConfigSchema.parse({})),
