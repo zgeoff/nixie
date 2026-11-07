@@ -315,27 +315,42 @@ test('it keeps the search key out of every record, log event and sandbox', async
 
   await kagiStore.keys.create({ key: 'invented-search-key' });
 
+  await kagiStore.results.create({
+    query: 'ferry timetable',
+    url: 'https://ferries.test/manly',
+    title: 'Manly ferry',
+    snippet: 'Every 30 minutes.',
+  });
+
   nixie.guest.addReplies(
     { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
-    { text: 'No ferries found.' },
+    { text: 'Every 30 minutes.' },
   );
 
-  await sendClientMessage(api.client, { text: 'When is the next ferry?' }, 'No ferries found.');
+  await sendClientMessage(api.client, { text: 'When is the next ferry?' }, 'Every 30 minutes.');
 
   nixie.signalStop();
 
-  await nixie.waitForExit();
-
+  const exited = await nixie.waitForExit();
   const files = await nixie.readDataFiles();
 
   expect({
+    records: JSON.stringify(exited.records).includes('invented-search-key'),
+    toolResults: JSON.stringify(nixie.toolResults).includes('invented-search-key'),
     files: files
       .filter((file) => file.text.includes('invented-search-key'))
       .map((file) => file.name),
     logEvents: JSON.stringify(nixie.readLogEvents()).includes('invented-search-key'),
     sandboxFiles: nixie.guest.collectFilesWithText('invented-search-key'),
     sandboxFrames: JSON.stringify(nixie.guest.received).includes('invented-search-key'),
-  }).toStrictEqual({ files: [], logEvents: false, sandboxFiles: [], sandboxFrames: false });
+  }).toStrictEqual({
+    records: false,
+    toolResults: false,
+    files: [],
+    logEvents: false,
+    sandboxFiles: [],
+    sandboxFrames: false,
+  });
 });
 
 test('it refuses the second search of a day under the cap of 1 the configuration sets', async () => {
