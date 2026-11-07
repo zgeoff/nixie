@@ -191,10 +191,8 @@ function makeMemoryVersionChange(
 
     const socketPath = await host.resolveSocketPath(flags.config);
 
-    const ref = await host.sendHostRequest<{ readonly itemID: string }>(
-      socketPath,
-      `memory ${command}`,
-      (client) => client.memory.items[command](target),
+    const ref = await host.sendHostRequest<unknown>(socketPath, `memory ${command}`, (client) =>
+      client.memory.items[command](target),
     );
 
     io.print(JSON.stringify(ref));
