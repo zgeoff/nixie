@@ -763,7 +763,13 @@ test('it returns a page within the text limit whole and not truncated when its l
   const directory = `https://site.test:${site.port}/${'menu'.repeat(25)}/`;
 
   const reply = await readPage(directory, {
-    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 80 },
+    limits: {
+      bodyBytes: 1_000_000,
+      timeoutMs: 5000,
+      redirects: 5,
+      textBytes: 80,
+      imageBytes: 1_000_000,
+    },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     transports: createWebTransports(),
