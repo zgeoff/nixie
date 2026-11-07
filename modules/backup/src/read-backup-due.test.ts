@@ -44,6 +44,12 @@ test.each([
     '{"momentID":"moment-a","version":2,"stage":"done"}',
   ],
   [
+    'a reset of the conversations',
+    true,
+    'log_reset',
+    '{"resetAt":1798761600000,"lastSequence":8,"mode":"conversations","shreddedRecords":3}',
+  ],
+  [
     'a started moment destroy',
     false,
     'moment_destroyed',

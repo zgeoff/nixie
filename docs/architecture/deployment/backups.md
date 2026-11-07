@@ -27,8 +27,8 @@ nixie's backup schedule runs a pass on a poll, and early when a record commits. 
 every receipt that the job wrote, then stages a set when one is due:
 
 1. A forget set is due once a forget record is newer than the log position of every set that staged,
-   published or failed. A forget record closes a memory forget, a message forget or a moment
-   destroy, each of which deletes its keys before it writes that record.
+   published or failed. A forget record closes a memory forget, a message forget, a moment destroy
+   or a reset of the conversations, each of which deletes its keys before it writes that record.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 
@@ -97,6 +97,22 @@ set, and nixie logs the refusal. Either way, nixie then renames the set's folder
 no set, syncs the staging folder, and removes the renamed folder. A stop part way through the
 removal therefore never leaves a marked set without its files, and the next start removes what the
 stop left.
+
+## A forget's backup state
+
+nixie reads a forget's backup state from the sets whose log position is at or after the forget
+record, because only a copy that started after that record lacks the deleted keys:
+
+| Sets at or after the forget record                                                                   | Backup state                       |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| any published set                                                                                    | complete                           |
+| none published, and the newest set that is not abandoned failed                                      | failed, with the receipt's failure |
+| none published, and the newest set that is not abandoned is staging or staged, or no such set exists | pending                            |
+
+One published set is enough, because its job run forgets every other key snapshot and prunes it. A
+failed state keeps the forget open, and the next scheduled set covers the forget again, within one
+backup interval. An abandoned set leaves the forget due, so the next pass stages a new forget set. A
+set that never gets its receipt keeps the forget pending.
 
 ## Formats
 
