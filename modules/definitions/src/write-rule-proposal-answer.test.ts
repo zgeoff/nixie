@@ -83,7 +83,7 @@ test('it puts the widening of a rule change proposal in force once you approve i
 
   const proposalID = pending.at(-1)?.proposal.proposalID;
 
-  invariant(proposalID);
+  invariant(proposalID !== undefined);
 
   await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
 
@@ -113,7 +113,7 @@ test('it records your approval of a rule change proposal', async () => {
 
   const proposalID = pending.at(-1)?.proposal.proposalID;
 
-  invariant(proposalID);
+  invariant(proposalID !== undefined);
 
   const result = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
   const records = await readRecords(ctx.log, { afterSequence: held.record.sequence + 1 });
@@ -152,7 +152,7 @@ test('it keeps the version in force and records your reason when you reject a ru
 
   const proposalID = pending.at(-1)?.proposal.proposalID;
 
-  invariant(proposalID);
+  invariant(proposalID !== undefined);
 
   await writeRuleProposalAnswer(ctx.context, {
     answer: 'reject',
@@ -204,7 +204,7 @@ test('it refuses an approval of a rule change proposal you rejected', async () =
 
   const proposalID = pending.at(-1)?.proposal.proposalID;
 
-  invariant(proposalID);
+  invariant(proposalID !== undefined);
 
   await writeRuleProposalAnswer(ctx.context, { answer: 'reject', proposalID, reason: 'Not yet.' });
 
@@ -234,7 +234,7 @@ test('it refuses an approval of a rule change proposal past its lapse time', asy
 
   const proposalID = pending.at(-1)?.proposal.proposalID;
 
-  invariant(proposalID);
+  invariant(proposalID !== undefined);
 
   ctx.time.now += proposalLapseMs;
 
@@ -264,7 +264,7 @@ test('it refuses an approval of a rule change proposal that a later seed withdre
 
   const proposalID = pending.at(-1)?.proposal.proposalID;
 
-  invariant(proposalID);
+  invariant(proposalID !== undefined);
 
   await writeFile(
     join(ctx.root, 'rules', 'web.yaml'),
@@ -299,7 +299,7 @@ test('it asks again about a widening you rejected only once the definitions chan
 
   const proposalID = pending.at(-1)?.proposal.proposalID;
 
-  invariant(proposalID);
+  invariant(proposalID !== undefined);
 
   await writeRuleProposalAnswer(ctx.context, { answer: 'reject', proposalID, reason: 'Not yet.' });
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nShort replies.\n');
@@ -335,7 +335,7 @@ test('it asks again about a widening you approved once the definitions narrow it
 
   const proposalID = pending.at(-1)?.proposal.proposalID;
 
-  invariant(proposalID);
+  invariant(proposalID !== undefined);
 
   await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
   await writeFile(join(ctx.root, 'rules', 'web.yaml'), '# No web rules for now.\n');
