@@ -3,7 +3,8 @@
 A rule is plain data that matches a tool call and gives it one outcome: allow, ask or deny. The user
 writes rules as YAML files in the definitions, and nixie checks, matches, evaluates and renders them
 with code that never calls a model, so the user reads exactly what a rule does and a replay of a
-decision gets the same answer. The policy module owns the rule format and these pure functions. The
+decision gets the same answer. The policy module owns the rule format and these pure functions, and
+[rules in force](#rules-in-force) covers how a seed puts them in force. The
 [rules design](../../design/platform/policy/rules.md) holds the parts not built yet, and
 [the decision point](decision-point.md) covers the stages that decide a call.
 
@@ -100,3 +101,46 @@ The check never reports a widening as a narrowing. A wildcard inside an inner pa
 covered only by a wildcard in the outer pattern, so the check returns "not inside" for a pair it
 cannot prove. Every edit to a rule with a CEL condition widens, because the check cannot read CEL. A
 wrong answer therefore costs a prompt, and never access.
+
+## Rules in force
+
+The rule store keeps 3 layers of rules, and each seed lays them over each other in this order:
+
+1. The rules the definitions hold, each with the path of its file.
+2. The seeded rules: the version of each rule from the definitions that nixie applied.
+3. The runtime changes: a rule that nixie or the user changed or removed while nixie runs, with who
+   changed it and why.
+
+A seed compares each rule in the definitions with its seeded version through
+[the widening check](#the-widening-check). An edit that narrows applies at once, and the seed record
+lists it. An edit that widens waits: the seed gathers every widening into one rule change proposal,
+recorded beside the seed record, and the seeded version stays in force. The first seed of a rules
+file follows the same check, so its denies and asks apply and its allows wait for one approval. When
+a later seed, including a seed of the definitions in force, holds other widenings, it withdraws the
+pending proposal and proposes again. An approval applies each widened version as seeded. After a
+rejection or a lapse, the seeded version stays in force, and nixie asks again only once the set of
+widenings changes. An approved set held again means the definitions narrowed it since, so nixie asks
+again at once. A log reset removes the proposal records but keeps each set of widenings you rejected
+or left to lapse, including a set past its lapse time that the hourly sweep has not yet closed. The
+first seed after the reset proposes again only a set that was pending.
+
+A runtime change stays in force over the seeded version and the definitions' version. It records the
+definitions' version that it changed, its base, so the store tells whether the definitions moved
+since:
+
+- **The definitions hold the runtime version.** The user merged it, so the seed adopts the change
+  and the rule's origin becomes the definitions.
+- **The definitions still hold the base.** The runtime change stays in force.
+- **The definitions hold another version.** The runtime change stays in force, and the seed record
+  lists the conflict. Keeping nixie's version makes the definitions' version its base. Keeping the
+  repo's version retires the runtime change and applies the definitions' version as seeded, with no
+  widening check, because the user chose it. Each choice is a record.
+
+A runtime change, an approval and a resolution each take effect at once through a seed of the
+definitions in force, as [skills that nixie wrote](../core/definitions.md#skills-that-nixie-wrote)
+do. Each rule has a revision, which goes up by one each time its version in force changes, and a
+decision names the rule and the revision that decided it. A log reset keeps the rule store, and the
+reset seed restores the rules of the snapshot in force.
+
+The snapshot hash covers each rule in force with its revision, its origin and its runtime change, so
+each snapshot holds the revision of every rule in force.

@@ -30,7 +30,7 @@ export { loadSnapshotSkills } from './load-snapshot-skills';
 export { probeWrittenSkillsPending } from './probe-written-skills-pending';
 export type { SeedOptions, SeedResult } from './run-seed';
 export { runSeed } from './run-seed';
-export { runWrittenSkillSeed } from './run-written-skill-seed';
+export { runInForceSeed } from './run-in-force-seed';
 export type { WrittenSkillEntry } from './read-written-skills';
 export { readWrittenSkills } from './read-written-skills';
 export { readSkillExportURLs } from './read-skill-export-urls';
@@ -82,4 +82,11 @@ export type {
 } from './types';
 
 export { writeResetSeed } from './write-reset-seed';
+export { ruleStoreTables } from './rule-store-tables';
+export { ruleFiresProjection } from './rule-fires-projection';
+export type { RuleInForceEntry } from './read-rules-in-force';
+export { readRulesInForce } from './read-rules-in-force';
+export { readRuleConflicts } from './read-rule-conflicts';
+export { readRuleProposals } from './read-rule-proposals';
 export type { DefinitionsRecordKind } from './definitions-record-kind';
+export type { RulesRecordKind } from './rules-record-kind';

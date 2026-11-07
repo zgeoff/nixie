@@ -8,6 +8,7 @@ import { manifestSchema } from './manifest-schema';
 import { parseConversationSkills } from './parse-conversation-skills';
 import type { ManifestPrompts } from './parse-prompt-overrides';
 import { parsePromptOverrides } from './parse-prompt-overrides';
+import { parseRuleDefinitions } from './parse-rule-definitions';
 import { parseSkills } from './parse-skills';
 import type { ParsedDefinitions, Snapshot } from './types';
 
@@ -27,10 +28,16 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
 
   const overrides = parsePromptOverrides(manifest.prompts, texts);
 
+  const rules =
+    formatVersion >= definitionsFormats.rules
+      ? parseRuleDefinitions(texts, overrides.partFiles)
+      : { rules: [], paths: new Set<string>() };
+
   const unapplied = [...texts.keys()]
     .filter((path) => path !== manifestPath && path !== personaPath)
     .filter((path) => !hasSkills || !path.startsWith('skills/'))
     .filter((path) => !overrides.partFiles.has(path))
+    .filter((path) => !rules.paths.has(path))
     .toSorted();
 
   requireParsable(unapplied.map((path) => [path, texts.get(path) ?? '']));
@@ -41,6 +48,7 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
     skills,
     conversationSkills,
     prompts: overrides.prompts,
+    rules: rules.rules,
     unapplied,
   };
 }

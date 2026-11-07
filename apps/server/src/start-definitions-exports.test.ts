@@ -7,8 +7,8 @@ import {
   checkPromptProposal,
   checkSkillFiles,
   createPathSource,
+  runInForceSeed,
   runSeed,
-  runWrittenSkillSeed,
   writeWrittenSkill,
 } from '@heynixie/definitions';
 import {
@@ -90,7 +90,7 @@ test('it exports a skill with the configured templates, the first agent name and
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
   await createMockGitHubRepo({ repository: 'harbour/definitions', base: 'main', token: 'token-a' });
 
   const inputs = await loadServerInputs({

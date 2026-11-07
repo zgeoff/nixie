@@ -19,6 +19,7 @@ test('it reads the format version and the persona, and lists every other file un
     skills: [],
     conversationSkills: [],
     prompts: {},
+    rules: [],
     unapplied: ['jobs/morning.json', 'notes.md', 'rules/mail.yaml'],
   });
 });
@@ -136,6 +137,7 @@ test('it ignores the prompts map under format 2 and lists its part files as unap
     skills: [],
     conversationSkills: [],
     prompts: {},
+    rules: [],
     unapplied: ['prompts/writer.md'],
   });
 });
@@ -194,6 +196,7 @@ test('it reads each skill under format 2, and lists none of its files as unappli
     ],
     conversationSkills: ['tide-tables'],
     prompts: {},
+    rules: [],
     unapplied: [],
   });
 });
@@ -322,6 +325,7 @@ test('it reads a part override from its file and a template inline under format 
       writer: { parts: { safety: 'Quote {{ owner.name }} exactly.' }, template: null },
       compaction: { parts: {}, template: '{{ parts.instruction }}' },
     },
+    rules: [],
     unapplied: ['prompts/draft.md'],
   });
 });

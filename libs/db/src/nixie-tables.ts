@@ -41,6 +41,14 @@ export interface NixieTables {
     readonly result: string;
     readonly recorded_at: number;
   };
+  readonly closed_rule_proposals: {
+    readonly proposal_hash: string;
+  };
+  readonly definition_rules: {
+    readonly rule_id: string;
+    readonly rule_hash: string;
+    readonly path: string;
+  };
   readonly definition_seeds: {
     readonly seed: number;
     readonly seeded_at: number;
@@ -326,6 +334,40 @@ export interface NixieTables {
     readonly refused_at: number;
     readonly refused_sequence: number;
   };
+  readonly rule_fires: {
+    readonly rule_id: string;
+    readonly last_fired_at: number;
+  };
+  readonly rule_revisions: {
+    readonly rule_id: string;
+    readonly revision: number;
+    readonly rule_hash: string | null;
+    readonly created_at: number;
+  };
+  readonly rule_versions: {
+    readonly rule_hash: string;
+    readonly rule: string;
+  };
+  readonly rules: {
+    readonly rule_id: string;
+    readonly revision: number;
+    readonly rule_hash: string | null;
+    readonly origin: string;
+    readonly created_at: number;
+    readonly updated_at: number;
+  };
+  readonly runtime_rules: {
+    readonly change_id: string;
+    readonly rule_id: string;
+    readonly rule_hash: string | null;
+    readonly state: string;
+    readonly base_hash: string | null;
+    readonly definitions_hash: string | null;
+    readonly changed_by: string;
+    readonly reason: string;
+    readonly changed_at: number;
+    readonly updated_at: number;
+  };
   readonly sandboxes: {
     readonly sandbox_id: string;
     readonly adapter: string;
@@ -338,6 +380,10 @@ export interface NixieTables {
   readonly search_calls: {
     readonly day: string;
     readonly count: number;
+  };
+  readonly seeded_rules: {
+    readonly rule_id: string;
+    readonly rule_hash: string;
   };
   readonly skill_export_attempts: {
     readonly approval_id: string;
@@ -356,6 +402,13 @@ export interface NixieTables {
     readonly name: string;
     readonly frontmatter: string;
     readonly files: string;
+  };
+  readonly snapshot_rules: {
+    readonly snapshot_hash: string;
+    readonly rule_id: string;
+    readonly revision: number;
+    readonly rule_hash: string;
+    readonly change_id: string | null;
   };
   readonly snapshot_skills: {
     readonly snapshot_hash: string;

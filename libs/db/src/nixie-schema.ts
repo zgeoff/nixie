@@ -17,6 +17,7 @@ import { memoryUntilMigration } from './memory-until-migration';
 import { momentsMigration } from './moments-migration';
 import { promptApprovalsMigration } from './prompt-approvals-migration';
 import { recordAttachmentsMigration } from './record-attachments-migration';
+import { rulesMigration } from './rules-migration';
 import { sandboxesMigration } from './sandboxes-migration';
 import { searchCallsMigration } from './search-calls-migration';
 import { skillExportAttemptsMigration } from './skill-export-attempts-migration';
@@ -64,6 +65,7 @@ export const nixieSchema: BuildSchema = {
     searchCallsMigration,
     webFetchPagesMigration,
     backupNoticesMigration,
+    rulesMigration,
   ],
   oldestReader: 35,
 };

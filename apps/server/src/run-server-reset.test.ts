@@ -1,5 +1,13 @@
 import { expect, mock, test } from 'bun:test';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { defaultAPISettings } from '@heynixie/api';
+import {
+  createPathSource,
+  readRuleProposals,
+  readRulesInForce,
+  runSeed,
+} from '@heynixie/definitions';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, startTaskRunners } from '@heynixie/tasks';
@@ -60,6 +68,65 @@ test('it starts the new log with the definitions in force, then the reset on the
       erasable: { status: 'none' },
     },
   ]);
+});
+
+test('it keeps the rules in force and their revisions through a reset', async () => {
+  const ctx = await setupTest();
+
+  const root = join(ctx.dataDir, 'rule-definitions');
+
+  await mkdir(join(root, 'rules'), { recursive: true });
+  await writeFile(join(root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(root, 'persona.md'), '# Persona\n');
+  await writeFile(join(root, 'rules', 'shell.yaml'), 'deny-shell:\n  outcome: deny\n');
+
+  await runSeed({
+    log: ctx.context.log,
+    source: createPathSource({ directory: root }),
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await runServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    stopWork: () => Promise.resolve(),
+  });
+
+  const rules = await readRulesInForce(ctx.context.log.writer.db);
+
+  expect(rules.map((rule) => [rule.ruleID, rule.revision])).toStrictEqual([['deny-shell', 1]]);
+});
+
+test('it keeps a widening that passed its lapse time closed through a reset', async () => {
+  const ctx = await setupTest();
+
+  const root = join(ctx.dataDir, 'rule-definitions');
+  const source = createPathSource({ directory: root });
+
+  await mkdir(join(root, 'rules'), { recursive: true });
+  await writeFile(join(root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(root, 'rules', 'web.yaml'),
+    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
+  );
+
+  await runSeed({ log: ctx.context.log, source, buildPolicy: () => ({ rules: [], tools: [] }) });
+
+  const monthLater = { ...ctx.context.clock, now: () => Date.now() + 30 * 24 * 60 * 60 * 1000 };
+
+  await runServerReset({
+    context: { ...ctx.context, clock: monthLater },
+    adapter: ctx.sandboxes,
+    stopWork: () => Promise.resolve(),
+  });
+
+  await runSeed({ log: ctx.context.log, source, buildPolicy: () => ({ rules: [], tools: [] }) });
+
+  const proposals = await readRuleProposals(ctx.context.log.writer.db);
+
+  expect(proposals).toStrictEqual([]);
 });
 
 test('it destroys every sandbox before it resets', async () => {

@@ -1,5 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
+import type { RuleFileEntry, RuleForm } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { Generated, Kysely, Transaction } from 'kysely';
 
@@ -83,6 +84,7 @@ export interface ParsedDefinitions {
 
   readonly conversationSkills: readonly string[];
   readonly prompts: PromptOverrides;
+  readonly rules: readonly RuleFileEntry[];
   readonly unapplied: readonly string[];
 }
 
@@ -111,6 +113,38 @@ export interface DefinitionsInForce {
   readonly skills: readonly SkillRef[];
 
   readonly conversationSkills: readonly string[];
+}
+
+export type RuleOrigin = 'definitions' | 'nixie';
+
+export type RuleChanger = 'owner' | 'nixie';
+
+export interface StoredRule {
+  readonly hash: string;
+  readonly rule: RuleForm;
+}
+
+export interface DefinitionRule extends StoredRule {
+  readonly path: string;
+}
+
+export interface RuntimeRule {
+  readonly changeID: string;
+  readonly ruleID: string;
+  readonly rule: StoredRule | null;
+  readonly base: StoredRule | null;
+  readonly beneath: StoredRule | null;
+  readonly changedBy: RuleChanger;
+  readonly reason: string;
+  readonly changedAt: number;
+}
+
+export interface RuleInForce {
+  readonly ruleID: string;
+  readonly revision: number;
+  readonly rule: StoredRule;
+  readonly origin: RuleOrigin;
+  readonly changeID: string | null;
 }
 
 interface PersonaRow {
@@ -293,6 +327,64 @@ export interface PullRequestRef {
   readonly url: string;
 }
 
+interface RuleVersionRow {
+  readonly rule_hash: string;
+  readonly rule: string;
+}
+
+interface RuleRow {
+  readonly rule_id: string;
+  readonly revision: number;
+  readonly rule_hash: string | null;
+  readonly origin: RuleOrigin;
+  readonly created_at: number;
+  readonly updated_at: number;
+}
+
+interface RuleRevisionRow {
+  readonly rule_id: string;
+  readonly revision: number;
+  readonly rule_hash: string | null;
+  readonly created_at: number;
+}
+
+interface DefinitionRuleRow {
+  readonly rule_id: string;
+  readonly rule_hash: string;
+  readonly path: string;
+}
+
+interface SeededRuleRow {
+  readonly rule_id: string;
+  readonly rule_hash: string;
+}
+
+export interface RuntimeRuleRow {
+  readonly change_id: string;
+  readonly rule_id: string;
+  readonly rule_hash: string | null;
+  readonly state: RuntimeChangeState;
+  readonly base_hash: string | null;
+  readonly definitions_hash: string | null;
+  readonly changed_by: RuleChanger;
+  readonly reason: string;
+  readonly changed_at: number;
+  readonly updated_at: number;
+}
+
+export interface SnapshotRuleRow {
+  readonly snapshot_hash: string;
+  readonly rule_id: string;
+  readonly revision: number;
+  readonly rule_hash: string;
+  readonly change_id: string | null;
+}
+
+interface RuleFireRow {
+  readonly rule_id: string;
+  readonly last_fired_at: number;
+}
+
 // Kysely's table map needs an index signature, which an interface lacks, so the tables are mapped
 // types.
 export type DefinitionsTables = CheckedTables<
@@ -307,5 +399,14 @@ export type DefinitionsTables = CheckedTables<
     skill_export_attempts: ExportAttemptRow;
     prompt_exports: PromptExportRow;
     prompt_export_attempts: ExportAttemptRow;
+    rule_versions: RuleVersionRow;
+    rules: RuleRow;
+    rule_revisions: RuleRevisionRow;
+    definition_rules: DefinitionRuleRow;
+    seeded_rules: SeededRuleRow;
+    runtime_rules: RuntimeRuleRow;
+    snapshot_rules: SnapshotRuleRow;
+    rule_fires: RuleFireRow;
+    closed_rule_proposals: { readonly proposal_hash: string };
   }>
 >;

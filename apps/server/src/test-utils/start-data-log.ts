@@ -1,11 +1,8 @@
-import { actionsProjection } from '@heynixie/actions';
 import type { Clock } from '@heynixie/clock';
-import { logProjections, startWriter } from '@heynixie/log';
+import { startWriter } from '@heynixie/log';
 import type { Writer } from '@heynixie/log';
-import { memoryProjections } from '@heynixie/memory';
-import { sandboxesProjection } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
-import { tasksProjections } from '@heynixie/tasks';
+import { buildServerLog } from '../build-server-log';
 
 interface DataLogOptions {
   readonly dataDir: string;
@@ -33,17 +30,7 @@ export async function startDataLog(options: DataLogOptions): Promise<DataLog> {
   return {
     writer,
     context: {
-      log: {
-        writer,
-        deploymentKey,
-        projections: [
-          ...logProjections,
-          ...tasksProjections,
-          actionsProjection,
-          sandboxesProjection,
-          ...memoryProjections,
-        ],
-      },
+      log: buildServerLog(writer, deploymentKey),
       clock: options.clock,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
     },

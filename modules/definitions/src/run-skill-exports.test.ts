@@ -7,9 +7,9 @@ import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
+import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
 import { runSkillExports } from './run-skill-exports';
-import { runWrittenSkillSeed } from './run-written-skill-seed';
 import { buildStubDefinitionsRepo } from './test-utils/build-stub-definitions-repo';
 import { writeSkillExportState } from './write-skill-export-state';
 import { writeWrittenSkill } from './write-written-skill';
@@ -75,7 +75,7 @@ test('it exports an approved skill as a pull request that carries its files', as
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
 
@@ -131,7 +131,7 @@ test('it exports a skill with the configured title and message', async () => {
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await runSkillExports({
     log: ctx.log,
@@ -227,7 +227,7 @@ test('it marks an exported skill as yours at the seed after you merge its pull r
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
   await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
 
   await ctx.repo.mergePullRequest(1);
@@ -275,7 +275,7 @@ test('it exports each approval once', async () => {
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
   await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
 
   const result = await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
@@ -310,7 +310,7 @@ test("it exports again on the new base when you keep nixie's version over a defi
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
   await runSkillExports({ log: ctx.log, repo: ctx.repo, onError: () => {} });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By tide.\n`);
   await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
@@ -1140,7 +1140,7 @@ test('it never closes the pull request of a later approval in force over an adop
     });
   });
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   const revision = await ctx.repo.readBaseRevision();
 
