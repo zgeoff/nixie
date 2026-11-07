@@ -1,5 +1,6 @@
 import type { IncomingMessage } from 'node:http';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
+import type { WebTransports } from './create-web-transports';
 import type { AddressCheck } from './make-address-check';
 import { planHop } from './plan-hop';
 import { readResponsePage } from './read-response-page';
@@ -11,6 +12,7 @@ export interface PageReaderOptions {
   readonly checkAddress: AddressCheck;
 
   readonly resolveHost: (host: string) => Promise<readonly string[]>;
+  readonly transports: WebTransports;
 
   readonly ca?: string;
   readonly defaultPorts?: DefaultPorts;

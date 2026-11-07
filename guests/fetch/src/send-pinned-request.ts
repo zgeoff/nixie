@@ -1,8 +1,7 @@
 import type { ClientRequest, IncomingMessage } from 'node:http';
-import { Agent as HTTPAgent, request as requestHTTP } from 'node:http';
-import { Agent as HTTPSAgent, request as requestHTTPS } from 'node:https';
 import type { LookupFunction } from 'node:net';
 import { isIP } from 'node:net';
+import type { WebTransports } from './create-web-transports';
 import { toBareHost } from './to-bare-host';
 
 export interface PinnedTarget {
@@ -17,6 +16,7 @@ export interface DefaultPorts {
 }
 
 export interface PinnedRequestOptions {
+  readonly transports: WebTransports;
   readonly signal: AbortSignal;
   readonly ca?: string;
   readonly defaultPorts?: DefaultPorts;
@@ -50,22 +50,20 @@ export function sendPinnedRequest(
     signal: options.signal,
   };
 
-  // A proxy would resolve the host itself, and an empty proxyEnv stops the runtime from reading
-  // one from the environment.
   const outgoing = isHTTPS
-    ? requestHTTPS(
+    ? options.transports.https.request(
         {
           ...shared,
 
           // TLS forbids an IP address in SNI (RFC 6066).
           ...(isIP(host) === 0 ? { servername: host } : {}),
-          agent: new HTTPSAgent({ keepAlive: false, proxyEnv: {} }),
+          agent: options.transports.https.agent,
           ...(options.ca === undefined ? {} : { ca: options.ca }),
         },
         response.resolve,
       )
-    : requestHTTP(
-        { ...shared, agent: new HTTPAgent({ keepAlive: false, proxyEnv: {} }) },
+    : options.transports.http.request(
+        { ...shared, agent: options.transports.http.agent },
         response.resolve,
       );
 
