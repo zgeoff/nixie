@@ -189,13 +189,16 @@ rests on.
 
 ### Policy
 
-- [Policy design index](design/platform/policy/README.md) — the 4 policy docs and the spike behind
+- [Policy design index](design/platform/policy/README.md) — the 5 policy docs and the spike behind
   them
 - [The policy decision point](design/platform/policy/decision-point.md) — the pipeline, effects, the
   always-ask set, destination limits and consent, taint in the first build, auto-mode and prompt
   causes
 - [Rules](design/platform/policy/rules.md) — the rule format, evaluation order, rule identity, the
   snapshot hash, the widening check, proposed rules, mandates and the starter rule set
+- [Rule conflicts and the rule export](design/platform/policy/rule-conflicts-and-export.md) — a
+  runtime change against a repo change, and the one rolling pull request that exports runtime
+  changes
 - [Proposals and approvals](design/platform/policy/approvals.md) — the proposal and its action hash,
   risk classes, the approval record, one-tap "always allow" and the approval digest
 - [Budgets, lifts and the spending stop](design/platform/policy/budgets.md) — budgets, lifting
