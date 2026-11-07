@@ -42,10 +42,12 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       const options = parts.get('inputs').options;
       const sandbox = options.sandbox;
       const publicEgress = sandbox.adapter === 'imp' ? sandbox.imp.publicEgress : null;
+      const testFetchArgv = NIXIE_TEST_BUILD ? (options.harness?.fetchArgv ?? null) : null;
 
       const webFetch = startWebFetch({
         adapter: parts.get('sandbox_adapter'),
         image: options.images.fetch.name,
+        ...(testFetchArgv === null ? {} : { argv: testFetchArgv }),
         deniedRanges: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
         config: options.config.web_fetch,
         log: parts.get('context').apiContext.log,
