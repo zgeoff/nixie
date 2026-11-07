@@ -98,9 +98,9 @@ export function buildSearchTool(
       const request: SearchRequest = searchArguments.parse(call.input);
       const day = formatLocalDay(options.clock.now(), options.timeZone);
 
-      const count = await writeSearchCall(options.log, { day, cap: options.dailyCallCap });
+      const capOutcome = await writeSearchCall(options.log, { day, cap: options.dailyCallCap });
 
-      if (count === 'capped') {
+      if (capOutcome === 'capped') {
         return {
           status: 'error',
           message:

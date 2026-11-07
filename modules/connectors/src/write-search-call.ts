@@ -9,16 +9,16 @@ export interface SearchCall {
   readonly cap: number;
 }
 
-export type SearchCallCount = 'counted' | 'capped';
+export type SearchCapOutcome = 'counted' | 'capped';
 
 // Counts one call on the day, unless the day's count already reached the cap. One statement checks
 // and counts, so two calls at once never both take the last call under the cap.
 export function writeSearchCall(
   log: Pick<Log, 'writer'>,
   call: SearchCall,
-): Promise<SearchCallCount> {
+): Promise<SearchCapOutcome> {
   return withWriteTransaction(log.writer, async (tx) => {
-    const counted = await tx
+    const countedRow = await tx
       .$extendTables<SearchTables>()
       .insertInto('search_calls')
       .values({ day: call.day, count: 1 })
@@ -31,6 +31,6 @@ export function writeSearchCall(
       .returning('count')
       .executeTakeFirst();
 
-    return counted === undefined ? 'capped' : 'counted';
+    return countedRow === undefined ? 'capped' : 'counted';
   });
 }
