@@ -14,7 +14,7 @@ import { hostImplementer } from './host-implementer';
 import type { HostRouterOptions } from './types';
 
 export function createHostRouter(options: HostRouterOptions) {
-  const skillContext = { ...options.context, seedWrittenSkills: options.seedWrittenSkills };
+  const skillContext = { ...options.context, seedWrittenSkills: options.runInForceSeed };
 
   const promptContext = {
     ...options.context,
@@ -52,7 +52,7 @@ export function createHostRouter(options: HostRouterOptions) {
     rules: hostImplementer.rules
       .use(gated)
       .router(
-        createHostRuleProcedures({ ...options.context, runInForceSeed: options.seedWrittenSkills }),
+        createHostRuleProcedures({ ...options.context, runInForceSeed: options.runInForceSeed }),
       ),
     prompts: hostImplementer.prompts.use(gated).router({
       proposals: createHostPromptProposalProcedures(promptContext),

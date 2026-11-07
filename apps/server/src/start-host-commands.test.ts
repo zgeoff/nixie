@@ -30,7 +30,7 @@ async function setupTest() {
       dataDir,
       apiContext: api.context,
       readMemory: () => null,
-      seedWrittenSkills: () => Promise.resolve(),
+      runInForceSeed: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
       runReset,

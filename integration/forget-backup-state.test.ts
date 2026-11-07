@@ -114,7 +114,7 @@ async function setupTest() {
   const respond = makeHostResponder({
     context,
     readMemory: () => memory,
-    seedWrittenSkills: () => Promise.resolve(),
+    runInForceSeed: () => Promise.resolve(),
     readInForce: () => null,
     wakeExports: () => {},
     runReset: () => Promise.reject(new Error('no full reset runs in this suite')),
@@ -131,7 +131,7 @@ async function setupTest() {
   const respondOff = makeHostResponder({
     context: offContext,
     readMemory: () => memory,
-    seedWrittenSkills: () => Promise.resolve(),
+    runInForceSeed: () => Promise.resolve(),
     readInForce: () => null,
     wakeExports: () => {},
     runReset: () => Promise.reject(new Error('no full reset runs in this suite')),
