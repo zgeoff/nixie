@@ -4,7 +4,7 @@ import { pickBackupSetKind } from './pick-backup-set-kind';
 import { readBackupDue } from './read-backup-due';
 import type { BackupHealth } from './read-backup-health';
 import { readBackupHealth } from './read-backup-health';
-import type { BackupContext, BackupNotice } from './types';
+import type { BackupContext, BackupNotice, BackupWriter } from './types';
 import { writeBackupNotices } from './write-backup-notices';
 import type { ReceivedReceipt } from './write-received-receipts';
 import { writeReceivedReceipts } from './write-received-receipts';
@@ -25,27 +25,42 @@ export async function runBackupPass(
 ): Promise<BackupPass> {
   const received = await writeReceivedReceipts(context);
 
-  const done: { noticed: readonly BackupNotice[]; staged: BackupSetManifest | null } = {
+  const outputs: { noticed: readonly BackupNotice[]; staged: BackupSetManifest | null } = {
     noticed: [],
     staged: null,
   };
 
   try {
-    done.noticed = await writeBackupNotices(context, intervalMs);
+    outputs.noticed = await writeBackupNotices(context, intervalMs);
 
     const due = await readBackupDue(context.writer);
 
     const kind = pickBackupSetKind(due, context.writer.clock.now(), intervalMs);
 
-    done.staged = kind === null ? null : await writeSnapshotSet(context, kind);
-
-    return { received, ...done, health: await readBackupHealth(context.writer) };
+    outputs.staged = kind === null ? null : await writeSnapshotSet(context, kind);
   } catch (error) {
-    const read = await readBackupHealth(context.writer).then(
-      (health) => ({ health, failures: [error] as const }),
-      (readError: unknown) => ({ health: null, failures: [error, readError] as const }),
-    );
+    const healthAfterError = await readHealthOrError(context.writer);
 
-    throw new BackupPassError({ received, ...done, health: read.health }, read.failures);
+    throw 'error' in healthAfterError
+      ? new BackupPassError({ received, ...outputs, health: null }, [error, healthAfterError.error])
+      : new BackupPassError({ received, ...outputs, health: healthAfterError.health }, [error]);
+  }
+
+  const healthAtEnd = await readHealthOrError(context.writer);
+
+  if ('error' in healthAtEnd) {
+    throw new BackupPassError({ received, ...outputs, health: null }, [healthAtEnd.error]);
+  }
+
+  return { received, ...outputs, health: healthAtEnd.health };
+}
+
+type HealthOrError = { readonly health: BackupHealth } | { readonly error: unknown };
+
+async function readHealthOrError(writer: Pick<BackupWriter, 'db'>): Promise<HealthOrError> {
+  try {
+    return { health: await readBackupHealth(writer) };
+  } catch (error) {
+    return { error };
   }
 }

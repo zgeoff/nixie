@@ -243,6 +243,44 @@ test('it passes the receipts of a pass that fails after it records them to onPas
   );
 });
 
+test('it passes one failure to onError for a pass whose only failure is its health read', async () => {
+  const ctx = await setupTest();
+
+  const schedule = startBackupSchedule({
+    context: { writer: ctx.writer, storage: localDataStorage },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+  );
+
+  // SQLite computes a view's column only when a query reads it, and only the health read reads
+  // raised_at, so the overflow fails that read and leaves the notice write working
+  await sql`drop table backup_notices`.execute(ctx.writer.db);
+
+  await sql`create view backup_notices as
+    select 1 as sequence, 'failed' as cause, abs(-9223372036854775808) as raised_at`.execute(
+    ctx.writer.db,
+  );
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 2);
+
+  expect(ctx.onError.mock.calls.map((call) => call[0])).toSatisfy(
+    (failures: unknown[]) =>
+      failures.length === 1 &&
+      failures[0] instanceof Error &&
+      /integer overflow/u.test(failures[0].message),
+  );
+});
+
 test('it passes the failure of a pass to onError when onPass throws on that pass', async () => {
   const ctx = await setupTest();
 
