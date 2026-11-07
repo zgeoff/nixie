@@ -97,6 +97,6 @@ export { writeRuleResolution } from './write-rule-resolution';
 export { RuleConflictError } from './rule-conflict-error';
 export type { RuleProposalAnswer, RuleProposalResult } from './write-rule-proposal-answer';
 export { writeRuleProposalAnswer } from './write-rule-proposal-answer';
-export { writeRuleProposalLapses } from './write-rule-proposal-lapses';
+export { startRuleLapseSweep } from './start-rule-lapse-sweep';
 export type { DefinitionsRecordKind } from './definitions-record-kind';
 export type { RulesRecordKind } from './rules-record-kind';
