@@ -6,7 +6,7 @@ import type { PromptOverrides } from '@heynixie/prompts';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { StepInput, TaskMessaging, TaskReport, TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
-import type { SessionPoint, TurnProfile } from '@heynixie/wire';
+import type { ModelCallUsage, SessionPoint, TurnProfile } from '@heynixie/wire';
 import type { StatusRegistry } from './build-status-registry';
 import type { SessionGuard } from './make-session-guard';
 import type { SessionMarks } from './read-session-marks';
@@ -152,6 +152,10 @@ export interface ConversationRun {
   readonly endpoint: Pick<RunEndpoint, 'startStep'>;
   readonly model: ToolRunModel;
   readonly command: GuestCommand;
+
+  // the most model API calls one turn makes; a turn with no limit runs until the model ends it
+  readonly modelCallLimit?: number;
+  readonly onModelCall?: (usage: ModelCallUsage) => void;
 
   readonly getDefinitions: () => SessionDefinitions;
 

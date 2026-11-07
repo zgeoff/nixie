@@ -96,6 +96,7 @@ async function runTokenTurn(
         tools: { url, token: plan.token },
         resume: plan.resume,
         systemPrompt: plan.systemPrompt,
+        limits: { modelCalls: run.modelCallLimit ?? null },
         input: buildTurnInput(opening.batch.messages, [...plan.preamble, note?.text ?? null, held]),
       },
       messages: hasMore
@@ -113,6 +114,7 @@ async function runTokenTurn(
       signal: plan.signal,
       interrupt: input.interrupt,
       readRecallMark: () => readRecalledThrough(run.context, input.taskID),
+      ...(run.onModelCall === undefined ? {} : { onCall: run.onModelCall }),
     });
 
     return {

@@ -68,6 +68,7 @@ test('it gives every query() nixie tools alone, no settings, skills or SDK memor
     {
       tools: [],
       allowedTools: ['mcp__nixie'],
+      includePartialMessages: true,
       thinking: { type: 'adaptive', display: 'summarized' },
       permissionMode: 'dontAsk',
       settingSources: [],
@@ -244,10 +245,10 @@ test('it reports each inbox message the model read, then the turn end at the las
     ctx.deps,
   );
 
-  const reply = ctx.frames.at(2);
+  const reply = ctx.frames.at(3);
 
   if (reply?.type !== 'assistant') {
-    throw new Error('the third frame is not an assistant frame');
+    throw new Error('the fourth frame is not an assistant frame');
   }
 
   expect(ctx.frames).toStrictEqual([
@@ -258,7 +259,27 @@ test('it reports each inbox message the model read, then the turn end at the las
       text: '',
       toolUses: [{ id: expect.toBeString(), name: 'mcp__nixie__note_read' }],
     },
+    {
+      type: 'call',
+      usage: {
+        uncachedInputTokens: 10,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 5,
+      },
+    },
     { type: 'assistant', messageID: expect.toBeString(), text: 'You need milk.', toolUses: [] },
+    {
+      type: 'call',
+      usage: {
+        uncachedInputTokens: 10,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 5,
+      },
+    },
     {
       type: 'ended',
       boundary: {
@@ -342,6 +363,16 @@ test('it carries the reasoning summary on the thinking frame, the thinking token
       messageID: expect.toBeString(),
       text: 'The 09:25 ferry reaches the north pier by 08:55.',
       toolUses: [],
+    },
+    {
+      type: 'call',
+      usage: {
+        uncachedInputTokens: 10,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 5,
+      },
     },
     {
       type: 'ended',
@@ -690,6 +721,16 @@ test('it reports the replies before a refused call, then fails the turn with no 
       toolUses: [{ id: expect.toBeString(), name: 'mcp__nixie__note_read' }],
     },
     {
+      type: 'call',
+      usage: {
+        uncachedInputTokens: 10,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 5,
+      },
+    },
+    {
       type: 'failed',
       reason: 'model_api',
       error: 'quota',
@@ -991,6 +1032,37 @@ test('it ends an interrupted turn at its last chain entry, and leaves a queued m
       sessionID: expect.toBeString(),
       messageID: expect.toBeString(),
     },
+  });
+});
+
+test('it ends a turn at its last chain entry when the model calls reach the turn limit', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_read', input: { name: 'groceries' } } },
+    { toolUse: { name: 'mcp__nixie__note_read', input: { name: 'pantry' } } },
+    { text: 'You need milk.' },
+  );
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      limits: { modelCalls: 1 },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  expect({
+    requests: ctx.model.requests.length,
+    ended: ctx.frames.at(-1),
+  }).toStrictEqual({
+    requests: 1,
+    ended: expect.objectContaining({
+      type: 'ended',
+      subtype: 'error_max_turns',
+      boundary: expect.objectContaining({ harness: 'agent-sdk' }),
+    }),
   });
 });
 
@@ -1349,7 +1421,9 @@ test('it never compacts the session itself when a call reads past the profile wi
 
   expect(ctx.frames.filter((frame) => frame.type !== 'read')).toMatchObject([
     { type: 'assistant', text: '' },
+    { type: 'call', usage: { uncachedInputTokens: 150_000 } },
     { type: 'assistant', text: 'CHERRY' },
+    { type: 'call', usage: { uncachedInputTokens: 10 } },
     { type: 'ended', context: { window: 100_000 } },
   ]);
 });

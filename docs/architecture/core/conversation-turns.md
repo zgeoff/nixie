@@ -202,6 +202,22 @@ interrupted turn's last entry. A resumed turn interrupted before its first new c
 the entry it resumed from. A fresh turn interrupted before its first chain entry has no boundary to
 end at, so it fails as a step error, and the next step runs it again.
 
+## Model calls
+
+The guest reports each model API call of a turn in a call frame. The frame holds the call's token
+counts in nixie's own form: uncached input, cache reads, cache writes split by lifetime, and output.
+The CLI copies a call's opening usage onto the message of each content block it streams, so those
+messages undercount the output. The guest therefore reads the counts from the stream's own events,
+and writes the frame when the call's stream stops. A call that reports its cache writes with no
+split by lifetime counts each such write as a 1-hour write, which costs more. The host hands each
+call frame to the step before it reads the guest's next frame, so an interrupt that the step raises
+reaches the guest before its next call ends.
+
+The turn frame holds a limit of model calls. The guest gives a set limit to the SDK as the query's
+maximum turns, and a turn that reaches it ends at its last chain entry, as an interrupted turn does.
+A conversation turn has no limit, and a started task's turn stops at 100 calls, because no one
+watches it.
+
 ## System messages
 
 Every block that nixie writes into a user message is a system message: a `<system-message>` element

@@ -67,10 +67,11 @@ function buildTokensCost(tokens: CallTokens, prices: ModelPrices | null): number
 
   return buildCallCost(
     {
-      input_tokens: tokens.inputTokens ?? 0,
-      output_tokens: tokens.outputTokens ?? 0,
-      cache_read_input_tokens: tokens.cacheReadTokens ?? 0,
-      cache_creation_input_tokens: tokens.cacheWriteTokens ?? 0,
+      uncachedInputTokens: tokens.inputTokens ?? 0,
+      cacheReadTokens: tokens.cacheReadTokens ?? 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: tokens.cacheWriteTokens ?? 0,
+      outputTokens: tokens.outputTokens ?? 0,
     },
     prices,
   );

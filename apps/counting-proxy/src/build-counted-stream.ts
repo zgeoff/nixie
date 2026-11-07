@@ -1,23 +1,19 @@
-import type { CallUsage } from '@heynixie/models';
-import { parseJSONOrNull } from '@heynixie/wire';
-import { isRecord } from './is-record';
-import { parseReportedUsage } from './parse-reported-usage';
-
-type ReportedFields = Readonly<Record<string, unknown>>;
+import type { ModelCallUsage, ReportedUsage } from '@heynixie/wire';
+import { foldAnthropicUsageEvent, parseAnthropicCallUsage, parseJSONOrNull } from '@heynixie/wire';
 
 // The stream ends for its reader only after the count is written, so a caller that read a whole
 // reply never races its own next request past the count. A reader that stops early, or an upstream
 // that breaks, still counts what the events reported so far.
 export function buildCountedStream(
   body: ReadableStream<Uint8Array>,
-  onEnd: (usage: CallUsage | null, complete: boolean) => Promise<void>,
+  onEnd: (usage: ModelCallUsage | null, complete: boolean) => Promise<void>,
 ): ReadableStream<Uint8Array> {
   const reader = body.getReader();
 
   const decoder = new TextDecoder();
 
   let pending = '';
-  let reported: ReportedFields = {};
+  let reported: ReportedUsage = {};
   let ended = false;
 
   const readEvents = (text: string) => {
@@ -41,7 +37,7 @@ export function buildCountedStream(
 
     readEvents(`${decoder.decode()}\n`);
 
-    await onEnd(parseReportedUsage(reported), complete);
+    await onEnd(parseAnthropicCallUsage(reported), complete);
   };
 
   return new ReadableStream<Uint8Array>({
@@ -79,43 +75,10 @@ export function buildCountedStream(
   });
 }
 
-// message_start carries the input side of the usage and message_delta the running totals, so a
-// later event's count replaces an earlier one's
-function foldEventLine(reported: ReportedFields, line: string): ReportedFields {
+function foldEventLine(reported: ReportedUsage, line: string): ReportedUsage {
   if (!line.startsWith('data:')) {
     return reported;
   }
 
-  const event = parseJSONOrNull(line.slice('data:'.length).trim());
-
-  if (!isRecord(event)) {
-    return reported;
-  }
-
-  const usage = findEventUsage(event);
-
-  if (usage === null) {
-    return reported;
-  }
-
-  return {
-    ...reported,
-    ...Object.fromEntries(Object.entries(usage).filter(([, value]) => value !== null)),
-  };
-}
-
-function findEventUsage(event: Readonly<Record<string, unknown>>): ReportedFields | null {
-  if (event['type'] === 'message_start' && isRecord(event['message'])) {
-    return toRecordOrNull(event['message']['usage']);
-  }
-
-  if (event['type'] === 'message_delta') {
-    return toRecordOrNull(event['usage']);
-  }
-
-  return null;
-}
-
-function toRecordOrNull(value: unknown): ReportedFields | null {
-  return isRecord(value) ? value : null;
+  return foldAnthropicUsageEvent(reported, parseJSONOrNull(line.slice('data:'.length).trim()));
 }

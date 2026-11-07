@@ -951,6 +951,45 @@ test("it pauses a task at its dollar limit, priced on its model's profile", asyn
   });
 });
 
+test('it interrupts a task turn whose model calls reach its dollar limit, and pauses the task with the limit it reached', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.runNextStep(runner);
+
+  const paused = await ctx.readKinds('task.paused');
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(paused.map((record) => record.thread)).toStrictEqual([taskID]);
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 1, dollars: 0.03 },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+});
+
 test('it runs the next turn of a task paused at its turn limit once the limit is raised', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();

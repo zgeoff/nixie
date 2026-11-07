@@ -40,6 +40,27 @@ test('it asks the model for the summarized thinking display', () => {
   expect(options.thinking).toStrictEqual({ type: 'adaptive', display: 'summarized' });
 });
 
+test.each([
+  ['a limit of 40 calls', 40, { maxTurns: 40 }],
+  ['no limit', null, {}],
+])(
+  "it caps a turn's model calls at %s and streams each call's events",
+  (_case, modelCalls, cap) => {
+    const options = buildQueryOptions(
+      buildMockTurnFrame({ profile: { authHeader: 'x-api-key' }, limits: { modelCalls } }),
+      {
+        env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+        toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+      },
+    );
+
+    expect({
+      maxTurns: options.maxTurns,
+      includePartialMessages: options.includePartialMessages,
+    }).toStrictEqual({ maxTurns: undefined, ...cap, includePartialMessages: true });
+  },
+);
+
 test('it passes the broker proxy settings on by name and nothing else from the guest env', () => {
   const options = buildQueryOptions(buildMockTurnFrame({ profile: { authHeader: 'x-api-key' } }), {
     env: {

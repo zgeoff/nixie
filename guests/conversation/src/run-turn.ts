@@ -1,6 +1,7 @@
 import type { SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import type { GuestFrame, SessionPoint } from '@heynixie/wire';
+import type { GuestFrame, ReportedUsage, SessionPoint } from '@heynixie/wire';
+import { foldAnthropicUsageEvent, parseAnthropicCallUsage } from '@heynixie/wire';
 import { buildModelFailure } from './build-model-failure';
 import type { TurnFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
@@ -26,6 +27,9 @@ interface TurnState extends TurnInputState {
 
   // The CLI retried the model call that the next main-chain message answers.
   isRetried: boolean;
+
+  // the usage the stream reported so far for the model call in flight
+  reported: ReportedUsage;
 }
 
 export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<void> {
@@ -41,6 +45,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
     compactWindow: getCompactWindow(turn.profile),
     isInterrupted: false,
     isRetried: false,
+    reported: {},
     toolsReady: Promise.withResolvers(),
     inputFailed: Promise.withResolvers(),
     ended: Promise.withResolvers(),
@@ -161,6 +166,10 @@ function emitMessageFrames(
 
   if (message.type === 'result') {
     return emitResult(message, deps, state);
+  }
+
+  if (message.type === 'stream_event') {
+    return emitCallUsage(message, deps, state);
   }
 
   return emitCommandRead(message, deps, state);
@@ -320,7 +329,10 @@ async function emitResult(
   deps: TurnDependencies,
   state: TurnState,
 ): Promise<MessageOutcome> {
-  if (message.subtype !== 'success' && state.isInterrupted) {
+  if (
+    message.subtype === 'error_max_turns' ||
+    (message.subtype !== 'success' && state.isInterrupted)
+  ) {
     return emitInterrupted(message, deps, state);
   }
 
@@ -349,8 +361,9 @@ async function emitResult(
   return 'result';
 }
 
-// The CLI ends an interrupted turn with an error result, yet every chain entry before the interrupt
-// stands, so the turn ends at the last of them and the host commits what the model read.
+// The CLI ends a turn that it interrupted or stopped at its call limit with an error result, yet
+// every chain entry before the stop stands, so the turn ends at the last of them and the host
+// commits what the model read.
 async function emitInterrupted(
   message: SDKResultMessage,
   deps: TurnDependencies,
@@ -412,4 +425,30 @@ function pickBoundary(
     message.terminal_reason !== undefined && overflowReasons.has(message.terminal_reason);
 
   return isOverflow ? (state.committed ?? state.boundary) : state.boundary;
+}
+
+type StreamEventMessage = Extract<SDKMessage, { type: 'stream_event' }>;
+
+// The CLI copies a call's opening usage onto the message of each content block it streams, so only
+// the stream's own events give one final count per call.
+async function emitCallUsage(
+  message: StreamEventMessage,
+  deps: TurnDependencies,
+  state: TurnState,
+): Promise<MessageOutcome> {
+  if (message.event.type !== 'message_stop') {
+    state.reported = foldAnthropicUsageEvent(state.reported, message.event);
+
+    return 'continue';
+  }
+
+  const usage = parseAnthropicCallUsage(state.reported);
+
+  state.reported = {};
+
+  if (usage !== null) {
+    await deps.emit({ type: 'call', usage });
+  }
+
+  return 'continue';
 }
