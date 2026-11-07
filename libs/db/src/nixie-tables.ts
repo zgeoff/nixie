@@ -334,6 +334,14 @@ export interface NixieTables {
     readonly refused_at: number;
     readonly refused_sequence: number;
   };
+  readonly rule_exports: {
+    readonly export_id: string;
+    readonly state: string | null;
+    readonly pull_request_number: number | null;
+    readonly pull_request_url: string | null;
+    readonly attempt_started_at: number | null;
+    readonly updated_at: number;
+  };
   readonly rule_fires: {
     readonly rule_id: string;
     readonly last_fired_at: number;
