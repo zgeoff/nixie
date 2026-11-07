@@ -41,8 +41,7 @@ wildcard keeps the widening check decidable, which a regular expression would no
 
 The parser turns each rule into its canonical form: each list sorted with its duplicates dropped,
 free text in NFC, and the expiry in UTC. Two files that list the same rule in another order
-therefore give the same rule, and the [snapshot hash](../core/definitions.md#the-snapshot-hash)
-stays the same.
+therefore give the same rule.
 
 ## Matching
 
