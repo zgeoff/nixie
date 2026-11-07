@@ -77,8 +77,9 @@ verdict.
 
 Each rule renders as one sentence from a fixed template per field, such as "**Allow** `mail.send`
 when every destination matches `*@example.com`." The outcome leads the sentence, the tools or "a
-call" follow it, and each other field adds a condition after "when". The note stays out of the
-sentence, so the user's words never mix with the rule's.
+call" follow it, and each other field adds a condition after "when". A `task.start` variant renders
+in words, so `task.start/atc` reads "starting a task in atc". The note stays out of the sentence, so
+the user's words never mix with the rule's.
 
 ## The widening check
 

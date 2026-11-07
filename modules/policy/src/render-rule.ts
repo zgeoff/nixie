@@ -11,7 +11,7 @@ export function renderRule(rule: Rule): string {
     .exhaustive();
 
   const subject =
-    rule.tools === undefined ? 'a call' : joinOr(rule.tools.map((tool) => renderCode(tool)));
+    rule.tools === undefined ? 'a call' : joinOr(rule.tools.map((tool) => renderTool(tool)));
 
   const conditions = [
     ...(rule.effects === undefined ? [] : [renderEffects(rule.effects, isAllow)]),
@@ -39,6 +39,16 @@ function joinList(items: readonly string[], word: string): string {
   const last = items.at(-1) ?? '';
 
   return items.length <= 1 ? last : `${items.slice(0, -1).join(', ')} ${word} ${last}`;
+}
+
+const taskStartPrefix = 'task.start/';
+
+function renderTool(tool: string): string {
+  const variant = tool.startsWith(taskStartPrefix) ? tool.slice(taskStartPrefix.length) : '';
+
+  return variant === '' || variant.includes('*')
+    ? renderCode(tool)
+    : `starting a task in ${variant}`;
 }
 
 function renderCode(text: string): string {

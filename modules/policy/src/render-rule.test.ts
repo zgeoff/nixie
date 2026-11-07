@@ -26,7 +26,12 @@ test.each<[string, Rule, string]>([
   [
     'ask-coding-sessions',
     { id: 'ask-coding-sessions', outcome: 'ask', tools: ['task.start/atc'] },
-    '**Ask** before `task.start/atc`.',
+    '**Ask** before starting a task in atc.',
+  ],
+  [
+    'allow-any-task-start',
+    { id: 'allow-any-task-start', outcome: 'allow', tools: ['task.start/*'] },
+    '**Allow** `task.start/*`.',
   ],
   [
     'deny-net-mail',
@@ -59,7 +64,7 @@ test.each<[string, Rule, string]>([
         { arg: 'model', op: 'in', value: ['glm', 'sol'] },
       ],
     },
-    '**Ask** before `task.start/nixie` when `memory` is `read` and `model` is `glm` or `sol`.',
+    '**Ask** before starting a task in nixie when `memory` is `read` and `model` is `glm` or `sol`.',
   ],
   [
     'ask-job-sends',
