@@ -69,6 +69,20 @@
         "tiny-invariant": "catalog:",
       },
     },
+    "adapters/search-kagi": {
+      "name": "@heynixie/search-kagi",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/connectors": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@faker-js/faker": "catalog:",
+        "@heynixie/mock-server": "workspace:*",
+        "@msw/data": "catalog:",
+        "msw": "catalog:",
+      },
+    },
     "apps/backup-job": {
       "name": "@heynixie/backup-job",
       "version": "0.0.0",
@@ -1192,6 +1206,8 @@
     "@heynixie/sandbox": ["@heynixie/sandbox@workspace:modules/sandbox"],
 
     "@heynixie/sandbox-imp": ["@heynixie/sandbox-imp@workspace:adapters/sandbox-imp"],
+
+    "@heynixie/search-kagi": ["@heynixie/search-kagi@workspace:adapters/search-kagi"],
 
     "@heynixie/server": ["@heynixie/server@workspace:apps/server"],
 
