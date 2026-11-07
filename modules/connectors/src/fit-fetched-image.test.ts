@@ -4,14 +4,54 @@ import { fitFetchedImage } from './fit-fetched-image';
 import { buildPNGHeader } from './test-utils/build-png-header';
 import { encodeTestImage } from './test-utils/encode-test-image';
 
-test('it keeps a PNG within the long edge byte for byte', async () => {
+test('it encodes a PNG within the long edge again as a PNG of its own size', async () => {
   const bytes = await encodeTestImage({ width: 40, height: 30 }, 'png');
+  const fitted = await fitFetchedImage(bytes, 1568);
 
-  expect(fitFetchedImage(bytes, 1568)).resolves.toStrictEqual({
+  invariant(fitted.kind === 'image');
+
+  expect(fitted).toStrictEqual({
     kind: 'image',
-    image: { mediaType: 'image/png', bytes },
+    image: { mediaType: 'image/png', bytes: expect.any(Uint8Array) },
     width: 40,
     height: 30,
+  });
+
+  expect(new Bun.Image(fitted.image.bytes).metadata()).resolves.toStrictEqual({
+    width: 40,
+    height: 30,
+    format: 'png',
+  });
+});
+
+test.each([
+  { format: 'jpeg', mediaType: 'image/jpeg' },
+  { format: 'webp', mediaType: 'image/png' },
+] as const)('it encodes a small $format again as $mediaType', async (row) => {
+  const bytes = await encodeTestImage({ width: 40, height: 30 }, row.format);
+  const fitted = await fitFetchedImage(bytes, 1568);
+
+  invariant(fitted.kind === 'image');
+
+  expect(fitted.image.mediaType).toBe(row.mediaType);
+});
+
+test('it returns a PNG whose header reads cleanly but whose pixels never arrive as unreadable', () => {
+  expect(fitFetchedImage(buildPNGHeader({ width: 100, height: 100 }), 1568)).resolves.toStrictEqual(
+    { kind: 'unreadable', reason: 'ERR_IMAGE_DECODE_FAILED' },
+  );
+});
+
+test('it returns a JPEG cut off halfway as a whole JPEG the model can read', async () => {
+  const bytes = await encodeTestImage({ width: 400, height: 300 }, 'jpeg');
+  const fitted = await fitFetchedImage(bytes.subarray(0, bytes.length / 2), 1568);
+
+  invariant(fitted.kind === 'image');
+
+  expect(new Bun.Image(fitted.image.bytes).metadata()).resolves.toStrictEqual({
+    width: 400,
+    height: 300,
+    format: 'jpeg',
   });
 });
 

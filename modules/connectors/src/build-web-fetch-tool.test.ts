@@ -2085,11 +2085,11 @@ test('it returns a PNG under the image limit as image content with its media typ
       blocked: null,
       image: { mediaType: 'image/png', width: 40, height: 30 },
     },
-    images: [{ mediaType: 'image/png', bytes: png }],
+    images: [{ mediaType: 'image/png', bytes: expect.any(Uint8Array) }],
   });
 });
 
-test('it returns no image, marked truncated, for an image past the image limit', async () => {
+test('it returns a result with no image, marked truncated, for an image the fetcher cut at the image limit', async () => {
   const ctx = await setupTest();
 
   const tool = buildWebFetchTool(
@@ -2248,7 +2248,9 @@ test('it counts the image it returns against the session image budget', async ()
     },
   );
 
-  expect(reserveImages.mock.calls).toStrictEqual([[[{ mediaType: 'image/png', bytes: png }]]]);
+  expect(reserveImages.mock.calls).toStrictEqual([
+    [[{ mediaType: 'image/png', bytes: expect.any(Uint8Array) }]],
+  ]);
 });
 
 test('it returns an error, with no image, once the session holds as many images as it can take', async () => {
@@ -2341,8 +2343,8 @@ test('it returns an error, with no image, for an image fetched under the run tok
   expect(outcome).toStrictEqual({
     status: 'error',
     message:
-      'https://tide-charts.test/harbour.png is an image, and a call outside a conversation ' +
-      'session has no session to show it in',
+      'https://tide-charts.test/harbour.png is an image, and this call cannot show the model an ' +
+      'image',
   });
 });
 

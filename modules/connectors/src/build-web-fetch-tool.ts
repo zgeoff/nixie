@@ -177,7 +177,7 @@ interface PageFetch {
   readonly limits: PageLimits;
   readonly imageLongEdge: number;
 
-  // null for a call under the run's own token, which holds no session to show an image in
+  // null when the call cannot show the model an image, such as one under the run's own token
   readonly reserveImages: ((images: readonly ToolImage[]) => boolean) | null;
 }
 
@@ -243,7 +243,7 @@ async function runImageResult(fetching: PageFetch, reply: ImageReply): Promise<T
   if (fetching.reserveImages === null) {
     return {
       status: 'error',
-      message: `${reply.url} is an image, and a call outside a conversation session has no session to show it in`,
+      message: `${reply.url} is an image, and this call cannot show the model an image`,
     };
   }
 
