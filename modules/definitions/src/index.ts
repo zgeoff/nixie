@@ -78,7 +78,7 @@ export type {
   SourceKind,
   DueDefinitionsExport,
   ToolDeclaration,
-  WrittenSkillState,
+  RuntimeChangeState,
 } from './types';
 
 export { writeResetSeed } from './write-reset-seed';

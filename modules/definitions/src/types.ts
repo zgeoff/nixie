@@ -163,7 +163,7 @@ export interface WrittenSkillRow {
   readonly proposal_id: string;
   readonly name: string;
   readonly skill_hash: string;
-  readonly state: WrittenSkillState;
+  readonly state: RuntimeChangeState;
   readonly base_hash: string | null;
   readonly base_origin: DefinitionsSkillOrigin | null;
   readonly definitions_hash: string | null;
@@ -172,7 +172,7 @@ export interface WrittenSkillRow {
   readonly updated_at: number;
 }
 
-export type WrittenSkillState = 'in_force' | 'adopted' | 'superseded' | 'retired';
+export type RuntimeChangeState = 'in_force' | 'adopted' | 'superseded' | 'retired';
 
 interface SkillExportRow {
   readonly approval_id: string;

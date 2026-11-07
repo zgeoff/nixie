@@ -1,3 +1,4 @@
+import { buildRuntimeOverlay } from './build-runtime-overlay';
 import type { DefinitionsSkillOrigin, SkillRef } from './types';
 
 export interface DefinitionsSkillRef {
@@ -34,6 +35,15 @@ export interface SkillOverlayInput {
 }
 
 export function buildSkillOverlay(input: SkillOverlayInput): SkillOverlay {
+  const overlay = buildRuntimeOverlay({
+    seeded: input.skills.map((skill) => ({ key: skill.name, hash: skill.skillHash, value: skill })),
+    changes: input.written.map((written) => ({
+      key: written.name,
+      hash: written.skillHash,
+      value: written,
+    })),
+  });
+
   const byName = new Map<string, OverlaidSkill>(
     input.skills.map((skill) => [
       skill.name,
@@ -42,18 +52,11 @@ export function buildSkillOverlay(input: SkillOverlayInput): SkillOverlay {
   );
 
   const conversation = new Set(input.conversationSkills);
-
-  const adopted: WrittenSkill[] = [];
-
   const beneath = new Map<string, DefinitionsSkillRef | null>();
 
-  for (const written of input.written) {
-    const definitions = input.skills.find((skill) => skill.name === written.name) ?? null;
-
-    if (definitions?.skillHash === written.skillHash) {
-      adopted.push(written);
-      continue;
-    }
+  for (const overlaid of overlay.inForce) {
+    const written = overlaid.change;
+    const definitions = overlaid.beneath;
 
     beneath.set(written.approvalID, definitions);
 
@@ -72,7 +75,7 @@ export function buildSkillOverlay(input: SkillOverlayInput): SkillOverlay {
   return {
     skills: [...byName.values()].toSorted((left, right) => (left.name < right.name ? -1 : 1)),
     conversationSkills: [...conversation].toSorted(),
-    adopted,
+    adopted: overlay.adopted,
     beneath,
   };
 }

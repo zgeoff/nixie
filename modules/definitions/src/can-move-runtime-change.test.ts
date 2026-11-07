@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { canMoveWrittenSkill } from './can-move-written-skill';
+import { canMoveRuntimeChange } from './can-move-runtime-change';
 
 test.each([
   ['in_force', 'adopted', true],
@@ -12,6 +12,6 @@ test.each([
   ['superseded', 'adopted', false],
   ['retired', 'in_force', false],
   ['retired', 'adopted', false],
-] as const)('it answers whether a written skill %s moves to %s: %p', (from, to, isAllowed) => {
-  expect(canMoveWrittenSkill(from, to)).toBe(isAllowed);
+] as const)('it answers whether a runtime change %s moves to %s: %p', (from, to, isAllowed) => {
+  expect(canMoveRuntimeChange(from, to)).toBe(isAllowed);
 });
