@@ -204,7 +204,7 @@ test('it passes the health of a pass whose staging fails to onPass, and the stag
   });
 });
 
-test('it passes the receipts of a pass that fails after it records them to onPass, with no health', async () => {
+test('it passes the receipts of a pass that fails after it records them to onPass, and both the failure and the failed health read to onError', async () => {
   const ctx = await setupTest();
 
   const schedule = startBackupSchedule({
@@ -227,7 +227,7 @@ test('it passes the receipts of a pass that fails after it records them to onPas
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.onError.mock.calls.length === 1);
+  await waitForCondition(() => ctx.onError.mock.calls.length === 2);
 
   expect(ctx.onPass.mock.calls[1]?.[0]).toStrictEqual({
     received: [{ sequence: 1, status: 'published', failure: null }],
@@ -236,9 +236,10 @@ test('it passes the receipts of a pass that fails after it records them to onPas
     health: null,
   });
 
-  expect(ctx.onError.mock.calls[0]?.[0]).toMatchObject({
-    message: expect.stringContaining('no such table: backup_notices'),
-  });
+  expect(ctx.onError.mock.calls.map((call) => call[0])).toSatisfyAll(
+    (failure: unknown) =>
+      failure instanceof Error && /no such table: backup_notices/u.test(failure.message),
+  );
 });
 
 test('it passes the failure of a pass to onError when onPass throws on that pass', async () => {

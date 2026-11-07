@@ -50,7 +50,9 @@ export function startBackupSchedule(options: BackupScheduleOptions): BackupSched
           options.onError(passError);
         }
 
-        options.onError(error.cause);
+        for (const failure of error.failures) {
+          options.onError(failure);
+        }
       },
     },
   });

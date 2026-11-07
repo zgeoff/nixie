@@ -41,8 +41,11 @@ export async function runBackupPass(
 
     return { received, ...done, health: await readBackupHealth(context.writer) };
   } catch (error) {
-    const health = await readBackupHealth(context.writer).catch(() => null);
+    const read = await readBackupHealth(context.writer).then(
+      (health) => ({ health, failures: [error] as const }),
+      (readError: unknown) => ({ health: null, failures: [error, readError] as const }),
+    );
 
-    throw new BackupPassError({ received, ...done, health }, error);
+    throw new BackupPassError({ received, ...done, health: read.health }, read.failures);
   }
 }
