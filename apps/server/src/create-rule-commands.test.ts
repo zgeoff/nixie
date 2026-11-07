@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { z } from 'zod';
 import { runCLI } from './run-cli';
 import { runHostCommand } from './test-utils/run-host-command';
+import { seedRuleConflict } from './test-utils/seed-rule-conflict';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
@@ -86,6 +87,39 @@ test('it lists no conflicts while no runtime change conflicts with the repo', as
   const listed = await runHostCommand(ctx.configPath, ['rules', 'conflicts']);
 
   expect(listed.stdout).toBe('[]\n');
+});
+
+test.each([
+  ['nixie', [['ask-mail', '**Deny** `mail.send`.']]],
+  ['repo', [['ask-mail', '**Ask** before `mail.reply` or `mail.send`.']]],
+])('it resolves a conflict with --keep %s and puts that version in force', async (keep, rules) => {
+  const nixie = await startInProcessNixie({ seedData: (files) => seedRuleConflict(files) });
+
+  await nixie.waitForLogEvent('ready');
+
+  const resolved = await runHostCommand(nixie.configPath, [
+    'rules',
+    'resolve',
+    'ask-mail',
+    '--keep',
+    keep,
+  ]);
+
+  const listed = await runHostCommand(nixie.configPath, ['rules', 'list']);
+
+  const inForce = z
+    .array(z.object({ ruleID: z.string(), sentence: z.string() }))
+    .parse(JSON.parse(listed.stdout));
+
+  expect({
+    exitCode: resolved.exitCode,
+    resolved: JSON.parse(resolved.stdout),
+    inForce: inForce.map((rule) => [rule.ruleID, rule.sentence]),
+  }).toStrictEqual({
+    exitCode: 0,
+    resolved: { ruleID: 'ask-mail', changeID: expect.any(String), keep },
+    inForce: rules,
+  });
 });
 
 test.each([
