@@ -1783,7 +1783,13 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
     { run },
   );
 
-  expect(oldestRead.status).toBe('error');
+  expect(oldestRead).toStrictEqual({
+    status: 'error',
+    message:
+      `${oldest.result['page']} is not a page of this session. A page ID works only in the ` +
+      'session that fetched it, so fetch the page again by its url.',
+  });
+
   expect(newestRead).toStrictEqual(newest);
 });
 
@@ -1899,5 +1905,10 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
     { run },
   );
 
-  expect(outcome.status).toBe('error');
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      `${first.result['page']} is not a page of this session. A page ID works only in the ` +
+      'session that fetched it, so fetch the page again by its url.',
+  });
 });
