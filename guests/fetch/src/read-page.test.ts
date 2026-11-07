@@ -230,10 +230,15 @@ test('it returns the http page for an http URL whose host fails the https handsh
     defaultPorts: { http: plain.port, https: secure.port },
   });
 
-  expect(reply).toMatchObject({
+  expect(reply).toStrictEqual({
     kind: 'page',
     url: 'http://site.test/notices',
+    status: 200,
+    contentType: 'text/plain',
     text: 'Harbour notices',
+    links: [],
+    isTruncated: false,
+    blocked: null,
   });
 
   expect(secure.requests).toStrictEqual([]);
@@ -256,10 +261,15 @@ test('it fetches an http URL that names a port over http without trying https', 
     defaultPorts: { http: readClosedPort(), https: secure.port },
   });
 
-  expect(reply).toMatchObject({
+  expect(reply).toStrictEqual({
     kind: 'page',
     url: `http://site.test:${plain.port}/buoys`,
+    status: 200,
+    contentType: 'text/plain',
     text: 'Buoy readings',
+    links: [],
+    isTruncated: false,
+    blocked: null,
   });
 
   expect(secure.requests).toStrictEqual([]);

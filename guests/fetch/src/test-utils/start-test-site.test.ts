@@ -61,7 +61,10 @@ test('it answers plain HTTP when its scheme is http', async () => {
   const chunks = await answer.toArray();
 
   expect(Buffer.concat(chunks).toString()).toBe('plain hello');
-  expect(site.requests).toMatchObject([{ url: 'http://site.test/page' }]);
+
+  expect(site.requests).toStrictEqual([
+    { url: 'http://site.test/page', headers: expect.objectContaining({ host: 'site.test' }) },
+  ]);
 });
 
 test('it stops the site when the test finishes', async () => {
