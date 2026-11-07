@@ -13,7 +13,7 @@ export type PlannedHop =
   | { readonly kind: 'refused'; readonly reason: string };
 
 export async function planHop(text: string, options: HopOptions): Promise<PlannedHop> {
-  const url = parseHTTPSURL(text);
+  const url = parseWebURL(text);
 
   if (!(url instanceof URL)) {
     return url;
@@ -25,15 +25,17 @@ export async function planHop(text: string, options: HopOptions): Promise<Planne
   return pickCheckedAddress(url, addresses, options.checkAddress);
 }
 
-function parseHTTPSURL(text: string): URL | Extract<PlannedHop, { kind: 'refused' }> {
+const webProtocols: ReadonlySet<string> = new Set(['http:', 'https:']);
+
+function parseWebURL(text: string): URL | Extract<PlannedHop, { kind: 'refused' }> {
   if (!URL.canParse(text)) {
     return { kind: 'refused', reason: `${text} is not a URL` };
   }
 
   const url = new URL(text);
 
-  if (url.protocol !== 'https:') {
-    return { kind: 'refused', reason: `only https URLs are fetched, not ${url.protocol}` };
+  if (!webProtocols.has(url.protocol)) {
+    return { kind: 'refused', reason: `only http and https URLs are fetched, not ${url.protocol}` };
   }
 
   url.username = '';

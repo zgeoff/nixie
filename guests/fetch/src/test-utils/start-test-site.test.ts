@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import type { IncomingMessage } from 'node:http';
+import { Agent as HTTPAgent, request as requestHTTP } from 'node:http';
 import { Agent, request } from 'node:https';
 import { connect } from 'node:tls';
 import { startTestSite } from './start-test-site';
@@ -32,6 +33,38 @@ test('it answers HTTPS for its names and records each request', async () => {
 
   expect(Buffer.concat(chunks).toString()).toBe('hello');
   expect(site.requests).toMatchObject([{ url: 'https://site.test/page' }]);
+});
+
+test('it answers plain HTTP when its scheme is http', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('plain hello'),
+  });
+
+  const response = Promise.withResolvers<IncomingMessage>();
+
+  requestHTTP(
+    {
+      host: '127.0.0.1',
+      port: site.port,
+      path: '/page',
+      headers: { host: 'site.test' },
+      agent: new HTTPAgent({ proxyEnv: {} }),
+    },
+    response.resolve,
+  )
+    .on('error', response.reject)
+    .end();
+
+  const answer = await response.promise;
+  const chunks = await answer.toArray();
+
+  expect(Buffer.concat(chunks).toString()).toBe('plain hello');
+
+  expect(site.requests).toStrictEqual([
+    { url: 'http://site.test/page', headers: expect.objectContaining({ host: 'site.test' }) },
+  ]);
 });
 
 test('it stops the site when the test finishes', async () => {

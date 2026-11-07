@@ -876,7 +876,7 @@ test('it returns a binary page with no text', async () => {
 });
 
 test.each([
-  ['refused', 'only https URLs are fetched, not http:'],
+  ['refused', 'only http and https URLs are fetched, not ftp:'],
   ['failed', 'the fetch passed 15000 ms'],
 ] as const)('it returns a %s fetch as an error with its reason', async (kind, reason) => {
   const ctx = await setupTest();

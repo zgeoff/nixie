@@ -3,6 +3,7 @@ import { createTestCertificate } from './create-test-certificate';
 
 export interface TestSiteOptions {
   readonly names: readonly string[];
+  readonly scheme?: 'https' | 'http';
 
   readonly respond: (request: Request) => Response | Promise<Response>;
 }
@@ -35,7 +36,7 @@ export async function startTestSite(options: TestSiteOptions): Promise<TestSite>
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    tls: { cert: certificate.cert, key: certificate.key },
+    ...(options.scheme === 'http' ? {} : { tls: { cert: certificate.cert, key: certificate.key } }),
     fetch: answerRequest,
   });
 

@@ -2,9 +2,13 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { gzipSync } from 'node:zlib';
 import { defaultFetchTextBytes } from '@heynixie/wire';
 import { buildReadableText } from './build-readable-text';
+import { createWebTransports } from './create-web-transports';
 import { makeAddressCheck } from './make-address-check';
 import { readPage } from './read-page';
 import { buildStubResolver } from './test-utils/build-stub-resolver';
+import { readClosedPort } from './test-utils/read-closed-port';
+import { startResettingSite } from './test-utils/start-resetting-site';
+import { startSilentListener } from './test-utils/start-silent-listener';
 import { startTestSite } from './test-utils/start-test-site';
 
 test('it returns the readable text of an HTML page over a connection to the checked address', async () => {
@@ -25,6 +29,7 @@ test('it returns the readable text of an HTML page over a connection to the chec
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: resolver.resolveHost,
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -52,6 +57,7 @@ test('it connects to the checked address and never resolves the host a second ti
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: resolver.resolveHost,
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -66,6 +72,7 @@ test('it refuses a certificate that does not cover the host name it sent', async
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -80,6 +87,7 @@ test('it refuses a site whose certificate no trusted root signed', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
   });
 
   expect(reply).toMatchObject({ kind: 'failed' });
@@ -87,7 +95,6 @@ test('it refuses a site whose certificate no trusted root signed', async () => {
 });
 
 test.each([
-  ['http://site.test/', 'http:'],
   ['ftp://site.test/', 'ftp:'],
   ['file:///etc/passwd', 'file:'],
   ['ws://site.test/', 'ws:'],
@@ -98,21 +105,308 @@ test.each([
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: () => true,
     resolveHost: resolver.resolveHost,
+    transports: createWebTransports(),
   });
 
   expect(reply).toStrictEqual({
     kind: 'refused',
-    reason: `only https URLs are fetched, not ${scheme}`,
+    reason: `only http and https URLs are fetched, not ${scheme}`,
   });
 
   expect(resolver.hosts).toStrictEqual([]);
 });
+
+test('it returns the https page for an http URL whose host serves https', async () => {
+  const secure = await startTestSite({
+    names: ['site.test'],
+    respond: () =>
+      new Response('<main><p>Tide times over https</p></main>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+  });
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('Tide times over http'),
+  });
+
+  const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1']] } });
+
+  const reply = await readPage('http://site.test/tides', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: resolver.resolveHost,
+    transports: createWebTransports(),
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: 'https://site.test/tides',
+    status: 200,
+    contentType: 'text/html',
+    text: 'Tide times over https',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(plain.requests).toStrictEqual([]);
+});
+
+test('it returns the http page, with its http final URL, for an http URL whose host refuses https', async () => {
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () =>
+      new Response('<main><p>Harbour notices</p></main>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+  });
+
+  const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1'], ['10.0.0.1']] } });
+
+  const reply = await readPage('http://site.test/notices', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: resolver.resolveHost,
+    transports: createWebTransports(),
+    defaultPorts: { http: plain.port, https: readClosedPort() },
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: 'http://site.test/notices',
+    status: 200,
+    contentType: 'text/html',
+    text: 'Harbour notices',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(resolver.hosts).toStrictEqual(['site.test']);
+  expect(plain.requests).toHaveLength(1);
+});
+
+test('it returns the http page within the time limit for an http URL whose host drops https', async () => {
+  const silent = startSilentListener();
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () =>
+      new Response('Lock opening hours', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage('http://site.test/locks', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 2000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    defaultPorts: { http: plain.port, https: silent.port },
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: 'http://site.test/locks',
+    status: 200,
+    contentType: 'text/plain',
+    text: 'Lock opening hours',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(silent.chunks).not.toStrictEqual([]);
+});
+
+test('it fails with the https error, with no http request, when https connects and then drops the request', async () => {
+  const secure = await startResettingSite(['site.test']);
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('Plain notices', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage('http://site.test/notices', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
+  });
+
+  expect(reply).toStrictEqual({ kind: 'failed', reason: expect.any(String) });
+  expect(plain.requests).toStrictEqual([]);
+});
+
+test('it returns the http page for an http URL whose host fails the https handshake', async () => {
+  const secure = await startTestSite({ names: ['other.test'], respond: () => new Response('x') });
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('Harbour notices', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage('http://site.test/notices', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: 'http://site.test/notices',
+    status: 200,
+    contentType: 'text/plain',
+    text: 'Harbour notices',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(secure.requests).toStrictEqual([]);
+});
+
+test('it fetches an http URL that names a port over http without trying https', async () => {
+  const secure = await startTestSite({ names: ['site.test'], respond: () => new Response('x') });
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('Buoy readings', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage(`http://site.test:${plain.port}/buoys`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: secure.ca,
+    defaultPorts: { http: readClosedPort(), https: secure.port },
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: `http://site.test:${plain.port}/buoys`,
+    status: 200,
+    contentType: 'text/plain',
+    text: 'Buoy readings',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(secure.requests).toStrictEqual([]);
+});
+
+test.each([
+  'http://site.test:80/buoys',
+  'HTTP://reader@site.test:80/buoys',
+  'http:site.test:80/buoys',
+])('it fetches %s, which names port 80, over http without trying https', async (url) => {
+  const secure = await startTestSite({ names: ['site.test'], respond: () => new Response('x') });
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('Buoy readings', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const reply = await readPage(url, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: 'http://site.test/buoys',
+    status: 200,
+    contentType: 'text/plain',
+    text: 'Buoy readings',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+
+  expect(secure.requests).toStrictEqual([]);
+});
+
+test('it fails at the time limit, with no http request, when https connects but never answers', async () => {
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
+  const secure = await startTestSite({
+    names: ['site.test'],
+    respond: async () => {
+      await held.promise;
+
+      return new Response('late');
+    },
+  });
+
+  const plain = await startTestSite({
+    names: ['site.test'],
+    scheme: 'http',
+    respond: () => new Response('plain'),
+  });
+
+  const reply = await readPage('http://site.test/', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 300, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
+  });
+
+  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
+  expect(plain.requests).toStrictEqual([]);
+});
+
+test.each(['http', 'https'])(
+  'it refuses a %s URL whose host resolves to a non-public address',
+  async (scheme) => {
+    const resolver = buildStubResolver({ answers: { 'inside.test': [['10.0.0.5']] } });
+
+    const reply = await readPage(`${scheme}://inside.test/admin`, {
+      limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+      checkAddress: makeAddressCheck([]),
+      resolveHost: resolver.resolveHost,
+      transports: createWebTransports(),
+    });
+
+    expect(reply).toStrictEqual({
+      kind: 'refused',
+      reason: 'inside.test resolves to 10.0.0.5, which is not a public address',
+    });
+
+    expect(resolver.hosts).toStrictEqual(['inside.test']);
+  },
+);
 
 test('it refuses text that is not a URL', async () => {
   const reply = await readPage('not a url', {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: () => true,
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
   });
 
   expect(reply).toStrictEqual({ kind: 'refused', reason: 'not a url is not a URL' });
@@ -131,6 +425,7 @@ test('it refuses a host when any of its A and AAAA addresses is not public', asy
       return address === '127.0.0.1' || address === '2606:4700::1';
     },
     resolveHost: () => Promise.resolve(['127.0.0.1', '2606:4700::1', 'fd00::1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -148,6 +443,7 @@ test('it refuses a host that resolves to a private address under the production 
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: makeAddressCheck([]),
     resolveHost: () => Promise.resolve(['93.184.215.14', '::ffff:169.254.169.254']),
+    transports: createWebTransports(),
   });
 
   expect(reply).toStrictEqual({
@@ -163,6 +459,7 @@ test('it checks an address literal in the URL', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: makeAddressCheck([]),
     resolveHost: resolver.resolveHost,
+    transports: createWebTransports(),
   });
 
   expect(reply).toStrictEqual({
@@ -178,54 +475,75 @@ test('it refuses a host that resolves to no address', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: () => true,
     resolveHost: () => Promise.resolve([]),
+    transports: createWebTransports(),
   });
 
   expect(reply).toStrictEqual({ kind: 'refused', reason: 'site.test resolves to no address' });
 });
 
-test('it resolves and checks the host of each redirect before it connects', async () => {
-  const site = await startTestSite({
-    names: ['site.test', 'inside.test'],
-    respond: () => Response.redirect('https://inside.test/admin', 302),
-  });
+test.each(['https', 'http'])(
+  'it resolves and checks the host of a redirect to %s before it connects',
+  async (scheme) => {
+    const site = await startTestSite({
+      names: ['site.test', 'inside.test'],
+      respond: () => Response.redirect(`${scheme}://inside.test/admin`, 302),
+    });
 
-  const resolver = buildStubResolver({
-    answers: { 'site.test': [['127.0.0.1']], 'inside.test': [['10.0.0.5']] },
-  });
+    const resolver = buildStubResolver({
+      answers: { 'site.test': [['127.0.0.1']], 'inside.test': [['10.0.0.5']] },
+    });
 
-  const reply = await readPage(`https://site.test:${site.port}/`, {
-    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
-    checkAddress: (address) => address === '127.0.0.1',
-    resolveHost: resolver.resolveHost,
-    ca: site.ca,
-  });
+    const reply = await readPage(`https://site.test:${site.port}/`, {
+      limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+      checkAddress: (address) => address === '127.0.0.1',
+      resolveHost: resolver.resolveHost,
+      transports: createWebTransports(),
+      ca: site.ca,
+    });
 
-  expect(reply).toStrictEqual({
-    kind: 'refused',
-    reason: 'inside.test resolves to 10.0.0.5, which is not a public address',
-  });
+    expect(reply).toStrictEqual({
+      kind: 'refused',
+      reason: 'inside.test resolves to 10.0.0.5, which is not a public address',
+    });
 
-  expect(resolver.hosts).toStrictEqual(['site.test', 'inside.test']);
-  expect(site.requests).toHaveLength(1);
-});
+    expect(resolver.hosts).toStrictEqual(['site.test', 'inside.test']);
+    expect(site.requests).toHaveLength(1);
+  },
+);
 
-test('it refuses a redirect to an http URL', async () => {
-  const site = await startTestSite({
+test('it follows a redirect to an http URL over http, with no https try first', async () => {
+  const plain = await startTestSite({
     names: ['site.test'],
-    respond: () => Response.redirect('http://site.test/plain', 301),
+    scheme: 'http',
+    respond: () => new Response('Plain chart', { headers: { 'content-type': 'text/plain' } }),
   });
 
-  const reply = await readPage(`https://site.test:${site.port}/`, {
+  const secure = await startTestSite({
+    names: ['site.test'],
+    respond: () => Response.redirect('http://site.test/chart', 301),
+  });
+
+  const reply = await readPage('https://site.test/', {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
-    ca: site.ca,
+    transports: createWebTransports(),
+    ca: secure.ca,
+    defaultPorts: { http: plain.port, https: secure.port },
   });
 
   expect(reply).toStrictEqual({
-    kind: 'refused',
-    reason: 'only https URLs are fetched, not http:',
+    kind: 'page',
+    url: 'http://site.test/chart',
+    status: 200,
+    contentType: 'text/plain',
+    text: 'Plain chart',
+    links: [],
+    isTruncated: false,
+    blocked: null,
   });
+
+  expect(secure.requests).toHaveLength(1);
 });
 
 test('it follows redirects up to the limit and returns the final URL', async () => {
@@ -244,6 +562,7 @@ test('it follows redirects up to the limit and returns the final URL', async () 
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 2, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -277,6 +596,7 @@ test('it resolves the links of a page against its final URL after a redirect', a
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -306,6 +626,7 @@ test('it cuts the list of other links before the text of the page at the text li
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 38 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -331,6 +652,7 @@ test('it fails a page that redirects more times than the limit', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 3, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -355,6 +677,7 @@ test('it returns the blocked reason for a Cloudflare challenge in place of the p
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -384,6 +707,7 @@ test('it returns the blocked reason for a challenge page it knows by its markup'
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -408,6 +732,7 @@ test('it returns no blocked reason for a forbidden page with no challenge', asyn
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -426,6 +751,7 @@ test('it sends a user agent that names nixie', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -450,6 +776,7 @@ test('it sends no credential from the URL and no cookie a redirect set', async (
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -472,6 +799,7 @@ test('it stops at the body limit and marks the result truncated', async () => {
     limits: { bodyBytes: 25, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -493,6 +821,7 @@ test('it returns a body exactly at the body limit whole', async () => {
     limits: { bodyBytes: 10, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -510,6 +839,7 @@ test('it strips the link mark characters from a plain text page and lists no lin
     limits: { bodyBytes: 1000, timeoutMs: 5000, redirects: 5, textBytes: 1000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -529,6 +859,7 @@ test('it counts the decoded bytes of a compressed body against the body limit', 
     limits: { bodyBytes: 100, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -548,6 +879,7 @@ test('it fails a page sent in a content coding it cannot read', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -568,6 +900,7 @@ test('it stops at the text limit without splitting a character and marks the res
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 4 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -594,6 +927,7 @@ test('it fails a fetch that passes the time limit', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 300, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -615,6 +949,7 @@ test('it returns the page of a slow site that answers within the time limit', as
   const options = {
     checkAddress: (address: string) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   };
 
@@ -668,6 +1003,7 @@ test('it fails a fetch whose compressed body stalls past the time limit', async 
     limits: { bodyBytes: 1_000_000, timeoutMs: 300, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -699,6 +1035,7 @@ test('it returns a compressed body that stalls and finishes within the time limi
   const options = {
     checkAddress: (address: string) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   };
 
@@ -729,6 +1066,7 @@ test('it fails a fetch whose DNS answer passes the time limit', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 100, redirects: 5, textBytes: 1_000_000 },
     checkAddress: () => false,
     resolveHost: resolver.resolveHost,
+    transports: createWebTransports(),
   });
 
   expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 100 ms' });
@@ -741,6 +1079,7 @@ test('it checks a slow DNS answer that arrives within the time limit', async () 
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: () => false,
     resolveHost: resolver.resolveHost,
+    transports: createWebTransports(),
   });
 
   expect(reply).toStrictEqual({
@@ -762,6 +1101,7 @@ test('it returns a binary type with no body', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -791,6 +1131,7 @@ test('it returns another text type as it arrived', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -829,6 +1170,7 @@ test('it cuts a long article full of links to the start that fits the default te
     },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 
@@ -867,6 +1209,7 @@ test('it decodes the text in the charset the page names', async () => {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
     ca: site.ca,
   });
 

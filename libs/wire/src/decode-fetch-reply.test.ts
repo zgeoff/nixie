@@ -55,12 +55,12 @@ test('it returns a binary page with no text', () => {
 
 test('it returns a refusal with its reason', () => {
   const bytes = new TextEncoder().encode(
-    JSON.stringify({ kind: 'refused', reason: 'only https URLs are fetched' }),
+    JSON.stringify({ kind: 'refused', reason: 'only http and https URLs are fetched' }),
   );
 
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'refused',
-    reason: 'only https URLs are fetched',
+    reason: 'only http and https URLs are fetched',
   });
 });
 

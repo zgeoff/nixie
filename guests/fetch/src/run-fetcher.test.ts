@@ -6,6 +6,7 @@ import {
   encodeFrame,
   makeFrameDecoder,
 } from '@heynixie/wire';
+import { createWebTransports } from './create-web-transports';
 import { readPage } from './read-page';
 import { runFetcher } from './run-fetcher';
 import { buildStubResolver } from './test-utils/build-stub-resolver';
@@ -33,6 +34,7 @@ test('it reads one request frame, however it arrives, and writes one reply frame
         limits: request.limits,
         checkAddress: (address) => address === '127.0.0.1',
         resolveHost: resolver.resolveHost,
+        transports: createWebTransports(),
         ca: site.ca,
       }),
   );
@@ -75,6 +77,7 @@ test('it throws when the input closes before a whole request arrives', () => {
         limits: request.limits,
         checkAddress: () => true,
         resolveHost: resolver.resolveHost,
+        transports: createWebTransports(),
       }),
     ),
   ).rejects.toThrowWithMessage(Error, 'the input closed before a whole request arrived');
@@ -92,6 +95,7 @@ test('it throws on a malformed request without reading a page', () => {
         limits: request.limits,
         checkAddress: () => true,
         resolveHost: resolver.resolveHost,
+        transports: createWebTransports(),
       }),
     ),
   ).rejects.toThrow(TypeError);

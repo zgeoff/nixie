@@ -540,8 +540,8 @@ test.each([
   ],
   [
     'a refused URL',
-    { kind: 'refused' as const, reason: 'only https URLs are fetched, not http:' },
-    'only https URLs are fetched, not http:',
+    { kind: 'refused' as const, reason: 'only http and https URLs are fetched, not ftp:' },
+    'only http and https URLs are fetched, not ftp:',
   ],
   [
     'a fetcher that exits non-zero',
