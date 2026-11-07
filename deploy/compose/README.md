@@ -16,8 +16,10 @@ secrets.
    harness. Add any network your Docker daemon uses outside its default ranges to the egress deny
    list.
 3. Replace the persona in `definitions/` with your own. Keep or edit the starter rules in
-   `definitions/rules/starter.yaml`. The first seed applies their asks at once, and waits for you to
-   approve their allows with `nixie proposals approve <proposal ID>`.
+   `definitions/rules/starter.yaml`. The pinned image reads definitions format 2, which leaves rule
+   files unapplied. When you run a release that applies rule files, set `format: 3` in
+   `definitions/nixie.yaml`. The next seed applies the asks at once, and waits for you to approve
+   the allows with `nixie proposals approve <proposal ID>`.
 4. Encrypt your secrets file with sops to your host's age key and your recovery key. It holds the
    deployment key, impd's token and one credential per model profile, in the shape
    [the Kubernetes Secret example](../kubernetes/secret.example.yaml) shows.
