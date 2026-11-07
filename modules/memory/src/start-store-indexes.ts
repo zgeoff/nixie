@@ -17,11 +17,20 @@ interface MessageIndexes {
   readonly lock: DeliveryLock;
 }
 
+export interface MomentIndexes {
+  readonly vectors: VectorIndex | null;
+
+  // the moments projection's updated sequence that the index has read through
+  readonly cursor: { through: number };
+  readonly lock: DeliveryLock;
+}
+
 export interface StoreIndexes {
   readonly index: MemoryIndex;
 
   readonly vectors: VectorIndex | null;
   readonly messages: MessageIndexes;
+  readonly moments: MomentIndexes;
 }
 
 export async function startStoreIndexes(context: MemoryContext): Promise<StoreIndexes> {
@@ -37,6 +46,11 @@ export async function startStoreIndexes(context: MemoryContext): Promise<StoreIn
       index: messageIndex,
       vectors: semantic === undefined ? null : startVectorIndex(semantic.encoder, semantic.onError),
       cursor: makeMessageCursor(),
+      lock: makeDeliveryLock(),
+    },
+    moments: {
+      vectors: semantic === undefined ? null : startVectorIndex(semantic.encoder, semantic.onError),
+      cursor: { through: 0 },
       lock: makeDeliveryLock(),
     },
   };

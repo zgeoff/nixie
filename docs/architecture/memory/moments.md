@@ -56,14 +56,14 @@ turn, after it reads the span again.
 
 ## The tools
 
-| Tool            | Effect | Does                                                                |
-| --------------- | ------ | ------------------------------------------------------------------- |
-| `moment.keep`   | `note` | Keeps a span of the caller's own thread with a title                |
-| `moment.edit`   | `note` | Changes the title or the edges, or adds or rewrites a reflection    |
-| `moment.link`   | `note` | Links a memory item to the moment, or removes the link              |
-| `moment.retire` | `note` | Retires a moment, or restores it                                    |
-| `moment.find`   | `read` | Searches titles, notes and reflections by keyword, or lists by date |
-| `moment.read`   | `read` | Returns the moment's text and its span in order, a page at a time   |
+| Tool            | Effect | Does                                                                               |
+| --------------- | ------ | ---------------------------------------------------------------------------------- |
+| `moment.keep`   | `note` | Keeps a span of the caller's own thread with a title                               |
+| `moment.edit`   | `note` | Changes the title or the edges, or adds or rewrites a reflection                   |
+| `moment.link`   | `note` | Links a memory item to the moment, or removes the link                             |
+| `moment.retire` | `note` | Retires a moment, or restores it                                                   |
+| `moment.find`   | `read` | Searches titles, notes and reflections by keyword and by meaning, or lists by date |
+| `moment.read`   | `read` | Returns the moment's text and its span in order, a page at a time                  |
 
 The read-only rule allows every moment tool, because each declares `note` or `read` and runs direct.
 A model names a moment by its [short ID](../core/database.md#short-ids). A refusal returns to the
@@ -73,6 +73,16 @@ model as the tool's error, in a fixed sentence that holds no moment text.
 no prose. `moment.find` decrypts every candidate's text in process memory, a batch at a time, and
 matches each query word against it, because a full-text index on disk would keep a destroyed
 moment's words.
+
+`moment.find` also ranks moments by meaning, through a moment vector index that holds one vector per
+active or retired moment, encoded from its title, note and reflections together. The index works
+like the [item vector index](./store.md#the-indexes): it lives in process memory, rebuilds in the
+background after each start, and leaves a search on keywords alone until the rebuild ends. Before
+each search, the store encodes every moment kept or changed since the last search and drops every
+moment whose destroy started, so a moment kept on one turn matches by meaning on the next, whichever
+path kept it. A destroy also drops the moment's vector once its cleanup completes. A moment matches
+by meaning when its similarity reaches 0.3, the floor that `memory.recall` uses, because the model
+asked for the search. The search merges the keyword and meaning rankings by rank, as recall does.
 
 `moment.read` returns the conversation of the span by default: the user's messages and the model's
 replies, in order. The raw fields of tool calls, tool results and step markers bury those words, so
@@ -99,8 +109,8 @@ them.
 `memory.recall` returns each item's links to active moments as short IDs and titles, and its result
 record holds the linked moments' IDs only. The tool descriptions of `memory.recall` and
 `moment.read` tell the model to read a linked moment when the reason behind a fact matters. Per-turn
-retrieval runs the store's own recall, which returns no links, so no moment text reaches a turn that
-way.
+retrieval runs the store's own recall, which returns no links and never reads the moment vector
+index, so no moment text reaches a turn that way.
 
 nixie counts the moments kept over the week before an instant, across every thread, and leaves out
 destroyed ones. The count shows in three places and never blocks a keep:
@@ -118,8 +128,8 @@ destroyed ones. The count shows in three places and never blocks a keep:
 
 The client shows moments on a timeline and opens each one whole, beside its span. The timeline lists
 the active moments newest first, a page at a time, with each one's title, keeper, keep date and last
-edit date. Its keyword search runs the same match as `moment.find` and shows the best matches in
-time order. Retired moments join the timeline only behind a filter.
+edit date. Its search runs the same match as `moment.find`, by keyword and by meaning, and shows the
+best matches in time order. Retired moments join the timeline only behind a filter.
 
 The moment view reads the title, the note, every reflection and the links in one read transaction,
 so an edit that commits between the reads cannot pair one version's row with another version's text.

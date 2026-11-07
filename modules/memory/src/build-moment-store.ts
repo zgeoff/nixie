@@ -23,6 +23,7 @@ import type { MomentWeekCount } from './read-week-count';
 import { readWeekCount } from './read-week-count';
 import { runBegunDestroy } from './run-begun-destroy';
 import { runMomentDestroy } from './run-moment-destroy';
+import type { MomentIndexes } from './start-store-indexes';
 import type { WriteInTransaction } from './types';
 import { writeKeptMoment } from './write-kept-moment';
 import { writeMomentEdit } from './write-moment-edit';
@@ -63,8 +64,12 @@ export interface MomentStore {
   readonly finishDestroy: (momentID: string) => Promise<void>;
 }
 
-export function buildMomentStore(context: MomentDestroyContext): MomentStore {
+export function buildMomentStore(
+  context: MomentDestroyContext,
+  indexes: MomentIndexes,
+): MomentStore {
   const log = context.log;
+  const search = { log, moments: indexes };
 
   return {
     keep: (request, writeInTransaction) => writeKeptMoment(context, request, writeInTransaction),
@@ -72,12 +77,20 @@ export function buildMomentStore(context: MomentDestroyContext): MomentStore {
     link: (request, writeInTransaction) => writeMomentLink(context, request, writeInTransaction),
     retire: (request) => writeMomentRetirement(context, request),
     read: (request) => readMoment(log, request),
-    readMatches: (query) => readMomentMatches(log, query),
+    readMatches: (query) => readMomentMatches(search, query),
     readWeekCount: (at) => readWeekCount(log.writer.db.$extendTables<MomentTables>(), at),
     readLinks: (itemIDs) => readMomentLinks(log, itemIDs),
     readView: (momentID) => readMomentView(log, momentID),
     readDestroyPreview: (target) => readMomentDestroyPreview(log, target),
-    destroy: (target, writeInTransaction) => runMomentDestroy(context, target, writeInTransaction),
+    destroy: async (target, writeInTransaction) => {
+      const destroyed = await runMomentDestroy(context, target, writeInTransaction);
+
+      if (destroyed.status === 'destroyed') {
+        indexes.vectors?.remove(destroyed.momentID);
+      }
+
+      return destroyed;
+    },
     finishDestroy: (momentID) => runBegunDestroy(context, momentID),
   };
 }

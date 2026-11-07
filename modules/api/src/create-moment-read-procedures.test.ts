@@ -7,6 +7,7 @@ import {
   findNoAllowRule,
   startMemoryStore,
 } from '@heynixie/memory';
+import { buildStubEncoder } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
@@ -19,6 +20,10 @@ async function setupTest() {
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     cleanupSessions: mock<CleanupSessions>(() => Promise.resolve()),
+    semanticSearch: {
+      encoder: buildStubEncoder([['treats', 'snacks']]),
+      onError: mock<(error: unknown) => void>(),
+    },
     gate: {
       check: () =>
         Promise.resolve({
@@ -191,6 +196,55 @@ test('#memory.listMoments finds a moment by a word of its note', async () => {
   const found = await buildTestClient(ctx.url, laptop.token).memory.listMoments({
     includeRetired: false,
     query: 'treats',
+  });
+
+  expect(found.moments.map((moment) => moment.shortID)).toStrictEqual([noted.shortID]);
+});
+
+test('#memory.listMoments finds a moment by a paraphrase of its note that shares no word with it', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  await ctx.memory.waitForSemanticIndex();
+
+  const [message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the cat learned the flap today' },
+    },
+  ]);
+
+  invariant(message);
+
+  const noted = await ctx.memory.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The cat flap',
+  });
+
+  await ctx.memory.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The first night out',
+  });
+
+  invariant(noted.status === 'written');
+
+  await ctx.memory.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID: noted.momentID, version: 1 },
+    change: { kind: 'note', note: 'Patience with treats worked.' },
+  });
+
+  const found = await buildTestClient(ctx.url, laptop.token).memory.listMoments({
+    includeRetired: false,
+    query: 'snacks',
   });
 
   expect(found.moments.map((moment) => moment.shortID)).toStrictEqual([noted.shortID]);
