@@ -35,11 +35,11 @@ test('it passes every byte through and reports the usage of the message start an
 
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     {
-      input_tokens: 40,
-      output_tokens: 12,
-      cache_creation_input_tokens: null,
-      cache_read_input_tokens: null,
-      cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 2000 },
+      uncachedInputTokens: 40,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 2000,
+      outputTokens: 12,
     },
     true,
   );
@@ -65,11 +65,11 @@ test('it reports the usage seen so far when the reader stops early', async () =>
 
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     {
-      input_tokens: 40,
-      output_tokens: 1,
-      cache_creation_input_tokens: null,
-      cache_read_input_tokens: null,
-      cache_creation: null,
+      uncachedInputTokens: 40,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 1,
     },
     false,
   );
@@ -103,11 +103,11 @@ test('it reports the usage seen so far and fails the stream when the upstream br
 
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     {
-      input_tokens: 40,
-      output_tokens: 1,
-      cache_creation_input_tokens: null,
-      cache_read_input_tokens: null,
-      cache_creation: null,
+      uncachedInputTokens: 40,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 1,
     },
     false,
   );

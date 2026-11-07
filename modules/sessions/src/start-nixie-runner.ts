@@ -10,6 +10,7 @@ import {
   getHarness,
   modelSessionCleanupCompletedCodec,
   modelSessionInvalidatedCodec,
+  modelTurnEndedCodec,
   resolveModelCredentials,
 } from '@heynixie/models';
 import type { GrantSpec, GuestCommand, Sandbox } from '@heynixie/sandbox';
@@ -38,6 +39,8 @@ import { createActor } from 'xstate';
 import { buildDefaultStatus } from './build-default-status';
 import { buildGuestCommand } from './build-guest-command';
 import { silentEndToolName } from './build-silent-end-tool';
+import type { CallBudget } from './create-call-budget';
+import { createCallBudget } from './create-call-budget';
 import { createWorkerSandbox } from './create-worker-sandbox';
 import { getHarnessImage } from './get-harness-image';
 import type { SessionGuard } from './make-session-guard';
@@ -412,7 +415,28 @@ async function runGuardedStep(
     };
   }
 
-  return runTaskTurn(runner, input, { run, invalidated });
+  const budget = createCallBudget(run.profile.profile.prices, run.limits.dollars - used.dollars);
+
+  const result = await runTaskTurn(
+    runner,
+    { ...input, interrupt: AbortSignal.any([input.interrupt, budget.signal]) },
+    { run, invalidated, budget },
+  );
+
+  if (budget.signal.aborted) {
+    await writeTaskLimitPause(context, {
+      lease: input.lease,
+      stepKey: input.stepKey,
+      startedBy: run.startedBy,
+      used: {
+        turns: used.turns + countEndedTurns(result.records),
+        dollars: used.dollars + budget.getSpentDollars(),
+      },
+      limits: run.limits,
+    });
+  }
+
+  return result;
 }
 
 async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
@@ -426,6 +450,7 @@ async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
 interface TaskTurnParts {
   readonly run: StartedRun;
   readonly invalidated: AbortSignal;
+  readonly budget: CallBudget;
 }
 
 async function runTaskTurn(
@@ -450,10 +475,14 @@ async function runTaskTurn(
 
 interface TaskRunParts {
   readonly run: StartedRun;
+  readonly budget: CallBudget;
   readonly endpoint: RunEndpoint;
   readonly sandbox: Sandbox;
   readonly invalidated: AbortSignal;
 }
+
+// No one watches a task turn, so a model that loops on tool calls stops at this many calls.
+const taskModelCallLimit = 100;
 
 function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun {
   const options = runner.options;
@@ -468,6 +497,8 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     endpoint: parts.endpoint,
     model: run.model,
     command: run.command,
+    modelCallLimit: taskModelCallLimit,
+    onModelCall: parts.budget.onCall,
     getDefinitions: () =>
       run.options.persona === 'default'
         ? options.getDefinitions()
@@ -492,6 +523,10 @@ function buildHeldSessionGuard(invalidated: AbortSignal): SessionGuard {
       invariant(false, "a started task's cleanup goes through the task's own guard");
     },
   };
+}
+
+function countEndedTurns(records: StepResult['records']): number {
+  return records.filter((record) => record.kind === modelTurnEndedCodec.kind).length;
 }
 
 async function runTaskSessionCleanup(

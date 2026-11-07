@@ -4,26 +4,24 @@ import { buildCallTokens } from './build-call-tokens';
 test('it counts the input, the cache writes, the cache reads and the output', () => {
   expect(
     buildCallTokens({
-      input_tokens: 40,
-      output_tokens: 12,
-      cache_creation_input_tokens: 3000,
-      cache_read_input_tokens: 800,
-      cache_creation: { ephemeral_5m_input_tokens: 1000, ephemeral_1h_input_tokens: 2000 },
+      uncachedInputTokens: 40,
+      cacheReadTokens: 800,
+      cacheWrite5mTokens: 1000,
+      cacheWrite1hTokens: 2000,
+      outputTokens: 12,
     }),
   ).toBe(3852);
 });
 
-test('it counts the larger cache write figure when the split and the total disagree', () => {
+test('it counts the reasoning tokens once, inside the output', () => {
   expect(
     buildCallTokens({
-      input_tokens: 0,
-      output_tokens: 0,
-      cache_creation_input_tokens: 100,
-      cache_creation: { ephemeral_5m_input_tokens: 300, ephemeral_1h_input_tokens: 200 },
+      uncachedInputTokens: 7,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 3,
+      reasoningTokens: 2,
     }),
-  ).toBe(500);
-});
-
-test('it counts only the input and the output of a reply with no cache figures', () => {
-  expect(buildCallTokens({ input_tokens: 7, output_tokens: 3 })).toBe(10);
+  ).toBe(10);
 });

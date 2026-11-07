@@ -225,6 +225,68 @@ test('it sends the guest an interrupt frame when the interrupt signal aborts', a
   expect(turn.failure).toStrictEqual({ type: 'failed', reason: 'error', detail: 'interrupted' });
 });
 
+test('it hands each model call to the caller before it reads the next frame, so an interrupt the caller raises reaches the guest before its next call', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  const interrupt = new AbortController();
+
+  const events: string[] = [];
+
+  ctx.stub.setGuestScript(async (_turn, guest) => {
+    invariant(guest.interrupt && guest.emit);
+
+    guest.emit([
+      {
+        type: 'call',
+        usage: {
+          uncachedInputTokens: 900,
+          cacheReadTokens: 0,
+          cacheWrite5mTokens: 0,
+          cacheWrite1hTokens: 0,
+          outputTokens: 20,
+        },
+      },
+    ]);
+
+    await once(guest.interrupt, 'abort');
+
+    events.push('interrupt');
+
+    return [
+      {
+        type: 'call',
+        usage: {
+          uncachedInputTokens: 30,
+          cacheReadTokens: 0,
+          cacheWrite5mTokens: 0,
+          cacheWrite1hTokens: 0,
+          outputTokens: 5,
+        },
+      },
+      { type: 'failed', reason: 'error', detail: 'interrupted' },
+    ];
+  });
+
+  await runGuestTurn({
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
+    }),
+    messages: [],
+    signal: new AbortController().signal,
+    interrupt: interrupt.signal,
+    onCall: (usage) => {
+      events.push(`call ${usage.uncachedInputTokens}`);
+      interrupt.abort();
+    },
+  });
+
+  expect(events).toStrictEqual(['call 900', 'interrupt', 'call 30']);
+});
+
 test('it throws when the guest exits before it ends or fails its turn', async () => {
   const ctx = setupTest();
 

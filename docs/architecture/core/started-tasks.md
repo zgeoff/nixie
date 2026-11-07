@@ -138,6 +138,13 @@ the task's ID and counts in a system message that says only the user can resume 
 message leaves out the task's name, because a model wrote that name, and the model trusts a system
 message as nixie's own text.
 
+A turn can pass the dollar limit on its own, so the runner prices each of the turn's model calls
+with the task's profile as the guest reports it
+([model calls](./conversation-turns.md#model-calls)). When the calls and the earlier count together
+reach the dollar limit, the runner interrupts the turn
+([interrupts](./conversation-turns.md#interrupts)). Once the turn ends, the step asks for the pause
+and writes the same two records, with the counts it reached, and its commit pauses the task.
+
 While the newest limit record on the task's thread is `task.limit_reached`, a resume or a restart of
 the task refuses. The user raises the limit with the `task-raise` host command
 ([host commands](../deployment/host-commands.md#tasks)), which writes a `task.limits_raised` record

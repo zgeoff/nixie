@@ -128,6 +128,7 @@ async function runStepSession(
       tools,
       resume: null,
       systemPrompt: session.systemPrompt,
+      limits: { modelCalls: null },
       input: [{ uuid: crypto.randomUUID(), text: session.prompt }],
     },
     messages: [],

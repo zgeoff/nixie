@@ -1,5 +1,11 @@
 import { once } from 'node:events';
-import type { GuestFrame, HostFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
+import type {
+  GuestFrame,
+  HostFrame,
+  InboxMessage,
+  ModelCallUsage,
+  SessionPoint,
+} from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { P, match } from 'ts-pattern';
 import type { GuestHome } from '../types';
@@ -9,7 +15,13 @@ import { readStubGuestHistory } from './read-stub-guest-history';
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
 export type StubGuestReply =
-  | { readonly text: string; readonly gate?: () => Promise<void> }
+  | {
+      readonly text: string;
+      readonly gate?: () => Promise<void>;
+
+      // the guest reports the call's usage before the gate opens
+      readonly usage?: ModelCallUsage;
+    }
   | {
       readonly toolUse: {
         readonly name: string;
@@ -225,6 +237,11 @@ async function runInputCall(
         return { frames, overflow: overflowed.overflow, refusal: null };
       })
       .with({ text: P.string }, async (answered): Promise<InputAnswer> => {
+        if (answered.usage !== undefined) {
+          frames.push({ type: 'call', usage: answered.usage });
+          run.emit?.(frames.splice(0));
+        }
+
         if (answered.gate !== undefined) {
           await waitUnlessStopped(answered.gate(), run.signal);
         }
