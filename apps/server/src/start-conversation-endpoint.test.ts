@@ -287,7 +287,8 @@ test("it serves search to the conversation with the key from the secrets file, a
     'Low tide is at 13:40.',
   );
 
-  expect(records.find((record) => record.kind === 'tool_result')?.toolCall).toMatchObject({
+  expect(records.find((record) => record.kind === 'tool_result')?.toolCall).toStrictEqual({
+    callID: expect.any(String),
     outcome: 'result',
     content: {
       result: {
@@ -377,17 +378,23 @@ test('it refuses the second search of a day under the cap of 1 the configuration
   await sendClientMessage(api.client, { text: 'How do I get to Manly?' }, 'Searched twice.');
 
   const refused = nixie.toolResults.at(-1);
+  const result: unknown = JSON.parse(refused?.result ?? '{}');
 
-  expect({ name: refused?.name, result: JSON.parse(refused?.result ?? '{}') }).toMatchObject({
+  expect({ name: refused?.name, result }).toStrictEqual({
     name: 'search',
     result: {
-      isError: true,
+      _meta: {
+        'io.modelcontextprotocol/serverInfo': { name: 'nixie', version: expect.any(String) },
+      },
       content: [
         {
           type: 'text',
-          text: expect.toStartWith('the search cap of 1 calls a day is reached'),
+          text: expect.stringMatching(
+            /^the search cap of 1 calls a day is reached, and it resets at midnight Australia\/Sydney time, when \d{4}-\d{2}-\d{2} starts$/u,
+          ),
         },
       ],
+      isError: true,
     },
   });
 });
