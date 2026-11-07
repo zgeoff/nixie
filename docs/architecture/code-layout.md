@@ -143,7 +143,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `api`         | [The API](channels/api.md): the oRPC router, device sessions and the live stream                                                           |
 | `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface, sandboxes by kind and the sandbox double                                         |
 | `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                                                                 |
-| `connectors`  | The [web fetch](connectors/web-fetch.md) and [time](connectors/time.md) tools                                                              |
+| `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) tools                              |
 | `memory`      | The [memory store](memory/store.md), its writer, consolidation and context                                                                 |
 | `backup`      | The snapshot sets and receipts of [backups](deployment/backups.md) and their schedule                                                      |
 | `ops`         | The health checks behind [the server's](deployment/server.md) health endpoint                                                              |
@@ -155,6 +155,7 @@ The other packages each hold one piece the modules and apps share:
 - `guests/conversation` runs the conversation's turns through the Agent SDK.
 - `guests/fetch` runs the web fetch inside the fetch sandbox.
 - `adapters/sandbox-imp` is the sandbox adapter on imp.
+- `adapters/search-kagi` is the search tool's provider on Kagi's search API.
 - `adapters/encoder-onnx` is the memory module's text encoder, which runs a pinned embedding model
   on ONNX Runtime.
 - `libs/contract` holds the oRPC contracts of the API and the host commands, with the client code

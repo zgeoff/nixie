@@ -91,6 +91,8 @@ below, and planned work lives in Linear.
   checks, the limits and the result
 - [Time](architecture/connectors/time.md) — the time zone on each message, and the time tool that
   answers in the user's newest zone
+- [Search](architecture/connectors/search.md) — the search tool on the host, its daily call cap, the
+  Kagi provider and its key
 
 ### Channels
 
