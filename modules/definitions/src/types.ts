@@ -359,7 +359,7 @@ interface SeededRuleRow {
   readonly rule_hash: string;
 }
 
-interface RuntimeRuleRow {
+export interface RuntimeRuleRow {
   readonly change_id: string;
   readonly rule_id: string;
   readonly rule_hash: string | null;
