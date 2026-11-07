@@ -990,6 +990,38 @@ test('it interrupts a task turn whose model calls reach its dollar limit, and pa
   });
 });
 
+test('it sleeps the imp of a task whose turn reached its dollar limit with work left', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+
+  expect(slept).toHaveLength(1);
+});
+
 test('it runs the next turn of a task paused at its turn limit once the limit is raised', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();

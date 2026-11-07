@@ -10,7 +10,6 @@ import {
   getHarness,
   modelSessionCleanupCompletedCodec,
   modelSessionInvalidatedCodec,
-  modelTurnEndedCodec,
   resolveModelCredentials,
 } from '@heynixie/models';
 import type { GrantSpec, GuestCommand, Sandbox } from '@heynixie/sandbox';
@@ -39,6 +38,7 @@ import { createActor } from 'xstate';
 import { buildDefaultStatus } from './build-default-status';
 import { buildGuestCommand } from './build-guest-command';
 import { silentEndToolName } from './build-silent-end-tool';
+import { countEndedTurns } from './count-ended-turns';
 import type { CallBudget } from './create-call-budget';
 import { createCallBudget } from './create-call-budget';
 import { createWorkerSandbox } from './create-worker-sandbox';
@@ -415,28 +415,7 @@ async function runGuardedStep(
     };
   }
 
-  const budget = createCallBudget(run.profile.profile.prices, run.limits.dollars - used.dollars);
-
-  const result = await runTaskTurn(
-    runner,
-    { ...input, interrupt: AbortSignal.any([input.interrupt, budget.signal]) },
-    { run, invalidated, budget },
-  );
-
-  if (budget.signal.aborted) {
-    await writeTaskLimitPause(context, {
-      lease: input.lease,
-      stepKey: input.stepKey,
-      startedBy: run.startedBy,
-      used: {
-        turns: used.turns + countEndedTurns(result.records),
-        dollars: used.dollars + budget.getSpentDollars(),
-      },
-      limits: run.limits,
-    });
-  }
-
-  return result;
+  return runTaskTurn(runner, input, { run, invalidated, used });
 }
 
 async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
@@ -450,7 +429,7 @@ async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
 interface TaskTurnParts {
   readonly run: StartedRun;
   readonly invalidated: AbortSignal;
-  readonly budget: CallBudget;
+  readonly used: TaskLimits;
 }
 
 async function runTaskTurn(
@@ -464,9 +443,32 @@ async function runTaskTurn(
   imp.send({ type: 'acquire', reply: acquired });
 
   const held = await acquired.promise;
-  const result = await runConversationStep(buildTaskRun(runner, { ...parts, ...held }), input);
 
-  if (isImpReleasedAfterStep(result)) {
+  const run = parts.run;
+  const used = parts.used;
+  const budget = createCallBudget(run.profile.profile.prices, run.limits.dollars - used.dollars);
+
+  const result = await runConversationStep(buildTaskRun(runner, { ...parts, ...held, budget }), {
+    ...input,
+    interrupt: AbortSignal.any([input.interrupt, budget.signal]),
+  });
+
+  const isPaused = budget.signal.aborted;
+
+  if (isPaused) {
+    await writeTaskLimitPause(runner.options.context, {
+      lease: input.lease,
+      stepKey: input.stepKey,
+      startedBy: run.startedBy,
+      used: {
+        turns: used.turns + countEndedTurns(result.records),
+        dollars: used.dollars + budget.getSpentDollars(),
+      },
+      limits: run.limits,
+    });
+  }
+
+  if (isImpReleasedAfterStep({ next: result.next, isPaused })) {
     await releaseTaskImp(imp);
   }
 
@@ -523,10 +525,6 @@ function buildHeldSessionGuard(invalidated: AbortSignal): SessionGuard {
       invariant(false, "a started task's cleanup goes through the task's own guard");
     },
   };
-}
-
-function countEndedTurns(records: StepResult['records']): number {
-  return records.filter((record) => record.kind === modelTurnEndedCodec.kind).length;
 }
 
 async function runTaskSessionCleanup(
