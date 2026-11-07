@@ -45,14 +45,6 @@ test.each<RefusalCase>([
     seeded: [],
     code: 'CLOSED',
   },
-  {
-    label: 'a proposal whose seeded rule moved since',
-    proposalID: 'p-web',
-    outcome: null,
-    proposedAt: 0,
-    seeded: [['allow-web', 'h-web-read']],
-    code: 'STALE',
-  },
 ])('it refuses an approval of $label', (refusal) => {
   const proposal = buildRuleProposal('p-web', [
     {

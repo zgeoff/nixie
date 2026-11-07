@@ -1,4 +1,5 @@
 import { canMoveProposal, proposalLapseMs } from '@heynixie/proposals';
+import invariant from 'tiny-invariant';
 import type { RuleProposal } from './build-rule-proposal';
 import type { RuleProposalState } from './read-rule-proposals';
 import type { RuleProposalAnswer, RuleProposalRefusal } from './write-rule-proposal-answer';
@@ -15,8 +16,8 @@ interface RuleProposalMoveInput {
   readonly now: number;
 }
 
-// The proposal holds each rule's version from before the widening, so an approval applies only
-// while the rules seeded from the definitions still hold those versions.
+// A pending proposal still holds the seeded version of each rule it widens: every write that moves
+// one either withdraws the proposal in the same transaction or touches only a rule it never holds.
 export function pickRuleProposalMove(input: RuleProposalMoveInput): RuleProposalMove {
   const answer = input.answer;
   const state = input.proposals.find((entry) => entry.proposal.proposalID === answer.proposalID);
@@ -37,16 +38,14 @@ export function pickRuleProposalMove(input: RuleProposalMoveInput): RuleProposal
     return { status: 'rejected', proposal: state.proposal, reason: answer.reason };
   }
 
-  const isCurrent = state.proposal.changes.every(
-    (change) => (input.seeded.get(change.ruleID) ?? null) === (change.before?.hash ?? null),
+  invariant(
+    state.proposal.changes.every(
+      (change) => (input.seeded.get(change.ruleID) ?? null) === (change.before?.hash ?? null),
+    ),
+    `the seeded rules moved past the pending proposal ${answer.proposalID}`,
   );
 
-  return isCurrent
-    ? { status: 'approved', proposal: state.proposal }
-    : refuse(
-        'STALE',
-        `the rules changed since proposal ${answer.proposalID}, so the next seed proposes again`,
-      );
+  return { status: 'approved', proposal: state.proposal };
 }
 
 function refuse(code: RuleProposalRefusal, reason: string): RuleProposalMove {
