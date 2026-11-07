@@ -43,7 +43,7 @@ async function setupTest() {
   };
 }
 
-test('it carries the session files the harness lists into the replacement sandbox', async () => {
+test('it carries only the session files the harness lists into the replacement sandbox', async () => {
   const ctx = await setupTest();
   const from = await ctx.adapter.create(ctx.spec);
   const to = await ctx.adapter.create(ctx.spec);
@@ -58,6 +58,10 @@ test('it carries the session files the harness lists into the replacement sandbo
     {
       path: `/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}.jsonl`,
       content: new TextEncoder().encode('{"uuid":"a"}\n'),
+    },
+    {
+      path: `/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}/tool-results/r1.txt`,
+      content: new TextEncoder().encode('low tide 14:10\n'),
     },
   ]);
 
