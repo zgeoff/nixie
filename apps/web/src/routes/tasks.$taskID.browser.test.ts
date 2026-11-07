@@ -90,6 +90,19 @@ test.skipIf(browserSkip.isSkipped)(
       { timeout: 10_000 },
     );
 
+    // The task's summary can render above the notice after it, and Bun clicks at the link's earlier
+    // position, which the summary's prompt toggle then covers.
+    await waitFor(
+      async () => {
+        const toggle: unknown = await ctx.view.evaluate(
+          "document.querySelector('button[aria-controls]')?.textContent ?? null",
+        );
+
+        expect(toggle).toBe('Show the whole prompt');
+      },
+      { timeout: 10_000 },
+    );
+
     await ctx.view.click('a[href="/tasks/p7hd2wq9zn#task-message-m7q2x9k4pa"]');
 
     await waitFor(
