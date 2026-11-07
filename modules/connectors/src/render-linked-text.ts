@@ -85,9 +85,27 @@ function formatPathStart(path: string, limitChars: number): string {
 
   const shown = path.replaceAll('[', '%5B').replaceAll(']', '%5D');
 
-  return shown.length <= limitChars
-    ? shown
-    : `${shown.slice(0, limitChars).replace(/%[\da-f]?$/iu, '')}…`;
+  if (shown.length <= limitChars) {
+    return shown;
+  }
+
+  let kept = '';
+
+  for (const character of collectPathCharacters(shown)) {
+    if (kept.length + character.length > limitChars) {
+      break;
+    }
+
+    kept += character;
+  }
+
+  return `${kept}…`;
+}
+
+// a URL parser writes a character outside ASCII as the escapes of its UTF-8 bytes, and half of
+// those escapes decodes to no character
+function collectPathCharacters(path: string): string[] {
+  return path.match(/%[c-f][\da-f](?:%[89ab][\da-f])+|%[\da-f]{2}|[\s\S]/giu) ?? [];
 }
 
 function cutText(text: string, limitBytes: number): string {

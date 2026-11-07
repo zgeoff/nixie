@@ -112,9 +112,16 @@ test("it writes each link in the page's text as an ID the session numbers from 1
     },
   );
 
-  expect(outcome).toMatchObject({
+  expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { text: 'The new loaf [L1] is out.\n\nOther links on this page:\n- Menu [L2]' },
+    result: {
+      url: 'https://bakery.test/news',
+      status: 200,
+      contentType: 'text/html',
+      text: 'The new loaf [L1] is out.\n\nOther links on this page:\n- Menu [L2]',
+      isTruncated: false,
+      blocked: null,
+    },
   });
 });
 
@@ -177,9 +184,16 @@ test('it gives a URL one ID across the pages of one session', async () => {
     { run },
   );
 
-  expect(outcome).toMatchObject({
+  expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { text: 'Our hours [L3], our menu [L2], the menu again [L2].' },
+    result: {
+      url: 'https://bakery.test/about',
+      status: 200,
+      contentType: 'text/html',
+      text: 'Our hours [L3], our menu [L2], the menu again [L2].',
+      isTruncated: false,
+      blocked: null,
+    },
   });
 });
 
@@ -225,9 +239,16 @@ test('it shows the host and path, with no query string, only for a link that lea
     },
   );
 
-  expect(outcome).toMatchObject({
+  expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { text: 'Fares [L1], the weather [L2 · weather.test/coast] and the old site [L3].' },
+    result: {
+      url: 'https://www.ferries.test/timetable',
+      status: 200,
+      contentType: 'text/html',
+      text: 'Fares [L1], the weather [L2 · weather.test/coast] and the old site [L3].',
+      isTruncated: false,
+      blocked: null,
+    },
   });
 });
 
@@ -288,9 +309,16 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
 
   expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread');
 
-  expect(outcome).toMatchObject({
+  expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { url: 'https://bakery.test/breads/sourdough', text: 'Sourdough, baked daily.' },
+    result: {
+      url: 'https://bakery.test/breads/sourdough',
+      status: 200,
+      contentType: 'text/html',
+      text: 'Sourdough, baked daily.',
+      isTruncated: false,
+      blocked: null,
+    },
   });
 });
 
@@ -301,7 +329,6 @@ test.each([
   [' L1 '],
   ['[L1 · bakery.test]'],
   ['[L1 · bakery.test/breads/…]'],
-  ['[L1 · [2001:db8::1]/breads]'],
 ])('it reads %p as the ID of link 1', async (link) => {
   const ctx = await setupTest();
 
@@ -344,6 +371,57 @@ test.each([
   );
 
   expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread');
+});
+
+test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as that link', async () => {
+  const ctx = await setupTest();
+
+  const readPage = mock<(url: string) => Promise<FetchReply>>(() =>
+    Promise.resolve({
+      kind: 'page',
+      url: 'https://bakery.test/news',
+      status: 200,
+      contentType: 'text/html',
+      text: 'Bread\u{E000}0\u{E001}',
+      links: ['https://[2001:db8::1]/breads'],
+      isTruncated: false,
+      blocked: null,
+    }),
+  );
+
+  const tool = buildWebFetchTool(readPage, { log: ctx.log, textBytes: 20_000, linkPathChars: 24 });
+
+  const run = {
+    runID: 'conversation',
+    thread: 'conversation',
+    tools: ['web_fetch'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    session: { key: 'session-a', invalidatedThrough: 0 },
+  };
+
+  const page = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://bakery.test/news' },
+      toolUseID: null,
+    },
+    { run },
+  );
+
+  invariant(page.status === 'ok' && typeof page.result['text'] === 'string');
+
+  await tool.run(
+    {
+      callID: 'call-2',
+      tool: 'web_fetch',
+      input: { link: page.result['text'].slice('Bread'.length) },
+      toolUseID: null,
+    },
+    { run },
+  );
+
+  expect(readPage).toHaveBeenLastCalledWith('https://[2001:db8::1]/breads');
 });
 
 test('it refuses the ID of a link an earlier session numbered, and fetches nothing', async () => {
@@ -538,7 +616,17 @@ test("it numbers a new session's links from 1 again", async () => {
     },
   );
 
-  expect(outcome).toMatchObject({ status: 'ok', result: { text: 'The menu [L1].' } });
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      url: 'https://bakery.test/news',
+      status: 200,
+      contentType: 'text/html',
+      text: 'The menu [L1].',
+      isTruncated: false,
+      blocked: null,
+    },
+  });
 });
 
 test('it keys the links of a call under the run token by the run', async () => {
@@ -914,7 +1002,17 @@ test('it returns a binary page with no text', async () => {
     },
   );
 
-  expect(outcome).toMatchObject({ status: 'ok', result: { text: null } });
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      url: 'https://example.com/a.png',
+      status: 200,
+      contentType: 'image/png',
+      text: null,
+      isTruncated: false,
+      blocked: null,
+    },
+  });
 });
 
 test.each([
@@ -962,11 +1060,12 @@ test('it declares only the fetch effect and no destination, so it runs direct', 
 
   expect(tool.execution).toBe('direct');
 
-  expect(tool.declaration).toMatchObject({
+  expect(tool.declaration).toStrictEqual({
     effects: ['fetch'],
     destinations: [],
     amount: null,
     content: [],
+    results: expect.any(Object),
   });
 });
 

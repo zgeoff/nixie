@@ -30,13 +30,29 @@ test('it writes a link to another host with the host and path after its ID', () 
 });
 
 test.each([
-  [6, 'https://weather.test/docs/marine/forecast', '[L40 · weather.test/docs/…]'],
-  [13, 'https://weather.test/docs/marine/forecast', '[L40 · weather.test/docs/marine/…]'],
-  [21, 'https://weather.test/docs/marine/forecast', '[L40 · weather.test/docs/marine/forecast]'],
+  [6, '[L40 · weather.test/docs/…]'],
+  [13, '[L40 · weather.test/docs/marine/…]'],
+  [21, '[L40 · weather.test/docs/marine/forecast]'],
+])('it cuts the path of an off-site link at %p characters', (linkPathChars, tag) => {
+  expect(
+    renderLinkedText(
+      [{ link: 0 }],
+      {
+        pageURL: 'https://ferries.test/',
+        targets: ['https://weather.test/docs/marine/forecast'],
+        numbers: new Map([['https://weather.test/docs/marine/forecast', 40]]),
+      },
+      { textBytes: 1000, linkPathChars },
+    ),
+  ).toStrictEqual({ text: tag, isCut: false });
+});
+
+test.each([
   [6, 'https://weather.test/docs?area=north&days=7#top', '[L40 · weather.test/docs]'],
   [24, 'https://weather.test/docs/marine?area=north', '[L40 · weather.test/docs/marine]'],
+  [24, 'https://weather.test/docs#tides', '[L40 · weather.test/docs]'],
 ])(
-  'it cuts the path of an off-site link at %p characters and drops its query string, for %p',
+  'it shows no query string or fragment for an off-site link, at %p characters for %p',
   (linkPathChars, target, tag) => {
     expect(
       renderLinkedText(
@@ -66,18 +82,39 @@ test('it writes a square bracket in a path as its escape, so the tag ends only a
   ).toStrictEqual({ text: '[L7 · weather.test/a%5Db%5Bc]', isCut: false });
 });
 
-test('it cuts a path before an escape that would pass the length, never inside it', () => {
+test.each([
+  [6, '[L5 · cafe.test/caf…]'],
+  [9, '[L5 · cafe.test/caf…]'],
+  [10, '[L5 · cafe.test/caf%C3%A9…]'],
+])(
+  'it cuts a path at %p characters before a character whose escapes would pass the length, never among them',
+  (linkPathChars, tag) => {
+    expect(
+      renderLinkedText(
+        [{ link: 0 }],
+        {
+          pageURL: 'https://ferries.test/',
+          targets: ['https://cafe.test/caf%C3%A9/menu'],
+          numbers: new Map([['https://cafe.test/caf%C3%A9/menu', 5]]),
+        },
+        { textBytes: 1000, linkPathChars },
+      ),
+    ).toStrictEqual({ text: tag, isCut: false });
+  },
+);
+
+test('it shows an IPv6 host in its brackets, followed by the path', () => {
   expect(
     renderLinkedText(
       [{ link: 0 }],
       {
         pageURL: 'https://ferries.test/',
-        targets: ['https://cafe.test/caf%C3%A9/menu'],
-        numbers: new Map([['https://cafe.test/caf%C3%A9/menu', 5]]),
+        targets: ['https://[2001:db8::1]/breads'],
+        numbers: new Map([['https://[2001:db8::1]/breads', 1]]),
       },
-      { textBytes: 1000, linkPathChars: 6 },
+      { textBytes: 1000, linkPathChars: 24 },
     ),
-  ).toStrictEqual({ text: '[L5 · cafe.test/caf…]', isCut: false });
+  ).toStrictEqual({ text: '[L1 · [2001:db8::1]/breads]', isCut: false });
 });
 
 test('it counts a subdomain of the page host as another host, and shows no path for its root', () => {

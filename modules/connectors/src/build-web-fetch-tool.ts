@@ -62,8 +62,8 @@ export function buildWebFetchTool(
       'Fetches one public web page and returns its final URL, status code, content type and ' +
       'text. An http URL is tried over https first, and the final URL shows the scheme that ' +
       'answered. The text is the readable text of an HTML page, the text of another text type, and no text for ' +
-      'a binary type. Each link in the text reads as its ID, such as [L12]. A link that leaves ' +
-      'the site shows its host and the start of its path after the ID, such as ' +
+      'a binary type. Each link in the text reads as its ID, such as [L12]. A link to another ' +
+      'host shows that host and the start of its path after the ID, such as ' +
       '[L40 · example.org/docs/…], and never its query string. Pass the ID as link to fetch ' +
       'that page. ' +
       'An ID lasts for this session only. isTruncated is true when the page passed a size ' +
