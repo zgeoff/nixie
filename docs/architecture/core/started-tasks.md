@@ -143,7 +143,8 @@ with the task's profile as the guest reports it
 ([model calls](./conversation-turns.md#model-calls)). When the calls and the earlier count together
 reach the dollar limit, the runner interrupts the turn
 ([interrupts](./conversation-turns.md#interrupts)). Once the turn ends, the step asks for the pause
-and writes the same two records, with the counts it reached, and its commit pauses the task.
+and writes the same two records, with the counts it reached. The step sleeps the task's imp, even
+with work left, and its commit pauses the task.
 
 While the newest limit record on the task's thread is `task.limit_reached`, a resume or a restart of
 the task refuses. The user raises the limit with the `task-raise` host command

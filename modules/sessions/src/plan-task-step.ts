@@ -19,7 +19,15 @@ export function planTaskStep(facts: TaskStepFacts): TaskStepPlan {
   return isAtLimit ? { kind: 'pause', isImpReleased: facts.isImpAwake } : { kind: 'run' };
 }
 
-// A step with work left runs again soon on the same imp, so only a step that waits sleeps it.
-export function isImpReleasedAfterStep(result: Pick<StepResult, 'next'>): boolean {
-  return result.next === 'wait';
+export interface FinishedTaskStep {
+  readonly next: StepResult['next'];
+
+  // the step's turn reached a limit, so the task pauses after the step commits
+  readonly isPaused: boolean;
+}
+
+// A step with work left runs again soon on the same imp, so only a step that waits or pauses its
+// task sleeps it.
+export function isImpReleasedAfterStep(step: FinishedTaskStep): boolean {
+  return step.next === 'wait' || step.isPaused;
 }

@@ -31,9 +31,13 @@ test('it sleeps the awake imp of a task that pauses at its limit', () => {
 });
 
 test.each([
-  ['wait', true],
-  ['continue', false],
-  ['done', false],
-] as const)('it sleeps the imp after a step whose next is %s: %s', (next, isReleased) => {
-  expect(isImpReleasedAfterStep({ next })).toBe(isReleased);
-});
+  ['wait', false, true],
+  ['continue', false, false],
+  ['done', false, false],
+  ['continue', true, true],
+] as const)(
+  'it sleeps the imp after a step whose next is %s and whose turn paused the task is %s: %s',
+  (next, isPaused, isReleased) => {
+    expect(isImpReleasedAfterStep({ next, isPaused })).toBe(isReleased);
+  },
+);
