@@ -945,7 +945,7 @@
     "@vitejs/plugin-react": "6.1.2",
     "@zgeoff/kysely-bun-sqlite": "0.3.0",
     "@zgeoff/rig": "0.1.6",
-    "@zgeoff/std": "0.4.2",
+    "@zgeoff/std": "0.4.3",
     "ajv": "8.20.0",
     "babel-plugin-react-compiler": "1.0.0",
     "elysia": "1.4.30",
@@ -2071,7 +2071,7 @@
 
     "@zgeoff/rig": ["@zgeoff/rig@0.1.6", "", { "dependencies": { "@zgeoff/diet": "0.2.1", "@zgeoff/std": "0.4.2", "gunshi": "1.0.0-rc.1", "ts-pattern": "5.9.2", "zod": "4.6.7" }, "bin": { "rig": "src/cli.ts" } }, "sha512-UhCmelHLd+qi4smYTIbqwG/msJYUltIEqXrhbgbvwTK4151TXUTqIIfiYfLn+Fs48UKFm/+y1zAhKY+iDf0RYg=="],
 
-    "@zgeoff/std": ["@zgeoff/std@0.4.2", "", {}, "sha512-GZnnOkrYHe6p071BWYe7XIq5klqhvVb4j/JWOrrUTSj76uLA/ZnzlqDKIq16LblMcuRF9tjfvKvGK8sLRN8fMg=="],
+    "@zgeoff/std": ["@zgeoff/std@0.4.3", "", {}, "sha512-wCaqH8+vrkR+6R/grWUUDraryyFY1NW0Gjbhg85bXX38k9Q+N3aHFu+Yc+EjzZ/Sp9n5aJnCvZqbO5F2mUjWAg=="],
 
     "abbrev": ["abbrev@4.0.0", "", {}, "sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA=="],
 
@@ -3440,6 +3440,8 @@
     "@types/node/undici-types": ["undici-types@8.9.0", "", {}, "sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg=="],
 
     "@zgeoff/rig/@zgeoff/diet": ["@zgeoff/diet@0.2.1", "", { "bin": { "diet": "diet.sh" } }, "sha512-8xzPM1AlurcFcXt3aDdyGblvEtdtlDP2CAie3lf/AVGWkK4y1Qz40RGz22fl9Ad9SioEb+9EJHUPGshEtt7fjw=="],
+
+    "@zgeoff/rig/@zgeoff/std": ["@zgeoff/std@0.4.2", "", {}, "sha512-GZnnOkrYHe6p071BWYe7XIq5klqhvVb4j/JWOrrUTSj76uLA/ZnzlqDKIq16LblMcuRF9tjfvKvGK8sLRN8fMg=="],
 
     "babel-dead-code-elimination/@babel/core": ["@babel/core@7.29.7", "", { "dependencies": { "@babel/code-frame": "^7.29.7", "@babel/generator": "^7.29.7", "@babel/helper-compilation-targets": "^7.29.7", "@babel/helper-module-transforms": "^7.29.7", "@babel/helpers": "^7.29.7", "@babel/parser": "^7.29.7", "@babel/template": "^7.29.7", "@babel/traverse": "^7.29.7", "@babel/types": "^7.29.7", "@jridgewell/remapping": "^2.3.5", "convert-source-map": "^2.0.0", "debug": "^4.1.0", "gensync": "^1.0.0-beta.2", "json5": "^2.2.3", "semver": "^6.3.1" } }, "sha512-RgHBCvtjbOK2gXSNBNIkNoEc9qoVEtau3hj8gEqKQuL3HZAibKarWFEI3Lfm6EYKkLalOh8eSrj9b+ch9H/VBA=="],
 
