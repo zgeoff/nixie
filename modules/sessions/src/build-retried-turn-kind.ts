@@ -16,27 +16,71 @@ export function buildRetriedTurnKind(
   return {
     name: 'retried_turn',
     read: async (range) => {
-      const records = await readRecords(log, {
-        afterSequence: range.after,
-        beforeSequence: range.through + 1,
-        thread: conversationTaskID,
-        kinds: ['task.step_errored'],
-        limit: readLimit,
-      });
+      const [failures, earlier] = await Promise.all([
+        readRecords(log, {
+          afterSequence: range.after,
+          beforeSequence: range.through + 1,
+          thread: conversationTaskID,
+          kinds: ['task.step_errored'],
+          limit: readLimit,
+        }),
+        readRecords(log, {
+          afterSequence: 0,
+          beforeSequence: range.after + 1,
+          thread: conversationTaskID,
+          kinds: ['task.step_errored'],
+          limit: 1,
+          order: 'newest',
+        }),
+      ]);
 
-      return records.flatMap((entry) => {
-        const payload = taskStepErroredCodec.tryDecodePartial(entry.record.payload);
-
-        return payload?.nextState === 'ready'
-          ? [buildRetriedTurn(entry.record, isModelAPIReason(payload.reason))]
-          : [];
-      });
+      return collectRetriedTurns(
+        failures.map((entry) => entry.record),
+        earlier[0]?.record ?? null,
+      );
     },
     render: (detail) =>
       detail.message === null
         ? 'One of your turns failed and was retried.'
         : `One of your turns failed and was retried: "${detail.message}".`,
   };
+}
+
+function collectRetriedTurns(
+  failures: readonly LogRecord[],
+  earlier: LogRecord | null,
+): NotedEvent<RetriedTurn>[] {
+  return failures.flatMap((record, index) => {
+    const payload = taskStepErroredCodec.tryDecodePartial(record.payload);
+    const previous = index === 0 ? earlier : (failures[index - 1] ?? null);
+
+    const isListed =
+      payload?.nextState === 'ready' &&
+      isUnrecoveredFailure(record, previous, failures[index + 1] ?? null);
+
+    return isListed ? [buildRetriedTurn(record, isModelAPIReason(payload.reason))] : [];
+  });
+}
+
+const repeatWindowMs = 60 * 60 * 1000;
+
+// The task counts a step's failures since its last commit, so a count above 1 on a failure, or on
+// the failure after it, shows that a retry failed too.
+function isUnrecoveredFailure(
+  failure: LogRecord,
+  previous: LogRecord | null,
+  next: LogRecord | null,
+): boolean {
+  return (
+    getErrorCount(failure) > 1 ||
+    (next !== null && getErrorCount(next) > 1) ||
+    (previous !== null &&
+      failure.recordedAt.getTime() - previous.recordedAt.getTime() <= repeatWindowMs)
+  );
+}
+
+function getErrorCount(failure: LogRecord): number {
+  return taskStepErroredCodec.tryDecodePartial(failure.payload)?.errors ?? 1;
 }
 
 function buildRetriedTurn(record: LogRecord, isTextHidden: boolean): NotedEvent<RetriedTurn> {

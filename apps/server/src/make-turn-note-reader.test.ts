@@ -1,4 +1,4 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { startTestMemoryStore } from '@heynixie/memory/test-utils';
 import { recordSkillPin, skillsReloadedCodec } from '@heynixie/skills';
@@ -300,4 +300,147 @@ test("it notes the moments that another task and the owner kept in the next turn
   );
 
   expect(text).not.toInclude('The plant rota');
+});
+
+test("it keeps a turn's failure out of the retry that recovered it", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies(
+    { failure: 'connect ECONNREFUSED 192.0.2.10:8443' },
+    { text: 'The bins go out on Tuesday.' },
+  );
+
+  await conversation.sendForStep('When do the bins go out?');
+
+  setSystemTime(new Date(Date.now() + 60_000));
+  onTestFinished(() => setSystemTime());
+
+  const retry = await conversation.retryForStep();
+
+  expect(retry.turns.map((turn) => turn.input[0]?.text.includes('type="events"'))).toStrictEqual([
+    false,
+  ]);
+});
+
+test("it tells the turn of each failure once the turn's retry failed too", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies(
+    { failure: 'connect ECONNREFUSED 192.0.2.10:8443' },
+    { failure: 'connect ECONNREFUSED 192.0.2.10:8443' },
+    { text: 'The bins go out on Tuesday.' },
+  );
+
+  await conversation.sendForStep('When do the bins go out?');
+
+  onTestFinished(() => setSystemTime());
+  setSystemTime(new Date(Date.now() + 60_000));
+
+  await conversation.retryForStep();
+
+  setSystemTime(new Date(Date.now() + 120_000));
+
+  const retry = await conversation.retryForStep();
+
+  expect(
+    retry.turns[0]?.input[0]?.text.match(/One of your turns failed and was retried[^\n]*/gu),
+  ).toStrictEqual([
+    expect.stringContaining('connect ECONNREFUSED 192.0.2.10:8443'),
+    expect.stringContaining('connect ECONNREFUSED 192.0.2.10:8443'),
+  ]);
+});
+
+test('it keeps each failed turn in the event log, the recovered ones included', async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies(
+    { failure: 'the first refused connection' },
+    { text: 'The bins go out on Tuesday.' },
+    { failure: 'the second refused connection' },
+    { failure: 'the third refused connection' },
+    { text: 'The recycling goes out on Thursday.' },
+  );
+
+  onTestFinished(() => setSystemTime());
+
+  await conversation.sendForStep('When do the bins go out?');
+
+  setSystemTime(new Date(Date.now() + 60_000));
+
+  await conversation.retryForStep();
+
+  setSystemTime(new Date(Date.now() + 3 * 60 * 60_000));
+
+  await conversation.sendForStep('And the recycling?');
+
+  setSystemTime(new Date(Date.now() + 60_000));
+
+  await conversation.retryForStep();
+
+  setSystemTime(new Date(Date.now() + 120_000));
+
+  await conversation.retryForStep();
+
+  const records = await ctx.readRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'task.step_errored')
+      .map((record) => ({ payload: record.payload, erasable: record.erasable })),
+  ).toStrictEqual([
+    {
+      payload: expect.objectContaining({ nextState: 'ready', errors: 1 }),
+      erasable: {
+        status: 'readable',
+        fields: { message: expect.stringContaining('the first refused connection') },
+      },
+    },
+    {
+      payload: expect.objectContaining({ nextState: 'ready', errors: 1 }),
+      erasable: {
+        status: 'readable',
+        fields: { message: expect.stringContaining('the second refused connection') },
+      },
+    },
+    {
+      payload: expect.objectContaining({ nextState: 'ready', errors: 2 }),
+      erasable: {
+        status: 'readable',
+        fields: { message: expect.stringContaining('the third refused connection') },
+      },
+    },
+  ]);
 });
