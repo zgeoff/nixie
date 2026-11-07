@@ -311,6 +311,55 @@ test('it rebuilds the rolling pull request when the repo moves a changed rule to
   ]);
 });
 
+test('it rebuilds the rolling pull request when the repo moves a changed rule away and back', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await ctx.seed();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'ask-mail',
+    rule: { outcome: 'deny', tools: ['mail.send'] },
+    changedBy: 'owner',
+    reason: 'No mail this week.',
+  });
+
+  await ctx.runExports();
+
+  await rm(join(ctx.root, 'rules', 'mail.yaml'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'messages.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await ctx.seed();
+  await ctx.runExports();
+
+  await rm(join(ctx.root, 'rules', 'messages.yaml'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await ctx.seed();
+  await ctx.runExports();
+
+  const files = ctx.repo.readPullRequests().map((request) => request.change.files);
+
+  expect(files).toStrictEqual([
+    new Map([['rules/mail.yaml', 'ask-mail:\n  outcome: "deny"\n  tools: ["mail.send"]\n']]),
+  ]);
+});
+
 test("it rebuilds the rolling pull request on the repo's newer version when you keep nixie's", async () => {
   const ctx = await setupTest();
 

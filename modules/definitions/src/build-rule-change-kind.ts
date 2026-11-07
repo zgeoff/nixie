@@ -3,6 +3,7 @@ import { buildRuleExportChange, ruleExportBranch } from './build-rule-export-cha
 import { buildSHA256 } from './build-sha256';
 import { isDefinitionsPath } from './is-definitions-path';
 import { parseDefinitions } from './parse-definitions';
+import { readDefinitionsInForce } from './read-definitions-in-force';
 import type { RuleStore } from './read-rule-store';
 import { readRuleStore } from './read-rule-store';
 import { toCanonicalJSON } from './to-canonical-json';
@@ -77,13 +78,26 @@ async function readRuleExport(db: Kysely<unknown>): Promise<RuleExport | null> {
     .where('state', '!=', 'in_force')
     .executeTakeFirstOrThrow();
 
-  return buildRuleExport(store, left.leftCount);
+  const inForce = await readDefinitionsInForce(db);
+
+  return buildRuleExport({
+    store,
+    leftCount: left.leftCount,
+    seedSequence: inForce?.recordSequence ?? null,
+  });
+}
+
+interface RuleExportInput {
+  readonly store: RuleStore;
+  readonly leftCount: number;
+  readonly seedSequence: number | null;
 }
 
 // A mandate lasts a day at most, so it never reaches the user's definitions. The ID also counts the
-// changes that left force, so a set that returns to an earlier one starts a new export in place of
-// the closed one.
-function buildRuleExport(store: RuleStore, leftCount: number): RuleExport | null {
+// changes that left force and names the seed in force, so a set or a repo that returns to an
+// earlier state starts a new export in place of the closed one.
+function buildRuleExport(input: RuleExportInput): RuleExport | null {
+  const store = input.store;
   const changes = store.runtime.filter((change) => change.rule?.rule.mandate === undefined);
 
   if (changes.length === 0) {
@@ -102,7 +116,8 @@ function buildRuleExport(store: RuleStore, leftCount: number): RuleExport | null
         beneath: change.beneath?.hash ?? null,
         path: paths.get(change.ruleID) ?? null,
       })),
-      leftCount,
+      leftCount: input.leftCount,
+      seedSequence: input.seedSequence,
     }),
   );
 
