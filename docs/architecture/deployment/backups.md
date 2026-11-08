@@ -84,8 +84,7 @@ Kubernetes never restarts or retries a failed job run, so its Job ends failed. A
 would skip the failed set, because the set holds its receipt, and exit with success, so the Job
 would end as a success. The reference Compose recipe runs no backup job, and its configuration turns
 backups off. Its CI overlay runs the job as a container that loops and mounts the staging folder as
-a subpath of the data volume, as the [Compose recipe's README](../../../deploy/compose/README.md)
-describes.
+a subpath of the data volume, as the [Compose guide](../../guides/compose.md) describes.
 
 ## Receipts in nixie
 

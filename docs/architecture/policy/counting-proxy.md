@@ -96,5 +96,5 @@ off before its whole usage arrives, so the proxy marks the count as lost before 
 reply.
 
 The release attaches the proxy as one compiled binary for Linux, so a host runs it without a Bun
-install. The [preview recipe](../../../preview/README.md#model-calls) covers how a preview names its
+install. The [preview recipe](../../runbooks/preview.md#model-calls) covers how a preview names its
 route.

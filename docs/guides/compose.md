@@ -1,16 +1,16 @@
 # Compose reference recipe
 
-The files here run nixie on one host with Docker Compose: nixie and the web client from one release,
-each image named by its version tag and digest, and one Caddy origin that sends `/rpc` to nixie and
-every other path to the web client. impd runs on the same host as its own stack, outside this
-recipe, and nixie reaches it outbound by the URL in `config.yaml`. nixie decrypts its sops secrets
-file in its own process at start, so no plaintext secret reaches the container's configuration or
-its disk. [The server](../../docs/architecture/deployment/server.md) covers the process and its
-secrets.
+The files in [`deploy/compose/`](../../deploy/compose/) run nixie on one host with Docker Compose:
+nixie and the web client from one release, each image named by its version tag and digest, and one
+Caddy origin that sends `/rpc` to nixie and every other path to the web client. impd runs on the
+same host as its own stack, outside this recipe, and nixie reaches it outbound by the URL in
+`config.yaml`. nixie decrypts its sops secrets file in its own process at start, so no plaintext
+secret reaches the container's configuration or its disk.
+[The server](../architecture/deployment/server.md) covers the process and its secrets.
 
 ## Use it
 
-1. Copy this folder into your deployment repo.
+1. Copy `deploy/compose/` into your deployment repo.
 2. Replace every placeholder in `config.yaml`: impd's URL, the host's addresses, and the model
    profiles. Keep `harness: agent-sdk` on each profile, because nixie refuses a profile with no
    harness. Add any network your Docker daemon uses outside its default ranges to the egress deny
@@ -22,8 +22,9 @@ secrets.
    the allows with `nixie proposals approve <proposal ID>`.
 4. Encrypt your secrets file with sops to your host's age key and your recovery key. It holds the
    deployment key, impd's token and one credential per model profile, in the shape
-   [the Kubernetes Secret example](../kubernetes/secret.example.yaml) shows.
-5. Start the recipe from the folder, with the paths of the sops file and the host's age key:
+   [the Kubernetes Secret example](../../deploy/kubernetes/secret.example.yaml) shows.
+5. Start the recipe from your copy of the folder, with the paths of the sops file and the host's age
+   key:
 
    ```bash
    NIXIE_SECRETS_FILE=<sops_file> NIXIE_AGE_KEY_FILE=<age_key_file> docker compose up --wait
@@ -52,9 +53,10 @@ release's notes list. A rollback reverts that change.
 The Compose workflow runs on each push to main, and on each pull request that changes a file the
 recipe or the test build reads. It checks that each pinned tag resolves to its pinned digest, on
 main and on a pull request that changes the recipe, because an upstream rebuild of a tag moves its
-digest with no change here. It then starts the recipe with the overlay in `ci/`, which swaps nixie's
-release image for the test build, because the release image leaves the test sandbox out. The test
-sandbox runs each guest as a local process with no isolation, so the overlay is never a deployment.
-The workflow checks the health URL through the recipe's origin, and that the `enrol` service prints
-a sign-in code. The overlay adds the `nixie-backup` container, built from the checkout, and the
-workflow checks that nixie records a set that the container shipped.
+digest with no change to the recipe. It then starts the recipe with the overlay in
+`deploy/compose/ci/`, which swaps nixie's release image for the test build, because the release
+image leaves the test sandbox out. The test sandbox runs each guest as a local process with no
+isolation, so the overlay is never a deployment. The workflow checks the health URL through the
+recipe's origin, and that the `enrol` service prints a sign-in code. The overlay adds the
+`nixie-backup` container, built from the checkout, and the workflow checks that nixie records a set
+that the container shipped.

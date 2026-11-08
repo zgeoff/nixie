@@ -1,14 +1,14 @@
 # Kubernetes reference manifests
 
-The manifests here run nixie on Kubernetes: nixie as a StatefulSet of one replica on a
-`ReadWriteOnce` volume, the web client as a Deployment, one ingress that sends `/rpc` to nixie, the
-configuration as a ConfigMap and the secrets as a read-only Secret. Each image is named by its
-release tag and digest. impd runs on the node, outside the cluster.
-[Kubernetes](../../docs/architecture/deployment/kubernetes.md) explains the shape.
+The manifests in [`deploy/kubernetes/`](../../deploy/kubernetes/) run nixie on Kubernetes: nixie as
+a StatefulSet of one replica on a `ReadWriteOnce` volume, the web client as a Deployment, one
+ingress that sends `/rpc` to nixie, the configuration as a ConfigMap and the secrets as a read-only
+Secret. Each image is named by its release tag and digest. impd runs on the node, outside the
+cluster. [Kubernetes](../architecture/deployment/kubernetes.md) explains the shape.
 
 ## Use them
 
-1. Copy this folder into your deployment repo.
+1. Copy `deploy/kubernetes/` into your deployment repo.
 2. Replace every placeholder: the host name in `ingress.yaml`, and impd's URL, the node's addresses,
    the cluster's pod and service ranges and the model profiles in `config.yaml`.
 3. Replace the `nixie-definitions` ConfigMap with your own persona, or with your definitions source.
