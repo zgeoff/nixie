@@ -1,11 +1,11 @@
 import type { Transaction } from 'kysely';
-import { canMoveWrittenSkill } from './can-move-written-skill';
-import type { DefinitionsTables, WrittenSkillState } from './types';
+import { canMoveRuntimeChange } from './can-move-runtime-change';
+import type { DefinitionsTables, RuntimeChangeState } from './types';
 import { WrittenSkillStateError } from './written-skill-state-error';
 
 export interface WrittenSkillMove {
   readonly approvalID: string;
-  readonly to: WrittenSkillState;
+  readonly to: RuntimeChangeState;
   readonly at: number;
 }
 
@@ -21,7 +21,7 @@ export async function writeWrittenSkillState(
     .where('approval_id', '=', move.approvalID)
     .executeTakeFirst();
 
-  if (row === undefined || !canMoveWrittenSkill(row.state, move.to)) {
+  if (row === undefined || !canMoveRuntimeChange(row.state, move.to)) {
     throw new WrittenSkillStateError(move.approvalID, row?.state ?? null, move.to);
   }
 

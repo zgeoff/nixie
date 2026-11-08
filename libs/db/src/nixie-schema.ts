@@ -1,6 +1,7 @@
 import { actionCancelMigration } from './action-cancel-migration';
 import { actionsMigration } from './actions-migration';
 import { apiMigration } from './api-migration';
+import { backupNoticesMigration } from './backup-notices-migration';
 import { backupSetsMigration } from './backup-sets-migration';
 import { definitionSeedRepositoryMigration } from './definition-seed-repository-migration';
 import { definitionsMigration } from './definitions-migration';
@@ -16,7 +17,10 @@ import { memoryUntilMigration } from './memory-until-migration';
 import { momentsMigration } from './moments-migration';
 import { promptApprovalsMigration } from './prompt-approvals-migration';
 import { recordAttachmentsMigration } from './record-attachments-migration';
+import { ruleExportsMigration } from './rule-exports-migration';
+import { rulesMigration } from './rules-migration';
 import { sandboxesMigration } from './sandboxes-migration';
+import { searchCallsMigration } from './search-calls-migration';
 import { skillExportAttemptsMigration } from './skill-export-attempts-migration';
 import { skillExportsMigration } from './skill-exports-migration';
 import { skillsMigration } from './skills-migration';
@@ -26,6 +30,7 @@ import { taskRoutesMigration } from './task-routes-migration';
 import { tasksMigration } from './tasks-migration';
 import type { BuildSchema } from './types';
 import { webFetchLinksMigration } from './web-fetch-links-migration';
+import { webFetchPagesMigration } from './web-fetch-pages-migration';
 import { writtenSkillsMigration } from './written-skills-migration';
 
 export const nixieSchema: BuildSchema = {
@@ -58,6 +63,11 @@ export const nixieSchema: BuildSchema = {
     actionCancelMigration,
     backupSetsMigration,
     dropMessageRoutesMigration,
+    searchCallsMigration,
+    webFetchPagesMigration,
+    backupNoticesMigration,
+    rulesMigration,
+    ruleExportsMigration,
   ],
   oldestReader: 35,
 };

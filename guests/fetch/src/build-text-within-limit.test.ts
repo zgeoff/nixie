@@ -38,18 +38,22 @@ test('it never cuts the text inside a character', () => {
   });
 });
 
-test('it stops the text before the first mark whose target would pass the link target limit', () => {
+test('it keeps a text inside the limit whole and drops the marks from the first whose target would pass the link target limit', () => {
   expect(
     buildTextWithinLimit(
       {
-        text: 'A \u{E000}0\u{E001} B \u{E000}1\u{E001} A again \u{E000}0\u{E001}',
-        links: ['https://cafe.test/a', `https://cafe.test/${'b'.repeat(150)}`],
+        text: 'A \u{E000}0\u{E001} B \u{E000}1\u{E001} C \u{E000}2\u{E001} A again \u{E000}0\u{E001}',
+        links: [
+          'https://cafe.test/a',
+          `https://cafe.test/${'b'.repeat(200)}`,
+          'https://cafe.test/c',
+        ],
       },
-      40,
+      50,
     ),
   ).toStrictEqual({
-    text: 'A \u{E000}0\u{E001} B ',
+    text: 'A \u{E000}0\u{E001} B  C  A again \u{E000}0\u{E001}',
     links: ['https://cafe.test/a'],
-    isCut: true,
+    isCut: false,
   });
 });

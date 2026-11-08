@@ -159,14 +159,18 @@ test('it pins an item into the pinned core', async () => {
   expect(core.map((entry) => entry.itemID)).toStrictEqual([item.itemID]);
 });
 
-test('it forgets an item for good as your own change', async () => {
+test('it forgets an item for good as your own change, and reports the forgotten record', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'The gate code is 4417' });
-
-  await ctx.host.forget(item);
-
+  const forgotten = await ctx.host.forget(item);
   const history = await ctx.memory.store.readHistory(item.itemID);
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(forgotten).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    forgottenSequence: records.at(-1)?.record.sequence ?? null,
+  });
 
   expect(history).toMatchObject({ state: 'forgotten', versions: [{ status: 'shredded' }] });
 
@@ -177,13 +181,17 @@ test('it forgets an item for good as your own change', async () => {
   ]);
 });
 
-test('it forgets every item for good as your own change', async () => {
+test('it forgets every item for good as your own change, and reports the forgotten record', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Parks on the north side' });
   const forgotten = await ctx.host.forgetAll();
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
-  expect(forgotten).toStrictEqual([item.itemID]);
+  expect(forgotten).toStrictEqual({
+    deleted: [item.itemID],
+    pending: [],
+    forgottenSequence: records.at(-1)?.record.sequence ?? null,
+  });
 
   expect(records.map((entry) => entry.record)).toMatchObject([
     { kind: 'memory.version_added' },

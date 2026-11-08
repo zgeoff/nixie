@@ -25,6 +25,8 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
   that [skills nixie wrote](../core/definitions.md#the-export-to-the-definitions-repo) export to
 - the [web fetch](../connectors/web-fetch.md) limits, the fetches one fetch sandbox serves, and the
   [time](../connectors/time.md) tool's default zone
+- the [search](../connectors/search.md) tool's daily call cap, its API URL and its key as a
+  reference
 - the task and action [runner pool](../core/leases-and-recovery.md#runner-pools) sizes
 - whether nixie stages [backups](backups.md), and how often
 - the tuning of the [memory writer](../memory/writer.md), [memory in context](../memory/context.md)
@@ -45,11 +47,11 @@ invalid value, and a typo never passes as a default. The error lists the path of
 refuses.
 
 A setting that names a secret holds a reference of the form `deployment:<name>`, which names an
-entry in the secrets file. A model profile's credential accepts only that form. The user's name and
-each pronoun accept either a reference or the value, so a deployment whose configuration lives in a
-public repo keeps them in the secrets file. The server resolves each reference once the secrets
-load, and refuses to start when the secrets file lacks the entry, so nixie never shows the model a
-reference in place of a name or a pronoun.
+entry in the secrets file. A model profile's credential and the search key accept only that form.
+The user's name and each pronoun accept either a reference or the value, so a deployment whose
+configuration lives in a public repo keeps them in the secrets file. The server resolves each
+reference once the secrets load, and refuses to start when the secrets file lacks the entry, so
+nixie never shows the model a reference in place of a name or a pronoun.
 
 The server generates a JSON Schema from the zod schema and commits it as `config.schema.json`, and a
 test fails when the committed file differs. Each release publishes that file

@@ -18,7 +18,7 @@ test('it answers one request frame with the reply it picks', async () => {
 
   const request = {
     url: 'https://example.com/',
-    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 100 },
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 100, imageBytes: 100 },
     deniedRanges: [],
   };
 
@@ -58,7 +58,7 @@ test('it exits 1 with no reply for a crash', async () => {
   const frame = encodeFrame(
     encodeFetchMessage({
       url: 'https://example.com/',
-      limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 100 },
+      limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 100, imageBytes: 100 },
       deniedRanges: [],
     }),
   );
@@ -81,7 +81,7 @@ test('it writes a frame that holds no fetch reply for garbage', async () => {
   const frame = encodeFrame(
     encodeFetchMessage({
       url: 'https://example.com/',
-      limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 100 },
+      limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 1, textBytes: 100, imageBytes: 100 },
       deniedRanges: [],
     }),
   );

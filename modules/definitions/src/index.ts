@@ -9,6 +9,7 @@ export type { DefinitionsSnapshotInput } from './build-definitions-snapshot';
 export { buildPromptChangeKind } from './build-prompt-change-kind';
 export type { PromptExportText } from './build-prompt-export-change';
 export { buildSkillChangeKind } from './build-skill-change-kind';
+export { buildRuleChangeKind } from './build-rule-change-kind';
 export type { PromptPartFile, PromptProposalInput } from './check-prompt-proposal';
 export { checkPromptProposal } from './check-prompt-proposal';
 export { checkSkillFiles } from './check-skill-files';
@@ -30,7 +31,7 @@ export { loadSnapshotSkills } from './load-snapshot-skills';
 export { probeWrittenSkillsPending } from './probe-written-skills-pending';
 export type { SeedOptions, SeedResult } from './run-seed';
 export { runSeed } from './run-seed';
-export { runWrittenSkillSeed } from './run-written-skill-seed';
+export { runInForceSeed } from './run-in-force-seed';
 export type { WrittenSkillEntry } from './read-written-skills';
 export { readWrittenSkills } from './read-written-skills';
 export { readSkillExportURLs } from './read-skill-export-urls';
@@ -76,10 +77,26 @@ export type {
   Snapshot,
   SnapshotPolicy,
   SourceKind,
+  StoredRule,
   DueDefinitionsExport,
   ToolDeclaration,
-  WrittenSkillState,
+  RuntimeChangeState,
 } from './types';
 
 export { writeResetSeed } from './write-reset-seed';
+export { ruleStoreTables } from './rule-store-tables';
+export { ruleFiresProjection } from './rule-fires-projection';
+export type { RuleInForceEntry } from './read-rules-in-force';
+export { readRulesInForce } from './read-rules-in-force';
+export { readRuleConflicts } from './read-rule-conflicts';
+export { readRuleProposals } from './read-rule-proposals';
+export type { PendingRuleProposal } from './read-pending-rule-proposals';
+export { readPendingRuleProposals } from './read-pending-rule-proposals';
+export type { RuleContext } from './write-runtime-rule';
+export { writeRuntimeRule } from './write-runtime-rule';
+export { writeRuleResolution } from './write-rule-resolution';
+export type { RuleProposalAnswer, RuleProposalResult } from './write-rule-proposal-answer';
+export { writeRuleProposalAnswer } from './write-rule-proposal-answer';
+export { startRuleLapseSweep } from './start-rule-lapse-sweep';
 export type { DefinitionsRecordKind } from './definitions-record-kind';
+export type { RulesRecordKind } from './rules-record-kind';

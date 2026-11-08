@@ -7,8 +7,8 @@ import invariant from 'tiny-invariant';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
 import { probeWrittenSkillsPending } from './probe-written-skills-pending';
+import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
-import { runWrittenSkillSeed } from './run-written-skill-seed';
 import { writeWrittenSkill } from './write-written-skill';
 import { writeWrittenSkillState } from './write-written-skill-state';
 
@@ -76,7 +76,7 @@ test('it finds an approval pending until a seed puts its skill in force', async 
 
   const before = await probeWrittenSkillsPending(ctx.writer.db);
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   const after = await probeWrittenSkillsPending(ctx.writer.db);
 
@@ -109,7 +109,7 @@ test('it finds a retirement pending while the snapshot in force still holds the 
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkillState(tx, {

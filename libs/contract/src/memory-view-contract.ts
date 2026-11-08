@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { forgetBackupSchema } from './forget-backup-schema';
 import { memoryExportContract } from './memory-export-contract';
 import { momentContract } from './moment-contract';
 import { proposalOutcomeSchema } from './proposal-outcome-schema';
@@ -184,6 +185,7 @@ const retiredForgetSchema = z.object({
 const forgetStatusSchema = z.object({
   deleted: z.array(z.string()),
   pending: z.array(z.string()),
+  backup: forgetBackupSchema,
 });
 
 const versionTargetSchema = z.object({
@@ -275,7 +277,9 @@ export const memoryViewContract = {
     .input(z.object({ itemID: itemIDSchema, version: z.int().positive() }))
     .output(forgetPreviewSchema),
 
-  forget: memoryChange.input(versionTargetSchema).output(z.object({ itemID: z.string() })),
+  forget: memoryChange
+    .input(versionTargetSchema)
+    .output(z.object({ itemID: z.string(), backup: forgetBackupSchema })),
 
   previewForgetRetired: memoryView.output(retiredForgetPreviewSchema),
 

@@ -238,6 +238,17 @@ const memoryWriter = new Collection({
   }),
 });
 
+const backupNotices = new Collection({
+  schema: z.object({
+    cause: z.enum(['failed', 'missing']).default('failed'),
+    raisedAt: z.date().default(() => faker.date.recent()),
+    sequence: z
+      .int()
+      .positive()
+      .default(() => faker.number.int({ max: 500, min: 1 })),
+  }),
+});
+
 const memoryConsolidator = new Collection({
   schema: z.object({
     isEnabled: z.boolean().default(true),
@@ -344,6 +355,24 @@ const momentReflectionSchema = z.object({
 
 const momentNoteSchema = z.object({ text: z.string(), writtenAt: z.date() });
 const itemIDsSchema = z.array(z.string());
+const ruleVersionSchema = z.object({ ruleHash: z.string(), sentence: z.string() });
+
+const ruleChangeSchema = z.object({
+  after: ruleVersionSchema.nullable(),
+  before: ruleVersionSchema.nullable(),
+  ruleID: z.string(),
+});
+
+const ruleProposals = new Collection({
+  schema: z.object({
+    changes: z.array(ruleChangeSchema).default(() => []),
+    createdAt: z.date().default(() => faker.date.recent()),
+    lapseAt: z.date().default(() => faker.date.soon({ days: 14 })),
+    proposalID: z.string().default(() => faker.string.alphanumeric(10).toLowerCase()),
+    reason: z.string().nullable().default(null),
+    status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
+  }),
+});
 
 const moments = new Collection({
   schema: z.object({
@@ -422,6 +451,7 @@ const retryActions = new Collection({
 });
 
 export const store = {
+  backupNotices,
   enrolmentCodes,
   forgetActions,
   memoryActions,
@@ -435,6 +465,7 @@ export const store = {
   ratingNotes,
   records,
   retryActions,
+  ruleProposals,
 
   // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
@@ -449,8 +480,10 @@ export const store = {
       memoryItems,
       memoryNotices,
       memoryProposals,
+      ruleProposals,
       memoryWriter,
       memoryConsolidator,
+      backupNotices,
       memoryVersions,
       moments,
       ratingNotes,

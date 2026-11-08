@@ -28,7 +28,13 @@ await Bun.write(path, frame);
 function buildFetchRequest(url: string): object {
   return {
     url,
-    limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 400_000 },
+    limits: {
+      bodyBytes: 2_097_152,
+      timeoutMs: 15_000,
+      redirects: 5,
+      textBytes: 400_000,
+      imageBytes: 2_097_152,
+    },
     deniedRanges,
   };
 }

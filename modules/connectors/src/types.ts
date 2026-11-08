@@ -50,6 +50,36 @@ export interface HealthReport {
   readonly accountName: string | null;
 }
 
+export type SearchFreshness = 'day' | 'week' | 'month';
+
+export interface SearchRequest {
+  readonly query: string;
+  readonly limit: number;
+
+  // the domains a hit must come from; empty for any domain
+  readonly sites: readonly string[];
+
+  // how recently a hit's page was published or updated; null for any time
+  readonly freshness: SearchFreshness | null;
+}
+
+export interface SearchHit {
+  readonly title: string;
+  readonly url: string;
+  readonly snippet: string | null;
+
+  // the date the provider gives the page, as it gives it; null when it gives none
+  readonly publishedAt: string | null;
+}
+
+export type SearchReply =
+  | { readonly kind: 'hits'; readonly hits: readonly SearchHit[]; readonly costUSD: number }
+  | { readonly kind: 'failed'; readonly reason: string };
+
+export interface SearchProvider {
+  readonly readHits: (request: SearchRequest) => Promise<SearchReply>;
+}
+
 export interface Connector {
   readonly id: string;
   readonly auth: { readonly kind: 'none' };

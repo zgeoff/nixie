@@ -1,7 +1,9 @@
 import { expect, test } from 'bun:test';
 import { encodeFrame } from './encode-frame';
+import { frameHeaderBytes } from './frame-header-bytes';
 import { FrameTooLargeError } from './frame-too-large-error';
 import { makeFrameDecoder } from './make-frame-decoder';
+import { countChunkedDecodeBytes } from './test-utils/count-chunked-decode-bytes';
 
 test('it returns each message whole when the transport splits and joins frames', () => {
   const decode = makeFrameDecoder(64);
@@ -35,4 +37,14 @@ test('it keeps a partial frame until the rest arrives', () => {
   expect(decode(frame.slice(6)).map((message) => new TextDecoder().decode(message))).toStrictEqual([
     'whole',
   ]);
+});
+
+test('it allocates and copies each byte of a 4 MiB frame sent in 64 KiB chunks once', () => {
+  const message = new Uint8Array(4 * 1024 * 1024).fill(7);
+
+  expect(countChunkedDecodeBytes(message, 64 * 1024)).toStrictEqual({
+    messages: [message],
+    allocatedBytes: message.byteLength,
+    copiedBytes: frameHeaderBytes + message.byteLength,
+  });
 });

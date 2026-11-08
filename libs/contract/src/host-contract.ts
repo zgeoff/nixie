@@ -1,5 +1,6 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
+import { forgetBackupSchema } from './forget-backup-schema';
 
 const versionRefSchema = z.object({ itemID: z.string(), version: z.int().positive() });
 
@@ -258,7 +259,59 @@ const prompts = oc.errors({
   PROMPT_CHECK: { message: 'the override fails the definitions checks', status: 400 },
 });
 
-const forgottenItemsSchema = z.object({ itemIDs: z.array(z.string()) });
+const ruleVersionSchema = z.object({ ruleHash: z.string(), sentence: z.string() }).nullable();
+
+const ruleInForceSchema = z.object({
+  ruleID: z.string(),
+  revision: z.int().positive(),
+  ruleHash: z.string(),
+  sentence: z.string(),
+  origin: z.enum(['definitions', 'nixie']),
+  changeID: z.string().nullable(),
+  lastFiredAt: z.date().nullable(),
+});
+
+const ruleConflictSchema = z.object({
+  ruleID: z.string(),
+  changeID: z.string(),
+  nixie: ruleVersionSchema,
+  repo: ruleVersionSchema,
+  base: ruleVersionSchema,
+  changedBy: z.enum(['owner', 'nixie']),
+  reason: z.string(),
+  changedAt: z.date(),
+});
+
+const ruleProposalChangeSchema = z.object({
+  ruleID: z.string(),
+  before: ruleVersionSchema,
+  after: ruleVersionSchema,
+});
+
+const pendingRuleProposalSchema = z.object({
+  proposalID: z.string(),
+  changes: z.array(ruleProposalChangeSchema),
+  createdAt: z.date(),
+  lapseAt: z.date(),
+});
+
+const ruleProposalAnswerSchema = z.strictObject({ proposalID: z.string().min(1) });
+
+const ruleProposalRejectionSchema = ruleProposalAnswerSchema.extend({
+  reason: z.string().max(500).regex(/\S/u),
+});
+
+const ruleProposalErrors = {
+  NOT_FOUND: { message: 'nothing has that ID', status: 404 },
+  PROPOSAL_CLOSED: { message: 'the proposal is answered, withdrawn or lapsed', status: 409 },
+} as const;
+
+const rules = oc.errors(ruleProposalErrors);
+
+const forgottenItemsSchema = z.object({
+  itemIDs: z.array(z.string()),
+  backup: forgetBackupSchema,
+});
 
 const hostTaskStateSchema = z.enum([
   'ready',
@@ -301,6 +354,7 @@ export const hostContract = {
       resetAt: z.date(),
       lastSequence: z.int().nonnegative(),
       shreddedRecords: z.int().nonnegative(),
+      backup: forgetBackupSchema,
     }),
   ),
   tasks: {
@@ -383,7 +437,9 @@ export const hostContract = {
       retire: memory.input(versionTargetSchema).output(versionRefSchema),
       restore: memory.input(versionTargetSchema).output(versionRefSchema),
 
-      forget: memory.input(versionTargetSchema).output(z.object({ itemID: z.string() })),
+      forget: memory
+        .input(versionTargetSchema)
+        .output(z.object({ itemID: z.string(), backup: forgetBackupSchema })),
       forgetAll: memory.output(forgottenItemsSchema),
       pin: memory
         .input(z.strictObject({ itemID: z.string().min(1), isPinned: z.boolean() }))
@@ -423,6 +479,22 @@ export const hostContract = {
           }),
         )
         .output(z.object({ approvalID: z.string(), keep: z.enum(['nixie', 'definitions']) })),
+    },
+  },
+  rules: {
+    list: rules.output(z.array(ruleInForceSchema)),
+    conflicts: rules.output(z.array(ruleConflictSchema)),
+
+    resolve: rules
+      .input(z.strictObject({ ruleID: z.string().min(1), keep: z.enum(['nixie', 'repo']) }))
+      .output(
+        z.object({ ruleID: z.string(), changeID: z.string(), keep: z.enum(['nixie', 'repo']) }),
+      ),
+
+    proposals: {
+      list: rules.output(z.array(pendingRuleProposalSchema)),
+      approve: rules.input(ruleProposalAnswerSchema).output(z.object({ proposalID: z.string() })),
+      reject: rules.input(ruleProposalRejectionSchema).output(z.object({ proposalID: z.string() })),
     },
   },
   prompts: {

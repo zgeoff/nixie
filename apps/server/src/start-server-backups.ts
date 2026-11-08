@@ -1,22 +1,50 @@
+import type { BackupContext } from '@heynixie/backup';
 import { startBackupSchedule } from '@heynixie/backup';
 import { localDataStorage } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
-import type { ServerParts } from './types';
+import type { Cleanup, ServerParts } from './types';
 
-export async function startServerBackups(parts: ServerParts): Promise<void> {
+export interface ServerBackupParts extends Pick<ServerParts, 'log' | 'state'> {
+  readonly config: Pick<ServerParts['config'], 'backup'>;
+  readonly cleanup: Pick<Cleanup, 'defer'>;
+  readonly context: { readonly log: { readonly writer: BackupContext['writer'] } };
+}
+
+export async function startServerBackups(parts: ServerBackupParts): Promise<void> {
   if (!parts.config.backup.isEnabled) {
+    parts.state.update({ backups: { state: 'off' } });
     parts.log('backup.off');
 
     return;
   }
 
+  const intervalMs = parts.config.backup.intervalMs;
+  const startedAt = parts.context.log.writer.clock.now();
+
+  parts.state.update({ backups: { state: 'on', intervalMs, startedAt, health: null } });
+
   const schedule = startBackupSchedule({
     context: { writer: parts.context.log.writer, storage: localDataStorage },
-    intervalMs: parts.config.backup.intervalMs,
+    intervalMs,
     onAbandoned: (sequences) => {
       parts.log('backup.sets_abandoned', { sequences: sequences.join(',') });
     },
     onPass: (pass) => {
+      const watch = parts.state.read().backups;
+      const lastHealth = watch.state === 'on' ? watch.health : null;
+
+      parts.state.update({
+        backups: { state: 'on', intervalMs, startedAt, health: pass.health ?? lastHealth },
+      });
+
+      for (const notice of pass.noticed) {
+        parts.log(
+          'backup.notice_raised',
+          { sequence: notice.sequence, cause: notice.cause },
+          'warn',
+        );
+      }
+
       for (const receipt of pass.received) {
         if ('refused' in receipt) {
           parts.log('backup.receipt_refused', {

@@ -37,6 +37,10 @@ imp:
   egress_deny:
     - 172.16.0.0/12
     - 192.168.0.0/16
+# the recipe runs no backup job, so nixie stages no backup set; turn this on beside a job that ships
+# the sets
+backup:
+  enabled: false
 definitions:
   source:
     kind: path

@@ -18,6 +18,7 @@
     "@heynixie/wire": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
+    "ts-pattern": "catalog:",
     "xstate": "catalog:",
     "zod": "catalog:"
   },

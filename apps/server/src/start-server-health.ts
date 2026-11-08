@@ -27,7 +27,7 @@ export async function startServerHealth(options: ServerHealthOptions) {
     liveness: {
       database: () => checkDatabase(options.writer.db),
     },
-    ...buildReadinessChecks(options.state, refresh),
+    ...buildReadinessChecks(options.state, refresh, options.clock),
     log: options.log,
   });
 }

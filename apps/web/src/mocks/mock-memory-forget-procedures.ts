@@ -45,7 +45,7 @@ export const mockMemoryForgetProcedures = {
       throw refusals[result.status]();
     }
 
-    return { itemID: options.input.itemID };
+    return { itemID: options.input.itemID, backup: { state: 'off' } as const };
   }),
 
   previewForgetRetired: memory.previewForgetRetired.handler((options) => {

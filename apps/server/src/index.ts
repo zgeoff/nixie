@@ -3,6 +3,7 @@ export { createSandboxAdapter } from './create-sandbox-adapter';
 export type { DeploymentConfig } from './deployment-config-schema';
 export { deploymentConfigSchema } from './deployment-config-schema';
 export { loadDeploymentConfig } from './load-deployment-config';
+export { runConversationReset } from './run-conversation-reset';
 export type { ConversationOptions } from './start-conversation';
 export { startConversation } from './start-conversation';
 export { makeTurnNoteReader } from './make-turn-note-reader';

@@ -16,8 +16,8 @@ import type {
   DefinitionsSkillOrigin,
   DefinitionsTables,
   DueDefinitionsExport,
+  RuntimeChangeState,
   SkillExportText,
-  WrittenSkillState,
 } from './types';
 import { writeSkillExportState } from './write-skill-export-state';
 
@@ -150,7 +150,7 @@ async function readClosingSkills(
 interface ClosingSkillRow {
   readonly approval_id: string;
   readonly name: string;
-  readonly state: WrittenSkillState;
+  readonly state: RuntimeChangeState;
   readonly pull_request_number: number | null;
   readonly attempt_id: string | null;
 }

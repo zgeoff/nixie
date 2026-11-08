@@ -7,8 +7,8 @@ import invariant from 'tiny-invariant';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
 import { readDefinitionsSkills } from './read-definitions-skills';
+import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
-import { runWrittenSkillSeed } from './run-written-skill-seed';
 import { writeWrittenSkill } from './write-written-skill';
 
 async function setupTest() {
@@ -115,7 +115,7 @@ test("it reads your definitions' version beneath a skill nixie wrote, and leaves
     });
   });
 
-  const seeded = await runWrittenSkillSeed({
+  const seeded = await runInForceSeed({
     log: ctx.log,
     buildPolicy: () => ({ rules: [], tools: [] }),
   });

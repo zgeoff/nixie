@@ -180,7 +180,10 @@ export async function startSpawnedNixie(options: SpawnedNixieOptions = {}): Prom
   const launch: Launch = {
     entry: options.release ?? testBundle.entry,
     args: buildServeArgs(files),
-    env: { NIXIE_TEST_PROVIDER_URL: doubles.provider.url },
+    env: {
+      NIXIE_TEST_PROVIDER_URL: doubles.provider.url,
+      NIXIE_TEST_FETCHER: join(import.meta.dir, 'run-stub-fetcher.ts'),
+    },
     files,
   };
 

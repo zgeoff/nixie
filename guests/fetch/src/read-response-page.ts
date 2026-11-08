@@ -14,24 +14,91 @@ export async function readResponsePage(
 ): Promise<FetchReply> {
   const contentType = response.headers['content-type'] ?? null;
   const status = response.statusCode ?? 0;
+  const kind = pickBodyKind(contentType);
 
   try {
+    if (kind === 'image') {
+      return await readImage({ url: url.href, status, contentType }, response, limits);
+    }
+
     return {
       kind: 'page',
       url: url.href,
       status,
       contentType,
-      ...(await readContent(url, response, pickBodyKind(contentType), limits)),
+      ...(await readContent(url, response, kind, limits)),
     };
   } finally {
     response.destroy();
   }
 }
 
+const htmlTypes: ReadonlySet<string> = new Set(['text/html', 'application/xhtml+xml']);
+
+const textTypes: ReadonlySet<string> = new Set([
+  'application/json',
+  'application/xml',
+  'application/javascript',
+  'application/ecmascript',
+]);
+
+type BodyKind = 'html' | 'text' | 'image' | 'binary';
+
+function pickBodyKind(contentType: string | null): BodyKind {
+  const mediaType = (contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+
+  if (htmlTypes.has(mediaType)) {
+    return 'html';
+  }
+
+  const isText =
+    mediaType.startsWith('text/') ||
+    textTypes.has(mediaType) ||
+    mediaType.endsWith('+json') ||
+    mediaType.endsWith('+xml');
+
+  if (isText) {
+    return 'text';
+  }
+
+  return mediaType.startsWith('image/') ? 'image' : 'binary';
+}
+
+interface ResponseHead {
+  readonly url: string;
+  readonly status: number;
+  readonly contentType: string | null;
+}
+
+// An image the site's bot protection sent, or one past the image limit, returns as a page with no
+// text, so the model reads the blocked reason or the truncated mark.
+async function readImage(
+  head: ResponseHead,
+  response: IncomingMessage,
+  limits: FetchLimits,
+): Promise<FetchReply> {
+  const blocked = findBotChallenge(head.status, response.headers, null);
+
+  if (blocked !== null) {
+    return { kind: 'page', ...head, text: null, links: [], isTruncated: false, blocked };
+  }
+
+  const body = await readLimitedBody(
+    decodeContent(response, response.headers['content-encoding']),
+    limits.imageBytes,
+  );
+
+  if (body.isTruncated) {
+    return { kind: 'page', ...head, text: null, links: [], isTruncated: true, blocked };
+  }
+
+  return { kind: 'image', ...head, base64: Buffer.from(body.bytes).toString('base64') };
+}
+
 async function readContent(
   url: URL,
   response: IncomingMessage,
-  kind: 'html' | 'text' | 'binary',
+  kind: Exclude<BodyKind, 'image'>,
   limits: FetchLimits,
 ): Promise<{
   readonly text: string | null;
@@ -93,29 +160,4 @@ function makeTextDecoder(contentType: string | null): TextDecoder {
   } catch {
     return new TextDecoder();
   }
-}
-
-const htmlTypes: ReadonlySet<string> = new Set(['text/html', 'application/xhtml+xml']);
-
-const textTypes: ReadonlySet<string> = new Set([
-  'application/json',
-  'application/xml',
-  'application/javascript',
-  'application/ecmascript',
-]);
-
-function pickBodyKind(contentType: string | null): 'html' | 'text' | 'binary' {
-  const mediaType = (contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
-
-  if (htmlTypes.has(mediaType)) {
-    return 'html';
-  }
-
-  const isText =
-    mediaType.startsWith('text/') ||
-    textTypes.has(mediaType) ||
-    mediaType.endsWith('+json') ||
-    mediaType.endsWith('+xml');
-
-  return isText ? 'text' : 'binary';
 }

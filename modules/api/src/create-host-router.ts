@@ -4,6 +4,7 @@ import { createHostConsolidationProcedures } from './create-host-consolidation-p
 import { createHostItemProcedures } from './create-host-item-procedures';
 import { createHostPromptProposalProcedures } from './create-host-prompt-proposal-procedures';
 import { createHostProposalProcedures } from './create-host-proposal-procedures';
+import { createHostRuleProcedures } from './create-host-rule-procedures';
 import { createHostSessionProcedures } from './create-host-session-procedures';
 import { createHostSkillProposalProcedures } from './create-host-skill-proposal-procedures';
 import { createHostSubjectsProcedure } from './create-host-subjects-procedure';
@@ -13,7 +14,7 @@ import { hostImplementer } from './host-implementer';
 import type { HostRouterOptions } from './types';
 
 export function createHostRouter(options: HostRouterOptions) {
-  const skillContext = { ...options.context, seedWrittenSkills: options.seedWrittenSkills };
+  const skillContext = { ...options.context, seedWrittenSkills: options.runInForceSeed };
 
   const promptContext = {
     ...options.context,
@@ -40,7 +41,7 @@ export function createHostRouter(options: HostRouterOptions) {
       .router(createHostSessionProcedures(options.context)),
     memory: hostImplementer.memory.use(gated).router({
       proposals: createHostProposalProcedures(options.readMemory),
-      items: createHostItemProcedures(options.readMemory),
+      items: createHostItemProcedures(options.context, options.readMemory),
       consolidation: createHostConsolidationProcedures(options.readMemory),
       subjects: createHostSubjectsProcedure(options.readMemory),
     }),
@@ -48,6 +49,11 @@ export function createHostRouter(options: HostRouterOptions) {
       proposals: createHostSkillProposalProcedures(skillContext),
       written: createHostWrittenSkillProcedures(skillContext),
     }),
+    rules: hostImplementer.rules
+      .use(gated)
+      .router(
+        createHostRuleProcedures({ ...options.context, runInForceSeed: options.runInForceSeed }),
+      ),
     prompts: hostImplementer.prompts.use(gated).router({
       proposals: createHostPromptProposalProcedures(promptContext),
     }),

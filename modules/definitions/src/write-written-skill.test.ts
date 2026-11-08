@@ -9,8 +9,8 @@ import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
 import { loadSkillVersions } from './load-skill-versions';
 import { readWrittenSkills } from './read-written-skills';
+import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
-import { runWrittenSkillSeed } from './run-written-skill-seed';
 import { writeWrittenSkill } from './write-written-skill';
 
 async function setupTest() {
@@ -195,7 +195,7 @@ test("it keeps your definitions' version as the base when a second written versi
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkill(tx, {

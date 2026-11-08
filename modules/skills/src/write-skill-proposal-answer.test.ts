@@ -7,8 +7,8 @@ import {
   createPathSource,
   readDefinitionsInForce,
   readWrittenSkills,
+  runInForceSeed,
   runSeed,
-  runWrittenSkillSeed,
   writeWrittenSkill,
   writeWrittenSkillState,
 } from '@heynixie/definitions';
@@ -57,7 +57,7 @@ async function setupTest() {
       clock: buildTestClock(0),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       seedWrittenSkills: async () => {
-        await runWrittenSkillSeed({ log, buildPolicy: () => policy });
+        await runInForceSeed({ log, buildPolicy: () => policy });
       },
     },
   };
@@ -290,7 +290,7 @@ test("it refuses an approval over a retired version as stale before the retireme
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => ctx.policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => ctx.policy });
 
   await withWriteTransaction(ctx.log.writer, (tx) =>
     writeWrittenSkillState(tx, {

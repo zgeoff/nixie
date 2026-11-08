@@ -1,12 +1,21 @@
 import type { JSONObject } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
+import { proposalLapseMs } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
 import { loadSkillVersions } from './load-skill-versions';
 import type { SnapshotSkill } from './load-snapshot-skills';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
-import type { DefinitionsInForce, DefinitionsTables, SkillVersion, WrittenSkillRow } from './types';
+import type { RuleProposalState } from './read-rule-proposals';
+import { readRuleProposals } from './read-rule-proposals';
+import type {
+  DefinitionsInForce,
+  DefinitionsTables,
+  SkillVersion,
+  SnapshotRuleRow,
+  WrittenSkillRow,
+} from './types';
 
 export interface ResetSeed {
   readonly inForce: DefinitionsInForce;
@@ -20,13 +29,16 @@ export interface ResetSeed {
 
   readonly written: readonly WrittenSkillRow[];
   readonly beneath: readonly SkillVersion[];
+
+  readonly rules: readonly SnapshotRuleRow[];
+  readonly closedProposalHashes: readonly string[];
 }
 
 type SeedRecordTables = Readonly<{
   records: { readonly sequence: number; readonly payload: string };
 }>;
 
-export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | null> {
+export async function readResetSeed(db: Kysely<unknown>, now: number): Promise<ResetSeed | null> {
   const inForce = await readDefinitionsInForce(db);
 
   if (inForce === null) {
@@ -64,6 +76,16 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     ),
   );
 
+  const rules = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('snapshot_rules')
+    .selectAll()
+    .where('snapshot_hash', '=', inForce.snapshotHash)
+    .orderBy('rule_id')
+    .execute();
+
+  const proposals = await readRuleProposals(db);
+
   return {
     inForce,
     policyHash: snapshot.policy_hash,
@@ -74,5 +96,21 @@ export async function readResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
     skills: await loadSnapshotSkills(db, inForce.snapshotHash),
     written,
     beneath: [...beneath.values()],
+    rules,
+    closedProposalHashes: collectClosedProposalHashes(proposals, now),
   };
+}
+
+// The lapse sweep runs hourly, so a proposal past its lapse time may still have no outcome.
+function collectClosedProposalHashes(
+  proposals: readonly RuleProposalState[],
+  now: number,
+): string[] {
+  return proposals.flatMap((state) =>
+    state.outcome === 'rejected' ||
+    state.outcome === 'lapsed' ||
+    (state.outcome === null && state.proposedAt + proposalLapseMs <= now)
+      ? [state.proposal.proposalHash]
+      : [],
+  );
 }

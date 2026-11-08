@@ -3,16 +3,19 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Projection } from '@heynixie/log';
-import { readRecords, startWriter, withWriteTransaction } from '@heynixie/log';
+import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildContentHash } from './build-content-hash';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
+import { DefinitionsParseError } from './definitions-parse-error';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
+import { readRulesInForce } from './read-rules-in-force';
 import { readWrittenSkills } from './read-written-skills';
+import { ruleFiresProjection } from './rule-fires-projection';
 import { runSeed } from './run-seed';
 import { createStubGitSyncWorktree } from './test-utils/create-stub-git-sync-worktree';
 import { writeSkillExportState } from './write-skill-export-state';
@@ -1385,4 +1388,350 @@ test('it adopts a skill whose export is in flight and leaves that export to fini
   ]);
 
   expect(attempts.rows).toStrictEqual([{ approval_id: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31' }]);
+});
+
+test('it applies a rule edit that narrows and records it in the seed record', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
+  );
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  invariant(result.status === 'seeded');
+
+  expect(result.record.payload['rules']).toStrictEqual({
+    revisions: [{ ruleID: 'ask-mail', revision: 2, hash: expect.any(String) }],
+    applied: [{ ruleID: 'ask-mail', change: 'narrowing' }],
+    held: [],
+    adopted: [],
+    conflicts: [],
+    proposalID: null,
+  });
+});
+
+test('it puts a rule edit that narrows in force', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
+  );
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const rules = await readRulesInForce(ctx.writer.db);
+
+  expect(rules).toStrictEqual([
+    {
+      ruleID: 'ask-mail',
+      revision: 2,
+      rule: {
+        hash: expect.any(String),
+        rule: { id: 'ask-mail', outcome: 'deny', tools: ['mail.send'] },
+      },
+      origin: 'definitions',
+      changeID: null,
+      lastFiredAt: null,
+    },
+  ]);
+});
+
+test('it keeps the version in force and proposes a rule edit that widens', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'deny-mail:\n  outcome: deny\n  tools: [mail.send]\n',
+  );
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'deny-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const rules = await readRulesInForce(ctx.writer.db);
+
+  expect(
+    rules.map((entry) => [entry.ruleID, entry.revision, entry.rule.rule.outcome]),
+  ).toStrictEqual([['deny-mail', 1, 'deny']]);
+});
+
+test('it writes a rule edit that widens as one rule change proposal beside the seed record', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'deny-mail:\n  outcome: deny\n  tools: [mail.send]\n',
+  );
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'deny-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const records = await readRecords(ctx.log, { afterSequence: 1 });
+
+  expect(records.map((read) => read.record.payload)).toStrictEqual([
+    expect.objectContaining({
+      rules: {
+        revisions: [],
+        applied: [],
+        held: ['deny-mail'],
+        adopted: [],
+        conflicts: [],
+        proposalID: expect.any(String),
+      },
+    }),
+    {
+      proposalID: expect.any(String),
+      proposalHash: expect.any(String),
+      changes: [
+        {
+          ruleID: 'deny-mail',
+          before: { hash: expect.any(String), sentence: expect.any(String) },
+          after: { hash: expect.any(String), sentence: expect.any(String) },
+          fields: [{ field: 'outcome', before: '"deny"', after: '"ask"' }],
+        },
+      ],
+    },
+  ]);
+});
+
+test('it applies the denies and asks of a first seed and gathers its allows into one proposal', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'start.yaml'),
+    [
+      'allow-notes:\n  outcome: allow\n  tools: [notes.read]\n',
+      'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
+      'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+      'deny-shell:\n  outcome: deny\n  tools: [shell.run]\n',
+    ].join(''),
+  );
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  invariant(result.status === 'seeded');
+
+  expect(result.record.payload['rules']).toStrictEqual({
+    revisions: [
+      { ruleID: 'ask-mail', revision: 1, hash: expect.any(String) },
+      { ruleID: 'deny-shell', revision: 1, hash: expect.any(String) },
+    ],
+    applied: [
+      { ruleID: 'ask-mail', change: 'narrowing' },
+      { ruleID: 'deny-shell', change: 'narrowing' },
+    ],
+    held: ['allow-notes', 'allow-web'],
+    adopted: [],
+    conflicts: [],
+    proposalID: expect.any(String),
+  });
+});
+
+test('it refuses a format 3 repo whose rule file fails the rule schema', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+  await writeFile(join(ctx.root, 'rules', 'notes.yaml'), 'Keep the replies short.\n');
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  invariant(result.status === 'refused' && result.error instanceof DefinitionsParseError);
+
+  expect({
+    inForce: result.inForce,
+    paths: result.error.problems.map((problem) => problem.path),
+  }).toStrictEqual({ inForce: null, paths: ['rules/notes.yaml'] });
+});
+
+test('it keeps the last seed in force when a rule file is malformed', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  const first = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeFile(join(ctx.root, 'rules', 'mail.yaml'), 'ask-mail:\n  outcome: maybe\n');
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  expect(result).toStrictEqual({
+    status: 'refused',
+    error: expect.any(DefinitionsParseError),
+    inForce: first.inForce,
+  });
+});
+
+test('it changes the snapshot hash when a rule changes', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  const first = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
+  );
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  expect(result.inForce?.snapshotHash).not.toBe(first.inForce?.snapshotHash);
+});
+
+test('it keeps the snapshot hash when a rule fires', async () => {
+  const ctx = await setupTest({ projections: [ruleFiresProjection] });
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  const first = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  invariant(first.inForce);
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: first.inForce.snapshotHash },
+      thread: 'conversation',
+      decision: { outcome: 'ask', stage: 4, rule: { id: 'ask-mail', revision: 1 } },
+    },
+  ]);
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  expect(result).toStrictEqual({ status: 'unchanged', inForce: first.inForce });
 });

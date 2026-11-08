@@ -1,0 +1,17 @@
+export const effectNames = [
+  'read',
+  'fetch',
+  'note',
+  'write',
+  'delete',
+  'send',
+  'spend',
+  'schedule',
+  'code_run',
+  'device',
+  'policy_widen',
+  'policy_narrow',
+  'budget_raise',
+  'budget_lower',
+  'export',
+] as const;

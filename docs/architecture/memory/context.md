@@ -229,8 +229,9 @@ record it ran for. The cleanup runs in order:
    resumes a session that existed before the record, even one whose step commits later.
 3. It deletes the key of every session summary on the conversation's thread, because any summary can
    hold the forgotten text ([compaction](../core/compaction.md#forgetting)).
-4. It removes every web fetch link the thread's sessions numbered, because a link's target can hold
-   the forgotten text ([web fetch](../connectors/web-fetch.md#link-ids)).
+4. It removes every web fetch link the thread's sessions numbered and every page they stored,
+   because a link's target or a page can hold the forgotten text
+   ([web fetch](../connectors/web-fetch.md#link-ids)).
 5. It starts the guest in the conversation's sandbox with a purge frame, and the guest removes the
    CLI's whole state directory, every transcript and fork included.
 6. It commits a session-cleanup-completed record.

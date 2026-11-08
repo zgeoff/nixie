@@ -27,8 +27,8 @@ nixie's backup schedule runs a pass on a poll, and early when a record commits. 
 every receipt that the job wrote, then stages a set when one is due:
 
 1. A forget set is due once a forget record is newer than the log position of every set that staged,
-   published or failed. A forget record closes a memory forget, a message forget or a moment
-   destroy, each of which deletes its keys before it writes that record.
+   published or failed. A forget record closes a memory forget, a message forget, a moment destroy
+   or a reset of the conversations, each of which deletes its keys before it writes that record.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 
@@ -82,9 +82,9 @@ repositories and passwords from a secret that nixie's container never mounts. Be
 init container that holds no secret mounts the whole data volume to create the staging folder.
 Kubernetes never restarts or retries a failed job run, so its Job ends failed. A second job run
 would skip the failed set, because the set holds its receipt, and exit with success, so the Job
-would end as a success. The reference Compose recipe runs no backup job. Its CI overlay runs the job
-as a container that loops and mounts the staging folder as a subpath of the data volume, as the
-[Compose guide](../../guides/compose.md) describes.
+would end as a success. The reference Compose recipe runs no backup job, and its configuration turns
+backups off. Its CI overlay runs the job as a container that loops and mounts the staging folder as
+a subpath of the data volume, as the [Compose guide](../../guides/compose.md) describes.
 
 ## Receipts in nixie
 
@@ -97,6 +97,47 @@ set, and nixie logs the refusal. Either way, nixie then renames the set's folder
 no set, syncs the staging folder, and removes the renamed folder. A stop part way through the
 removal therefore never leaves a marked set without its files, and the next start removes what the
 stop left.
+
+## A forget's backup state
+
+nixie reads a forget's backup state from the sets whose log position is at or after the forget
+record, because only a copy that started after that record lacks the deleted keys:
+
+| Sets at or after the forget record                                                                   | Backup state                                                               |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| any published set                                                                                    | complete                                                                   |
+| none published, and the newest set that is not abandoned failed                                      | failed, with the receipt's failure, or with nixie's refusal of the receipt |
+| none published, and the newest set that is not abandoned is staging or staged, or no such set exists | pending                                                                    |
+
+One published set is enough, because its job run forgets every other key snapshot and prunes it. A
+failed state keeps the forget open, and the next scheduled set covers the forget again, within one
+backup interval. An abandoned set leaves the forget due, so the next pass stages a new forget set. A
+set that never gets its receipt keeps the forget pending.
+
+## Backup health
+
+nixie judges its backups from the receipts it records, because the backup job serves no health
+endpoint. Each pass, after it records the receipts, nixie raises a notice for each set since the
+newest published set that needs one:
+
+| Set                                                         | Notice  |
+| ----------------------------------------------------------- | ------- |
+| failed, by its receipt or by nixie's refusal of the receipt | failed  |
+| staged at least one backup interval ago, with no receipt    | missing |
+
+nixie keeps each notice in a table keyed by its set and its cause, so a set raises each cause once,
+across restarts, and a set that goes missing and then fails raises both. A set older than the newest
+published set raises no notice, because that publish shows the backups work again. nixie logs each
+notice as a warning. The client reads the newest notice since the newest published set once a
+minute, and shows it above every signed-in page until a newer set publishes.
+
+Readiness carries backups as a [dependency part](server.md#health). The part turns unready once no
+set has published within twice the backup interval, counted from the newest published receipt or the
+backup schedule's start, whichever is later, so a nixie that was down gives the backup job 2
+intervals before it reports the job. Its details give the age in seconds of the newest set that is
+not abandoned or still staging, and the time nixie recorded the newest published receipt. The part
+is unready until the server's backups start step runs, with backups on or off, and that step makes
+it ready when backups are off.
 
 ## Formats
 

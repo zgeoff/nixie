@@ -55,6 +55,41 @@ interface TaskIDParams {
   readonly extensions: ExtendContext;
 }
 
+const RULE_RESOLVE_OPTIONS = {
+  ...CLI_OPTIONS,
+  ruleID: { type: 'positional', required: true },
+  keep: { type: 'enum', choices: ['nixie', 'repo'], required: true },
+} as const;
+
+const PROPOSAL_ID_OPTIONS = {
+  ...CLI_OPTIONS,
+  proposalID: { type: 'positional', required: true },
+} as const;
+
+const PROPOSAL_REJECT_OPTIONS = {
+  ...PROPOSAL_ID_OPTIONS,
+  reason: { type: 'string', required: true },
+} as const;
+
+// A command whose name holds a space is an action under its first word, such as `rules resolve`,
+// and an action that takes an ID or a choice of its own has its own options here.
+type ActionOptions =
+  | typeof CLI_OPTIONS
+  | typeof RULE_RESOLVE_OPTIONS
+  | typeof PROPOSAL_ID_OPTIONS
+  | typeof PROPOSAL_REJECT_OPTIONS;
+
+const ACTION_OPTIONS: Readonly<Record<string, ActionOptions>> = {
+  'rules resolve': RULE_RESOLVE_OPTIONS,
+  'proposals approve': PROPOSAL_ID_OPTIONS,
+  'proposals reject': PROPOSAL_REJECT_OPTIONS,
+};
+
+interface ActionParams {
+  readonly args: ActionOptions;
+  readonly extensions: ExtendContext;
+}
+
 export async function readCLIArgs(
   argv: readonly string[],
   commandNames: readonly string[],
@@ -68,7 +103,7 @@ export async function readCLIArgs(
 
   const plainCommands = Object.fromEntries(
     commandNames
-      .filter((name) => !taskIDCommandNames.includes(name))
+      .filter((name) => !taskIDCommandNames.includes(name) && !name.includes(' '))
       .map((name) => [
         name,
         lazy(
@@ -97,7 +132,56 @@ export async function readCLIArgs(
     ]),
   );
 
-  const subCommands = { ...plainCommands, ...taskIDCommands };
+  const actionNames = commandNames.filter((name) => name.includes(' '));
+  const groups = [...new Set(actionNames.map((name) => name.split(' ')[0] ?? ''))];
+
+  const actionCommands = Object.fromEntries(
+    groups.map((group) => {
+      const actions = actionNames.filter((name) => name.startsWith(`${group} `));
+      const usage = `${group} takes ${actions.map((name) => name.slice(group.length + 1)).join(', ')}`;
+
+      return [
+        group,
+        define({
+          name: group,
+          args: CLI_OPTIONS,
+          subCommands: Object.fromEntries(
+            actions.map((name) => {
+              const action = name.slice(group.length + 1);
+              const args = ACTION_OPTIONS[name] ?? CLI_OPTIONS;
+
+              const positionals = Object.values<{ readonly type: string }>(args).filter(
+                (arg) => arg.type === 'positional',
+              );
+
+              return [
+                action,
+                lazy(
+                  () => (ctx: Readonly<CommandContext<ActionParams>>) => {
+                    const extra = [
+                      ...ctx.positionals.slice(ctx.commandPath.length + positionals.length),
+                      ...ctx.rest,
+                    ];
+
+                    parsed =
+                      extra.length === 0
+                        ? { kind: 'command', command: name, flags: ctx.values, args: [] }
+                        : { kind: 'invalid-flags', message: usage };
+                  },
+                  { name: action, args },
+                ),
+              ];
+            }),
+          ),
+          run: () => {
+            parsed = { kind: 'invalid-flags', message: usage };
+          },
+        }),
+      ];
+    }),
+  );
+
+  const subCommands = { ...plainCommands, ...taskIDCommands, ...actionCommands };
 
   const entry = define({
     name: 'nixie',

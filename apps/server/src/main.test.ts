@@ -786,6 +786,7 @@ test('it answers readiness per part, with the slice 1 parts, the dependency part
       imp_host: { isReady: true, reason: null },
       conversation_imp: { isReady: true, reason: null },
       disk: { isReady: true, reason: null },
+      backups: { isReady: true, reason: null },
     },
     advisory: {
       conversation_turns: { isReady: true, reason: null },

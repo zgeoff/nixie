@@ -17,6 +17,11 @@ export interface NixieTables {
     readonly updated_sequence: number;
     readonly cancelled_sequence: number | null;
   };
+  readonly backup_notices: {
+    readonly sequence: number;
+    readonly cause: string;
+    readonly raised_at: number;
+  };
   readonly backup_sets: {
     readonly sequence: number;
     readonly kind: string;
@@ -35,6 +40,14 @@ export interface NixieTables {
     readonly input_hash: string | null;
     readonly result: string;
     readonly recorded_at: number;
+  };
+  readonly closed_rule_proposals: {
+    readonly proposal_hash: string;
+  };
+  readonly definition_rules: {
+    readonly rule_id: string;
+    readonly rule_hash: string;
+    readonly path: string;
   };
   readonly definition_seeds: {
     readonly seed: number;
@@ -321,6 +334,48 @@ export interface NixieTables {
     readonly refused_at: number;
     readonly refused_sequence: number;
   };
+  readonly rule_exports: {
+    readonly export_id: string;
+    readonly state: string | null;
+    readonly pull_request_number: number | null;
+    readonly pull_request_url: string | null;
+    readonly attempt_started_at: number | null;
+    readonly updated_at: number;
+  };
+  readonly rule_fires: {
+    readonly rule_id: string;
+    readonly last_fired_at: number;
+  };
+  readonly rule_revisions: {
+    readonly rule_id: string;
+    readonly revision: number;
+    readonly rule_hash: string | null;
+    readonly created_at: number;
+  };
+  readonly rule_versions: {
+    readonly rule_hash: string;
+    readonly rule: string;
+  };
+  readonly rules: {
+    readonly rule_id: string;
+    readonly revision: number;
+    readonly rule_hash: string | null;
+    readonly origin: string;
+    readonly created_at: number;
+    readonly updated_at: number;
+  };
+  readonly runtime_rules: {
+    readonly change_id: string;
+    readonly rule_id: string;
+    readonly rule_hash: string | null;
+    readonly state: string;
+    readonly base_hash: string | null;
+    readonly definitions_hash: string | null;
+    readonly changed_by: string;
+    readonly reason: string;
+    readonly changed_at: number;
+    readonly updated_at: number;
+  };
   readonly sandboxes: {
     readonly sandbox_id: string;
     readonly adapter: string;
@@ -329,6 +384,14 @@ export interface NixieTables {
     readonly state: string;
     readonly spec: string;
     readonly created_sequence: number;
+  };
+  readonly search_calls: {
+    readonly day: string;
+    readonly count: number;
+  };
+  readonly seeded_rules: {
+    readonly rule_id: string;
+    readonly rule_hash: string;
   };
   readonly skill_export_attempts: {
     readonly approval_id: string;
@@ -347,6 +410,13 @@ export interface NixieTables {
     readonly name: string;
     readonly frontmatter: string;
     readonly files: string;
+  };
+  readonly snapshot_rules: {
+    readonly snapshot_hash: string;
+    readonly rule_id: string;
+    readonly revision: number;
+    readonly rule_hash: string;
+    readonly change_id: string | null;
   };
   readonly snapshot_skills: {
     readonly snapshot_hash: string;
@@ -405,6 +475,19 @@ export interface NixieTables {
     readonly number: number;
     readonly url: string;
     readonly thread: string;
+  };
+  readonly web_fetch_pages: {
+    readonly session_key: string;
+    readonly page_id: string;
+    readonly thread: string;
+    readonly url: string;
+    readonly status: number;
+    readonly content_type: string | null;
+    readonly is_truncated: number;
+    readonly blocked: string | null;
+    readonly parts: string;
+    readonly bytes: number;
+    readonly stored_at: number;
   };
   readonly written_skills: {
     readonly approval_id: string;

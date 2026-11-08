@@ -232,7 +232,12 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
 
   expect(crash).toMatchObject({ message: 'crashed at memory.forget.key_removed' });
   expect([...keysAtCrash.keys()]).toStrictEqual([second.itemID]);
-  expect(statusAtCrash).toStrictEqual({ deleted: [], pending: [first.itemID, second.itemID] });
+
+  expect(statusAtCrash).toStrictEqual({
+    deleted: [],
+    pending: [first.itemID, second.itemID],
+    forgottenSequence: null,
+  });
 
   expect(
     records
@@ -240,7 +245,12 @@ test('it resumes a run that a crash stopped between two key deletions, and forge
       .map((entry) => entry.record.payload),
   ).toStrictEqual([{ itemID: first.itemID }, { itemID: second.itemID }]);
 
-  expect(status).toStrictEqual({ deleted: [first.itemID, second.itemID], pending: [] });
+  expect(status).toStrictEqual({
+    deleted: [first.itemID, second.itemID],
+    pending: [],
+    forgottenSequence: records.at(-1)?.record.sequence ?? null,
+  });
+
   expect([...keys.keys()]).toStrictEqual([]);
 });
 
@@ -280,8 +290,15 @@ test('it reports an item whose forget is still pending apart from a deleted one'
     .catch(() => {});
 
   const status = await ctx.memory.store.view.readForgetStatus([first.itemID, second.itemID]);
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
-  expect(status).toStrictEqual({ deleted: [first.itemID], pending: [second.itemID] });
+  const forgotten = records.find((entry) => entry.record.kind === 'memory.forgotten');
+
+  expect(status).toStrictEqual({
+    deleted: [first.itemID],
+    pending: [second.itemID],
+    forgottenSequence: forgotten?.record.sequence ?? null,
+  });
 });
 
 test('it finishes the pending forgets of a run and reports every item deleted', async () => {
@@ -327,8 +344,20 @@ test('it finishes the pending forgets of a run and reports every item deleted', 
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
   expect(failure).toMatchObject({ message: 'crashed at memory.forget.key_removed' });
-  expect(before).toStrictEqual({ deleted: [first.itemID], pending: [second.itemID] });
-  expect(status).toStrictEqual({ deleted: [first.itemID, second.itemID], pending: [] });
+
+  const forgotten = records.filter((entry) => entry.record.kind === 'memory.forgotten');
+
+  expect(before).toStrictEqual({
+    deleted: [first.itemID],
+    pending: [second.itemID],
+    forgottenSequence: forgotten[0]?.record.sequence ?? null,
+  });
+
+  expect(status).toStrictEqual({
+    deleted: [first.itemID, second.itemID],
+    pending: [],
+    forgottenSequence: forgotten[1]?.record.sequence ?? null,
+  });
 
   expect(
     records

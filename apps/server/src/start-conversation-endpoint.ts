@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { buildTimeTool, readMessageTimeZone } from '@heynixie/connectors';
+import type { SearchProvider } from '@heynixie/connectors';
+import { buildSearchTool, buildTimeTool, readMessageTimeZone } from '@heynixie/connectors';
 import type { DefinitionsInForce } from '@heynixie/definitions';
 import { checkPromptProposal } from '@heynixie/definitions';
 import type { MemoryToolStore } from '@heynixie/memory';
@@ -18,8 +19,14 @@ import { buildTaskMessaging } from './build-task-messaging';
 import { buildTaskStartBounds } from './build-task-start-bounds';
 import type { ServerParts } from './types';
 
+interface ConversationSearch {
+  readonly provider: SearchProvider;
+  readonly dailyCallCap: number;
+}
+
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
+  readonly search: ConversationSearch | null;
 
   readonly testTools: readonly ToolDefinition[];
 
@@ -99,11 +106,24 @@ export async function startConversationEndpoint(
     buildTaskStartTool(options.context, messaging, bounds),
   ];
 
+  const search =
+    tools.search === null
+      ? []
+      : [
+          buildSearchTool(tools.search.provider, {
+            log: options.context.log,
+            clock: options.context.clock,
+            dailyCallCap: tools.search.dailyCallCap,
+            timeZone: options.config.time.default_zone,
+          }),
+        ];
+
   const definitions = [
     ...buildConversationTools(
       { webFetch: tools.webFetch, time, logReaders, skills, prompts, tasks },
       memory,
     ),
+    ...search,
     buildSilentEndTool(messaging),
   ];
 

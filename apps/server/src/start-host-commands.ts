@@ -15,7 +15,7 @@ export interface HostCommandsOptions {
 
   readonly readMemory: () => StartedMemoryStore | null;
 
-  readonly seedWrittenSkills: () => Promise<void>;
+  readonly runInForceSeed: () => Promise<void>;
   readonly readInForce: () => PromptsInForce | null;
   readonly wakeExports: () => void;
   readonly runReset: () => Promise<ServerReset>;
@@ -31,7 +31,7 @@ export async function startHostCommands(
   const respond = makeHostResponder({
     context: options.apiContext,
     readMemory: options.readMemory,
-    seedWrittenSkills: options.seedWrittenSkills,
+    runInForceSeed: options.runInForceSeed,
     readInForce: options.readInForce,
     wakeExports: options.wakeExports,
     runReset: options.runReset,

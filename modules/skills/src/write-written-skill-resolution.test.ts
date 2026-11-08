@@ -6,8 +6,8 @@ import {
   checkSkillFiles,
   createPathSource,
   readWrittenSkills,
+  runInForceSeed,
   runSeed,
-  runWrittenSkillSeed,
   writeWrittenSkill,
 } from '@heynixie/definitions';
 import { readRecords, startWriter, withWriteTransaction } from '@heynixie/log';
@@ -50,7 +50,7 @@ async function setupTest() {
       clock: buildTestClock(0),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       seedWrittenSkills: async () => {
-        await runWrittenSkillSeed({ log, buildPolicy: () => policy });
+        await runInForceSeed({ log, buildPolicy: () => policy });
       },
     },
   };
@@ -81,7 +81,7 @@ test("it puts the definitions' version back in force when you keep it", async ()
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => ctx.policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => ctx.policy });
 
   await writeWrittenSkillResolution(ctx.context, {
     approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
@@ -140,7 +140,7 @@ test("it puts the definitions' changed version in force, not the approval's base
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => ctx.policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => ctx.policy });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By hour.\n`);
   await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
 

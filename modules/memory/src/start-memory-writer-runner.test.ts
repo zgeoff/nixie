@@ -183,7 +183,15 @@ test('it closes the writer tool socket when the writer fails to start', async ()
     },
   });
 
-  expect(starting).rejects.toThrow('the definitions snapshot is unreadable');
+  // Bun settles an un-awaited rejects matcher without delivering Worker messages, and the start
+  // waits on the SQLite worker, so the matcher would hang the test.
+  const [started] = await Promise.allSettled([starting]);
+
+  expect(started).toStrictEqual({
+    status: 'rejected',
+    reason: new Error('the definitions snapshot is unreadable'),
+  });
+
   expect(ctx.memory.listSocketNames()).resolves.toStrictEqual([]);
 });
 

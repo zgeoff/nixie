@@ -1,3 +1,4 @@
+import { formatForgetBackup } from './format-forget-backup';
 import type { CLIFlags, CLIIO, Command, HostTransport } from './types';
 
 export function createResetCommands(host: HostTransport): readonly (readonly [string, Command])[] {
@@ -52,10 +53,13 @@ async function runReset(host: HostTransport, flags: CLIFlags, io: CLIIO): Promis
   return 0;
 }
 
+const filteredBackupNote =
+  'When backups are on, the next backup job run removes the old keys from the key backups. A backup copied by hand keeps them.';
+
 const memoriesWarning = [
   'A reset of the memories forgets every memory item, and keeps every record, the conversation and the device sessions.',
   'Only a restore from a backup undoes it.',
-  backupNote,
+  filteredBackupNote,
 ].join('\n');
 
 async function runMemoriesReset(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
@@ -71,7 +75,9 @@ async function runMemoriesReset(host: HostTransport, flags: CLIFlags, io: CLIIO)
     client.memory.items.forgetAll(),
   );
 
-  io.print(`nixie forgot ${forgotten.itemIDs.length} memory items.\n${backupNote}`);
+  io.print(
+    `nixie forgot ${forgotten.itemIDs.length} memory items.\n${formatForgetBackup(forgotten.backup)}`,
+  );
 
   return 0;
 }
@@ -79,7 +85,7 @@ async function runMemoriesReset(host: HostTransport, flags: CLIFlags, io: CLIIO)
 const conversationsWarning = [
   'A reset of the conversations forgets every message of the conversation, destroys its sandbox and gives the model a new session, and keeps every record, every memory item and the device sessions.',
   'Only a restore from a backup undoes it.',
-  backupNote,
+  filteredBackupNote,
 ].join('\n');
 
 async function runConversationsReset(
@@ -103,7 +109,7 @@ async function runConversationsReset(
     [
       `nixie shredded ${reset.shreddedRecords} records of the conversation up to sequence ${reset.lastSequence} at ${reset.resetAt.toISOString()}.`,
       'The server restarts now, and its next turn starts with no history.',
-      backupNote,
+      formatForgetBackup(reset.backup),
     ].join('\n'),
   );
 

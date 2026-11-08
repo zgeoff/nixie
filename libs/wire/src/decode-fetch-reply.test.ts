@@ -53,6 +53,39 @@ test('it returns a binary page with no text', () => {
   });
 });
 
+test('it returns an image with its body in base64', () => {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({
+      kind: 'image',
+      url: 'https://example.com/a.png',
+      status: 200,
+      contentType: 'image/png',
+      base64: 'iVBORw==',
+    }),
+  );
+
+  expect(decodeFetchReply(bytes)).toStrictEqual({
+    kind: 'image',
+    url: 'https://example.com/a.png',
+    status: 200,
+    contentType: 'image/png',
+    base64: 'iVBORw==',
+  });
+});
+
+test('it refuses an image with no body', () => {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({
+      kind: 'image',
+      url: 'https://example.com/a.png',
+      status: 200,
+      contentType: 'image/png',
+    }),
+  );
+
+  expect(() => decodeFetchReply(bytes)).toThrowWithMessage(TypeError, /needs base64/u);
+});
+
 test('it returns a refusal with its reason', () => {
   const bytes = new TextEncoder().encode(
     JSON.stringify({ kind: 'refused', reason: 'only http and https URLs are fetched' }),
