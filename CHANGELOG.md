@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.69.0](https://github.com/zgeoff/nixie/compare/v0.68.0...v0.69.0) (2026-11-08)
+
+
+### Features
+
+* **api:** report a forget's key backup state ([#937](https://github.com/zgeoff/nixie/issues/937)) ([c4206a1](https://github.com/zgeoff/nixie/commit/c4206a104a5652ec414a1e9805e2dc73a3089514))
+* **backup:** read a forget's backup state from the sets that cover it ([#936](https://github.com/zgeoff/nixie/issues/936)) ([df791ea](https://github.com/zgeoff/nixie/commit/df791ea0dde67fbfe8f671adddcf3070da9a9b16))
+* **backup:** report backup health in readiness, with notices ([#951](https://github.com/zgeoff/nixie/issues/951)) ([abafdc5](https://github.com/zgeoff/nixie/commit/abafdc56b8ef08cfac7a4a7687c8e98a8a1d6ab9))
+* **connectors:** page through a long web page from its stored copy ([#934](https://github.com/zgeoff/nixie/issues/934)) ([ba0ee7a](https://github.com/zgeoff/nixie/commit/ba0ee7a38459313d4e24c80d4a374e1351904153))
+* **connectors:** search the web through kagi under a daily call cap ([#935](https://github.com/zgeoff/nixie/issues/935)) ([06e4f18](https://github.com/zgeoff/nixie/commit/06e4f189559dacc8acb6c0dae18b372fb5481fd5))
+* **definitions:** export runtime rule changes in one rolling pr ([#943](https://github.com/zgeoff/nixie/issues/943)) ([f4403c1](https://github.com/zgeoff/nixie/commit/f4403c13db305c89becb2c7a6076778640f53077))
+* **definitions:** seed the rules with the widening check ([#939](https://github.com/zgeoff/nixie/issues/939)) ([488e766](https://github.com/zgeoff/nixie/commit/488e766e39c6fbc1270f6669b6329accb3982b0e))
+* **fetch:** return a fetched image to the model as an image ([#947](https://github.com/zgeoff/nixie/issues/947)) ([0e5bee5](https://github.com/zgeoff/nixie/commit/0e5bee53c21bfb60d876c585dc72b42bafb25b5f))
+* **memory:** search moments by meaning ([#918](https://github.com/zgeoff/nixie/issues/918)) ([0f540a5](https://github.com/zgeoff/nixie/commit/0f540a5ed845727d4c940f89f586c37cab5f8dde))
+* **policy:** add the rule format, matching and the widening check ([#930](https://github.com/zgeoff/nixie/issues/930)) ([4ce5bba](https://github.com/zgeoff/nixie/commit/4ce5bba809abc8cbf1475905be8d5db2b823ae5c))
+* **server:** answer rule changes from the host and the web client ([#941](https://github.com/zgeoff/nixie/issues/941)) ([410b9a1](https://github.com/zgeoff/nixie/commit/410b9a14cdc4acd8e3bc5ea09717806957f41a8f))
+
+
+### Bug Fixes
+
+* **backup:** pass recorded receipts on when a later pass step fails ([#952](https://github.com/zgeoff/nixie/issues/952)) ([693ddca](https://github.com/zgeoff/nixie/commit/693ddca62b9e3d1314de3e0722aabcfdbdfe92b9))
+* **deps:** update @zgeoff/std to v0.4.3 ([#921](https://github.com/zgeoff/nixie/issues/921)) ([0edc45f](https://github.com/zgeoff/nixie/commit/0edc45f0979aed85adb02071c85e4f4e7375f9aa))
+* **fetch:** keep a page's text whole past the link target budget ([#945](https://github.com/zgeoff/nixie/issues/945)) ([231d50e](https://github.com/zgeoff/nixie/commit/231d50ee3c0780e1fb4a24dbe45291c4455e333c))
+* **fetch:** number a page's links in time linear in their count ([#942](https://github.com/zgeoff/nixie/issues/942)) ([358ad5c](https://github.com/zgeoff/nixie/commit/358ad5caf671214e2807f23f73a1cdd45cb308a4))
+* **wire:** decode a frame in time linear in its size ([#940](https://github.com/zgeoff/nixie/issues/940)) ([ee4e727](https://github.com/zgeoff/nixie/commit/ee4e727732a4aa00b15b25c0cb887d694761b764))
+
 ## [0.68.0](https://github.com/zgeoff/nixie/compare/v0.67.0...v0.68.0) (2026-11-07)
 
 
