@@ -30,7 +30,7 @@ defaults:
 
 jobs:
   changes:
-    uses: zgeoff/tools/.github/workflows/paths-changed.yml@900634774ea7bb63370d7e57c8e6bce1944934b0 # main
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@c9b824d1e456af850913cb4bef28fdbc64402aa3 # main
     with:
       paths: |
         .github/workflows/compose.yml
@@ -53,7 +53,7 @@ jobs:
   # an upstream rebuild of a pinned tag moves its digest with no commit here, so only a pull request
   # that changes the recipe or the check runs the digest check, and main catches the drift
   pins:
-    uses: zgeoff/tools/.github/workflows/paths-changed.yml@900634774ea7bb63370d7e57c8e6bce1944934b0 # main
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@c9b824d1e456af850913cb4bef28fdbc64402aa3 # main
     with:
       paths: |
         .github/workflows/compose.yml
