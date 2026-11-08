@@ -1,5 +1,6 @@
 import { readIndexEntries } from './read-index-entries';
 import { readMessageEntries } from './read-message-entries';
+import { readMomentEntries } from './read-moment-entries';
 import type { IndexEntry } from './start-memory-index';
 import type { StoreParts } from './types';
 
@@ -16,22 +17,44 @@ export async function updateStoreIndexes(parts: StoreParts): Promise<UpdatedInde
 
   parts.messages.cursor.updateThrough(messages.through);
 
-  return { rebuilt: runVectorRebuilds(parts, { items: entries, messages: messages.entries }) };
+  const moments = await readMomentRebuildEntries(parts);
+
+  return {
+    rebuilt: runVectorRebuilds(parts, {
+      items: entries,
+      messages: messages.entries,
+      moments,
+    }),
+  };
+}
+
+async function readMomentRebuildEntries(parts: StoreParts): Promise<readonly IndexEntry[]> {
+  if (parts.moments.vectors === null) {
+    return [];
+  }
+
+  const moments = await readMomentEntries(parts.context.log, 0);
+
+  parts.moments.cursor.through = moments.through;
+
+  return moments.entries;
 }
 
 interface RebuildEntries {
   readonly items: readonly IndexEntry[];
   readonly messages: readonly IndexEntry[];
+  readonly moments: readonly IndexEntry[];
 }
 
 async function runVectorRebuilds(parts: StoreParts, entries: RebuildEntries): Promise<boolean> {
-  if (parts.vectors === null || parts.messages.vectors === null) {
+  if (parts.vectors === null || parts.messages.vectors === null || parts.moments.vectors === null) {
     return false;
   }
 
   const rebuilt = await Promise.all([
     parts.vectors.rebuild(entries.items),
     parts.messages.vectors.rebuild(entries.messages),
+    parts.moments.vectors.rebuild(entries.moments),
   ]);
 
   return rebuilt.every(Boolean);

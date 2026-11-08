@@ -20,7 +20,11 @@ test('it forgets every retired target and reports each one deleted', async () =>
 
   expect(result).toStrictEqual({
     status: 'applied',
-    forgets: { deleted: [first.itemID, second.itemID], pending: [] },
+    forgets: {
+      deleted: [first.itemID, second.itemID],
+      pending: [],
+      backup: { state: 'off' },
+    },
   });
 
   expect(stored).toMatchObject({ forgottenAt: expect.toBeValidDate(), state: 'forgotten' });
@@ -121,6 +125,10 @@ test('it stops at a failed cleanup with the later items pending, and finishes th
 
   expect(retried).toStrictEqual({
     status: 'applied',
-    forgets: { deleted: [first.itemID, second.itemID], pending: [] },
+    forgets: {
+      deleted: [first.itemID, second.itemID],
+      pending: [],
+      backup: { state: 'off' },
+    },
   });
 });

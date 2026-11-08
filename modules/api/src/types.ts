@@ -1,3 +1,4 @@
+import type { ForgetBackup } from '@heynixie/backup';
 import type { ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { RecordKind } from '@heynixie/log';
@@ -24,6 +25,8 @@ export interface APISettings {
   readonly isMemoryWriterEnabled: boolean;
 
   readonly isMemoryConsolidatorEnabled: boolean;
+
+  readonly isBackupEnabled: boolean;
 
   readonly taskDirectory: readonly TaskProfile[];
 }
@@ -55,7 +58,7 @@ export interface HostRouterOptions {
   readonly runReset: () => Promise<HostReset>;
   readonly runConversationReset: () => Promise<HostConversationReset>;
 
-  readonly seedWrittenSkills: () => Promise<void>;
+  readonly runInForceSeed: () => Promise<void>;
 
   readonly readInForce: () => PromptsInForce | null;
   readonly wakeExports: () => void;
@@ -79,7 +82,6 @@ export type ViewMemoryStore = Pick<
   | 'pin'
   | 'markSensitive'
   | 'forget'
-  | 'finishForget'
   | 'forgetRetired'
   | 'finishForgets'
 > & {
@@ -105,10 +107,20 @@ interface HostReset {
   readonly keptSessions: number;
 }
 
+export type ForgetBackupState =
+  | ForgetBackup
+  | { readonly state: 'off' }
+  | { readonly state: 'unknown' };
+
+export type ForgetProgress =
+  | { readonly stage: 'deleting' }
+  | { readonly stage: 'forgotten'; readonly sequence: number | null };
+
 interface HostConversationReset {
   readonly resetAt: Date;
   readonly lastSequence: number;
   readonly shreddedRecords: number;
+  readonly backup: ForgetBackupState;
 }
 
 export interface APIRequestContext extends ResponseHeadersPluginContext {

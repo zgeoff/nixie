@@ -6,9 +6,9 @@ import {
   buildContentHash,
   checkSkillFiles,
   createPathSource,
+  runInForceSeed,
   runSeed,
   runSkillExports,
-  runWrittenSkillSeed,
   writeWrittenSkill,
 } from '@heynixie/definitions';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
@@ -44,7 +44,7 @@ async function setupTest() {
   const clock = buildTestClock(Date.UTC(2026, 2, 3, 10, 0));
 
   const runWrittenSeed = async () => {
-    await runWrittenSkillSeed({ log, buildPolicy: () => policy });
+    await runInForceSeed({ log, buildPolicy: () => policy });
   };
 
   const procedures = createHostWrittenSkillProcedures({

@@ -34,6 +34,7 @@ test('it keeps the deployment key, the impd token and the model credentials', as
     impdToken: 'impd-token',
     definitionsExportToken: null,
     models: { model_credentials: { anthropic: 'model-key' } },
+    connectorCredentials: {},
     settings: {},
   });
 
@@ -62,6 +63,21 @@ test("it keeps the definitions repo's export token", async () => {
   const secrets = await loadSecrets({ path: ctx.path, sopsArgv: ctx.sopsArgv });
 
   expect(secrets.definitionsExportToken).toBe('export-token');
+});
+
+test('it keeps the connector credentials', async () => {
+  const ctx = await setupTest();
+
+  const key = Buffer.alloc(32, 7).toString('base64');
+
+  await writeFile(
+    ctx.path,
+    `deployment_key: ${key}\nconnector_credentials:\n  search: search-key-a\n`,
+  );
+
+  const secrets = await loadSecrets({ path: ctx.path, sopsArgv: ctx.sopsArgv });
+
+  expect(secrets.connectorCredentials).toStrictEqual({ search: 'search-key-a' });
 });
 
 test('it keeps the private settings', async () => {

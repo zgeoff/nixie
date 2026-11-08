@@ -1,0 +1,46 @@
+# The starter rules. Copy them into your own definitions repo and edit them there.
+# The first seed applies the asks at once, and gathers the allows into one proposal for you to approve.
+
+allow-reads:
+  outcome: allow
+  effects: [read, fetch]
+  note: Reading and fetching change nothing.
+
+allow-notes:
+  outcome: allow
+  effects: [note]
+
+allow-service-writes:
+  outcome: allow
+  effects: [write]
+  note: The service can restore what a write changes.
+
+allow-sends-within-limits:
+  outcome: allow
+  effects: [send]
+  note: The destination limits still bound every send.
+
+allow-sandboxed-code:
+  outcome: allow
+  effects: [code_run]
+
+allow-narrowing:
+  outcome: allow
+  effects: [policy_narrow, budget_lower]
+
+ask-permanent-deletes:
+  outcome: ask
+  effects: [delete]
+
+ask-exports:
+  outcome: ask
+  effects: [export]
+  note: An export, such as a memory or event log export, leaves nixie.
+
+ask-stranger-with-memory:
+  outcome: ask
+  tools: [task.start/nixie]
+  checks:
+    - { arg: persona, op: eq, value: none }
+    - { arg: memory, op: eq, value: read }
+  note: A task without the persona reads your memory only with your approval.

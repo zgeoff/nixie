@@ -7,10 +7,17 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "rules-schema": "bun src/run-rules-json-schema.ts",
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
     "@heynixie/log": "workspace:*",
-    "tiny-invariant": "catalog:"
+    "tiny-invariant": "catalog:",
+    "ts-pattern": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "ajv": "catalog:",
+    "fast-check": "catalog:"
   }
 }

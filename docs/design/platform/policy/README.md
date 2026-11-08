@@ -9,6 +9,8 @@ answer in the client, and budgets bound what nixie spends.
   taint in the first build, auto-mode, the decision record and prompt causes
 - [Rules](rules.md) — the rule format, matching, evaluation order, rule identity, the snapshot hash,
   the widening check, proposed rules, mandates and the starter rule set
+- [Rule conflicts and the rule export](rule-conflicts-and-export.md) — a runtime change against a
+  repo change, and the one rolling pull request that exports runtime changes
 - [Proposals and approvals](approvals.md) — the proposal and its action hash, risk classes, the
   approval, "always allow" and the approval digest
 - [Budgets](budgets.md) — budgets, lifting rules, model cost and the hard spending stop

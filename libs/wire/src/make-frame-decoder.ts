@@ -3,57 +3,79 @@ import { FrameTooLargeError } from './frame-too-large-error';
 
 export type FrameDecoder = (chunk: Uint8Array) => readonly Uint8Array<ArrayBuffer>[];
 
+interface PartialFrame {
+  header: Uint8Array<ArrayBuffer>;
+  headerBytes: number;
+  message: Uint8Array<ArrayBuffer> | null;
+  messageBytes: number;
+}
+
 export function makeFrameDecoder(maxMessageBytes: number): FrameDecoder {
-  const buffer = { pending: new Uint8Array(0) };
+  const frame: PartialFrame = {
+    header: new Uint8Array(frameHeaderBytes),
+    headerBytes: 0,
+    message: null,
+    messageBytes: 0,
+  };
 
   return (chunk) => {
-    buffer.pending = mergeBytes(buffer.pending, chunk);
-
     const messages: Uint8Array<ArrayBuffer>[] = [];
 
-    for (
-      let message = splitFrame(buffer, maxMessageBytes);
-      message !== null;
-      message = splitFrame(buffer, maxMessageBytes)
-    ) {
-      messages.push(message);
+    for (let offset = 0; offset < chunk.byteLength;) {
+      offset =
+        frame.message === null
+          ? copyHeaderBytes(frame, chunk, offset, maxMessageBytes)
+          : copyMessageBytes(frame, frame.message, chunk, offset);
+
+      if (frame.message !== null && frame.messageBytes === frame.message.byteLength) {
+        messages.push(frame.message);
+
+        frame.headerBytes = 0;
+        frame.message = null;
+        frame.messageBytes = 0;
+      }
     }
 
     return messages;
   };
 }
 
-function mergeBytes(head: Uint8Array, tail: Uint8Array): Uint8Array<ArrayBuffer> {
-  const merged = new Uint8Array(head.byteLength + tail.byteLength);
+function copyHeaderBytes(
+  frame: PartialFrame,
+  chunk: Uint8Array,
+  offset: number,
+  maxMessageBytes: number,
+): number {
+  const end = Math.min(offset + frameHeaderBytes - frame.headerBytes, chunk.byteLength);
 
-  merged.set(head);
-  merged.set(tail, head.byteLength);
+  frame.header.set(chunk.subarray(offset, end), frame.headerBytes);
 
-  return merged;
+  frame.headerBytes += end - offset;
+
+  if (frame.headerBytes === frameHeaderBytes) {
+    const size = new DataView(frame.header.buffer).getUint32(0);
+
+    if (size > maxMessageBytes) {
+      throw new FrameTooLargeError(size, maxMessageBytes);
+    }
+
+    frame.message = new Uint8Array(size);
+  }
+
+  return end;
 }
 
-interface FrameBuffer {
-  pending: Uint8Array<ArrayBuffer>;
-}
+function copyMessageBytes(
+  frame: PartialFrame,
+  message: Uint8Array<ArrayBuffer>,
+  chunk: Uint8Array,
+  offset: number,
+): number {
+  const end = Math.min(offset + message.byteLength - frame.messageBytes, chunk.byteLength);
 
-function splitFrame(buffer: FrameBuffer, maxMessageBytes: number): Uint8Array<ArrayBuffer> | null {
-  if (buffer.pending.byteLength < frameHeaderBytes) {
-    return null;
-  }
+  message.set(chunk.subarray(offset, end), frame.messageBytes);
 
-  const size = new DataView(buffer.pending.buffer).getUint32(0);
+  frame.messageBytes += end - offset;
 
-  if (size > maxMessageBytes) {
-    throw new FrameTooLargeError(size, maxMessageBytes);
-  }
-
-  if (buffer.pending.byteLength < frameHeaderBytes + size) {
-    return null;
-  }
-
-  const message = buffer.pending.slice(frameHeaderBytes, frameHeaderBytes + size);
-
-  buffer.pending = buffer.pending.slice(frameHeaderBytes + size);
-
-  return message;
+  return end;
 }

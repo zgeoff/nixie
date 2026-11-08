@@ -13,14 +13,18 @@ export function buildReadableText(html: string, pageURL: URL): ReadableText {
 
   buildPageRewriter(reading).transform(html);
 
-  const links: string[] = [];
+  const linkIndexes = new Map<string, number>();
+
   const region = pickContentRegion(reading.regions);
-  const content = region === null ? '' : renderParts(reading.regions[region], links);
+  const content = region === null ? '' : renderParts(reading.regions[region], linkIndexes);
   const title = decodeRawText([reading.title.join(' ')]);
   const text = normalizeWhitespace(`${title}\n\n${content}`);
-  const otherLinks = formatOtherLinks(reading.links, region, links);
+  const otherLinks = formatOtherLinks(reading.links, region, linkIndexes);
 
-  return { text: otherLinks === '' ? text : `${text}\n\n${otherLinks}`, links };
+  return {
+    text: otherLinks === '' ? text : `${text}\n\n${otherLinks}`,
+    links: [...linkIndexes.keys()],
+  };
 }
 
 interface ElementRule {
@@ -160,7 +164,7 @@ function collectLink(reading: ReadingState, element: HTMLRewriterTypes.Element):
   reading.openLinks.push(link);
 
   element.onEndTag(() => {
-    reading.openLinks.splice(reading.openLinks.indexOf(link), 1);
+    reading.openLinks.splice(reading.openLinks.lastIndexOf(link), 1);
 
     if (isInText) {
       collectPart(reading, ' ');
@@ -229,15 +233,15 @@ const regionOrder: readonly Region[] = ['article', 'main', 'page'];
 
 function pickContentRegion(regions: ReadingState['regions']): Region | null {
   const region = regionOrder.find(
-    (candidate) => renderParts(regions[candidate], []).replaceAll(/\s/gu, '') !== '',
+    (candidate) => renderParts(regions[candidate], new Map()).replaceAll(/\s/gu, '') !== '',
   );
 
   return region ?? null;
 }
 
 // Each run of raw text is decoded whole, since a reference can span the chunks the rewriter hands
-// over, and each link's mark names its target's index in links, which it adds a new target to.
-function renderParts(parts: readonly TextPart[], links: string[]): string {
+// over, and each link's mark names its target's index, which a new target takes as the next one.
+function renderParts(parts: readonly TextPart[], linkIndexes: Map<string, number>): string {
   const rendered: string[] = [];
   let run: string[] = [];
 
@@ -245,7 +249,7 @@ function renderParts(parts: readonly TextPart[], links: string[]): string {
     if (typeof part === 'string') {
       run.push(part);
     } else {
-      rendered.push(decodeRawText(run), formatLinkMark(pickLinkIndex(links, part.target)));
+      rendered.push(decodeRawText(run), formatLinkMark(pickLinkIndex(linkIndexes, part.target)));
 
       run = [];
     }
@@ -261,16 +265,12 @@ function decodeRawText(chunks: readonly string[]): string {
   return stripLinkMarks(decodeHTML(chunks.join('')));
 }
 
-function pickLinkIndex(links: string[], target: string): number {
-  const index = links.indexOf(target);
+function pickLinkIndex(linkIndexes: Map<string, number>, target: string): number {
+  const index = linkIndexes.get(target) ?? linkIndexes.size;
 
-  if (index !== -1) {
-    return index;
-  }
+  linkIndexes.set(target, index);
 
-  links.push(target);
-
-  return links.length - 1;
+  return index;
 }
 
 function normalizeWhitespace(text: string): string {
@@ -287,7 +287,7 @@ const otherLinkLimit = 20;
 function formatOtherLinks(
   links: readonly PageLink[],
   region: Region | null,
-  targets: string[],
+  linkIndexes: Map<string, number>,
 ): string {
   const shownTargets = new Set(
     links
@@ -306,7 +306,7 @@ function formatOtherLinks(
       shownTargets.add(link.target);
 
       const text = normalizeWhitespace(decodeRawText(link.text)).replaceAll(/\n+/gu, ' ');
-      const mark = formatLinkMark(pickLinkIndex(targets, link.target));
+      const mark = formatLinkMark(pickLinkIndex(linkIndexes, link.target));
       const line = text === '' ? `- ${mark}` : `- ${text} ${mark}`;
 
       lines.push(line);

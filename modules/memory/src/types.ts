@@ -136,6 +136,7 @@ export interface AllForgetRequest {
 export interface ForgetStatus {
   readonly deleted: readonly string[];
   readonly pending: readonly string[];
+  readonly forgottenSequence: number | null;
 }
 
 export interface VersionRef {
@@ -234,8 +235,6 @@ export interface MemoryStore {
   readonly readPinnedCoreUse: () => Promise<PinnedCoreUse>;
 
   readonly forget: (request: ForgetRequest) => Promise<void>;
-
-  readonly finishForget: (itemID: string) => Promise<void>;
 
   readonly forgetRetired: (request: RetiredForgetRequest) => Promise<void>;
 

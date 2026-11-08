@@ -154,12 +154,17 @@ request, and the server runs it on the same stopped path as the full reset:
 3. It writes a `model.session_invalidated` record on the thread, so the next turn opens a new
    session instead of resuming the old one.
 4. It deletes the key of every record on the thread from the key store and checkpoints it, then
-   deletes the links that the web fetch tool numbered on the thread.
+   deletes the links that the web fetch tool numbered and the pages it stored on the thread.
 5. It writes a `log_reset` record on the thread, with the mode `conversations`, the sequence of the
    invalidation record and the number of records it shredded. The tasks projection moves the
    conversation task's read cursor to this record, so a message still unread drops out of the inbox.
-6. The control request answers, and the server exits 0, so the normal start creates the
-   conversation's sandbox again.
+6. The control request answers with the reset's key backup state, which the server reads from the
+   `log_reset` record as it reads [a forget's](../memory/store.md#a-forget-and-the-key-backups).
+   When that read fails, the server logs `reset.backup_state_failed` and answers unknown, because
+   the reset has finished and a retry would run it again. The server then exits 0, so the normal
+   start creates the conversation's sandbox again. The `log_reset` record makes a
+   [forget set](../deployment/backups.md#staging-a-set) due, so the backup schedule stages one at
+   that start.
 
 The memory items keep their own keys, so the reset leaves every item readable. The next session
 opens as a rebuild after a forget: every summary on the thread is shredded, and the recent turns

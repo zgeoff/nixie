@@ -17,6 +17,28 @@ test('it accepts a degraded readiness answer with its dependency and advisory pa
   });
 });
 
+test('it accepts a part report with the details of what it checked', () => {
+  const result = healthReportSchema.safeParse({
+    status: 'ready',
+    parts: { database: { isReady: true, reason: null } },
+    dependencies: {
+      backups: {
+        isReady: true,
+        reason: null,
+        details: { newest_set_age_seconds: 600, last_upload_at: null },
+      },
+    },
+  });
+
+  expect(result.data?.dependencies).toStrictEqual({
+    backups: {
+      isReady: true,
+      reason: null,
+      details: { newest_set_age_seconds: 600, last_upload_at: null },
+    },
+  });
+});
+
 test('it accepts a liveness answer with no dependency or advisory parts', () => {
   const result = healthReportSchema.safeParse({
     status: 'ready',

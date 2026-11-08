@@ -9,6 +9,7 @@ import type { ProposalAnswers } from '../use-proposal-answers';
 import { useProposalAnswers } from '../use-proposal-answers';
 import { ProposalCard } from './proposal-card';
 import { ProposalSelectionBar } from './proposal-selection-bar';
+import { RuleProposals } from './rule-proposals';
 
 export interface MemoryProposalsProps {
   readonly navigation?: ReactNode;
@@ -64,6 +65,7 @@ export function MemoryProposals(props: MemoryProposalsProps): ReactNode {
           />
         ))}
       </ul>
+      <RuleProposals />
     </main>
   );
 }

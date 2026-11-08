@@ -34,6 +34,11 @@ export const fetchImageArgv: readonly string[] = ['/usr/local/bin/bun', '/app/fe
 // A vendored skill's file may reach the definitions file limit, far past the web fetch's text limit.
 const skillFetchBytes = defaultSizeLimits.maxFileBytes;
 
+// The tool stores the whole page, so the fetcher's text has to stop only where its body does. One
+// body byte decodes to at most 3 bytes of UTF-8 text: an invalid byte becomes U+FFFD, and a
+// one-byte Shift_JIS katakana a 3-byte character.
+const textBytesPerBodyByte = 3;
+
 const testFetchArgv: readonly string[] = [
   process.execPath,
   join(import.meta.dir, '../../../guests/fetch/src/main.ts'),
@@ -50,11 +55,20 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
     sandboxLimits: config.sandboxLimits,
   };
 
-  const fetchSandbox = startFetchSandbox({ ...sandbox, limits: config.limits });
+  const fetchSandbox = startFetchSandbox({
+    ...sandbox,
+    limits: { ...config.limits, textBytes: config.limits.bodyBytes * textBytesPerBodyByte },
+  });
 
+  // a skill holds only text files, so the skill fetch reads no image body
   const skillSandbox = startFetchSandbox({
     ...sandbox,
-    limits: { ...config.limits, bodyBytes: skillFetchBytes, textBytes: skillFetchBytes },
+    limits: {
+      ...config.limits,
+      bodyBytes: skillFetchBytes,
+      textBytes: skillFetchBytes,
+      imageBytes: 0,
+    },
     owner: 'skill_fetch',
   });
 
@@ -63,6 +77,8 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
       log: options.log,
       textBytes: config.limits.textBytes,
       linkPathChars: config.linkPathChars,
+      pageStoreBytes: config.pageStoreBytes,
+      imageLongEdge: config.imageLongEdge,
     }),
     readSkillPage: skillSandbox.readPage,
     stop: async () => {

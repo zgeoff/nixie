@@ -258,6 +258,33 @@ test('it refuses a file whose fetched text differs from the bytes at the commit'
   });
 });
 
+test('it refuses an image in place of the JSON the API sends', async () => {
+  const read = await readGitHubSkill(
+    () =>
+      Promise.resolve({
+        kind: 'image',
+        url: 'https://api.github.com/repos/example/skills/git/commits/3f6c1a528e0b4d7a9c215b7e4f0d9a133f6c1a52',
+        status: 200,
+        contentType: 'image/gif',
+        base64: '',
+      }),
+    {
+      owner: 'example',
+      name: 'skills',
+      repository: 'https://github.com/example/skills',
+      path: 'tides',
+      commit: '3f6c1a528e0b4d7a9c215b7e4f0d9a133f6c1a52',
+    },
+    { maxFileBytes: 1024, maxTotalBytes: 4096 },
+  );
+
+  expect(read).toStrictEqual({
+    status: 'refused',
+    reason:
+      'https://api.github.com/repos/example/skills/git/commits/3f6c1a528e0b4d7a9c215b7e4f0d9a133f6c1a52 answered with status 200 and no complete JSON body',
+  });
+});
+
 test('it refuses when the fetcher fails', async () => {
   const read = await readGitHubSkill(
     () =>

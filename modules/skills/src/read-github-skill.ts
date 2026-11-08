@@ -123,11 +123,11 @@ async function readJSON<Schema extends z.ZodType>(
 ): Promise<JSONRead<z.output<Schema>>> {
   const reply = await readPage(url);
 
-  if (reply.kind !== 'page') {
+  if (reply.kind === 'refused' || reply.kind === 'failed') {
     return { status: 'refused', reason: `${url}: ${reply.reason}`, httpStatus: null };
   }
 
-  if (reply.status !== 200 || reply.text === null || reply.isTruncated) {
+  if (reply.kind === 'image' || reply.status !== 200 || reply.text === null || reply.isTruncated) {
     return {
       status: 'refused',
       reason: `${url} answered with status ${String(reply.status)} and no complete JSON body`,
@@ -198,11 +198,11 @@ async function readBlobText(
 
   const reply = await readPage(url);
 
-  if (reply.kind !== 'page') {
+  if (reply.kind === 'refused' || reply.kind === 'failed') {
     return buildRefusal(`${blob.path}: ${reply.reason}`);
   }
 
-  if (reply.status !== 200 || reply.text === null || reply.isTruncated) {
+  if (reply.kind === 'image' || reply.status !== 200 || reply.text === null || reply.isTruncated) {
     return buildRefusal(
       `${blob.path} answered with status ${String(reply.status)} and no complete text, so it may not be a text file`,
     );

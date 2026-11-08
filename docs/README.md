@@ -78,6 +78,8 @@ below, and planned work lives in Linear.
 
 - [The decision point](architecture/policy/decision-point.md) — the stages, the fixed read-only
   rule, effect declarations and the test rule
+- [Rules](architecture/policy/rules.md) — the rule format, matching, evaluation, rendering and the
+  widening check
 - [The counting proxy](architecture/policy/counting-proxy.md) — routes, the count and its store, the
   spending limit and the refusals
 
@@ -89,8 +91,12 @@ below, and planned work lives in Linear.
   route, the imp adapter and the test sandbox
 - [Web fetch](architecture/connectors/web-fetch.md) — the fetch sandbox, the fetcher's address
   checks, the limits and the result
+- [Web fetch images](architecture/connectors/web-fetch-images.md) — a fetched image as image
+  content, its limits, and how the host downscales it
 - [Time](architecture/connectors/time.md) — the time zone on each message, and the time tool that
   answers in the user's newest zone
+- [Search](architecture/connectors/search.md) — the search tool on the host, its daily call cap, the
+  Kagi provider and its key
 
 ### Channels
 
@@ -185,13 +191,16 @@ rests on.
 
 ### Policy
 
-- [Policy design index](design/platform/policy/README.md) — the 4 policy docs and the spike behind
+- [Policy design index](design/platform/policy/README.md) — the 5 policy docs and the spike behind
   them
 - [The policy decision point](design/platform/policy/decision-point.md) — the pipeline, effects, the
   always-ask set, destination limits and consent, taint in the first build, auto-mode and prompt
   causes
 - [Rules](design/platform/policy/rules.md) — the rule format, evaluation order, rule identity, the
   snapshot hash, the widening check, proposed rules, mandates and the starter rule set
+- [Rule conflicts and the rule export](design/platform/policy/rule-conflicts-and-export.md) — a
+  runtime change against a repo change, and the one rolling pull request that exports runtime
+  changes
 - [Proposals and approvals](design/platform/policy/approvals.md) — the proposal and its action hash,
   risk classes, the approval record, one-tap "always allow" and the approval digest
 - [Budgets, lifts and the spending stop](design/platform/policy/budgets.md) — budgets, lifting

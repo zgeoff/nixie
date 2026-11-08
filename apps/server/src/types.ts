@@ -80,7 +80,7 @@ export interface CLIFlags {
 
   readonly entry?: string;
 
-  readonly keep?: 'nixie' | 'definitions';
+  readonly keep?: 'nixie' | 'definitions' | 'repo';
 
   readonly 'keep-sessions': boolean;
   readonly only?: 'memories' | 'conversations';
@@ -96,6 +96,8 @@ export interface CLIFlags {
   readonly dollars?: number;
 
   readonly taskID?: string;
+  readonly ruleID?: string;
+  readonly proposalID?: string;
 }
 
 export type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<number>;

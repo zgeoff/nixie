@@ -12,49 +12,51 @@ export interface PageLinks {
 }
 
 export interface LinkedTextLimits {
-  // the most bytes of the whole text, its link tags included
+  // the most bytes of one part of the text, which a link tag never passes
   readonly textBytes: number;
 
   // the most characters of an off-site link's path that its tag shows
   readonly linkPathChars: number;
 }
 
-export interface LinkedText {
-  readonly text: string;
-  readonly isCut: boolean;
+// a link tag's place in the text, in UTF-16 code units, which a cut never falls inside
+export interface TagSpan {
+  readonly start: number;
+  readonly end: number;
 }
 
+export interface LinkedText {
+  readonly text: string;
+  readonly tags: readonly TagSpan[];
+}
+
+// A tag longer than one part shows as its ID alone, and an ID longer than one part shows nothing,
+// so every tag fits in a part and the cut into parts always ends.
 export function renderLinkedText(
   parts: readonly MarkedTextPart[],
   page: PageLinks,
   limits: LinkedTextLimits,
 ): LinkedText {
   const pageHost = URL.parse(page.pageURL)?.hostname ?? null;
-  const rendered: string[] = [];
-  let spentBytes = 0;
+  const context = { pageHost, linkPathChars: limits.linkPathChars };
+  const pieces: string[] = [];
+  const tags: TagSpan[] = [];
+  let length = 0;
 
   for (const part of parts) {
     const piece =
-      typeof part === 'string'
-        ? part
-        : formatLinkTag(part.link, page, { pageHost, linkPathChars: limits.linkPathChars });
+      typeof part === 'string' ? part : pickFittingTag(part.link, page, context, limits.textBytes);
 
-    const pieceBytes = Buffer.byteLength(piece);
-
-    if (spentBytes + pieceBytes > limits.textBytes) {
-      const tail = typeof part === 'string' ? cutText(piece, limits.textBytes - spentBytes) : '';
-
-      rendered.push(tail);
-
-      return { text: rendered.join(''), isCut: true };
+    if (typeof part !== 'string' && piece !== '') {
+      tags.push({ start: length, end: length + piece.length });
     }
 
-    rendered.push(piece);
+    pieces.push(piece);
 
-    spentBytes += pieceBytes;
+    length += piece.length;
   }
 
-  return { text: rendered.join(''), isCut: false };
+  return { text: pieces.join(''), tags };
 }
 
 interface TagContext {
@@ -62,7 +64,12 @@ interface TagContext {
   readonly linkPathChars: number;
 }
 
-function formatLinkTag(index: number, page: PageLinks, context: TagContext): string {
+function pickFittingTag(
+  index: number,
+  page: PageLinks,
+  context: TagContext,
+  limitBytes: number,
+): string {
   const target = page.targets[index];
   const number = target === undefined ? undefined : page.numbers.get(target);
 
@@ -70,6 +77,17 @@ function formatLinkTag(index: number, page: PageLinks, context: TagContext): str
     return '';
   }
 
+  const tag = formatLinkTag(number, target, context);
+  const shortTag = `[L${number}]`;
+
+  if (Buffer.byteLength(tag) <= limitBytes) {
+    return tag;
+  }
+
+  return Buffer.byteLength(shortTag) <= limitBytes ? shortTag : '';
+}
+
+function formatLinkTag(number: number, target: string, context: TagContext): string {
   const url = URL.parse(target);
 
   return url === null || url.hostname === context.pageHost
@@ -106,10 +124,4 @@ function formatPathStart(path: string, limitChars: number): string {
 // those escapes decodes to no character
 function collectPathCharacters(path: string): string[] {
   return path.match(/%[c-f][\da-f](?:%[89ab][\da-f])+|%[\da-f]{2}|[\s\S]/giu) ?? [];
-}
-
-function cutText(text: string, limitBytes: number): string {
-  const written = new TextEncoder().encodeInto(text, new Uint8Array(limitBytes));
-
-  return text.slice(0, written.read);
 }

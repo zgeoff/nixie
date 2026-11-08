@@ -550,6 +550,58 @@
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991
+        },
+        "page_store_bytes": {
+          "default": 20971520,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "image_bytes": {
+          "default": 5242880,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "image_long_edge": {
+          "default": 1568,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "search": {
+      "default": {
+        "daily_call_cap": 200,
+        "credential": null,
+        "api_url": "https://kagi.com/api/v1"
+      },
+      "type": "object",
+      "properties": {
+        "daily_call_cap": {
+          "default": 200,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "credential": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^deployment:.+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "api_url": {
+          "default": "https://kagi.com/api/v1",
+          "type": "string",
+          "format": "uri"
         }
       },
       "additionalProperties": false

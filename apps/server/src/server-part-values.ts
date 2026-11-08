@@ -42,6 +42,7 @@ export interface ServerPartValues {
   readonly seed_poll: void;
   readonly skill_lapse_sweep: void;
   readonly prompt_lapse_sweep: void;
+  readonly rule_lapse_sweep: void;
   readonly backups: void;
 
   readonly definitions_exports: DefinitionsExportSweep | null;

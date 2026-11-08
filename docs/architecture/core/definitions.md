@@ -77,9 +77,12 @@ it, and refuses any other, because an image upgrade and a definitions change lan
 in either order. The persona must be UTF-8 text and not blank. From format 2, the seed applies each
 skill under `skills/`. From format 3, it applies the prompt overrides in the manifest's `prompts:`
 map, as [prompts](prompts.md#overrides-from-the-definitions) describes, and format 2 leaves that map
-and its files unapplied. The seed applies no other file, and lists each one in its record as
-unapplied. Each unapplied YAML or JSON file must still parse, so a broken rule file fails the
-snapshot before rules ever apply, and the error lists each file with its fault.
+and its files unapplied. Format 3 also applies each `rules/*.yaml` file as a rules file, as
+[rules in force](../policy/rules.md#rules-in-force) describes, except a file that the `prompts:` map
+names as a prompt part. Format 3 therefore refuses a repo whose existing rule files fail the
+[rule format](../policy/rules.md#the-rule-format), and the error lists each file with its fault. The
+seed applies no other file, and lists each one in its record as unapplied. Each unapplied YAML or
+JSON file must still parse.
 
 nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
 `definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
@@ -170,12 +173,13 @@ writes the skill's folder and removes each file that the folder holds at that co
 version lacks. It also removes a vendored skill's lock entry, so the seed after the merge reads the
 folder as the user's own skill and marks the written skill adopted.
 
-The export serves any kind of approved change, and nixie registers two kinds: a written skill, and
-an approved [prompt override](./prompts.md). Each change kind reads the approvals due for export and
-the exports to close, builds the branch, files, title and body of each pull request, and stores the
-state of its own exports. The export run marks, records and closes an export the same way for every
-kind. When the close of an export fails, the run skips any export due on the same branch until a
-later run closes it.
+The export serves any kind of approved change, and nixie registers 3 kinds: a written skill, an
+approved [prompt override](./prompts.md), and the
+[runtime rule changes](../policy/rules.md#the-rule-export). Each change kind reads the approvals due
+for export and the exports to close, builds the branch, files, title and body of each pull request,
+and stores the state of its own exports. The export run marks, records and closes an export the same
+way for every kind. When the close of an export fails, the run skips any export due on the same
+branch until a later run closes it.
 
 Every export run closes the export of each approval that left force, whether a seed adopted it, a
 later approval superseded it, or the user retired it. Export runs never overlap, so a seed and an
@@ -222,12 +226,14 @@ enters as the rules sorted by ID and the tool declarations sorted by name, each 
 sorted and without duplicates. Every object serialises as canonical JSON, with sorted keys and no
 whitespace, so the same definitions always give the same bytes.
 
-The policy holds the fixed rule and every tool declaration in the build's registry. The fixed rule
-decides by a tool's declared effects ([the decision point](../policy/decision-point.md)), so a
-replay needs the declarations that were in force. A release that changes a tool declaration
-therefore changes the snapshot hash over the same files. A probe token follows the source alone, so
-the change enters with the next seed the release runs, which compares the snapshot hash as well as
-the revision.
+The policy holds the fixed rule, the rules in force and every tool declaration in the build's
+registry. A rule enters with its revision, as [rules in force](../policy/rules.md#rules-in-force)
+describes, so an edit to a rule changes the snapshot hash. When a rule last decided a call lives in
+its own table and never enters the hash. The fixed rule decides by a tool's declared effects
+([the decision point](../policy/decision-point.md)), so a replay needs the declarations that were in
+force. A release that changes a tool declaration therefore changes the snapshot hash over the same
+files. A probe token follows the source alone, so the change enters with the next seed the release
+runs, which compares the snapshot hash as well as the revision.
 
 ## Seeding
 
@@ -238,11 +244,11 @@ repo it names and its revision to both hashes. A persona, a snapshot or a skill 
 keeps its first row. The definitions in force are the newest seed, and every record takes its
 snapshot hash from it.
 
-| Result    | When                                                                                                                | Writes                                            |
-| --------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Seeded    | The source, repo, revision, content hash or snapshot hash differs from the last, or a written skill becomes adopted | The rows                                          |
-| Unchanged | The newest seed holds the same source, repo, revision and both hashes, and no written skill becomes adopted         | Only the record of an adopted skill that lacks it |
-| Refused   | The snapshot failed to read, parse or validate                                                                      | Nothing                                           |
+| Result    | When                                                                                                                                                                                          | Writes                                            |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Seeded    | The source, repo, revision, content hash or snapshot hash differs from the last, a written skill or a runtime rule change becomes adopted, or a rule change proposal is withdrawn or proposed | The rows                                          |
+| Unchanged | The newest seed holds the same source, repo, revision and both hashes, no written skill or runtime rule change becomes adopted, and no rule change proposal is withdrawn or proposed          | Only the record of an adopted skill that lacks it |
+| Refused   | The snapshot failed to read, parse or validate                                                                                                                                                | Nothing                                           |
 
 A refused seed comes back as a value with its error and the definitions still in force, never as a
 throw, so the caller reports the refusal while the last good seed keeps serving. A half-applied seed

@@ -1,4 +1,6 @@
+import type { Clock } from '@heynixie/clock';
 import type { HealthChecks, PartRefresh, PartReport } from '@heynixie/ops';
+import { buildBackupsReport } from './build-backups-report';
 import type { StartState } from './build-start-state';
 
 export type RefreshedPart = 'imp_runtime' | 'disk';
@@ -6,13 +8,14 @@ export type RefreshedPart = 'imp_runtime' | 'disk';
 export function buildReadinessChecks(
   state: StartState,
   refresh: Pick<PartRefresh<RefreshedPart>, 'read'>,
+  clock: Pick<Clock, 'now'>,
 ): Pick<HealthChecks, 'readiness' | 'dependencies' | 'advisory'> {
   return {
     readiness: {
       database: () => Promise.resolve(state.read().database),
       definitions: () => Promise.resolve(state.read().definitions),
     },
-    dependencies: buildDependencyParts(state, refresh),
+    dependencies: buildDependencyParts(state, refresh, clock),
     advisory: {
       conversation_turns: () => Promise.resolve(state.read().turns),
     },
@@ -22,6 +25,7 @@ export function buildReadinessChecks(
 function buildDependencyParts(
   state: StartState,
   refresh: Pick<PartRefresh<RefreshedPart>, 'read'>,
+  clock: Pick<Clock, 'now'>,
 ): HealthChecks['dependencies'] {
   return {
     imp_host: () =>
@@ -37,6 +41,7 @@ function buildDependencyParts(
       return Promise.resolve(report);
     },
     disk: () => Promise.resolve(refresh.read('disk')),
+    backups: () => Promise.resolve(buildBackupsReport(state.read().backups, clock.now())),
   };
 }
 

@@ -16,6 +16,7 @@ test('it answers readiness with 200 and every part when all are ready', async ()
       imp_host: () => Promise.resolve({ isReady: true, reason: null }),
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: true, reason: null }),
+      backups: () => Promise.resolve({ isReady: true, reason: null }),
     },
     advisory: {
       conversation_turns: () => Promise.resolve({ isReady: true, reason: null }),
@@ -38,6 +39,7 @@ test('it answers readiness with 200 and every part when all are ready', async ()
       imp_host: { isReady: true, reason: null },
       conversation_imp: { isReady: true, reason: null },
       disk: { isReady: true, reason: null },
+      backups: { isReady: true, reason: null },
     },
     advisory: {
       conversation_turns: { isReady: true, reason: null },
@@ -58,6 +60,7 @@ test('it answers readiness with 200 while an advisory part fails, with that part
       imp_host: () => Promise.resolve({ isReady: true, reason: null }),
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: true, reason: null }),
+      backups: () => Promise.resolve({ isReady: true, reason: null }),
     },
     advisory: {
       conversation_turns: () =>
@@ -92,6 +95,7 @@ test('it answers readiness with 200 and the status degraded while a dependency c
       imp_host: () => Promise.withResolvers<never>().promise,
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: true, reason: null }),
+      backups: () => Promise.resolve({ isReady: true, reason: null }),
     },
     advisory: {
       conversation_turns: () => Promise.resolve({ isReady: true, reason: null }),
@@ -122,6 +126,7 @@ test('it answers readiness with 200 and the status degraded while a dependency c
       imp_host: { isReady: false, reason: 'the check took longer than 2000 ms' },
       conversation_imp: { isReady: true, reason: null },
       disk: { isReady: true, reason: null },
+      backups: { isReady: true, reason: null },
     },
     advisory: {
       conversation_turns: { isReady: true, reason: null },
@@ -142,6 +147,7 @@ test('it answers readiness with 503 while a readiness part is unready', async ()
       imp_host: () => Promise.resolve({ isReady: true, reason: null }),
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: true, reason: null }),
+      backups: () => Promise.resolve({ isReady: true, reason: null }),
     },
     advisory: {
       conversation_turns: () => Promise.resolve({ isReady: true, reason: null }),
@@ -173,6 +179,7 @@ test('it answers readiness with 503 and not degraded while a readiness part and 
       imp_host: () => Promise.resolve({ isReady: false, reason: 'impd does not answer' }),
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: true, reason: null }),
+      backups: () => Promise.resolve({ isReady: true, reason: null }),
     },
     advisory: {
       conversation_turns: () => Promise.resolve({ isReady: true, reason: null }),
@@ -200,6 +207,7 @@ test('it answers liveness per part, apart from readiness', async () => {
       imp_host: () => Promise.resolve({ isReady: true, reason: null }),
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: true, reason: null }),
+      backups: () => Promise.resolve({ isReady: true, reason: null }),
     },
     advisory: {
       conversation_turns: () =>
@@ -237,6 +245,7 @@ test('it logs the name and reason of a liveness part that turns unready', async 
       imp_host: () => Promise.resolve({ isReady: true, reason: null }),
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: true, reason: null }),
+      backups: () => Promise.resolve({ isReady: true, reason: null }),
     },
     advisory: {
       conversation_turns: () => Promise.resolve({ isReady: true, reason: null }),
@@ -268,6 +277,7 @@ test('it logs the name and reason of a dependency part that turns unready', asyn
       imp_host: () => Promise.resolve({ isReady: true, reason: null }),
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: false, reason: 'the data volume is 93% full' }),
+      backups: () => Promise.resolve({ isReady: true, reason: null }),
     },
     advisory: {
       conversation_turns: () => Promise.resolve({ isReady: true, reason: null }),

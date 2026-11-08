@@ -7,11 +7,12 @@ import { loadSecrets } from './load-secrets';
 import { resolveDefinitionsExport } from './resolve-definitions-export';
 import { resolveOwnerConfig } from './resolve-owner-config';
 import { resolveSandboxSettings } from './resolve-sandbox-settings';
+import { resolveSearchSettings } from './resolve-search-settings';
 import type { ServerOptions, ServerPartsOptions } from './start-server';
 
 export type ServerInputs = Pick<
   ServerPartsOptions,
-  'config' | 'secrets' | 'images' | 'sandbox' | 'definitionsExport' | 'log'
+  'config' | 'secrets' | 'images' | 'sandbox' | 'definitionsExport' | 'search' | 'log'
 > & {
   readonly encoder: ONNXEncoder | null;
 };
@@ -27,6 +28,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
   const config = { ...loaded, owner: resolveOwnerConfig(loaded.owner, secrets.settings) };
   const sandbox = resolveSandboxSettings(loaded, secrets.impdToken);
   const definitionsExport = resolveDefinitionsExport(config, secrets.definitionsExportToken);
+  const search = resolveSearchSettings(loaded.search, secrets.connectorCredentials);
 
   const images = await loadSandboxManifest(options.manifestPath);
 
@@ -39,6 +41,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
     images,
     sandbox,
     definitionsExport,
+    search,
     log: makeThresholdLogger(options.log, loaded.server.logLevel),
     encoder,
   };

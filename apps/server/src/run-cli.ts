@@ -7,6 +7,7 @@ import { createDeploymentCommands } from './create-deployment-commands';
 import { createMemoryCommands } from './create-memory-commands';
 import { createPromptCommands } from './create-prompt-commands';
 import { createResetCommands } from './create-reset-commands';
+import { createRuleCommands } from './create-rule-commands';
 import { createSessionCommands } from './create-session-commands';
 import { createSkillCommands } from './create-skill-commands';
 import { createSubjectCommands } from './create-subject-commands';
@@ -33,6 +34,7 @@ const commands = new Map<string, Command>([
   ...createSubjectCommands(host),
   ...createSkillCommands(host),
   ...createPromptCommands(host),
+  ...createRuleCommands(host),
   ...buildBackupCommands(),
 ]);
 

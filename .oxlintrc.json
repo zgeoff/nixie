@@ -69,5 +69,14 @@
       "error",
       { "allow": ["jest-extended", "**/augment-bun-test.ts", "**/run-github-mock"] }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["libs/db/src/nixie-tables.ts"],
+      // generated from the migrations: its length grows with the schema, not with complexity
+      "rules": {
+        "max-lines": "off"
+      }
+    }
+  ]
 }

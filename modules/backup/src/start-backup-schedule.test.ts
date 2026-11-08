@@ -7,6 +7,7 @@ import { waitForCondition } from '@heynixie/testing';
 import { sql } from 'kysely';
 import type { BackupPass } from './run-backup-pass';
 import { startBackupSchedule } from './start-backup-schedule';
+import { buildStubFailingStorage, writeTestBackupReceipt } from './test-utils';
 
 async function setupTest() {
   const log = await startTestLog();
@@ -171,4 +172,249 @@ test('it passes a failed pass to onError, and tries again at the next poll', asy
   await waitForCondition(() => ctx.onError.mock.calls.length > failures);
 
   expect(ctx.onPass).not.toHaveBeenCalled();
+});
+
+test('it passes the health of a pass whose staging fails to onPass, and the staging failure to onError', async () => {
+  const ctx = await setupTest();
+
+  const schedule = startBackupSchedule({
+    context: {
+      writer: ctx.writer,
+      storage: buildStubFailingStorage(localDataStorage, 'complete', 'write'),
+    },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(() => ctx.onError.mock.calls.length === 1);
+
+  expect(ctx.onPass.mock.calls[0]?.[0]).toStrictEqual({
+    received: [],
+    noticed: [],
+    staged: null,
+    health: { lastUploadAt: null, newestSetAt: null, notice: null },
+  });
+
+  expect(ctx.onError.mock.calls[0]?.[0]).toSatisfy(
+    (failure: unknown) =>
+      failure instanceof Error && /^the stub fails the write of complete$/u.test(failure.message),
+  );
+});
+
+test('it passes the receipts of a pass that fails after it records them to onPass, and both the failure and the failed health read to onError', async () => {
+  const ctx = await setupTest();
+
+  const schedule = startBackupSchedule({
+    context: { writer: ctx.writer, storage: localDataStorage },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+  );
+
+  await sql`drop table backup_notices`.execute(ctx.writer.db);
+
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: 1, status: 'published' });
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() => ctx.onError.mock.calls.length === 2);
+
+  expect(ctx.onPass.mock.calls[1]?.[0]).toStrictEqual({
+    received: [{ sequence: 1, status: 'published', failure: null }],
+    noticed: [],
+    staged: null,
+    health: null,
+  });
+
+  expect(ctx.onError.mock.calls.map((call) => call[0])).toSatisfyAll(
+    (failure: unknown) =>
+      failure instanceof Error && /no such table: backup_notices/u.test(failure.message),
+  );
+});
+
+test('it passes one failure to onError for a pass whose only failure is its health read', async () => {
+  const ctx = await setupTest();
+
+  const schedule = startBackupSchedule({
+    context: { writer: ctx.writer, storage: localDataStorage },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+  );
+
+  // SQLite computes a view's column only when a query reads it, and only the health read reads
+  // raised_at, so the overflow fails that read and leaves the notice write working
+  await sql`drop table backup_notices`.execute(ctx.writer.db);
+
+  await sql`create view backup_notices as
+    select 1 as sequence, 'failed' as cause, abs(-9223372036854775808) as raised_at`.execute(
+    ctx.writer.db,
+  );
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 2);
+
+  expect(ctx.onError.mock.calls.map((call) => call[0])).toSatisfy(
+    (failures: unknown[]) =>
+      failures.length === 1 &&
+      failures[0] instanceof Error &&
+      /integer overflow/u.test(failures[0].message),
+  );
+});
+
+test('it passes the failure of a pass to onError when onPass throws on that pass', async () => {
+  const ctx = await setupTest();
+
+  const onPass = mock<(pass: BackupPass) => void>(() => {
+    throw new Error('the stub onPass fails');
+  });
+
+  const schedule = startBackupSchedule({
+    context: {
+      writer: ctx.writer,
+      storage: buildStubFailingStorage(localDataStorage, 'complete', 'write'),
+    },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(() => ctx.onError.mock.calls.length === 2);
+
+  expect(ctx.onError.mock.calls.map((call) => call[0])).toSatisfy(
+    (failures: unknown[]) =>
+      failures.length === 2 &&
+      failures[0] instanceof Error &&
+      /^the stub onPass fails$/u.test(failures[0].message) &&
+      failures[1] instanceof Error &&
+      /^the stub fails the write of complete$/u.test(failures[1].message),
+  );
+});
+
+test('it raises one notice for a failed receipt, however many passes follow it', async () => {
+  const ctx = await setupTest();
+
+  const startedAt = ctx.clock.now();
+
+  const schedule = startBackupSchedule({
+    context: { writer: ctx.writer, storage: localDataStorage },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+  );
+
+  await writeTestBackupReceipt(ctx.dataDir, {
+    sequence: 1,
+    status: 'failed',
+    failure: 'data: backup exited 1',
+  });
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(
+    () => ctx.onPass.mock.calls.length === 2 && ctx.clock.countSleepers() === 1,
+  );
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 3);
+
+  expect(ctx.onPass.mock.calls.flatMap((call) => call[0].noticed)).toStrictEqual([
+    { sequence: 1, cause: 'failed', raisedAt: startedAt + 60_000 },
+  ]);
+});
+
+test('it raises one notice for a set with no receipt an interval after it staged', async () => {
+  const ctx = await setupTest();
+
+  const startedAt = ctx.clock.now();
+
+  const schedule = startBackupSchedule({
+    context: { writer: ctx.writer, storage: localDataStorage },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+  );
+
+  ctx.clock.advance(3_600_000);
+
+  await waitForCondition(
+    () => ctx.onPass.mock.calls.length === 2 && ctx.clock.countSleepers() === 1,
+  );
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 3);
+
+  expect(ctx.onPass.mock.calls.flatMap((call) => call[0].noticed)).toStrictEqual([
+    { sequence: 1, cause: 'missing', raisedAt: startedAt + 3_600_000 },
+  ]);
+});
+
+test('it passes the time of the last upload once a published receipt is recorded', async () => {
+  const ctx = await setupTest();
+
+  const startedAt = ctx.clock.now();
+
+  const schedule = startBackupSchedule({
+    context: { writer: ctx.writer, storage: localDataStorage },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+  );
+
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: 1, status: 'published' });
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 2);
+
+  expect(ctx.onPass.mock.calls[1]?.[0].health).toStrictEqual({
+    lastUploadAt: startedAt + 60_000,
+    newestSetAt: startedAt,
+    notice: null,
+  });
 });

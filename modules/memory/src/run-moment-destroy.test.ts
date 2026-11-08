@@ -153,7 +153,7 @@ test('it destroys a moment and leaves no readable copy of its title, note or ref
   const links = await ctx.memory.store.moments.readLinks([item.itemID]);
 
   const matches = await ctx.memory.store.moments.readMatches({
-    words: ['Juniper-title-3VK'],
+    query: 'Juniper-title-3VK',
     from: null,
     to: null,
     includeRetired: true,

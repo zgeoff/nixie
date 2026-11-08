@@ -20,7 +20,7 @@ test('it reads one request frame, however it arrives, and writes one reply frame
   const frame = encodeFrame(
     encodeFetchMessage({
       url: `https://site.test:${site.port}/`,
-      limits: { bodyBytes: 100, timeoutMs: 5000, redirects: 1, textBytes: 100 },
+      limits: { bodyBytes: 100, timeoutMs: 5000, redirects: 1, textBytes: 100, imageBytes: 100 },
       deniedRanges: ['10.96.0.0/12'],
     }),
   );
@@ -66,7 +66,7 @@ test('it throws when the input closes before a whole request arrives', () => {
   const frame = encodeFrame(
     encodeFetchMessage({
       url: 'https://site.test/',
-      limits: { bodyBytes: 1, timeoutMs: 1, redirects: 1, textBytes: 1 },
+      limits: { bodyBytes: 1, timeoutMs: 1, redirects: 1, textBytes: 1, imageBytes: 1 },
       deniedRanges: [],
     }),
   );

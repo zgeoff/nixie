@@ -205,7 +205,13 @@ async function runTurn(samples: number): Promise<void> {
 function buildFetchFrame(): Uint8Array {
   const request: FetchRequest = {
     deniedRanges: [],
-    limits: { bodyBytes: 2_000_000, redirects: 5, textBytes: 200_000, timeoutMs: 15_000 },
+    limits: {
+      bodyBytes: 2_000_000,
+      redirects: 5,
+      textBytes: 200_000,
+      timeoutMs: 15_000,
+      imageBytes: 2_000_000,
+    },
     url: readEnv('SPIKE_FETCH_URL'),
   };
   return encodeFrame(encodeFetchMessage(request));
@@ -215,7 +221,9 @@ function buildFetchFrame(): Uint8Array {
 function formatReply(result: RunResult): string {
   try {
     const reply = decodeFetchReply(result.stdout.subarray(4));
-    return reply.kind === 'page' ? `page ${reply.status}` : `${reply.kind}: ${reply.reason}`;
+    return reply.kind === 'page' || reply.kind === 'image'
+      ? `${reply.kind} ${reply.status}`
+      : `${reply.kind}: ${reply.reason}`;
   } catch {
     return `undecoded: ${result.stderr}`;
   }

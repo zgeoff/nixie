@@ -21,16 +21,28 @@ flowchart LR
 
 The tool declares only the fetch effect and no destination, so the decision point's read-only rule
 allows it and it runs direct, inside the turn. Its result holds the final URL after redirects, the
-status code, the content type, the page's text, the truncated mark and the blocked reason. Every
-field of the result is outside content, because the page and every redirect along the way came from
-someone other than the user. The result schema marks the status code and the truncated mark as
-endorsed types, because a number and a boolean cannot carry the page's words, while a URL can carry
-text in its path. A refused or failed fetch returns an error with its reason, which the model reads.
-When a site's bot protection answers in place of the page, the result is a page with its status and
-a blocked reason, so the model can tell the user why the fetch has no content instead of retrying.
+status code, the content type, the page ID, the part number and the count of parts, the text of one
+part, the truncated mark and the blocked reason. A fetched image reaches the model as image content
+beside the result, as [web fetch images](./web-fetch-images.md) describes.
 
-A call names the page by its URL or by the ID of a link that a page fetched earlier in the session
-showed, and the tool refuses a call that gives both or neither.
+Every field of the result and every image is outside content, because the page and every redirect
+along the way came from someone other than the user. The result schema marks the status code, the
+part number, the count of parts and the truncated mark as endorsed types, because a number and a
+boolean cannot carry the page's words, while a URL can carry text in its path. A refused or failed
+fetch returns an error with its reason, which the model reads. When a site's bot protection answers
+in place of the page, the result is a page with its status and a blocked reason, so the model can
+tell the user why the fetch has no content instead of retrying.
+
+A call names a page in one of these ways, and the tool refuses any other mix of keys:
+
+| Call                                      | Fetches | Returns                                       |
+| ----------------------------------------- | ------- | --------------------------------------------- |
+| `url`, with an optional `part` or `find`  | yes     | the part named or found, else part 1          |
+| `link`, with an optional `part` or `find` | yes     | the same, for the page the link goes to       |
+| `page`, with `part` or `find`             | no      | the part named or found, from the stored copy |
+
+A call never gives both `part` and `find`. [Pages and parts](#pages-and-parts) covers the page ID,
+`part` and `find`.
 
 ## Link IDs
 
@@ -55,13 +67,61 @@ the database library ([short IDs](../core/database.md#short-ids)). A link ID nam
 record, and it lasts one session, so a count gives the shortest ID and no rebuild from the log needs
 it.
 
-The link store belongs to the web fetch tool alone. Each row holds a URL, and a URL can carry text
-the user forgets, so a forget removes every link on the conversation's thread
+The link store and the page store belong to the web fetch tool alone. Each row holds a URL or a
+page's text, which can carry text the user forgets, so a forget removes every link and every page on
+the conversation's thread
 ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session)). A fetch
 can outlive the turn a forget aborted, so each turn hands its tool calls the newest session
-invalidation its step saw beside the session key. The tool numbers a page's links in the same
-transaction that checks for a newer invalidation on the thread, and it numbers none and returns an
-error when it finds one, so no row reaches the store after the cleanup removed the thread's links.
+invalidation its step saw beside the session key. The tool numbers a page's links and stores the
+page in the same transaction that checks for a newer invalidation on the thread. When it finds one,
+it writes neither and returns an error, so the tool never writes a row to either store after the
+cleanup removed the thread's rows.
+
+## Pages and parts
+
+The tool stores the whole text of each page it fetches, so the model can read a page longer than one
+result without a new fetch. In one write transaction, the tool numbers every link on the page,
+writes each link as its tag, cuts the text into parts, and stores the parts under a page ID from
+`createShortID`, such as `tz4a98xxat`. The page store keys each row by the session key, so a page ID
+lasts one session, as a link ID does. The tool refuses a page ID from an earlier session, one the
+store removed and an invented one alike, with an error, and the model then fetches the page by its
+URL again. The tool never returns another page in place of the one named.
+
+The `text_bytes` value of the deployment config's `web_fetch` section sets the most UTF-8 bytes of
+one part, its link tags included. The tool ends each part at the last line break within that limit,
+else at the last space, else after the last whole character, and never inside a link tag. A tag
+longer than a whole part shows as its ID alone, such as `[L12]`, and an ID longer than a whole part
+shows nothing, so every tag fits in a part and the tool always finishes cutting. For the same
+reason, the tool leaves out a character wider than a whole part, which only a limit under 4 bytes
+meets.
+
+`find` takes plain text. The tool returns the part where that text first appears, and up to 10
+matches, each with its part number and about 50 characters of the page on each side. The tool
+matches the text with a case-insensitive regular expression over the page as stored, and never
+lowercases the page first: a lowercased `İ` grows from one code unit to two, which would move every
+later match and could pick the wrong part. A match that runs into the next part counts in the part
+it starts in. When the text never appears, the tool returns an error with the count of parts, such
+as "0 matches in 7 parts of page tz4a98xxat".
+
+The truncated mark means that the fetcher stopped before the page's end, at the body limit, or at
+the image limit for an image ([the fetcher](#the-fetcher)), so no part holds that end. A page with
+no text, such as a PDF, returns its URL, status and content type with no text, no page ID, no part
+number and a count of 0 parts. An image returns the same, beside the image itself, as
+[web fetch images](./web-fetch-images.md) describes.
+
+When the tool stores a page, it removes these pages in the same transaction:
+
+- every page of the thread's ended conversation sessions, which no call can reach again. A session's
+  opening record keeps its key, and a thread runs one conversation session at a time, so the tool
+  treats each key that an opening before the thread's newest one names as ended, and never the
+  newest opening's key, which belongs to the live session. A call under a run's own token can run
+  beside the live session and keys its pages by the run, which no opening names, so those pages stay
+  until a forget or the store limit removes them;
+- the session's oldest pages, until the session's pages fit the `page_store_bytes` value of the
+  `web_fetch` section. The page just stored always stays, even when it alone passes that value.
+
+A forget removes every page on the thread. `remove-web-fetch-pages.ts` in `modules/connectors` makes
+every removal from the page store.
 
 ## The fetch sandbox
 
@@ -117,22 +177,42 @@ IPv6 address whose embedded IPv4 address is not public, and every range the depl
 internal, whatever its class. The embedded forms it reads are IPv4-mapped, IPv4-compatible,
 IPv4-translated, NAT64, 6to4 and Teredo.
 
-Each fetch has 4 configurable limits: the body bytes read, the time for the whole call with its
-redirects, the number of redirects, and the bytes of text returned. The body limit counts bytes
-after a compressed body is decoded, so a small compressed body cannot expand past it. Reaching the
-body limit or the text limit stops the read and marks the result truncated, and the text cut never
-splits a character. Passing the time limit or the redirect limit fails the fetch.
+nixie runs the fetcher for 2 callers, the web fetch tool and the reader of a skill's files, and
+sends each fetch these limits:
+
+| Limit                                           | Web fetch tool         | Skill files                                                           |
+| ----------------------------------------------- | ---------------------- | --------------------------------------------------------------------- |
+| the body bytes read                             | the deployment config  | the file size limit of the [definitions repo](../core/definitions.md) |
+| the body bytes of an image                      | the deployment config  | 0, since a skill holds only text                                      |
+| the time for the whole call, redirects included | the deployment config  | the deployment config                                                 |
+| the number of redirects                         | the deployment config  | the deployment config                                                 |
+| the bytes of text returned                      | 3 times the body limit | the file size limit                                                   |
+
+The web fetch tool asks for text up to 3 times its body limit, because one body byte decodes to at
+most 3 bytes of UTF-8 text, so its text stops only where the body does.
+
+The body limit and the image limit count bytes after a compressed body is decoded, so a small
+compressed body cannot expand past them. Reaching the body limit or the text limit stops the read
+and marks the result truncated, and the text cut never splits a character. Passing the time limit or
+the redirect limit fails the fetch.
 
 The reply lists the target of each link mark the cut text keeps and no other. The targets have a
-byte budget of their own, a fixed multiple of the text limit, and the text stops before the first
-mark whose target would pass it, so a page of long links still fits the reply's size limit, which
-nixie sets from both budgets. A host and path can run far longer than their mark, so nixie applies
-the text limit again once each link reads as its tag, and marks a result it cuts there truncated.
+byte budget of their own, a fixed multiple of the text limit. From the first mark whose target would
+pass that budget, the fetcher drops the mark of each link it has not yet listed and keeps the text,
+so a page of long links still fits the reply's size limit. The budget never cuts the text and never
+marks the result truncated. A host and path can run far longer than their mark, so nixie cuts the
+text into parts only once each link reads as its tag ([pages and parts](#pages-and-parts)).
 
-The default text limit sits under the tool-output limit that the conversation guest sets for the
-Agent SDK's CLI, so a long page reaches the model as its start, marked truncated. The CLI saves a
-result past its tool-output limit to a file, and the model has no tool to read a file. The guest
-turns those files off, so the CLI cuts any longer result and keeps it inline.
+nixie sets the size limit of the fetcher's reply frame from the larger of 2 sizes, because a reply
+holds text or an image, never both:
+
+- the text limit and the link targets' budget, at the most bytes JSON escaping can make them;
+- the image limit, written in base64.
+
+The default `text_bytes` value, the most bytes of one part, sits under the tool-output limit that
+the conversation guest sets for the Agent SDK's CLI, so every part reaches the model whole. The CLI
+saves a result past its tool-output limit to a file, and the model has no tool to read a file. The
+guest turns those files off, so the CLI cuts any longer result and keeps it inline.
 
 ### The page text
 
@@ -155,10 +235,12 @@ comes last, so a page cut at the text limit loses its list before its article. A
 itself, to a fragment of it, or through a scheme other than `https` and `http`, such as
 `javascript:`, keeps only its text and gets no mark, because the model has nothing to fetch there.
 
-Another text type returns as it arrived, in the charset its content type names, and a binary type
-returns no text, so the fetcher never reads its body. A 403 or 503 that carries Cloudflare's
-challenge header, or the markup of its challenge page, sets the blocked reason. A challenge needs a
-browser that runs its script, so the fetcher reports it rather than trying to pass it.
+Another text type returns as it arrived, in the charset its content type names. An `image/*` type
+returns its body whole, within the image limit, for nixie to read
+([web fetch images](./web-fetch-images.md)). Another binary type returns no text, so the fetcher
+never reads its body. A 403 or 503 that carries Cloudflare's challenge header, or the markup of its
+challenge page, sets the blocked reason. A challenge needs a browser that runs its script, so the
+fetcher reports it rather than trying to pass it.
 
 ## The fetch image
 

@@ -35,6 +35,7 @@
     "@heynixie/retry": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/sandbox-imp": "workspace:*",
+    "@heynixie/search-kagi": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/skills": "workspace:*",
     "@heynixie/tasks": "workspace:*",
@@ -46,6 +47,7 @@
     "elysia": "catalog:",
     "gunshi": "catalog:",
     "tiny-invariant": "catalog:",
+    "ts-pattern": "catalog:",
     "xstate": "catalog:",
     "zod": "catalog:"
   },

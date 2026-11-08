@@ -2,10 +2,11 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Clock } from '@heynixie/clock';
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 
-export async function startTestLog(): Promise<Log> {
+export async function startTestLog(clock?: Clock): Promise<Log> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -14,7 +15,9 @@ export async function startTestLog(): Promise<Log> {
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const writer = await startWriter({ dataDir });
+  const writerOptions = clock === undefined ? { dataDir } : { dataDir, clock };
+
+  const writer = await startWriter(writerOptions);
 
   stack.defer(() => writer.stop());
 

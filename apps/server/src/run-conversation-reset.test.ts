@@ -2,6 +2,7 @@ import { expect, mock, test } from 'bun:test';
 import { defaultAPISettings } from '@heynixie/api';
 import { readLinkTarget } from '@heynixie/connectors';
 import { readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import { runConversationReset } from './run-conversation-reset';
@@ -17,10 +18,10 @@ async function setupTest() {
     readSessionCleanup: () => null,
   };
 
-  return { ...server, context };
+  return { ...server, context, log: mock<Logger>() };
 }
 
-test('it shreds every record on the conversation thread, then records the reset there', async () => {
+test('it shreds every record on the conversation thread, records the reset there, and reports its key backups as pending', async () => {
   const ctx = await setupTest();
 
   await runTestSeed(ctx.context.log, ctx.dataDir);
@@ -45,6 +46,7 @@ test('it shreds every record on the conversation thread, then records the reset 
     context: ctx.context,
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
+    log: ctx.log,
   });
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0 });
@@ -53,6 +55,7 @@ test('it shreds every record on the conversation thread, then records the reset 
     resetAt: expect.toBeValidDate(),
     lastSequence: 5,
     shreddedRecords: 2,
+    backup: { state: 'pending' },
   });
 
   expect(read.map((entry) => entry.record).slice(2)).toMatchObject([
@@ -75,6 +78,53 @@ test('it shreds every record on the conversation thread, then records the reset 
   ]);
 });
 
+test('it finishes the reset and reports its key backups as unknown when the backup state read fails', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the ferry leaves at six' },
+    },
+  ]);
+
+  await withWriteTransaction(ctx.context.log.writer, async (tx) => {
+    await tx.schema.dropTable('backup_sets').execute();
+  });
+
+  const reset = await runConversationReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    stopWork: () => Promise.resolve(),
+    log: ctx.log,
+  });
+
+  const read = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(reset).toStrictEqual({
+    resetAt: expect.toBeValidDate(),
+    lastSequence: 3,
+    shreddedRecords: 1,
+    backup: { state: 'unknown' },
+  });
+
+  expect(ctx.log).toHaveBeenCalledExactlyOnceWith('reset.backup_state_failed', {
+    error: expect.any(String),
+    message: expect.stringMatching(/backup_sets/u),
+  });
+
+  expect(read.map((entry) => [entry.record.kind, entry.record.erasable.status])).toStrictEqual([
+    ['definitions_seeded', 'none'],
+    ['owner_message', 'shredded'],
+    ['model.session_invalidated', 'none'],
+    ['log_reset', 'none'],
+  ]);
+});
+
 test('it never shreds a record on another thread', async () => {
   const ctx = await setupTest();
 
@@ -93,6 +143,7 @@ test('it never shreds a record on another thread', async () => {
     context: ctx.context,
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
+    log: ctx.log,
   });
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0, thread: 'task-garden' });
@@ -119,7 +170,12 @@ test('it stops the work, then destroys the conversation sandbox and never anothe
 
   const before = await ctx.readSandboxIDs();
 
-  await runConversationReset({ context: ctx.context, adapter: ctx.sandboxes, stopWork });
+  await runConversationReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    stopWork,
+    log: ctx.log,
+  });
 
   const after = await ctx.readSandboxIDs();
 
@@ -152,6 +208,7 @@ test('it removes the links that the web fetch tool numbered on the conversation 
     context: ctx.context,
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
+    log: ctx.log,
   });
 
   const target = await readLinkTarget(ctx.context.log, { sessionKey: 'session-a', number: 1 });
@@ -183,6 +240,7 @@ test('it removes nothing when the conversation sandbox destroy fails', async () 
         ]),
     },
     stopWork: () => Promise.resolve(),
+    log: ctx.log,
   });
 
   await Promise.allSettled([reset]);

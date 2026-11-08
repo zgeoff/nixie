@@ -2,6 +2,7 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { systemClock } from '@heynixie/clock';
 import { getDataFilePath, startWriter } from '@heynixie/log';
 import { StepFailedError, createConversationTask } from '@heynixie/tasks';
 import { buildReadinessChecks } from './build-readiness-checks';
@@ -58,7 +59,11 @@ test('it reports the conversation turns as failing after a restart with the stor
   const restarted = await ctx.restart();
   const state = await loadStartState(restarted);
 
-  const checks = buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) });
+  const checks = buildReadinessChecks(
+    state,
+    { read: () => ({ isReady: true, reason: null }) },
+    systemClock,
+  );
 
   const report = await checks.advisory.conversation_turns();
 
@@ -81,7 +86,11 @@ test('it reports the conversation turns as passing after a restart with the stor
   const restarted = await ctx.restart();
   const state = await loadStartState(restarted);
 
-  const checks = buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) });
+  const checks = buildReadinessChecks(
+    state,
+    { read: () => ({ isReady: true, reason: null }) },
+    systemClock,
+  );
 
   const report = await checks.advisory.conversation_turns();
 

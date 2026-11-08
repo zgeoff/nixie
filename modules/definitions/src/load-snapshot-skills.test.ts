@@ -8,8 +8,8 @@ import invariant from 'tiny-invariant';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
 import { loadSnapshotSkills } from './load-snapshot-skills';
+import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
-import { runWrittenSkillSeed } from './run-written-skill-seed';
 import { writeWrittenSkill } from './write-written-skill';
 
 async function setupTest() {
@@ -68,7 +68,7 @@ test('it loads a skill that nixie wrote with origin nixie, its approval and its 
     }),
   );
 
-  const seeded = await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  const seeded = await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   invariant(seeded.inForce);
 

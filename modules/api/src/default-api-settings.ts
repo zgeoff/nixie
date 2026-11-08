@@ -8,6 +8,7 @@ export const defaultAPISettings: APISettings = {
   lastSeenIntervalMs: 60 * 1000,
   isMemoryWriterEnabled: true,
   isMemoryConsolidatorEnabled: true,
+  isBackupEnabled: true,
   taskDirectory: [
     {
       taskID: conversationTaskID,

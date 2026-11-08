@@ -23,7 +23,6 @@ minimumReleaseAgeExcludes = [
   "@zgeoff/kysely-bun-sqlite",
   "@zgeoff/oxlint-config",
   "@zgeoff/rig",
-  "@zgeoff/skill-gate",
   "@zgeoff/std",
 ]
 
@@ -45,4 +44,5 @@ preload = [
   "./libs/mock-server/src/start-mock-server.ts",
   "./apps/web/src/mocks/test-preload.ts",
   "./adapters/definitions-github/src/mocks/test-preload.ts",
+  "./adapters/search-kagi/src/mocks/test-preload.ts",
 ]

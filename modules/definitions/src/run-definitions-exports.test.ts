@@ -9,8 +9,8 @@ import { buildSkillChangeKind } from './build-skill-change-kind';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
 import { runDefinitionsExports } from './run-definitions-exports';
+import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
-import { runWrittenSkillSeed } from './run-written-skill-seed';
 import { buildStubDefinitionsRepo } from './test-utils/build-stub-definitions-repo';
 import type { DefinitionsChangeKind } from './types';
 import { writeWrittenSkill } from './write-written-skill';
@@ -74,7 +74,7 @@ test('it exports a second change kind beside skills through the same pull reques
     }),
   );
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   const writeState = mock<DefinitionsChangeKind['writeState']>(() => Promise.resolve());
 
@@ -309,7 +309,7 @@ test('it exports a good skill and reports the error of a skill whose stored file
     });
   });
 
-  await runWrittenSkillSeed({ log: ctx.log, buildPolicy: () => policy });
+  await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   await sql`update skill_versions set files = '42' where name = 'star-charts'`.execute(
     ctx.writer.db,

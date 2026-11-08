@@ -8,4 +8,6 @@ export const definitionsFormats = {
   skills: 2,
 
   prompts: 3,
+
+  rules: 3,
 };

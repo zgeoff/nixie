@@ -1,7 +1,7 @@
 # 0014: Search
 
 - Date: 2026-10-08
-- Updated: 2026-10-15
+- Updated: 2026-11-07
 - Status: decided
 - Research:
   [connector notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/connectors.md)
@@ -11,8 +11,9 @@ provider is Kagi. The tool returns full results, with titles and snippets, and t
 as free text under 0005.
 
 A search API's JSON is not a typed result. In every provider, the titles and snippets are text from
-the pages, so they can carry injected instructions. Only the dates and scores are fully clean, and a
-URL can hold text in its path.
+the pages, so they can carry injected instructions, and a URL can hold text in its path. The dates
+and scores are endorsed as a type, not clean: they carry no words, but a page or the index sets
+them, so they can be wrong.
 
 ## Why
 
@@ -46,3 +47,5 @@ URL can hold text in its path.
 
 - 2026-10-08: search results count as free text, because the conversation carries no taint flag
   under 0005. The first version marked the conversation as tainted after a search.
+- 2026-11-07: the dates and scores are endorsed as a type, not clean, because a page or the index
+  sets them. The first version called them fully clean.

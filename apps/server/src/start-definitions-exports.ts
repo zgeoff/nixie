@@ -1,6 +1,7 @@
 import type { DefinitionsExportSweep } from '@heynixie/definitions';
 import {
   buildPromptChangeKind,
+  buildRuleChangeKind,
   buildSkillChangeKind,
   startDefinitionsExportSweep,
 } from '@heynixie/definitions';
@@ -31,7 +32,11 @@ export async function startDefinitionsExports(
   const sweep = startDefinitionsExportSweep({
     log: options.log,
     repo: buildGitHubDefinitionsRepo(options.settings.repo),
-    kinds: [buildSkillChangeKind(text), buildPromptChangeKind(options.log, text)],
+    kinds: [
+      buildSkillChangeKind(text),
+      buildPromptChangeKind(options.log, text),
+      buildRuleChangeKind(),
+    ],
     onError: (error) => {
       options.logEvent('definitions.export_failed', toErrorFields(error), 'error');
     },

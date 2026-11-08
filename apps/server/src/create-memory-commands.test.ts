@@ -230,7 +230,10 @@ test('it forgets an item through memory-forget, which leaves no key, match or se
   const forgotten = await runHostCommand(ctx.configPath, ['memory-forget', `${lock.itemID}@1`]);
   const after = await readItemTraces(ctx, api.client, lock);
 
-  expect(JSON.parse(forgotten.stdout)).toStrictEqual({ itemID: lock.itemID });
+  expect(JSON.parse(forgotten.stdout)).toStrictEqual({
+    itemID: lock.itemID,
+    backup: { state: 'off' },
+  });
 
   expect(before).toStrictEqual({
     hasKey: true,

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { systemClock } from '@heynixie/clock';
 import { createHealthApp } from '@heynixie/ops';
 import { SandboxHostError } from '@heynixie/sandbox';
 import { ModelAPIError, ModelAuthError } from '@heynixie/sessions';
@@ -13,7 +14,7 @@ function setupTest() {
     liveness: {
       database: () => Promise.resolve({ isReady: true, reason: null }),
     },
-    ...buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) }),
+    ...buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) }, systemClock),
     log: () => {},
   });
 
@@ -180,6 +181,7 @@ test('it keeps readiness at 200 and shows the failing turns in its advisory part
     images: { isReady: true, reason: null },
     conversation: { isReady: true, reason: null },
     areRunnersStarted: true,
+    backups: { state: 'off' },
   });
 
   makeConversationFailureMarker(ctx.state)({
@@ -211,6 +213,7 @@ test('it keeps readiness at 200 and shows the failing turns in its advisory part
       imp_host: { isReady: true, reason: null },
       conversation_imp: { isReady: true, reason: null },
       disk: { isReady: true, reason: null },
+      backups: { isReady: true, reason: null },
     },
     advisory: {
       conversation_turns: {
@@ -229,6 +232,7 @@ test('it reports the conversation turns as not ready on readiness after one turn
     images: { isReady: true, reason: null },
     conversation: { isReady: true, reason: null },
     areRunnersStarted: true,
+    backups: { state: 'off' },
   });
 
   makeConversationFailureMarker(ctx.state)({
@@ -256,6 +260,7 @@ test('it reports the conversation turns as not ready on readiness after one turn
       imp_host: { isReady: true, reason: null },
       conversation_imp: { isReady: true, reason: null },
       disk: { isReady: true, reason: null },
+      backups: { isReady: true, reason: null },
     },
     advisory: {
       conversation_turns: {

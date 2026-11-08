@@ -9,8 +9,18 @@ export function decodeFetchReply(bytes: Uint8Array): FetchReply {
     return { kind, reason: requireString(reply, 'reason') };
   }
 
+  if (kind === 'image') {
+    return {
+      kind,
+      url: requireString(reply, 'url'),
+      status: requireStatus(reply),
+      contentType: requireStringOrNull(reply, 'contentType'),
+      base64: requireString(reply, 'base64'),
+    };
+  }
+
   if (kind !== 'page') {
-    throw new TypeError('a fetch reply needs a kind of page, refused or failed');
+    throw new TypeError('a fetch reply needs a kind of page, image, refused or failed');
   }
 
   return {

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildReadableText } from './build-readable-text';
+import { measureLinkPageBuild } from './test-utils/measure-link-page-build';
 
 test('it returns the title and the readable text of a page', () => {
   const html = `<!doctype html>
@@ -48,6 +49,38 @@ test('it gives every link to one target the same mark', () => {
     text: 'See the menu \u{E000}0\u{E001}, our hours \u{E000}1\u{E001} and the menu \u{E000}0\u{E001} again.',
     links: ['https://cafe.test/menu', 'https://cafe.test/hours'],
   });
+});
+
+test('it numbers each target by its first mark in the text, then in the list of other links', () => {
+  const html = `<nav><a href="/maps">Maps</a> <a href="/tides">Tides</a> <a href="/maps">Maps again</a></nav>
+<main><p><a href="/tides">Tide table</a>, <a href="/weather">weather</a> and the <a href="/tides">tides</a> once more.</p></main>
+<footer><a href="/weather">Weather</a> <a href="/contact">Contact</a></footer>`;
+
+  expect(buildReadableText(html, new URL('https://harbour.test/'))).toStrictEqual({
+    text: 'Tide table \u{E000}0\u{E001}, weather \u{E000}1\u{E001} and the tides \u{E000}0\u{E001} once more.\n\nOther links on this page:\n- Maps \u{E000}2\u{E001}\n- Contact \u{E000}3\u{E001}',
+    links: [
+      'https://harbour.test/tides',
+      'https://harbour.test/weather',
+      'https://harbour.test/maps',
+      'https://harbour.test/contact',
+    ],
+  });
+});
+
+test('it builds a page of 20000 links at the time per link of a page of 2500', () => {
+  const largeBuild = measureLinkPageBuild(20_000);
+
+  // The fastest of 3 runs drops a run that garbage collection slowed. A scan of a list per link
+  // measures 7 to 9 times the time per link here, and a map lookup 1.1 to 1.5 times.
+  const smallNsPerLink = Math.min(...[1, 2, 3].map(() => measureLinkPageBuild(2500).nsPerLink));
+
+  const largeNsPerLink = Math.min(
+    largeBuild.nsPerLink,
+    ...[1, 2].map(() => measureLinkPageBuild(20_000).nsPerLink),
+  );
+
+  expect(largeBuild.linkCount).toBe(20_000);
+  expect(largeNsPerLink / smallNsPerLink).toBeLessThan(3);
 });
 
 test('it strips the mark characters from the text of the page itself', () => {

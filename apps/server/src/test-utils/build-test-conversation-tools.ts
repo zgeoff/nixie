@@ -23,6 +23,8 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
             log: context.log,
             textBytes: webFetchDefaults.limits.textBytes,
             linkPathChars: webFetchDefaults.linkPathChars,
+            pageStoreBytes: webFetchDefaults.pageStoreBytes,
+            imageLongEdge: webFetchDefaults.imageLongEdge,
           }),
           time: buildTimeTool({
             clock: context.clock,

@@ -22,7 +22,7 @@ async function setupTest() {
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => null,
-      seedWrittenSkills: () => Promise.resolve(),
+      runInForceSeed: () => Promise.resolve(),
       readInForce: () => null,
       wakeExports: () => {},
       runReset: () => Promise.reject(new Error('no reset runs in this test')),

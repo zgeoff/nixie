@@ -1,4 +1,5 @@
 import type { PartReport } from '@heynixie/ops';
+import type { BackupWatch } from './build-backups-report';
 
 interface StartReports {
   readonly database: PartReport;
@@ -12,6 +13,8 @@ interface StartReports {
   readonly turns: PartReport;
 
   readonly areRunnersStarted: boolean;
+
+  readonly backups: BackupWatch;
 }
 
 export interface StartState {
@@ -28,6 +31,7 @@ export function buildStartState(database: PartReport): StartState {
       conversation: { isReady: false, reason: 'the conversation imp has not started' },
       turns: { isReady: true, reason: null },
       areRunnersStarted: false,
+      backups: { state: 'not_started' },
     },
   };
 

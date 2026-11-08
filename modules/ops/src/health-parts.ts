@@ -2,7 +2,7 @@ export const healthParts = ['database', 'definitions'] as const;
 
 export type HealthPart = (typeof healthParts)[number];
 
-export const dependencyParts = ['imp_host', 'conversation_imp', 'disk'] as const;
+export const dependencyParts = ['imp_host', 'conversation_imp', 'disk', 'backups'] as const;
 
 export type DependencyPart = (typeof dependencyParts)[number];
 
