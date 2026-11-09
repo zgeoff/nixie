@@ -25,7 +25,8 @@ export function buildQueryOptions(
   return {
     tools: [],
     allowedTools: context.toolServer === null ? [] : [`mcp__${toolServerName}`],
-    ...(context.toolServer === null ? { maxTurns: 1 } : {}),
+    ...pickMaxTurns(turn, context.toolServer),
+    includePartialMessages: true,
 
     thinking: { type: 'adaptive', display: 'summarized' },
     permissionMode: 'dontAsk',
@@ -56,6 +57,19 @@ export function buildQueryOptions(
           forkSession: true,
         }),
   };
+}
+
+function pickMaxTurns(
+  turn: TurnFrame | SummarizeFrame,
+  toolServer: McpServerConfig | null,
+): Pick<Options, 'maxTurns'> {
+  if (toolServer === null) {
+    return { maxTurns: 1 };
+  }
+
+  return turn.type === 'turn' && turn.limits.modelCalls !== null
+    ? { maxTurns: turn.limits.modelCalls }
+    : {};
 }
 
 const passedVariables = [

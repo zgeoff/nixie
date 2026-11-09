@@ -65,6 +65,66 @@ test('it reads the inbox messages and replies with the queued reply, then with t
   expect(defaulted.frames[1]).toMatchObject({ type: 'assistant', text: 'Hello.' });
 });
 
+test("it reports a reply's model call usage before the reply", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies({
+    text: 'PLUM',
+    usage: {
+      uncachedInputTokens: 40,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 3,
+    },
+  });
+
+  const answered = await runGuestFrame(
+    sandbox,
+    buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Say a fruit.' }],
+    }),
+  );
+
+  expect(answered.frames).toStrictEqual([
+    {
+      type: 'call',
+      usage: {
+        uncachedInputTokens: 40,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 3,
+      },
+    },
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000002'] },
+    expect.objectContaining({ type: 'assistant', text: 'PLUM' }),
+    expect.objectContaining({ type: 'ended' }),
+  ]);
+});
+
+test.each([
+  ['the stop reason a reply sets', { text: 'PEAR', stopReason: 'tool_use' }, 'tool_use'],
+  ['end_turn for a reply that sets none', { text: 'PEAR' }, 'end_turn'],
+])('it ends a turn with %s', async (_case, reply, stopReason) => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies(reply);
+
+  const answered = await runGuestFrame(
+    sandbox,
+    buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Say a fruit.' }],
+    }),
+  );
+
+  expect(answered.frames.at(-1)).toStrictEqual(
+    expect.objectContaining({ type: 'ended', stopReason }),
+  );
+});
+
 test('it replies to a sandbox of a kind with the replies queued for that kind before the shared ones', async () => {
   const ctx = await setupTest();
   const conversation = await ctx.stub.adapter.create(ctx.spec);
@@ -253,6 +313,38 @@ test('it fails a turn whose reply is a failed model call as an error, with no an
 
   expect(run.frames).toStrictEqual([
     { type: 'failed', reason: 'error', detail: 'Error: the model API answered 529 overloaded' },
+  ]);
+});
+
+test("it reports a failed reply's model call usage before the failure", async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies({
+    failure: 'the guest lost its model stream',
+    usage: {
+      uncachedInputTokens: 70,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 2,
+    },
+  });
+
+  const run = await runGuestFrame(sandbox, buildMockTurnFrame());
+
+  expect(run.frames).toStrictEqual([
+    {
+      type: 'call',
+      usage: {
+        uncachedInputTokens: 70,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 2,
+      },
+    },
+    { type: 'failed', reason: 'error', detail: 'Error: the guest lost its model stream' },
   ]);
 });
 

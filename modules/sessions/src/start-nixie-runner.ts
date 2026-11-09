@@ -37,15 +37,21 @@ import type { Actor } from 'xstate';
 import { createActor } from 'xstate';
 import { buildDefaultStatus } from './build-default-status';
 import { buildGuestCommand } from './build-guest-command';
+import { buildHeldSessionGuard } from './build-held-session-guard';
 import { silentEndToolName } from './build-silent-end-tool';
+import { countEndedTurns } from './count-ended-turns';
+import type { CallBudget } from './create-call-budget';
+import { createCallBudget } from './create-call-budget';
 import { createWorkerSandbox } from './create-worker-sandbox';
 import { getHarnessImage } from './get-harness-image';
+import { hasFinishedTurn } from './has-finished-turn';
 import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
 import { isGuestPurged, pickCleanedTaskIDs } from './plan-task-session-cleanup';
-import { isImpReleasedAfterStep, planTaskStep } from './plan-task-step';
+import { planTaskStep } from './plan-task-step';
+import { planTaskTurnEnd } from './plan-task-turn-end';
 import { readTaskUsage } from './read-task-usage';
 import { runConversationStep } from './run-conversation-step';
 import { runGuestPurge } from './run-guest-purge';
@@ -397,6 +403,7 @@ async function runGuardedStep(
       startedBy: run.startedBy,
       used,
       limits: run.limits,
+      isWorkCut: false,
     });
 
     if (plan.isImpReleased && held !== undefined) {
@@ -412,7 +419,7 @@ async function runGuardedStep(
     };
   }
 
-  return runTaskTurn(runner, input, { run, invalidated });
+  return runTaskTurn(runner, input, { run, invalidated, used });
 }
 
 async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
@@ -426,6 +433,7 @@ async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
 interface TaskTurnParts {
   readonly run: StartedRun;
   readonly invalidated: AbortSignal;
+  readonly used: TaskLimits;
 }
 
 async function runTaskTurn(
@@ -439,21 +447,60 @@ async function runTaskTurn(
   imp.send({ type: 'acquire', reply: acquired });
 
   const held = await acquired.promise;
-  const result = await runConversationStep(buildTaskRun(runner, { ...parts, ...held }), input);
 
-  if (isImpReleasedAfterStep(result)) {
+  const run = parts.run;
+  const used = parts.used;
+  const budget = createCallBudget(run.profile.profile.prices, run.limits.dollars - used.dollars);
+
+  const ended = await runConversationStep(buildTaskRun(runner, { ...parts, ...held, budget }), {
+    ...input,
+    interrupt: AbortSignal.any([input.interrupt, budget.signal]),
+  }).then(
+    (result) => ({ result, error: null }),
+    (error: unknown) => ({ result: null, error }),
+  );
+
+  const plan = planTaskTurnEnd({
+    used,
+    isBudgetReached: budget.signal.aborted,
+    spentDollars: budget.getSpentDollars(),
+    endedTurns: ended.result === null ? 0 : countEndedTurns(ended.result.records),
+    hasFinishedTurn: ended.result !== null && hasFinishedTurn(ended.result.records),
+    next: ended.result?.next ?? null,
+  });
+
+  if (plan.reached !== null) {
+    await writeTaskLimitPause(runner.options.context, {
+      lease: input.lease,
+      stepKey: input.stepKey,
+      startedBy: run.startedBy,
+      used: plan.reached,
+      limits: run.limits,
+      isWorkCut: plan.isWorkCut,
+    });
+  }
+
+  if (plan.isImpReleased) {
     await releaseTaskImp(imp);
   }
 
-  return result;
+  if (ended.result === null) {
+    throw ended.error;
+  }
+
+  return ended.result;
 }
 
 interface TaskRunParts {
   readonly run: StartedRun;
+  readonly budget: CallBudget;
   readonly endpoint: RunEndpoint;
   readonly sandbox: Sandbox;
   readonly invalidated: AbortSignal;
 }
+
+// No one watches a task turn, so a model that loops on tool calls stops at this many calls.
+const taskModelCallLimit = 100;
 
 function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun {
   const options = runner.options;
@@ -468,6 +515,8 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     endpoint: parts.endpoint,
     model: run.model,
     command: run.command,
+    modelCallLimit: taskModelCallLimit,
+    onModelCall: parts.budget.onCall,
     getDefinitions: () =>
       run.options.persona === 'default'
         ? options.getDefinitions()
@@ -481,16 +530,6 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     imageBudget: sessionImageBudget,
     session: buildHeldSessionGuard(parts.invalidated),
     log: options.log,
-  };
-}
-
-// The step already holds the task's own guard, so the turn takes the signal that guard gave it.
-function buildHeldSessionGuard(invalidated: AbortSignal): SessionGuard {
-  return {
-    withTurn: (run) => run(invalidated),
-    withInvalidation: () => {
-      invariant(false, "a started task's cleanup goes through the task's own guard");
-    },
   };
 }
 

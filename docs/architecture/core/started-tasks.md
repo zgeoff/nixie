@@ -138,6 +138,31 @@ the task's ID and counts in a system message that says only the user can resume 
 message leaves out the task's name, because a model wrote that name, and the model trusts a system
 message as nixie's own text.
 
+A turn can pass the dollar limit on its own, so the runner prices each of the turn's model calls
+with the task's profile as the guest reports it
+([model calls](./conversation-turns.md#model-calls)). When the calls and the earlier count together
+reach the dollar limit, the runner interrupts the turn
+([interrupts](./conversation-turns.md#interrupts)). Once the turn ends, the step asks for the pause
+and writes the same two records, with the counts it reached. The step sleeps the task's imp, even
+with work left, and its commit pauses the task. A step whose guest fails after its calls reach the
+limit asks for the pause too, so the step's retry waits for a raise and spends nothing more.
+
+An interrupted turn ends at its last chain entry, with no `end_turn` from the model, so its work is
+not done, and a task with no unread message would wait after a raise. When the dollar limit cuts
+such a turn, the pause also writes a `task.limit_cut` record into the task's own inbox. That record
+stays unread past the step's commit, so the task pauses in the ready state. After a raise, the next
+step reads it as a system message that tells the model to continue the work that is not done yet.
+
+A `task.limit_reached` record holds the task's whole count at its turn's end, with the key of its
+step, and commits before that step's commit. When the step's commit also carries a turn record, the
+turn record counts the turn's spend. A turn that failed, or a step that stopped before its commit,
+leaves no turn record, so the limit record is the only record of that spend. The count therefore
+adds the dollars that a limit record counted past the records before it, unless that step's own
+commit carried a turn record. A retry takes the same step key, so the count settles each limit
+record at its step's end: the step's commit, its `task.step_errored` record or the
+`task.step_interrupted` record that a reclaim writes. That way a failed turn's spend still counts
+after a raise, and a raise that lands before a step's commit never counts the turn twice.
+
 While the newest limit record on the task's thread is `task.limit_reached`, a resume or a restart of
 the task refuses. The user raises the limit with the `task-raise` host command
 ([host commands](../deployment/host-commands.md#tasks)), which writes a `task.limits_raised` record

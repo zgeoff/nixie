@@ -1,5 +1,5 @@
 import type { ExecStream, GuestCommand, Sandbox, StreamExit } from '@heynixie/sandbox';
-import type { GuestFrame, HostFrame, InboxMessage } from '@heynixie/wire';
+import type { GuestFrame, HostFrame, InboxMessage, ModelCallUsage } from '@heynixie/wire';
 import {
   decodeTurnFrame,
   encodeTurnFrame,
@@ -27,6 +27,9 @@ export interface GuestTurnSpec {
   readonly interrupt?: AbortSignal;
 
   readonly readRecallMark?: () => Promise<number>;
+
+  // runs on each model API call the guest reports, before the host reads the guest's next frame
+  readonly onCall?: (usage: ModelCallUsage) => void;
 }
 
 export interface GuestTurn {
@@ -56,7 +59,7 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
     void sendMessages(stream, spec.messages);
     void sendInterrupt(stream, spec.interrupt, spec.signal);
 
-    return await readTurn(stream, spec.readRecallMark);
+    return await readTurn(stream, spec);
   } catch (error) {
     await stream.stop();
 
@@ -140,11 +143,12 @@ interface MutableTurn {
   settled: { readonly assistants: number; readonly read: number };
 }
 
-type MarkReader = GuestTurnSpec['readRecallMark'];
-
 // The SDK resumes a session at its last result, so a reply or a read after that result belongs to a
 // session that no turn resumes. Its inbox records stay unread, and the next step sends them again.
-async function readTurn(stream: ExecStream, readRecallMark: MarkReader): Promise<GuestTurn> {
+async function readTurn(
+  stream: ExecStream,
+  spec: Pick<GuestTurnSpec, 'readRecallMark' | 'onCall'>,
+): Promise<GuestTurn> {
   const turn: MutableTurn = {
     assistants: [],
     read: [],
@@ -157,7 +161,12 @@ async function readTurn(stream: ExecStream, readRecallMark: MarkReader): Promise
   for await (const message of stream.messages) {
     const frame = decodeTurnFrame(guestFrameSchema, message);
 
-    const mark = await readFrameMark(frame, readRecallMark);
+    if (frame.type === 'call') {
+      spec.onCall?.(frame.usage);
+      continue;
+    }
+
+    const mark = await readFrameMark(frame, spec.readRecallMark);
 
     updateTurn(turn, frame, mark);
   }
@@ -177,13 +186,17 @@ async function readTurn(stream: ExecStream, readRecallMark: MarkReader): Promise
   };
 }
 
+type MarkReader = GuestTurnSpec['readRecallMark'];
+
 function readFrameMark(frame: GuestFrame, readRecallMark: MarkReader): Promise<number | undefined> {
   return frame.type === 'ended' && readRecallMark !== undefined
     ? readRecallMark()
     : Promise.resolve(undefined);
 }
 
-function updateTurn(turn: MutableTurn, frame: GuestFrame, mark: number | undefined): void {
+type TurnStateFrame = Exclude<GuestFrame, { type: 'call' }>;
+
+function updateTurn(turn: MutableTurn, frame: TurnStateFrame, mark: number | undefined): void {
   if (frame.type === 'assistant') {
     turn.assistants.push(frame);
   } else if (frame.type === 'read') {

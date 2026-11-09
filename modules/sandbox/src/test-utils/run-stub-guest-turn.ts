@@ -1,5 +1,11 @@
 import { once } from 'node:events';
-import type { GuestFrame, HostFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
+import type {
+  GuestFrame,
+  HostFrame,
+  InboxMessage,
+  ModelCallUsage,
+  SessionPoint,
+} from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { P, match } from 'ts-pattern';
 import type { GuestHome } from '../types';
@@ -9,7 +15,17 @@ import { readStubGuestHistory } from './read-stub-guest-history';
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
 export type StubGuestReply =
-  | { readonly text: string; readonly gate?: () => Promise<void> }
+  | {
+      readonly text: string;
+      readonly gate?: () => Promise<void>;
+
+      // the reason the turn's last call stopped, as an interrupted turn reports one other than
+      // end_turn
+      readonly stopReason?: string | null;
+
+      // the guest reports the call's usage before the gate opens
+      readonly usage?: ModelCallUsage;
+    }
   | {
       readonly toolUse: {
         readonly name: string;
@@ -18,7 +34,7 @@ export type StubGuestReply =
     }
   | { readonly overflow: 'blocking_limit' | 'prompt_too_long' }
   | { readonly modelAuthRefusal: string }
-  | { readonly failure: string };
+  | { readonly failure: string; readonly usage?: ModelCallUsage };
 
 export interface StubGuestToolCall {
   readonly sandboxID: string;
@@ -132,7 +148,14 @@ async function runInputs(
 
     progress.committed = { harness: 'agent-sdk', sessionID: fork.sessionID, messageID: last.uuid };
 
-    frames.push(buildEnded(turn, entries, { start, point: progress.committed }));
+    frames.push(
+      buildEnded(turn, entries, {
+        start,
+        point: progress.committed,
+        stopReason: answer.stopReason,
+      }),
+    );
+
     run.disk.writeSession(run.home, fork.sessionID, entries);
     run.emit?.(frames.splice(0));
     const live = run.takeMessage();
@@ -165,6 +188,8 @@ interface InputAnswer {
   readonly overflow: 'blocking_limit' | 'prompt_too_long' | null;
 
   readonly refusal: string | null;
+
+  readonly stopReason: string | null;
 }
 
 const overflowText = 'Prompt is too long';
@@ -201,8 +226,13 @@ async function runInputCall(
         frames,
         overflow: null,
         refusal: refused.modelAuthRefusal,
+        stopReason: null,
       }))
       .with({ failure: P.string }, (failed) => {
+        if (failed.usage !== undefined) {
+          run.emit?.([{ type: 'call', usage: failed.usage }]);
+        }
+
         throw new Error(failed.failure);
       })
       .with({ overflow: P.string }, (overflowed): InputAnswer => {
@@ -222,9 +252,14 @@ async function runInputCall(
           toolUses: [],
         });
 
-        return { frames, overflow: overflowed.overflow, refusal: null };
+        return { frames, overflow: overflowed.overflow, refusal: null, stopReason: null };
       })
       .with({ text: P.string }, async (answered): Promise<InputAnswer> => {
+        if (answered.usage !== undefined) {
+          frames.push({ type: 'call', usage: answered.usage });
+          run.emit?.(frames.splice(0));
+        }
+
         if (answered.gate !== undefined) {
           await waitUnlessStopped(answered.gate(), run.signal);
         }
@@ -238,7 +273,12 @@ async function runInputCall(
           toolUses: [],
         });
 
-        return { frames, overflow: null, refusal: null };
+        return {
+          frames,
+          overflow: null,
+          refusal: null,
+          stopReason: answered.stopReason === undefined ? 'end_turn' : answered.stopReason,
+        };
       })
       .with({ toolUse: P.select() }, async (toolUse) => {
         const entry = pushAssistantEntry(JSON.stringify(toolUse), step);
@@ -409,6 +449,7 @@ function buildOverflowEnded(
 interface EndedPoint {
   readonly start: number;
   readonly point: SessionPoint;
+  readonly stopReason: string | null;
 }
 
 const defaultWindow = 200_000;
@@ -424,7 +465,7 @@ function buildEnded(
     type: 'ended',
     boundary: ended.point,
     subtype: 'success',
-    stopReason: 'end_turn',
+    stopReason: ended.stopReason,
     turns: fresh.filter((entry) => entry.role === 'assistant').length,
     usage: {
       inputTokens: countTokens(fresh.filter((entry) => entry.role === 'user')),

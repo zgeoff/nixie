@@ -43,6 +43,9 @@ export type TurnProfile = z.infer<typeof turnProfileSchema>;
 
 const toolRouteSchema = z.object({ url: z.url(), token: z.string().min(1) }).readonly();
 
+// The guest stops a turn after this many model API calls, or runs it to its end at null.
+const turnLimitsSchema = z.object({ modelCalls: z.int().positive().nullable() }).readonly();
+
 const turnFrameSchema = z
   .object({
     type: z.literal('turn'),
@@ -51,6 +54,7 @@ const turnFrameSchema = z
     resume: sessionPointSchema.nullable(),
     systemPrompt: z.string(),
     input: z.array(inboxMessageSchema).min(1).readonly(),
+    limits: turnLimitsSchema,
   })
   .readonly();
 

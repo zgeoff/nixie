@@ -5,6 +5,7 @@ import { modelsConfigSchema } from '@heynixie/models';
 import {
   claimTask,
   runTaskStep,
+  taskLimitNoticeCodec,
   writeInboxRecords,
   writeStepCommit,
   writeTaskControl,
@@ -949,6 +950,302 @@ test("it pauses a task at its dollar limit, priced on its model's profile", asyn
     used: { turns: 1, dollars: expect.toBePositive() },
     limits: { turns: 25, dollars: 1e-6 },
   });
+});
+
+test('it interrupts a task turn whose model calls reach its dollar limit, and pauses the task with the limit it reached', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.runNextStep(runner);
+
+  const paused = await ctx.readKinds('task.paused');
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(paused.map((record) => record.thread)).toStrictEqual([taskID]);
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 1, dollars: 0.03 },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+});
+
+test('it resumes the work of a task turn that its dollar limit cut short once the limit is raised, with no new message', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.runNextStep(runner);
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 1 } });
+
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(ctx.guest.turns).toHaveLength(2);
+  expect(input).toInclude('Continue the work that is not done yet.');
+});
+
+test('it leaves waiting after a raise a task whose turn finished its work at its dollar limit', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'The high tide is at 14:10.',
+    stopReason: 'end_turn',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.runNextStep(runner);
+
+  const raised = await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 1 } });
+
+  expect(raised).toStrictEqual({
+    status: 'raised',
+    state: 'waiting',
+    isPauseRequested: false,
+    limits: { turns: 25, dollars: 1 },
+  });
+});
+
+test('it interrupts a task turn on the call that reaches its dollar limit with the spend of its earlier turns', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the evening tide.',
+    usage: {
+      uncachedInputTokens: 9990,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.writeMessage(taskID, 'And the evening tide?');
+  await ctx.runNextStep(runner);
+
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 2, dollars: expect.toBeWithin(0.03, 0.031) },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+});
+
+test('it pauses a task whose guest fails after its calls reach the dollar limit, so no retry spends again', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    failure: 'the guest lost its model stream',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const paused = await ctx.readKinds('task.paused');
+  const [notice] = await ctx.readKinds('task.limit_notice');
+  const errored = await ctx.readKinds('task.step_errored');
+
+  expect(paused.map((record) => record.thread)).toStrictEqual([taskID]);
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 0, dollars: 0.03 },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  expect(errored.map((record) => record.thread)).toStrictEqual([taskID]);
+});
+
+test("it gives the retry of a failed turn only the dollars that the turn's spend and a raise leave", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      failure: 'the guest lost its model stream',
+      usage: {
+        uncachedInputTokens: 10_000,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+    {
+      text: 'Checking the tides.',
+      usage: {
+        uncachedInputTokens: 4000,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+  );
+
+  await ctx.runNextStepWithNoRetryDelay(runner);
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 0.04 } });
+
+  await ctx.runNextStep(runner);
+
+  const notices = await ctx.readKinds('task.limit_notice');
+
+  const [failed, retried] = notices.map(
+    (notice) => taskLimitNoticeCodec.decode(notice.payload).used,
+  );
+
+  expect(failed).toStrictEqual({ turns: 0, dollars: 0.03 });
+  expect(retried?.turns).toBe(1);
+  expect(retried?.dollars).toBeCloseTo(0.042, 6);
+});
+
+test('it caps each task turn at 100 model calls', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter);
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.guest.turns[0]?.limits).toStrictEqual({ modelCalls: 100 });
+});
+
+test('it sleeps the imp of a task whose turn reached its dollar limit with work left', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+
+  expect(slept).toHaveLength(1);
 });
 
 test('it runs the next turn of a task paused at its turn limit once the limit is raised', async () => {

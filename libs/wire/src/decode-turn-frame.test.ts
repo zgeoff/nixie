@@ -24,6 +24,7 @@ test('it decodes a turn frame the host sent', () => {
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
     systemPrompt: 'You are nixie.',
+    limits: { modelCalls: null },
     input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
   };
 
@@ -47,6 +48,7 @@ test('it refuses a turn frame whose input message has no uuid', () => {
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: null,
     systemPrompt: 'You are nixie.',
+    limits: { modelCalls: null },
     input: [{ uuid: 'not-a-uuid', text: 'Hi.' }],
   };
 
@@ -70,6 +72,7 @@ test('it refuses a turn frame with an empty inbox', () => {
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: null,
     systemPrompt: 'You are nixie.',
+    limits: { modelCalls: null },
     input: [],
   };
 
