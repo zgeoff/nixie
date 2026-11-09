@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { renderTurnPreamble } from './render-turn-preamble';
 
-test('it renders the start note, the change note, the facts, the self-notes, the past messages and the task board in that order', () => {
+test('it renders the start note, the continuation note, the change note, the facts, the self-notes, the past messages and the task board in that order', () => {
   const fact = {
     itemID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
     shortID: 'h4ns8w1cpe',
@@ -19,6 +19,7 @@ test('it renders the start note, the change note, the facts, the self-notes, the
   const preamble = renderTurnPreamble(
     {
       start: 'Your task starts now.',
+      continuation: 'Continue the work.',
       changes: '- Unpinned [r2vd6t0jmy]',
       retrieval: {
         items: [fact],
@@ -43,6 +44,7 @@ test('it renders the start note, the change note, the facts, the self-notes, the
     preamble.map((block) => /^<system-message type="(?<type>[\w-]+)"/u.exec(block)?.[1]),
   ).toStrictEqual([
     'task-start',
+    'task-continue',
     'pinned-memory-changes',
     'retrieved-memory',
     'retrieved-self-notes',
@@ -55,6 +57,7 @@ test('it leaves out each block with nothing in it', () => {
     renderTurnPreamble(
       {
         start: null,
+        continuation: null,
         changes: null,
         retrieval: { items: [], selfNotes: [], messages: [] },
         thread: 'garden',

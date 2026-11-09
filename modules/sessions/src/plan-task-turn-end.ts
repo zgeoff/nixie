@@ -8,8 +8,8 @@ export interface TaskTurnEndFacts {
   readonly spentDollars: number;
   readonly endedTurns: number;
 
-  // whether one of the step's turns ended at the model's own end_turn
-  readonly hasFinishedTurn: boolean;
+  // whether an interrupt cut the step's turn before the model's own end_turn
+  readonly isTurnCut: boolean;
 
   // null for a step that threw
   readonly next: StepResult['next'] | null;
@@ -20,13 +20,11 @@ export interface TaskTurnEndPlan {
   readonly reached: TaskLimits | null;
 
   readonly isImpReleased: boolean;
-
-  // whether the budget cut a turn short, so its task resumes that work once a raise lets it
-  readonly isWorkCut: boolean;
 }
 
 // A step with work left runs again soon on the same imp, so only a step that waits or pauses its
-// task sleeps it. A step that threw keeps its input for its retry, so its work counts as no cut.
+// task sleeps it. A cut turn's step sleeps it too, because its commit holds a pause the user or
+// the limit asked for whenever the cut work waits for a resume or a raise.
 export function planTaskTurnEnd(facts: TaskTurnEndFacts): TaskTurnEndPlan {
   const reached = facts.isBudgetReached
     ? {
@@ -37,7 +35,6 @@ export function planTaskTurnEnd(facts: TaskTurnEndFacts): TaskTurnEndPlan {
 
   return {
     reached,
-    isImpReleased: facts.next === 'wait' || reached !== null,
-    isWorkCut: reached !== null && facts.next !== null && !facts.hasFinishedTurn,
+    isImpReleased: facts.next === 'wait' || reached !== null || facts.isTurnCut,
   };
 }

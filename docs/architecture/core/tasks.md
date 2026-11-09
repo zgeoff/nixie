@@ -162,8 +162,10 @@ reaches the step at once.
   answer, but it takes a stop and a restart.
 - **Interrupt** of a running task records the step it interrupts, and the runner fires the step's
   interrupt signal. A conversation turn then ends at the last entry of its Agent SDK session and
-  commits as usual, as [conversation turns](./conversation-turns.md#interrupts) describes. A step
-  that runs no model has no turn to end, and commits when it would have.
+  commits as usual, as [conversation turns](./conversation-turns.md#interrupts) describes. A started
+  task keeps the work that the interrupt cut, as
+  [interrupted work](./started-tasks.md#interrupted-work) describes. A step that runs no model has
+  no turn to end, and commits when it would have.
 
 While a task is paused or closed, nixie claims none of its [actions](./actions.md) that have not
 started an attempt, so a pause keeps the queued actions with the task. A stop

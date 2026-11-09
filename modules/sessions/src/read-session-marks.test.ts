@@ -22,8 +22,33 @@ test('it reads no earlier core and no invalidation before the first turn', async
     isSummarized: false,
     compactionFailures: 0,
     images: { bytes: 0, count: 0 },
+    isTurnCut: false,
   });
 });
+
+test.each([
+  { stopReason: 'end_turn', isTurnCut: false },
+  { stopReason: 'tool_use', isTurnCut: true },
+  { stopReason: null, isTurnCut: true },
+])(
+  'it reads a turn that ended with the stop reason $stopReason as cut: $isTurnCut',
+  async (row) => {
+    const ctx = await setupTest();
+
+    await writeRecords(ctx.tasks.context.log, [
+      {
+        kind: 'model.turn_ended',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        payload: { stopReason: row.stopReason },
+      },
+    ]);
+
+    const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+    expect(marks.isTurnCut).toBe(row.isTurnCut);
+  },
+);
 
 test('it reads the images the session held after the last turn', async () => {
   const ctx = await setupTest();

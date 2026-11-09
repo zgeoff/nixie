@@ -8,6 +8,7 @@ import type { MemoryLineOptions } from './types';
 
 export interface TurnPreamble {
   readonly start: string | null;
+  readonly continuation: string | null;
   readonly changes: string | null;
   readonly retrieval: TurnRetrieval;
   readonly thread: string;
@@ -23,6 +24,7 @@ export function renderTurnPreamble(
 
   return [
     renderPreambleMessage('task-start', at, preamble.start),
+    renderPreambleMessage('task-continue', at, preamble.continuation),
     renderPreambleMessage('pinned-memory-changes', at, preamble.changes),
     renderPreambleMessage('retrieved-memory', at, renderRetrievedItems(retrieval.items, lines)),
     renderPreambleMessage(

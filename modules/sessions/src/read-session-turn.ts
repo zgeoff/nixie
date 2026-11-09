@@ -1,5 +1,6 @@
 import invariant from 'tiny-invariant';
 import { inboxBatchLimit } from './inbox-batch-limit';
+import { isTaskWorkCut } from './is-task-work-cut';
 import { readTurnContext } from './read-turn-context';
 import type { SessionTurn } from './run-planned-turn';
 import type { SessionStep } from './types';
@@ -19,6 +20,8 @@ export async function readSessionTurn(
 
     // A forget can invalidate a task before its first session opens, and the task still starts.
     isFirstSession: step.marks.sessionKey === null,
+
+    isWorkCut: step.input.inbox.length === 0 && isTaskWorkCut(step.run.frame, step.marks),
   });
 
   return {
