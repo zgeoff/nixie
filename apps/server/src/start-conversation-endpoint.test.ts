@@ -258,7 +258,7 @@ test('it puts no task board in the turn after a task starts, and keeps the syste
   expect(JSON.stringify(second.input)).not.toInclude('Seed order');
 });
 
-test("it serves search to the conversation with the key from the secrets file, and keeps the search's cost on the call's record", async () => {
+test("it serves search to the conversation with the key from the secrets file, shows the model no cost, and keeps the search's cost on the call's record", async () => {
   const nixie = await startInProcessNixie({
     extraConfig: ['search:', '  credential: deployment:search', `  api_url: ${kagiAPIURL}`],
     extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
@@ -287,22 +287,32 @@ test("it serves search to the conversation with the key from the secrets file, a
     'Low tide is at 13:40.',
   );
 
+  const searched = nixie.toolResults.at(-1);
+
+  invariant(searched);
+
+  const answer: unknown = JSON.parse(searched.result);
+
+  const hits = [
+    {
+      link: 'L1',
+      title: 'Bondi tide times',
+      url: 'https://tides.test/bondi',
+      snippet: 'Low tide at 13:40.',
+      date: '2026-11-06',
+    },
+  ];
+
+  expect(answer).toStrictEqual({
+    _meta: expect.any(Object),
+    content: [],
+    structuredContent: { hits },
+  });
+
   expect(records.find((record) => record.kind === 'tool_result')?.toolCall).toStrictEqual({
     callID: expect.any(String),
     outcome: 'result',
-    content: {
-      result: {
-        hits: [
-          {
-            title: 'Bondi tide times',
-            url: 'https://tides.test/bondi',
-            snippet: 'Low tide at 13:40.',
-            publishedAt: '2026-11-06T21:00:00Z',
-          },
-        ],
-        costUSD: 0.012,
-      },
-    },
+    content: { result: { hits, costUSD: 0.012 } },
   });
 });
 

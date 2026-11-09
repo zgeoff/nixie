@@ -1,14 +1,16 @@
 import type { Log } from '@heynixie/log';
-import type { ToolDefinition, ToolImage, ToolOutcome, ToolRun } from '@heynixie/tools';
+import type { ToolDefinition, ToolImage, ToolOutcome } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
 import { fitFetchedImage } from './fit-fetched-image';
+import type { PageSession } from './get-page-session';
+import { getPageSession } from './get-page-session';
 import type { PageView, WebFetchRequest } from './parse-web-fetch-request';
 import { parseWebFetchRequest } from './parse-web-fetch-request';
 import { pickPageView } from './pick-page-view';
 import { readLinkTarget } from './read-link-target';
 import { readWebFetchPage } from './read-web-fetch-page';
-import type { PageLimits, PageSession } from './write-web-fetch-page';
+import type { PageLimits } from './write-web-fetch-page';
 import { writeWebFetchPage } from './write-web-fetch-page';
 
 // no required key, since a call names a page by url, link or page, and the run checks the mix
@@ -19,8 +21,8 @@ const webFetchInput = {
     link: {
       type: 'string',
       description:
-        'the ID of a link a page fetched earlier in this session showed, such as L12, to fetch ' +
-        'the page it goes to',
+        'the ID of a link that a fetched page or a search hit showed earlier in this session, ' +
+        'such as L12, to fetch the page it goes to',
     },
     page: {
       type: 'string',
@@ -326,17 +328,7 @@ async function runLinkFetch(
         status: 'error',
         message:
           `L${number} is not a link from this session. An ID works only in the session whose ` +
-          'page showed it, so fetch that page again by its url.',
+          'page or search showed it, so fetch that page again by its url.',
       }
     : runPageFetch(fetching, url, view);
-}
-
-// a call under the run's own token runs in no conversation session, so the run keys its links and
-// pages, and no forget fences them
-function getPageSession(run: ToolRun): PageSession {
-  return {
-    sessionKey: run.session?.key ?? run.runID,
-    thread: run.thread,
-    invalidatedThrough: run.session?.invalidatedThrough ?? null,
-  };
 }

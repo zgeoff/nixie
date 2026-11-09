@@ -56,26 +56,26 @@ or the fragment, and shows no path for a link to the host's root. The tool fetch
 ID names, and its result holds the URL the fetch ended at, as a fetch by URL does.
 
 The session numbers each URL once, from a count of its own, so a URL keeps one ID across every page
-the session fetches, and the IDs of two sessions are unrelated. A new session's opening record keeps
-a random session key, each turn on that session hands the key to its tool calls, and the link store
-keys each row by it. A compaction or a forget opens a new session, so an ID from an earlier session
-fails with an error that tells the model to fetch the page by its URL again. A call under the run's
-own token runs in no session, so the tool keys its links by the run.
+the session fetches and every [search](./search.md) hit, and the IDs of two sessions are unrelated.
+A new session's opening record keeps a random session key, each turn on that session hands the key
+to its tool calls, and the link store keys each row by it. A compaction or a forget opens a new
+session, so an ID from an earlier session fails with an error that tells the model to fetch the page
+by its URL again. A call under the run's own token runs in no session, so the tool keys its links by
+the run.
 
 Link IDs are the one exception to the rule that every record the model sees takes a short ID from
 the database library ([short IDs](../core/database.md#short-ids)). A link ID names a link, not a
 record, and it lasts one session, so a count gives the shortest ID and no rebuild from the log needs
 it.
 
-The link store and the page store belong to the web fetch tool alone. Each row holds a URL or a
-page's text, which can carry text the user forgets, so a forget removes every link and every page on
-the conversation's thread
+The web fetch tool owns the link store and the page store, and the search tool writes only to the
+link store. Each row holds a URL or a page's text, which can carry text the user forgets, so a
+forget removes every link and every page on the conversation's thread
 ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session)). A fetch
 can outlive the turn a forget aborted, so each turn hands its tool calls the newest session
-invalidation its step saw beside the session key. The tool numbers a page's links and stores the
-page in the same transaction that checks for a newer invalidation on the thread. When it finds one,
-it writes neither and returns an error, so the tool never writes a row to either store after the
-cleanup removed the thread's rows.
+invalidation its step saw beside the session key. Each tool writes its rows in the same transaction
+that checks for a newer invalidation on the thread. When it finds one, it writes nothing and returns
+an error, so neither tool writes a row after the cleanup removed the thread's rows.
 
 ## Pages and parts
 

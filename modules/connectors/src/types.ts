@@ -64,12 +64,16 @@ export interface SearchRequest {
 }
 
 export interface SearchHit {
+  // plain text, with no markup
   readonly title: string;
   readonly url: string;
+
+  // plain text, with no markup
   readonly snippet: string | null;
 
-  // the date the provider gives the page, as it gives it; null when it gives none
-  readonly publishedAt: string | null;
+  // the day the provider says the page was created or last updated, such as 2026-11-06; null when
+  // it gives none
+  readonly date: string | null;
 }
 
 export type SearchReply =

@@ -2,6 +2,7 @@ import type { SearchProvider, SearchReply, SearchRequest } from '@heynixie/conne
 import { parseJSONOrNull } from '@heynixie/wire';
 import type { KagiSearchRequest } from './kagi-contract';
 import { kagiErrorSchema, kagiSearchResponseSchema } from './kagi-contract';
+import { toPlainText } from './to-plain-text';
 
 export interface KagiSearchOptions {
   readonly apiKey: string;
@@ -84,10 +85,13 @@ function parseKagiResponse(status: number, text: string): SearchReply {
     ? {
         kind: 'hits',
         hits: parsed.data.data.search.map((result) => ({
-          title: result.title,
+          title: toPlainText(result.title),
           url: result.url,
-          snippet: result.snippet ?? null,
-          publishedAt: result.time ?? null,
+          snippet: result.snippet === undefined ? null : toPlainText(result.snippet),
+
+          // Kagi's docs call time "The date when the resource was created or last updated", and
+          // Kagi can set its time of day to the moment of the search, so nixie keeps the day alone.
+          date: result.time?.slice(0, 10) ?? null,
         })),
         costUSD: kagiSearchCostUSD,
       }
