@@ -39,6 +39,7 @@ test('it runs 3 steps at once by default', async () => {
     },
     onStepErrored: () => {},
     onError: () => {},
+    logger: () => {},
   });
 
   onTestFinished(async () => {
@@ -67,6 +68,7 @@ test('it runs a claimed step and commits its result', async () => {
     runStep: () => Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
     onStepErrored: () => {},
     onError: () => {},
+    logger: () => {},
   });
 
   onTestFinished(() => runners.stop(0));
@@ -95,6 +97,7 @@ test('it runs a task created while every runner sleeps without waiting for the p
     runStep: ran,
     onStepErrored: () => {},
     onError: () => {},
+    logger: () => {},
   });
 
   onTestFinished(() => runners.stop(0));
@@ -124,6 +127,7 @@ test('it stops waking on commits once stopped', async () => {
     },
     onStepErrored: () => {},
     onError: () => {},
+    logger: () => {},
   });
 
   onTestFinished(() => runners.stop(0));
@@ -151,6 +155,7 @@ test('it removes its commit listener once stopped', async () => {
       runStep: () => Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
       onStepErrored: () => {},
       onError: () => {},
+      logger: () => {},
     },
   );
 
@@ -172,6 +177,7 @@ test('it reports a step that throws once its error record commits', async () => 
     runStep: () => Promise.reject(failure),
     onStepErrored,
     onError: () => {},
+    logger: () => {},
   });
 
   onTestFinished(() => runners.stop(0));
@@ -220,6 +226,7 @@ test('it fires a due timer on its next poll', async () => {
     runStep: () => Promise.resolve<StepResult>({ next: 'wait', records: [], acknowledged: [] }),
     onStepErrored: () => {},
     onError: () => {},
+    logger: () => {},
   });
 
   onTestFinished(() => runners.stop(0));
@@ -256,6 +263,7 @@ test('it runs a started task through the started step', async () => {
     started: { runStep: ran, size: 1 },
     onStepErrored: () => {},
     onError: () => {},
+    logger: () => {},
   });
 
   onTestFinished(() => runners.stop(0));
@@ -315,6 +323,7 @@ test('it claims a message to the conversation while every claim loop of the star
     },
     onStepErrored: () => {},
     onError: () => {},
+    logger: () => {},
   });
 
   onTestFinished(async () => {

@@ -33,6 +33,7 @@ test('#conversation.retry makes the turn that failed claimable at once', async (
   await runTaskStep(ctx.context, failed, {
     runStep: () => Promise.reject(new Error('the provider is overloaded')),
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -73,6 +74,7 @@ test('#conversation.retry answers a repeat of the same action with its first ans
   await runTaskStep(ctx.context, failed, {
     runStep: () => Promise.reject(new Error('the provider is overloaded')),
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,

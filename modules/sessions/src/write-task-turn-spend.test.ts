@@ -44,7 +44,7 @@ test('it refuses the limit pause of a completed turn whose lease is lost, and co
   ctx.clock.advance(60_000);
 
   const refusal = await writeTaskTurnSpend(
-    ctx.context,
+    { ...ctx.context, logger: () => {} },
     {
       lease: claim.lease,
       stepKey: claim.stepKey,

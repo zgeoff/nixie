@@ -34,6 +34,7 @@ export async function startRunners(parts: ServerParts, runSteps: RunnerSteps): P
       markConversationFailure(errored);
     },
     onError,
+    logger: parts.log,
     size: parts.config.tasks.runners,
   });
 

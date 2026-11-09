@@ -1,4 +1,5 @@
 import { subscribeToRecordCommits } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import type { ClaimTaskOptions } from './claim-task';
 import { claimTask } from './claim-task';
 import { DEFAULT_MAX_STEP_ERRORS } from './default-max-step-errors';
@@ -20,6 +21,7 @@ export interface TaskRunnersOptions {
 
   readonly onStepErrored: (errored: StepErrored) => void;
   readonly onError: (error: unknown) => void;
+  readonly logger: Logger;
 
   readonly size?: number;
   readonly holder?: string;
@@ -55,6 +57,7 @@ export function startTaskRunners(context: TasksContext, options: TaskRunnersOpti
         const errored = await runTaskStep(context, claim, {
           runStep: pool.runStep,
           leaseMs,
+          logger: options.logger,
           maxStepErrors: options.maxStepErrors ?? DEFAULT_MAX_STEP_ERRORS,
           retryDelayMs: options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
           maxRetryDelayMs: options.maxRetryDelayMs ?? DEFAULT_MAX_RETRY_DELAY_MS,

@@ -717,6 +717,7 @@
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
         "@heynixie/retry": "workspace:*",
         "@heynixie/task-control": "workspace:*",
         "@heynixie/tools": "workspace:*",

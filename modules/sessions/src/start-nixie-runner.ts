@@ -484,7 +484,7 @@ async function runTaskTurn(
   }
 
   await writeTaskTurnSpend(
-    runner.options.context,
+    { ...runner.options.context, logger: runner.options.log },
     { lease: input.lease, stepKey: input.stepKey, startedBy: run.startedBy, limits: run.limits },
     plan,
   );

@@ -160,7 +160,9 @@ first. When the commit fails, such as when it loses its lease, the step writes a
 `task.failed_turn_spent` record with the turn's dollars instead, so the turn's spend still counts. A
 turn that reached the limit counts its spend in its limit record, so its failed commit writes no
 spend record. When that limit record fails to commit, such as when a lost lease refuses it, the step
-writes the spend record in its place.
+writes the spend record in its place. When the spend record fails to write too, the runner logs a
+`task.turn_spend_unrecorded` error event with the task's ID and the dollars, and the count leaves
+that spend out.
 
 A step that lost its lease writes its spend record after another runner may have taken the step. A
 turn that the other runner started before the record landed gets a budget without that spend, so the

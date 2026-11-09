@@ -1,3 +1,4 @@
+import type { Logger } from '@heynixie/logger';
 import type { Lease, TaskLimits, TasksContext } from '@heynixie/tasks';
 import { withTurnSpendOnFailure, writeFailedTurnSpend, writeTaskLimitPause } from '@heynixie/tasks';
 import type { TaskTurnEndPlan } from './plan-task-turn-end';
@@ -13,7 +14,7 @@ export interface TaskTurnStep {
 // a lost lease refuses still leaves the spend counted. A step whose pause fails never commits, so a
 // failed pause records a completed turn's spend too.
 export async function writeTaskTurnSpend(
-  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
+  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'> & { readonly logger: Logger },
   step: TaskTurnStep,
   plan: Pick<TaskTurnEndPlan, 'reached' | 'failedDollars' | 'pausedDollars'>,
 ): Promise<void> {
@@ -30,7 +31,7 @@ export async function writeTaskTurnSpend(
   const used = plan.reached;
   const spend = plan.pausedDollars === null ? null : { taskID, dollars: plan.pausedDollars };
 
-  await withTurnSpendOnFailure(context, spend, () =>
+  await withTurnSpendOnFailure(context, { spend, logger: context.logger }, () =>
     writeTaskLimitPause(context, { ...step, used }),
   );
 }

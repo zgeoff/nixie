@@ -1,4 +1,5 @@
 import { StaleWriterError } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import type { StepErrorOptions } from './build-step-failure-plan';
 import { LeaseLostError } from './lease-lost-error';
 import { readInbox } from './read-inbox';
@@ -13,6 +14,7 @@ import { writeStepError } from './write-step-error';
 export interface TaskStepOptions extends StepErrorOptions {
   readonly runStep: RunStep;
   readonly leaseMs: number;
+  readonly logger: Logger;
 }
 
 export async function runTaskStep(
@@ -69,7 +71,9 @@ async function tryCommitStep(
         ? null
         : { taskID: claim.lease.workID, dollars: result.spentDollars };
 
-    await withTurnSpendOnFailure(context, spend, () => writeStepCommit(context, claim, result));
+    await withTurnSpendOnFailure(context, { spend, logger: options.logger }, () =>
+      writeStepCommit(context, claim, result),
+    );
 
     return null;
   } catch (error) {

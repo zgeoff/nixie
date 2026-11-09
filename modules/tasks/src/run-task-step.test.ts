@@ -41,6 +41,7 @@ test('it gives the step its unread inbox and commits what the step returns', asy
   await runTaskStep(ctx.context, claim, {
     runStep,
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -93,6 +94,7 @@ test('it gives the next step the session boundary the last commit recorded', asy
         sessionBoundary: 'boundary-1',
       }),
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -105,6 +107,7 @@ test('it gives the next step the session boundary the last commit recorded', asy
   await runTaskStep(ctx.context, next, {
     runStep,
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -136,6 +139,7 @@ test('it records the error when the step throws', async () => {
   await runTaskStep(ctx.context, claim, {
     runStep: () => Promise.reject(new Error('the model profile is unreachable')),
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -173,6 +177,7 @@ test('it records the error when the commit refuses what the step returned', asyn
         timers: [{ dueAt: Number.NaN }],
       }),
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -216,6 +221,7 @@ test('it aborts the step and commits nothing once the lease is lost', async () =
       return { next: 'done', records: [], acknowledged: [2] };
     },
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -252,6 +258,7 @@ test("it records the step's spend on the task's thread when its commit lost the 
       return Promise.resolve({ next: 'done', records: [], acknowledged: [2], spentDollars: 0.03 });
     },
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -295,6 +302,7 @@ test("it records the step's spend on the task's thread when its commit refuses w
         spentDollars: 0.03,
       }),
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -332,6 +340,7 @@ test('it records no spend for a step whose commit lands', async () => {
     runStep: () =>
       Promise.resolve({ next: 'done', records: [], acknowledged: [2], spentDollars: 0.03 }),
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -373,6 +382,7 @@ test('it aborts a running step that the user stops, and commits nothing', async 
       return { next: 'wait', records: [], acknowledged: [2] };
     },
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -417,6 +427,7 @@ test('it tells a running step that the user interrupted it, and commits what the
       return { next: 'wait', records: [], acknowledged: [2] };
     },
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,

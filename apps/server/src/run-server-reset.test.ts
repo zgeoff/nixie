@@ -257,6 +257,7 @@ test('it commits nothing of a turn still running at the end of the stop grace', 
     runStep: turn.call,
     onStepErrored: mock<Parameters<typeof startTaskRunners>[1]['onStepErrored']>(),
     onError: mock<Parameters<typeof startTaskRunners>[1]['onError']>(),
+    logger: () => {},
     size: 1,
   });
 

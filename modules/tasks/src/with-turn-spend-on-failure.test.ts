@@ -1,35 +1,21 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import invariant from 'tiny-invariant';
-import { claimTask } from './claim-task';
-import { createConversationTask } from './create-conversation-task';
+import type { LogFields } from '@heynixie/logger';
+import { seedConversationStep } from './test-utils/seed-conversation-step';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { withTurnSpendOnFailure } from './with-turn-spend-on-failure';
-import { writeInboxRecords } from './write-inbox-records';
 import { writeStepCommit } from './write-step-commit';
 
 async function setupTest() {
   const tasks = await startTestTasks();
 
+  const events: { event: string; fields: LogFields | undefined }[] = [];
+
   return {
     ...tasks,
-    claimConversation: async () => {
-      await createConversationTask(tasks.context);
-
-      await writeInboxRecords(tasks.context, [
-        {
-          kind: 'owner_message',
-          definitions: { snapshotHash: 'sha256:test' },
-          thread: 'conversation',
-          erasable: { text: 'what is on today?' },
-        },
-      ]);
-
-      const claim = await claimTask(tasks.context, { holder: 'runner-a', leaseMs: 60_000 });
-
-      invariant(claim, 'the conversation has work to claim');
-
-      return claim;
+    events,
+    logger: (event: string, fields?: LogFields) => {
+      events.push({ event, fields });
     },
     readSpends: async () => {
       const spends = await readRecords(tasks.context.log, {
@@ -44,16 +30,16 @@ async function setupTest() {
 
 test("it records the turn's spend and rethrows the error of a write that fails", async () => {
   const ctx = await setupTest();
-  const claim = await ctx.claimConversation();
+  const step = await seedConversationStep(ctx.context);
 
   const outcome = await withTurnSpendOnFailure(
     ctx.context,
-    { taskID: 'conversation', dollars: 0.03 },
+    { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },
     () =>
-      writeStepCommit(ctx.context, claim, {
+      writeStepCommit(ctx.context, step.claim, {
         next: 'wait',
         records: [],
-        acknowledged: [2],
+        acknowledged: [step.messageSequence],
         timers: [{ dueAt: Number.NaN }],
       }),
   ).then(
@@ -69,10 +55,17 @@ test("it records the turn's spend and rethrows the error of a write that fails",
 
 test('it records no spend for a write that lands', async () => {
   const ctx = await setupTest();
-  const claim = await ctx.claimConversation();
+  const step = await seedConversationStep(ctx.context);
 
-  await withTurnSpendOnFailure(ctx.context, { taskID: 'conversation', dollars: 0.03 }, () =>
-    writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [2] }),
+  await withTurnSpendOnFailure(
+    ctx.context,
+    { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },
+    () =>
+      writeStepCommit(ctx.context, step.claim, {
+        next: 'wait',
+        records: [],
+        acknowledged: [step.messageSequence],
+      }),
   );
 
   const spends = await ctx.readSpends();
@@ -80,20 +73,20 @@ test('it records no spend for a write that lands', async () => {
   expect(spends).toStrictEqual([]);
 });
 
-test("it rethrows the write's error with the failed spend write as its cause", async () => {
+test("it logs a spend write that fails, and rethrows the write's own error", async () => {
   const ctx = await setupTest();
-  const claim = await ctx.claimConversation();
+  const step = await seedConversationStep(ctx.context);
 
   await ctx.writer.stop();
 
   const outcome = await withTurnSpendOnFailure(
     ctx.context,
-    { taskID: 'conversation', dollars: 0.03 },
+    { spend: { taskID: 'conversation', dollars: 0.03 }, logger: ctx.logger },
     () =>
-      writeStepCommit(ctx.context, claim, {
+      writeStepCommit(ctx.context, step.claim, {
         next: 'wait',
         records: [],
-        acknowledged: [2],
+        acknowledged: [step.messageSequence],
         timers: [{ dueAt: Number.NaN }],
       }),
   ).then(
@@ -101,7 +94,17 @@ test("it rethrows the write's error with the failed spend write as its cause", a
     (error: unknown) => error,
   );
 
-  expect(outcome).toBeInstanceOf(Error);
-  expect(outcome).toHaveProperty('message', "a step's timer is due at NaN, which is no time");
-  expect(outcome).toHaveProperty('cause', expect.any(Error));
+  expect(outcome).toStrictEqual(new Error("a step's timer is due at NaN, which is no time"));
+
+  expect(ctx.events).toStrictEqual([
+    {
+      event: 'task.turn_spend_unrecorded',
+      fields: {
+        taskID: 'conversation',
+        dollars: 0.03,
+        error: expect.any(String),
+        message: expect.any(String),
+      },
+    },
+  ]);
 });

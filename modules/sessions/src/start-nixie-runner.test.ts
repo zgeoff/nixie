@@ -171,6 +171,7 @@ async function setupTest() {
       await runTaskStep(host.context, claim, {
         runStep: runner.runStep,
         leaseMs: 60_000,
+        logger: () => {},
         maxStepErrors: 3,
         retryDelayMs: 0,
         maxRetryDelayMs: 0,
@@ -1580,6 +1581,7 @@ test('it counts the spend of a task turn whose commit lost its lease to another 
       return result;
     },
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
@@ -1635,6 +1637,7 @@ test('it counts once the spend of a task turn at its dollar limit whose commit l
       return result;
     },
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
