@@ -1,11 +1,12 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
-import { waitForCondition } from '@heynixie/testing';
+import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import type { ToolImage } from '@heynixie/tools';
 import { buildToolRegistry } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { buildSearchTool } from './build-search-tool';
 import { buildWebFetchTool } from './build-web-fetch-tool';
 import { removeWebFetchThread } from './remove-web-fetch-thread';
 import { startFetchSandbox } from './start-fetch-sandbox';
@@ -13,6 +14,7 @@ import { buildStubSandboxAdapter } from './test-utils/build-stub-sandbox-adapter
 import { encodeTestImage } from './test-utils/encode-test-image';
 import { makeStubFetcher } from './test-utils/make-stub-fetcher';
 import { startTestLog } from './test-utils/start-test-log';
+import type { SearchReply } from './types';
 
 async function setupTest() {
   return { log: await startTestLog() };
@@ -356,6 +358,75 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
   });
 });
 
+test("it fetches the URL of a search hit by the hit's link ID", async () => {
+  const ctx = await setupTest();
+
+  const search = buildSearchTool(
+    {
+      readHits: () =>
+        Promise.resolve<SearchReply>({
+          kind: 'hits',
+          hits: [
+            {
+              title: 'Sourdough at the corner bakery',
+              url: 'https://bakery.test/breads/sourdough',
+              snippet: 'Baked daily.',
+              date: null,
+            },
+          ],
+          costUSD: 0.012,
+        }),
+    },
+    {
+      log: ctx.log,
+      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      dailyCallCap: 200,
+      timeZone: 'UTC',
+    },
+  );
+
+  const readPage = mock<(url: string) => Promise<FetchReply>>((url) =>
+    Promise.resolve({
+      kind: 'page',
+      url,
+      status: 200,
+      contentType: 'text/html',
+      text: 'Sourdough, baked daily.',
+      links: [],
+      isTruncated: false,
+      blocked: null,
+    }),
+  );
+
+  const tool = buildWebFetchTool(readPage, {
+    log: ctx.log,
+    textBytes: 20_000,
+    linkPathChars: 24,
+    pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
+  });
+
+  const run = {
+    runID: 'conversation',
+    thread: 'conversation',
+    tools: ['search', 'web_fetch'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    session: { key: 'session-a', invalidatedThrough: 0 },
+  };
+
+  await search.run(
+    { callID: 'call-1', tool: 'search', input: { query: 'sourdough' }, toolUseID: null },
+    { run },
+  );
+
+  await tool.run(
+    { callID: 'call-2', tool: 'web_fetch', input: { link: 'L1' }, toolUseID: null },
+    { run },
+  );
+
+  expect(readPage).toHaveBeenCalledExactlyOnceWith('https://bakery.test/breads/sourdough');
+});
+
 test.each([
   ['L1'],
   ['l1'],
@@ -528,8 +599,8 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
   expect(outcome).toStrictEqual({
     status: 'error',
     message:
-      'L1 is not a link from this session. An ID works only in the session whose page showed ' +
-      'it, so fetch that page again by its url.',
+      'L1 is not a link from this session. An ID works only in the session whose page or ' +
+      'search showed it, so fetch that page again by its url.',
   });
 
   expect(readPage).toHaveBeenCalledOnce();

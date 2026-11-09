@@ -1,14 +1,13 @@
 # Search
 
-The search tool searches the web for the model and returns the hits with what the search cost. The
-tool runs in the nixie server process, outside every sandbox. A sandbox holds code that reads
-untrusted pages, and the search tool reads none: it sends one request to one fixed API address and
-parses the JSON answer. Its API key stays on the server, because a key inside a sandbox could leak
-through the code that runs there. The model fetches a hit's page by its URL with the
-[web fetch](./web-fetch.md) tool, which reads the page in the fetch sandbox.
-[Tool calls](./tool-calls.md) covers the endpoint that runs the tool, and decision record
-[0014](../../decisions/0014-search.md) covers why each hit carries its title and snippet beside its
-URL.
+The search tool searches the web for the model and returns the hits. The tool runs in the nixie
+server process, outside every sandbox. A sandbox holds code that reads untrusted pages, and the
+search tool reads none: it sends one request to one fixed API address and parses the JSON answer.
+Its API key stays on the server, because a key inside a sandbox could leak through the code that
+runs there. The model fetches a hit's page by the hit's link ID with the [web fetch](./web-fetch.md)
+tool, which reads the page in the fetch sandbox. [Tool calls](./tool-calls.md) covers the endpoint
+that runs the tool, and decision record [0014](../../decisions/0014-search.md) covers why each hit
+carries its title and snippet beside its URL.
 
 ## The tool
 
@@ -27,24 +26,30 @@ holds the provider's reason, and the model reads it.
 
 ## What the result carries
 
-The result holds the hits and `costUSD`, what the search cost. Each hit holds a title, a URL, a
-snippet, and a publication date when the search index gives one.
+The result holds the hits. Each hit holds a link ID, a title, a URL, a snippet, and a date when the
+search index gives one. The title and the snippet are plain text, with no HTML tags or entities. The
+date is the day the page was created or last updated, with no time of day.
+
+Each hit's link ID, such as `L12`, comes from the count that numbers the links of fetched pages, so
+the model passes it to web fetch to read the page. The tool numbers the hits in the transaction that
+checks for a forget, as [link IDs](./web-fetch.md#link-ids) describes, and refuses the search when a
+forget ended the session.
 
 The tool declares the source of content of each result field, which the call's
-[result record](./tool-calls.md#records) stores. It declares the hits and the cost as `untrusted`,
-meaning outside content: a title and a snippet are text from the page, and a URL can carry text in
-its path.
+[result record](./tool-calls.md#records) stores. It declares the hits as `untrusted`, meaning
+outside content: a title and a snippet are text from the page, and a URL can carry text in its path.
 
 The output schema also marks the date as an endorsed type. An endorsed type is a type that can carry
 none of the page's words, such as a number, or a string held to one fixed format. A free-form string
-never is one. The schema holds the date to the ISO 8601 date-and-time format, and the tool keeps a
-hit's date only when it parses as a date and time with an offset, whatever the provider sent, so the
-date never carries other text. The date keeps outside content as its source, because a page or the
-index sets it, so it can be wrong. Endorsement changes no decision yet. The
-[web fetch](./web-fetch.md#the-tool) tool marks its status code the same way.
+never is one. The schema holds the date to the ISO 8601 date format, and the tool keeps a hit's date
+only when it parses as a date, whatever the provider sent, so the date never carries other text. The
+date keeps outside content as its source, because a page or the index sets it, so it can be wrong.
+Endorsement changes no decision yet. The [web fetch](./web-fetch.md#the-tool) tool marks its status
+code the same way.
 
-The result record keeps the whole result, so the conversation's event log shows what each search
-cost. Moving search onto a paid-tool budget is planned in
+The result leaves out what the search cost, because a price in front of the model can steer what it
+searches for. The result record holds the hits and `costUSD`, so the conversation's event log shows
+what each search cost. Moving search onto a paid-tool budget is planned in
 [GEO-1813](https://linear.app/zgeoff/issue/GEO-1813).
 
 ## The daily call cap
@@ -70,10 +75,17 @@ change to the tool. The provider holds its own key, and its failure reason must 
 because the tool passes the reason to the model as it is.
 
 Kagi is the one provider, in the `search-kagi` adapter. The adapter sends the sites and the
-freshness in Kagi's lens, the set of filters Kagi applies to one search, and takes each hit's date
-from the `time` Kagi gives the hit. Kagi's answer holds no cost, so the adapter gives each search
-the price on Kagi's [price list](https://kagi.com/api/pricing). The adapter removes the key from
-every failure reason, so an error in which Kagi repeats the key still reaches the model without it.
+freshness in Kagi's lens, the set of filters Kagi applies to one search. Kagi's answer holds no
+cost, so the adapter gives each search the price on Kagi's
+[price list](https://kagi.com/api/pricing). The adapter removes the key from every failure reason,
+so an error in which Kagi repeats the key still reaches the model without it.
+
+Kagi marks the query's words in a title or a snippet with tags such as `<strong>`, and escapes
+characters as entities such as `&#39;`, so the adapter strips the tags and decodes the entities. The
+adapter takes each hit's date from the day of the `time` Kagi gives the hit, which Kagi's
+[Search API docs](https://kagi.com/api/docs/openapi/search) call the date when the resource was
+created or last updated. Kagi can set the time of day to the moment of the search, so the time of
+day holds no fact about the page, and the adapter drops it.
 
 ## Settings and the key
 

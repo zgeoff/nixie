@@ -113,8 +113,8 @@ its record had a short ID.
 
 The web fetch tool's link IDs, such as `L12`, are the one exception: a count per conversation
 session numbers them ([link IDs](../connectors/web-fetch.md#link-ids)). A link ID names a link that
-a fetched page showed, not a record, and it lasts one session, so the shortest ID wins and no
-rebuild from the log needs it. A stored page takes a short ID like any record
+a fetched page or a search hit showed, not a record, and it lasts one session, so the shortest ID
+wins and no rebuild from the log needs it. A stored page takes a short ID like any record
 ([pages and parts](../connectors/web-fetch.md#pages-and-parts)). The page store keeps no UUID,
 because no record in the log carries a page.
 

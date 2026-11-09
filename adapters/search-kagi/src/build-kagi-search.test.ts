@@ -9,7 +9,7 @@ function setupTest() {
   return { provider: buildKagiSearch({ apiKey: 'kagi-key-a', apiURL: kagiAPIURL }) };
 }
 
-test("it returns the hits Kagi holds for the query, each dated from Kagi's time, at $0.012", async () => {
+test("it returns the hits Kagi holds for the query, each dated by the day of Kagi's time, at $0.012", async () => {
   const ctx = setupTest();
 
   await kagiStore.keys.create({ key: 'kagi-key-a' });
@@ -42,13 +42,46 @@ test("it returns the hits Kagi holds for the query, each dated from Kagi's time,
         title: 'Tide tables for Shellharbour',
         url: 'https://tides.test/shellharbour',
         snippet: 'High tide at 06:12.',
-        publishedAt: '2026-11-06T21:00:00Z',
+        date: '2026-11-06',
       },
       {
         title: 'Harbour walks',
         url: 'https://walks.test/harbour',
         snippet: null,
-        publishedAt: null,
+        date: null,
+      },
+    ],
+    costUSD: 0.012,
+  });
+});
+
+test('it returns the title and the snippet of a hit as plain text, with no tags and no entities', async () => {
+  const ctx = setupTest();
+
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  await kagiStore.results.create({
+    query: 'new dungeons list',
+    url: 'https://game.test/dungeons',
+    title: 'New <strong>Dungeons</strong> in the &#39;Frost&#39; patch',
+    snippet: 'The <strong>dungeons</strong> list: Ember Hall &amp; the Sunken Keep&#39;s vault.',
+  });
+
+  const reply = await ctx.provider.readHits({
+    query: 'new dungeons list',
+    limit: 10,
+    sites: [],
+    freshness: null,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'hits',
+    hits: [
+      {
+        title: "New Dungeons in the 'Frost' patch",
+        url: 'https://game.test/dungeons',
+        snippet: "The dungeons list: Ember Hall & the Sunken Keep's vault.",
+        date: null,
       },
     ],
     costUSD: 0.012,
@@ -133,9 +166,7 @@ test('it returns only the hits from the sites the search names', async () => {
 
   expect(reply).toStrictEqual({
     kind: 'hits',
-    hits: [
-      { title: 'Manly ferry', url: 'https://ferries.test/manly', snippet: null, publishedAt: null },
-    ],
+    hits: [{ title: 'Manly ferry', url: 'https://ferries.test/manly', snippet: null, date: null }],
     costUSD: 0.012,
   });
 });
@@ -176,7 +207,7 @@ test('it returns only the hits published within the freshness the search sets', 
         title: 'Closures this week',
         url: 'https://roads.test/this-week',
         snippet: null,
-        publishedAt: twoDaysAgo,
+        date: twoDaysAgo.slice(0, 10),
       },
     ],
     costUSD: 0.012,

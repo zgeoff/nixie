@@ -76,6 +76,7 @@
       "dependencies": {
         "@heynixie/connectors": "workspace:*",
         "@heynixie/wire": "workspace:*",
+        "entities": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -483,12 +484,12 @@
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
         "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
-        "tiny-invariant": "catalog:",
       },
     },
     "modules/definitions": {

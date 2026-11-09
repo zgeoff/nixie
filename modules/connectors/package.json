@@ -21,11 +21,11 @@
     "@heynixie/tools": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
     "ts-pattern": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@heynixie/testing": "workspace:*",
-    "tiny-invariant": "catalog:"
+    "@heynixie/testing": "workspace:*"
   }
 }

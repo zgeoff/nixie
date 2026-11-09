@@ -1,10 +1,10 @@
 import { createShortID } from '@heynixie/db';
-import type { Log, LogTables } from '@heynixie/log';
+import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
-import type { ModelsRecordKind } from '@heynixie/models';
 import { parseLinkMarks } from '@heynixie/wire';
-import type { Transaction } from 'kysely';
 import { collectPageParts } from './collect-page-parts';
+import type { PageSession } from './get-page-session';
+import { probeSessionEnded } from './probe-session-ended';
 import { removeWebFetchPages } from './remove-web-fetch-pages';
 import type { LinkedTextLimits } from './render-linked-text';
 import { renderLinkedText } from './render-linked-text';
@@ -20,15 +20,6 @@ export interface FetchedPage {
   readonly blocked: string | null;
   readonly text: string;
   readonly links: readonly string[];
-}
-
-export interface PageSession {
-  readonly sessionKey: string;
-  readonly thread: string;
-
-  // the newest session invalidation on the thread when the session's step began, or null for a
-  // call of no conversation session
-  readonly invalidatedThrough: number | null;
 }
 
 export interface PageLimits extends LinkedTextLimits {
@@ -117,24 +108,4 @@ export function writeWebFetchPage(
 
     return stored;
   });
-}
-
-// the models module registers the invalidation's kind with the log, and a forget's cleanup commits
-// it before it removes the thread's links and pages
-const invalidatedKind: ModelsRecordKind = 'model.session_invalidated';
-
-async function probeSessionEnded(tx: Transaction<unknown>, session: PageSession): Promise<boolean> {
-  if (session.invalidatedThrough === null) {
-    return false;
-  }
-
-  const newest = await tx
-    .$extendTables<LogTables>()
-    .selectFrom('records')
-    .select((query) => query.fn.max('sequence').as('sequence'))
-    .where('thread', '=', session.thread)
-    .where('kind', '=', invalidatedKind)
-    .executeTakeFirst();
-
-  return (newest?.sequence ?? 0) > session.invalidatedThrough;
 }
