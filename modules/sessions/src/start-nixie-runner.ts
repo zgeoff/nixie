@@ -465,8 +465,13 @@ async function runTaskTurn(
     input.taskID,
   );
 
+  // A step that lost the lease can record its spend during this turn, so a pause counts afresh.
+  const usedAtEnd = budget.signal.aborted
+    ? await readTaskUsage(runner.options.context, input.taskID, run.profile.profile.prices)
+    : used;
+
   const plan = planTaskTurnEnd({
-    used,
+    used: usedAtEnd,
     isBudgetReached: budget.signal.aborted,
     spentDollars: budget.getSpentDollars(),
     endedTurns: ended.result === null ? 0 : countEndedTurns(ended.result.records),

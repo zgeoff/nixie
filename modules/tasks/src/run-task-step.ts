@@ -65,7 +65,7 @@ async function tryCommitStep(
     });
 
     await writeStepCommit(context, claim, result).catch(async (error: unknown) => {
-      if (error instanceof LeaseLostError && result.spentDollars !== undefined) {
+      if (result.spentDollars !== undefined) {
         await writeFailedTurnSpend(context, {
           taskID: claim.lease.workID,
           dollars: result.spentDollars,

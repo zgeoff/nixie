@@ -156,11 +156,17 @@ the dollars whoever holds the lease now. A failed turn's spend therefore counts 
 limit, and the step's retry gets only the dollars that the failed turn left.
 
 A completed turn's turn record goes in with its step's commit, and the commit checks the lease
-first. When the commit loses its lease, the step writes a `task.failed_turn_spent` record with the
-turn's dollars instead, so the turn's spend still counts, and the runner that takes the step gets
-only the dollars that the turn left. A turn that reached the limit counts its spend in its limit
-record, so its lost commit writes no spend record. When a lost lease refuses that limit record, the
-step writes the spend record in its place.
+first. When the commit fails, such as when it loses its lease, the step writes a
+`task.failed_turn_spent` record with the turn's dollars instead, so the turn's spend still counts. A
+turn that reached the limit counts its spend in its limit record, so its failed commit writes no
+spend record. When that limit record fails to commit, such as when a lost lease refuses it, the step
+writes the spend record in its place.
+
+A step that lost its lease writes its spend record after another runner may have taken the step. A
+turn that the other runner started before the record landed gets a budget without that spend, so the
+task can pass its dollar limit by up to one turn's spend. When that turn reaches the limit, the
+runner counts the task's turns and dollars again before it writes the limit record, so the limit
+record includes the late spend.
 
 The interrupt leaves the turn's work not done, so the task keeps that work for the raise, as
 [interrupted work](#interrupted-work) describes.

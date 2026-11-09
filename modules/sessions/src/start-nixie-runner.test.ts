@@ -7,6 +7,7 @@ import {
   createConversationTask,
   runTaskStep,
   taskLimitNoticeCodec,
+  writeFailedTurnSpend,
   writeInboxRecords,
   writeStepCommit,
   writeTaskControl,
@@ -18,7 +19,7 @@ import {
   seedStartedTask,
   writeTestTaskMessage,
 } from '@heynixie/tasks/test-utils';
-import { waitForCondition } from '@heynixie/testing';
+import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { readTaskUsage } from './read-task-usage';
 import type { NixieRunnerOptions } from './start-nixie-runner';
@@ -30,7 +31,9 @@ import { runNextStep } from './test-utils/run-next-step';
 import { startTestSessionHost } from './test-utils/start-test-session-host';
 
 async function setupTest() {
-  const host = await startTestSessionHost();
+  const clock = buildTestClock(1_000_000);
+
+  const host = await startTestSessionHost({ clock });
 
   const tools = buildStubToolEndpoint();
   const events: string[] = [];
@@ -114,6 +117,7 @@ async function setupTest() {
 
   return {
     ...host,
+    clock,
     runs: tools.runs,
     steps: tools.steps,
     events,
@@ -1553,7 +1557,72 @@ test('it counts the spend of a task turn whose commit lost its lease to another 
     },
   });
 
-  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 1, taskID });
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim !== null, 'the started task is ready to claim');
+
+  const taken: { holder: string | null } = { holder: null };
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: async (input) => {
+      const result = await runner.runStep(input);
+
+      ctx.clock.advance(60_000);
+
+      const retaken = await claimTask(ctx.context, {
+        holder: 'runner-b',
+        leaseMs: 60_000,
+        taskID,
+      });
+
+      taken.holder = retaken?.lease.holder ?? null;
+
+      return result;
+    },
+    leaseMs: 60_000,
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const used = await readTaskUsage(ctx.context, taskID, {
+    input: 3,
+    cacheWrite: 3,
+    cacheWrite1h: 3,
+    cachedInput: 0.3,
+    output: 15,
+  });
+
+  expect(taken.holder).toBe('runner-b');
+  expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
+});
+
+test('it counts once the spend of a task turn at its dollar limit whose commit lost its lease after its pause', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
 
   invariant(claim !== null, 'the started task is ready to claim');
 
@@ -1561,8 +1630,7 @@ test('it counts the spend of a task turn whose commit lost its lease to another 
     runStep: async (input) => {
       const result = await runner.runStep(input);
 
-      await waitForCondition(() => ctx.context.clock.now() > claim.lease.expiresAt);
-      await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000, taskID });
+      ctx.clock.advance(60_000);
 
       return result;
     },
@@ -1581,6 +1649,47 @@ test('it counts the spend of a task turn whose commit lost its lease to another 
   });
 
   expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
+});
+
+test('it pauses a task turn at its dollar limit with the counts that include a spend recorded while the turn ran', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: async () => {
+      await writeFailedTurnSpend(ctx.context, { taskID, dollars: 0.01 });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 1, dollars: 0.04 },
+    limits: { turns: 25, dollars: 0.03 },
+  });
 });
 
 test('it caps each task turn at 100 model calls', async () => {

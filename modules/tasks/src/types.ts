@@ -127,8 +127,8 @@ export interface StepResult {
 
   readonly sessionBoundary?: string | null;
 
-  // the dollars that only the step's records count, which a commit that loses its lease records as
-  // spend instead
+  // the dollars that only the step's records count, which a commit that fails records as spend
+  // instead
   readonly spentDollars?: number;
 }
 

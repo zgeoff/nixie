@@ -267,6 +267,49 @@ test("it records the step's spend on the task's thread when its commit lost the 
   ]);
 });
 
+test("it records the step's spend on the task's thread when its commit refuses what the step returned", async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: () =>
+      Promise.resolve<StepResult>({
+        next: 'wait',
+        records: [],
+        acknowledged: [2],
+        timers: [{ dueAt: Number.NaN }],
+        spentDollars: 0.03,
+      }),
+    leaseMs: 60_000,
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const spends = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.failed_turn_spent'],
+  });
+
+  expect(spends.map((entry) => [entry.record.thread, entry.record.payload])).toStrictEqual([
+    ['conversation', { taskID: 'conversation', dollars: 0.03 }],
+  ]);
+});
+
 test('it records no spend for a step whose commit lands', async () => {
   const ctx = await setupTest();
 

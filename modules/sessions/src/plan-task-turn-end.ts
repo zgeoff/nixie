@@ -1,7 +1,7 @@
 import type { StepResult, TaskLimits } from '@heynixie/tasks';
 
 export interface TaskTurnEndFacts {
-  // the task's counts before the turn
+  // the task's counts without the turn's own
   readonly used: TaskLimits;
 
   readonly isBudgetReached: boolean;
