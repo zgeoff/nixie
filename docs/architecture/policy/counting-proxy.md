@@ -19,20 +19,35 @@ flowchart LR
 
 ## Routes
 
-The proxy holds one route per model profile. A route has an ID, the upstream origin it sends to, the
-model it allows, and the profile's price table. A request names its route in the first segment of
-its path, and the proxy sends the rest of the path, with the query, to the route's upstream. A
-deployment therefore points a profile's base URL at the proxy with the route ID on the end, and the
-model client adds the API path after it.
+The proxy holds one route per model profile. A route has an ID, the model API it speaks, the
+upstream origin it sends to, the model it allows, and the profile's price table. The API is
+Anthropic's Messages API, `anthropic-messages`, unless the route names OpenAI's Responses API,
+`openai-responses`. A request names its route in the first segment of its path, and the proxy sends
+the rest of the path, with the query, to the route's upstream. A deployment therefore points a
+profile's base URL at the proxy with the route ID on the end, and the model client adds the API path
+after it.
 
 The proxy prices every reply on a route with that route's table, so a request for another model
-would be priced wrong. The proxy refuses a message or token count request whose body names no model,
-or a model other than its route's, and sends nothing upstream. A path whose first segment names no
-route gets a 404.
+would be priced wrong. The proxy refuses a request to a spending or token count endpoint whose body
+names no model, or a model other than its route's, and sends nothing upstream. A path whose first
+segment names no route gets a 404.
 
-The proxy forwards only the endpoints whose spend it can count: messages, token counts and the model
-list. It refuses every other endpoint with a 403, because a message batch, for one, spends after its
-reply and names its models inside each request, out of reach of both the count and the model check.
+The proxy forwards only the endpoints of the route's API whose spend it can count, and refuses every
+other endpoint with a 403:
+
+| API                  | Endpoints                                 |
+| -------------------- | ----------------------------------------- |
+| `anthropic-messages` | messages, token counts and the model list |
+| `openai-responses`   | creating a response, and the model list   |
+
+The method and path of each endpoint live in one table in
+[`find-model-api-endpoint.ts`](../../../libs/wire/src/find-model-api-endpoint.ts). The scripted
+model that stands in for the model API in tests routes its requests through the same table.
+
+A message batch, for one, spends after its reply and names its models inside each request, out of
+reach of both the count and the model check. A stored response read back by its ID spends nothing
+that the proxy could count. The proxy refuses a request for a background response with a 400 too,
+because that response spends after its reply, and the reply holds no usage.
 
 The proxy passes every header through except the hop-by-hop ones, and asks the upstream for an
 uncompressed reply so that it can read the usage as the reply passes. It never adds or reads a
@@ -47,14 +62,19 @@ own records use, so a cache write for the long lifetime takes the profile's pric
 and a reply to a long prompt takes the profile's
 [long-prompt prices](../core/model-profiles.md#prices-and-the-provider-pin) when it has them. The
 tokens are the input, the cache writes, the cache reads and the output. Where a reply's cache write
-total and its split by cache lifetime disagree, the larger figure counts for both.
+total and its split by cache lifetime disagree, the larger figure counts for both. A Responses reply
+counts its cache reads and writes inside its input count, so the proxy takes them out of the input
+before it prices the rest as uncached. Its shorter cache lifetime takes the profile's shorter
+lifetime price, and its longer one, or a write with no lifetime, takes the longer lifetime price.
 
-A whole reply carries its usage in its body. A streamed reply carries the input side in its first
-event and the running output count in each later delta, and the proxy reads the events as they pass
-on to the caller. The streamed reply ends for the caller only after the count is written, so a
-caller that reads a whole reply and sends again never gets ahead of its own count. A caller that
-stops reading early, and an upstream that breaks mid-stream, still leave the count of the events
-that arrived. A reply with no usage, such as an error, adds nothing.
+A whole reply carries its usage in its body. A streamed Messages reply carries the input side in its
+first event and the running output count in each later delta. A streamed Responses reply carries its
+whole usage in the event that ends the response, whether the response completed, stopped early or
+failed. The proxy reads the events as they pass on to the caller. The streamed reply ends for the
+caller only after the count is written, so a caller that reads a whole reply and sends again never
+gets ahead of its own count. A caller that stops reading early, and an upstream that breaks
+mid-stream, still leave the count of the events that arrived. A reply with no usage, such as an
+error, adds nothing.
 
 The store writes each count to a new file and renames it over the old one, so a crash leaves the
 last whole count. It adds one reply at a time, so two replies that end together each count once.

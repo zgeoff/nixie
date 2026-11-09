@@ -1,10 +1,12 @@
 import { modelPricesSchema } from '@heynixie/models';
+import { modelAPIs } from '@heynixie/wire';
 import { z } from 'zod';
 import type { ProxyConfig } from './types';
 
 const routeIDSchema = z.string().regex(/^[a-z0-9][a-z0-9-]*$/u, 'a route ID is a lowercase slug');
 
 const routeSchema = z.strictObject({
+  api: z.enum(modelAPIs).default('anthropic-messages'),
   upstream: z.url({ protocol: /^https?$/u }),
   model: z.string().min(1),
   prices: modelPricesSchema,
@@ -40,7 +42,12 @@ export const proxyConfigSchema = z
     routes: Object.fromEntries(
       Object.entries(config.routes).map(([id, route]) => [
         id,
-        { upstream: route.upstream.replace(/\/+$/u, ''), model: route.model, prices: route.prices },
+        {
+          api: route.api,
+          upstream: route.upstream.replace(/\/+$/u, ''),
+          model: route.model,
+          prices: route.prices,
+        },
       ]),
     ),
   }));

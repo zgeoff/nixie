@@ -108,6 +108,7 @@
         "@heynixie/models": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "gunshi": "catalog:",
+        "tiny-invariant": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -369,7 +370,9 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/clock": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "@zgeoff/std": "catalog:",
+        "ts-pattern": "catalog:",
         "xstate": "catalog:",
         "zod": "catalog:",
       },

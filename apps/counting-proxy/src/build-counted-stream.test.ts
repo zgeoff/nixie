@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { buildCountedStream } from './build-counted-stream';
+import { usageDialects } from './usage-dialects';
 
 test('it passes every byte through and reports the usage of the message start and the last delta', async () => {
   const onEnd = mock(async () => {});
@@ -29,7 +30,9 @@ test('it passes every byte through and reports the usage of the message start an
     throw new Error('the test response has no body');
   }
 
-  const passed = await new Response(buildCountedStream(body, onEnd)).text();
+  const passed = await new Response(
+    buildCountedStream(body, usageDialects['anthropic-messages'], onEnd),
+  ).text();
 
   expect(passed).toBe(text.join(''));
 
@@ -58,7 +61,11 @@ test('it reports the usage seen so far when the reader stops early', async () =>
     },
   });
 
-  const reader = buildCountedStream(upstream, onEnd).getReader();
+  const reader = buildCountedStream(
+    upstream,
+    usageDialects['anthropic-messages'],
+    onEnd,
+  ).getReader();
 
   await reader.read();
   await reader.cancel();
@@ -91,7 +98,11 @@ test('it reports the usage seen so far and fails the stream when the upstream br
     },
   });
 
-  const reader = buildCountedStream(upstream, onEnd).getReader();
+  const reader = buildCountedStream(
+    upstream,
+    usageDialects['anthropic-messages'],
+    onEnd,
+  ).getReader();
 
   await reader.read();
 
@@ -122,7 +133,9 @@ test('it reports no usage for a stream with no usage event', async () => {
     throw new Error('the test response has no body');
   }
 
-  await new Response(buildCountedStream(upstream, onEnd)).text();
+  await new Response(
+    buildCountedStream(upstream, usageDialects['anthropic-messages'], onEnd),
+  ).text();
 
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(null, true);
 });

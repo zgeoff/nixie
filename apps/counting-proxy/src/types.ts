@@ -1,6 +1,8 @@
 import type { ModelPrices } from '@heynixie/models';
+import type { ModelAPI } from '@heynixie/wire';
 
 export interface ProxyRoute {
+  readonly api: ModelAPI;
   readonly upstream: string;
   readonly model: string;
   readonly prices: ModelPrices;

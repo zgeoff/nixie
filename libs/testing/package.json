@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@heynixie/clock": "workspace:*",
+    "@heynixie/wire": "workspace:*",
     "@zgeoff/std": "catalog:",
+    "ts-pattern": "catalog:",
     "xstate": "catalog:",
     "zod": "catalog:"
   }

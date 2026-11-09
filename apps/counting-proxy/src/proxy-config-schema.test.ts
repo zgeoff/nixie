@@ -1,7 +1,43 @@
 import { expect, test } from 'bun:test';
 import { proxyConfigSchema } from './proxy-config-schema';
 
-test('it reads a config into its typed shape, with a trailing slash cut from the upstream', () => {
+test('it reads a route that names the Responses API', () => {
+  const result = proxyConfigSchema.safeParse({
+    listen: { port: 18_090 },
+    store: '/var/lib/counting-proxy/counter.json',
+    limits: { dollars: 5 },
+    routes: {
+      review: {
+        api: 'openai-responses',
+        upstream: 'https://models.example.com',
+        model: 'model-o',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2.5, cached_input: 0.1, output: 8 },
+      },
+    },
+  });
+
+  expect(result.data?.routes['review']?.api).toBe('openai-responses');
+});
+
+test('it rejects a route that names an API the proxy does not count', () => {
+  const result = proxyConfigSchema.safeParse({
+    listen: { port: 18_090 },
+    store: '/var/lib/counting-proxy/counter.json',
+    limits: { dollars: 5 },
+    routes: {
+      review: {
+        api: 'chat-completions',
+        upstream: 'https://models.example.com',
+        model: 'model-o',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2.5, cached_input: 0.1, output: 8 },
+      },
+    },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['routes', 'review', 'api'] });
+});
+
+test('it reads a config into its typed shape, with a trailing slash cut from the upstream and the Messages API as the default', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { hostname: '0.0.0.0', port: 18_090 },
     store: '/var/lib/counting-proxy/counter.json',
@@ -21,6 +57,7 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
     limits: { dollars: 5, tokens: null },
     routes: {
       preview: {
+        api: 'anthropic-messages',
         upstream: 'https://models.example.com',
         model: 'model-small',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },

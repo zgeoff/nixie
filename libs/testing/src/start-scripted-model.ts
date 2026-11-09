@@ -1,3 +1,6 @@
+import type { ModelAPIEndpointName } from '@heynixie/wire';
+import { findModelAPIEndpoint, modelAPIs } from '@heynixie/wire';
+import { match } from 'ts-pattern';
 import { z } from 'zod';
 
 export interface ScriptedUsage {
@@ -9,6 +12,20 @@ export interface ScriptedUsage {
     readonly ephemeral_5m_input_tokens: number;
     readonly ephemeral_1h_input_tokens: number;
   };
+}
+
+interface ScriptedResponsesUsage {
+  readonly input_tokens: number;
+  readonly output_tokens: number;
+  readonly input_tokens_details?: {
+    readonly cached_tokens: number;
+    readonly cache_write_tokens?: number;
+    readonly cache_write_tokens_details?: {
+      readonly ttl_30m_tokens: number;
+      readonly ttl_12h_tokens: number;
+    };
+  };
+  readonly output_tokens_details?: { readonly reasoning_tokens: number };
 }
 
 type ScriptedMessage = (
@@ -25,6 +42,7 @@ type ScriptedMessage = (
   readonly inputTokens?: number;
 
   readonly usage?: ScriptedUsage;
+  readonly responsesUsage?: ScriptedResponsesUsage;
 };
 
 interface ScriptedRefusal {
@@ -75,7 +93,7 @@ export function startScriptedModel(): ScriptedModel {
 
     requests.push(recorded);
 
-    const response = renderResponse(recorded, script);
+    const response = renderResponse(request.method, recorded, script);
 
     await response.gate;
 
@@ -115,13 +133,34 @@ interface RenderedResponse {
   readonly gate?: Promise<void>;
 }
 
-function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]): RenderedResponse {
-  if (request.path === '/v1/messages/count_tokens') {
-    return { response: Response.json({ input_tokens: 10 }) };
-  }
+function renderResponse(
+  method: string,
+  request: ScriptedModelRequest,
+  script: ScriptedReply[],
+): RenderedResponse {
+  const endpoint = findScriptedEndpoint(method, request.path);
 
-  if (request.path !== '/v1/messages' || request.body === null) {
-    return { response: new Response('not found', { status: 404 }) };
+  return match(endpoint)
+    .with('count_tokens', () => ({ response: Response.json({ input_tokens: 10 }) }))
+    .with('messages', 'responses', (name) => renderScriptedReply(name, request.body, script))
+    .with('models', null, () => ({ response: renderNotFound() }))
+    .exhaustive();
+}
+
+function findScriptedEndpoint(method: string, path: string): ModelAPIEndpointName | null {
+  return (
+    modelAPIs.map((api) => findModelAPIEndpoint(api, method, path)).find((name) => name !== null) ??
+    null
+  );
+}
+
+function renderScriptedReply(
+  endpoint: 'messages' | 'responses',
+  body: ScriptedModelBody | null,
+  script: ScriptedReply[],
+): RenderedResponse {
+  if (body === null) {
+    return { response: renderNotFound() };
   }
 
   const reply = script.shift();
@@ -130,16 +169,61 @@ function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]):
     return { response: renderRefusal('the scripted model has no reply left') };
   }
 
-  const model = request.body.model ?? 'stub';
-  const response = buildReplyResponse(reply, model, request.body.stream === true);
+  const model = body.model ?? 'stub';
+  const isStream = body.stream === true;
+
+  const response = match(endpoint)
+    .with('responses', () => buildResponsesReply(reply, model, isStream))
+    .with('messages', () => buildReplyResponse(reply, model, isStream))
+    .exhaustive();
 
   return reply.gate === undefined ? { response } : { response, gate: reply.gate };
+}
+
+function renderNotFound(): Response {
+  return new Response('not found', { status: 404 });
 }
 
 function renderRefusal(message: string): Response {
   return Response.json(
     { type: 'error', error: { type: 'invalid_request_error', message } },
     { status: 400 },
+  );
+}
+
+function buildResponsesReply(reply: ScriptedReply, model: string, isStream: boolean): Response {
+  if (!('text' in reply)) {
+    return renderRefusal('the scripted model answers the Responses endpoint only with text');
+  }
+
+  const completed = {
+    id: `resp_${crypto.randomUUID().replaceAll('-', '')}`,
+    object: 'response',
+    model,
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'output_text', text: reply.text, annotations: [] }],
+      },
+    ],
+    usage: reply.responsesUsage ?? { input_tokens: 10, output_tokens: 5 },
+  };
+
+  if (!isStream) {
+    return Response.json(completed);
+  }
+
+  const events = [
+    { type: 'response.created', response: { ...completed, status: 'in_progress', usage: null } },
+    { type: 'response.output_text.delta', delta: reply.text },
+    { type: 'response.completed', response: completed },
+  ];
+
+  return new Response(
+    events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''),
+    { headers: { 'content-type': 'text/event-stream' } },
   );
 }
 

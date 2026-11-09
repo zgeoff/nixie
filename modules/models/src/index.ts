@@ -19,7 +19,7 @@ export { modelsConfigSchema } from './models-config-schema';
 export { resolveModelCredentials } from './resolve-model-credentials';
 export { getCLIContextWindow } from './get-cli-context-window';
 export { getHarness } from './get-harness';
-export type { HarnessDescriptor, HarnessEntry, HarnessGuest, ModelAPI } from './harness-types';
+export type { HarnessDescriptor, HarnessEntry, HarnessGuest } from './harness-types';
 export { resolveRoleProfile } from './resolve-role-profile';
 export { roleNeeds } from './role-needs';
 
