@@ -2,18 +2,34 @@ import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { modelSessionSummarizedCodec, modelTurnEndedCodec } from '@heynixie/models';
 import {
-  taskFailedTurnSpentCodec,
+  claimTask,
   taskLimitReachedCodec,
   taskLimitsRaisedCodec,
   taskStepCommittedCodec,
   taskStepErroredCodec,
   taskStepInterruptedCodec,
+  writeFailedTurnSpend,
+  writeStepError,
+  writeTaskLimitPause,
 } from '@heynixie/tasks';
+import { seedConversationStep, seedStartedTask } from '@heynixie/tasks/test-utils';
+import invariant from 'tiny-invariant';
 import { readTaskUsage } from './read-task-usage';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
-  return { tasks: await startTestTasks() };
+  const tasks = await startTestTasks();
+
+  return {
+    tasks,
+    claimStartedTask: async (taskID: string) => {
+      const claim = await claimTask(tasks.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+      invariant(claim, 'the started task is ready to claim');
+
+      return claim;
+    },
+  };
 }
 
 test("it counts a task's turns, and prices both its turns and the summaries of its session", async () => {
@@ -201,30 +217,26 @@ test('it counts the dollars that a pause recorded for a turn that left no turn r
 
 test('it counts the dollars of a failed turn, and no turn', async () => {
   const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.tasks.context);
 
-  await writeRecords(ctx.tasks.context.log, [
-    {
-      kind: taskFailedTurnSpentCodec.kind,
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'tide-tables',
-      payload: taskFailedTurnSpentCodec.encode({ taskID: 'tide-tables', dollars: 0.03 }),
-    },
-    {
-      kind: taskStepErroredCodec.kind,
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'tide-tables',
-      payload: taskStepErroredCodec.encode({
-        taskID: 'tide-tables',
-        stepKey: 'tide-tables:1',
-        nextState: 'ready',
-        errors: 1,
-        errorLimit: 3,
-        claimableAt: 0,
-      }),
-    },
-  ]);
+  const taskID = await seedStartedTask(ctx.tasks.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
 
-  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+  const claim = await ctx.claimStartedTask(taskID);
+
+  await writeFailedTurnSpend(ctx.tasks.context, { taskID, dollars: 0.03 });
+
+  await writeStepError(ctx.tasks.context, claim, {
+    error: new Error('the guest lost its model stream'),
+    maxStepErrors: 3,
+    retryDelayMs: 0,
+    maxRetryDelayMs: 0,
+  });
+
+  const used = await readTaskUsage(ctx.tasks.context, taskID, {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
@@ -237,41 +249,34 @@ test('it counts the dollars of a failed turn, and no turn', async () => {
 
 test('it counts the dollars of a failed turn that reached the limit once, past its pause', async () => {
   const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.tasks.context);
 
-  await writeRecords(ctx.tasks.context.log, [
-    {
-      kind: taskFailedTurnSpentCodec.kind,
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'tide-tables',
-      payload: taskFailedTurnSpentCodec.encode({ taskID: 'tide-tables', dollars: 0.03 }),
-    },
-    {
-      kind: taskLimitReachedCodec.kind,
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'tide-tables',
-      payload: taskLimitReachedCodec.encode({
-        taskID: 'tide-tables',
-        stepKey: 'tide-tables:1',
-        used: { turns: 0, dollars: 0.03 },
-        limits: { turns: 25, dollars: 0.03 },
-      }),
-    },
-    {
-      kind: taskStepErroredCodec.kind,
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'tide-tables',
-      payload: taskStepErroredCodec.encode({
-        taskID: 'tide-tables',
-        stepKey: 'tide-tables:1',
-        nextState: 'ready',
-        errors: 1,
-        errorLimit: 3,
-        claimableAt: 0,
-      }),
-    },
-  ]);
+  const taskID = await seedStartedTask(ctx.tasks.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
 
-  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+  const claim = await ctx.claimStartedTask(taskID);
+
+  await writeFailedTurnSpend(ctx.tasks.context, { taskID, dollars: 0.03 });
+
+  await writeTaskLimitPause(ctx.tasks.context, {
+    lease: claim.lease,
+    stepKey: claim.stepKey,
+    startedBy: starter.claim.lease.workID,
+    used: { turns: 0, dollars: 0.03 },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  await writeStepError(ctx.tasks.context, claim, {
+    error: new Error('the guest lost its model stream'),
+    maxStepErrors: 3,
+    retryDelayMs: 0,
+    maxRetryDelayMs: 0,
+  });
+
+  const used = await readTaskUsage(ctx.tasks.context, taskID, {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
