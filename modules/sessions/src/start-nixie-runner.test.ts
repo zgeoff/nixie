@@ -1481,6 +1481,54 @@ test("it gives the retry of a failed turn only the dollars that the turn's spend
   expect(retried?.dollars).toBeCloseTo(0.042, 6);
 });
 
+test('it interrupts the retry of a turn whose guest failed below the dollar limit once the retry spends what the failed turn left', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 0.04 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      failure: 'the guest lost its model stream',
+      usage: {
+        uncachedInputTokens: 10_000,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+    {
+      text: 'Checking the harbour charts.',
+      usage: {
+        uncachedInputTokens: 3400,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+  );
+
+  await ctx.runNextStepWithNoRetryDelay(runner);
+  await ctx.runNextStep(runner);
+
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 1, dollars: expect.toBeWithin(0.04, 0.041) },
+    limits: { turns: 25, dollars: 0.04 },
+  });
+});
+
 test('it caps each task turn at 100 model calls', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();

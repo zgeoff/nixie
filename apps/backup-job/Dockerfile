@@ -20,10 +20,15 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends bzip2 \
   && rm -rf /var/lib/apt/lists/*
 
-# each pinned binary, checked against the checksum the repo recorded, never one fetched with it
+# each pinned binary, checked against the checksum the repo recorded, never one fetched with it;
+# a release download can answer HTTP 504 for a while, so each download tries 4 times
 RUN mkdir -p /out/bin \
   && grep -v '^#' apps/backup-job/binaries.txt | while read -r name version url sum; do \
-    URL="$url" OUT="/tmp/$name.bz2" bun -e 'const response = await fetch(process.env.URL); if (!response.ok) throw new Error(`${process.env.URL} answered HTTP ${response.status}`); await Bun.write(process.env.OUT, response)' \
+    for attempt in 1 2 3 4; do \
+      URL="$url" OUT="/tmp/$name.bz2" bun -e 'const response = await fetch(process.env.URL); if (!response.ok) throw new Error(`${process.env.URL} answered HTTP ${response.status}`); await Bun.write(process.env.OUT, response)' \
+        && break; \
+      [ "$attempt" -lt 4 ] && sleep $((attempt * 10)) || exit 1; \
+    done \
     && echo "$sum  /tmp/$name.bz2" | sha256sum -c - \
     && bunzip2 -c "/tmp/$name.bz2" > "/out/bin/$name" \
     && chmod 0755 "/out/bin/$name" \

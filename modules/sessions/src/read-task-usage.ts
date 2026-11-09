@@ -4,6 +4,7 @@ import type { ModelPrices } from '@heynixie/models';
 import { buildCallCost, modelSessionSummarizedCodec, modelTurnEndedCodec } from '@heynixie/models';
 import type { TaskLimits, TasksContext } from '@heynixie/tasks';
 import {
+  taskFailedTurnSpentCodec,
   taskLimitReachedCodec,
   taskStepCommittedCodec,
   taskStepErroredCodec,
@@ -28,8 +29,8 @@ interface UsageCount {
 }
 
 // A turn counts toward both limits, and a summary of the session counts only toward the dollars. A
-// turn that left no turn record, such as one whose guest failed, counts through the limit record
-// its pause wrote.
+// turn that left no turn record, such as one whose guest failed, counts its dollars through the
+// limit record its pause wrote, or through its failed turn's spend when it reached no limit.
 export async function readTaskUsage(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
@@ -46,6 +47,7 @@ export async function readTaskUsage(
       kinds: [
         'model.turn_ended',
         'model.session_summarized',
+        'task.failed_turn_spent',
         'task.limit_reached',
         'task.step_committed',
         'task.step_errored',
@@ -139,6 +141,10 @@ function buildRecordUsage(record: LogRecord, prices: ModelPrices | null): TaskLi
     const turn = modelTurnEndedCodec.tryDecodePartial(record.payload);
 
     return { turns: 1, dollars: buildTokensCost(turn ?? {}, prices) };
+  }
+
+  if (record.kind === taskFailedTurnSpentCodec.kind) {
+    return { turns: 0, dollars: taskFailedTurnSpentCodec.decode(record.payload).dollars };
   }
 
   const usage = modelSessionSummarizedCodec.tryDecodePartial(record.payload)?.usage;

@@ -19,6 +19,9 @@ export interface TaskTurnEndPlan {
   // the counts the task pauses at, or null when the turn reached no limit
   readonly reached: TaskLimits | null;
 
+  // the dollars of a step that threw, which commits no turn record, or null when it spent none
+  readonly failedDollars: number | null;
+
   readonly isImpReleased: boolean;
 }
 
@@ -34,6 +37,7 @@ export function planTaskTurnEnd(facts: TaskTurnEndFacts): TaskTurnEndPlan {
 
   return {
     reached,
+    failedDollars: facts.next === null && facts.spentDollars > 0 ? facts.spentDollars : null,
     isImpReleased: facts.next === 'wait' || reached !== null || facts.isPauseRequested,
   };
 }

@@ -11,10 +11,14 @@ test('it pauses a turn whose calls reached the budget at the counts before it pl
       isPauseRequested: false,
       next: 'wait',
     }),
-  ).toStrictEqual({ reached: { turns: 4, dollars: 0.75 }, isImpReleased: true });
+  ).toStrictEqual({
+    reached: { turns: 4, dollars: 0.75 },
+    failedDollars: null,
+    isImpReleased: true,
+  });
 });
 
-test('it pauses a step that threw after its calls reached the budget, with no turn of its own', () => {
+test('it pauses a step that threw after its calls reached the budget, with no turn of its own, and records its spend', () => {
   expect(
     planTaskTurnEnd({
       used: { turns: 3, dollars: 0.5 },
@@ -24,7 +28,11 @@ test('it pauses a step that threw after its calls reached the budget, with no tu
       isPauseRequested: false,
       next: null,
     }),
-  ).toStrictEqual({ reached: { turns: 3, dollars: 0.75 }, isImpReleased: true });
+  ).toStrictEqual({
+    reached: { turns: 3, dollars: 0.75 },
+    failedDollars: 0.25,
+    isImpReleased: true,
+  });
 });
 
 test.each([
@@ -32,7 +40,6 @@ test.each([
   ['continue', false],
   ['hold', false],
   ['done', false],
-  [null, false],
 ] as const)(
   'it pauses nothing under the budget, and sleeps the imp after a step whose next is %s: %s',
   (next, isImpReleased) => {
@@ -45,7 +52,7 @@ test.each([
         isPauseRequested: false,
         next,
       }),
-    ).toStrictEqual({ reached: null, isImpReleased });
+    ).toStrictEqual({ reached: null, failedDollars: null, isImpReleased });
   },
 );
 
@@ -59,5 +66,31 @@ test('it sleeps the imp after a step with work left whose task the user asked to
       isPauseRequested: true,
       next: 'continue',
     }),
-  ).toStrictEqual({ reached: null, isImpReleased: true });
+  ).toStrictEqual({ reached: null, failedDollars: null, isImpReleased: true });
+});
+
+test('it records the spend of a step that threw under the budget, and keeps the imp awake', () => {
+  expect(
+    planTaskTurnEnd({
+      used: { turns: 3, dollars: 0.5 },
+      isBudgetReached: false,
+      spentDollars: 0.004,
+      endedTurns: 0,
+      isPauseRequested: false,
+      next: null,
+    }),
+  ).toStrictEqual({ reached: null, failedDollars: 0.004, isImpReleased: false });
+});
+
+test('it records no spend for a step that threw before any priced call', () => {
+  expect(
+    planTaskTurnEnd({
+      used: { turns: 3, dollars: 0.5 },
+      isBudgetReached: false,
+      spentDollars: 0,
+      endedTurns: 0,
+      isPauseRequested: false,
+      next: null,
+    }),
+  ).toStrictEqual({ reached: null, failedDollars: null, isImpReleased: false });
 });
