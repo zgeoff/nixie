@@ -1246,6 +1246,46 @@ test('it continues the cut work of a task whose interrupted turn passed the comp
   expect(input).toInclude('Continue the work that is not done yet.');
 });
 
+test('it keeps the cut work of a task whose continuing turn passed the context window, and continues it after the summary', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      text: 'Checking the tides.',
+      stopReason: 'tool_use',
+      gate: async () => {
+        await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+        await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+        await waitForCondition(() =>
+          ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+        );
+      },
+    },
+    { overflow: 'prompt_too_long' },
+  );
+
+  await ctx.runNextStep(runner);
+
+  await writeTaskControl(ctx.context, { taskID, control: 'resume' });
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(ctx.guest.summaries).toHaveLength(1);
+  expect(input).toInclude('Continue the work that is not done yet.');
+});
+
 test('it leaves the conversation waiting after the user interrupts its turn, with no new message', async () => {
   const ctx = await setupTest();
 
