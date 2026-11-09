@@ -8,7 +8,7 @@ test('it pauses a turn whose calls reached the budget at the counts before it pl
       isBudgetReached: true,
       spentDollars: 0.25,
       endedTurns: 1,
-      isTurnCut: false,
+      isPauseRequested: false,
       next: 'wait',
     }),
   ).toStrictEqual({ reached: { turns: 4, dollars: 0.75 }, isImpReleased: true });
@@ -21,7 +21,7 @@ test('it pauses a step that threw after its calls reached the budget, with no tu
       isBudgetReached: true,
       spentDollars: 0.25,
       endedTurns: 0,
-      isTurnCut: false,
+      isPauseRequested: false,
       next: null,
     }),
   ).toStrictEqual({ reached: { turns: 3, dollars: 0.75 }, isImpReleased: true });
@@ -42,21 +42,21 @@ test.each([
         isBudgetReached: false,
         spentDollars: 0.004,
         endedTurns: 1,
-        isTurnCut: false,
+        isPauseRequested: false,
         next,
       }),
     ).toStrictEqual({ reached: null, isImpReleased });
   },
 );
 
-test('it sleeps the imp after a step whose turn an interrupt cut under the budget, though the step continues', () => {
+test('it sleeps the imp after a step with work left whose task the user asked to pause', () => {
   expect(
     planTaskTurnEnd({
       used: { turns: 3, dollars: 0.5 },
       isBudgetReached: false,
       spentDollars: 0.004,
       endedTurns: 1,
-      isTurnCut: true,
+      isPauseRequested: true,
       next: 'continue',
     }),
   ).toStrictEqual({ reached: null, isImpReleased: true });

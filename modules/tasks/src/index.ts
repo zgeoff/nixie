@@ -30,6 +30,7 @@ export { isInboxRecord } from './is-inbox-record';
 export { LeaseLostError } from './lease-lost-error';
 export { ownerMessageCodec } from './owner-message-codec';
 export { planReadCursor } from './plan-read-cursor';
+export { probePauseRequested } from './probe-pause-requested';
 export type { ConversationErrors } from './read-conversation-errors';
 export { readConversationErrors } from './read-conversation-errors';
 export { readInbox } from './read-inbox';

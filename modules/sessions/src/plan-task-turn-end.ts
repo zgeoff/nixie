@@ -8,8 +8,8 @@ export interface TaskTurnEndFacts {
   readonly spentDollars: number;
   readonly endedTurns: number;
 
-  // whether an interrupt cut the step's turn before the model's own end_turn
-  readonly isTurnCut: boolean;
+  // whether the user asked to pause the task, so the step's commit pauses it
+  readonly isPauseRequested: boolean;
 
   // null for a step that threw
   readonly next: StepResult['next'] | null;
@@ -22,9 +22,8 @@ export interface TaskTurnEndPlan {
   readonly isImpReleased: boolean;
 }
 
-// A step with work left runs again soon on the same imp, so only a step that waits or pauses its
-// task sleeps it. A cut turn's step sleeps it too, because its commit holds a pause the user or
-// the limit asked for whenever the cut work waits for a resume or a raise.
+// A step with work left runs again soon on the same imp, so only a step whose commit leaves its
+// task waiting or paused sleeps it.
 export function planTaskTurnEnd(facts: TaskTurnEndFacts): TaskTurnEndPlan {
   const reached = facts.isBudgetReached
     ? {
@@ -35,6 +34,6 @@ export function planTaskTurnEnd(facts: TaskTurnEndFacts): TaskTurnEndPlan {
 
   return {
     reached,
-    isImpReleased: facts.next === 'wait' || reached !== null || facts.isTurnCut,
+    isImpReleased: facts.next === 'wait' || reached !== null || facts.isPauseRequested,
   };
 }

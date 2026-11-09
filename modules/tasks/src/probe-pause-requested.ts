@@ -1,11 +1,8 @@
-import type { Transaction } from 'kysely';
+import type { Kysely } from 'kysely';
 import type { TasksTables } from './types';
 
-export async function probePauseRequested(
-  tx: Transaction<unknown>,
-  taskID: string,
-): Promise<boolean> {
-  const task = await tx
+export async function probePauseRequested(db: Kysely<unknown>, taskID: string): Promise<boolean> {
+  const task = await db
     .$extendTables<TasksTables>()
     .selectFrom('tasks')
     .select('pause_requested')

@@ -25,6 +25,7 @@ import type {
   TasksContext,
 } from '@heynixie/tasks';
 import {
+  probePauseRequested,
   readStartedTaskIDs,
   readTaskSetup,
   startRunnerPool,
@@ -44,7 +45,6 @@ import type { CallBudget } from './create-call-budget';
 import { createCallBudget } from './create-call-budget';
 import { createWorkerSandbox } from './create-worker-sandbox';
 import { getHarnessImage } from './get-harness-image';
-import { isStepTurnCut } from './is-step-turn-cut';
 import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
@@ -450,14 +450,18 @@ async function runTaskTurn(
   const run = parts.run;
   const used = parts.used;
   const budget = createCallBudget(run.profile.profile.prices, run.limits.dollars - used.dollars);
-  const interrupt = AbortSignal.any([input.interrupt, budget.signal]);
 
   const ended = await runConversationStep(buildTaskRun(runner, { ...parts, ...held, budget }), {
     ...input,
-    interrupt,
+    interrupt: AbortSignal.any([input.interrupt, budget.signal]),
   }).then(
     (result) => ({ result, error: null }),
     (error: unknown) => ({ result: null, error }),
+  );
+
+  const isPauseRequested = await probePauseRequested(
+    runner.options.context.log.writer.db,
+    input.taskID,
   );
 
   const plan = planTaskTurnEnd({
@@ -465,7 +469,7 @@ async function runTaskTurn(
     isBudgetReached: budget.signal.aborted,
     spentDollars: budget.getSpentDollars(),
     endedTurns: ended.result === null ? 0 : countEndedTurns(ended.result.records),
-    isTurnCut: ended.result !== null && isStepTurnCut(interrupt, ended.result.records),
+    isPauseRequested,
     next: ended.result?.next ?? null,
   });
 

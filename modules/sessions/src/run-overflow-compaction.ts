@@ -2,6 +2,7 @@ import { runSessionCompaction } from '@heynixie/compaction';
 import type { StepResult } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
 import { buildCompactionRequest } from './build-compaction-request';
+import { isTaskWorkCut } from './is-task-work-cut';
 import type { InboxPlan, SessionStep } from './types';
 import { writeCompactionFailures } from './write-compaction-failures';
 
@@ -37,7 +38,7 @@ export async function runOverflowCompaction(
   }
 
   return {
-    next: 'wait',
+    next: isTaskWorkCut(step.run.frame, step.marks) ? 'continue' : 'wait',
     records: [...overflow.plan.before, outcome.record],
     acknowledged: [],
     sessionBoundary: null,

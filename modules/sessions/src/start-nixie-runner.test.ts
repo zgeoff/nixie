@@ -1090,7 +1090,121 @@ test('it runs on at once the work of a task turn that the user interrupted with 
   await ctx.runNextStep(runner);
   await ctx.runNextStep(runner);
 
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
   expect(ctx.guest.turns).toHaveLength(2);
+  expect(input).toInclude('Continue the work that is not done yet.');
+});
+
+test('it keeps awake the imp of a task whose turn the user interrupted with no pause', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+
+  expect(slept).toStrictEqual([]);
+});
+
+test('it sleeps the imp of a task whose turn the user interrupted and paused', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+      await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+
+  expect(slept).toHaveLength(1);
+});
+
+test('it starts the next turn of an interrupted task from a message that arrived before the resume, with no continue note', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+      await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Skip Saturday, check Sunday instead.');
+
+  await writeTaskControl(ctx.context, { taskID, control: 'resume' });
+
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(input).toSatisfy(
+    (text: string) =>
+      text.includes('Skip Saturday, check Sunday instead.') &&
+      !text.includes('Continue the work that is not done yet.'),
+  );
+});
+
+test('it leaves waiting after its compaction a task whose turn ended before end_turn with no interrupt', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  await ctx.seedTask(starter);
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+  ctx.guest.addKindReplies('worker', { text: 'Checking the tides.', stopReason: 'tool_use' });
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runNextStep(runner)).rejects.toThrow('no task had work to claim');
 });
 
 test('it continues the cut work of a task whose interrupted turn passed the compaction threshold, in the session after the summary', async () => {

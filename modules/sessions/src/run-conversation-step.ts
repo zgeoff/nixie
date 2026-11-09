@@ -1,3 +1,4 @@
+import { modelTurnEndedCodec } from '@heynixie/models';
 import type { StepInput, StepResult } from '@heynixie/tasks';
 import { readTaskDirectory } from '@heynixie/tasks';
 import { canSessionTake } from './can-session-take';
@@ -41,10 +42,8 @@ export function runConversationStep(
 
     const result = await runSessionStep(step);
 
-    // A started task keeps the work that an interrupt cut, so its resume or its raise runs that
-    // work on with no new message.
     return run.frame.kind === 'task' && isStepTurnCut(input.interrupt, result.records)
-      ? { ...result, next: 'continue' }
+      ? buildCutResult(result)
       : result;
   });
 }
@@ -76,4 +75,18 @@ function runSessionStep(step: SessionStep): Promise<StepResult> {
 // invalidate the task before its first session opens, so the test is the opening and not the state.
 function isTaskStart(frame: SessionFrame, marks: SessionMarks): boolean {
   return frame.kind === 'task' && marks.sessionKey === null;
+}
+
+// A turn that the call guard or a refusal ended also stops before end_turn, so the step marks the
+// interrupt on the turn record, and a later step with no message continues only a marked turn.
+function buildCutResult(result: StepResult): StepResult {
+  return {
+    ...result,
+    next: 'continue',
+    records: result.records.map((record) =>
+      record.kind === modelTurnEndedCodec.kind
+        ? { ...record, payload: { ...record.payload, isInterrupted: true } }
+        : record,
+    ),
+  };
 }

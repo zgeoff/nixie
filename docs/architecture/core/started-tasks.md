@@ -176,20 +176,25 @@ lands before the model sends `end_turn`, the turn's work is not done, and the ta
 for a later turn. When the interrupt lands after `end_turn`, the turn has finished its work, and its
 task waits as usual.
 
-1. The step of the cut turn commits with work left, so the task stays ready, and the runner puts the
-   task's imp to sleep.
-2. When the user or the limit asked for a pause, the commit pauses the task, and no runner claims it
-   until the user resumes the task or raises the limit. When nobody asked for a pause, a runner
-   claims the task again at once.
+1. The step of the cut turn commits with work left, so the task stays ready, and it writes the turn
+   record with `isInterrupted: true`.
+2. When the user or the limit asked for a pause, the commit pauses the task, the runner puts the
+   task's imp to sleep, and no runner claims the task until the user resumes it or raises the limit.
+   When nobody asked for a pause, the imp stays awake, and a runner claims the task again at once.
 3. The next step finds no unread message, yet it runs a turn, because the task's newest turn record
-   has a stop reason other than `end_turn`. nixie opens that turn with a `task-continue` system
-   message, in which nixie asks the model to continue the work that the interrupt stopped.
+   carries `isInterrupted: true`. nixie opens that turn with a `task-continue` system message, in
+   which nixie asks the model to continue the work that the interrupt stopped.
+
+Other turns end before `end_turn` too, such as a turn that reached its
+[limit of model calls](./conversation-turns.md#model-calls). Such a turn carries no mark, so its
+task waits for a message.
 
 The turn record lives in the log, so the cut work survives a crash between the 2 steps. When the cut
 turn left the session past the compaction threshold, the next step only writes the summary, and the
-step after it runs the `task-continue` turn in a session that opens from that summary. A message
-that arrives after the interrupt starts the next turn as any message does, and that turn gets no
-`task-continue` message.
+step after it runs the `task-continue` turn in a session that opens from that summary. When the
+`task-continue` turn itself passes the context window, its step compacts the session and keeps the
+work for the step after. A message that arrives after the interrupt starts the next turn as any
+message does, and that turn gets no `task-continue` message.
 
 The conversation keeps no interrupted work. The user interrupts the conversation to stop nixie
 mid-reply, so after the interrupt the conversation waits for the next message.

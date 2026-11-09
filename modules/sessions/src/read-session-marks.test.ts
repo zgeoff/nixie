@@ -27,28 +27,33 @@ test('it reads no earlier core and no invalidation before the first turn', async
 });
 
 test.each([
-  { stopReason: 'end_turn', isTurnCut: false },
-  { stopReason: 'tool_use', isTurnCut: true },
-  { stopReason: null, isTurnCut: true },
-])(
-  'it reads a turn that ended with the stop reason $stopReason as cut: $isTurnCut',
-  async (row) => {
-    const ctx = await setupTest();
-
-    await writeRecords(ctx.tasks.context.log, [
-      {
-        kind: 'model.turn_ended',
-        definitions: { snapshotHash: 'sha256:test' },
-        thread: 'conversation',
-        payload: { stopReason: row.stopReason },
-      },
-    ]);
-
-    const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
-
-    expect(marks.isTurnCut).toBe(row.isTurnCut);
+  {
+    name: 'an interrupted turn',
+    payload: { stopReason: 'tool_use', isInterrupted: true },
+    isTurnCut: true,
   },
-);
+  {
+    name: 'a turn that the call guard stopped',
+    payload: { stopReason: 'tool_use' },
+    isTurnCut: false,
+  },
+  { name: 'a finished turn', payload: { stopReason: 'end_turn' }, isTurnCut: false },
+])('it reads $name as cut: $isTurnCut', async (row) => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: row.payload,
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.isTurnCut).toBe(row.isTurnCut);
+});
 
 test('it reads the images the session held after the last turn', async () => {
   const ctx = await setupTest();
