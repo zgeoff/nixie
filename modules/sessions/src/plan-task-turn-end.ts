@@ -1,7 +1,7 @@
 import type { StepResult, TaskLimits } from '@heynixie/tasks';
 
 export interface TaskTurnEndFacts {
-  // the task's counts before the turn
+  // the task's counts without the turn's own
   readonly used: TaskLimits;
 
   readonly isBudgetReached: boolean;
@@ -22,6 +22,12 @@ export interface TaskTurnEndPlan {
   // the dollars of a step that threw, which commits no turn record, or null when it spent none
   readonly failedDollars: number | null;
 
+  // the dollars of a completed turn that reached a limit, which its limit record counts, or null
+  readonly pausedDollars: number | null;
+
+  // the dollars of a completed turn that reached no limit, which only its commit counts, or null
+  readonly commitDollars: number | null;
+
   readonly isImpReleased: boolean;
 }
 
@@ -35,9 +41,14 @@ export function planTaskTurnEnd(facts: TaskTurnEndFacts): TaskTurnEndPlan {
       }
     : null;
 
+  const spentDollars = facts.spentDollars > 0 ? facts.spentDollars : null;
+  const completedDollars = facts.next === null ? null : spentDollars;
+
   return {
     reached,
-    failedDollars: facts.next === null && facts.spentDollars > 0 ? facts.spentDollars : null,
+    failedDollars: facts.next === null ? spentDollars : null,
+    pausedDollars: reached === null ? null : completedDollars,
+    commitDollars: reached === null ? completedDollars : null,
     isImpReleased: facts.next === 'wait' || reached !== null || facts.isPauseRequested,
   };
 }

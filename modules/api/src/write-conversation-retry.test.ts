@@ -31,6 +31,7 @@ async function setupTest() {
     await runTaskStep(api.context, failed, {
       runStep: () => Promise.reject(new Error('the provider is overloaded')),
       leaseMs: 60_000,
+      logger: () => {},
       maxStepErrors: 3,
       retryDelayMs: 30_000,
       maxRetryDelayMs: 300_000,

@@ -46,6 +46,7 @@ async function runNextStep(context: TasksContext, options: TaskStepsOptions): Pr
   await runTaskStep(context, claim, {
     runStep: getTaskStep(options, claim),
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,

@@ -2,6 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Clock } from '@heynixie/clock';
 import { countTextTokens } from '@heynixie/compaction';
 import type { Log, Projection } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
@@ -39,6 +40,7 @@ export interface TestSessionHost {
 
 export interface TestSessionHostOptions {
   readonly projections?: readonly Projection[];
+  readonly clock?: Clock;
 }
 
 export async function startTestSessionHost(
@@ -52,7 +54,10 @@ export async function startTestSessionHost(
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const writer = await startWriter({ dataDir });
+  const writer = await startWriter({
+    dataDir,
+    ...(options.clock === undefined ? {} : { clock: options.clock }),
+  });
 
   stack.defer(() => writer.stop());
 

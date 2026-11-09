@@ -11,6 +11,7 @@ export async function runNextStep(context: TasksContext, runStep: RunStep): Prom
   await runTaskStep(context, claim, {
     runStep,
     leaseMs: 60_000,
+    logger: () => {},
     maxStepErrors: 3,
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,

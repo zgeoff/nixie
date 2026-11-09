@@ -121,14 +121,15 @@ A started task has a limit of turns and of dollars, which its start set or took 
 `models.limits.taskRun`. Each model turn record on the task's thread counts as one turn, and its
 token counts, priced with the task's profile, count as its dollars. Each summary of the task's
 session records the token counts of its calls too, and they count as dollars and as no turn. Each
-`task.failed_turn_spent` record holds the dollars that a failed turn's calls spent, and they count
-as dollars and as no turn. The config schema refuses a profile with no price table for any profile a
-task can run on, as [selectable models](./model-profiles.md#selectable-models) describes. A record
-sums its calls, and the per-call usage that the model API reports leaves out thinking tokens, so the
-count prices each record as one call. It therefore prices every cache write at the longer lifetime's
-price, and a turn whose calls together pass a profile's long-prompt size at the long-prompt prices.
-The count can run above the spend. One exception: a summary recorded by an earlier release kept no
-token counts, so it adds no dollars, and the count of a task that has one can fall below its spend.
+`task.failed_turn_spent` record holds the dollars that the calls of a turn with no turn record
+spent, and they count as dollars and as no turn. The config schema refuses a profile with no price
+table for any profile a task can run on, as
+[selectable models](./model-profiles.md#selectable-models) describes. A record sums its calls, and
+the per-call usage that the model API reports leaves out thinking tokens, so the count prices each
+record as one call. It therefore prices every cache write at the longer lifetime's price, and a turn
+whose calls together pass a profile's long-prompt size at the long-prompt prices. The count can run
+above the spend. One exception: a summary recorded by an earlier release kept no token counts, so it
+adds no dollars, and the count of a task that has one can fall below its spend.
 
 Before each step runs a turn, the runner counts the task's turns and dollars. When either count has
 reached its limit, the step runs no turn. In one transaction it asks for a pause, writes a
@@ -153,6 +154,21 @@ record on the task's thread, with the dollars its calls spent, before any limit 
 guest fails before any priced call writes none. The write checks no lease, because the calls spent
 the dollars whoever holds the lease now. A failed turn's spend therefore counts toward the dollar
 limit, and the step's retry gets only the dollars that the failed turn left.
+
+A completed turn's turn record goes in with its step's commit, and the commit checks the lease
+first. When the commit fails, such as when it loses its lease, the step writes a
+`task.failed_turn_spent` record with the turn's dollars instead, so the turn's spend still counts. A
+turn that reached the limit counts its spend in its limit record, so its failed commit writes no
+spend record. When that limit record fails to commit, such as when a lost lease refuses it, the step
+writes the spend record in its place. When the spend record fails to write too, the runner logs a
+`task.turn_spend_unrecorded` error event with the task's ID and the dollars, and the count leaves
+that spend out.
+
+A step that lost its lease writes its spend record after another runner may have taken the step. A
+turn that the other runner started before the record landed gets a budget without that spend, so the
+task can pass its dollar limit by up to one turn's spend. When that turn reaches the limit, the
+runner counts the task's turns and dollars again before it writes the limit record, so the limit
+record includes the late spend.
 
 The interrupt leaves the turn's work not done, so the task keeps that work for the raise, as
 [interrupted work](#interrupted-work) describes.
