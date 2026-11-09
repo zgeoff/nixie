@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.70.0](https://github.com/zgeoff/nixie/compare/v0.69.0...v0.70.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **counting-proxy:** count a route that speaks the responses api ([#902](https://github.com/zgeoff/nixie/issues/902))
+* **sessions:** interrupt a task turn whose model calls reach its limit ([#900](https://github.com/zgeoff/nixie/issues/900))
+
+### Features
+
+* **connectors:** clean up search hits and give each a link id ([#981](https://github.com/zgeoff/nixie/issues/981)) ([d39d23a](https://github.com/zgeoff/nixie/commit/d39d23aa58ab787fe7891212a35c99c03aeb4e84))
+* **counting-proxy:** count a route that speaks the responses api ([#902](https://github.com/zgeoff/nixie/issues/902)) ([11e7a45](https://github.com/zgeoff/nixie/commit/11e7a45bfa1cc8443dea3a30cad1fcc2f527b27e))
+* **sessions:** interrupt a task turn whose model calls reach its limit ([#900](https://github.com/zgeoff/nixie/issues/900)) ([4273039](https://github.com/zgeoff/nixie/commit/42730396540c694e7dee2a8c066494c9418f406e))
+
+
+### Bug Fixes
+
+* **deps:** update @anthropic-ai/claude-agent-sdk to v0.3.316 ([#893](https://github.com/zgeoff/nixie/issues/893)) ([df287a5](https://github.com/zgeoff/nixie/commit/df287a5e6fbe372509613de319328b1f7804adc9))
+* **deps:** update patch updates ([#964](https://github.com/zgeoff/nixie/issues/964)) ([cae3d2a](https://github.com/zgeoff/nixie/commit/cae3d2a76531fff5f6e31113e656c38697e9a30a))
+* **sessions:** carry on a task's interrupted turn after a resume ([#976](https://github.com/zgeoff/nixie/issues/976)) ([1603530](https://github.com/zgeoff/nixie/commit/160353040ed2af6eb2326f5fd72104c29a2132aa))
+* **sessions:** count a failed task turn's spend toward its dollar limit ([#978](https://github.com/zgeoff/nixie/issues/978)) ([32f2ab0](https://github.com/zgeoff/nixie/commit/32f2ab073cef2a9bebb2a28bc372b6f01284fd6a))
+* **sessions:** count a task turn's spend when its commit loses its lease ([#982](https://github.com/zgeoff/nixie/issues/982)) ([f14d799](https://github.com/zgeoff/nixie/commit/f14d79916e709ba0431220865e6ada5ae5acb9f7))
+
 ## [0.69.0](https://github.com/zgeoff/nixie/compare/v0.68.0...v0.69.0) (2026-11-08)
 
 
