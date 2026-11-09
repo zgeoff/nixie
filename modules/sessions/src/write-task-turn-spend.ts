@@ -1,5 +1,5 @@
 import type { Lease, TaskLimits, TasksContext } from '@heynixie/tasks';
-import { writeFailedTurnSpend, writeTaskLimitPause } from '@heynixie/tasks';
+import { withTurnSpendOnFailure, writeFailedTurnSpend, writeTaskLimitPause } from '@heynixie/tasks';
 import type { TaskTurnEndPlan } from './plan-task-turn-end';
 
 export interface TaskTurnStep {
@@ -27,13 +27,10 @@ export async function writeTaskTurnSpend(
     return;
   }
 
-  await writeTaskLimitPause(context, { ...step, used: plan.reached }).catch(
-    async (error: unknown) => {
-      if (plan.pausedDollars !== null) {
-        await writeFailedTurnSpend(context, { taskID, dollars: plan.pausedDollars });
-      }
+  const used = plan.reached;
+  const spend = plan.pausedDollars === null ? null : { taskID, dollars: plan.pausedDollars };
 
-      throw error;
-    },
+  await withTurnSpendOnFailure(context, spend, () =>
+    writeTaskLimitPause(context, { ...step, used }),
   );
 }

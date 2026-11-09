@@ -45,6 +45,7 @@ export { taskLimitNoticeCodec } from './task-limit-notice-codec';
 export { taskLimitReachedCodec } from './task-limit-reached-codec';
 export { taskLimitsRaisedCodec } from './task-limits-raised-codec';
 export type { FailedTurnSpend } from './write-failed-turn-spend';
+export { withTurnSpendOnFailure } from './with-turn-spend-on-failure';
 export { writeFailedTurnSpend } from './write-failed-turn-spend';
 export type { TaskLimitPause } from './write-task-limit-pause';
 export { writeTaskLimitPause } from './write-task-limit-pause';
