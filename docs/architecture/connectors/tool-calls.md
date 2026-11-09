@@ -125,4 +125,5 @@ A tool whose input or result repeats text that another key guards gives each rec
 own in place of that text. Each record's erasable fields sit under the record's own key, so a forget
 that destroys the other key would leave the copy readable. The model reads the whole result either
 way. The memory tools use these forms, and [the memory store](../memory/store.md#the-models-tools)
-covers what each one records.
+covers what each one records. The result record can also hold a field the result leaves out: the
+[search](./search.md#what-the-result-carries) tool records each search's cost there.

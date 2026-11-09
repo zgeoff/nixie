@@ -128,13 +128,13 @@ export function buildSearchTool(
       if (links === null) {
         return {
           status: 'error',
-          message: 'the session ended while the search ran, so search again',
+          message: 'the session ended while the search ran, so it returns no hits',
         };
       }
 
       const hits = reply.hits.map((hit) => parseHitResult(hit, links));
 
-      // the model never sees the cost, which could steer what it searches for
+      // the result leaves out the cost, which could steer what the model searches for
       return { status: 'ok', result: { hits }, record: { hits, costUSD: reply.costUSD } };
     },
   };

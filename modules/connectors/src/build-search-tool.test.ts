@@ -4,6 +4,7 @@ import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import { sql } from 'kysely';
 import { buildSearchTool } from './build-search-tool';
+import { readLinkTarget } from './read-link-target';
 import { seedWebFetchLinks } from './test-utils/seed-web-fetch-links';
 import { startTestLog } from './test-utils/start-test-log';
 import type { SearchReply, SearchRequest } from './types';
@@ -129,6 +130,91 @@ test('it numbers a hit after the links the session already holds, and gives a kn
   });
 });
 
+test('it gives two hits with one URL the same link ID', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildSearchTool(
+    {
+      readHits: () =>
+        Promise.resolve<SearchReply>({
+          kind: 'hits',
+          hits: [
+            { title: 'Ferry fares', url: 'https://ferries.test/fares', snippet: null, date: null },
+            { title: 'Fares 2026', url: 'https://ferries.test/fares', snippet: null, date: null },
+          ],
+          costUSD: 0.012,
+        }),
+    },
+    {
+      log: ctx.log,
+      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      dailyCallCap: 200,
+      timeZone: 'Australia/Sydney',
+    },
+  );
+
+  const outcome = await tool.run(
+    { callID: 'call-1', tool: 'search', input: { query: 'ferry fares' }, toolUseID: null },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['search'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0 },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      hits: [
+        { link: 'L1', title: 'Ferry fares', url: 'https://ferries.test/fares', snippet: null },
+        { link: 'L1', title: 'Fares 2026', url: 'https://ferries.test/fares', snippet: null },
+      ],
+    },
+    record: expect.any(Object),
+  });
+});
+
+test('it keys the link IDs of a call under the run token by the run', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildSearchTool(
+    {
+      readHits: () =>
+        Promise.resolve<SearchReply>({
+          kind: 'hits',
+          hits: [{ title: 'Tides', url: 'https://tides.test/', snippet: null, date: null }],
+          costUSD: 0.012,
+        }),
+    },
+    {
+      log: ctx.log,
+      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      dailyCallCap: 200,
+      timeZone: 'Australia/Sydney',
+    },
+  );
+
+  await tool.run(
+    { callID: 'call-1', tool: 'search', input: { query: 'tide times' }, toolUseID: null },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'task',
+        tools: ['search'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
+  );
+
+  const target = await readLinkTarget(ctx.log, { sessionKey: 'run-1', number: 1 });
+
+  expect(target).toBe('https://tides.test/');
+});
+
 test('it refuses a search whose session a forget ended, and stores no link', async () => {
   const ctx = await setupTest();
 
@@ -175,7 +261,7 @@ test('it refuses a search whose session a forget ended, and stores no link', asy
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: 'the session ended while the search ran, so search again',
+    message: 'the session ended while the search ran, so it returns no hits',
   });
 
   expect(links.rows).toStrictEqual([]);
