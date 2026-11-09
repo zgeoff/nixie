@@ -15,6 +15,7 @@ export type SystemMessageType =
   | 'outcome'
   | 'task-messages'
   | 'task-start'
+  | 'task-continue'
   | 'task-limit';
 
 export interface SystemMessage {

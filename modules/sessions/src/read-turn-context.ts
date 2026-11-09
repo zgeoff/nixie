@@ -32,6 +32,9 @@ export interface TurnContextQuery {
   readonly isNewSession: boolean;
 
   readonly isFirstSession: boolean;
+
+  // whether the turn carries on the work that an interrupt cut, with no new message to start it
+  readonly isContinuation: boolean;
 }
 
 export interface TurnContext {
@@ -52,6 +55,9 @@ type TurnContextRun = Pick<
 >;
 
 const noRetrieval: TurnRetrieval = { items: [], selfNotes: [], messages: [] };
+
+const continuationNote =
+  'An interrupt stopped your last turn before its work was done. Continue the work that is not done yet.';
 
 export async function readTurnContext(
   run: TurnContextRun,
@@ -91,6 +97,7 @@ export async function readTurnContext(
     preamble: renderTurnPreamble(
       {
         start: pickStartNote(frame, query),
+        continuation: query.isContinuation ? continuationNote : null,
         changes,
         retrieval,
         thread: query.taskID,

@@ -53,7 +53,6 @@ test('it pauses a task at its limit once its step commits, and a plain resume le
     startedBy: 'conversation',
     used: { turns: 25, dollars: 0.4 },
     limits: { turns: 25, dollars: 2 },
-    isWorkCut: false,
   });
 
   await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [] });
@@ -70,7 +69,7 @@ test('it pauses a task at its limit once its step commits, and a plain resume le
   expect(task.state).toBe('paused');
 });
 
-test('it leaves a task whose turn the limit cut ready to run once a raise resumes it', async () => {
+test('it leaves a task whose step kept the work that the limit cut ready to run once a raise resumes it', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
@@ -88,10 +87,9 @@ test('it leaves a task whose turn the limit cut ready to run once a raise resume
     startedBy: 'conversation',
     used: { turns: 2, dollars: 2.1 },
     limits: { turns: 25, dollars: 2 },
-    isWorkCut: true,
   });
 
-  await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [] });
+  await writeStepCommit(ctx.context, claim, { next: 'continue', records: [], acknowledged: [] });
   await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 4 } });
 
   const task = await ctx.readTask(taskID);
@@ -117,7 +115,6 @@ test("it writes a limit notice into the starter's inbox that names the task and 
     startedBy: 'conversation',
     used: { turns: 4, dollars: 2.1 },
     limits: { turns: 25, dollars: 2 },
-    isWorkCut: false,
   });
 
   const notices = await readRecords(ctx.context.log, {
@@ -172,7 +169,6 @@ test('it writes no notice to a starter that has finished, and still holds the ta
     startedBy: parent,
     used: { turns: 25, dollars: 1 },
     limits: { turns: 25, dollars: 2 },
-    isWorkCut: false,
   });
 
   const notices = await readRecords(ctx.context.log, {
@@ -206,7 +202,6 @@ test('it refuses a step that lost its lease, and writes nothing', async () => {
     startedBy: 'conversation',
     used: { turns: 25, dollars: 1 },
     limits: { turns: 25, dollars: 2 },
-    isWorkCut: false,
   });
 
   await written.catch(() => {});

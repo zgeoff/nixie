@@ -31,6 +31,9 @@ export interface SessionMarks {
   readonly compactionFailures: number;
 
   readonly images: ImageTally;
+
+  // whether an interrupt cut the newest turn before the model's own end_turn, so its work is not done
+  readonly isTurnCut: boolean;
 }
 
 export async function readSessionMarks(
@@ -66,6 +69,7 @@ export async function readSessionMarks(
     isSummarized: summarizedThrough > openedThrough,
     compactionFailures: countFailures(failed.at(0), Math.max(openedThrough, summarizedThrough)),
     images: toImages(ended),
+    isTurnCut: ended?.isInterrupted === true,
   };
 }
 

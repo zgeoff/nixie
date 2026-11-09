@@ -8,10 +8,10 @@ test('it pauses a turn whose calls reached the budget at the counts before it pl
       isBudgetReached: true,
       spentDollars: 0.25,
       endedTurns: 1,
-      hasFinishedTurn: true,
-      next: 'continue',
+      isPauseRequested: false,
+      next: 'wait',
     }),
-  ).toStrictEqual({ reached: { turns: 4, dollars: 0.75 }, isImpReleased: true, isWorkCut: false });
+  ).toStrictEqual({ reached: { turns: 4, dollars: 0.75 }, isImpReleased: true });
 });
 
 test('it pauses a step that threw after its calls reached the budget, with no turn of its own', () => {
@@ -21,10 +21,10 @@ test('it pauses a step that threw after its calls reached the budget, with no tu
       isBudgetReached: true,
       spentDollars: 0.25,
       endedTurns: 0,
-      hasFinishedTurn: false,
+      isPauseRequested: false,
       next: null,
     }),
-  ).toStrictEqual({ reached: { turns: 3, dollars: 0.75 }, isImpReleased: true, isWorkCut: false });
+  ).toStrictEqual({ reached: { turns: 3, dollars: 0.75 }, isImpReleased: true });
 });
 
 test.each([
@@ -42,28 +42,22 @@ test.each([
         isBudgetReached: false,
         spentDollars: 0.004,
         endedTurns: 1,
-        hasFinishedTurn: false,
+        isPauseRequested: false,
         next,
       }),
-    ).toStrictEqual({ reached: null, isImpReleased, isWorkCut: false });
+    ).toStrictEqual({ reached: null, isImpReleased });
   },
 );
 
-test.each([
-  ['cut before its end_turn', false, true],
-  ['finished at its end_turn', true, false],
-] as const)(
-  'it marks as cut the work of a turn that reached the budget %s: %s',
-  (_case, hasFinishedTurn, isWorkCut) => {
-    expect(
-      planTaskTurnEnd({
-        used: { turns: 3, dollars: 0.5 },
-        isBudgetReached: true,
-        spentDollars: 0.25,
-        endedTurns: 1,
-        hasFinishedTurn,
-        next: 'wait',
-      }),
-    ).toStrictEqual({ reached: { turns: 4, dollars: 0.75 }, isImpReleased: true, isWorkCut });
-  },
-);
+test('it sleeps the imp after a step with work left whose task the user asked to pause', () => {
+  expect(
+    planTaskTurnEnd({
+      used: { turns: 3, dollars: 0.5 },
+      isBudgetReached: false,
+      spentDollars: 0.004,
+      endedTurns: 1,
+      isPauseRequested: true,
+      next: 'continue',
+    }),
+  ).toStrictEqual({ reached: null, isImpReleased: true });
+});

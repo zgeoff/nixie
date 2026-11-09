@@ -67,9 +67,9 @@ image, with the limits of a system task's sandbox. The task's ID is the sandbox'
 [nixie runner](../core/started-tasks.md#the-nixie-runner), which runs the steps of started tasks,
 creates the sandbox at the task's first step. Its life follows the task:
 
-1. When a step leaves the task waiting, the runner puts the sandbox to sleep, if its adapter can. A
-   task that waits for days then holds no host memory. A sleep that fails leaves the sandbox awake,
-   and the step's result still commits.
+1. When a step's commit leaves the task waiting or paused, the runner puts the sandbox to sleep, if
+   its adapter can. A task that waits for days then holds no host memory. A sleep that fails leaves
+   the sandbox awake, and the step's result still commits.
 2. The next step of the task wakes the sandbox.
 3. Crash recovery keeps the sandbox while the task is not done or closed, so the task's session
    survives a restart of nixie. This covers a stopped or failed task too, because a restart of the

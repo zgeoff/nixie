@@ -1,7 +1,6 @@
 import { withWriteTransaction } from '@heynixie/log';
 import { isFinishedState } from '@heynixie/task-control';
 import { requireLease } from './require-lease';
-import { taskLimitCutCodec } from './task-limit-cut-codec';
 import { taskLimitNoticeCodec } from './task-limit-notice-codec';
 import type { Lease, TaskLimits, TaskState, TasksContext, TasksTables } from './types';
 import { writeInboxRecordsInTransaction } from './write-inbox-records-in-transaction';
@@ -14,9 +13,6 @@ export interface TaskLimitPause {
   readonly startedBy: string;
   readonly used: TaskLimits;
   readonly limits: TaskLimits;
-
-  // whether the limit cut the step's turn short, so the task resumes that work after a raise
-  readonly isWorkCut: boolean;
 }
 
 // The step that meets the limit still holds its lease, so the pause is a request that its commit
@@ -37,19 +33,6 @@ export async function writeTaskLimitPause(
       stepKey: pause.stepKey,
       ...counts,
     });
-
-    // The record stays unread past the step's commit, so the task pauses ready, and a raise runs
-    // a step that tells the model to go on.
-    if (pause.isWorkCut) {
-      await writeInboxRecordsInTransaction(tx, context, [
-        {
-          kind: 'task.limit_cut',
-          definitions: context.definitions(),
-          thread: taskID,
-          payload: taskLimitCutCodec.encode({ taskID }),
-        },
-      ]);
-    }
 
     const starter = await tx
       .$extendTables<TasksTables>()

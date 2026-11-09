@@ -1,14 +1,17 @@
+import { modelTurnEndedCodec } from '@heynixie/models';
 import type { StepInput, StepResult } from '@heynixie/tasks';
 import { readTaskDirectory } from '@heynixie/tasks';
 import { canSessionTake } from './can-session-take';
 import { isSessionLive } from './is-session-live';
+import { isStepTurnCut } from './is-step-turn-cut';
+import { isTaskWorkCut } from './is-task-work-cut';
 import { parseSessionBoundary } from './parse-session-boundary';
 import { pickSessionPosition } from './pick-session-position';
 import type { SessionMarks } from './read-session-marks';
 import { readSessionMarks } from './read-session-marks';
 import { runCompactionStep } from './run-compaction-step';
 import { runInboxStep } from './run-inbox-step';
-import type { ConversationRun, SessionFrame } from './types';
+import type { ConversationRun, SessionFrame, SessionStep } from './types';
 
 export function runConversationStep(
   conversation: ConversationRun,
@@ -37,25 +40,53 @@ export function runConversationStep(
 
     const step = { run, input, signal, definitions, skillCatalog, marks, position };
 
-    if (isSessionLive(position) && canSessionTake(position.state, 'compact')) {
-      return runCompactionStep(step, position.boundary);
-    }
+    const result = await runSessionStep(step);
 
-    if (input.inbox.length === 0 && !isTaskStart(run.frame, marks)) {
-      return {
-        next: 'wait',
-        records: [],
-        acknowledged: [],
-        sessionBoundary: input.sessionBoundary,
-      };
-    }
-
-    return runInboxStep(step, { canCompact: true, before: [] });
+    return run.frame.kind === 'task' && isStepTurnCut(input.interrupt, result.records)
+      ? buildCutResult(result)
+      : result;
   });
+}
+
+function runSessionStep(step: SessionStep): Promise<StepResult> {
+  const frame = step.run.frame;
+
+  if (isSessionLive(step.position) && canSessionTake(step.position.state, 'compact')) {
+    return runCompactionStep(step, step.position.boundary);
+  }
+
+  if (
+    step.input.inbox.length === 0 &&
+    !isTaskStart(frame, step.marks) &&
+    !isTaskWorkCut(frame, step.marks)
+  ) {
+    return Promise.resolve({
+      next: 'wait',
+      records: [],
+      acknowledged: [],
+      sessionBoundary: step.input.sessionBoundary,
+    });
+  }
+
+  return runInboxStep(step, { canCompact: true, before: [] });
 }
 
 // A started task's brief is its first piece of work, and it arrives in no inbox record. A forget can
 // invalidate the task before its first session opens, so the test is the opening and not the state.
 function isTaskStart(frame: SessionFrame, marks: SessionMarks): boolean {
   return frame.kind === 'task' && marks.sessionKey === null;
+}
+
+// A turn that the call guard or a refusal ended also stops before end_turn, so the step marks the
+// interrupt on the turn record, and a later step with no message continues only a marked turn.
+function buildCutResult(result: StepResult): StepResult {
+  return {
+    ...result,
+    next: 'continue',
+    records: result.records.map((record) =>
+      record.kind === modelTurnEndedCodec.kind
+        ? { ...record, payload: { ...record.payload, isInterrupted: true } }
+        : record,
+    ),
+  };
 }

@@ -19,7 +19,7 @@ RUN bun install --frozen-lockfile --ignore-scripts \
 # each pinned binary, checked against the checksum the repo recorded, never one fetched with it
 RUN mkdir -p /out/bin \
   && grep -v '^#' apps/server/binaries.txt | while read -r name version url sum; do \
-    URL="$url" OUT="/out/bin/$name" bun -e 'await Bun.write(process.env.OUT, await fetch(process.env.URL))' \
+    URL="$url" OUT="/out/bin/$name" bun -e 'const response = await fetch(process.env.URL); if (!response.ok) throw new Error(`${process.env.URL} answered HTTP ${response.status}`); await Bun.write(process.env.OUT, response)' \
     && echo "$sum  /out/bin/$name" | sha256sum -c - \
     && chmod 0755 "/out/bin/$name" \
     || exit 1; \

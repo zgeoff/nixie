@@ -147,11 +147,8 @@ and writes the same two records, with the counts it reached. The step sleeps the
 with work left, and its commit pauses the task. A step whose guest fails after its calls reach the
 limit asks for the pause too, so the step's retry waits for a raise and spends nothing more.
 
-An interrupted turn ends at its last chain entry, with no `end_turn` from the model, so its work is
-not done, and a task with no unread message would wait after a raise. When the dollar limit cuts
-such a turn, the pause also writes a `task.limit_cut` record into the task's own inbox. That record
-stays unread past the step's commit, so the task pauses in the ready state. After a raise, the next
-step reads it as a system message that tells the model to continue the work that is not done yet.
+The interrupt leaves the turn's work not done, so the task keeps that work for the raise, as
+[interrupted work](#interrupted-work) describes.
 
 A `task.limit_reached` record holds the task's whole count at its turn's end, with the key of its
 step, and commits before that step's commit. When the step's commit also carries a turn record, the
@@ -170,3 +167,34 @@ and resumes a paused task in one transaction. A task that the user stopped after
 stopped, and a restart runs it under the raised limit. A raise names turns, dollars or both, and
 refuses when no value goes above the limit the task reached or one falls below it. The max of
 `models.limits.taskRun` never caps a raise, because it bounds only what a start asks for.
+
+## Interrupted work
+
+An interrupt from the user or from the dollar limit ends a task's turn at the last entry of its
+Agent SDK session, as [interrupts](./conversation-turns.md#interrupts) describes. When the interrupt
+lands before the model sends `end_turn`, the turn's work is not done, and the task keeps that work
+for a later turn. When the interrupt lands after `end_turn`, the turn has finished its work, and its
+task waits as usual.
+
+1. The step of the cut turn commits with work left, so the task stays ready, and it writes the turn
+   record with `isInterrupted: true`.
+2. When the user or the limit asked for a pause, the commit pauses the task, the runner puts the
+   task's imp to sleep, and no runner claims the task until the user resumes it or raises the limit.
+   When nobody asked for a pause, the imp stays awake, and a runner claims the task again at once.
+3. The next step finds no unread message, yet it runs a turn, because the task's newest turn record
+   carries `isInterrupted: true`. nixie opens that turn with a `task-continue` system message, in
+   which nixie asks the model to continue the work that the interrupt stopped.
+
+Other turns end before `end_turn` too, such as a turn that reached its
+[limit of model calls](./conversation-turns.md#model-calls). Such a turn carries no mark, so its
+task waits for a message.
+
+The turn record lives in the log, so the cut work survives a crash between the 2 steps. When the cut
+turn left the session past the compaction threshold, the next step only writes the summary, and the
+step after it runs the `task-continue` turn in a session that opens from that summary. When the
+`task-continue` turn itself passes the context window, its step compacts the session and keeps the
+work for the step after. A message that arrives after the interrupt starts the next turn as any
+message does, and that turn gets no `task-continue` message.
+
+The conversation keeps no interrupted work. The user interrupts the conversation to stop nixie
+mid-reply, so after the interrupt the conversation waits for the next message.
