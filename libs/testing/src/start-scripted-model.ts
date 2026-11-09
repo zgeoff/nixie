@@ -1,3 +1,6 @@
+import type { ModelAPIEndpointName } from '@heynixie/wire';
+import { findModelAPIEndpoint, modelAPIs } from '@heynixie/wire';
+import { match } from 'ts-pattern';
 import { z } from 'zod';
 
 export interface ScriptedUsage {
@@ -90,7 +93,7 @@ export function startScriptedModel(): ScriptedModel {
 
     requests.push(recorded);
 
-    const response = renderResponse(recorded, script);
+    const response = renderResponse(request.method, recorded, script);
 
     await response.gate;
 
@@ -130,15 +133,34 @@ interface RenderedResponse {
   readonly gate?: Promise<void>;
 }
 
-function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]): RenderedResponse {
-  if (request.path === '/v1/messages/count_tokens') {
-    return { response: Response.json({ input_tokens: 10 }) };
-  }
+function renderResponse(
+  method: string,
+  request: ScriptedModelRequest,
+  script: ScriptedReply[],
+): RenderedResponse {
+  const endpoint = findScriptedEndpoint(method, request.path);
 
-  const isResponses = request.path === '/v1/responses';
+  return match(endpoint)
+    .with('count_tokens', () => ({ response: Response.json({ input_tokens: 10 }) }))
+    .with('messages', 'responses', (name) => renderScriptedReply(name, request.body, script))
+    .with('models', null, () => ({ response: renderNotFound() }))
+    .exhaustive();
+}
 
-  if ((request.path !== '/v1/messages' && !isResponses) || request.body === null) {
-    return { response: new Response('not found', { status: 404 }) };
+function findScriptedEndpoint(method: string, path: string): ModelAPIEndpointName | null {
+  return (
+    modelAPIs.map((api) => findModelAPIEndpoint(api, method, path)).find((name) => name !== null) ??
+    null
+  );
+}
+
+function renderScriptedReply(
+  endpoint: 'messages' | 'responses',
+  body: ScriptedModelBody | null,
+  script: ScriptedReply[],
+): RenderedResponse {
+  if (body === null) {
+    return { response: renderNotFound() };
   }
 
   const reply = script.shift();
@@ -147,14 +169,19 @@ function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]):
     return { response: renderRefusal('the scripted model has no reply left') };
   }
 
-  const model = request.body.model ?? 'stub';
-  const isStream = request.body.stream === true;
+  const model = body.model ?? 'stub';
+  const isStream = body.stream === true;
 
-  const response = isResponses
-    ? buildResponsesReply(reply, model, isStream)
-    : buildReplyResponse(reply, model, isStream);
+  const response = match(endpoint)
+    .with('responses', () => buildResponsesReply(reply, model, isStream))
+    .with('messages', () => buildReplyResponse(reply, model, isStream))
+    .exhaustive();
 
   return reply.gate === undefined ? { response } : { response, gate: reply.gate };
+}
+
+function renderNotFound(): Response {
+  return new Response('not found', { status: 404 });
 }
 
 function renderRefusal(message: string): Response {

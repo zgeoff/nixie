@@ -36,7 +36,7 @@ test.each([
   "it finds a $api route's $method $path as the $name endpoint, which spends: $spends",
   (row) => {
     expect(findProxyEndpoint(row.api, row.method, row.path)).toStrictEqual(
-      expect.objectContaining({ name: row.name, method: row.method, spends: row.spends }),
+      expect.objectContaining({ name: row.name, spends: row.spends }),
     );
   },
 );

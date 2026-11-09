@@ -1,8 +1,6 @@
 import type { GrantSpec, SecretSpec } from '@heynixie/sandbox';
-import type { HarnessID, SessionPoint, TurnProfile } from '@heynixie/wire';
+import type { HarnessID, ModelAPI, SessionPoint, TurnProfile } from '@heynixie/wire';
 import type { ModelProfile } from './types';
-
-export type ModelAPI = 'anthropic-messages' | 'openai-responses';
 
 export type HarnessEntry = 'turn' | 'check';
 

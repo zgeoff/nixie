@@ -1,5 +1,4 @@
-import type { ModelAPI } from '@heynixie/models';
-import type { ModelCallUsage, ReportedUsage } from '@heynixie/wire';
+import type { ModelAPI, ModelCallUsage, ReportedUsage } from '@heynixie/wire';
 import { foldAnthropicUsageEvent, parseAnthropicCallUsage } from '@heynixie/wire';
 import { foldOpenAIResponseEvent } from './fold-openai-response-event';
 import { parseOpenAICallUsage } from './parse-openai-call-usage';

@@ -1,4 +1,5 @@
-import type { ModelAPI } from '@heynixie/models';
+import type { ModelAPI, ModelAPIEndpointName } from '@heynixie/wire';
+import { findModelAPIEndpoint } from '@heynixie/wire';
 import { z } from 'zod';
 
 interface ProxyBodyRule {
@@ -9,9 +10,7 @@ interface ProxyBodyRule {
 }
 
 export interface ProxyEndpoint {
-  readonly name: 'messages' | 'count_tokens' | 'responses' | 'models';
-  readonly method: 'GET' | 'POST';
-  readonly path: RegExp;
+  readonly name: ModelAPIEndpointName;
   readonly body: ProxyBodyRule | null;
 
   // a call to this endpoint costs money, so one whose reply is lost leaves the count behind
@@ -30,54 +29,22 @@ const responsesBody: ProxyBodyRule = {
   needs: 'names its model and asks for no background response',
 };
 
-const modelsEndpoint: ProxyEndpoint = {
-  name: 'models',
-  method: 'GET',
-  path: /^\/v1\/models(?:\/[^/]+)?$/u,
-  body: null,
-  spends: false,
+const proxyEndpoints: Readonly<Record<ModelAPIEndpointName, ProxyEndpoint>> = {
+  messages: { name: 'messages', body: modelBody, spends: true },
+  count_tokens: { name: 'count_tokens', body: modelBody, spends: false },
+  responses: { name: 'responses', body: responsesBody, spends: true },
+  models: { name: 'models', body: null, spends: false },
 };
 
-// a reply to any other endpoint, such as a message batch or a stored response, spends without the
-// usage the proxy reads, or names its models where the route's model check never looks
-const proxyEndpoints: Readonly<Record<ModelAPI, readonly ProxyEndpoint[]>> = {
-  'anthropic-messages': [
-    {
-      name: 'messages',
-      method: 'POST',
-      path: /^\/v1\/messages$/u,
-      body: modelBody,
-      spends: true,
-    },
-    {
-      name: 'count_tokens',
-      method: 'POST',
-      path: /^\/v1\/messages\/count_tokens$/u,
-      body: modelBody,
-      spends: false,
-    },
-    modelsEndpoint,
-  ],
-  'openai-responses': [
-    {
-      name: 'responses',
-      method: 'POST',
-      path: /^\/v1\/responses$/u,
-      body: responsesBody,
-      spends: true,
-    },
-    modelsEndpoint,
-  ],
-};
-
+// a reply to any endpoint outside the API's table, such as a message batch or a stored response,
+// spends without the usage the proxy reads, or names its models where the route's model check
+// never looks
 export function findProxyEndpoint(
   api: ModelAPI,
   method: string,
   path: string,
 ): ProxyEndpoint | null {
-  return (
-    proxyEndpoints[api].find(
-      (endpoint) => endpoint.method === method && endpoint.path.test(path),
-    ) ?? null
-  );
+  const name = findModelAPIEndpoint(api, method, path);
+
+  return name === null ? null : proxyEndpoints[name];
 }

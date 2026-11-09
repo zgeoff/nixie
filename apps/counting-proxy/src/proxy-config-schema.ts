@@ -1,13 +1,12 @@
-import type { ModelAPI } from '@heynixie/models';
 import { modelPricesSchema } from '@heynixie/models';
+import { modelAPIs } from '@heynixie/wire';
 import { z } from 'zod';
 import type { ProxyConfig } from './types';
 
 const routeIDSchema = z.string().regex(/^[a-z0-9][a-z0-9-]*$/u, 'a route ID is a lowercase slug');
-const modelAPISchema: z.ZodType<ModelAPI> = z.enum(['anthropic-messages', 'openai-responses']);
 
 const routeSchema = z.strictObject({
-  api: modelAPISchema.default('anthropic-messages'),
+  api: z.enum(modelAPIs).default('anthropic-messages'),
   upstream: z.url({ protocol: /^https?$/u }),
   model: z.string().min(1),
   prices: modelPricesSchema,

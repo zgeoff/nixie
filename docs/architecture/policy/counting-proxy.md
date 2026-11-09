@@ -40,6 +40,10 @@ other endpoint with a 403:
 | `anthropic-messages` | messages, token counts and the model list |
 | `openai-responses`   | creating a response, and the model list   |
 
+The method and path of each endpoint live in one table in
+[`find-model-api-endpoint.ts`](../../../libs/wire/src/find-model-api-endpoint.ts). The scripted
+model that stands in for the model API in tests routes its requests through the same table.
+
 A message batch, for one, spends after its reply and names its models inside each request, out of
 reach of both the count and the model check. A stored response read back by its ID spends nothing
 that the proxy could count. The proxy refuses a request for a background response with a 400 too,
