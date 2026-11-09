@@ -20,6 +20,7 @@ import {
 } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { readTaskUsage } from './read-task-usage';
 import type { NixieRunnerOptions } from './start-nixie-runner';
 import { startNixieRunner } from './start-nixie-runner';
 import { buildStubMemory } from './test-utils/build-stub-memory';
@@ -1527,6 +1528,59 @@ test('it interrupts the retry of a turn whose guest failed below the dollar limi
     used: { turns: 1, dollars: expect.toBeWithin(0.04, 0.041) },
     limits: { turns: 25, dollars: 0.04 },
   });
+});
+
+test('it counts the spend of a task turn whose commit lost its lease to another runner', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+
+  const taskID = await ctx.seedTask(starter, {
+    model: 'second-look',
+    profile: 'router-b',
+    limits: { turns: 25, dollars: 1 },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 1, taskID });
+
+  invariant(claim !== null, 'the started task is ready to claim');
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: async (input) => {
+      const result = await runner.runStep(input);
+
+      await waitForCondition(() => ctx.context.clock.now() > claim.lease.expiresAt);
+      await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000, taskID });
+
+      return result;
+    },
+    leaseMs: 60_000,
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const used = await readTaskUsage(ctx.context, taskID, {
+    input: 3,
+    cacheWrite: 3,
+    cacheWrite1h: 3,
+    cachedInput: 0.3,
+    output: 15,
+  });
+
+  expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
 });
 
 test('it caps each task turn at 100 model calls', async () => {

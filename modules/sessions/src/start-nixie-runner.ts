@@ -488,7 +488,9 @@ async function runTaskTurn(
     throw ended.error;
   }
 
-  return ended.result;
+  return plan.commitDollars === null
+    ? ended.result
+    : { ...ended.result, spentDollars: plan.commitDollars };
 }
 
 interface TaskRunParts {

@@ -126,6 +126,10 @@ export interface StepResult {
   readonly timers?: readonly { readonly dueAt: number }[];
 
   readonly sessionBoundary?: string | null;
+
+  // the dollars that only the step's records count, which a commit that loses its lease records as
+  // spend instead
+  readonly spentDollars?: number;
 }
 
 export interface StepInput {

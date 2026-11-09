@@ -8,7 +8,8 @@ export interface FailedTurnSpend {
 }
 
 // The calls spent the dollars whoever holds the task's lease now, so the write checks no lease: a
-// step that lost its lease still counts what its failed turn spent.
+// step that lost its lease still counts what its turn spent, whether the turn failed or its commit
+// never landed.
 export async function writeFailedTurnSpend(
   context: Pick<TasksContext, 'definitions' | 'log'>,
   spend: FailedTurnSpend,

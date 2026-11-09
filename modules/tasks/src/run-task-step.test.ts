@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
@@ -224,6 +225,81 @@ test('it aborts the step and commits nothing once the lease is lost', async () =
 
   expect(seen.aborted).toBeTrue();
   expect(task).toMatchObject({ state: 'running', committed_steps: 0 });
+});
+
+test("it records the step's spend on the task's thread when its commit lost the lease", async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: () => {
+      ctx.clock.advance(60_000);
+
+      return Promise.resolve({ next: 'done', records: [], acknowledged: [2], spentDollars: 0.03 });
+    },
+    leaseMs: 60_000,
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const spends = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.failed_turn_spent'],
+  });
+
+  expect(spends.map((entry) => [entry.record.thread, entry.record.payload])).toStrictEqual([
+    ['conversation', { taskID: 'conversation', dollars: 0.03 }],
+  ]);
+});
+
+test('it records no spend for a step whose commit lands', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: () =>
+      Promise.resolve({ next: 'done', records: [], acknowledged: [2], spentDollars: 0.03 }),
+    leaseMs: 60_000,
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const spends = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.failed_turn_spent'],
+  });
+
+  expect(spends).toStrictEqual([]);
 });
 
 test('it aborts a running step that the user stops, and commits nothing', async () => {

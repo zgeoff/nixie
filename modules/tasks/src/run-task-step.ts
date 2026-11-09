@@ -6,6 +6,7 @@ import { readSessionBoundary } from './read-session-boundary';
 import { startLeaseRenewal } from './start-lease-renewal';
 import { startStepControlWatch } from './start-step-control-watch';
 import type { RunStep, StartedClaim, StepErrored, TasksContext } from './types';
+import { writeFailedTurnSpend } from './write-failed-turn-spend';
 import { writeStepCommit } from './write-step-commit';
 import { writeStepError } from './write-step-error';
 
@@ -63,7 +64,16 @@ async function tryCommitStep(
       interrupt: options.interrupt,
     });
 
-    await writeStepCommit(context, claim, result);
+    await writeStepCommit(context, claim, result).catch(async (error: unknown) => {
+      if (error instanceof LeaseLostError && result.spentDollars !== undefined) {
+        await writeFailedTurnSpend(context, {
+          taskID: claim.lease.workID,
+          dollars: result.spentDollars,
+        });
+      }
+
+      throw error;
+    });
 
     return null;
   } catch (error) {
