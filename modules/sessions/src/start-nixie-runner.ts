@@ -474,15 +474,15 @@ async function runTaskTurn(
     next: ended.result?.next ?? null,
   });
 
+  if (plan.isImpReleased) {
+    await releaseTaskImp(imp);
+  }
+
   await writeTaskTurnSpend(
     runner.options.context,
     { lease: input.lease, stepKey: input.stepKey, startedBy: run.startedBy, limits: run.limits },
     plan,
   );
-
-  if (plan.isImpReleased) {
-    await releaseTaskImp(imp);
-  }
 
   if (ended.result === null) {
     throw ended.error;

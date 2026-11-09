@@ -1,35 +1,24 @@
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { requireLease } from './require-lease';
+import { writeRecords } from '@heynixie/log';
 import { taskFailedTurnSpentCodec } from './task-failed-turn-spent-codec';
-import type { Lease, TasksContext } from './types';
+import type { TasksContext } from './types';
 
 export interface FailedTurnSpend {
-  readonly lease: Lease;
-  readonly stepKey: string;
+  readonly taskID: string;
   readonly dollars: number;
 }
 
-// A failed turn commits no turn record, so this record is the only count of what its calls spent.
+// The calls spent the dollars whoever holds the task's lease now, so the write checks no lease: a
+// step that lost its lease still counts what its failed turn spent.
 export async function writeFailedTurnSpend(
-  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
+  context: Pick<TasksContext, 'definitions' | 'log'>,
   spend: FailedTurnSpend,
 ): Promise<void> {
-  const taskID = spend.lease.workID;
-
-  await withWriteTransaction(context.log.writer, async (tx) => {
-    await requireLease(tx, spend.lease, context.clock.now());
-
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: taskFailedTurnSpentCodec.kind,
-        definitions: context.definitions(),
-        thread: taskID,
-        payload: taskFailedTurnSpentCodec.encode({
-          taskID,
-          stepKey: spend.stepKey,
-          dollars: spend.dollars,
-        }),
-      },
-    ]);
-  });
+  await writeRecords(context.log, [
+    {
+      kind: taskFailedTurnSpentCodec.kind,
+      definitions: context.definitions(),
+      thread: spend.taskID,
+      payload: taskFailedTurnSpentCodec.encode({ taskID: spend.taskID, dollars: spend.dollars }),
+    },
+  ]);
 }

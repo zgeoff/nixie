@@ -18,7 +18,7 @@ test('it pauses a turn whose calls reached the budget at the counts before it pl
   });
 });
 
-test('it pauses a step that threw after its calls reached the budget, with no turn of its own', () => {
+test('it pauses a step that threw after its calls reached the budget, with no turn of its own, and records its spend', () => {
   expect(
     planTaskTurnEnd({
       used: { turns: 3, dollars: 0.5 },
@@ -30,7 +30,7 @@ test('it pauses a step that threw after its calls reached the budget, with no tu
     }),
   ).toStrictEqual({
     reached: { turns: 3, dollars: 0.75 },
-    failedDollars: null,
+    failedDollars: 0.25,
     isImpReleased: true,
   });
 });

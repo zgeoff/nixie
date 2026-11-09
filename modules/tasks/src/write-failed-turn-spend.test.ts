@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
-import { LeaseLostError } from './lease-lost-error';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
 import { seedStartedTask } from './test-utils/seed-started-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
@@ -21,12 +20,21 @@ async function setupTest() {
 
       return claim;
     },
-    readSpends: () =>
-      readRecords(tasks.context.log, { afterSequence: 0, kinds: ['task.failed_turn_spent'] }),
+    readSpends: async () => {
+      const spends = await readRecords(tasks.context.log, {
+        afterSequence: 0,
+        kinds: ['task.failed_turn_spent'],
+      });
+
+      return spends.map((entry) => ({
+        thread: entry.record.thread,
+        payload: entry.record.payload,
+      }));
+    },
   };
 }
 
-test("it writes the failed turn's dollars on the task's thread under its step's key", async () => {
+test("it writes the failed turn's dollars on the task's thread", async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
@@ -36,22 +44,14 @@ test("it writes the failed turn's dollars on the task's thread under its step's 
     brief: 'Find the depth at the north mooring.',
   });
 
-  const claim = await ctx.claimStartedTask(taskID);
-
-  await writeFailedTurnSpend(ctx.context, {
-    lease: claim.lease,
-    stepKey: claim.stepKey,
-    dollars: 0.03,
-  });
+  await writeFailedTurnSpend(ctx.context, { taskID, dollars: 0.03 });
 
   const spends = await ctx.readSpends();
 
-  expect(
-    spends.map((entry) => ({ thread: entry.record.thread, payload: entry.record.payload })),
-  ).toStrictEqual([{ thread: taskID, payload: { taskID, stepKey: claim.stepKey, dollars: 0.03 } }]);
+  expect(spends).toStrictEqual([{ thread: taskID, payload: { taskID, dollars: 0.03 } }]);
 });
 
-test('it refuses a step that lost its lease, and writes nothing', async () => {
+test('it writes the spend of a step that lost its lease to a stop', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
@@ -61,24 +61,12 @@ test('it refuses a step that lost its lease, and writes nothing', async () => {
     brief: 'Find the depth at the north mooring.',
   });
 
-  const claim = await ctx.claimStartedTask(taskID);
+  await ctx.claimStartedTask(taskID);
 
   await writeTaskControl(ctx.context, { taskID, control: 'stop' });
-
-  const written = writeFailedTurnSpend(ctx.context, {
-    lease: claim.lease,
-    stepKey: claim.stepKey,
-    dollars: 0.03,
-  });
-
-  await written.catch(() => {});
-
-  expect(written).rejects.toThrowWithMessage(
-    LeaseLostError,
-    `lease lost on task ${taskID} at generation ${String(claim.lease.generation)}`,
-  );
+  await writeFailedTurnSpend(ctx.context, { taskID, dollars: 0.03 });
 
   const spends = await ctx.readSpends();
 
-  expect(spends).toStrictEqual([]);
+  expect(spends).toStrictEqual([{ thread: taskID, payload: { taskID, dollars: 0.03 } }]);
 });

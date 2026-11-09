@@ -9,20 +9,18 @@ export interface TaskTurnStep {
   readonly limits: TaskLimits;
 }
 
+// The spend goes in before the pause, so the limit record counts nothing past it, and a pause that
+// a lost lease refuses still leaves the spend counted.
 export async function writeTaskTurnSpend(
   context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
   step: TaskTurnStep,
   plan: Pick<TaskTurnEndPlan, 'reached' | 'failedDollars'>,
 ): Promise<void> {
-  if (plan.reached !== null) {
-    await writeTaskLimitPause(context, { ...step, used: plan.reached });
+  if (plan.failedDollars !== null) {
+    await writeFailedTurnSpend(context, { taskID: step.lease.workID, dollars: plan.failedDollars });
   }
 
-  if (plan.failedDollars !== null) {
-    await writeFailedTurnSpend(context, {
-      lease: step.lease,
-      stepKey: step.stepKey,
-      dollars: plan.failedDollars,
-    });
+  if (plan.reached !== null) {
+    await writeTaskLimitPause(context, { ...step, used: plan.reached });
   }
 }

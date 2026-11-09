@@ -120,14 +120,15 @@ that the user paused or stopped keeps its state.
 A started task has a limit of turns and of dollars, which its start set or took from
 `models.limits.taskRun`. Each model turn record on the task's thread counts as one turn, and its
 token counts, priced with the task's profile, count as its dollars. Each summary of the task's
-session records the token counts of its calls too, and they count as dollars and as no turn. The
-config schema refuses a profile with no price table for any profile a task can run on, as
-[selectable models](./model-profiles.md#selectable-models) describes. A record sums its calls, and
-the per-call usage that the model API reports leaves out thinking tokens, so the count prices each
-record as one call. It therefore prices every cache write at the longer lifetime's price, and a turn
-whose calls together pass a profile's long-prompt size at the long-prompt prices. The count can run
-above the spend. One exception: a summary recorded by an earlier release kept no token counts, so it
-adds no dollars, and the count of a task that has one can fall below its spend.
+session records the token counts of its calls too, and they count as dollars and as no turn. Each
+`task.failed_turn_spent` record holds the dollars that a failed turn's calls spent, and they count
+as dollars and as no turn. The config schema refuses a profile with no price table for any profile a
+task can run on, as [selectable models](./model-profiles.md#selectable-models) describes. A record
+sums its calls, and the per-call usage that the model API reports leaves out thinking tokens, so the
+count prices each record as one call. It therefore prices every cache write at the longer lifetime's
+price, and a turn whose calls together pass a profile's long-prompt size at the long-prompt prices.
+The count can run above the spend. One exception: a summary recorded by an earlier release kept no
+token counts, so it adds no dollars, and the count of a task that has one can fall below its spend.
 
 Before each step runs a turn, the runner counts the task's turns and dollars. When either count has
 reached its limit, the step runs no turn. In one transaction it asks for a pause, writes a
@@ -145,24 +146,28 @@ reach the dollar limit, the runner interrupts the turn
 ([interrupts](./conversation-turns.md#interrupts)). Once the turn ends, the step asks for the pause
 and writes the same two records, with the counts it reached. The step sleeps the task's imp, even
 with work left, and its commit pauses the task. A step whose guest fails after its calls reach the
-limit asks for the pause too, so the step's retry waits for a raise and spends nothing more. A step
-whose guest fails below the limit writes a `task.failed_turn_spent` record on the task's thread
-instead, with the dollars its calls spent and the key of its step, and the count adds those dollars.
-Either way, a failed turn's spend counts toward the dollar limit, so the step's retry gets only the
-dollars that the failed turn left.
+limit asks for the pause too, so the step's retry waits for a raise and spends nothing more.
+
+A failed turn commits no turn record, so a step whose guest fails writes a `task.failed_turn_spent`
+record on the task's thread, with the dollars its calls spent, before any limit record. A step whose
+guest fails before any priced call writes none. The write checks no lease, because the calls spent
+the dollars whoever holds the lease now. A failed turn's spend therefore counts toward the dollar
+limit, and the step's retry gets only the dollars that the failed turn left.
 
 The interrupt leaves the turn's work not done, so the task keeps that work for the raise, as
 [interrupted work](#interrupted-work) describes.
 
 A `task.limit_reached` record holds the task's whole count at its turn's end, with the key of its
 step, and commits before that step's commit. When the step's commit also carries a turn record, the
-turn record counts the turn's spend. A turn that failed, or a step that stopped before its commit,
-leaves no turn record, so the limit record is the only record of that spend. The count therefore
+turn record counts the turn's spend. When the turn failed, its `task.failed_turn_spent` record
+counts the spend, and the limit record counts nothing past it. A step that stopped before its commit
+leaves neither record, so the limit record is the only record of that spend. The count therefore
 adds the dollars that a limit record counted past the records before it, unless that step's own
 commit carried a turn record. A retry takes the same step key, so the count settles each limit
 record at its step's end: the step's commit, its `task.step_errored` record or the
-`task.step_interrupted` record that a reclaim writes. That way a failed turn's spend still counts
-after a raise, and a raise that lands before a step's commit never counts the turn twice.
+`task.step_interrupted` record that a reclaim writes. That way the spend of a step that stopped
+before its commit still counts after a raise, and a raise that lands before a step's commit never
+counts the turn twice.
 
 While the newest limit record on the task's thread is `task.limit_reached`, a resume or a restart of
 the task refuses. The user raises the limit with the `task-raise` host command

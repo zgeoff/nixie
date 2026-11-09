@@ -199,7 +199,7 @@ test('it counts the dollars that a pause recorded for a turn that left no turn r
   expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
 });
 
-test('it counts the dollars of a failed turn that reached no limit, and no turn', async () => {
+test('it counts the dollars of a failed turn, and no turn', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.tasks.context.log, [
@@ -207,10 +207,53 @@ test('it counts the dollars of a failed turn that reached no limit, and no turn'
       kind: taskFailedTurnSpentCodec.kind,
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'tide-tables',
-      payload: taskFailedTurnSpentCodec.encode({
+      payload: taskFailedTurnSpentCodec.encode({ taskID: 'tide-tables', dollars: 0.03 }),
+    },
+    {
+      kind: taskStepErroredCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      payload: taskStepErroredCodec.encode({
         taskID: 'tide-tables',
         stepKey: 'tide-tables:1',
-        dollars: 0.03,
+        nextState: 'ready',
+        errors: 1,
+        errorLimit: 3,
+        claimableAt: 0,
+      }),
+    },
+  ]);
+
+  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+    input: 3,
+    cacheWrite: 3.75,
+    cacheWrite1h: 6,
+    cachedInput: 0.3,
+    output: 15,
+  });
+
+  expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
+});
+
+test('it counts the dollars of a failed turn that reached the limit once, past its pause', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: taskFailedTurnSpentCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      payload: taskFailedTurnSpentCodec.encode({ taskID: 'tide-tables', dollars: 0.03 }),
+    },
+    {
+      kind: taskLimitReachedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      payload: taskLimitReachedCodec.encode({
+        taskID: 'tide-tables',
+        stepKey: 'tide-tables:1',
+        used: { turns: 0, dollars: 0.03 },
+        limits: { turns: 25, dollars: 0.03 },
       }),
     },
     {
