@@ -65,6 +65,7 @@ import type {
   SessionCleanupCause,
   SessionDefinitions,
 } from './types';
+import { writeTaskTurnSpend } from './write-task-turn-spend';
 
 export interface NixieRunnerOptions extends SystemTaskOptions {
   readonly context: TasksContext;
@@ -473,15 +474,11 @@ async function runTaskTurn(
     next: ended.result?.next ?? null,
   });
 
-  if (plan.reached !== null) {
-    await writeTaskLimitPause(runner.options.context, {
-      lease: input.lease,
-      stepKey: input.stepKey,
-      startedBy: run.startedBy,
-      used: plan.reached,
-      limits: run.limits,
-    });
-  }
+  await writeTaskTurnSpend(
+    runner.options.context,
+    { lease: input.lease, stepKey: input.stepKey, startedBy: run.startedBy, limits: run.limits },
+    plan,
+  );
 
   if (plan.isImpReleased) {
     await releaseTaskImp(imp);

@@ -145,7 +145,11 @@ reach the dollar limit, the runner interrupts the turn
 ([interrupts](./conversation-turns.md#interrupts)). Once the turn ends, the step asks for the pause
 and writes the same two records, with the counts it reached. The step sleeps the task's imp, even
 with work left, and its commit pauses the task. A step whose guest fails after its calls reach the
-limit asks for the pause too, so the step's retry waits for a raise and spends nothing more.
+limit asks for the pause too, so the step's retry waits for a raise and spends nothing more. A step
+whose guest fails below the limit writes a `task.failed_turn_spent` record on the task's thread
+instead, with the dollars its calls spent and the key of its step, and the count adds those dollars.
+Either way, a failed turn's spend counts toward the dollar limit, so the step's retry gets only the
+dollars that the failed turn left.
 
 The interrupt leaves the turn's work not done, so the task keeps that work for the raise, as
 [interrupted work](#interrupted-work) describes.
