@@ -21,7 +21,7 @@ export async function readSessionTurn(
     // A forget can invalidate a task before its first session opens, and the task still starts.
     isFirstSession: step.marks.sessionKey === null,
 
-    isWorkCut: step.input.inbox.length === 0 && isTaskWorkCut(step.run.frame, step.marks),
+    isContinuation: step.input.inbox.length === 0 && isTaskWorkCut(step.run.frame, step.marks),
   });
 
   return {

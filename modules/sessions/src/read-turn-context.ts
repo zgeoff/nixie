@@ -34,7 +34,7 @@ export interface TurnContextQuery {
   readonly isFirstSession: boolean;
 
   // whether the turn carries on the work that an interrupt cut, with no new message to start it
-  readonly isWorkCut: boolean;
+  readonly isContinuation: boolean;
 }
 
 export interface TurnContext {
@@ -97,7 +97,7 @@ export async function readTurnContext(
     preamble: renderTurnPreamble(
       {
         start: pickStartNote(frame, query),
-        continuation: query.isWorkCut ? continuationNote : null,
+        continuation: query.isContinuation ? continuationNote : null,
         changes,
         retrieval,
         thread: query.taskID,

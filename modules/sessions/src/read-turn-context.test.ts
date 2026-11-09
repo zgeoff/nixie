@@ -47,7 +47,7 @@ test('it renders the system prompt with the session prompt override in force', a
       previousCore: null,
       isNewSession: true,
       isFirstSession: true,
-      isWorkCut: false,
+      isContinuation: false,
     },
   );
 
@@ -107,7 +107,7 @@ test("it puts no task board in the conversation's turn, with a started task in t
       previousCore: null,
       isNewSession: false,
       isFirstSession: false,
-      isWorkCut: false,
+      isContinuation: false,
     },
   );
 
@@ -162,7 +162,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
       previousCore: [{ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01', version: 1 }],
       isNewSession: false,
       isFirstSession: false,
-      isWorkCut: false,
+      isContinuation: false,
     },
   );
 
@@ -217,7 +217,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
       previousCore: [{ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01', version: 1 }],
       isNewSession: false,
       isFirstSession: false,
-      isWorkCut: false,
+      isContinuation: false,
     },
   );
 
@@ -256,7 +256,7 @@ test("it renders a started task's first turn with the task prompt, a start note,
       previousCore: null,
       isNewSession: true,
       isFirstSession: true,
-      isWorkCut: false,
+      isContinuation: false,
     },
   );
 
@@ -296,7 +296,7 @@ test('it tells a task started with no report to send its starter none', async ()
       previousCore: null,
       isNewSession: true,
       isFirstSession: true,
-      isWorkCut: false,
+      isContinuation: false,
     },
   );
 
@@ -327,7 +327,7 @@ test("it gives a started task's rebuilt session no start note", async () => {
       previousCore: null,
       isNewSession: true,
       isFirstSession: false,
-      isWorkCut: false,
+      isContinuation: false,
     },
   );
 
@@ -354,7 +354,7 @@ test('it tells a started task whose cut work it carries on to continue that work
       previousCore: null,
       isNewSession: false,
       isFirstSession: false,
-      isWorkCut: true,
+      isContinuation: true,
     },
   );
 
