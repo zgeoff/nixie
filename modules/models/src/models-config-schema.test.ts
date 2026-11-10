@@ -113,7 +113,7 @@ test.each([
 });
 
 test.each([
-  ['claude-haiku-5-5', 200_000],
+  ['claude-haiku-4-5', 200_000],
   ['claude-sonnet-5-5', 1_000_000],
   ['claude-fable-5-2', 400_000],
   ['claude-haiku-5-5[1m]', 1_000_000],
