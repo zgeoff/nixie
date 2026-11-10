@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.70.1](https://github.com/zgeoff/nixie/compare/v0.70.0...v0.70.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **models:** bump the agent sdk to 0.3.322 for the 1m window of fable ([#985](https://github.com/zgeoff/nixie/issues/985)) ([814cd6c](https://github.com/zgeoff/nixie/commit/814cd6c75239f801875b953a1c30a462d4b9b6b4))
+
 ## [0.70.0](https://github.com/zgeoff/nixie/compare/v0.69.0...v0.70.0) (2026-11-09)
 
 
