@@ -1,7 +1,9 @@
-// This file copies how Claude Code 2.1.290, the CLI that the pinned Agent SDK ships, picks a model's
-// context window: its model-ID canonicalizer, then its bundled catalog.
+// This file copies how Claude Code 2.1.322, the CLI that the pinned Agent SDK ships, picks a model's
+// context window: its model-ID canonicalizer, then its bundled catalog. Every catalog entry that the
+// CLI marks native_1m has a 1M window; every other model gets the default.
 
 const nativeMillionModels = new Set([
+  'claude-haiku-5-5',
   'claude-sonnet-5',
   'claude-sonnet-5-5',
   'claude-opus-4-7',
@@ -10,8 +12,10 @@ const nativeMillionModels = new Set([
   'claude-opus-5-5',
   'claude-fable-5',
   'claude-fable-5-1',
+  'claude-fable-5-2',
   'claude-mythos-5',
   'claude-mythos-5-1',
+  'claude-mythos-5-2',
   'claude-mythos-preview',
 ]);
 
@@ -28,14 +32,16 @@ export function getCLIContextWindow(model: string): number {
 
 const catalogModels = [
   'claude-3-5-haiku',
-  'claude-haiku-4-5',
   'claude-3-5-sonnet',
   'claude-3-7-sonnet',
-  'claude-sonnet-4-0',
-  'claude-sonnet-4-5',
-  'claude-sonnet-4-6',
-  'claude-sonnet-5',
-  'claude-sonnet-5-5',
+  'claude-fable-5',
+  'claude-fable-5-1',
+  'claude-fable-5-2',
+  'claude-haiku-4-5',
+  'claude-haiku-5-5',
+  'claude-mythos-5',
+  'claude-mythos-5-1',
+  'claude-mythos-5-2',
   'claude-opus-4-0',
   'claude-opus-4-1',
   'claude-opus-4-5',
@@ -44,21 +50,27 @@ const catalogModels = [
   'claude-opus-4-8',
   'claude-opus-5',
   'claude-opus-5-5',
-  'claude-fable-5',
-  'claude-fable-5-1',
-  'claude-mythos-5',
-  'claude-mythos-5-1',
+  'claude-sonnet-4-0',
+  'claude-sonnet-4-5',
+  'claude-sonnet-4-6',
+  'claude-sonnet-5',
+  'claude-sonnet-5-5',
   'claude-3-opus',
   'claude-3-sonnet',
   'claude-3-haiku',
 ];
 
-// The CLI tries these families in this order for an ID it cannot parse. The families it tries
-// after them all have the smaller window, so the copy stops here.
+// The CLI tries these families in this order for an ID it cannot parse. A 5.2 entry matches only
+// where no 3 digits follow it, so a dated Fable 5 ID such as claude-fable-5-20261101 stays Fable 5.
+// The families it tries after these all have the smaller window, so the copy stops here.
 const familyFallbacks = [
+  { model: 'claude-fable-5-2', pattern: /claude-fable-5-2(?!\d{3})/u },
+  ...['claude-fable-5-1', 'claude-fable-5'].map((model) => ({
+    model,
+    pattern: new RegExp(model, 'u'),
+  })),
+  { model: 'claude-mythos-5-2', pattern: /claude-mythos-5-2(?!\d{3})/u },
   ...[
-    'claude-fable-5-1',
-    'claude-fable-5',
     'claude-mythos-5-1',
     'claude-mythos-5',
     'claude-opus-5-5',
@@ -74,10 +86,15 @@ const familyFallbacks = [
     (model) => ({ model, pattern: new RegExp(model, 'u') }),
   ),
   { model: 'claude-sonnet-4-0', pattern: /claude-sonnet-4(?!-\d(?!\d))/u },
+  { model: 'claude-haiku-5-5', pattern: /claude-haiku-5-5/u },
 ];
 
 function resolveCLIModelName(model: string): string {
-  const name = model.toLowerCase();
+  // the CLI reads a dotted version, such as claude-opus-4.7, as its dashed form
+  const name = model
+    .toLowerCase()
+    .replaceAll(/(?<version>claude-(?:[a-z]+-)?\d{1,2})\.(?=\d)/gu, '$<version>-');
+
   const parsed = parseModelName(name);
 
   if (parsed !== null && !parsed.hasTrailer) {

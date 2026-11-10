@@ -11,7 +11,25 @@ minimumReleaseAge = 604800
 # first-party packages skip the gate; their own dependencies stay behind it.
 # Renovate bumps @zgeoff and @impz packages as soon as they publish, so each
 # one nixie uses needs an entry here, or bun install refuses the bump.
+# @anthropic-ai/claude-agent-sdk 0.3.322 (published 2026-11-10) ages past the gate ~2026-11-17 — remove then
+# @anthropic-ai/claude-agent-sdk-darwin-arm64 0.3.322 (published 2026-11-10) ages past the gate ~2026-11-17 — remove then
+# @anthropic-ai/claude-agent-sdk-darwin-x64 0.3.322 (published 2026-11-10) ages past the gate ~2026-11-17 — remove then
+# @anthropic-ai/claude-agent-sdk-linux-arm64 0.3.322 (published 2026-11-10) ages past the gate ~2026-11-17 — remove then
+# @anthropic-ai/claude-agent-sdk-linux-arm64-musl 0.3.322 (published 2026-11-10) ages past the gate ~2026-11-17 — remove then
+# @anthropic-ai/claude-agent-sdk-linux-x64 0.3.322 (published 2026-11-10) ages past the gate ~2026-11-17 — remove then
+# @anthropic-ai/claude-agent-sdk-linux-x64-musl 0.3.322 (published 2026-11-10) ages past the gate ~2026-11-17 — remove then
+# @anthropic-ai/claude-agent-sdk-win32-arm64 0.3.322 (published 2026-11-10) ages past the gate ~2026-11-17 — remove then
+# @anthropic-ai/claude-agent-sdk-win32-x64 0.3.322 (published 2026-11-10) ages past the gate ~2026-11-17 — remove then
 minimumReleaseAgeExcludes = [
+  "@anthropic-ai/claude-agent-sdk",
+  "@anthropic-ai/claude-agent-sdk-darwin-arm64",
+  "@anthropic-ai/claude-agent-sdk-darwin-x64",
+  "@anthropic-ai/claude-agent-sdk-linux-arm64",
+  "@anthropic-ai/claude-agent-sdk-linux-arm64-musl",
+  "@anthropic-ai/claude-agent-sdk-linux-x64",
+  "@anthropic-ai/claude-agent-sdk-linux-x64-musl",
+  "@anthropic-ai/claude-agent-sdk-win32-arm64",
+  "@anthropic-ai/claude-agent-sdk-win32-x64",
   "@impz/client",
   "@impz/testing",
   "@zgeoff/agent-hooks",

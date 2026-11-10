@@ -113,8 +113,9 @@ test.each([
 });
 
 test.each([
-  ['claude-haiku-5-5', 200_000],
+  ['claude-haiku-4-5', 200_000],
   ['claude-sonnet-5-5', 1_000_000],
+  ['claude-fable-5-2', 400_000],
   ['claude-haiku-5-5[1m]', 1_000_000],
   ['anthropic/claude-sonnet-5-5', 400_000],
   ['claude-mythos-preview', 1_000_000],
@@ -146,7 +147,7 @@ test('it refuses a context cap larger than the window the CLI assumes for the mo
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
-        model: 'claude-haiku-5-5',
+        model: 'claude-haiku-4-5',
         effort: 'medium',
         context_tokens: 200_001,
       },
@@ -157,7 +158,7 @@ test('it refuses a context cap larger than the window the CLI assumes for the mo
   expect(result.error?.issues).toPartiallyContain({
     path: ['profiles', 'chat-direct', 'context_tokens'],
     message:
-      'the context cap of 200001 tokens is larger than the 200000-token window the Claude CLI assumes for claude-haiku-5-5',
+      'the context cap of 200001 tokens is larger than the 200000-token window the Claude CLI assumes for claude-haiku-4-5',
   });
 });
 
