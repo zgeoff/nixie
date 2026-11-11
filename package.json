@@ -64,7 +64,7 @@
       "@types/react-dom": "19.3.0",
       "@vitejs/plugin-react": "6.1.2",
       "@zgeoff/kysely-bun-sqlite": "0.3.2",
-      "@zgeoff/rig": "0.1.6",
+      "@zgeoff/rig": "0.2.3",
       "@zgeoff/std": "0.4.3",
       "ajv": "8.20.0",
       "babel-plugin-react-compiler": "1.0.0",
@@ -141,7 +141,8 @@
     "ci:release:write-release-notes": "bun scripts/release/write-release-notes.ts",
     "test:model-api": "rig model-api",
     "test:imp": "rig imp --config=bunfig.imp.toml",
-    "check:docs": "chex prose length links readmes skill"
+    "check:docs": "chex prose length links readmes skill",
+    "eval": "rig eval"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
