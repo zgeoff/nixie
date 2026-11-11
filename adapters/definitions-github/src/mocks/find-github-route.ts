@@ -37,9 +37,8 @@ export function findGitHubRoute<Name extends string>(
 }
 
 function buildPathPattern(path: string): RegExp {
-  const source = path.replaceAll(
-    /(?<kind>[:*])(?<param>\w+)/gu,
-    (_, kind: string, param: string) => (kind === '*' ? `(?<${param}>.+)` : `(?<${param}>[^/]+)`),
+  const source = path.replaceAll(/(?<kind>[:*])(?<param>\w+)/gu, (_, kind: string, param: string) =>
+    kind === '*' ? `(?<${param}>.+)` : `(?<${param}>[^/]+)`,
   );
 
   return new RegExp(`^${source}$`, 'u');
