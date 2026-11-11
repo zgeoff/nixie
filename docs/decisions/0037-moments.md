@@ -1,7 +1,7 @@
 # 0037: Moments
 
 - Date: 2026-10-11
-- Updated: 2026-10-31
+- Updated: 2026-11-11
 - Status: decided
 - Design: [moments](../design/platform/memory/moments.md)
 
@@ -19,14 +19,17 @@ These choices settle moments:
 2. **Your rules decide who keeps one.** The moment tools declare `note`, as the harmless writes
    inside nixie do under [0048](0048-one-approval-system.md), so nixie keeps moments on its own
    wherever your rules allow `note`. A model keeps a span of its own thread only: the conversation
-   alone keeps a moment from its conversation with you, a task keeps one from its own work, and the
-   memory writer neither keeps nor flags one.
+   alone keeps a moment from its conversation with you, and a task keeps one from its own work, with
+   the moment write tools that its start names under [0051](0051-memory-tools-on-tasks.md).
 3. **Only you write the note.** A model writes a title or a reflection, and each reflection carries
    its model ID and date. A model edits only its own reflections.
 4. **Keep first, reflect later.** `moment.keep` takes a title and refuses a reflection, and a model
-   writes its reflection on a later reading of the span.
+   writes its reflection on a later reading of the span. No built-in task writes reflections: a task
+   writes them with the ordinary moment tools, as the example task definition of
+   [0050](0050-no-built-in-memory-tasks.md) does.
 5. **Read on purpose.** A model reaches a moment only through a tool call, from a search or from a
-   memory item's "because" link, and never through per-turn retrieval or the pinned core.
+   memory item's "because" link, and never through the pinned core or the other memory that nixie
+   brings to a session or a turn, under [0052](0052-the-lean-memory-index.md).
 6. **No new store.** Moments live in the event log, its projections and the key store, so the
    backups, the forget path and the export cover them unchanged. Destroying a moment shreds its own
    text, and the span's records stay.
@@ -44,13 +47,13 @@ These choices settle moments:
 - A memory item holds a fact without its reason. A rule applied to a case it does not cover needs
   the conversation where the rule was set, and a link leads a model from the fact to that
   conversation.
-- A moment kept out of per-turn retrieval stays whole and in its time, and a model reads it on
-  purpose. Similarity search into context would turn moments into a second store of facts.
+- A moment kept out of the memory that nixie brings to a turn stays whole and in its time, and a
+  model reads it on purpose. Similarity search into context would turn moments into a second store
+  of facts.
 - The note records why a moment mattered at the time, so a model-written note would be a
   reconstruction.
 - A moment from a conversation with you records what that conversation judged mattered, so no other
-  task marks the conversation's records. The memory writer reads messages for facts and has no part
-  in which conversations matter.
+  task marks the conversation's records.
 - A reflection written in the turn that keeps the moment holds that turn's view, and one written
   after a second reading weighs the whole stretch.
 - A count the model reads keeps keeping deliberate, and a cap would refuse the one moment that
@@ -96,3 +99,6 @@ These choices settle moments:
   keep result.
 - 2026-10-31: the memory write tools declare `memory_write` under 0048, so a moment shares `note`
   with the other harmless writes inside nixie, not with memory writes.
+- 2026-11-11: no memory writer exists under 0050, a task holds the moment write tools that its start
+  names under 0051, a task writes reflections with the ordinary moment tools, and "per-turn
+  retrieval" gives way to the memory that nixie brings to a session or a turn under 0052.

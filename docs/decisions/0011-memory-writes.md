@@ -1,7 +1,7 @@
 # 0011: Which memory writes skip review
 
 - Date: 2026-10-08
-- Updated: 2026-10-31
+- Updated: 2026-11-11
 - Status: decided
 - Design: [memory writes](../design/platform/memory/writes.md)
 - Research:
@@ -63,10 +63,11 @@ Retiring an item from chat, as "forget that" does under
 intent and the exact item and version, and the checker tests the request against that item. It does
 not need the old fact's destination tokens repeated.
 
-Consolidation, which merges or rewrites existing memory items in bulk, is a proposal that shows the
-diff. Every proposal is asynchronous and never blocks: the task and the conversation carry on, and
-you answer when you choose, singly or through the approval digest from
-[0006](0006-approval-record.md).
+No built-in task merges or rewrites memory items in bulk, under
+[0050](0050-no-built-in-memory-tasks.md). A task that tidies memory writes through the ordinary
+memory tools, so each rewrite is a write of its own under the rules above. Every proposal is
+asynchronous and never blocks: the task and the conversation carry on, and you answer when you
+choose, singly or through the approval digest from [0006](0006-approval-record.md).
 
 ## Why
 
@@ -138,3 +139,5 @@ you answer when you choose, singly or through the approval digest from
   nixie sees the pinned count and the core's tokens against its budget.
 - 2026-10-31: remember, edit and retire declare `memory_write` under 0048, so these checks are the
   default when no rule matches, and the starter rule that allows notes no longer reaches them.
+- 2026-11-11: the built-in consolidator is deleted under 0050, so no bulk rewrite arrives as one
+  diff, and each rewrite by a task is a write of its own.

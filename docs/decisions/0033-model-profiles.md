@@ -1,7 +1,7 @@
 # 0033: Model profiles and model cost
 
 - Date: 2026-10-10
-- Updated: 2026-10-16
+- Updated: 2026-11-11
 - Status: decided
 - Design: [model profiles](../design/platform/core/models.md),
   [budgets](../design/platform/policy/budgets.md)
@@ -9,13 +9,12 @@
 nixie reaches every model through a model profile: an Anthropic-compatible base URL, a credential
 and its auth header, a model ID, a reasoning effort, an optional provider pin, a prompt cache
 lifetime, and a price table. The deployment configuration maps each model role to a profile: the
-conversation, other tasks, workers, the checker and the memory writer. A role left unset uses the
-conversation's profile, and an unset conversation role stops nixie at start.
+conversation, other tasks, workers and the checker. A role left unset uses the conversation's
+profile, and an unset conversation role stops nixie at start.
 
 The conversation writes its prompt cache entries with its profile's cache lifetime, 5 minutes or 1
 hour. A profile that sets no lifetime gets 5 minutes, and the production deployment's conversation
-profile sets 1 hour. The checker, the memory writer and the memory consolidator write 5-minute
-entries on any profile.
+profile sets 1 hour. The checker writes 5-minute entries on any profile.
 
 Model limits count dollars, tokens and turns, each with a generous default that the deployment
 configuration overrides. nixie computes dollars from each response's token counts and the profile's
@@ -26,7 +25,7 @@ prices, never from the cost the Agent SDK reports.
 - The Agent SDK talks to any Anthropic-compatible endpoint, so one setting moves a role between a
   direct provider, an aggregator and Anthropic without code changes.
 - Roles differ in what they need from a model, such as a short wait for a conversation reply and
-  care over evidence for the memory writer, so each role names its own profile.
+  care over evidence for the checker, so each role names its own profile.
 - The SDK prices every model at Anthropic's rates, which is wrong for any other model and notional
   on a flat subscription.
 - A conversation turn more than 5 minutes after the last writes its whole context to the cache again
@@ -34,8 +33,8 @@ prices, never from the cost the Agent SDK reports.
   more to write, so the longer lifetime pays off only when enough of the gaps between bursts of
   turns fall between 5 and 60 minutes; the
   [cache lifetime spike](../../research/cache-lifetime/README.md) puts that share at about 42%.
-- The checker, the memory writer and the memory consolidator start a fresh session for each run, so
-  a 1-hour entry would only cost more to write.
+- The checker starts a fresh session for each check, so a 1-hour entry would only cost more to
+  write.
 - Dollars bound a metered route, tokens bound load on a flat subscription, and turns catch a loop
   whatever the price, so no single measure covers every route.
 
@@ -64,3 +63,5 @@ prices, never from the cost the Agent SDK reports.
 
 - 2026-10-16: added the profile's prompt cache lifetime, 5 minutes by default and 1 hour on the
   production conversation profile.
+- 2026-11-11: the model roles for the memory writer and the memory consolidator go with the delete
+  of both built-in tasks under 0050.

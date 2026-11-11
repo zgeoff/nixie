@@ -1,6 +1,7 @@
 # 0048: One approval system
 
 - Date: 2026-10-31
+- Updated: 2026-11-11
 - Status: decided
 - Design: [proposals and approvals](../design/platform/policy/approvals.md),
   [memory writes](../design/platform/memory/writes.md)
@@ -41,11 +42,10 @@ caller is untrusted.
 
 - **The `memory_write` effect.** Memory writes get their own
   [effect](../design/platform/policy/decision-point.md#effects), `memory_write`, on remember, edit
-  and retire from the conversation and the [memory writer](../architecture/memory/writer.md), so the
-  starter `allow-notes` rule never switches the gate off by accident. `allow-notes` matches the
-  `note` effect, which stays on the harmless or proposal-producing writes inside nixie: skill writes
-  and reloads, memory pin, unpin, rate and comment, consolidator suggestions, moments, self-notes,
-  `task.message` and `task.start`.
+  and retire, from the conversation and from a task, so the starter `allow-notes` rule never
+  switches the gate off by accident. `allow-notes` matches the `note` effect, which stays on the
+  harmless or proposal-producing writes inside nixie: skill writes and reloads, memory pin and
+  unpin, moments, self-notes, `task.message` and `task.start`.
 - **The gate as the default.** When no rule matches a memory write, every check of the gate runs,
   and the checks decide whether the write applies at once with a notice and undo, or becomes a
   proposal.
@@ -89,3 +89,11 @@ caller is untrusted.
 - `memory.remember` takes the item's subject as an argument, so it writes self-notes too. A tool's
   effects are fixed per tool, and self-notes keep `note`, so a self-note write needs a tool of its
   own that declares `note`.
+
+## Changes
+
+- 2026-11-11: the memory writer and the consolidator are deleted under
+  [0050](0050-no-built-in-memory-tasks.md), so the lists drop the memory writer, consolidator
+  suggestions and the comment on them; `memory.rate` goes under
+  [0052](0052-the-lean-memory-index.md); a task holds the memory write tools under
+  [0051](0051-memory-tools-on-tasks.md).
