@@ -398,9 +398,10 @@ nixie's interfaces, external MCP servers, credentials, search and code.
 - [0047: What the model learns about a connection that stops working](decisions/0047-connections-that-stop-working.md)
   — a line in the model's context for each connection that is not healthy, and the
   `connection_unavailable` error on a call
-- [0054: Sandbox sizes and the memory-kill signal](decisions/0054-sandbox-sizes-and-the-memory-kill-signal.md)
-  — the smaller sizes ship without waiting for the runtime, with one read on the sandbox port and a
-  log line for each memory kill
+- [0054: The sandbox sizes ship first](decisions/0054-the-sandbox-sizes-ship-first.md) — the smaller
+  sizes ship without waiting for the runtime's reserved-memory work
+- [0056: A wrapper logs each memory kill](decisions/0056-a-wrapper-logs-each-memory-kill.md) — one
+  read on the sandbox port and a log line for each memory kill
 
 ### Deployment
 

@@ -1,179 +1,244 @@
 # What memory a turn brings
 
-On each turn, nixie can put up to 3 memory items in the turn's blocks without a tool call from the
-agent. This doc covers the one method through which the sessions module asks the memory module for
-those items, and trigger push, the one way the memory module picks them. Trigger push exists because
-the agent sees [the memory index](memory-index.md) only when a session opens. An item whose trigger
-phrase matches your message reaches the turn even when the agent does not think to read it.
-[Decision 0052](../../decisions/0052-the-lean-memory-index.md) records the choices.
+- **Status:** draft
+- **Decision records:** [0052](../../decisions/0052-the-lean-memory-index.md)
+- **Work items:** trigger push builds the port and trigger push beside the built similarity search.
+  The similarity push cleanup deletes the similarity search.
 
-"Built" states what the code does. Every section after it states the design, which is not built. The
-sketches in `sketches/memory-index/` hold the shapes, and this doc holds the rules. The
-[glossary](../../glossary.md) defines memory item, self-note, retire and forget.
-[The labels of a memory item](memory-labels.md) defines trigger phrase, and
-[the revision](memory-revision.md) defines text version. Open items are in
-[the open list](open/memory-index.md), each marked here as `(open: <name>)`. The work is in
-[the slices](slices/memory-index.md).
+On each turn, nixie can place up to 3 memory items in the turn's blocks without a tool call: the
+items whose trigger phrases match your message. The agent sees the memory index only when a session
+opens, so trigger push brings an item the agent did not think to read. The sessions module asks once
+per turn through one port method, and the memory module picks and places the items.
 
-Terms of this doc:
+Terms of this doc, beside the [glossary](../../glossary.md) and [the labels](memory-labels.md):
 
-- **push:** a method that picks memory items for a turn without a tool call. The design has one.
-- **ask:** the argument of `readTurnMemory`, and the call itself.
-- **trigger push:** the push that matches the turn's message against trigger phrases.
-- **pick:** one item that a push picked for a turn.
+- **push:** a way to pick items for a turn without a tool call.
+- **pick:** one item a push picked.
 - **place:** load a pick's text and put it in a block of the turn.
-- **recall record:** a record of the kind `memory.recalled`. It lists the item versions whose text
-  nixie gave the model, with their scores, and has no text itself.
-- **held:** a session holds a text version of an item once a recall record lists that version and
-  the turn of that record ended.
-- **floor:** the lowest score at which a match counts.
-- **encoder:** the embedding model that the store's vector search uses. A deployment can run without
-  one.
+- **held:** a session holds a text version once a recall record lists it and that record's turn
+  ended.
+- **excluded words:** the names of you and the agent, which never count as a match.
+- **encoder:** the embedding model of the store's vector search. A deployment can run without one.
 
-## Built
+## Shape
 
-- The sessions module builds one similarity search from the turn's text and the 5 `retrieval_*`
-  config keys, in `readTurnRetrieval` and `readTurnContext`. It sends the search to memory through
-  `recall` and `recallMessages` on `ConversationMemory`, the interface it owns.
-- `readRecall` appends a recall record for every search of a turn, a search that finds nothing
-  included.
-- `readTurnRetrieval` and `readTurnContext` catch nothing. When a search or a read of the log
-  rejects, the turn's ask for memory rejects.
-- `retrieval_self_notes` is a separate cap for self-notes.
-- The agent rates what a turn placed with the tool `memory.rate`. The tool rates the items of the
-  thread's newest recall record (`readLatestRecall`) and writes `memory.rated` records. The API
-  procedure `memory/readRatingNotes` reads the rating notes, and the web client's step view shows
-  them.
-- The check of a task start treats `memory.rate` as a memory write tool, as
-  [the memory write tools on a task](memory-task-tools.md) describes.
+```mermaid
+flowchart LR
+  turn[turn opens] -->|readTurnMemory| select[selectTurnMemory]
+  select -->|pickTurnPushes| pushes[trigger push]
+  select -->|buildPushExclusions| pushes
+  pushes -->|TriggerIndex.readMatches| picks
+  picks --> place[placeTurnMemory, under the delivery lock]
+  place -->|one memory.recalled| log[event log]
+  place -->|items, self-notes| blocks[retrieved-memory, retrieved-self-notes]
+```
 
-## The port
+## Contracts
 
-Shape: [the port and its ask](sketches/memory-index/02-types.ts), section L. Usage:
-[one ask per turn](sketches/memory-index/01-usage.ts), section G.
+```ts
+const turnMemory = await memory.readTurnMemory({
+  text: 'is the piano out of tune again?',
+  thread,
+  excludedWords: ['Robin'],
+  held: { readVersions, readMessages },
+});
+// → { kind: 'placed', items: [/* the piano item */], selfNotes: [], messages: [] }
+//   or { kind: 'none' } when nothing passes the floor
+```
 
-- The sessions module asks the memory module once per turn, through `readTurnMemory` on
-  `ConversationMemory`. `readTurnMemory` is the only method of the interface that brings memory to a
-  turn. The memory module decides which pushes to use.
-- The ask has the turn's text, the thread, the words to leave out of the match (`excludedWords`),
-  and `held`, 2 functions that read what the session holds. It has no cap, no floor and no push
-  name.
-- The 2 functions of `held` are lazy. When every push is off, or the turn has no text, nixie reads
-  nothing from the log.
-- `readTurnMemory` returns `placed` with the items, the self-notes and the messages, or `none`.
-- For a session whose start gives it no memory, such as a task with `memory: none`, the sessions
-  module returns `none` itself and asks nothing.
-- The memory store implements `readTurnMemory`. The composition root in `apps/server` passes the
-  whole memory config to the store, and gives the store to the conversation's runner and the task
-  runner.
-- The store reaches no outside system, so `adapters/` has nothing for this port.
-  [The rules for any port](port-rules.md) apply.
-- `ConversationMemorySettings` has 3 fields: `rebuildTokens`, `ownerName` and `agentNames`. The
-  sessions module has no setting that tunes a push.
-- `held.readMessages` and the `messages` of a `placed` result exist, and no push uses them. The
-  `messages` list is always empty. (open: messages on the port)
-- The stub in the sessions module's test utils implements `readTurnMemory`. The tests of caps and
-  floors are in the memory module.
-- When a search or a read of the log rejects, `readTurnMemory` rejects. The port adds no catch.
-  (open: rejected ask)
+```ts
+// sessions module: the built port. readTurnMemory replaces recall and recallMessages.
+interface ConversationMemory {
+  // …existing methods: readPinnedCore, readPinnedCoreUse, readShortIDs, and readIndex from the index design
+  readonly readTurnMemory: (ask: TurnMemoryAsk) => Promise<TurnMemory>;
+}
 
-## The selection
+interface TurnMemoryAsk {
+  readonly text: string;
+  readonly thread: string;
+  readonly excludedWords: readonly string[];
+  readonly held: SessionHeld; // no cap, no floor, no push name
+}
 
-Shape: [the selection types and functions](sketches/memory-index/02-types.ts), section M. Flow:
-[select, then place](sketches/memory-index/03-flow.ts), section H.
+interface SessionHeld {
+  readonly readVersions: () => Promise<readonly MemoryRef[]>; // lazy
+  readonly readMessages: () => Promise<readonly number[]>; // lazy; see Open questions
+}
 
-`readTurnMemory` works in 2 stages: `selectTurnMemory` picks, then `placeTurnMemory` places. Each
-function of the selection is the one export of its file. `selectTurnMemory` appends nothing. It
-returns `selected` with the picks, or `none`. Its steps, in order:
+type TurnMemory =
+  | {
+      readonly kind: 'placed';
+      readonly items: readonly MemoryItem[];
+      readonly selfNotes: readonly MemoryItem[];
+      readonly messages: readonly PastMessage[]; // sessions module's PastMessage; empty once the similarity push is gone
+    }
+  | { readonly kind: 'none' };
 
-1. `pickTurnPushes` returns the pushes that are on. Trigger push is on when `trigger_items` is
-   above 0. With no push on, `selectTurnMemory` returns `none`, before any read.
-2. With blank text, it returns `none`, before any read.
-3. It reads the state of each item and the versions the session holds. `buildPushExclusions` then
-   lists the items that no push may pick: a lapsed item, a pinned item, and an item whose current
-   text version the session holds. Only `buildPushExclusions` decides which items those are.
-4. It calls each push in order. A push gets that list, plus every pick so far, as `excludedIDs`. A
-   push applies only its own cap and floor.
-5. With one pick or more, it returns `selected`. Otherwise it returns `none`.
+// ConversationMemorySettings keeps rebuildTokens, ownerName and agentNames, and loses every retrieval* field.
+```
 
-- `pickTurnPushes` returns a list. The list is empty, or has trigger push alone.
-- The state of an item has 3 flags: pinned, self-note and lapsed. A lapsed item is one whose end
-  time passed. The selection reads no other flag of an item.
-- When no match is at or over the floor, or every such item is pinned or held, `selectTurnMemory`
-  returns `none`.
+```ts
+// memory module. One exported function per file.
+declare function selectTurnMemory(
+  sources: TurnSources,
+  settings: TurnMemorySettings,
+  ask: TurnMemoryAsk,
+): Promise<
+  | { kind: 'selected'; picks: readonly PushPick[]; messages: readonly PastMessage[] }
+  | { kind: 'none' }
+>;
+declare function pickTurnPushes(settings: TurnMemorySettings): readonly SelectPush[];
+declare function buildPushExclusions(
+  states: readonly ItemState[],
+  held: readonly MemoryRef[],
+): readonly string[];
 
-## The placing
+type SelectPush = (
+  sources: TurnSources,
+  turn: TurnMemoryAsk & { states: readonly ItemState[]; excludedIDs: readonly string[] },
+) => Promise<{ picks: readonly PushPick[]; messages: readonly PastMessage[] }>;
 
-`placeTurnMemory` works under the delivery lock, the lock that the store takes for every write of a
-recall record:
+interface TurnSources {
+  readonly index: MemoryIndex; // the store's built in-memory item index
+  readonly vectors: VectorIndex | null; // built; null with no encoder
+  readonly triggers: TriggerIndex;
+  readonly readItemStates: () => Promise<readonly ItemState[]>;
+}
 
-1. It loads the picks in their order.
-2. It drops a pick whose item was pinned, retired or forgotten after the selection. It does not pick
-   another item in its place.
-3. It appends one recall record with the picks' references, their scores and the search mode. nixie
-   writes no text, no trigger phrase and no push name to the record.
-4. It returns the items for the `retrieved-memory` block and the self-notes for the
-   `retrieved-self-notes` block. Trigger push adds no block type.
+interface TurnMemorySettings {
+  readonly trigger: { readonly items: number; readonly minScore: number };
+  // the similarity group lives here until the similarity push cleanup deletes it
+}
 
-- When every pick is dropped, `placeTurnMemory` returns `none` and nixie appends nothing.
-- A recall record means "the model read these texts", and the sessions module reads it to work out
-  what a session holds. So a turn that places nothing has no recall record.
-- When a turn places nothing, nixie records no reason for it.
-- Trigger push adds no record kind, no field on `model.turn_ended` and no field on
-  `memory.recalled`. The members `retrieved` and `retrievedMessages` of the turn-ended record have
-  the shape of the built code. So after a rollback, a release from before trigger push parses every
-  record.
+interface ItemState {
+  itemID: string;
+  version: number; // the text version
+  isPinned: boolean;
+  isSelf: boolean;
+  isLapsed: boolean; // its end time passed
+}
 
-## The trigger match
+interface PushPick extends MemoryRef, MatchScores {
+  readonly isSelf: boolean;
+}
 
-- The memory module matches the message against every trigger phrase, with the keyword search and
-  the vector search that the store uses for item text. An item's score is the score of its best
-  trigger phrase.
-- `TriggerIndex` is a search structure over trigger phrases. It exists only in RAM, because nixie
-  stores trigger phrases only encrypted under each item's key. The store rebuilds it at each start,
-  as it rebuilds its in-memory item index.
-- The selection calls one method of `TriggerIndex`, `readMatches`, which returns one match per item.
-  (open: trigger match shape)
-- nixie picks an item only when its score is at or over `trigger_min_score`.
-- Trigger push places at most `trigger_items` items on a turn.
-- Self-notes count toward `trigger_items` with other items. They have no cap of their own.
-- Trigger push never picks an item with no trigger phrase.
-- When the deployment has no encoder, the match is by keyword only, and the recall record has the
-  keyword search mode.
+// An in-memory search over trigger phrases, rebuilt at each start.
+interface TriggerIndex {
+  readonly readMatches: (
+    text: string,
+    options: {
+      limit: number;
+      minScore: number;
+      excludedIDs: readonly string[];
+      excludedWords: readonly string[];
+    },
+  ) => Promise<readonly (MatchScores & { itemID: string })[]>; // one per item, scored by its best phrase
+}
+```
 
-## The config keys
+```yaml
+# deployment config, memory module
+memory:
+  trigger_items: 3 # the most items trigger push places on a turn; 0 turns it off
+  # trigger_min_score: the floor of a match. The trigger push item sets its default.
+```
 
-Shape: [the keys](sketches/memory-index/02-types.ts), section N.
+## Constraints
 
-- `memory.trigger_items` is the most items trigger push places on a turn. Its default is 3, and 0
-  turns trigger push off.
-- `memory.trigger_min_score` is the floor of a trigger match. The design sets no default number yet:
-  the default is a high floor that the builder picks. (open: trigger floor)
-- A score depends on the encoder, so a floor measured with one encoder is wrong for another.
-- These 2 keys are the only config keys for what a turn brings. The memory config schema is strict,
-  so nixie refuses to start on a config file with a key the schema lacks, such as a `retrieval_*`
-  key.
+### The ask
 
-## What the designed system does not have
+- `readTurnMemory` is the only port method that brings memory to a turn. The memory module decides
+  which pushes run.
+- When the session's start gives it no memory, such as a task with `memory: none`, the sessions
+  module returns `none` and asks nothing.
+- When every push is off, or the text is blank, `selectTurnMemory` returns `none` before any read,
+  and neither `held` function runs.
+- When a search or a log read rejects, `readTurnMemory` rejects and the port adds no catch, as the
+  built turn search does. The built step runner then records the error and retries the step after a
+  delay, and a task fails after 3 errors in a row.
+- The composition root passes the whole memory config to the store and gives the store to the
+  conversation's runner and the task runner. No adapter serves this port.
 
-- nixie searches neither item text nor past messages for a turn. Trigger push is the only push, and
-  `ConversationMemory` has no `recall` and no `recallMessages` method.
-- Past messages reach the agent only through `log.read`.
-- The agent has no `memory.rate` tool, in the conversation or in a task. With the index, the agent
-  recalls the items it wants, so the design has no rating of pushed items.
-- The API has no procedure for rating notes, and the web client has no view of them.
-- A log from a release with `memory.rate` can have `memory.rated` records. nixie starts on such a
-  log and skips them.
+### The selection
 
-## Not in scope
+- `buildPushExclusions` alone decides which items no push picks: a lapsed item, a pinned item, and
+  an item whose current text version the session holds.
+- Each push gets that list plus every earlier pick as `excludedIDs`, and applies only its own cap
+  and floor.
+- Trigger push picks an item only at or over `trigger_min_score`, picks at most `trigger_items`
+  items, and never picks an item with no trigger phrase. Self-notes count toward `trigger_items`.
+- The trigger match runs the built ranked-match search over phrases in place of item text: a keyword
+  search and, with an encoder, a vector search. An item's score is the score of its best trigger
+  phrase.
+- `TriggerIndex` holds one keyword row and one vector per phrase. The trigger push item builds it at
+  each start from each item's newest labels, and `writeLabelsInTransaction` and the forget keep it
+  current.
+- With no encoder, the match is by keyword only, and the record carries the keyword search mode.
+- A score depends on the encoder, so a floor set for one encoder is wrong for another.
+- `selectTurnMemory` appends nothing.
 
-- A recorded reason for a turn that placed no memory. The product has no reader for one.
-- A way to run the selection outside a turn.
-- A model that judges the picks before nixie places them. It would sit between `selectTurnMemory`
-  and `placeTurnMemory`, where nixie has appended nothing, and a veto of every pick would return
-  `none`.
-- 4 other shapes for the port: a parameter that chooses the pushes, caps and floors in the ask, a
-  registry of pushes, and a separate port with a provider per push.
-- A cap of its own for self-notes.
-- A way to rate a memory that the turn needed and did not get.
-- A measurement of trigger push before release, offline or live.
+### The placing
+
+- `placeTurnMemory` loads each pick's current text version, in order, under the delivery lock, and
+  records that version. It drops a pick pinned, retired or forgotten since the selection, and never
+  refills the cap.
+- It appends one `memory.recalled` with the picks' references, scores and search mode, and no text,
+  trigger phrase or push name.
+- When every pick is dropped, it returns `none` and appends nothing. A turn that places nothing has
+  no recall record and no recorded reason.
+- Trigger push adds no block type, no record kind and no field on `model.turn_ended` or
+  `memory.recalled`, so the release before parses every record.
+
+### Between the 2 items
+
+- While both pushes exist, trigger picks come first, then similarity picks, with no item twice. Each
+  push has its own cap and floor, and past messages come from the similarity push only.
+- `memory.rate` rates the items of the thread's newest recall record. From
+  [the page cap](https://linear.app/zgeoff/issue/GEO-2523) on, a turn that placed nothing writes no
+  record, so `memory.rate` after it rates an earlier recall's items. No fix is built: the cleanup
+  deletes the tool.
+
+### After the cleanup
+
+- Trigger push is the only push. Past messages reach the agent only through `log.read`.
+- The memory config has no `retrieval_*` key. nixie refuses to start on a file that sets one, so the
+  cleanup's deploy removes them first.
+- No agent has `memory.rate`, the API has no rating-notes procedure, and the web client has no view
+  of rating notes.
+- nixie starts on a log that holds `memory.rated` records, and skips them.
+
+## Decisions
+
+- **One port method, and the memory module picks the pushes.** The sessions module holds no setting
+  that tunes a push.
+- **The similarity push and `memory.rate` go directly after the index is on, in the same milestone,
+  with no measurement first.** [0052](../../decisions/0052-the-lean-memory-index.md)
+
+## Builder decides
+
+- The default of `trigger_min_score`: a high floor, set as a tuning value in the trigger push item.
+  Its pull request shows the floor on invented items with the encoder and with keyword search only.
+- The match type's name and fields beyond `itemID` and the scores, which phrase counts as best in
+  hybrid search, and the search mode a record carries when a search falls back.
+- File names, and the names of helpers that the module does not export.
+
+## Out of scope
+
+- A model that judges the picks before nixie places them.
+- Other port shapes: a parameter that picks pushes from the sessions module, caps and floors in the
+  ask, a push registry, or a port per push.
+- A cap of its own for self-notes, a rating of a missed memory, and a measurement of trigger push
+  before release.
+
+## Open questions
+
+- **Which score does `trigger_min_score` floor?** The built search keeps a keyword score and a
+  vector similarity on different scales. A measurement on invented phrases settles it in the trigger
+  push item. Until then, `trigger_min_score` floors the keyword score as the built `minScore` does,
+  vector matches keep the built default similarity floor, and an item passes when either search
+  returns it.
+
+- **Does the port keep `held.readMessages` and the `messages` of `placed` once the similarity push
+  is gone?** The owner settles it. Until then, both stay and `messages` is always empty, so the
+  cleanup changes no line in the code that asks for a turn's memory, renders the blocks or writes
+  the turn-ended record.

@@ -1,219 +1,415 @@
 # Task definitions from chat
 
-The agent creates, alters and deletes a task definition from the conversation with 2 tools, and
-reads the definitions with a third. nixie puts each such change in force at once, as a layer over
-the definitions repo, and writes a notice with an undo for it.
+- **Status:** draft
+- **Work items:** the runtime layer, the chat tools, the notice and the undo, the export, the view
+  procedures, the view routes
 
-The sketches hold the shapes and the texts that exist, and this doc holds the rules. An item marked
-`(open: <name>)` is not settled, and [the open list](open/definitions.md) holds it. The
-[glossary](../../glossary.md) defines conversation, tool, effect, rule, notice, record, projection
-and definitions source.
+The agent creates, alters and deletes a task definition from the conversation with `task.define` and
+`task.undefine`, and lists them with `tasks.definitions`. nixie puts each change in force at once,
+as a runtime layer over the definitions repo, and writes a notice with an undo. The change ends in
+one of 3 ways: you undo it, nixie retires it, or nixie exports it to a pull request and adopts it
+once a seed reads your merge.
 
-Terms from other docs:
+## Shape
 
-- [Task definitions](task-definitions.md) defines task definition, definition ID, definition hash,
-  seed and in force.
-- [Task runs of a definition](definition-task-runs.md) defines fire and dedupe key.
-- [Schedules](schedules-and-triggers.md) defines one-shot.
+```mermaid
+flowchart LR
+  tool[task.define or task.undefine] -->|"requestDefinitionChange"| decide[decide the move]
+  undo[definitions.undo] -->|"undoDefinitionChange"| decide
+  decide -->|"definition.changed"| layer[(runtime_task_definitions)]
+  layer --> seed[seedInForceInTransaction]
+  seed -->|"2 hooks"| hooks[bind the task, arm the trigger]
+  layer -->|"after the commit"| export[export: pull request on nixie/tasks]
+  export -->|"you merge, a seed reads it"| adopt[definition.settled adopted]
+```
 
-Terms this doc adds:
+| Term               | Meaning                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| runtime change     | one define, undefine or undo of one definition, made outside the repo                            |
+| runtime definition | the version a runtime change holds                                                               |
+| head               | a definition's runtime change with the greatest `changed_sequence`                               |
+| base               | the repo's version of the definition when it got its runtime layer; null when the repo held none |
+| conflict           | the repo's version differs from both the base and the change's own version                       |
 
-- **Definitions repo.** The git repo that the definitions source reads.
-- **Define.** Create a task definition, or alter one. `task.define` does both.
-- **Undefine.** Delete a task definition. `task.undefine` does it.
-- **Runtime change.** One define, one undefine or one undo of one task definition, made outside the
-  definitions repo.
-- **Runtime layer.** The runtime changes in force, laid over the definitions of the repo.
-- **Runtime definition.** A definition version that a runtime change holds.
-- **Previous version.** The version of a definition that was in force just before a runtime change.
-- **Head.** The most recent runtime change of one definition.
-- **File-only key.** A key of `task.yaml` that `task.define` cannot set.
-- **Fold.** The code that writes one record into a projection.
+## Contracts
 
-Related docs:
+### The 3 tools
 
-- [Undo and the export](definition-undo-and-export.md) covers the undo, the export of a runtime
-  change to the definitions repo, adoption and conflicts.
-- [The definition views](definition-views.md) covers the web client's list of definitions.
+```ts
+await tools['task.define']({
+  name: 'Water the tomatoes',
+  brief: 'Water the tomatoes.',
+  target: 'conversation',
+  trigger: { schedule: { every: 'week', on: 'fri', at: '08:00' } },
+});
+// → { definitionID: 'water-the-tomatoes', rendered: 'every Friday at 08:00', next: 'Fri 12 Mar',
+//     changeID: 'c7k2' }
+//   or { refused: { code: 'ID_TAKEN' } }
+```
 
-## Built
+```ts
+// definitions module. Effect `schedule`. Held by the conversation alone.
+interface TaskDefineInput {
+  definitionID?: string; // names a definition to replace; without it, the ID is the slug of `name`
+  name: string;
+  brief: string;
+  target: 'task' | 'conversation';
+  trigger: Trigger; // contract lib. An `at` without an offset is read in your zone and stored with it.
+  model?: string;
+  persona?: TaskPersona;
+  memory?: TaskMemory;
+  tools?: string[];
+  report?: TaskReport;
+}
 
-This section lists the built code that the design uses.
+type TaskDefineOutput =
+  | { definitionID: string; rendered: string; next: string | null; changeID: string } // changeID: the short ID
+  | { refused: DefinitionRefusal }; // the whole refusal, payload included, so the model can retry
 
-- `buildRuntimeOverlay` lays runtime changes over seeded definitions, for rules and for skills. It
-  is generic over its seeded type and its change type.
-- `canMoveRuntimeChange` holds the table of allowed moves between the values of
-  `RuntimeChangeState`.
-- The decision point is the code that allows or denies each tool call. Its rule `slice1.read-only`
-  allows only the effects `read`, `fetch` and `note`.
-- `schedule` is one of the effects that a tool can declare.
-- `getFixedRules` returns the fixed rules, which the decision point tries before `slice1.read-only`.
-  `slice1.queue-check` is one of them.
-- `planTaskStart` checks a `task.start` call against its starter, the caller of the tool.
-- nixie has one writer, and the writer holds one write transaction at a time.
+// tasks.definitions. Effect `read`. Held by the conversation alone. No input.
+interface TasksDefinitionsOutput {
+  definitions: Array<{
+    definitionID: string;
+    name: string | null; // null when unreadable
+    enabled: boolean;
+    isInForce: boolean; // false when disabled, spent, or removed by a runtime change in force
+    isUnreadable: boolean; // the key of its definition.changed `version` is lost
+    trigger: Trigger | null;
+    rendered: string | null; // null with no trigger or when unreadable
+    next: string | null; // null when out of force
+    target: 'task' | 'conversation' | null;
+    tools: string[];
+    origin: 'definitions' | 'nixie';
+  }>;
+}
 
-## The 3 tools
+// task.undefine. Effect `schedule`. Held by the conversation alone.
+type TaskUndefineInput = { definitionID: string };
+type TaskUndefineOutput =
+  | { definitionID: string; changeID: string }
+  | { refused: DefinitionRefusal };
+```
 
-Inputs and outputs are in [the chat tools](sketches/definitions/02-types.ts), section I. Example
-calls are in [the conversation defines a task](sketches/definitions/01-usage.ts), section E.
+```ts
+// policy module: a fixed rule, in getFixedRules after slice1.queue-check and before
+// slice1.read-only. PolicyCall holds no caller, so the rule allows by name, and the tools stay out
+// of every task's list: both names join TaskStartBounds.conversationTools, which planTaskStart
+// refuses on any start.
+const definitionsChatChangeRule: FixedRule = {
+  id: 'definitions.chat-change',
+  revision: 1,
+  sentence: 'Allow task.define and task.undefine, which only the conversation holds.',
+  pickOutcome: (call) =>
+    call.tool === 'task.define' || call.tool === 'task.undefine' ? 'allow' : null,
+};
+```
 
-| Tool                | What it does                | Effect     | Held by          |
-| ------------------- | --------------------------- | ---------- | ---------------- |
-| `task.define`       | Defines a task definition   | `schedule` | the conversation |
-| `task.undefine`     | Undefines a task definition | `schedule` | the conversation |
-| `tasks.definitions` | Lists the task definitions  | `read`     | the conversation |
+### The change and the undo
 
-- A task does not hold `task.define` or `task.undefine`.
-- One fixed rule of the decision point allows `task.define` and `task.undefine` when the caller is
-  the conversation. `getFixedRules` returns it, so the decision point tries it before
-  `slice1.read-only`.
-- The fixed rule does not alter the declared effect. A rule that matches on the effect `schedule`
-  matches both tools.
-- The tools spell their ID members `definitionId` and `changeId`. The records and the API spell them
-  `definitionID` and `changeID` (open: ID casing).
+```ts
+// definitions module. Only the 2 write tools call it, so its caller is always the conversation.
+declare function requestDefinitionChange(
+  context: DefinitionsContext,
+  request: { kind: 'define'; input: TaskDefineInput } | { kind: 'undefine'; definitionID: string },
+): Promise<DefinitionChangeResult>;
 
-## What `task.define` accepts
+// definitions module. Only the definitions.undo procedure calls it.
+declare function undoDefinitionChange(
+  context: DefinitionsContext,
+  changeID: string, // a change ID or a short ID
+): Promise<DefinitionChangeResult>;
 
-Each refusal has a code, listed in [`DefinitionRefusal`](sketches/definitions/02-types.ts), section
-L. The sketches hold no refusal sentence (open: refusal text).
+type DefinitionChangeResult =
+  | {
+      status: 'changed';
+      definitionID: string;
+      changeID: string; // random
+      shortID: string;
+      restored?: 'repo'; // set when an undo put the repo's version in force
+    }
+  | { status: 'refused'; refusal: DefinitionRefusal };
 
-- `task.define` takes a `schedule` trigger or an `at` trigger.
-- When the agent passes no `definitionId`, nixie creates a definition. Its definition ID is the slug
-  of `name`. When a definition has that ID, nixie refuses with `ID_TAKEN`.
-- When the agent passes a `definitionId`, nixie alters that definition. The runtime change holds the
-  previous version, so an undo can restore it.
-- When the agent passes an `at` without an offset, nixie reads the time in your zone. nixie stores
-  the time with the offset.
-- nixie parses the input with the definition schema of [task definitions](task-definitions.md). A
-  runtime definition and a file follow one schema.
-- nixie checks the input through `planTaskStart`, with the conversation as the starter. A runtime
-  definition holds only tools, memory settings and limits that a `task.start` call from the
-  conversation can hold.
-- The file-only keys are `context`, `wakeable`, `maxCalls`, `step`, `reportShape` and `log`.
-  `task.define` sets none of them.
-- A runtime definition has no `log` key, so its task reads only its own thread.
-- When the agent passes the `definitionId` of a definition that holds a file-only key at a value
-  other than its default, nixie refuses with `FILE_ONLY_KEYS`. The agent therefore cannot copy a
-  `step` or a `maxCalls` from a file into a runtime definition.
-- When the agent defines a one-shot for a definition that the definitions repo holds, nixie refuses
-  with `ONE_SHOT_OVER_REPO`.
+type DefinitionRefusal =
+  | { code: 'ID_TAKEN' }
+  | { code: 'NOT_FOUND' } // the named definition or change does not exist
+  | { code: 'UNCHANGED' } // the built version's hash is the hash in force
+  | { code: 'FILE_ONLY_KEYS' } // the named definition holds a file-only key or file
+  | { code: 'INVALID'; reasons: string[] } // the schema or CheckTaskStart refuses the version
+  | { code: 'ONE_SHOT_OVER_REPO' } // a one-shot for a definition the repo holds
+  | { code: 'ONE_SHOT_PAST' } // an undo would restore a one-shot whose time has passed
+  | {
+      code: 'REPLACED';
+      head: { changeID: string; shortID: string; operation: DefinitionOperation };
+    }
+  | { code: 'REPO_MOVED'; seedSequence: number } // the seed record that found the other version
+  | { code: 'NOT_IN_FORCE'; cause: 'one_shot_fired' | 'one_shot_skipped' | 'kept_repo' };
+```
 
-## The rendered schedule
+```ts
+// contract lib. A checked action, so it takes a clientActionID. No tool reaches it.
+api.definitions.undo({ clientActionID: '5e2d…', changeID: 'c7k2' }); // a change ID or a short ID
+// → { definitionID: 'water-the-tomatoes', changeID: '0b9d…', restored: 'repo' }
+//   or a typed error, such as REPLACED with { head: { changeID, shortID, operation } }
+interface DefinitionsUndoOutput {
+  definitionID: string;
+  changeID: string; // the undo's own change
+  restored?: 'repo';
+}
+// .errors: NOT_FOUND 404; REPLACED 409 with { head }; REPO_MOVED 409 with { seedSequence };
+// NOT_IN_FORCE 409 with { cause }; ONE_SHOT_OVER_REPO 409; ONE_SHOT_PAST 409. The undo never
+// returns ID_TAKEN, UNCHANGED, FILE_ONLY_KEYS or INVALID.
+```
 
-Example outputs are in [the rendering function](sketches/definitions/02-types.ts), section H.
+```sh
+nixie definitions resolve water-the-tomatoes --keep nixie
+nixie definitions resolve water-the-tomatoes --keep repo
+```
 
-- One pure function of the triggers module renders a trigger in plain words, and gives the time of
-  its next fire. It sits beside `readNextFire`.
-- The function renders in the schedule's zone.
-- The function has 4 callers: the result of `task.define`, the notice, `tasks.definitions` and the
-  web client's list of definitions.
-- nixie does not store the rendered text or the next fire on a record. A stored next fire is wrong
-  as soon as the clock passes it.
+### The records
 
-## The change records
+```ts
+// definitions module. On the conversation's thread. One per define, undefine and undo, written in
+// the transaction that puts the change in force.
+interface DefinitionChanged {
+  changeID: string; // random
+  shortID: string; // from createShortID: what the model and the notice show
+  definitionID: string;
+  operation: DefinitionOperation;
+  hash: string | null; // the version in force after the change; null after an undefine
+  previous: string | null; // the version in force just before
+  caller: 'conversation' | 'owner'; // 'owner' for an undo
+  undoes: string | null; // the change an undo reverses
+  replaces: string | null; // the runtime change in force that this one superseded
+  base: string | null;
+  definitions: string | null; // the repo's version at this change
+  // erasable field `version`: StoredTaskDefinition, the body of `hash` for a version made here
+}
 
-Shapes are in [the 5 change records](sketches/definitions/02-types.ts), section J.
+type DefinitionOperation = 'add' | 'change' | 'remove' | 'undo';
 
-| Record                         | When nixie writes it                                         |
-| ------------------------------ | ------------------------------------------------------------ |
-| `definition.changed`           | At each define, each undefine and each undo                  |
-| `definition.settled`           | A runtime change goes out of force and no change replaces it |
-| `definition.repo_moved`        | A seed finds another repo version under a runtime change     |
-| `definition.conflict_resolved` | You resolve a conflict                                       |
-| `definition.export_moved`      | An export goes from one state to another                     |
+interface StoredTaskDefinition {
+  definitionID: string;
+  hash: string;
+  form: TaskDefinition; // parsed, defaults filled
+  files: Record<string, string>; // the exact text of each file
+}
 
-- `definition.changed` sits on the conversation's thread. The other 4 records have no thread.
-- nixie writes `definition.changed` in the transaction that puts the runtime change in force. Every
-  runtime change in force therefore has a notice.
-- `definition.changed` holds a random change ID and a short ID from `createShortID`. The model reads
-  the short ID, and the notice shows it.
-- `definition.changed` has one erasable field, `version`. An erasable field is a part of a record
-  that nixie encrypts under a key it can destroy.
-- `version` holds the runtime definition: its parsed form and the exact text of its files.
-- The web client renders `definition.changed` as a notice with an undo control.
-- The sketch holds the notice text of a created definition only (open: notice text).
-- nixie writes the notice for every define, whether or not a message of yours asked for the
-  definition. nixie does not ask for an approval.
-- [Undo and the export](definition-undo-and-export.md) covers what `definition.settled`,
-  `definition.repo_moved`, `definition.conflict_resolved` and `definition.export_moved` mean.
+// The 4 records below sit on no thread.
+interface DefinitionSettled {
+  changeID: string;
+  definitionID: string;
+  outcome: 'adopted' | 'retired';
+  cause: 'seed' | 'one_shot_fired' | 'one_shot_skipped';
+  hash: string | null; // the version in force after it
+}
+interface DefinitionRepoMoved {
+  changeID: string;
+  definitionID: string;
+  definitions: string | null;
+}
+interface DefinitionConflictResolved {
+  changeID: string;
+  definitionID: string;
+  keep: 'nixie' | 'repo';
+  definitions: string | null; // the repo's version at the choice: the base from then on for 'nixie'
+}
+interface DefinitionExportMoved {
+  exportID: string;
+  branch: string;
+  to: 'exporting' | 'opened' | 'closed'; // DefinitionsExportState, built
+  pullRequest: PullRequestRef | null; // built
+}
+```
 
-## The runtime layer
+### The notice on the wire
 
-Tables are in [the 2 projections](sketches/definitions/02-types.ts), section K. The reads are in
-[the 2 layers](sketches/definitions/03-flow.ts), section L.
+```ts
+// contract lib: the record schema gains one optional field, filled for a definition.changed record.
+// toContractRecord builds it at read time from the record, the change's row and its version.
+interface DefinitionNotice {
+  definitionID: string;
+  name: string | null; // null when the key of `version` is lost
+  operation: DefinitionOperation;
+  shortID: string;
+  changeID: string;
+  rendered: string | null; // renderTrigger of the change's own version, at read time
+  next: string | null; // null once the change is out of force
+  state: RuntimeChangeState; // in_force, superseded, adopted or retired
+  isUnreadable: boolean;
+}
+```
 
-- `runtime_task_definitions` holds one row per runtime change.
-- `task_definition_exports` holds one row per export.
-- Both tables are projections.
-- A unique index covers `short_id`.
-- A unique index covers `definition_id` where the state is `in_force`. One definition therefore has
-  at most one runtime change in force. A second one fails the index, and the transaction fails with
-  it.
-- Each fold reads its record and the rows that the record points at. It reads no other table.
-- The fold of `definition.changed` stores `version` under its hash in `task_definition_versions`,
-  unless the table holds that hash.
-- nixie stores no table of the definitions in force across the repo and the runtime layer. It
-  computes the answer at each read: it lays the runtime changes in force over the repo's definitions
-  through `buildRuntimeOverlay`.
-- The runtime change of an undefine holds a null hash. When such a change is in force, the
-  definition is out of force, also when the repo holds a version of it.
-- The head of a definition is its runtime change with the greatest `changed_sequence`.
-- The first state of a runtime change is `in_force`. A runtime change moves once from `in_force`, to
-  `superseded`, `adopted` or `retired`. `canMoveRuntimeChange` holds the allowed moves.
-- `superseded` means that a runtime change of the same definition replaced it.
-  [Undo and the export](definition-undo-and-export.md) covers `adopted` and `retired`.
+### The tables
 
-## One runtime change, in one write transaction
+```text
+2 projections, one appended migration. Each fold reads its record and the rows the record names.
 
-The steps as code are in [a change from chat](sketches/definitions/03-flow.ts), section I. The
-functions are in [the definitions module](sketches/definitions/02-types.ts), section L.
+runtime_task_definitions
+  change_id         key
+  short_id          unique
+  definition_id     unique where state = 'in_force'
+  operation, definition_hash, previous_hash, base_hash, definitions_hash, replaces, undoes, caller
+  state             RuntimeChangeState, built: in_force, superseded, adopted, retired
+  state_cause       later_change | seed | one_shot_fired | one_shot_skipped | kept_repo | null
+  changed_sequence, updated_sequence
+  From definition.changed, definition.settled, definition.repo_moved, definition.conflict_resolved.
+  The fold of definition.changed stores `version` in task_definition_versions when the hash is missing.
 
-`task.define` and `task.undefine` call `requestDefinitionChange`. It does these steps:
+task_definition_exports
+  export_id         key
+  branch, state ('opened' | 'closed' | null), pull_request_number, pull_request_url,
+  attempt_started_sequence, updated_sequence
+  From definition.export_moved.
+```
 
-1. For an undefine, nixie first runs a seed of the definitions source, outside the write
-   transaction. When that seed is refused or fails, nixie goes on to step 2.
-2. For a define, nixie builds the version. It parses the version and checks it through
-   `planTaskStart`.
-3. nixie opens one write transaction. It reads the state of the definition and calls
-   `pickDefinitionMove`.
-4. When `pickDefinitionMove` returns a refusal, nixie writes no record and returns the refusal.
-5. Otherwise nixie writes `definition.changed`. The fold marks the runtime change that was in force
-   as `superseded`. It inserts this runtime change as `in_force`.
-6. In the same transaction, nixie runs `seedInForceInTransaction`. That seed writes the seed record.
-   It then calls the 2 seed hooks, which [the task of a definition](definition-tasks.md) and
-   [the trigger core](trigger-core.md) cover. The hooks bind the definition's task and arm its
-   trigger.
-7. nixie commits. It then wakes the export. The tool call does not wait for the export.
+## Constraints
 
-- Step 1 exists because you can merge a pull request into the definitions repo at any time. The seed
-  reads that merge before nixie decides the undefine.
-- `pickDefinitionMove` is pure. It is the one function that decides a define, an undefine and an
-  undo. The sketches declare some of its types nowhere (open: undefined types).
-- `requestDefinitionChange` takes the list `holders`: the kinds of caller that can hold the 2 tools.
-  `holders` contains the conversation alone.
-- The `caller` member of `definition.changed` can hold a task. The record therefore also fits a
-  deployment whose `holders` contains tasks.
-- When any step throws, the transaction rolls back. nixie has then written no notice, no runtime
-  change and no armed trigger.
-- A fire that nixie wrote before a runtime change, and that the task has not read, uses the
-  definition version that the fire holds. The runtime change does not alter that task run.
-- [Schedules](schedules-and-triggers.md) covers how a runtime one-shot goes out of force after its
-  one fire.
+### What `task.define` accepts
 
-## Boundaries
+- `task.define` takes a `schedule` or an `at` trigger, and parses its input with the
+  [task definition schema](task-definition-format.md#the-folder-and-taskyaml).
+- nixie checks the input through `CheckTaskStart` with the starter `conversation`, so a runtime
+  definition holds only what a `task.start` from the conversation can hold.
+- The input is the whole version: an optional key it omits takes its default, never the value in
+  force.
+- The file-only keys are `context`, `wakeable`, `maxCalls`, `step`, `reportShape` and `log`, and the
+  file-only files are `instructions.md` and a step file. `task.define` sets none of them. A change
+  to a definition whose version in force holds one at a value other than its default, or holds
+  either file, is refused with `FILE_ONLY_KEYS`.
+- A change may alter `target`, and may turn a schedule into a one-shot, except over a definition the
+  repo holds (`ONE_SHOT_OVER_REPO`).
+- The slug of `name` is its lowercase form with each run of characters outside `a-z` and `0-9`
+  turned into one hyphen, hyphens trimmed from both ends, cut to 64 characters. An empty slug is
+  refused with `INVALID`.
+- An ID is taken when the repo's last accepted seed holds it, enabled or not, or a runtime change in
+  force holds it. An ID whose runtime definition was undone or undefined is free, and a new
+  definition under it gets the same task back.
+- nixie writes the notice for every define, with no approval.
 
-- The definitions module owns the 5 records, the 2 projections of the runtime layer and the
-  functions of this doc.
-- The server app passes 4 things into the definitions module: the check of a start, the seed of the
-  definitions source, `holders` and `branchOf`. [Undo and the export](definition-undo-and-export.md)
-  covers `branchOf`.
-- Definitions from chat add no config key.
+### One runtime change, in one write transaction
 
-## Not in scope
+1. For an undefine and an undo, nixie first runs a seed of the definitions source outside the
+   transaction, so a merge that no seed has read counts.
+2. For a define, nixie builds, parses and checks the version.
+3. In one write transaction, nixie reads the definition's state and decides the move. A refusal
+   writes nothing.
+4. It writes `definition.changed`. The fold marks the change in force `superseded` and inserts this
+   one as `in_force`.
+5. It runs `seedInForceInTransaction`, which writes the seed record and calls the 2 seed hooks.
+6. It commits, then wakes the export. The tool call does not wait for the export.
 
-- A definition that a task proposes. That needs a decision point that asks you for an approval,
-  which is not built.
-- `poll` triggers from chat.
-- The file-only keys on `task.define`.
-- A write to the definitions source by nixie.
+- When the seed of step 1 fails or is refused, nixie goes on with the repo version it last read. The
+  fallback loses nothing: the change records that version in `definitions`, and the next seed
+  compares it with the repo, so a merge the decision missed ends as an adoption or a conflict, never
+  as a silent overwrite.
+- When any step throws, the transaction rolls back: no notice, no runtime change and no armed
+  trigger.
+- A fire that nixie wrote before the change keeps the hash it holds.
+- One definition has at most one runtime change in force, so a second fails the unique index and its
+  transaction.
+- A runtime change moves once from `in_force` to `superseded`, `adopted` or `retired`, as
+  `canMoveRuntimeChange` allows.
+
+### The runtime layer
+
+- nixie stores no table of the definitions in force. Each read lays the runtime changes in force
+  over the repo's definitions through `buildRuntimeOverlay`. `tasks.definitions` and
+  `definitions.listTasks` share that one read.
+- An undefine's change holds a null hash, and while it is in force the definition is out of force,
+  even when the repo holds it.
+- At each seed, for each runtime change in force: when the repo holds its hash, null on both sides
+  included, nixie writes `definition.settled` `adopted`; when the repo holds the base, the change
+  stays in force; when the repo holds another version, nixie writes `definition.repo_moved`.
+- nixie derives a conflict from `base_hash` and `definitions_hash` and stores no flag. A change with
+  a conflict stays in force.
+- `--keep nixie` sets the base to the repo's version and ends the conflict. `--keep repo` retires
+  the change, and the repo's version is in force at the commit. Both write
+  `definition.conflict_resolved`.
+- When the key store has lost the key of a `version`, a rebuild cannot read the runtime definition.
+  Its row stays, the next seed puts the definition out of force, and the lists show it as
+  unreadable. `conversation.forget` refuses a `definition.changed` record, so no forget reaches the
+  key.
+- For a runtime one-shot, the `retireOneShot` that the server app passes writes `definition.settled`
+  `retired` with its cause and a null hash, besides the withdraw of
+  [the trigger core](triggers.md#the-spent-one-shot).
+
+### The undo
+
+The first row that fits the named change X decides. Each example starts from the repo holding
+`water-the-tomatoes` at version R.
+
+| #   | When                                             | Result                                                                                                                                                  | Example                                                               |
+| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| 1   | X is not the head of its definition              | `REPLACED`, with the head                                                                                                                               | undo C1 after C2 changed the same definition                          |
+| 2   | X is in force and replaced a runtime change      | the previous version goes in force as a runtime definition, with the base of X                                                                          | C1 moved to Saturday, C2 to Sunday; undo C2 puts Saturday back over R |
+| 3   | X is in force, replaced none, no conflict        | the base goes in force, and the seed in the transaction adopts the undo                                                                                 | undo C1 puts R back, with no runtime change left in force             |
+| 4   | X is in force, replaced none, conflict           | the repo's version goes in force, the seed adopts it, the result holds `restored: 'repo'`                                                               | you merged R2 after C1; undo C1 leaves R2 in force                    |
+| 5   | X is adopted, and the repo holds its hash        | the previous version goes in force as a runtime definition over the merged one, and the next export writes it, or deletes `tasks/<id>/` when it is null | you merged C1; undo C1 puts R in force over it and exports R          |
+| 6   | X is adopted, and the repo holds another version | `REPO_MOVED`                                                                                                                                            | you merged C1, then edited the file; undo C1                          |
+| 7   | X is retired                                     | `NOT_IN_FORCE`, with the cause                                                                                                                          | undo the change of a one-shot that has fired                          |
+
+- When rows 2 to 5 would restore a one-shot, nixie refuses `ONE_SHOT_OVER_REPO` when the repo holds
+  the definition, and `ONE_SHOT_PAST` when its time is before the clock reading that the caller
+  passes in.
+- An undo is a runtime change with its own notice, and an undo of an undo follows the same rows.
+- nixie reads `replaces` to tell whether X replaced a runtime change, and compares change IDs only,
+  after it resolves a short ID.
+
+A merge that races an undo:
+
+1. The agent defines C1 over R, and the export opens a pull request with C1.
+2. You merge the pull request. No seed has read the merge yet.
+3. You undo C1. The undo's own seed reads the merge, adopts C1, and row 5 applies: R goes in force
+   over the merged C1, and the next export writes R back.
+4. When that seed fails, row 3 applies to the stale state: R goes in force and the undo is adopted.
+   The next seed reads the merged C1, which differs from R, and C1 is in force from the repo. The
+   seed record shows the folder came from the repo, and the merge wins.
+
+### The notice
+
+- The web client renders `definitionNotice` as a notice. The notice of an `add` in force reads:
+  `Scheduled: Water the tomatoes, every Friday at 08:00 (next: Fri 12 Mar). [Undo]`.
+- The undo control shows while `state` is `in_force` or `adopted`. Once the change is `superseded`
+  or `retired`, the notice shows its state in place of the next fire and offers no undo.
+- When `isUnreadable` is true, the notice shows the missing-content marker in place of the name and
+  the trigger, and still offers the undo while the state allows it.
+- When `definitions.undo` refuses, the client shows one sentence for the error's code beside the
+  notice. On `REPLACED`, the sentence names the head's short ID.
+- nixie never stores the rendered trigger or the next fire on a record.
+
+### Boundaries
+
+- The definitions module owns the 5 records, the 2 tables and the functions above.
+- The server app passes 3 things into the definitions module: `CheckTaskStart`, the seed of the
+  definitions source, and the tasks context for the seed hook.
+- These pieces that main lacks come from these items: `task_definition_versions` and
+  `CheckTaskStart` from the format and the seed; `withdrawDefinitionTaskInTransaction` as
+  `retireOneShot` from the trigger core; `seedInForceInTransaction` and the `definition.settled`
+  wrap of `retireOneShot` from the runtime layer.
+- This work adds no config key.
+
+## Decisions
+
+- **A change from chat takes effect at once, with a notice and an undo.** Every runtime change in
+  force has a notice, because the notice commits in the change's transaction.
+- **An undefine and an undo read the repo first.** You can merge a pull request at any time, and a
+  decision on a stale repo version would undo your merge.
+- **One function decides a define, an undefine and an undo.** The undo rows and the refusals then
+  hold for every caller.
+- **Only you undo.** The agent has no tool that reaches `definitions.undo`.
+- **The conflict command is `nixie definitions resolve`,** beside the built `nixie rules resolve`.
+
+## Builder decides
+
+- The text of the notice for a change, a removal and an undo, in the form of the `add` notice, and
+  the sentence for each refusal code.
+- The input type of the pure move decision and of the seed plan.
+- Internal names, and the layout of the tests.
+
+## Out of scope
+
+- A definition that a task proposes. It needs a decision point that asks you for an approval.
+- `poll` triggers from chat, the file-only keys on `task.define`, and keeping a file's
+  `instructions.md` through a change from chat.
+- A write to the definitions source outside the export.
 - A check of the previous hash when the agent alters a definition, such as an `expectedHash` input.

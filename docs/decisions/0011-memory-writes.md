@@ -3,122 +3,104 @@
 - Date: 2026-10-08
 - Updated: 2026-11-11
 - Status: decided
-- Design: [memory writes](../design/platform/memory/writes.md)
-- Research:
-  [memory checks spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/memory-checks/),
-  [memory notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/memory-models.md)
 
-A memory write applies at once, with a notice and undo, only when all 3 checks pass:
+## Decision
 
-1. Its quote appears word for word in text you typed, in a message as nixie recorded it. The client
-   records which spans of a message you pasted, and a pasted span or a quoted block never counts as
-   evidence.
-2. Every destination-like token in the memory, such as an email address, URL, phone number, handle
-   or account number, appears word for word in that quote. Code runs this check.
-3. A separate checker model confirms that you asserted the memory. It sees your whole message, with
-   the quote and the pasted spans marked, and the memory, and never the rest of the conversation, so
-   it can tell a statement from a question, a negation or a quotation.
+A memory write applies at once, with a notice and undo, only when all 3 checks pass. Every other
+memory write is a proposal, which reads as text the model wrote with your quote kept as its
+evidence.
 
-These checks are the default when no rule matches the write. Remember, edit and retire declare the
-`memory_write` effect under [0048](0048-one-approval-system.md), and an allow rule of yours that
-matches a memory write lets the write apply at once, with a notice and undo, in the contexts the
-rule names, such as the conversation but not job runs. A rule that names `memory.remember` covers
-new items, and a rule that names `memory.edit` covers changes to items, so allowing one kind of
-write never allows the other. No starter rule matches `memory_write`, and creating such a rule is a
-widening, so it asks once. Check 2 still runs under that rule: every destination-like token in the
-memory appears word for word in text you typed or in your definitions, and a write that fails it is
-a proposal whatever the rule says.
+1. **Your typed quote.** The quote appears word for word in text you typed, in a message as nixie
+   recorded it. The client records which spans of a message you pasted, and a pasted span, a quoted
+   block or a dictated span never counts as evidence.
+2. **The token check.** Code checks that every destination-like token in the memory, such as an
+   email address, URL, phone number, handle or account number, appears word for word in the quote.
+3. **The checker.** A separate checker model confirms that you asserted the memory. It sees your
+   whole message, with the quote and the pasted spans marked, and the memory, and never the rest of
+   the conversation. A rejection, an unsure answer or no answer makes a proposal.
 
-Every other memory write is a proposal, including a write the checker rejects, is unsure about or
-cannot reach. The memory reads as text the model wrote, with your quote kept as its evidence.
+These rules set the exceptions:
 
-A self-note is an item that nixie writes about itself, such as its tastes or how something landed
-with you. No words of yours back it, so every self-note is a proposal, and only the conversation
-writes one. You can pin an active self-note as you pin any other item, and it reaches the
-conversation labelled with the model that wrote it and its date. An allow rule that skips review for
-a self-note must name that kind of item, so a rule on `memory.remember` alone never covers one.
-
-nixie asks to pin an item it already has through `memory.pin`, and the pin is a proposal by default,
-because the pinned core opens every session and you decide what goes in it. An allow rule that names
-`memory.pin` lets a pin apply at once. `memory.remember` takes no pin, so a new fact that nixie
-wants pinned is a memory and then a pin. nixie unpins an item at once through `memory.unpin`, with
-no review and no undo, because the item stays in memory and still comes up when it's relevant; you
-pin it again from the memory view. nixie sees how many items are pinned and how much of the core's
-budget they use, and only the budget refuses a pin.
-
-A photo you send never counts as your words, and neither does text in it. A memory that nixie saves
-from a photo is a proposal by default, whatever quote it gives, and the proposal shows the photo
-beside the text. An allow rule that skips review for a memory from a photo must name the photo
-source, so a rule on `memory.remember` alone never covers one.
-
-Dictated text never counts as evidence. A `dictated` span is text that a voice client transcribed
-from speech. A memory write whose quote touches a `dictated` span becomes a proposal, and during a
-call its card appears in the call screen under [0041](0041-approvals-during-a-voice-call.md). A
-destination token, such as an email address or a phone number, never passes the token check from
-dictated text, even if a later decision relaxes the rest of this rule. The live view counts
-proposals by review reason, and those counts are the evidence for a revisit.
-
-Retiring an item from chat, as "forget that" does under
-[0031](0031-memory-capture-context-and-removal.md), carries no new content. It needs your typed
-intent and the exact item and version, and the checker tests the request against that item. It does
-not need the old fact's destination tokens repeated.
-
-No built-in task merges or rewrites memory items in bulk, under
-[0050](0050-no-built-in-memory-tasks.md). A task that tidies memory writes through the ordinary
-memory tools, so each rewrite is a write of its own under the rules above. Every proposal is
-asynchronous and never blocks: the task and the conversation carry on, and you answer when you
-choose, singly or through the approval digest from [0006](0006-approval-record.md).
+- **Allow rules.** The 3 checks are the default when no rule matches the write. Remember, edit and
+  retire declare the `memory_write` effect under [0048](0048-one-approval-system.md). An allow rule
+  of yours that matches a memory write lets it apply at once, with a notice and undo, in the
+  contexts the rule names, such as the conversation but not job runs. A rule on `memory.remember`
+  covers new items and a rule on `memory.edit` covers changes, and neither covers the other. No
+  starter rule matches `memory_write`, and creating one is a widening that asks once. The token
+  check still runs under a rule, against text you typed or your definitions, and a write that fails
+  it is a proposal whatever the rule says.
+- **Self-notes.** A self-note is an item that nixie writes about itself. Every self-note is a
+  proposal, and only the conversation writes one. An allow rule that skips its review must name that
+  kind of item. You can pin an active self-note, and it reaches the conversation labelled with its
+  model and date.
+- **Pins.** `memory.pin` pins an existing item, as a proposal unless an allow rule names
+  `memory.pin`. `memory.remember` takes no pin, so a new fact that nixie wants pinned is a memory
+  and then a pin. `memory.unpin` applies at once, with no review and no undo, because the item stays
+  in memory and still comes up when it's relevant, and you pin it again from the memory view. nixie
+  sees the pinned count and the core's budget, and only the budget refuses a pin.
+- **Photos.** A photo and the text in it never count as your words. A memory from a photo is a
+  proposal that shows the photo, whatever quote it gives, unless an allow rule names the photo
+  source.
+- **Dictated text.** A write whose quote touches a `dictated` span is a proposal, and during a call
+  its card shows in the call screen under [0041](0041-approvals-during-a-voice-call.md). A
+  destination token never passes the token check from dictated text, even if a later decision
+  relaxes the rest of this rule.
+- **Retirement.** Retiring an item from chat, as "forget that" does under
+  [0031](0031-memory-capture-context-and-removal.md), needs your typed intent and the exact item and
+  version, and the checker tests the request against that item. It carries no new content, so it
+  needs no destination token repeated.
+- **No bulk rewrite.** No built-in task merges or rewrites items under
+  [0050](0050-no-built-in-memory-tasks.md). Each rewrite by a task is a write of its own. A proposal
+  never blocks: you answer it when you choose, singly or through the approval digest of
+  [0006](0006-approval-record.md).
 
 ## Why
 
 - The conversation is always untrusted under [0005](0005-effects-and-taint.md#where-taint-applies),
-  so it cannot decide which writes are safe. Your own words can.
-- Injected content cannot place text in your message, so a quote check that nixie runs against its
-  own record cannot be steered by injection.
-- A real quote does not prove that it supports the memory: a steered model could attach a real but
-  unrelated quote to a poisoned memory. The checker closes that gap, and the token check stops the
-  most harmful case, a memory that points nixie at an attacker's destination, whatever the checker
+  so it cannot decide which writes are safe. Your own words can, and injected content cannot place
+  text in your message.
+- A real quote does not prove that it supports the memory. The checker closes that gap, and the
+  token check stops a memory that points nixie at an attacker's destination, whatever the checker
   says.
-- The checker follows the pattern of [0008](0008-auto-mode.md): a model decides a grey zone, can
-  only make the outcome stricter, and fails closed.
-- In the model-eval spike, requiring an exact quote for each memory brought several models to 0
-  invented entries, where a plain summary prompt invented facts on every model.
-- A memory write is reversible, unlike a send, so a wrong memory is visible and can be undone.
-- A transcript can mishear a name, a number or an address. The token check would then pass the wrong
-  value, because it matches a quote that holds the same wrong value.
+- The checker follows [0008](0008-auto-mode.md): a model decides a grey zone, can only make the
+  outcome stricter, and fails closed.
+- In the model-eval spike, an exact quote for each memory brought several models to 0 invented
+  entries, where a summary prompt invented facts on every model.
+- You set the risk stance for memory as you do for every other tool.
+- A memory write is reversible, unlike a send, so a wrong memory is visible and can be undone, and
+  an allow rule can trade review for fewer proposals where you accept the risk, with the token check
+  as a floor.
+- A transcript can mishear a name, a number or an address, and the token check would then pass the
+  wrong value, because it matches a quote that holds the same wrong value.
 - A microphone also hears a TV, a video or another person, and a transcript cannot show who spoke,
   so other voices would be a route for injected memories. The card shows in the call screen, so a
   proposal from dictated text costs one tap during the call.
-- You set the risk stance for memory as you do for every other tool. An allow rule trades review for
-  fewer proposals in the contexts you pick, and the token check keeps a memory that points nixie at
-  a new destination in review.
+- A self-note has no words of yours behind it, and the pinned core opens every session, so you
+  decide what goes in it.
 
-## Alternatives
+## Rejected alternatives
 
-- **Every write as a proposal.** It is the safest, and memory then feeds a steady stream into the
-  approval digest, against the 0-prompt target.
-- **Only writes you ask for apply at once.** Facts you state in passing would each need approval.
-- **Store your quote itself as the memory.** It needs no checker model, and memories read as raw
-  quotes rather than natural text.
-- **The quote check alone.** It lets a steered model attach an unrelated quote to a poisoned memory.
-- **Rules that can only ask or deny a memory write.** Every write that the checks cannot back stays
-  a proposal, even in a context where you accept the risk.
-- **An allow rule that skips every check.** It gives the fewest proposals, and lets injected content
-  plant a destination in memory with no review.
-- **Dictated text counts as evidence.** It needs no review step, and lets misheard facts and other
-  voices into memory unchecked.
-- **Dictated text counts, except for a memory with a destination token.** It stops the most harmful
-  injection, and lets misheard names and other voices through. It is the fallback if proposals from
-  dictated text become a burden.
-- **A checker that sees only the quote.** You may paste a scam email and ask about it, quote
-  someone, or negate a fact. Without the whole message, the checker cannot tell.
+| Option                                                | Why not                                                                                                                                                       |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| every write as a proposal                             | memory feeds a steady stream into the approval digest, against the 0-prompt target                                                                            |
+| only writes you ask for apply at once                 | each fact you state in passing would need approval                                                                                                            |
+| store your quote itself as the memory                 | memories read as raw quotes, not natural text                                                                                                                 |
+| the quote check alone                                 | a steered model can attach an unrelated real quote to a poisoned memory                                                                                       |
+| rules that can only ask or deny a memory write        | every write the checks cannot back stays a proposal, even where you accept the risk                                                                           |
+| an allow rule that skips every check                  | injected content could plant a destination in memory with no review                                                                                           |
+| dictated text counts as evidence                      | misheard facts and other voices reach memory unchecked                                                                                                        |
+| dictated text counts, except with a destination token | misheard names and other voices still get through; it is the fallback if proposals from dictated text become a burden                                         |
+| consolidation as one proposal that shows the diff     | a built-in task is a second way to do the same job, with its own config, model role, prompt and tools to keep, under [0050](0050-no-built-in-memory-tasks.md) |
+| a checker that sees only the quote                    | it cannot tell a statement from a question, a negation or a quotation                                                                                         |
 
 ## Consequences
 
-- Undo for a memory write uses the history table from [0010](0010-memory-store.md), and permanent
-  deletion uses its crypto-shredding.
+- Undo uses the history table of [0010](0010-memory-store.md), and permanent deletion uses its
+  crypto-shredding.
 - A fact that reaches nixie only through outside content, such as a flight time in an email, needs
   approval before it becomes a memory.
+- The live view counts proposals by review reason, and those counts are the evidence for a revisit
+  of the dictated-text rule.
 
 ## Changes
 
