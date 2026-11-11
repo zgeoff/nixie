@@ -2,12 +2,7 @@
   "$schema": "./node_modules/knip/schema.json",
   // repo-sync delivers .claude/ verbatim, and the CLI loads the SDK contract probes' mods by their
   // paths, so no import reaches their files
-  // design sketches are code that no package builds
-  "ignore": [
-    ".claude/**",
-    "docs/design/**/sketches/**",
-    "guests/conversation/src/sdk-contract/mods/**"
-  ],
+  "ignore": [".claude/**", "guests/conversation/src/sdk-contract/mods/**"],
   "ignoreWorkspaces": ["research/**"],
   // the Bun plugin takes its test files from a `bun test` script, and rig runs the root's tests
   "bun": { "entry": ["**/*.test.{ts,tsx}"] },
