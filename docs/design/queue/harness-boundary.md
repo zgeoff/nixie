@@ -352,6 +352,9 @@ harness that declares `summarize` and `context-window`.
 
 ## Decisions
 
+- **The 5 outcomes are `finished`, `stopped`, `limit`, `interrupted` and `overflow`.** The owner
+  chose these words on 13 Nov.
+
 - **The guest sets the outcome.** The host reads one field in the same words for every harness, and
   each guest maps its runtime's words.
 - **`unkept` is derived at each step and stored nowhere.** A stored state would need a migration and
@@ -394,8 +397,6 @@ harness that declares `summarize` and `context-window`.
 
 ## Open questions
 
-- **What are the words of the 5 outcomes?** The owner settles it: `finished`, `stopped`, `limit`,
-  `interrupted` and `overflow`, or other words. Until then, the sketches hold those 5.
 - **Does Codex report a context overflow as its own error?** The overflow case of
   [the Codex gates](https://linear.app/zgeoff/issue/GEO-2546) measures it. Until then, a Codex
   overflow is a `failed` turn, and the step's retries handle it.
