@@ -290,9 +290,8 @@ threads the cleanup covers.
 
 A forget of a record, through `conversation.forget` or `log.forget`, closes every open capture, then
 removes every logged request with an intake sequence after the record's sequence, on every thread,
-before it writes `record.forgotten`. A request before the record cannot hold it. Any later request
-may, on its own thread or through memory or a task's brief on another, and [redaction](redaction.md)
-removes the record's text from nowhere else.
+before it writes `record.forgotten`. A request before the record cannot hold it. A later request
+may, on the record's own thread, or on another through memory or a task's brief.
 
 ### Faults
 
