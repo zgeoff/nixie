@@ -1,7 +1,7 @@
 # Redaction of one record of a moment's span
 
-- **Status:** draft. Nothing is built until the owner settles the [open questions](#open-questions),
-  which part gets built first among them.
+- **Status:** draft. All 3 parts get built, and the [open questions](#open-questions) settle their
+  scope.
 
 You remove one whole record of a span, such as a tool result that holds a pasted secret. nixie
 deletes the record's key, so its text is gone from the thread and from every moment that holds it. A
@@ -9,7 +9,7 @@ memory item that quotes the record stays readable until the owner settles that o
 
 The removal is the built `conversation.forget` action, widened in 3 parts that ship apart:
 
-1. The forget takes tool calls and tool results:
+1. The forget takes every record with its own text, tool calls and tool results among them:
    [redaction-tool-records](https://linear.app/zgeoff/issue/GEO-2553).
 2. A span record carries a mark, so the moment view tells a removed record from any other gap:
    [removal-mark](https://linear.app/zgeoff/issue/GEO-2554).
@@ -40,7 +40,7 @@ flowchart LR
 
 ## Contracts
 
-### Part 1: the forget takes tool records
+### Part 1: the forget takes every record with its own text
 
 ```ts
 conversation.forget({
@@ -51,6 +51,7 @@ conversation.forget({
 // → ok
 //   or RECORD_NOT_FOUND, as built, for a record outside forgettableKinds: the forget looks the
 //   record up among the removable kinds only
+//   or ACTION_NOT_FINISHED for a queued action that has not run: cancel it, or wait for it to run
 ```
 
 ```ts
@@ -153,6 +154,11 @@ const removalControlLabel = 'Remove this record';
 - In the thread view, a removed tool record shows its tool name and outcome with no input or
   content, as the built thread view shows any tool record whose key is gone. It carries no removal
   mark.
+- `forgettableKinds` holds every record kind with an erasable field, except a kind that holds a
+  moment's title, note or reflection and a memory item's own kinds. A test fails when a codec adds
+  an erasable field to a kind that is in neither list.
+- A forget refuses a queued action that has not run with `ACTION_NOT_FINISHED`, so an action never
+  runs with its text gone. Once the action has run or you cancel it, the forget takes it.
 - The release before this part returns `RECORD_NOT_FOUND` for the added kinds.
 - When the web client hears `record.forget_started` or `record.forgotten`, it drops every text field
   of the record: the message, the tool call's input and the tool result's content. The built handler
@@ -200,6 +206,9 @@ const removalControlLabel = 'Remove this record';
 - **Every removal sits behind a preview.** [The memory view](../../architecture/memory/view.md)
 - **A moment shows a "removed" mark in place of a removed record.** The owner chose this on 30 Oct,
   with one key per record, so part 2 gets built.
+- **All 3 parts get built.** The owner chose tool records and the moment view's control on 13 Nov.
+- **A redaction takes every record with its own text.** The owner chose this on 13 Nov, so a secret
+  copied into a drafted action or a task brief can be removed too.
 - **One list of removable kinds, in the API contract package.** The built code holds 5 separate kind
   sets, and copies drift.
 
@@ -219,12 +228,6 @@ const removalControlLabel = 'Remove this record';
 
 ## Open questions
 
-- **Which parts get built besides the mark?** The owner settles it for tool records and the control.
-  Each part is its own work item, and an item the owner does not choose closes as not planned.
-- **Which record kinds does a redaction take?** The owner settles it: messages and replies only, as
-  built; every record of a thread that has a key, except a moment's or a memory item's own records;
-  or that set only for a record inside a kept span. Until then, part 1 adds `tool_called` and
-  `tool_result` only.
 - **Does the agent also redact, through a tool?** The owner settles it. Until then, no tool removes
   a record.
 - **Does a redaction forget the memory items whose evidence is the record?** The owner settles it:
