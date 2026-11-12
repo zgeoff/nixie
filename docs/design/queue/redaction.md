@@ -1,13 +1,13 @@
 # Redaction of one record of a moment's span
 
-- **Status:** draft. All 3 parts get built, and the [open questions](#open-questions) settle their
+- **Status:** draft. All 4 parts get built, and the [open questions](#open-questions) settle their
   scope.
 
 You remove one whole record of a span, such as a tool result that holds a pasted secret. nixie
 deletes the record's key, so its text is gone from the thread and from every moment that holds it. A
 memory item that quotes the record stays readable until the owner settles that open question.
 
-The removal is the built `conversation.forget` action, widened in 3 parts that ship apart:
+The removal is the built `conversation.forget` action, widened in 4 parts that ship apart:
 
 1. The forget takes every record with its own text, tool calls and tool results among them:
    [redaction-tool-records](https://linear.app/zgeoff/issue/GEO-2553).
@@ -15,6 +15,8 @@ The removal is the built `conversation.forget` action, widened in 3 parts that s
    [removal-mark](https://linear.app/zgeoff/issue/GEO-2554).
 3. The moment view offers the removal behind a preview:
    [removal-control](https://linear.app/zgeoff/issue/GEO-2560).
+4. nixie removes a record through a tool, under your policy rules:
+   [forget-tool](https://linear.app/zgeoff/issue/GEO-2604).
 
 A gap is a span record whose text nixie cannot read: a forget deleted its key, a session cleanup
 deleted a summary's key, or its key fails to decrypt. A removed record is a gap that a forget made.
@@ -126,6 +128,17 @@ interface ForgetPreviewOutput {
 const removalControlLabel = 'Remove this record';
 ```
 
+### Part 4: the forget tool
+
+```ts
+// tools module: the model removes a record through a tool with the effect 'delete'
+forgetRecord({ thread: 'conversation', record: '<the record as the session history names it>' });
+// → policy decides first. The starter rule ask-permanent-deletes asks, and the approval shows the
+//   record's kind, its text and the preview's counts. An allow rule you add for this tool lets
+//   it run without asking.
+// → once allowed: the same forget path as conversation.forget, with the same kinds and refusals
+```
+
 ## Constraints
 
 ### Every part
@@ -198,6 +211,22 @@ const removalControlLabel = 'Remove this record';
   on that record. It never removes without a preview. A client of this part on the release before
   gets the failure, because the procedure does not exist there.
 
+### Part 4
+
+- The tool's one effect is `delete`, so your policy rules decide it like any tool that removes data
+  for good. The starter rules ask. A rule you add can allow the tool with no approval.
+- The definition of `delete` covers removing nixie's own records for good, as well as data in an
+  outside service.
+- The approval shows the record's kind, its text and the preview's counts, read before the approval
+  is asked.
+- The tool takes only the kinds in `forgettableKinds`, and refuses as `conversation.forget` refuses.
+- The model names the record by an ID the session history shows. When the history shows no stable ID
+  for a record, the tool's work item adds one under the
+  [short ID rule](../../architecture/core/database.md#short-ids).
+- An allow rule for this tool lets a page or file the model reads lead it to remove records with no
+  approval. Each removal the tool makes posts a notice under nixie's reply, as a job change does, so
+  you see it afterwards.
+
 ## Decisions
 
 - **A redaction is the forget of a record.** A moment refers to the log's records and copies none,
@@ -206,9 +235,11 @@ const removalControlLabel = 'Remove this record';
 - **Every removal sits behind a preview.** [The memory view](../../architecture/memory/view.md)
 - **A moment shows a "removed" mark in place of a removed record.** The owner chose this on 30 Oct,
   with one key per record, so part 2 gets built.
-- **All 3 parts get built.** The owner chose tool records and the moment view's control on 13 Nov.
+- **Parts 1 to 3 get built.** The owner chose tool records and the moment view's control on 13 Nov.
 - **A redaction takes every record with its own text.** The owner chose this on 13 Nov, so a secret
   copied into a drafted action or a task brief can be removed too.
+- **nixie can remove a record through a tool, governed by your policy rules.** The owner chose this
+  on 13 Nov, with the condition that a rule of the owner's can allow it with no approval.
 - **One list of removable kinds, in the API contract package.** The built code holds 5 separate kind
   sets, and copies drift.
 
@@ -228,8 +259,6 @@ const removalControlLabel = 'Remove this record';
 
 ## Open questions
 
-- **Does the agent also redact, through a tool?** The owner settles it. Until then, no tool removes
-  a record.
 - **Does a redaction forget the memory items whose evidence is the record?** The owner settles it:
   the preview lists each item for you to forget apart, or the redaction forgets each one too. Until
   then, it forgets none.
