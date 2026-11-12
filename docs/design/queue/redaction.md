@@ -54,6 +54,12 @@ conversation.forget({
 ```
 
 ```ts
+// API contract: conversation.forget's output grows the backup state memory.forget already returns
+.output(z.object({ forgottenAt: z.date(), backup: forgetBackupSchema }))
+// → { forgottenAt, backup: { state: 'pending' } } until a published backup set drops the old key
+```
+
+```ts
 // API contract package: the one list of removable kinds. The API forget, the web client's
 // record item, and the moment view's control all import it, and no module keeps a copy.
 export const forgettableKinds = [
@@ -135,6 +141,10 @@ const removalControlLabel = 'Remove this record';
   never removes a record of a memory item. You remove those by destroying the moment or forgetting
   the item.
 - A redaction never reaches a model provider: a request sent before it keeps the text.
+- A backup copied before the forget still holds the record's key. `conversation.forget` answers with
+  the key backup state, read as
+  [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state)
+  describes, and the web client shows it after the removal.
 
 ### Part 1
 
@@ -144,6 +154,11 @@ const removalControlLabel = 'Remove this record';
   content, as the built thread view shows any tool record whose key is gone. It carries no removal
   mark.
 - The release before this part returns `RECORD_NOT_FOUND` for the added kinds.
+- When the web client hears `record.forget_started` or `record.forgotten`, it drops every text field
+  of the record: the message, the tool call's input and the tool result's content. The built handler
+  drops only the message.
+- A web client loaded before this part keeps a removed tool record's text on screen until it
+  reloads.
 
 ### Part 2
 
@@ -169,6 +184,8 @@ const removalControlLabel = 'Remove this record';
 ### Part 3
 
 - The moment view shows the control on each span record of a kind in `forgettableKinds`.
+- The thread view's built forget control reads the same preview before its confirm, so no web
+  control removes a record without a preview.
 - A click on the control reads the preview, and the view shows the 2 counts with a confirm. Only the
   confirm calls `conversation.forget`.
 - When the preview read fails, the view shows an error in place of the confirm and hides the control
@@ -181,6 +198,8 @@ const removalControlLabel = 'Remove this record';
   so one forget path covers the thread and every moment.
   [Moments](../../architecture/memory/moments.md)
 - **Every removal sits behind a preview.** [The memory view](../../architecture/memory/view.md)
+- **A moment shows a "removed" mark in place of a removed record.** The owner chose this on 30 Oct,
+  with one key per record, so part 2 gets built.
 - **One list of removable kinds, in the API contract package.** The built code holds 5 separate kind
   sets, and copies drift.
 
@@ -200,9 +219,8 @@ const removalControlLabel = 'Remove this record';
 
 ## Open questions
 
-- **Which parts get built?** The owner settles it. Each part is its own work item, and an item the
-  owner does not choose closes as not planned. Until then, nothing is built. The parts in order of
-  worth: tool records, the mark, the control.
+- **Which parts get built besides the mark?** The owner settles it for tool records and the control.
+  Each part is its own work item, and an item the owner does not choose closes as not planned.
 - **Which record kinds does a redaction take?** The owner settles it: messages and replies only, as
   built; every record of a thread that has a key, except a moment's or a memory item's own records;
   or that set only for a record inside a kept span. Until then, part 1 adds `tool_called` and
@@ -215,5 +233,5 @@ const removalControlLabel = 'Remove this record';
 - **What is the preview procedure called?** The owner settles it, because the API contract package
   is published. `memory.previewForget` already exists for memory items, and the memory store's own
   read is `readForgetPreview`. Until then, the sketches use `conversation.previewForget`.
-- **Does the thread view mark a removed record as removed?** The owner settles it. Until then, the
-  thread view shows a removed record as it shows any record whose key is gone.
+- **Does the thread view also mark a removed record as removed?** The owner settles it. Until then,
+  the thread view shows a removed record as it shows any record whose key is gone.
