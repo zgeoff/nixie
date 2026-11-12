@@ -1,13 +1,13 @@
 # Redaction of one record of a moment's span
 
-- **Status:** draft. All 4 parts get built, and the [open questions](#open-questions) settle their
+- **Status:** draft. All 5 parts get built, and the [open questions](#open-questions) settle their
   scope.
 
 You remove one whole record of a span, such as a tool result that holds a pasted secret. nixie
-deletes the record's key, so its text is gone from the thread and from every moment that holds it. A
-memory item that quotes the record stays readable until the owner settles that open question.
+deletes the record's key, so its text is gone from the thread and from every moment that holds it.
+Each memory item whose evidence quotes the record keeps its text and loses the quote.
 
-The removal is the built `conversation.forget` action, widened in 4 parts that ship apart:
+The removal is the built `conversation.forget` action, widened in 5 parts that ship apart:
 
 1. The forget takes every record with its own text, tool calls and tool results among them:
    [redaction-tool-records](https://linear.app/zgeoff/issue/GEO-2553).
@@ -17,6 +17,8 @@ The removal is the built `conversation.forget` action, widened in 4 parts that s
    [removal-control](https://linear.app/zgeoff/issue/GEO-2560).
 4. nixie removes a record through a tool, under your policy rules:
    [forget-tool](https://linear.app/zgeoff/issue/GEO-2604).
+5. The removal purges the quote from each memory item that quotes the record:
+   [evidence-purge](https://linear.app/zgeoff/issue/GEO-2605).
 
 A gap is a span record whose text nixie cannot read: a forget deleted its key, a session cleanup
 deleted a summary's key, or its key fails to decrypt. A removed record is a gap that a forget made.
@@ -109,7 +111,8 @@ const spanRecordSchema = z.strictObject({
 
 ```ts
 conversation.previewForget({ thread: 'conversation', sequence: 4190 });
-// → { momentCount: 2, memoryItemCount: 1 }
+// → { momentCount: 2,
+//     memoryItems: [{ itemID: 'k3x9m2p7qa', text: 'The weather service key is sk-…' }] }
 ```
 
 ```ts
@@ -121,7 +124,9 @@ interface ForgetPreviewInput {
 
 interface ForgetPreviewOutput {
   momentCount: number; // the moments whose spans hold the record
-  memoryItemCount: number; // the memory items whose evidence quotes the record
+  // the memory items whose evidence quotes the record, each with its current text, so you can
+  // forget an item whose own text holds what you remove
+  memoryItems: readonly { itemID: string; text: string }[];
 }
 
 // web client: the moment view's control label, word for word
@@ -137,6 +142,19 @@ forgetRecord({ thread: 'conversation', record: '<the record as the session histo
 //   record's kind, its text and the preview's counts. An allow rule you add for this tool lets
 //   it run without asking.
 // → once allowed: the same forget path as conversation.forget, with the same kinds and refusals
+```
+
+### Part 5: the evidence purge
+
+```ts
+// memory module: run inside the forget, once per item whose evidence quotes the record
+purgeItemEvidence({ itemID, sequence: 4190 });
+// 1. memory.evidence_purge_started { itemID, sequence }
+// 2. make a new key, and seal the item's current text, with no evidence quote, under it: one new
+//    version
+// 3. in one key-store write, replace the old key with the new one under the item's UUID, so every
+//    older version and its quote are gone
+// 4. memory.evidence_purged { itemID, sequence }
 ```
 
 ## Constraints
@@ -227,6 +245,24 @@ forgetRecord({ thread: 'conversation', record: '<the record as the session histo
   approval. Each removal the tool makes posts a notice under nixie's reply, as a job change does, so
   you see it afterwards.
 
+### Part 5
+
+- A forget purges the evidence of every memory item that quotes the record, before it writes
+  `record.forgotten`. The item keeps its ID, its current text and its state, and loses its older
+  versions and every evidence quote.
+- The new key stays under the item's UUID, the key ID it already has, so every reader finds it as it
+  finds the old one.
+- Each step is safe to run twice. The server's start finishes a purge from
+  `memory.evidence_purge_started`. A crash before step 3 leaves the old key in place, and the
+  version sealed under a key that never landed reads as a gap. A crash never leaves an item with no
+  readable key.
+- The forget's backup state covers each item's old key as well as the record's key.
+- The release before this part skips the 2 new record kinds, as it skips any kind it does not know.
+  It reads the item through the key under its UUID, so it reads the new version and shows each older
+  version as a gap.
+- The purge never forgets an item. When an item's own text holds what you remove, you forget the
+  item with the memory forget, from the preview's list.
+
 ## Decisions
 
 - **A redaction is the forget of a record.** A moment refers to the log's records and copies none,
@@ -240,6 +276,8 @@ forgetRecord({ thread: 'conversation', record: '<the record as the session histo
   copied into a drafted action or a task brief can be removed too.
 - **nixie can remove a record through a tool, governed by your policy rules.** The owner chose this
   on 13 Nov, with the condition that a rule of the owner's can allow it with no approval.
+- **A removal purges the quote from each memory item that quotes the record.** The owner chose this
+  on 13 Nov. The item stays; the preview lists its text, so you can forget it apart.
 - **One list of removable kinds, in the API contract package.** The built code holds 5 separate kind
   sets, and copies drift.
 
@@ -259,9 +297,6 @@ forgetRecord({ thread: 'conversation', record: '<the record as the session histo
 
 ## Open questions
 
-- **Does a redaction forget the memory items whose evidence is the record?** The owner settles it:
-  the preview lists each item for you to forget apart, or the redaction forgets each one too. Until
-  then, it forgets none.
 - **What is the preview procedure called?** The owner settles it, because the API contract package
   is published. `memory.previewForget` already exists for memory items, and the memory store's own
   read is `readForgetPreview`. Until then, the sketches use `conversation.previewForget`.
