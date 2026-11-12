@@ -3,14 +3,19 @@
 - **Status:** draft
 - **Decision records:** [0016](../../decisions/0016-own-interfaces.md),
   [0027](../../decisions/0027-tasks-and-actions.md)
-- **Work items:** the trigger core, the schedule source and the one-shot, the preview definition,
-  the trigger source baseline, the chat tools, the notice and the undo, the view procedures
+- **Work items:** [the trigger core](https://linear.app/zgeoff/issue/GEO-2542),
+  [the schedule source and the one-shot](https://linear.app/zgeoff/issue/GEO-1835),
+  [the preview definition](https://linear.app/zgeoff/issue/GEO-2537),
+  [the trigger source baseline](https://linear.app/zgeoff/issue/GEO-2538),
+  [the chat tools, the notice and the undo](https://linear.app/zgeoff/issue/GEO-1836),
+  [the view procedures](https://linear.app/zgeoff/issue/GEO-2545)
 
 A definition with a `schedule` trigger fires at repeating times in a time zone, and one with an `at`
 trigger fires once. Every trigger source hands its fires to one piece of code, the trigger core,
 which takes each fire at most once, writes its record, wakes its task and stores the source's
 cursor, all in one write transaction. The triggers module holds the core, the `TriggerSource` port
-and the schedule source, and learns which definitions can fire from a seed hook.
+and [the schedule source](https://linear.app/zgeoff/issue/GEO-1835), and learns which definitions
+can fire from a seed hook.
 
 ## Shape
 
@@ -379,5 +384,6 @@ This design replaces these parts of
 ## Open questions
 
 - **Does the owner approve the changes to the trigger source design?** The owner settles it, because
-  that doc is part of the locked baseline. When approved, the trigger source baseline rewrites it.
-  Until then, the trigger core and the schedule source follow this design.
+  that doc is part of the locked baseline. When approved,
+  [the trigger source baseline](https://linear.app/zgeoff/issue/GEO-2538) rewrites it. Until then,
+  the trigger core and the schedule source follow this design.

@@ -1,7 +1,9 @@
 # The tool-call wait
 
 - **Status:** draft
-- **Work items:** the tool-call wait field, the Agent SDK tool-call wait, the Codex tool-call wait
+- **Work items:** [the tool-call wait field](https://linear.app/zgeoff/issue/GEO-2543),
+  [the Agent SDK tool-call wait](https://linear.app/zgeoff/issue/GEO-2539),
+  [the Codex tool-call wait](https://linear.app/zgeoff/issue/GEO-2541)
 
 A model runtime drops a tool call whose result arrives after its own timeout, and `worker.run`
 blocks for minutes. Each harness record declares how long its runtime waits for one tool call, the
@@ -90,7 +92,9 @@ const turnLimitsSchema = z
 ## Open questions
 
 - **Does the Agent SDK's CLI obey a setting for the timeout of one MCP tool call?** A probe in the
-  Agent SDK lane settles it, in the Agent SDK tool-call wait. Until it passes, `agent-sdk` declares
-  null.
+  Agent SDK lane settles it, in
+  [the Agent SDK tool-call wait](https://linear.app/zgeoff/issue/GEO-2539). Until it passes,
+  `agent-sdk` declares null.
 - **Does the Codex CLI obey a config key for the timeout of one MCP tool call?** A probe in the test
-  imp lane settles it, in the Codex tool-call wait. Until it passes, `codex` declares null.
+  imp lane settles it, in [the Codex tool-call wait](https://linear.app/zgeoff/issue/GEO-2541).
+  Until it passes, `codex` declares null.

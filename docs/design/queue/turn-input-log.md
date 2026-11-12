@@ -2,7 +2,8 @@
 
 - **Status:** draft, a proposal. Both work items are blocked on the question below. This is a
   security design: the shape the owner chooses gets an independent review before it is built.
-- **Work items:** the capture in the counting proxy, the turn-input log in nixie
+- **Work items:** [the capture in the counting proxy](https://linear.app/zgeoff/issue/GEO-2548),
+  [the turn-input log in nixie](https://linear.app/zgeoff/issue/GEO-2355)
 
 **The question for the owner:** where does the log capture and store a request? The options are a
 spool that the counting proxy seals to a key per step, with body files outside the backup set; a
@@ -354,5 +355,6 @@ count. A step's end can wait up to `close_wait` for the proxy's `.part` files.
   proxy fails closed, so a fault in it stops every turn on a route. Until then, a production profile
   matches no source, and each covered step writes a `no_capture_point` miss.
 - **Does each harness's CLI accept a base URL with one more path segment?** A probe settles it per
-  harness: the Agent SDK case in the capture item, and the Codex case with the Codex gates. Until
-  then, a harness whose probe fails has no captured step.
+  harness: the Agent SDK case in [the capture item](https://linear.app/zgeoff/issue/GEO-2548), and
+  the Codex case with [the Codex gates](https://linear.app/zgeoff/issue/GEO-2546). Until then, a
+  harness whose probe fails has no captured step.

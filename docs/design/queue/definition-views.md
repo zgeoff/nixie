@@ -1,7 +1,8 @@
 # The views of definitions, triggers and ended task runs
 
 - **Status:** draft
-- **Work items:** the view procedures, the view routes
+- **Work items:** [the view procedures](https://linear.app/zgeoff/issue/GEO-2545),
+  [the view routes](https://linear.app/zgeoff/issue/GEO-1837)
 
 The web client shows read views of work that started without you: the list of task definitions, the
 trigger report, and the list of ended task runs. Together they answer why a task run happened or why

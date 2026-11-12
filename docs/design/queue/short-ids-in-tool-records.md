@@ -1,7 +1,9 @@
 # Short IDs in tool records
 
 - **Status:** draft
-- **Work items:** short IDs in the moment and recall records, the short ID of a proposal
+- **Work items:**
+  [short IDs in the moment and recall records](https://linear.app/zgeoff/issue/GEO-2528),
+  [the short ID of a proposal](https://linear.app/zgeoff/issue/GEO-2589)
 
 The model reads and passes the short ID of a moment, a memory item or a proposal, never its UUID, as
 [short IDs](../../architecture/core/database.md#short-ids) says. 8 memory tools break the rule

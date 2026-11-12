@@ -2,7 +2,8 @@
 
 - **Status:** draft
 - **Decision records:** [0054](../../decisions/0054-the-sandbox-sizes-ship-first.md)
-- **Work items:** the size table, the day's check of the sizes
+- **Work items:** [the size table](https://linear.app/zgeoff/issue/GEO-2417),
+  [the day's check of the sizes](https://linear.app/zgeoff/issue/GEO-2583)
 
 nixie asks the sandbox runtime for less memory, because a host refuses to create or wake a sandbox
 when its memory is short. The conversation gets 512 MiB in place of 2048, each system task 384 MiB

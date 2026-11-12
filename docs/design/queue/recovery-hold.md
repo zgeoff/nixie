@@ -1,9 +1,13 @@
 # The recovery hold after a restore
 
 - **Status:** draft
-- **Work items:** the `holding` marker, the hold tables, the reader gate and the claim check, the
-  install at the next start, the hold release. These build on the contracts here: the recovery API
-  and host commands, the restore notice, the backup schedule under a hold.
+- **Work items:** [the `holding` marker](https://linear.app/zgeoff/issue/GEO-2561),
+  [the hold tables, the reader gate and the claim check](https://linear.app/zgeoff/issue/GEO-2566),
+  [the install at the next start](https://linear.app/zgeoff/issue/GEO-2564),
+  [the hold release](https://linear.app/zgeoff/issue/GEO-2559). These build on the contracts here:
+  [the recovery API and host commands](https://linear.app/zgeoff/issue/GEO-2571),
+  [the restore notice](https://linear.app/zgeoff/issue/GEO-2572),
+  [the backup schedule under a hold](https://linear.app/zgeoff/issue/GEO-2558).
 
 A restored log is up to one backup interval behind the lost host, and only you can check what
 happened outside nixie in the lost span. After a restore, nixie takes no step of a recovered task

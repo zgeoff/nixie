@@ -4,7 +4,8 @@
 - **Work items:**
   [`hidden` on an ok outcome, and the search's cost](https://linear.app/zgeoff/issue/GEO-2494),
   [`hidden` on an error, and the cost of a refused search](https://linear.app/zgeoff/issue/GEO-2496),
-  short IDs in the moment and recall records, the short ID of a proposal
+  [short IDs in the moment and recall records](https://linear.app/zgeoff/issue/GEO-2528),
+  [the short ID of a proposal](https://linear.app/zgeoff/issue/GEO-2589)
 
 A tool returns values that the server records and the model never reads under `hidden`, beside its
 result or its error message. `log.read` prints only what the call showed the model, so a search's

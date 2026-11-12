@@ -1,8 +1,11 @@
 # Task definitions from chat
 
 - **Status:** draft
-- **Work items:** the runtime layer, the chat tools, the notice and the undo, the export, the view
-  procedures, the view routes
+- **Work items:** [the runtime layer](https://linear.app/zgeoff/issue/GEO-2533),
+  [the chat tools, the notice and the undo](https://linear.app/zgeoff/issue/GEO-1836),
+  [the export](https://linear.app/zgeoff/issue/GEO-2540),
+  [the view procedures](https://linear.app/zgeoff/issue/GEO-2545),
+  [the view routes](https://linear.app/zgeoff/issue/GEO-1837)
 
 The agent creates, alters and deletes a task definition from the conversation with `task.define` and
 `task.undefine`, and lists them with `tasks.definitions`. nixie puts each change in force at once,
@@ -382,9 +385,11 @@ A merge that races an undo:
 - The server app passes the definitions module `CheckTaskStart`, the seed of the definitions source,
   and the tasks context for the seed hook.
 - These pieces that main lacks come from these items: `task_definition_versions` and
-  `CheckTaskStart` from the format and the seed; `withdrawDefinitionTaskInTransaction` as
-  `retireOneShot` from the trigger core; `seedInForceInTransaction` and the `definition.settled`
-  wrap of `retireOneShot` from the runtime layer.
+  `CheckTaskStart` from [the format and the seed](https://linear.app/zgeoff/issue/GEO-1834);
+  `withdrawDefinitionTaskInTransaction` as `retireOneShot` from
+  [the trigger core](https://linear.app/zgeoff/issue/GEO-2542); `seedInForceInTransaction` and the
+  `definition.settled` wrap of `retireOneShot` from
+  [the runtime layer](https://linear.app/zgeoff/issue/GEO-2533).
 - This work adds no config key.
 
 ## Decisions

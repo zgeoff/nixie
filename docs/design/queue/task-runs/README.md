@@ -3,8 +3,11 @@
 - **Status:** draft
 - **Decision records:** [0055](../../../decisions/0055-the-report-shape-of-a-task.md)
 - **Work items:** [task run records and `task.report`](https://linear.app/zgeoff/issue/GEO-2113),
-  the brief of a definition's task run, [the wake rule](https://linear.app/zgeoff/issue/GEO-1865),
-  the previous task run's start, the runner port, the worker tool
+  [the brief of a definition's task run](https://linear.app/zgeoff/issue/GEO-2586),
+  [the wake rule](https://linear.app/zgeoff/issue/GEO-1865),
+  [the previous task run's start](https://linear.app/zgeoff/issue/GEO-2585),
+  [the runner port](https://linear.app/zgeoff/issue/GEO-2588),
+  [the worker tool](https://linear.app/zgeoff/issue/GEO-1793)
 
 A task run is one stretch of a task's work that ends in exactly one report. Three records on the
 task's thread mark each task run, so nixie counts turns, dollars and tool calls per task run, and

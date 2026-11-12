@@ -2,8 +2,9 @@
 
 - **Status:** draft
 - **Decision records:** [0052](../../decisions/0052-the-lean-memory-index.md)
-- **Work items:** the labels and the revision builds this design. The memory index block reads the
-  gist and the topic, and trigger push reads the trigger phrases.
+- **Work items:** [the labels and the revision](https://linear.app/zgeoff/issue/GEO-2549) builds
+  this design. [The memory index block](https://linear.app/zgeoff/issue/GEO-2364) reads the gist and
+  the topic, and [trigger push](https://linear.app/zgeoff/issue/GEO-2555) reads the trigger phrases.
 
 Every memory item gets 3 labels that the agent writes: a gist, a topic and up to 5 trigger phrases.
 The memory index lists an item by its gist under its topic, and trigger push brings an item to a

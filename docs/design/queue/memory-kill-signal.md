@@ -2,7 +2,9 @@
 
 - **Status:** draft
 - **Decision records:** [0056](../../decisions/0056-a-wrapper-logs-each-memory-kill.md)
-- **Work items:** the read of memory kills, the watcher, the day's check of the sizes
+- **Work items:** [the read of memory kills](https://linear.app/zgeoff/issue/GEO-2580),
+  [the watcher](https://linear.app/zgeoff/issue/GEO-2526),
+  [the day's check of the sizes](https://linear.app/zgeoff/issue/GEO-2583)
 
 When a guest uses more memory than its sandbox's size, the guest's kernel kills one of its
 processes, and nixie sees only a failed turn, step or fetch. A wrapper around the sandbox adapter
