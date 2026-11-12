@@ -160,7 +160,7 @@ type FetchReply =
 
 - A port in front of `readPage`. The tool takes the `readPage` function of `startFetchSandbox`, as
   built. The skills module's `ReadPage` type belongs to the skill file reader, and a second page
-  reader is separate work under the port rules.
+  reader is separate work under [the port rules](https://linear.app/zgeoff/issue/GEO-2581).
 - The skill file reader's URLs, which take no rewrite and no pause.
 
 ## Open questions

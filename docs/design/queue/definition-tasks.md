@@ -298,3 +298,7 @@ writes the fire's record. The first answer that holds decides:
   backup and recovery work: `held` with a skip and a fire at the first slot after the release, or no
   answer of its own, so the first fire waits unread and each fire after it skips with
   `still_running`. Until then, `readDefinitionTaskInTransaction` does not read the recovery hold.
+- **Does a raise or a restart open a task run before an unread fire does?** The owner settles it
+  with [the task run records](task-runs/records.md#open-questions). Until then, the 2 designs
+  disagree: the records' claim checks the raise or restart first, and the list under "What opens a
+  task run" puts it third.

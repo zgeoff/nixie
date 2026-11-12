@@ -86,7 +86,7 @@ turn_input_log:
   max_window: 24h # the longest time one `on --for` lasts
   close_wait: 5s # the longest a step's end waits for the proxy's .part files
   roles: [conversation, task]
-  retention: { days: 7, bytes: 2147483648 } # days: 3 | 7 | 30
+  retention: { days: 7, bytes: 2147483648 } # the default; days: 3 | 7 | 30
   on_forget: threads # threads | since_item | keep
   sources:
     proxy:
@@ -342,8 +342,6 @@ count. A step's end can wait up to `close_wait` for the proxy's `.part` files.
 - **Do the first 2 key layers stay?** The owner settles it with the question above. Until then, the
   proposal keeps them.
 - **What does a forget do by default?** The owner settles `on_forget`. Until then, `threads`.
-- **How long does the log hold a request?** The owner settles 3, 7 or 30 days, each with a byte
-  bound. Until then, 7 days and 2 GiB.
 - **Does the log run by default?** The owner settles it: always, off until you turn it on, or on for
   a set time. Until then, `default: off`.
 - **Which roles does the log cover?** The owner settles it: `conversation` and `task`, with
@@ -351,9 +349,6 @@ count. A step's end can wait up to `close_wait` for the proxy's `.part` files.
 - **What does the log do with a request that holds a secret?** The owner settles it: accept and
   seal, mask the secret before the capture, or drop the tool call; and for an own secret value,
   store no body or narrow the rule. Until then, the rules above.
-- **Does production send its model calls through the counting proxy?** The owner settles it. The
-  proxy fails closed, so a fault in it stops every turn on a route. Until then, a production profile
-  matches no source, and each covered step writes a `no_capture_point` miss.
 - **Does each harness's CLI accept a base URL with one more path segment?** A probe settles it per
   harness: the Agent SDK case in [the capture item](https://linear.app/zgeoff/issue/GEO-2548), and
   the Codex case with [the Codex gates](https://linear.app/zgeoff/issue/GEO-2546). Until then, a

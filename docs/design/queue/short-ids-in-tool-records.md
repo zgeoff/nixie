@@ -99,6 +99,10 @@ const swappedKeys = ['momentID', 'itemID', 'changeID'] as const;
   their records as the records stand on main when the work is built. When memory-index-1 lands
   first, that includes `leftOut.itemIDs` of `memory.recall`. When it lands after, memory-index-1
   records `leftOut` by this rule.
+- A proposal's short ID is the one `buildShortIDFromUUID` gives for its UUID, as a memory
+  consolidation change's is in [short IDs](../../architecture/core/database.md#short-ids). The
+  `memory.proposed` record keeps the shape that the release before reads, so it never carries a
+  short ID.
 - The release before prints `hidden.uuids` as it prints any field, so after a rollback the model
   reads those UUIDs.
 
@@ -120,13 +124,11 @@ const swappedKeys = ['momentID', 'itemID', 'changeID'] as const;
 
 ## Open questions
 
-- **What does `log.read` print for a UUID in a stored record?** The options: (a) the short ID from
-  the row, with the key left out when the row gives none; (b) the key always left out; (c) the UUID.
-  The owner settles it. Until then, the design follows (a).
-- **Where does a proposal's short ID come from?** The owner settles it: (a) a `short_id` column on
-  the proposal row, added by a migration, as memory items have; or (b) a short ID derived from the
-  UUID on each read, which the built `buildShortIDFromUUID` of the database lib already does for an
-  item row with no `short_id`. The same answer decides what `log.read` prints for a stored
-  `proposalID` that is a UUID, and whether `memory.remember`, `memory.edit`, `memory.retire` and
-  `memory.pin` show a short ID as `proposalID`. Until then, `memory.pending` shows the UUID, as
-  built.
+- **What does `log.read` print for a UUID in a stored record?** The owner settles it: (a) the short
+  ID from the row, with the key left out when the row gives none; or (b) the key always left out.
+  The short ID rule rules out printing the UUID. Until then, the design follows (a).
+- **Does a proposal's short ID sit in a column?** The owner settles it: (a) a `short_id` column on
+  the proposal row, added by a migration that fills each row with `buildShortIDFromUUID`, as the
+  consolidation change has; or (b) the same value derived on each read, with no migration. The same
+  answer decides whether `memory.remember`, `memory.edit`, `memory.retire` and `memory.pin` show a
+  short ID as `proposalID`. Until then, `memory.pending` shows the UUID, as built.

@@ -156,6 +156,11 @@ logger('web_fetch.secret_refused', { rule: 'github-pat', hop: 1 });
 - Both functions read the URL as given and percent-decoded. The finder matches each own value as it
   is and percent-encoded.
 - The lib gives each rule no file path, so a rule that matches on a file path alone never fires.
+- The own values come from the 5 credential entries by default. `settings` holds your name and
+  pronouns, and a scan for them would refuse an ordinary URL that holds your name.
+- `collectOwnValues` leaves out a value shorter than `secret_own_value_min_chars`. A short value
+  matches an ordinary URL by chance, and a site that redirects to a URL with its guess of an own
+  value learns one yes or no per fetch.
 - For a URL that holds an own value and a key that a public rule matches, the finder returns
   `nixie-secret`.
 - A test builds each synthetic key at run time, and `.gitleaks.toml` allows the generated rule file
@@ -172,6 +177,9 @@ passes use it. The first line that fits decides:
 2. Hop 0: whether `isOwnerTyped` holds for the named URL, the URL before any rewrite.
 3. A later hop: the same answer under `redirects`, and false under `named_url`.
 
+- Typed text is the typed spans of the thread's newest readable messages, as in the memory
+  [content gate](../../architecture/memory/writes.md#the-content-gate). A pasted span never counts,
+  because a paste can hold text someone else wrote.
 - The second pass numbers its hops from 0 again, with the named URL as hop 0.
 - `isOwnerTyped` is read at most once per call, across both passes, and only after a match, so a
   fetch with no match reads none of your messages.
@@ -220,9 +228,6 @@ passes use it. The first line that fits decides:
 
 Each is the owner's to settle. Until then, the design follows the option it states.
 
-- **Which text counts as typed?** (a) typed spans of the turn's own message; (b) typed spans of the
-  thread's newest 50 readable messages; (c) the same with pasted spans. Follows (b): a paste can
-  hold text someone else wrote.
 - **Does a typed URL's exemption cover its redirect hops?** (a) only the named URL; (b) every hop
   that a public rule matches. Follows (b), as the default `redirects`: a site that redirects a typed
   URL with its token to its `www` host fails under (a).
@@ -231,12 +236,5 @@ Each is the owner's to settle. Until then, the design follows the option it stat
   Follows (b), as line 1 of the exemption.
 - **Does the call record hold the refused URL?** (a) yes; (b) the tool's `recordInput` stores the
   rule instead. Follows (a): the secret sits in the session that the model read it from.
-- **Which secrets file entries are own values?** (a) every string; (b) the 5 credential entries.
-  Follows (b): `settings` holds your name and pronouns.
-- **What is the shortest own value?** (a) any length; (b) 8 characters. Follows (b): a short value
-  matches by chance, and a site that redirects to a URL holding its guess of an own value learns one
-  yes or no per fetch.
 - **Does nixie scan the skill file reader's fetches?** (a) no; (b) yes. Follows (b), as the default
   `true`.
-- **Does the log event hold the host?** (a) the rule and the host; (b) the rule and the hop's
-  number. Follows (b).

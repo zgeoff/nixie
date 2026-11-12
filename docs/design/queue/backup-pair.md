@@ -20,7 +20,7 @@ Terms:
 - A **data snapshot** and a **key snapshot** are the 2 restic snapshots that one publish writes. The
   **publish number** is the positive integer that one publish gives both.
 - A key copy **vouches for** a data snapshot when it holds the key of every record in that snapshot,
-  except the records of an item you forgot.
+  except the records whose key nixie removed after that snapshot.
 - A **backup pair** is the key snapshot and the data snapshot that the fetch picks.
 
 ## Shape
@@ -267,6 +267,9 @@ interface DataRestore {
   the data directory.
 - No command restores a key copy other than the newest, because that copy makes a forgotten item
   readable again.
+- A record with no key in an `older-data` pair does not prove a forget. Besides a forget, the
+  conversation reset, the log reset and the key cleanup of compaction summaries, memory proposals
+  and offers each remove keys.
 
 ### The restore, steps 1 to 5
 
@@ -356,15 +359,11 @@ interface DataRestore {
 - **What happens to an item forgotten after the data snapshot of an `older-data` pair?** The owner
   settles it: it stays unreadable; the restore finishes each forget whose key is gone, at the next
   start in the start part `recovery_holds` or in `nixie restore`; or `--data-snapshot` comes only
-  with a runbook warning. Until then, such an item stays unreadable, and `restoreDataBackup` takes
+  with a runbook warning. A finish of forgets cannot treat a missing key as a forget, because other
+  cleanups remove keys too. Until then, such an item stays unreadable, and `restoreDataBackup` takes
   no option for it.
 - **Does restic store `publish-<n>`, `legacy-set-<sequence>` and `proven-from-<n>` as written, and
   list them back?** A spike settles it: the first case of the real restic suite writes one snapshot
   with the 3 tags and reads the snapshot list, under
   `NIXIE_RESTIC_BINARY=<path_to_restic> bun run test:restic`. Until then, the publish numbers work
   starts with that case, and changes the tag format first when restic changes or refuses one.
-- **Does only a forget delete a row of `record_keys`?** A check settles it: read each caller of
-  `removeRecordKey`, `removeThreadKeys` and `deleteFrom('record_keys')` outside tests. A grep lists
-  the compaction module, the memory module, the conversation reset and the log reset beside the
-  forgets. Until then, the promise that a record with no key in an `older-data` pair belongs to a
-  forgotten item is unproven. Only the finish of forgets, which is not designed, relies on it.

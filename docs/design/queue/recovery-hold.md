@@ -293,6 +293,10 @@ type RecoveryHoldFaultPoint =
 - A restore holds every task that is not done or closed, and every task that owns a pending action,
   less the exempt tasks. A done or closed task that owns a pending action is held, so the action
   cannot retry.
+- A done, stopped or closed task can own a pending action with a started attempt. A stop cancels
+  only the actions with no started attempt, a started attempt runs on to its outcome
+  ([attempts](../../architecture/core/actions.md#attempts)), and the built action claim skips only
+  the actions of a paused or closed task.
 - The conversation and the queue check are held.
 - The install reads `stateAtBackup` and `wasRunning` from each task's row before the start part
   `recovery` moves a running task.
@@ -402,6 +406,3 @@ type RecoveryHoldFaultPoint =
   under `bun run test` and `bun run test:browser`. Until then, the 3 kinds go on the task's thread.
   When one reader throws, that reader is fixed in a release before the hold ships, or the kinds go
   on no thread and `recovery/read` joins by subject.
-- **Can a done or stopped task own a pending action with a started attempt?** A check settles it: an
-  actions module test seeds such a task and claims the action. Until then, the install holds each
-  task that owns a pending action, as written.

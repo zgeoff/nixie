@@ -230,13 +230,13 @@ module does not export it. When a step commits, nixie takes the first row that a
 
 These rows end the task run:
 
-| The commit finds                                   | End cause   | The task's next state          |
-| -------------------------------------------------- | ----------- | ------------------------------ |
-| a report request in this task run                  | `reported`  | what the step asked            |
-| a reached limit in `StepResult.run`                | `limit`     | `paused`, under the limit hold |
-| the runner returned `done`                         | `no_report` | `done`                         |
-| a first step with `StepResult.run.activity` `none` | `no_work`   | `waiting`                      |
-| a quiet turn, and the task is not wakeable         | `no_report` | `waiting`                      |
+| The commit finds                                   | End cause   | The task's next state                         |
+| -------------------------------------------------- | ----------- | --------------------------------------------- |
+| a report request in this task run                  | `reported`  | what the step asked                           |
+| a reached limit in `StepResult.run`                | `limit`     | `paused`, under the limit hold                |
+| the runner returned `done`                         | `no_report` | `done`, and `waiting` for a definition's task |
+| a first step with `StepResult.run.activity` `none` | `no_work`   | `waiting`                                     |
+| a quiet turn, and the task is not wakeable         | `no_report` | `waiting`                                     |
 
 These rows leave the task run open, and the task takes the next state the step asked for:
 
@@ -249,6 +249,8 @@ These rows leave the task run open, and the task takes the next state the step a
   built `TaskProfile.isWokenByMessages`.
 - A started task that reported waits and is wakeable. It is never `done`, because a `done` task
   refuses messages and has no sandbox.
+- A definition's task is never `done`, because it keeps one thread for the life of its definition,
+  as [the task of a definition](../definition-tasks.md#between-task-runs) gives.
 - A started task that reported keeps its sandbox, asleep, as the built sandbox rules do for every
   waiting task, until you close the task.
 - Your stop ends the task run with `stopped` and your close with `closed`, each in the transaction
@@ -267,14 +269,17 @@ These rows leave the task run open, and the task takes the next state the step a
 
 In the ending transaction, the end writer takes the first row that applies:
 
-| The case                              | What nixie writes                                | `delivery`  |
-| ------------------------------------- | ------------------------------------------------ | ----------- |
-| the end cause is `no_work`            | no message                                       | `kept`      |
-| the report target is closed or `done` | no message                                       | `kept`      |
-| the mode `none`                       | no message                                       | `kept`      |
-| the mode `next_turn`                  | a `task_message` of kind `report`, `wake: false` | `next_turn` |
-| the mode `wake`, past the hop limit   | a `task_message` of kind `report`, `wake: false` | `next_turn` |
-| the mode `wake`, inside the hop limit | a `task_message` of kind `report`, with a wake   | `wake`      |
+| The case                                          | What nixie writes                                | `delivery`  |
+| ------------------------------------------------- | ------------------------------------------------ | ----------- |
+| the end cause is `no_work`                        | no message                                       | `kept`      |
+| the report target is `done`, `failed` or `closed` | no message                                       | `kept`      |
+| the mode `none`                                   | no message                                       | `kept`      |
+| the mode `next_turn`                              | a `task_message` of kind `report`, `wake: false` | `next_turn` |
+| the mode `wake`, past the hop limit               | a `task_message` of kind `report`, `wake: false` | `next_turn` |
+| the mode `wake`, inside the hop limit             | a `task_message` of kind `report`, with a wake   | `wake`      |
+
+- Row 2 covers the 3 states that the built `isFinishedState` gives, because
+  `writeInboxRecordsInTransaction` throws on a message to a task in one of them.
 
 - The delivered message goes from the task to the report target, with the `reportID` as its message
   ID and the body of `task.run_ended`.
@@ -371,17 +376,16 @@ In the ending transaction, the end writer takes the first row that applies:
 - **Which comes first in a claim: the raise or restart and the limit hold, or `pickRunDefinition`?**
   The owner settles it with the definitions design, because the 2 orders open different task runs
   for a claim that finds both an unread fire and a restart. Until then, the claim checks the raise
-  or restart and the limit hold first. Only a definition's task can find both, so the task run
-  records work, which covers started tasks, is not blocked.
+  or restart and the limit hold first, while the definitions design's
+  [list](../definition-tasks.md#what-opens-a-task-run) puts an unread fire first and a raise or
+  restart third. Only a definition's task can find both, so the task run records work, which covers
+  started tasks, is not blocked.
 - **How does the claim compute the carried limits per meter, and what are the limits after a
   restart?** The owner settles it. Until then, the rule under "Limits, a raise and call caps" holds,
   and a test pins it.
-- **What next state does a definition's task take when its runner returns `done`?** The owner
-  settles it with the definitions design, which returns `waiting` for every definition's task. Until
-  then, the `done` row of the ending table applies to started tasks only.
 - **Is a report target that has the listed state `finished` also kept?** The owner settles it. A
-  `finished` task accepts messages. Until then, row 2 of the delivery table covers only a closed or
-  `done` target, and a test of the end writer pins it.
+  `finished` task is stored `waiting` and accepts messages. Until then, row 2 of the delivery table
+  covers only a `done`, `failed` or `closed` target, and a test of the end writer pins it.
 - **Does the late-spend read filter by `taskRunID`?** The owner settles it. Until then, it reads the
   whole thread past the sequence of the turn's usage read, as
   [the late-spend fix](https://linear.app/zgeoff/issue/GEO-2495) builds it.

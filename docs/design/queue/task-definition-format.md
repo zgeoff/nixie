@@ -210,7 +210,8 @@ interface DefinitionVersion {
 ## Decisions
 
 - **Each task run uses the version pinned when it opened.** A seed's edit reaches the next task run,
-  never a task run in progress. [The definitions](../../architecture/core/definitions.md)
+  never a task run in progress.
+  [The trigger source](../platform/channels/trigger-source.md#schedules)
 - **A file definition and a runtime definition follow one schema and one store.** Two schemas would
   let chat make a definition that a file cannot hold.
 - **One fault refuses the whole seed.** A partial seed would put half an edit in force.

@@ -42,8 +42,7 @@ export const sandboxSizes = {
 // Each reader takes its row in place of its own literal:
 // startConversation (server)
 limits: sandboxSizes.conversation,
-// makeSystemTaskRunner (sessions module): the checker, each started task, the memory writer and
-// the memory consolidator
+// makeSystemTaskRunner (sessions module): the checker, each started task and each system task
 limits: sandboxSizes.systemTask,
 // webFetchDefaults (connectors module): startWebFetch passes it to both the web fetch sandbox and
 // the skill fetch sandbox

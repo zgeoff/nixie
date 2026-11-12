@@ -142,7 +142,8 @@ The lines:
   step or the fetch succeeded.
 - nixie writes no line when the count is the same: a requested stop, a program's own exit, a model
   API failure, a time limit or a lost connection.
-- An end that nixie cannot judge never counts as an end with no kill.
+- An end that nixie cannot judge never counts as an end with no kill, so each end on an adapter that
+  returns `unsupported` gives its own line.
 - The lines are log lines only. nixie writes no event-log record for a memory kill, so a rollback
   needs no step.
 - A line never holds a task ID, a step key, guest output, a URL, a message or a prompt.
@@ -186,5 +187,3 @@ The lines:
   the runtime's log on the host.
 - **Is `kills` the guest's count or the rise since the last read?** The owner settles it. Until
   then, it is the count.
-- **How often does an `unsupported` adapter log?** The owner settles it: once per end, once per
-  sandbox, or once when the watcher is applied. Until then, once per end.

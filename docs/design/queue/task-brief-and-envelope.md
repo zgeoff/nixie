@@ -348,5 +348,7 @@ session. nixie takes the first line that applies:
   a start never widens its starter's tools bound a chain.
 - **What does `{{ task.reportTarget }}` say for a definition's task run and for the report mode
   `none`?** The owner settles it. Until then, the frame keeps its first 2 paragraphs.
-- **Can the Agent SDK drop the CLI's own reminders of the environment, the model and the date?** A
-  spike settles it. Until then, the guest passes them as built.
+- **Does the guest drop the CLI's own reminders of the environment, the model and the date?** The
+  owner settles it. The [model-eval spike](../../../research/model-eval/results.md) shows that
+  `CLAUDE_CODE_SIMPLE=1` drops all 3 under a gateway credential, as the guest uses, and leaves
+  untested what else the setting changes in the guest. Until then, the guest passes them as built.

@@ -117,8 +117,8 @@ memory:
 - When every topic is folded and the count is still over, the renderer drops topics into the closing
   line, the one with the fewest items first, until the count fits.
 - The index budget is separate from `pinned_core_tokens`.
-- When `index_tokens` is 0, `readIndex` returns `text: ''` and the opening has no `memory-index`
-  block.
+- When `index_tokens` is 0, `readIndex` returns `text: ''`, and the opening has no `memory-index`
+  block and neither index status line.
 
 ### When it renders
 
@@ -138,8 +138,7 @@ memory:
 
 ## Builder decides
 
-- The wording of the opening line and of the 2 status lines, within the rules above, and whether the
-  status lines show when `index_tokens` is 0.
+- The wording of the opening line and of the 2 status lines, within the rules above.
 - What "newest" measures, and the order of topics inside a subject.
 - The internal names of the renderer and its helpers.
 - Test layout.
@@ -155,9 +154,6 @@ memory:
 - A measurement of the index before release.
 
 ## Open questions
-
-- **Are the block's format, its folding and the defaults of the 4 keys the ones the memory index
-  issue gives?** The owner settles it. Until then, this doc follows the issue.
 
 - **What does `index_fold_order: oldest-first` fold first: the topic whose newest item is oldest, or
   the topic whose oldest item is oldest?** The owner settles it. Until then, the key takes only
