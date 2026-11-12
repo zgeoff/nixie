@@ -85,11 +85,11 @@ cookie, so one host-only cookie reached both servers. A deployment with 2 host n
 host-only cookie set for the API host never reaches Start, and server rendering then sees no
 session.
 
-[0029](../../docs/decisions/0029-channels-and-clients.md) settles it with one host name. A reverse
-proxy sends `/rpc` to nixie and every other path to Start. The cookie stays host-only, and the
-browser makes same-origin calls with no CORS. The rejected option put 2 host names under one parent
-domain: the cookie then needs a `Domain` attribute that sends the session to every host under that
-domain, and the API needs CORS with credentials.
+[Session forwarding](../../docs/architecture/channels/client.md#session-forwarding) settles it with
+one host name. A reverse proxy sends `/rpc` to nixie and every other path to Start. The cookie stays
+host-only, and the browser makes same-origin calls with no CORS. The rejected option put 2 host
+names under one parent domain: the cookie then needs a `Domain` attribute that sends the session to
+every host under that domain, and the API needs CORS with credentials.
 
 ## Untested
 

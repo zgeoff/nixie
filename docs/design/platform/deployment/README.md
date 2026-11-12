@@ -1,8 +1,8 @@
 # Deployment design
 
 Deployment covers how nixie runs on a host: the images, secrets, configuration and health, the
-backups beside it, and how a release reaches it. [0020](../../../decisions/0020-deployment.md)
-records the split between the nixie repo, the definitions repo and the deployment repo.
+backups beside it, and how a release reaches it. [Deployment](deployment.md) sets out the split
+between the nixie repo, the definitions repo and the deployment repo.
 
 - [Deployment](deployment.md) — the first build, the host, the images, secrets, seeding the
   definitions, health, and Kubernetes

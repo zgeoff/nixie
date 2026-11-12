@@ -1,10 +1,6 @@
 # Memory in context
 
-- Decisions: [0013](../../../decisions/0013-definition-versioning.md),
-  [0024](../../../decisions/0024-memory-in-context.md),
-  [0003](../../../decisions/0003-sdk-placement.md),
-  [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
-  [0037](../../../decisions/0037-moments.md), [0039](../../../decisions/0039-local-encoder.md)
+- Decisions: [0003](../../../decisions/0003-sdk-placement.md)
 
 The conversation runs on the Agent SDK's session, and nixie compacts the session itself. Memory
 reaches it 3 ways: a small pinned core in each session's opening, a few items retrieved for each
@@ -16,8 +12,8 @@ summary never becomes memory. The SDK's transcript is a cache, and the event log
 
 Each turn's prompt runs from the most stable part to the least, so the prompt cache holds:
 
-1. **The system prompt:** nixie's instructions, the persona fixed for the task's life under
-   [0013](../../../decisions/0013-definition-versioning.md) and the
+1. **The system prompt:** nixie's instructions, the persona fixed for the task's life, as
+   [the definitions](../../../architecture/core/definitions.md) set, and the
    [skill catalog](../skills.md#the-catalog).
 2. **The session:** its opening, which holds the pinned core, the status and the summary of the
    session before it, then every turn since.
@@ -45,7 +41,8 @@ Per-turn retrieval and the recall tools share one retrieval service over active 
 readable past messages. A small local encoder with pinned model assets produces semantic vectors,
 with no inference API call. SQLite FTS5 with BM25 serves word, name and reference lookup, and an
 exact item ID reads the item directly. The encoder and the ranking are configurable, and
-[0039](../../../decisions/0039-local-encoder.md) picks the encoder and its vector size.
+[the memory store](../../../architecture/memory/store.md#the-indexes) names the encoder and its
+vector size.
 
 ### The index
 

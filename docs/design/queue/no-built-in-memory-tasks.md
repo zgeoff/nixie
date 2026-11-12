@@ -1,8 +1,6 @@
 # nixie with no built-in memory task
 
 - **Status:** draft
-- **Decision records:** [0050](../../decisions/0050-no-built-in-memory-tasks.md),
-  [0049](../../decisions/0049-milestone-deploys-and-the-rollback-target.md)
 - **Work items:** [the fixtures](https://linear.app/zgeoff/issue/GEO-2551),
   [the note-taker delete](https://linear.app/zgeoff/issue/GEO-1849),
   [the consolidator delete](https://linear.app/zgeoff/issue/GEO-2114),
@@ -233,10 +231,9 @@ Each renderer turns a stored origin into words only when it renders a record for
 
 ### A rollback
 
-The target is the last release the deployment ran, under
-[0049](../../decisions/0049-milestone-deploys-and-the-rollback-target.md). Every shipped release
-from v0.41.0 holds both `enabled` keys, each with the default `true`, and `runOffTaskStep`. A
-deployment on an earlier release takes v0.41.0 or later before it takes the delete.
+The target is the last release the deployment ran. Every shipped release from v0.41.0 holds both
+`enabled` keys, each with the default `true`, and `runOffTaskStep`. A deployment on an earlier
+release takes v0.41.0 or later before it takes the delete.
 
 - Before a rollback to a release with the built-in tasks, the deployment sets
   `builtInMemoryTasksOffConfig` in `config.yaml`. The config edit and the release change are one
@@ -253,13 +250,10 @@ deployment on an earlier release takes v0.41.0 or later before it takes the dele
 ## Decisions
 
 - **nixie has no built-in memory task, and a started task does the work.**
-  [0050](../../decisions/0050-no-built-in-memory-tasks.md)
 - **The 2 deletes are one release, with one config break.** A deployment drops both sections and
-  takes the release in one deploy. [0050](../../decisions/0050-no-built-in-memory-tasks.md)
+  takes the release in one deploy.
 - **Stored records stay, and the agent reads no "note-taker".**
-  [0050](../../decisions/0050-no-built-in-memory-tasks.md)
 - **A rollback sets the off config first.**
-  [0049](../../decisions/0049-milestone-deploys-and-the-rollback-target.md)
 
 ## Builder decides
 

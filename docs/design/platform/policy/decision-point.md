@@ -2,11 +2,8 @@
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
   [0004](../../../decisions/0004-rule-engine.md),
-  [0005](../../../decisions/0005-effects-and-taint.md),
-  [0006](../../../decisions/0006-approval-record.md), [0008](../../../decisions/0008-auto-mode.md),
-  [0013](../../../decisions/0013-definition-versioning.md),
-  [0028](../../../decisions/0028-policy-design.md),
-  [0048](../../../decisions/0048-one-approval-system.md)
+  [0005](../../../decisions/0005-untrusted-conversation.md),
+  [0012](../../../decisions/0012-spending-stop.md)
 
 The decision point is the one function every nixie tool calls before it acts. It takes a tool call
 with its context and returns allow, ask or deny, with the stage and rule that decided and, for an
@@ -38,9 +35,8 @@ Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order neve
 A call whose effects include `memory_write` never reaches stages 8 and 9. When no stage before them
 decides it, the memory gate decides it in their place, and the write applies at once or becomes a
 memory proposal, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)
-covers. **Why:** the gate's checks are the default for a memory write under
-[0048](../../../decisions/0048-one-approval-system.md), so consent never lets a direct "remember
-that" skip them.
+covers. **Why:** the gate's checks are the default for a memory write, so consent never lets a
+direct "remember that" skip them.
 
 The caller's tool list at stage 2 is the job's list for a job run, and the subset its caller passed
 for a worker, so delegation only narrows. A connector tool on the list names the connections it may
@@ -149,8 +145,8 @@ or your ask rule. A checker that refuses, is unsure or cannot be reached counts 
 ## Taint in the first build
 
 The first build treats the conversation and every job run as untrusted, so the destination limits
-apply everywhere and no code computes a taint label. 3 hooks are data from the start, for the later
-stages that [0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies) sets:
+apply everywhere and no code computes a taint label. 3 hooks are data from the start, for later
+stages such as taint per job run:
 
 - **Source of content.** Each tool declares the source of each result field: your words, your own
   data, or outside content. The record stores it on every tool result. An email body, an invite from
@@ -164,9 +160,15 @@ stages that [0005](../../../decisions/0005-effects-and-taint.md#where-taint-appl
 
 ## auto-mode
 
-nixie runs completely without auto-mode, and auto-mode stays off until it meets the bar that
-[0008](../../../decisions/0008-auto-mode.md) sets on nixie's scenarios. With auto-mode on, stages 5
-and 9 call auto-mode instead of asking:
+nixie runs completely without auto-mode. auto-mode stays off until its own measurements on nixie's
+scenarios meet nixie's bar on each of these:
+
+- catastrophic actions allowed, per stage
+- harmless denials per action
+- consent credited, and near-misses held
+- escalations to you per task
+
+With auto-mode on, stages 5 and 9 call auto-mode instead of asking:
 
 - **Stage 5** accepts only a deny with a reason, such as "write a draft instead". auto-mode never
   allows a destination that the limits hold back.

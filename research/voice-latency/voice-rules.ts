@@ -1,5 +1,6 @@
-// The spoken-reply rules every candidate adds to nixie's persona. Decision 0040 lets an opening
-// acknowledgement claim no outcome and make no promise.
+// The spoken-reply rules every candidate adds to nixie's persona. The voice calls design
+// (docs/design/platform/channels/voice.md) lets an opening acknowledgement claim no outcome and
+// make no promise.
 export const acknowledgeRules =
   'You are on a voice call. Open every reply with a short acknowledgement of two to four words, such as "Sure, let me think." or "Good question.", that never claims an outcome or makes a promise. Then answer in two or three short spoken sentences, with no lists and no markdown.';
 

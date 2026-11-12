@@ -6,8 +6,7 @@ the header that credential goes in, the model ID, the reasoning effort, an optio
 prompt cache lifetime, an optional provider pin and an optional price table. Each model role names
 the profile it uses, so moving a role to another model is a change to the deployment configuration
 and never to code. [Conversation turns](./conversation-turns.md) covers how the conversation runs
-its turns on its role's profile, and decision [0033](../../decisions/0033-model-profiles.md) records
-why profiles exist.
+its turns on its role's profile.
 
 ## The role map
 
@@ -98,8 +97,9 @@ last. The guest passes the lifetime to the CLI as its prompt cache setting, beca
 otherwise writes short entries on an API-key or bearer credential, and a turn that comes after a gap
 longer than the short lifetime then writes its whole context to the cache again. A profile that sets
 no lifetime gets the short one, and a deployment sets the long one on the conversation's profile
-when enough of its gaps between bursts of turns fall inside it. Decision
-[0033](../../decisions/0033-model-profiles.md) records the default and the reason for it.
+when enough of its gaps between bursts of turns fall inside it. A long entry costs more to write, so
+the long lifetime pays off only past a share of such gaps, which the
+[cache lifetime spike](../../../research/cache-lifetime/README.md) puts at about 42%.
 
 The summary that compacts a conversation session runs on the profile's lifetime, because it reads
 that session's cache. The memory writer and the memory consolidator start a fresh session for each

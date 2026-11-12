@@ -5,8 +5,7 @@ validates the file, and nixie refuses to start on a file that fails it. The file
 never secrets: every secret stays in nixie's encrypted secrets file, which
 [the server](server.md#configuration-and-secrets) decrypts at start. A deployment repo keeps the
 file beside its manifests or its Compose file, and changes it by pull request like the pinned image
-digests ([0020](../../decisions/0020-deployment.md),
-[0036](../../decisions/0036-deployment-configuration-and-reference-manifests.md)).
+digests.
 
 ## What the file holds
 

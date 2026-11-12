@@ -1,15 +1,15 @@
 # The client
 
 The user reaches nixie through a client that calls one typed API, an oRPC contract in
-`libs/contract`, under [0029](../../decisions/0029-channels-and-clients.md). The contract holds
-schemas, types and pure functions and no server code, so every client depends on it and the server
-validates every input and output against it. The web client in `apps/web` is a TanStack Start server
-with its own process and image beside the API, and it renders the conversation from the log as it
-grows. [The API](./api.md) covers the server that serves the contract, the
-[client design](../../design/platform/channels/client.md) covers the Android app, and the web
-client's tests run against a mock API built from the contract.
+`libs/contract`. The contract holds schemas, types and pure functions and no server code, so every
+client depends on it and the server validates every input and output against it. The web client in
+`apps/web` is a TanStack Start server with its own process and image beside the API, and it renders
+the conversation from the log as it grows. [The API](./api.md) covers the server that serves the
+contract, the [client design](../../design/platform/channels/client.md) covers the Android app, and
+the web client's tests run against a mock API built from the contract.
 [The architecture overview](../overview.md#the-client-path) shows where the two servers sit. The web
-client's memory page is the [memory view](../memory/view.md#the-web-view).
+client's memory page is the [memory view](../memory/view.md#the-web-view), and the conversation
+shows memory writes as [notices](../memory/writes.md#notices).
 
 ## The contract
 

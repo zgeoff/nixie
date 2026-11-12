@@ -271,9 +271,9 @@ nixie turn-input open <input_id>         # prints the body
   `retention.days`, then the oldest until the store fits `retention.bytes`.
 - A backup set holds `nixie.db` and `keys.db` only, so it never holds a body. After a restore, the
   start marks each row with no file as `missing`.
-- `--drop` removes every request with `dropped`. A reset under
-  [0046](../../decisions/0046-resetting-the-event-log.md) empties the key store and the tables, and
-  deletes the `turn-inputs` folder.
+- `--drop` removes every request with `dropped`. A
+  [reset](../../architecture/deployment/host-commands.md#the-reset) empties the key store and the
+  tables, and deletes the `turn-inputs` folder.
 
 A forget of a memory item removes logged requests in its session cleanup, after it closes the open
 captures of the threads it covers. The item's first record is the first record of that memory item

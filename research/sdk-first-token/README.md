@@ -3,7 +3,7 @@
 This spike times an Agent SDK turn in nixie's assistant placement, from the call that sends the
 prompt to the first streamed text token and to the result. It measures the placement from decision
 [0003](../../docs/decisions/0003-sdk-placement.md), and its numbers back the voice pipeline in
-decision [0040](../../docs/decisions/0040-voice-pipeline.md).
+decision [0014](../../docs/decisions/0014-voice-pipeline.md).
 
 ## Question
 

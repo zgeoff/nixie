@@ -1,9 +1,5 @@
 # The live view and the dashboard
 
-- Decisions: [0029](../../../decisions/0029-channels-and-clients.md),
-  [0018](../../../decisions/0018-the-conversation-and-tasks.md),
-  [0027](../../../decisions/0027-tasks-and-actions.md)
-
 The dashboard shows every task's state and what it waits on, and the live view extends it with
 finished tasks and what each did and why. Both read the same projections as the conversation's
 `tasks.list` tool, so you and the conversation see the same state. The

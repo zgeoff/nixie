@@ -4,9 +4,10 @@ A task is a durable piece of work that runs one step at a time, and its whole hi
 its own thread of the [event log](./event-log.md). A step reads the task's unread inbox, does its
 work, such as one model turn, and commits its records and the task's next state in one transaction.
 A crash before the commit leaves the task as it was, and the next step runs that work again. The
-conversation is itself a task, with a fixed ID, that waits for the user's messages, under the
-[conversation and tasks decision](../../decisions/0018-the-conversation-and-tasks.md). The tasks
-module owns tasks, their inbox and their timers.
+conversation is itself a task, with a fixed ID, that waits for the user's messages. Work that the
+user might want to talk to, or that waits for something, is a task, and any other work is a
+[worker](../../glossary.md) behind one tool call. The tasks module owns tasks, their inbox and their
+timers.
 
 [Leases and recovery](./leases-and-recovery.md) covers how a runner claims a step and what a restart
 does, and the [tasks design](../../design/platform/core/tasks.md) covers the states and waits that
@@ -100,15 +101,14 @@ as a timer with an invalid due time, counts as a step error too.
 A lost lease counts as no error, and neither does a process that lost the writer lock. The runner
 stops and commits nothing, because another runner or another process owns the work now.
 
-Step errors never fail the conversation, under the
-[conversation and tasks decision](../../decisions/0018-the-conversation-and-tasks.md), because every
-deployment needs it to answer. Its wait before each retry doubles with each error in a row, up to a
-cap. Each error record holds the count of errors in a row, the count at which any other task would
-fail, and the retry time. Once the conversation's count reaches that limit, the server reports the
-conversation's turns as failing in its readiness report, and the web UI says that nixie is failing
-to answer. That part of the report is advisory, so a deployment never stops sending requests to
-nixie for it. The next turn that commits clears both. A server start makes a conversation in the
-failed state ready again with its errors cleared, because a failed task never wakes.
+Step errors never fail the conversation, because every deployment needs it to answer. Its wait
+before each retry doubles with each error in a row, up to a cap. Each error record holds the count
+of errors in a row, the count at which any other task would fail, and the retry time. Once the
+conversation's count reaches that limit, the server reports the conversation's turns as failing in
+its readiness report, and the web UI says that nixie is failing to answer. That part of the report
+is advisory, so a deployment never stops sending requests to nixie for it. The next turn that
+commits clears both. A server start makes a conversation in the failed state ready again with its
+errors cleared, because a failed task never wakes.
 
 A step can throw an error that names its reason, holds records and says whether its retry waits for
 the user. The error record keeps the reason, and the error's records commit in the same transaction,

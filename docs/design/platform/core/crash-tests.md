@@ -1,8 +1,7 @@
 # Crash tests
 
 - Decisions: [0001](../../../decisions/0001-durable-layer.md),
-  [0021](../../../decisions/0021-action-outcomes.md),
-  [0025](../../../decisions/0025-database-and-topology.md)
+  [0011](../../../decisions/0011-sqlite-on-one-host.md)
 
 nixie owns its durable layer under [0001](../../../decisions/0001-durable-layer.md), so its own
 tests prove that a crash at any point loses nothing and repeats nothing. Each test runs nixie as a

@@ -1,7 +1,6 @@
 # Task runs and their reports
 
 - **Status:** draft
-- **Decision records:** [0055](../../../decisions/0055-the-report-shape-of-a-task.md)
 - **Work items:** [task run records and `task.report`](https://linear.app/zgeoff/issue/GEO-2113),
   [the brief of a definition's task run](https://linear.app/zgeoff/issue/GEO-2586),
   [the wake rule](https://linear.app/zgeoff/issue/GEO-1865),

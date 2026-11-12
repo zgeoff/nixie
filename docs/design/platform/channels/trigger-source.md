@@ -1,9 +1,6 @@
 # The trigger source
 
-- Decisions: [0016](../../../decisions/0016-own-interfaces.md),
-  [0013](../../../decisions/0013-definition-versioning.md),
-  [0005](../../../decisions/0005-effects-and-taint.md),
-  [0027](../../../decisions/0027-tasks-and-actions.md)
+- Decisions: [0005](../../../decisions/0005-untrusted-conversation.md)
 
 A trigger source starts work without you: a schedule, a poll, a held stream or a webhook. A batch of
 events commits in one transaction with the source's cursor and the job runs and task wake-ups it
@@ -47,9 +44,9 @@ a task that waits for a reply. Every job run starts untrusted in the first build
 The schedule source fires each job's schedule from the definitions, with each next fire as a durable
 timer and the job ID plus the scheduled time as the dedupe key. After a restart, it runs one
 catch-up job run when the latest missed fire is within half the job's interval, and otherwise
-records a skip, under [0027](../../../decisions/0027-tasks-and-actions.md). Schedules run in your
-time zone: a time that daylight saving skips fires just after the gap, and a repeated time fires
-once. A changed job reaches its schedule at once, and a started job run keeps its pinned version.
+records a skip. Schedules run in your time zone: a time that daylight saving skips fires just after
+the gap, and a repeated time fires once. A changed job reaches its schedule at once, and a started
+job run keeps its pinned version.
 
 ## Polls
 

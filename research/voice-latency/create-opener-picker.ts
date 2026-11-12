@@ -1,6 +1,6 @@
 // Clef-flash picks the spoken opening of a reply from a fixed set, while the answer model writes the
-// rest. Decision 0040 lets an acknowledgement claim no outcome and make no promise, so every phrase
-// here only shows the request was heard.
+// rest. The voice calls design (docs/design/platform/channels/voice.md) lets an acknowledgement
+// claim no outcome and make no promise, so every phrase here only shows the request was heard.
 import { z } from 'zod';
 
 export const openerName = z.enum(['check', 'okay', 'question', 'see', 'sure']);

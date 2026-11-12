@@ -2,8 +2,8 @@
 
 This spike records, in a text box, which spans of a message you typed and which arrived by paste,
 drop or another route, and keeps those spans correct through later edits. The memory write rules of
-[0011](../../docs/decisions/0011-memory-writes.md) need the record, because a quote from a pasted
-span never counts as your evidence. The page runs the span logic that the web client ships.
+[0008](../../docs/decisions/0008-memory-write-review.md) need the record, because a quote from a
+pasted span never counts as your evidence. The page runs the span logic that the web client ships.
 
 ## Question
 
@@ -20,9 +20,10 @@ on an Android phone insert pasted text that the client labels as typed?
 - A rule that one `insertText` of more than one word counts as `unknown` caught both, and a second
   run confirmed it, once Gboard's split of a run-together word counted as typed.
 - Gboard's voice typing inserts each spoken sentence as one composition of several words, which the
-  voice typing run labelled `typed`, against 0011's rule that dictated text never counts as
-  evidence. The client applies the multi-word rule to a composition as well, and labels it
-  `unknown`.
+  voice typing run labelled `typed`, against the rule in
+  [memory writes](../../docs/design/platform/memory/writes.md#dictated-text) that dictated text
+  never counts as evidence. The client applies the multi-word rule to a composition as well, and
+  labels it `unknown`.
 - React Native's `TextInput` has no paste event, so a multi-character insertion that no native hook
   named counts as `unknown` there.
 

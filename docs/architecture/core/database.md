@@ -1,7 +1,7 @@
 # The database and the single writer
 
 nixie keeps its state in one SQLite file, `nixie.db`, in the data directory, under
-[0025](../../decisions/0025-database-and-topology.md). One process writes it at a time, and that
+[0011](../../decisions/0011-sqlite-on-one-host.md). One process writes it at a time, and that
 process proves it is still the writer inside every write transaction, so even a second process that
 slipped past the lock commits nothing. `libs/db` is the one package that opens a SQLite file: it
 holds the connection, the migration runner and the schema version. `modules/log` turns a process

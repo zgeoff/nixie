@@ -30,6 +30,9 @@ export async function runLogReset<Kept>(
   options: LogResetOptions<Kept>,
 ): Promise<LogReset> {
   await withWriteTransaction(log.writer, () => Promise.resolve());
+
+  // The keys go first, so a crash before the rows go leaves every record shredded, and a second
+  // reset finishes the work.
   await removeRecordKeys(log);
 
   const reset = await withWriteTransaction(log.writer, (tx) =>

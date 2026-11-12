@@ -2,7 +2,6 @@
 
 nixie's tools reach the model over MCP, outside services reach nixie through connectors, and every
 model loop and code run sits in a sandbox.
-[0030](../../../decisions/0030-connectors-and-sandbox-environments.md) records the choices.
 
 - [Connectors](connector.md) — the connector interface, setup and OAuth, Google, and search
 - [Web fetch](web-fetch.md) — the fetch sandbox, the address check, the limits and the result

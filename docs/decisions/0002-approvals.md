@@ -1,10 +1,10 @@
-# 0002: Actions and approvals
+# 0002: An action that needs approval becomes a proposal that ends the turn
 
 - Date: 2026-10-07
 - Updated: 2026-10-21
 - Status: decided
-- Research: [defer and hold spike](../../research/sdk-long-hold/),
-  [engine notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-notes/engines.md)
+
+## Decision
 
 Every action runs through one of nixie's own tools, and an action that needs your approval becomes a
 proposal that ends the turn:
@@ -17,33 +17,27 @@ proposal that ends the turn:
    result.
 
 You approve through an action that nixie checks, such as a button bound to one proposal. A chat
-message never counts as an approval, because the model would interpret it, and injected content
-could fake one.
+message never counts as an approval, and a spoken "yes" during a voice call never approves either,
+because the model would interpret it, and injected content could fake one.
 
 The conversation and workers hold nixie's tools alone under [0003](0003-sdk-placement.md), so no
 built-in tool of the SDK reaches the model, and every action passes this flow. nixie does not use
-`defer`. A question to you is an ordinary message that ends the turn, and your reply starts the next
-one. An external MCP server reaches the model only through nixie's proxy under
-[0017](0017-mcp-proxy.md).
+`defer`.
 
 ## Why
 
-You can keep talking while an action waits. A message such as "make it 8:30" starts a new turn at
-once, and the model can withdraw a proposal and post a new one. A hold in a Claude Code mod or a
-parked `defer` call blocks the session until you answer, so you cannot change the request first.
+- You can keep talking while an action waits. A message such as "make it 8:30" starts a new turn at
+  once, and the model can withdraw a proposal and post a new one. A hold in a Claude Code mod or a
+  parked `defer` call blocks the session until you answer, so you cannot change the request first.
+- A proposal survives a restart, works with parallel tool calls, and keeps every action in nixie's
+  record on the event log from [0001](0001-durable-layer.md).
 
-A proposal survives a restart, works with parallel tool calls, and keeps every action in nixie's
-record on the event log from [0001](0001-durable-layer.md).
+## Rejected alternatives
 
-## Alternatives
-
-- **A hold in the mod.** The model sees the result in the same turn, and the session blocks until
-  you answer. A restart loses the call as "outcome unknown". A hook has 10 s of its own time, and
-  one `$.http.fetch` aborts at 30 s. The mod can fail open.
-- **`defer` and resume.** It survives a restart, and the session blocks until you answer. In the
-  spikes it lost calls from a parallel batch, and the hooks docs state that `defer` "only works when
-  Claude makes a single tool call in the turn"
-  ([hooks docs](https://code.claude.com/docs/en/hooks#defer-a-tool-call-for-later)).
+| Option             | Why not                                                                                                                                                                                                                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| a hold in the mod  | The model sees the result in the same turn, and the session blocks until you answer. A restart loses the call as "outcome unknown". A hook has 10 s of its own time, and one `$.http.fetch` aborts at 30 s. The mod can fail open.                                                                                                         |
+| `defer` and resume | It survives a restart, and the session blocks until you answer. In the [spikes](../../research/sdk-long-hold/) it lost calls from a parallel batch, and the hooks docs state that `defer` "only works when Claude makes a single tool call in the turn" ([hooks docs](https://code.claude.com/docs/en/hooks#defer-a-tool-call-for-later)). |
 
 ## Consequences
 

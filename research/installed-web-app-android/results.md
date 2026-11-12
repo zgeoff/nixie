@@ -71,7 +71,7 @@ sync.
 ### What nixie does
 
 nixie sends no push of any kind. The Telegram notifier in
-[0009](../../docs/decisions/0009-first-channel.md) is unbuilt, and a push in the
+[0006](../../docs/decisions/0006-own-client.md) is unbuilt, and a push in the
 [client design](../../docs/design/platform/channels/client.md#deep-links) carries only a link.
 
 An approval passes the server's check through the session alone. The API refuses any call without
@@ -83,18 +83,19 @@ action hash of each answer
 send that header and the cookie, so a notification's Approve button passes the same check as the
 card, if the push carries the proposal ID and the action hash.
 
-[0012](../../docs/decisions/0012-high-risk-approvals.md) gives an always-ask approval a passkey
-check. WebAuthn runs in a page, so the button for an always-ask item opens its card instead of
-approving.
+[Approvals in the client](../../docs/design/platform/channels/approvals.md) gives an always-ask
+approval a passkey check. WebAuthn runs in a page, so the button for an always-ask item opens its
+card instead of approving.
 
 ### Reading
 
 Web push covers what native push is for on Android: delivery while closed, buttons, a dot on the
 icon, a replaceable notice through `tag`, and loud or quiet notices through `silent` and `renotify`,
-which match the two push levels of [0029](../../docs/decisions/0029-channels-and-clients.md). Web
-push encrypts each payload end to end ([RFC 8291](https://www.rfc-editor.org/rfc/rfc8291.html)), and
-FCM keeps no chat history, so it stores less outside the home than the Telegram notice that 0009
-plans. iOS takes no buttons, so an iOS notice opens the card.
+which match the two push levels of
+[the channel adapter](../../docs/design/platform/channels/channel-adapter.md). Web push encrypts
+each payload end to end ([RFC 8291](https://www.rfc-editor.org/rfc/rfc8291.html)), and FCM keeps no
+chat history, so it stores less outside the home than the Telegram notice that 0006 plans. iOS takes
+no buttons, so an iOS notice opens the card.
 
 ## Links
 
@@ -164,8 +165,9 @@ from the app's icon sends it. The server keeps only a hash of each token, and a 
 Neither store binds the session to the phone's hardware. A script in the page cannot read the
 `HttpOnly` cookie, while the Expo app's own code reads its token; a script injected into either app
 can call the API with the session. `requireAuthentication` adds a biometric check that the cookie
-lacks, and the passkey check of 0012 covers that need for always-ask items. The session design needs
-no change for the installed app.
+lacks, and the passkey check in
+[approvals in the client](../../docs/design/platform/channels/approvals.md) covers that need for
+always-ask items. The session design needs no change for the installed app.
 
 ## Paste spans
 
@@ -215,8 +217,9 @@ paste spans spike left out.
   ([shortcuts](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Manifest/Reference/shortcuts)).
 - **Voice.** The installed app shares the site's microphone permission, as the
   [client doc](../../docs/architecture/channels/client.md) gives, and `SpeechRecognition` is
-  unprefixed from Chrome 139 on Android. [0009](../../docs/decisions/0009-first-channel.md) gives
-  iOS's limits on audio in the background.
+  unprefixed from Chrome 139 on Android.
+  [0009 at commit 7a49476](https://github.com/zgeoff/nixie/blob/7a494769d1d2ffe37916fc16652f20185ce82a4b/docs/decisions/0009-first-channel.md)
+  gives iOS's limits on audio in the background.
 - **WebAPK updates.** Chrome checks the manifest at most once a day and installs a changed WebAPK
   once the app is closed and the phone charges on Wi-Fi
   ([manifest updates](https://web.dev/articles/manifest-updates)).

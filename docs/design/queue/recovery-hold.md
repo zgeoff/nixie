@@ -386,8 +386,8 @@ type RecoveryHoldFaultPoint =
 - **Which tasks does a restore hold?** The owner settles it, among: every unfinished task; all but
   the conversation; all but the conversation and the system tasks; or every unfinished task less
   `memory-writer` and `memory-consolidator`. Until then, the last, which changes
-  `restoreExemptTaskIDs` only. Under [0050](../../decisions/0050-no-built-in-memory-tasks.md) those
-  2 tasks are deleted before this work, so the 2 IDs reach only task rows that an older log holds.
+  `restoreExemptTaskIDs` only. Under [no built-in memory task](no-built-in-memory-tasks.md) those 2
+  tasks are deleted before this work, so the 2 IDs reach only task rows that an older log holds.
 - **Does every restore place holds, or can a flag turn them off?** The owner settles it. Until then,
   every restore places holds, and `nixie restore` has no such flag.
 - **Does a restore hold the source of a trigger?** The owner settles it. Until then, it holds none,

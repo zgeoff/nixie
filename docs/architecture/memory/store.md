@@ -3,10 +3,10 @@
 A memory item is one stored fact, such as "the spare key sits under the blue flowerpot", and every
 change to it adds a version that nixie never rewrites. Each item has its own key, and every version
 of the item's text is encrypted under it, so a forget deletes one key and every version becomes
-unreadable at once, in the database and in every backup of it. The model and the client reach memory
-through one interface whose verbs are recall, remember, retire, restore, undo, pin and forget. The
-`modules/memory` package holds the store, under [0010](../../decisions/0010-memory-store.md) and
-[0031](../../decisions/0031-memory-capture-context-and-removal.md).
+unreadable at once, in the database and in every backup of it, under
+[0007](../../decisions/0007-crypto-shredding.md). The model and the client reach memory through one
+interface whose verbs are recall, remember, retire, restore, undo, pin and forget. The
+`modules/memory` package holds the store.
 
 [The event log](../core/event-log.md) covers the records memory appends, and
 [erasable fields](../core/erasable-fields.md) covers the key store that holds each item's key.
@@ -208,10 +208,11 @@ query can also list excluded words. The index stems them with the same tokenizer
 drops each query word whose stems all match one of theirs, so "Nixie's" drops with "nixie".
 
 The vector index holds one vector per active item in process memory, and nothing writes it to disk.
-A local text encoder that [0039](../../decisions/0039-local-encoder.md) picks makes each vector, and
-the index keeps the front of each vector, normalised again at one byte a number, and ranks items by
-their dot product with the query's vector. The store leaves the excluded words out of the query text
-it encodes, because a name that nearly every item holds pulls every item toward the query.
+A local text encoder makes each vector: `mdbr-leaf-ir` on its int8 ONNX weights, run through
+`onnxruntime-node` directly. The index keeps the first 256 numbers of each vector, normalised again
+at one byte a number, and ranks items by their dot product with the query's vector. The store leaves
+the excluded words out of the query text it encodes, because a name that nearly every item holds
+pulls every item toward the query.
 
 The vector index rebuilds after the store starts, in the background, because encoding every item
 takes seconds, and every query searches keywords alone until it ends. After a version's record

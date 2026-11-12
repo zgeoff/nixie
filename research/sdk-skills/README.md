@@ -1,8 +1,8 @@
 # Spike: skills and slash commands under nixie's SDK options
 
 This spike runs the Claude Agent SDK under the options of nixie's model loops and checks which
-skills and slash commands reach the model. Its finding sets the skill options in decision
-[0038](../../docs/decisions/0038-skills.md).
+skills and slash commands reach the model. Its finding sets the skill options in
+[the skills doc](../../docs/architecture/core/skills.md).
 
 ## Question
 

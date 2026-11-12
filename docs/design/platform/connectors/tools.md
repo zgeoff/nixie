@@ -1,8 +1,6 @@
 # Serving nixie's tools
 
-- Decisions: [0003](../../../decisions/0003-sdk-placement.md),
-  [0030](../../../decisions/0030-connectors-and-sandbox-environments.md),
-  [0047](../../../decisions/0047-connections-that-stop-working.md)
+- Decisions: [0003](../../../decisions/0003-sdk-placement.md)
 
 nixie's tools run in nixie's process on the host, and the model reaches them only through MCP. Every
 model loop sets `tools: []`, which removes the Agent SDK's built-in tools, so nixie's tools are the
@@ -168,10 +166,10 @@ the call to its turn.
 ### What the model learns about a connection
 
 The endpoint never lists a stub tool for a connection that stops working, and never removes its
-tools in silence. The model reads a status line instead, in 2 places that the session already has,
-under [0047](../../../decisions/0047-connections-that-stop-working.md). Each place lists a
-connection on the caller's list that is `needs_consent`, `disconnected`, `failing` or `expiring`,
-and never a `forgotten` one, as [the statuses](credentials.md#statuses) set.
+tools in silence. The model reads a status line instead, in 2 places that the session already has.
+Each place lists a connection on the caller's list that is `needs_consent`, `disconnected`,
+`failing` or `expiring`, and never a `forgotten` one, as [the statuses](credentials.md#statuses)
+set.
 
 - **The status entry** joins the [status](../../../architecture/core/session-opening.md#status) in
   the session's first user message, and lists each such connection when the session opens. The model
@@ -222,7 +220,9 @@ credential keeps the assistant running and no request covers its expiry, so the 
 ahead.
 
 A `failing` connection keeps its tools listed, so a call can succeed once the connection recovers. A
-call that a status stops returns [`connection_unavailable`](#a-failed-direct-call).
+call that a status stops returns [`connection_unavailable`](#a-failed-direct-call). A job run starts
+whatever the status of its pinned connections, and its result says what it skipped, as
+[job runs](../core/tasks.md#job-runs) sets out.
 
 ## Starting a model loop
 

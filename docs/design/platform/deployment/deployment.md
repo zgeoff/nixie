@@ -1,8 +1,7 @@
 # Deployment
 
-- Decisions: [0020](../../../decisions/0020-deployment.md),
-  [0032](../../../decisions/0032-offsite-backups-and-replication.md),
-  [0025](../../../decisions/0025-database-and-topology.md),
+- Decisions: [0013](../../../decisions/0013-host-encrypted-backups.md),
+  [0011](../../../decisions/0011-sqlite-on-one-host.md),
   [0003](../../../decisions/0003-sdk-placement.md)
 
 nixie runs as one container from one image, with the web client in a second container and the backup
@@ -219,11 +218,11 @@ nixie reads its settings from one YAML file that the
 [deployment configuration](../../../architecture/deployment/configuration.md) covers. The deployment
 repo chooses how a merged pin reaches its hosts, where it keeps the recovery key, the backup
 backends, the heartbeat endpoint, the [model profiles](../core/models.md) with the role map, and any
-overrides of the [budget defaults](../policy/budgets.md#model-cost). These are configuration under
-0020, not platform choices. Backups use the S3-compatible and other backends that Restic and rclone
-support, and nixie adopts no cloud provider. Every deployment honours writer shutdown, migrations,
-image compatibility and recovery, whether it runs on Compose or Kubernetes. The deployment checks
-that its recovery key decrypts the secrets on a clean host.
+overrides of the [budget defaults](../policy/budgets.md#model-cost). These are the deployment's
+configuration, not platform choices. Backups use the S3-compatible and other backends that Restic
+and rclone support, and nixie adopts no cloud provider. Every deployment honours writer shutdown,
+migrations, image compatibility and recovery, whether it runs on Compose or Kubernetes. The
+deployment checks that its recovery key decrypts the secrets on a clean host.
 
 ## Kubernetes
 

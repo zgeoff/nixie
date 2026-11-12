@@ -1,10 +1,6 @@
 # The credential store
 
-- Decisions: [0016](../../../decisions/0016-own-interfaces.md),
-  [0007](../../../decisions/0007-grants-and-taint.md),
-  [0003](../../../decisions/0003-sdk-placement.md),
-  [0030](../../../decisions/0030-connectors-and-sandbox-environments.md),
-  [0047](../../../decisions/0047-connections-that-stop-working.md)
+- Decisions: [0003](../../../decisions/0003-sdk-placement.md)
 
 The credential store holds every credential nixie uses: OAuth clients and their tokens, static
 secrets such as API keys and app passwords, and the model credential of each
@@ -136,11 +132,11 @@ client warns 14 days before its expiry, by default.
 | `forgotten`     | You removed it, and its key is deleted                      | Removed            | Nothing                   |
 
 The model learns of a connection that is `needs_consent`, `disconnected`, `failing` or `expiring`
-from a line in its context, under [0047](../../../decisions/0047-connections-that-stop-working.md):
-when a session opens, when the status changes, and from the error on a call the status stops.
-[One endpoint per task run](tools.md#one-endpoint-per-task-run) covers the line and the error.
-**Why:** a tool that vanishes without a reason leaves the model unable to tell "Gmail needs consent"
-from "nixie has no Gmail", so it can neither explain the gap nor tell you what to do.
+from a line in its context: when a session opens, when the status changes, and from the error on a
+call the status stops. [One endpoint per task run](tools.md#one-endpoint-per-task-run) covers the
+line and the error. **Why:** a tool that vanishes without a reason leaves the model unable to tell
+"Gmail needs consent" from "nixie has no Gmail", so it can neither explain the gap nor tell you what
+to do.
 
 The store keeps 3 values beside each credential's status, which the line reads:
 

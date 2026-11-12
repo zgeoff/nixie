@@ -4,7 +4,7 @@ This spike prototypes the policy decision point from the
 [policy design](../../docs/design/platform/policy/decision-point.md) in TypeScript, with no
 dependency. It runs the prototype over sample tool calls, reordered definitions, rule edits and
 scripted scenarios, against decisions [0004](../../docs/decisions/0004-rule-engine.md) and
-[0005](../../docs/decisions/0005-effects-and-taint.md).
+[0005](../../docs/decisions/0005-untrusted-conversation.md).
 
 ## Question
 

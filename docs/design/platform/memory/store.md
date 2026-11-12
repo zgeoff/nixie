@@ -1,11 +1,7 @@
 # The memory store
 
-- Decisions: [0010](../../../decisions/0010-memory-store.md),
-  [0011](../../../decisions/0011-memory-writes.md),
-  [0013](../../../decisions/0013-definition-versioning.md),
-  [0024](../../../decisions/0024-memory-in-context.md),
-  [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
-  [0037](../../../decisions/0037-moments.md)
+- Decisions: [0007](../../../decisions/0007-crypto-shredding.md),
+  [0008](../../../decisions/0008-memory-write-review.md)
 
 The [memory store](../../../architecture/memory/store.md) architecture doc covers what is built:
 items and versions, a key per item, the operations on one item, recall with its index and delivery
@@ -99,11 +95,11 @@ returns each item's links to moments as moment IDs and titles, never moment text
 
 ## Definition versioning
 
-Every memory record carries the snapshot hash of the definitions in force, under
-[0013](../../../decisions/0013-definition-versioning.md), and memory itself versions through the
-history table. The checker's prompt is part of the policy snapshot. **Why:** a replay of a write
-that applied at once needs the checker's prompt as it was, and a changed prompt reaches running
-tasks at once, as rules do.
+Every memory record carries the snapshot hash of the definitions in force, as
+[the definitions](../../../architecture/core/definitions.md#the-snapshot-hash) set, and memory
+itself versions through the history table. The checker's prompt is part of the policy snapshot.
+**Why:** a replay of a write that applied at once needs the checker's prompt as it was, and a
+changed prompt reaches running tasks at once, as rules do.
 
 ## The memory view
 

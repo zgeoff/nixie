@@ -108,9 +108,10 @@ user.
 
 The user answers a change by approving it, rejecting it, or letting it lapse. An approval applies
 the change in one write transaction: the new or retired versions of every input, and the approval
-record. The approval record follows [0006](../../decisions/0006-approval-record.md), and an approval
-of the whole diff writes one approval record per change. Each written version takes the consolidator
-as a task for its origin, the change's source and the session's model.
+record. The approval record follows
+[the approval](../../design/platform/policy/approvals.md#the-approval), and an approval of the whole
+diff writes one approval record per change. Each written version takes the consolidator as a task
+for its origin, the change's source and the session's model.
 
 An approval applies nothing for its change, and reports why, when the change is unknown, answered or
 lapsed, when the action hash differs, when an input moved past the version the change read, or when

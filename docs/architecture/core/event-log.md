@@ -20,7 +20,8 @@ holds the kind's structured data, such as IDs, counts, hashes and states. The er
 the kind's free text, encrypted under a key of the record's own.
 
 - **Sequence.** SQLite allows one writer, so the sequence grows in commit order, and a reader that
-  asks for the records after a sequence misses none.
+  asks for the records after a sequence misses none. A record keeps its sequence through every
+  migration and restore, because summaries, memory quotes and moments refer to records by it.
 - **Kind.** The log types a kind as a key of its kind registry, which holds the log's own reset
   record. Each module merges its kinds into the registry from a file its package entry exports, so a
   misspelled kind, or one no module registered, fails type-checking wherever code writes, reads or
@@ -102,10 +103,9 @@ lands while a read runs wakes the next read at once.
 ## The reset
 
 A reset removes every record, every projection row and every record key, and keeps the identities of
-the device sessions that are still live, under
-[0046](../../decisions/0046-resetting-the-event-log.md). The host command sends a control request,
-because the server holds the writer lock and no other process can take it, and the server runs the
-reset in 7 stages:
+the device sessions that are still live. The host command sends a control request, because the
+server holds the writer lock and no other process can take it, and the server runs the reset in 7
+stages:
 
 1. The server ends its start sequence, answers every new API call and host command with 503, and
    waits for the calls in flight to answer, so no call commits a write that the reset then deletes.

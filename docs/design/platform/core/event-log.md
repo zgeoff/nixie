@@ -1,18 +1,15 @@
 # The event log and records
 
 - Decisions: [0001](../../../decisions/0001-durable-layer.md),
-  [0010](../../../decisions/0010-memory-store.md),
-  [0013](../../../decisions/0013-definition-versioning.md),
-  [0005](../../../decisions/0005-effects-and-taint.md),
-  [0018](../../../decisions/0018-the-conversation-and-tasks.md),
-  [0025](../../../decisions/0025-database-and-topology.md),
-  [0027](../../../decisions/0027-tasks-and-actions.md)
+  [0007](../../../decisions/0007-crypto-shredding.md),
+  [0005](../../../decisions/0005-untrusted-conversation.md),
+  [0011](../../../decisions/0011-sqlite-on-one-host.md)
 
 The event log is nixie's one log of record. Every message you send, model turn, tool call, policy
 decision, proposal, approval and action outcome becomes a record, and no record changes in place.
 Task state, the dashboard and the live view read projections: tables that nixie updates in the same
 transaction as the record that changes them, and rebuilds from the log. The log lives in one SQLite
-database under [0025](../../../decisions/0025-database-and-topology.md).
+database under [0011](../../../decisions/0011-sqlite-on-one-host.md).
 
 ## What a record holds
 
@@ -34,8 +31,8 @@ Every record carries one envelope, and its payload depends on its kind.
 | Payload           | The kind's own data, with erasable fields encrypted                         |
 
 The source of content sits on every tool result. The first build stores it without acting on it, so
-taint per job run is a later policy change under
-[0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies).
+taint per job run is a later policy change, as
+[the decision point](../policy/decision-point.md#taint-in-the-first-build) describes.
 
 The log keeps the delegation chain. A worker's records point at the tool call that started it
 through the parent field. A started task's creation record names the task that started it and the
@@ -54,7 +51,7 @@ forgetting deletes their key. The envelope stays, and a replay shows a gap where
 ## Erasable fields and keys
 
 Records use 2 kinds of key, on the pattern of the per-item memory keys from
-[0010](../../../decisions/0010-memory-store.md):
+[0007](../../../decisions/0007-crypto-shredding.md):
 
 - **A key per record** encrypts every free-text field in its payload: your message text, the model's
   text, tool arguments, tool results and worker transcripts. Forgetting one message deletes one key.
@@ -97,8 +94,7 @@ transaction, so a projection never disagrees with the log at a commit. The core 
   `deadlineAt`, deferred-until time and defer generation.
 - **Actions:** each queued action and its outcome, covered in [actions](actions.md).
 - **Tasks:** one row per task with its status, last update and what it waits on, which the
-  conversation's `tasks.list` tool and the dashboard read, under
-  [0018](../../../decisions/0018-the-conversation-and-tasks.md).
+  conversation's `tasks.list` tool and the dashboard read.
 
 Every projection can be dropped and rebuilt by folding the log from the first record. A rebuild test
 in CI folds a recorded log and compares the result with the live tables.
@@ -142,11 +138,10 @@ record that names the memory item and its new version, and the record, the histo
 approval commit in one transaction. The log holds why a memory changed, and the history table holds
 what it changed to.
 
-Retrieval over past conversation searches the log under
-[0024](../../../decisions/0024-memory-in-context.md), and [memory context](../memory/context.md)
-owns the retrieval design. nixie builds the free-text search index in memory at start, from the
-payloads it can still decrypt, and updates it on each append. Forgetting a record removes its
-entries. **Why:** the index never reaches a backup.
+Retrieval over past conversation searches the log, and [memory context](../memory/context.md) owns
+the retrieval design. nixie builds the free-text search index in memory at start, from the payloads
+it can still decrypt, and updates it on each append. Forgetting a record removes its entries.
+**Why:** the index never reaches a backup.
 
 The event log exports as a SQLite file holding the records with decrypted payloads. **Why:** any
 SQLite reader opens it with its schema. A shredded payload stays a gap in the export, and creating

@@ -105,6 +105,14 @@ gh attestation verify oci://ghcr.io/<owner>/nixie@<digest> --repo <owner>/nixie 
 Expect `Verification succeeded!` and the release commit in the output. A private package needs
 `gh auth` with a token that can read packages.
 
+## Deploy in milestones
+
+A deployment takes releases in milestones and skips the releases between them, so it meets a feature
+only once the whole feature is built. A rollback goes back to the last release that the deployment
+ran, which can be several releases back. Before a rollback, remove the config keys that the target
+release does not know. An older release refuses to start on a config file with a key it does not
+know.
+
 ## Repair a failed release
 
 - **A stage failed.** Re-run the failed jobs of the run, as in the visibility steps. The run resumes

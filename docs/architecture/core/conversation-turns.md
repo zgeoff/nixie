@@ -28,7 +28,8 @@ retired it. A changed spec, such as a new image or a rotated credential, replace
 turn never runs with a grant for a profile nixie no longer uses. nixie replaces a retired sandbox
 the same way, such as an imp that the sandbox backend still backs up. The sandbox's owner is the
 conversation task, which never finishes, so the sandbox outlives each step and the transcripts on
-its disk outlive each turn.
+its disk outlive each turn. nixie never puts the conversation's sandbox to sleep, so the user's next
+message never waits for a wake.
 
 A replacement keeps the session. nixie creates the new sandbox before it destroys the old one, and
 copies the session that the conversation resumes, its transcript and its side folder, from the old
@@ -235,6 +236,11 @@ change note and the retrieved items each render as one system message before the
 fired timer and an action's outcome render as one each, with the time their record was written, and
 each body leads with the record's event ID so the model can cite it. The user's own message stays
 outside any element, after its stamp, because it holds the user's own words.
+
+Every message stamp leads with the record's event ID, its log sequence, as in
+`[#48213 · Tue 14 Oct, 22:50, Sydney]`: the stamp on each of the user's messages and on each line of
+a rebuilt session's recent turns. The model can then cite any message it sees, in a summary, a
+memory quote or a moment's span, without a log read.
 
 A turn carries no list of tasks. The conversation reads them with the list tool when it needs them,
 as [sending a message](./task-messages.md#sending-a-message) describes.

@@ -5,10 +5,10 @@ outside the nixie repo in a definitions source such as a git repo or a local dir
 them as a snapshot of files, parses what it applies, and seeds them into the database under a
 snapshot hash. Every record in the [event log](./event-log.md) carries the snapshot hash of the
 definitions in force when it was written, so a replay of any decision can read exactly the persona
-and policy it ran under, as [0013](../../decisions/0013-definition-versioning.md) requires.
-`modules/definitions` owns sources, the seed and the snapshot hash. The seed applies the persona and
-the skills, and the [rules design](../../design/platform/policy/rules.md) covers the rule files it
-reads but does not apply.
+and policy it ran under. `modules/definitions` owns sources, the seed and the snapshot hash. The
+seed applies the persona and the skills, and the
+[rules design](../../design/platform/policy/rules.md) covers the rule files it reads but does not
+apply.
 
 ```mermaid
 flowchart LR
@@ -255,3 +255,7 @@ throw, so the caller reports the refusal while the last good seed keeps serving.
 would leave definitions from two revisions in force at once. A failure inside the transaction, such
 as a projection's fold, therefore rolls the whole seed back and throws. The caller runs one seed at
 a time, because two overlapping seeds could commit an older revision after a newer one.
+
+A seed's rules reach running tasks at once, because every tool call reads the rules in force at the
+call. A task keeps the skill versions it started with until a reload moves it on, as
+[the pin](./skills.md#the-pin) describes.

@@ -2,8 +2,8 @@
 
 The core covers nixie's durable layer: the event log every part writes to, tasks and the
 conversation as state machines over it, the action queue, and the model profiles every model loop
-runs on. [0001](../../../decisions/0001-durable-layer.md) and
-[0018](../../../decisions/0018-the-conversation-and-tasks.md) record the main choices.
+runs on. [0001](../../../decisions/0001-durable-layer.md) records the main choice, and
+[tasks](../../../architecture/core/tasks.md) covers the conversation as a task.
 
 - [The event log and records](event-log.md) — what a record holds, append-only semantics,
   projections, export and retention

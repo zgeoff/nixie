@@ -1,7 +1,7 @@
 # Spike: an MCP proxy that pins tools by hash
 
 This spike builds a minimal version of the proxy that decision
-[0017](../../docs/decisions/0017-mcp-proxy.md) puts in front of every outside MCP server, on the v2
+[0009](../../docs/decisions/0009-mcp-proxy.md) puts in front of every outside MCP server, on the v2
 TypeScript MCP packages. It runs a stand-in server through a series of changes to its listing and
 records what the proxy exposes or stops under each trust mode.
 

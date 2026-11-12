@@ -6,8 +6,8 @@ encrypted under a key that belongs to that record alone. The keys live in a key 
 of their own beside the database. Deleting a record's key leaves the record in the log with its
 envelope and payload, and its text unreadable in every copy of the database that exists, backups
 included. This is crypto-shredding, chosen for memory in
-[0010](../../decisions/0010-memory-store.md). [The event log](./event-log.md) covers the record the
-fields belong to.
+[0007](../../decisions/0007-crypto-shredding.md). [The event log](./event-log.md) covers the record
+the fields belong to.
 
 ## Keys
 

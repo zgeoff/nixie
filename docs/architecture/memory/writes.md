@@ -7,11 +7,12 @@ a message the user typed, then asks a separate checker model whether the message
 The first check that fails ends the gate, and the write becomes a proposal with that check as its
 review reason. A write that fails a check therefore waits for the user instead of failing, and
 nothing the model writes reaches memory on the model's word alone. A pin waits for review too, and
-an unpin applies at once, because it adds nothing to memory ([pins](#pins)).
+an unpin applies at once, because it adds nothing to memory ([pins](#pins)). A write from a task
+passes the same gates as a write from the conversation.
 
 [The memory store](./store.md) covers the items, versions and keys that a write changes. The gates
-follow [0011](../../decisions/0011-memory-writes.md). [The memory writer](./writer.md) covers the
-batched writer, and [memory consolidation](./consolidation.md) covers the weekly diff of merges,
+follow [0008](../../decisions/0008-memory-write-review.md). [The memory writer](./writer.md) covers
+the batched writer, and [memory consolidation](./consolidation.md) covers the weekly diff of merges,
 rewrites and retirements.
 
 ## The content gate

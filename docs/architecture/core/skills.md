@@ -4,9 +4,8 @@ A skill is a procedure from the user's definitions in the Agent Skills format: a
 `SKILL.md` and the files it refers to. A task keeps the skill versions it started with, the
 conversation sees a catalog of its skills in the system prompt, and a skill grants nothing, so every
 action it describes still passes the decision point as an ordinary tool call. `modules/skills` owns
-the pins, the catalog and the skill tools, under [0038](../../decisions/0038-skills.md).
-[The definitions](./definitions.md#skills) covers the checks the seed runs on each skill and how
-each version is kept.
+the pins, the catalog and the skill tools. [The definitions](./definitions.md#skills) covers the
+checks the seed runs on each skill and how each version is kept.
 
 ## Skill lists
 

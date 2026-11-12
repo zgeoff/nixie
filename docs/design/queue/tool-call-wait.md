@@ -10,6 +10,11 @@ blocks for minutes. Each harness record declares how long its runtime waits for 
 host copies that figure into each turn frame, and the guest sets it in the runtime. The worker tool
 (GEO-1793) reads the same figure at the config's load.
 
+A worker is a function behind `worker.run`. The call runs one fresh session in a sandbox of its own
+and returns its answer, and nixie keeps no task for it. The worker holds only the tools its caller
+passes, each one the caller holds. It never holds a memory tool, or a tool that starts a task, sends
+a message or runs another worker.
+
 ## Shape
 
 ```mermaid

@@ -1,7 +1,6 @@
 # What memory a turn brings
 
 - **Status:** draft
-- **Decision records:** [0052](../../decisions/0052-the-lean-memory-index.md)
 - **Work items:** [trigger push](https://linear.app/zgeoff/issue/GEO-2555) builds the port and
   trigger push beside the built similarity search.
   [The similarity push cleanup](https://linear.app/zgeoff/issue/GEO-2550) deletes the similarity
@@ -214,7 +213,7 @@ memory:
 - **One port method, and the memory module picks the pushes.** The sessions module holds no setting
   that tunes a push.
 - **The similarity push and `memory.rate` go directly after the index is on, in the same milestone,
-  with no measurement first.** [0052](../../decisions/0052-the-lean-memory-index.md)
+  with no measurement first.**
 
 ## Builder decides
 
