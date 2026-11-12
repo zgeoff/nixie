@@ -5,6 +5,7 @@
   [the task of a definition](https://linear.app/zgeoff/issue/GEO-2531),
   [the runtime layer](https://linear.app/zgeoff/issue/GEO-2533),
   [the docs say "task definition"](https://linear.app/zgeoff/issue/GEO-2536),
+  [the rule format renames `jobs`](https://linear.app/zgeoff/issue/GEO-2634),
   [the note-taking example](https://linear.app/zgeoff/issue/GEO-2532),
   [the consolidation example](https://linear.app/zgeoff/issue/GEO-2530),
   [the moment reflection example](https://linear.app/zgeoff/issue/GEO-1334)
@@ -228,6 +229,10 @@ interface DefinitionVersion {
 - **A definition holds no `runner` key.** An agent's call on 13 Nov, which the owner accepted: only
   the nixie runner can start a task, so the key would have one legal value; it arrives with the
   second runner that can start one.
+- **The rule format names a definition `definitions`, and its task runs take the context `task`.**
+  The owner chose this on 13 Nov. The field `jobs` becomes `definitions`, the context `job` becomes
+  `task`, and `call.job` becomes `call.task`, so one rule covers a task that nixie starts and a
+  definition's task run. The seed still reads the old names, and nixie writes only the new ones.
 
 ## Builder decides
 
@@ -247,6 +252,4 @@ interface DefinitionVersion {
 
 ## Open questions
 
-- **Does the rule format rename `jobs` and `job`?** The owner settles it in
-  [the rule format names](https://linear.app/zgeoff/issue/GEO-2535). Until then, the rule format
-  keeps its `jobs` field and its `job` context as built.
+None.

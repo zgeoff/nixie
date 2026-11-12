@@ -19,8 +19,8 @@ Every field except the ID and the outcome is optional, and a missing match field
 | `outcome`      | `allow`, `ask` or `deny`                                        |
 | `tools`        | Tool names, each exact or a pattern such as `mail.*`            |
 | `effects`      | Declared effects                                                |
-| `contexts`     | `conversation`, `task`, `job` or `coding`                       |
-| `jobs`         | Job IDs, for a rule that applies to some jobs only              |
+| `contexts`     | `conversation`, `task` or `coding`                              |
+| `definitions`  | Task definition IDs, for a rule that covers only some of them   |
 | `checks`       | Argument checks, each an argument path, an operator and a value |
 | `destinations` | Patterns that the call's destinations must match                |
 | `sources`      | For `note`: `owner`, `own_data`, `task` or `outside`            |
