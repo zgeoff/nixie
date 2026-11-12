@@ -184,7 +184,6 @@ declare function isRecoveryHeld(tx: Transaction<unknown>, subject: HoldSubject):
 // server app, in the start part recovery_holds
 const placed = await installRestoreHolds(context, {
   pending: writer.pendingRestore,
-  exemptTaskIDs: restoreExemptTaskIDs,
   readTasksWithPendingActions, // from the actions module
 });
 // → { recoveryID: '5b7e0c2a-91d4-4f3b-8e6a-2c1f9d7b4a10', held: 4, isNew: true }, or null when no restore is pending
@@ -226,7 +225,6 @@ declare function installRestoreHolds(
   context: TasksContext,
   options: {
     pending: PendingRestore | null;
-    exemptTaskIDs: readonly string[];
     readTasksWithPendingActions: (tx: Transaction<unknown>) => Promise<readonly string[]>;
   },
 ): Promise<PlacedHolds | null>;
@@ -235,9 +233,6 @@ declare function releaseRecoveryHolds(
   context: TasksContext,
   request: { subjects: readonly HoldSubject[]; by: string },
 ): Promise<{ released: readonly HoldSubject[]; left: number }>; // left: holds that remain
-
-// server app: the tasks that a restore never holds
-const restoreExemptTaskIDs: readonly string[] = ['memory-writer', 'memory-consolidator'];
 ```
 
 ### The start part
@@ -246,7 +241,7 @@ const restoreExemptTaskIDs: readonly string[] = ['memory-writer', 'memory-consol
 // server app, beside the built recovery part declarations
 const recoveryHoldsPart: AnyPartDeclaration<ServerPartValues> = {
   name: 'recovery_holds',
-  needs: ['server_parts'],
+  needs: ['server_parts', 'first_seed'],
   // installRestoreHolds, the fault point recovery.holds.committed, the marker's removal, then
   // the fault point recovery.holds.marker_cleared
   start: makeRetriedStart('recovery_holds', installHoldsAndClearMarker),
@@ -291,17 +286,33 @@ type RecoveryHoldFaultPoint =
 ### Which tasks a restore holds
 
 - A restore holds every task that is not done or closed, and every task that owns a pending action,
-  less the exempt tasks. A done or closed task that owns a pending action is held, so the action
-  cannot retry.
+  as the platform's [recovery holds](../platform/core/tasks.md#recovery-holds) say: "A host restore
+  holds every unfinished task". A done or closed task that owns a pending action is held, so the
+  action cannot retry.
 - A done, stopped or closed task can own a pending action with a started attempt. A stop cancels
   only the actions with no started attempt, a started attempt runs on to its outcome
   ([attempts](../../architecture/core/actions.md#attempts)), and the built action claim skips only
   the actions of a paused or closed task.
-- The conversation and the queue check are held.
+- No task is exempt. The conversation, the queue check, and the `memory-writer` and
+  `memory-consolidator` rows that an older log holds are held like any other task.
 - The install reads `stateAtBackup` and `wasRunning` from each task's row before the start part
   `recovery` moves a running task.
 - nixie takes the steps of a task that the restore did not hold, such as a task created after the
   restore.
+
+### Triggers under a hold
+
+- A restore holds tasks and never a trigger source, so `HoldSubject` has the one kind `task`.
+- Every fire lands on its definition's task or on the conversation, and the restore holds both: a
+  definition's task is never done or closed. So no fire opens a task run before its task's hold
+  release.
+- The start part `recovery_holds` runs after the built start part `first_seed`, so the install also
+  holds each definition's task that a first seed creates.
+- A restored log has a seed in force, so the built start writes no seed before the install. A later
+  seed binds a definition that the restored log lacks to a new task with no hold, such as the task
+  of a one-shot added to the config after the backup.
+- When a trigger can open a task run on a task the restore did not hold, this rule changes in one
+  place: `HoldSubject` gains a source kind, and the trigger core checks it with `isRecoveryHeld`.
 
 ### The reader gate
 
@@ -354,6 +365,27 @@ type RecoveryHoldFaultPoint =
 - When nixie dies before a hold release commits, the hold remains. After the commit, nixie claims
   the waiting work as any other work.
 - The `resume` control never clears a recovery hold.
+- The API and the commands release one task a call. `releaseRecoveryHolds` takes a list, so a
+  release of several tasks changes only its callers.
+
+### A rollback
+
+The release before reads this design's changes this way:
+
+| The change                     | The release before                                                         |
+| ------------------------------ | -------------------------------------------------------------------------- |
+| the marker in `holding`        | refuses to start, as on any marker                                         |
+| the migration                  | refuses with `SchemaTooNewError` while a hold exists, and starts when none |
+| `recovery_holds`, `recoveries` | never selects them                                                         |
+| `open_oldest_reader`           | never selects it                                                           |
+| the 3 record kinds             | skips them, once the check under open questions passes                     |
+
+To roll back after a restore:
+
+1. Start this build once, so the start part `recovery_holds` installs the holds and removes the
+   marker.
+2. Release every recovery hold.
+3. Start the release before.
 
 ## Decisions
 
@@ -362,6 +394,23 @@ type RecoveryHoldFaultPoint =
 - **The gate is the stored `oldest_reader`, never the schema's `oldestReader`.** A raised schema
   value would stop the release before from reading the database again, holds or none.
 - **A hold has no port.** SQLite is the one store, by the queue's port rules.
+- **A recovery hold is its own row in `recovery_holds`, and `claimLease` checks the hold subject
+  that each claim candidate names.** An agent's call on 13 Nov, open to the owner's veto: one check
+  covers every runner and every action attempt, and the platform design keeps the hold apart from
+  the lease and the task state.
+- **The restore writes `holding` last, after the move of both databases and the restore note.** An
+  agent's call on 13 Nov, open to the owner's veto: a kill before the move then leaves `replacing`,
+  so no start places holds on the database the restore meant to replace.
+- **Every restore places holds, and `nixie restore` has no flag that skips them.** An agent's call
+  on 13 Nov, open to the owner's veto: the platform's
+  [backup and restore](../platform/deployment/backup-and-restore.md#restoring-on-a-new-host) gives
+  the restore no exception, and a hold release after the start covers a test host.
+- **A restore holds tasks, never a trigger source.** An agent's call on 13 Nov, open to the owner's
+  veto: each fire lands on a held task, so a gate on the source would add a second release path and
+  stop nothing more.
+- **The API and the commands release one task a call.** An agent's call on 13 Nov, open to the
+  owner's veto: each built task control acts on one task and returns its state, so a list there
+  needs a control of a new shape.
 
 ## Builder decides
 
@@ -377,32 +426,26 @@ type RecoveryHoldFaultPoint =
 - A gate on a trigger source, and a hold release for a source.
 - A config key, and a change to a model's prompt.
 - A marker that lasts until the last hold release.
-- What a fire does for a held task. The definitions design owns it, with `isRecoveryHeld`.
+- What a fire does for a held task. The [definitions design](definition-tasks.md#the-fire-answer)
+  owns it.
 
 ## Open questions
 
-- **Is a recovery hold its own row, with claim candidates that name their subject?** The owner
-  settles it, among: this design; one table keyed by subject, with a launch checked outside
-  `claimLease`; or a table shaped like `leases`, where a close also ends a hold. Until then, nothing
-  in this design is built. This design's cost: one hold stops the release before from starting.
-- **Does the restore write `holding` after the move and the restore note, or first?** The owner
-  settles it. Until then, step 6 comes last, as written.
-- **Which tasks does a restore hold?** The owner settles it, among: every unfinished task; all but
-  the conversation; all but the conversation and the system tasks; or every unfinished task less
-  `memory-writer` and `memory-consolidator`. Until then, the last, which changes
-  `restoreExemptTaskIDs` only. Under [no built-in memory task](no-built-in-memory-tasks.md) those 2
-  tasks are deleted before this work, so the 2 IDs reach only task rows that an older log holds.
-- **Does every restore place holds, or can a flag turn them off?** The owner settles it. Until then,
-  every restore places holds, and `nixie restore` has no such flag.
-- **Does a restore hold the source of a trigger?** The owner settles it. Until then, it holds none,
-  and `HoldSubject` has the one kind `task`. Holding sources needs a gate in the trigger core, a
-  list of sources in `recovery/read`, and a hold release for a source.
-- **Does one hold release take one task, or can it take all?** The owner settles it. Until then, one
-  task a call from the API and the commands. Only `subjects` changes.
+- **Does a restore leave the conversation unheld?** The owner settles it. For example, after a
+  restore nixie does not answer in chat until you release the conversation. The options: hold it, as
+  every other task; or exempt it. Exempting it means a conversation step left unfinished at the
+  backup can repeat an outside action, and a fire with `target: conversation` runs before any hold
+  release. Recommendation: hold it. Until then, it is held.
+- **Does the web client offer a release of several held tasks at once?** The owner settles it. For
+  example, 6 tasks are held and you have checked all 6. The options: one hold release control per
+  task; or a control that releases the tasks you select. Recommendation: one per task, because the
+  hold exists so that you look at each task. Until then, one per task.
 - **Does every thread reader of the release before skip a record of a kind it does not know?** A
   check settles it, run on the code before the hold tables land: a sessions test that rebuilds a
   session from a thread with a `recovery.hold_placed` record, a sessions test that renders an inbox
   with a record of an unknown inbox kind, and a web client test that renders a thread page with one,
   under `bun run test` and `bun run test:browser`. Until then, the 3 kinds go on the task's thread.
   When one reader throws, that reader is fixed in a release before the hold ships, or the kinds go
-  on no thread and `recovery/read` joins by subject.
+  on no thread and `recovery/read` joins by subject. The web client of the release before prints an
+  unknown kind's name in a step's "events:" line, so the owner also settles whether
+  `recovery.hold_placed` may show there.

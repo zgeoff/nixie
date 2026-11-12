@@ -52,6 +52,13 @@ type SnapshotTag =
   | `proven-from-${number}`; // key snapshot only: the key copy vouches for no data snapshot below this publish number
 ```
 
+restic stores each tag as written and lists the tags back in order. A measurement against restic
+0.19.1, the version that [the backup image pins](../../../apps/backup-job/binaries.txt), showed it:
+one `backup --json --host nixie --stdin` with the tags `set-18`, `kind-full`, `publish-42`,
+`legacy-set-17` and `proven-from-7`, then `snapshots --json`, gave back
+`["set-18","kind-full","publish-42","legacy-set-17","proven-from-7"]`. The first case of the real
+restic suite repeats that check under `NIXIE_RESTIC_BINARY=<path_to_restic> bun run test:restic`.
+
 ### The repository interface
 
 ```ts
@@ -260,13 +267,20 @@ interface DataRestore {
   snapshot changed, it empties the directory but for the marker and picks again, at most
   `fetchRepickLimit` times.
 - On any failure, the marker stays, the fetch exits 1, and `nixie restore` refuses the directory
-  with the built refusal.
+  with the [built refusal](../../architecture/deployment/host-commands.md#backup-and-restore). The
+  restore runs SQLite's integrity check on each copy, so the pair file holds no checksum.
 - The fetch container holds no deployment key and mounts no data volume. The restore container holds
   no backup credential.
 - A deployment calls only commands, and its script never reads a repository's layout or a file of
   the data directory.
 - No command restores a key copy other than the newest, because that copy makes a forgotten item
   readable again.
+- An item forgotten after the data snapshot of an `older-data` pair stays unreadable after the
+  restore, and nixie never finishes its forget. A key deleted from the key store never returns with
+  a restore ([erasable fields](../../architecture/core/erasable-fields.md#the-key-store)), and a
+  replay shows a gap where a forgotten item was ([0007](../../decisions/0007-crypto-shredding.md)).
+- The restore steps that name `--data-snapshot` warn that a data snapshot named under a key snapshot
+  with no publish number is checked only by its `set-` number.
 - A record with no key in an `older-data` pair does not prove a forget. Besides a forget, the
   conversation reset, the log reset and the key cleanup of compaction summaries, memory proposals
   and offers each remove keys.
@@ -319,6 +333,18 @@ interface DataRestore {
 - **The fetch and the publish reach restic through one interface.** restic is the chosen tool, and
   the interface is where an alternative fits.
   [Backup and restore](../platform/deployment/backup-and-restore.md)
+- **Publish numbers, which the backup job counts in the repositories, identify a backup set.** An
+  agent's call on 13 Nov, open to the owner's veto: they live where the repositories' credentials
+  live, and need no manifest field, migration or record kind.
+- **A stopped fetch leaves the unfinished-backup marker, which the built restore refuses.** An
+  agent's call on 13 Nov, open to the owner's veto: the restore needs no new code for it.
+- **The pick takes a named data snapshot under a key snapshot with no publish number, by the pick's
+  table.** An agent's call on 13 Nov, open to the owner's veto: until the first numbered publish, a
+  refusal would leave no older copy to restore, and the worst case is an item that stays unreadable.
+- **An item forgotten after the data snapshot of an `older-data` pair stays unreadable, and
+  `restoreDataBackup` takes no option for it.** An agent's call on 13 Nov, open to the owner's veto:
+  the item is unreadable under every option, and a finish of forgets would have to guess, because
+  other cleanups remove keys too.
 
 ## Builder decides
 
@@ -341,29 +367,11 @@ interface DataRestore {
 
 ## Open questions
 
-- **What identifies a backup set?** The owner settles it, among: publish numbers that the backup job
-  counts in the repositories, as written; a sequence floor in staging with gap ranges; or a random
-  set ID with a lineage that nixie stores. Until then, nothing here is built. The cost of publish
-  numbers: a host lost between the 2 writes makes the default fetch refuse until you name a data
-  snapshot.
-- **Does one command fetch the pair?** The owner settles it, against `fetch data` and `fetch keys`.
-  Until then, one command, because 2 commands cannot refuse a data copy that is ahead of the key
-  copy.
-- **How does `nixie restore` refuse a stopped fetch?** The owner settles it: the unfinished-backup
-  marker, or a manifest with checksums. Until then, the marker.
-- **Does the fetch accept a named data snapshot while the newest key snapshot has no publish
-  number?** The owner settles it: the pick's table as written, with a warning in the restore
-  runbook; or a refusal of every named data snapshot under such a key copy, which blocks the restore
-  of an older copy from repositories that no numbered publish has reached. Until then, the table as
-  written.
-- **What happens to an item forgotten after the data snapshot of an `older-data` pair?** The owner
-  settles it: it stays unreadable; the restore finishes each forget whose key is gone, at the next
-  start in the start part `recovery_holds` or in `nixie restore`; or `--data-snapshot` comes only
-  with a runbook warning. A finish of forgets cannot treat a missing key as a forget, because other
-  cleanups remove keys too. Until then, such an item stays unreadable, and `restoreDataBackup` takes
-  no option for it.
-- **Does restic store `publish-<n>`, `legacy-set-<sequence>` and `proven-from-<n>` as written, and
-  list them back?** A spike settles it: the first case of the real restic suite writes one snapshot
-  with the 3 tags and reads the snapshot list, under
-  `NIXIE_RESTIC_BINARY=<path_to_restic> bun run test:restic`. Until then, the publish numbers work
-  starts with that case, and changes the tag format first when restic changes or refuses one.
+- **Does one command fetch the pair?** The owner settles it. For example, a publish lands between 2
+  separate fetches, so the key copy is one publish ahead of the data copy. The options: one
+  `nixie-backup fetch`, as written; or the platform design's `fetch data latest` and
+  `fetch keys latest`
+  ([backup and restore](../platform/deployment/backup-and-restore.md#restoring-on-a-new-host)).
+  Recommendation: one command, because only a command that sees both copies can refuse a data copy
+  that holds records whose keys the key copy lacks. Until then, one command, and the platform design
+  names it only once the owner agrees.
