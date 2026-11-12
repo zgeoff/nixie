@@ -1,15 +1,13 @@
 # The turn-input log
 
-- **Status:** draft, a proposal. Both work items are blocked on the question below. This is a
-  security design: the shape the owner chooses gets an independent review before it is built.
+- **Status:** draft. The owner chose the capture shape. This is a security design, so an independent
+  review checks it before either item is built.
 - **Work items:** [the capture in the counting proxy](https://linear.app/zgeoff/issue/GEO-2548),
   [the turn-input log in nixie](https://linear.app/zgeoff/issue/GEO-2355)
 
-**The question for the owner:** where does the log capture and store a request? The options are a
-spool that the counting proxy seals to a key per step, with body files outside the backup set; a
-post from the proxy to a sink that nixie serves; or a plain spool with rows in the database. This
-doc proposes the sealed spool. A copy made by a guest would let each guest vouch for its own input,
-so every option copies in the proxy.
+The counting proxy copies each request, because a copy made by a guest would let the guest vouch for
+its own input. The proxy seals each copy to a key of the step's capture, and nixie keeps the bodies
+outside the backup set.
 
 The log stores the exact body of each model request, so you can open what a model received: the
 system prompt, the reminders the harness added, every message and the tool list. It exists for
@@ -42,9 +40,6 @@ flowchart LR
 ```
 
 ## Contracts
-
-These hold under any choice of the question above: the tag, the config switch, `openCapture`, the
-host procedures and the commands. The spool file and the 3 key layers are the proposal.
 
 ### The tag and `openCapture`
 
@@ -87,14 +82,13 @@ turn_input_log:
   close_wait: 5s # the longest a step's end waits for the proxy's .part files
   roles: [conversation, task]
   retention: { days: 7, bytes: 2147483648 } # the default; days: 3 | 7 | 30
-  on_forget: threads # threads | since_item | keep
   sources:
     proxy:
       base_url: https://<proxy_host>
       dir: /var/lib/nixie/turn-input-spool # this proxy's own `capture.spool`
 ```
 
-### The spool file (proposal)
+### The spool file
 
 ```ts
 // wire library: the proxy writes these and nixie reads them. Committed fixtures pin each version.
@@ -117,7 +111,6 @@ export interface SpoolHeader {
   readonly api: ModelAPI; // the matched route's `api`
   readonly endpoint: 'messages' | 'responses';
   readonly bytes: number;
-  readonly sha256: string; // of the plain body; checked at intake and stored nowhere
   readonly ephemeralKey: string; // base64url, this request's own P-256 public key
   readonly iv: string; // base64url
 }
@@ -139,7 +132,7 @@ export interface SpoolMiss {
   readonly captureID: string;
   readonly writer: string;
   readonly counter: number;
-  readonly reason: 'spool_full' | 'spool_write_failed' | 'seal_failed';
+  readonly reason: 'queue_full' | 'spool_full' | 'spool_write_failed' | 'seal_failed';
 }
 ```
 
@@ -148,6 +141,7 @@ export interface SpoolMiss {
 capture:
   spool: /var/lib/nixie/turn-input-spool
   max_bytes: 536870912
+  max_pending: 16 # bodies waiting for the spool write
 ```
 
 ### The store and its records
@@ -220,9 +214,10 @@ nixie turn-input open <input_id>         # prints the body
   tag, then matches the endpoint, and its model check and count are as without a tag.
 - The proxy copies a tagged request only when it sends it upstream to `messages` or `responses`. A
   request that the proxy refuses writes no file.
-- The proxy never awaits the spool write. When the model API returns no response, it removes the
-  `.part` file. At its start, it removes every `.part` file in its own spool, so 2 proxies never
-  share a folder.
+- The proxy never awaits the spool write. It holds at most `max_pending` bodies waiting for the
+  spool; past that, it writes a `queue_full` miss in place of the body. When the model API returns
+  no response, it removes the `.part` file. At its start, it removes every `.part` file in its own
+  spool, so 2 proxies never share a folder.
 - When the proxy cannot write a body, it writes a `.miss` file: `spool_full` when the spool holds
   `max_bytes`, `spool_write_failed` or `seal_failed`.
 - While a capture is open, nixie reads the spool once a second. At the step's end it waits for the
@@ -237,21 +232,21 @@ nixie turn-input open <input_id>         # prints the body
 
 ### The 3 key layers
 
-| Layer                                                     | It stops, beyond file permissions                                                                                       | Status   |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------- |
-| The proxy seals each body to the capture's public key     | A reader of the spool through a volume snapshot, a mount on another host, or a root on the proxy's host after the write | proposal |
-| `keys.db` seals the capture's private key, shred at close | A spool file that arrives after the close stays unreadable; permissions stop nothing more                               | proposal |
-| Each body has its own key in `keys.db`                    | A removal deletes the key, so the bytes left on disk, in journals and in any copy of the data directory are unreadable  | needed   |
+| Layer                                                     | It stops, beyond file permissions                                                                                       |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| The proxy seals each body to the capture's public key     | A reader of the spool through a volume snapshot, a mount on another host, or a root on the proxy's host after the write |
+| `keys.db` seals the capture's private key, shred at close | A spool file that arrives after the close, such as one written after a forget closed the capture, stays unreadable      |
+| Each body has its own key in `keys.db`                    | A removal deletes the key, so the bytes left on disk, in journals and in any copy of the data directory are unreadable  |
 
 - The third layer is what makes a forget complete: the built forget is complete only when no stored
   copy shows the forgotten text.
 
 ### Intake and a secret
 
-- nixie opens the body with the capture's private key, checks its length and SHA-256, runs
-  `holdsOwnValue`, seals the body under a fresh key of its own, writes the file and its row, then
-  removes the spool file. A `.miss` file gives one miss with its reason.
-- A file that fails its header, its key or its checksum gives `undecodable`; a file of a closed
+- nixie opens the body with the capture's private key, checks its length, runs `holdsOwnValue`,
+  seals the body under a fresh key of its own, writes the file and its row, then removes the spool
+  file. A `.miss` file gives one miss with its reason.
+- A file that fails its header, its key or its AES-GCM tag gives `undecodable`; a file of a closed
   capture gives `capture_closed`; 5 failed intakes in a row give `intake_failed`. Each removes the
   file.
 - `holdsOwnValue` searches each own secret value in its plain and its JSON-escaped form. The values
@@ -280,17 +275,13 @@ captures of the threads it covers. The item's first record is the first record o
 in the event log; a request "after" it holds a later intake sequence. The forget design owns which
 threads the cleanup covers.
 
-| `on_forget`  | On a thread the cleanup covers             | On every other thread                      |
-| ------------ | ------------------------------------------ | ------------------------------------------ |
-| `threads`    | Every request                              | Each request after the item's first record |
-| `since_item` | Each request after the item's first record | Each request after the item's first record |
-| `keep`       | None                                       | None                                       |
-
-- With `threads`, a covered thread loses every request, because its sessions may have held the
-  item's text before the item existed, such as the message it came from. Another thread could hold
-  the text only once the item existed, as memory brought into its turns.
-- nixie never searches a request for the item's text, because a search misses a paraphrase. With
-  `keep`, the forget reports the count it left and the date retention removes the last of them.
+- On a thread the cleanup covers, the forget removes every request, because its sessions may have
+  held the item's text before the item existed, such as the message it came from.
+- On every other thread, it removes each request after the item's first record. Another thread could
+  hold the text only once the item existed, as memory brought into its turns.
+- The forget offers no mode that keeps a request, because a forget is complete only when no stored
+  copy shows the forgotten text.
+- nixie never searches a request for the item's text, because a search misses a paraphrase.
 
 ### Faults
 
@@ -317,8 +308,12 @@ count. A step's end can wait up to `close_wait` for the proxy's `.part` files.
 
 ## Decisions
 
-- **Every removal deletes the key first.** From that point the file and every backup of the key
-  store hold only ciphertext or no key.
+- **Every removal deletes the key first.** From that point the live key store opens nothing of that
+  request. A backup of `keys.db` copied before the removal still holds the key until the next
+  published backup set prunes the older key snapshots, as
+  [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state)
+  describes. No backup holds a body or a spool file, so that key opens a body only beside a copy of
+  the data directory or the spool.
 - **The event log holds 2 kinds.** The rest is debugging state in tables, so the last release meets
   only 2 unknown kinds.
 
@@ -337,11 +332,8 @@ count. A step's end can wait up to `close_wait` for the proxy's `.part` files.
 
 ## Open questions
 
-- **The question at the top of this doc.** The owner settles it, and an independent review checks
-  the chosen shape. Until then, neither item is built.
-- **Do the first 2 key layers stay?** The owner settles it with the question above. Until then, the
-  proposal keeps them.
-- **What does a forget do by default?** The owner settles `on_forget`. Until then, `threads`.
+- **Is the chosen shape sound?** An independent security review settles it. Until then, neither item
+  is built.
 - **Does the log run by default?** The owner settles it: always, off until you turn it on, or on for
   a set time. Until then, `default: off`.
 - **Which roles does the log cover?** The owner settles it: `conversation` and `task`, with
