@@ -122,7 +122,7 @@ declare function readPreviousRun(
   context: Pick<TasksContext, 'log'>,
   run: TaskRun,
 ): Promise<TaskRun | null>; // the newest opened before `run` on its task
-declare function readFinishedRuns(
+declare function readEndedRuns(
   context: Pick<TasksContext, 'log'>,
   query: { definitionID?: string; taskID?: string; beforeSequence?: number; limit: number }, // pages by ended.sequence
 ): Promise<readonly TaskRun[]>; // each with `ended` set
