@@ -78,9 +78,9 @@ one the deployment ran.
 A later stage adds `nixie rollback` for a schema the older build refuses. It writes the
 incomplete-recovery marker, sets the current database aside, puts the pre-migration copy in place,
 and keeps the live key store. Writes since the upgrade are lost. Before startup, it imports every
-action from the set-aside database into the restored log with its outcome, and installs recovery
-holds for the affected tasks. **Why:** a task resumed from its pre-upgrade step would repeat those
-actions.
+action from the set-aside database into the restored log with its outcome, and starts nixie paused,
+with the affected tasks listed for you to check. **Why:** a task resumed from its pre-upgrade step
+would repeat those actions.
 
 Every ID that keys the key store is random, such as a UUID, never a row number. **Why:** after a
 rollback, the live key store holds keys for rows the restored database lacks, and a reused row

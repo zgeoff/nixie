@@ -244,9 +244,9 @@ writes the fire's record. The first answer that holds decides:
 - nixie skips a fire and never queues it: a queue would hide a task run that never ends. A fire
   written before a hold opens a task run after the hold ends, however old it is.
 - nixie writes no record for a fire of a disabled definition.
-- The fire answer never reads a recovery hold. A fire to a held task lands unread, as every inbox
-  record does under a hold, and opens its task run after the hold release. Each fire after it skips
-  with `still_running`.
+- The fire answer never reads the pause. While nixie is paused, the trigger core delivers no fire,
+  as [the pause](recovery-hold.md#triggers-while-paused) says, and the catch-up rule decides the
+  first fire after the resume.
 
 ### How the built task code handles a definition's task
 
@@ -284,9 +284,8 @@ writes the fire's record. The first answer that holds decides:
   run that never ends.
 - **The tasks module reads definitions only through 2 readers that the server app passes in.** The
   tasks module then imports neither the definitions module nor the triggers module.
-- **The fire answer has no answer of its own for a recovery hold.** An agent's call on 13 Nov, open
-  to the owner's veto: the hold keeps every step from running, so the fire waits with no new code,
-  as a fire written before any other hold does.
+- **The fire answer has no answer of its own for the pause.** The trigger core delivers nothing
+  while nixie is paused, so the fire answer never meets a paused nixie.
 - **An unread fire opens a task run before a raise or a restart, and a raise or a restart before an
   unread message.** An agent's call on 13 Nov, which the owner accepted: a fire can be unread at a
   carry only after a stop of an idle task run, which has nothing to carry, while a message after a

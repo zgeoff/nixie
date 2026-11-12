@@ -379,7 +379,7 @@ to match once the schedule source is built:
   filter.
 - Pruning `trigger_keys`.
 - Moving the backup schedule, the lapse sweeps or the definitions poll onto the schedule source.
-- A stop of the trigger sources while a recovery hold is open, and a view of source health.
+- A view of source health.
 
 ## Open questions
 

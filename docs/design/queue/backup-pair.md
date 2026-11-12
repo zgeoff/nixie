@@ -308,7 +308,7 @@ interface DataRestore {
   writer lock. When it cannot, the restore fails at step 5 and the marker stays.
 - Step 5 removes every set folder, because nixie staged each from the replaced database, and the job
   would publish a remaining one as a set of the restored database.
-- Step 6 is [the recovery hold's](recovery-hold.md#the-marker). Until it lands, step 6 removes the
+- Step 6 is [the pause design's](recovery-hold.md#the-marker). Until it lands, step 6 removes the
   marker, as built.
 
 ### When a publish or a fetch stops

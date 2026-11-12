@@ -1,34 +1,39 @@
-# The recovery hold after a restore
+# The pause, and the restore that starts paused
 
 - **Status:** draft
 - **Work items:** [the `holding` marker](https://linear.app/zgeoff/issue/GEO-2561),
-  [the hold tables, the reader gate and the claim check](https://linear.app/zgeoff/issue/GEO-2566),
+  [the pause tables, the reader gate and the claim check](https://linear.app/zgeoff/issue/GEO-2566),
   [the install at the next start](https://linear.app/zgeoff/issue/GEO-2564),
-  [the hold release](https://linear.app/zgeoff/issue/GEO-2559). These build on the contracts here:
-  [the recovery API and host commands](https://linear.app/zgeoff/issue/GEO-2571),
+  [the resume and letting one task run](https://linear.app/zgeoff/issue/GEO-2559). These build on
+  the contracts here:
+  [the pause API, the commands and the web client](https://linear.app/zgeoff/issue/GEO-2571),
   [the restore notice](https://linear.app/zgeoff/issue/GEO-2572),
-  [the backup schedule under a hold](https://linear.app/zgeoff/issue/GEO-2558).
+  [the backup schedule while paused](https://linear.app/zgeoff/issue/GEO-2558).
 
-A restored log is up to one backup interval behind the lost host, and only you can check what
-happened outside nixie in the lost span. After a restore, nixie takes no step of a recovered task
-and starts no attempt of a recovered action until you release that task. A recovery hold does this:
-a row of its own beside the task, which survives a crash at any point of the restore and of the next
-start, and which keeps a release without the hold from starting while one exists.
+You can pause all of nixie at once. While nixie is paused, no task takes a step, no action starts an
+attempt, and no schedule fires. Messages, notices and action outcomes still land, so nothing is
+lost, and each waits until you resume. You can let one task run while the rest stay paused, such as
+the conversation, so you can talk to nixie while you check the rest.
+
+A restore starts nixie paused. A restored log is up to one backup interval behind the lost host, and
+only you can check what happened outside nixie in the lost span. So the restore records which tasks
+were midway through a step or owned an action that had not finished, and nixie shows you that list.
+You check each one, then resume.
 
 The restore ends by writing the marker in the state `holding`. The next start of the server reads
-the marker, places a hold on each recovered task, and removes the marker.
+the marker, pauses nixie, records the list, and removes the marker.
 [The backup pair](backup-pair.md) holds the restore's steps 1 to 5, which this design follows with
 step 6.
 
 Terms:
 
-- A **recovery** is one restore, under one `recoveryID`. A rollback that holds the tasks of a
-  discarded span would be a second cause, and is not designed.
-- A **hold release** clears one recovery hold. "Release" alone means a release of nixie.
+- A **recovery** is one restore, under one `recoveryID`.
+- **Letting a task run** puts one task on the list of tasks that run while nixie is paused. A resume
+  empties the list.
 - The **restore marker** is the file `restore-incomplete` in the data directory, which the built
   restore writes.
-- The **reader gate** is the stored `oldest_reader` value, raised so that a release without the
-  hold's tables refuses the database.
+- The **reader gate** is the stored `oldest_reader` value, raised while nixie is paused, so that a
+  release without the pause refuses the database.
 - A **start part** is a named step of the server's start. "The start part `recovery`" is the built
   one that marks unfinished attempts unknown.
 
@@ -37,13 +42,14 @@ Terms:
 ```mermaid
 flowchart LR
   restore[nixie restore] -->|"step 6: holding + PendingRestore"| marker[restore marker]
-  marker -->|"startWriter, installsRecoveryHolds"| part[start part recovery_holds]
-  part -->|"recovery.started, recovery.hold_placed, close the gate"| log[event log]
+  marker -->|"startWriter, installsRestorePause"| part[start part restore_pause]
+  part -->|"recovery.started, nixie.paused, close the gate"| log[event log]
   part -->|"remove"| marker
-  log --> holds[(recovery_holds)]
-  holds -->|"refuse"| claim[claimLease]
-  you[you] -->|"tasks/release"| release[releaseRecoveryHolds]
-  release -->|"recovery.hold_released, reopen the last"| log
+  you[you] -->|"pause, resume, let a task run"| log
+  log --> pause[(nixie_pause, pause_let_run)]
+  pause -->|"refuse"| claim[claimLease]
+  pause -->|"deliver nothing"| triggers[trigger core]
+  pause -->|"stage nothing after a restore"| backup[backup schedule]
 ```
 
 ## Contracts
@@ -70,7 +76,7 @@ interface PendingRestore {
 
 interface StartWriterOptions {
   // …existing fields
-  installsRecoveryHolds?: boolean; // only the server passes true
+  installsRestorePause?: boolean; // only the server passes true
 }
 
 interface Writer {
@@ -91,20 +97,22 @@ nixie reads the marker file this way:
 
 ```sql
 -- One migration appended to nixieSchema. It leaves the schema's oldestReader as it is.
-create table recovery_holds (
-  subject_key     text primary key,     -- 'task:<id>'
-  subject_kind    text not null,        -- 'task'; the column leaves room for another subject kind
-  subject_id      text not null,
-  recovery_id     text not null,
-  cause           text not null,        -- 'restore'
-  placed_sequence integer not null references records (sequence)
+create table nixie_pause (
+  id              integer primary key check (id = 1), -- at most one row: nixie is paused
+  cause           text not null,                      -- 'restore' or 'owner'
+  recovery_id     text,                               -- set when cause is 'restore'
+  paused_sequence integer not null references records (sequence)
+) strict;
+
+create table pause_let_run (
+  task_id      text primary key,                      -- runs while nixie is paused
+  let_sequence integer not null references records (sequence)
 ) strict;
 
 create table recoveries (
   recovery_id      text primary key,
-  cause            text not null,
-  started_at       integer not null,
-  backup_taken_at  integer,             -- null for a cause with no backup
+  restored_at      integer not null,
+  backup_taken_at  integer not null,
   started_sequence integer not null references records (sequence)
 ) strict;
 
@@ -112,54 +120,91 @@ alter table schema_version add column open_oldest_reader integer; -- null while 
 ```
 
 ```ts
-// tasks module: the 3 record kinds. None is an inbox kind, and the tasks projection folds none.
-type HoldSubject = { kind: 'task'; id: string };
-type RecoveryCause = 'restore';
+// log module: the 4 record kinds, each on no thread. The tasks projection folds none.
+type PauseCause = 'restore' | 'owner';
 
-interface RecoveryStarted {
-  kind: 'recovery.started'; // on no thread; recoveries gets one row
-  payload: { recoveryID: string; cause: RecoveryCause; startedAt: number; backupTakenAt: number };
+interface NixiePaused {
+  kind: 'nixie.paused'; // inserts or replaces the nixie_pause row, and empties pause_let_run
+  payload: { cause: PauseCause; recoveryID?: string; by?: string }; // by: the identity, for 'owner'
 }
 
-interface RecoveryHoldPlaced {
-  kind: 'recovery.hold_placed'; // on the task's thread; inserts or replaces the subject's row
+interface NixieResumed {
+  kind: 'nixie.resumed'; // deletes the nixie_pause row and every pause_let_run row
+  payload: { by: string };
+}
+
+interface TaskLetRun {
+  kind: 'nixie.task_let_run'; // inserts a pause_let_run row
+  payload: { taskID: string; by: string };
+}
+
+interface RecoveryStarted {
+  kind: 'recovery.started'; // recoveries gets one row
   payload: {
-    subject: HoldSubject;
     recoveryID: string;
-    cause: RecoveryCause;
-    stateAtBackup: TaskState; // read by recovery/read only
-    wasRunning: boolean; // a step had started and had not committed; read by recovery/read only
+    restoredAt: number;
+    backupTakenAt: number;
+    toCheck: readonly TaskToCheck[]; // read by recovery/read
   };
 }
 
-interface RecoveryHoldReleased {
-  kind: 'recovery.hold_released'; // on the task's thread; deletes the subject's row
-  payload: { subject: HoldSubject; recoveryID: string; by: string }; // by: the identity whose session released it
+interface TaskToCheck {
+  taskID: string;
+  stateAtBackup: TaskState;
+  wasRunning: boolean; // a step had started and had not committed
+  pendingActions: number; // actions with no outcome that the task owns
 }
+```
+
+### The pause and its readers
+
+```ts
+// log module, exported: every module that obeys the pause reads it through readPause
+const pause = await readPause(tx); // → { cause: 'restore', recoveryID: '5b7e0c2a-…' }, or null
+declare function readPause(tx: Transaction<unknown>): Promise<Pause | null>;
+
+interface Pause {
+  cause: PauseCause;
+  recoveryID: string | null;
+}
+
+// log module: each writes its record and changes the tables in the caller's transaction
+declare function pauseNixieInTransaction(
+  tx: Transaction<unknown>,
+  request: { cause: PauseCause; recoveryID?: string; by?: string },
+): Promise<void>;
+declare function resumeNixieInTransaction(
+  tx: Transaction<unknown>,
+  request: { by: string },
+): Promise<{ wasPaused: boolean }>;
+declare function letTaskRunInTransaction(
+  tx: Transaction<unknown>,
+  request: { taskID: string; by: string },
+): Promise<void>;
 ```
 
 ### The reader gate
 
 ```ts
 // db lib
-await closeToOlderReaders(tx, recoveryHoldMigrationVersion);
+await closeToOlderReaders(tx, pauseMigrationVersion);
 // open_oldest_reader := the stored oldest_reader; oldest_reader := the version given
 declare function closeToOlderReaders(tx: Transaction<unknown>, reader: number): Promise<void>;
 
 // oldest_reader := open_oldest_reader; open_oldest_reader := null
 declare function reopenToOlderReaders(tx: Transaction<unknown>): Promise<void>;
 
-// At each start: reopens a closed gate when recovery_holds has no row
-declare function syncRecoveryHoldGate(db: Kysely<unknown>): Promise<void>;
+// At each start: reopens a closed gate when nixie_pause has no row
+declare function syncPauseGate(db: Kysely<unknown>): Promise<void>;
 ```
 
 ### The claim check
 
 ```ts
-// tasks module: readCandidate returns a candidate that names its hold subject, in place of a work ID
+// tasks module: readCandidate returns a candidate that names the task whose pause stops the claim
 interface ClaimCandidate {
   workID: string;
-  subject: HoldSubject; // the task whose hold stops the claim: the task itself, or the action's owner
+  taskID: string; // the task itself, or the action's owner
 }
 
 interface ClaimRequest {
@@ -168,89 +213,46 @@ interface ClaimRequest {
 }
 
 // tasks module: each candidate query adds this to its where clause
-declare function buildRecoveryHoldCheck(
+declare function buildPauseCheck(
   eb: ExpressionBuilder<unknown, never>,
   taskIDColumn: string,
-): Expression<SqlBool>; // true when the task has no hold
+): Expression<SqlBool>; // true when nixie is not paused, or the task is on pause_let_run
 
 // tasks module, exported: takes the caller's transaction
-const held = await isRecoveryHeld(tx, { kind: 'task', id: '7c1d2e9a' }); // → false
-declare function isRecoveryHeld(tx: Transaction<unknown>, subject: HoldSubject): Promise<boolean>;
+const paused = await isTaskPaused(tx, '7c1d2e9a'); // → true
+declare function isTaskPaused(tx: Transaction<unknown>, taskID: string): Promise<boolean>;
 ```
 
-### Place, install and hold release
+### The install at the next start
 
 ```ts
-// server app, in the start part recovery_holds
-const placed = await installRestoreHolds(context, {
+// server app, in the start part restore_pause
+const installed = await installRestorePause(context, {
   pending: writer.pendingRestore,
   readTasksWithPendingActions, // from the actions module
 });
-// → { recoveryID: '5b7e0c2a-91d4-4f3b-8e6a-2c1f9d7b4a10', held: 4, isNew: true }, or null when no restore is pending
+// → { recoveryID: '5b7e0c2a-91d4-4f3b-8e6a-2c1f9d7b4a10', toCheck: 4, isNew: true }, or null when no restore is pending
 
-const released = await releaseRecoveryHolds(context, {
-  subjects: [{ kind: 'task', id: '7c1d2e9a' }],
-  by: 'id_3f1a9c',
-});
-// → { released: [{ kind: 'task', id: '7c1d2e9a' }], left: 3 }
-```
-
-```ts
-// tasks module
-interface PlacedHolds {
-  recoveryID: string;
-  held: number;
-  isNew: boolean; // false: the recoveries row existed, and the call wrote nothing
-}
-
-interface PlacedSubject {
-  subject: HoldSubject;
-  stateAtBackup: TaskState;
-  wasRunning: boolean;
-}
-
-declare function placeRecoveryHoldsInTransaction(
-  tx: Transaction<unknown>,
-  context: TasksContext,
-  request: {
-    recoveryID: string;
-    cause: RecoveryCause;
-    startedAt: number;
-    backupTakenAt: number;
-    subjects: readonly PlacedSubject[];
-  },
-): Promise<PlacedHolds>;
-
-declare function installRestoreHolds(
+declare function installRestorePause(
   context: TasksContext,
   options: {
     pending: PendingRestore | null;
     readTasksWithPendingActions: (tx: Transaction<unknown>) => Promise<readonly string[]>;
   },
-): Promise<PlacedHolds | null>;
+): Promise<{ recoveryID: string; toCheck: number; isNew: boolean } | null>; // isNew false: the recoveries row existed
 
-declare function releaseRecoveryHolds(
-  context: TasksContext,
-  request: { subjects: readonly HoldSubject[]; by: string },
-): Promise<{ released: readonly HoldSubject[]; left: number }>; // left: holds that remain
-```
-
-### The start part
-
-```ts
-// server app, beside the built recovery part declarations
-const recoveryHoldsPart: AnyPartDeclaration<ServerPartValues> = {
-  name: 'recovery_holds',
+const restorePausePart: AnyPartDeclaration<ServerPartValues> = {
+  name: 'restore_pause',
   needs: ['server_parts', 'first_seed'],
-  // installRestoreHolds, the fault point recovery.holds.committed, the marker's removal, then
-  // the fault point recovery.holds.marker_cleared
-  start: makeRetriedStart('recovery_holds', installHoldsAndClearMarker),
+  // installRestorePause, the fault point recovery.pause.committed, the marker's removal, then
+  // the fault point recovery.pause.marker_cleared
+  start: makeRetriedStart('restore_pause', installPauseAndClearMarker),
 };
-// The built start part `recovery` adds 'recovery_holds' to its needs.
+// The built start part `recovery` adds 'restore_pause' to its needs.
 
-type RecoveryHoldFaultPoint =
-  | 'recovery.holds.committed' // after the commit of the holds and the closed gate
-  | 'recovery.holds.marker_cleared'; // after the marker is removed
+type RestorePauseFaultPoint =
+  | 'recovery.pause.committed' // after the commit of the pause, the list and the closed gate
+  | 'recovery.pause.marker_cleared'; // after the marker is removed
 ```
 
 ## Constraints
@@ -262,193 +264,174 @@ type RecoveryHoldFaultPoint =
 - Step 6 runs after the move of both databases and after the restore note, and the server never
   starts on `replacing`. So a started server finds no set folder of the replaced database in
   staging.
-- On `holding`, `startWriter` starts for a caller with `installsRecoveryHolds` and refuses every
+- On `holding`, `startWriter` starts for a caller with `installsRestorePause` and refuses every
   other caller. On `replacing`, it refuses every caller.
 - A kill before step 6 leaves `replacing`, and you finish it by running the restore again, as the
   [built restore](../../architecture/deployment/host-commands.md#backup-and-restore) requires: a
   server never starts on `replacing`.
-- The restore writes nothing into the restored database. The backup's schema can predate the hold's
+- The restore writes nothing into the restored database. The backup's schema can predate the pause
   tables, and the migrations run at the next start.
 
-### The holds
+### The pause
 
-- nixie stores a recovery hold only as a row of `recovery_holds`, never as a task state, a lease or
-  a far `claimable_at`. A task state stops records from landing, the start part `recovery` frees
-  every lease of an earlier start, and folds rewrite `claimable_at`.
-- A subject has at most one recovery hold.
-- A placed hold and a hold release change no task state, lease, `resume_state` or `claimable_at`.
-- The fold of `task.closed` never ends a recovery hold. A hold release ends one, and a log reset
-  empties `recovery_holds` with every other table.
-- While a task is held, inbox records, fired timers, action outcomes and the records of the start
-  part `recovery` land on its thread, and each task control works on it as on any task. nixie takes
-  no step that reads them until the hold release.
-- `placeRecoveryHoldsInTransaction` writes nothing for a `recoveryID` that has a `recoveries` row,
-  so a repeated install never holds a released task again.
-- When a hold is placed on a running server, a step that holds a lease runs to its commit.
+- nixie is paused exactly while `nixie_pause` holds its row. nixie stores the pause only there,
+  never as a task state, a lease or a far `claimable_at`. A task state stops records from landing,
+  the start part `recovery` frees every lease of an earlier start, and folds rewrite `claimable_at`.
+- A pause, a resume and letting a task run change no task state, lease, `resume_state` or
+  `claimable_at`. A task that you paused yourself stays paused after nixie resumes, and the `resume`
+  control of a task never resumes nixie.
+- Every task is paused while nixie is paused, except a task on `pause_let_run`. A task created while
+  nixie is paused is paused too, such as a task that a let-run task starts.
+- While nixie is paused, inbox records, fired timers, action outcomes and the records of the start
+  part `recovery` land on each task's thread as on any day, and each task control works. nixie takes
+  no step that reads them until the resume, or until you let that task run.
+- When nixie pauses on a running server, a step that holds a lease runs to its commit, and an
+  attempt that has started runs to its outcome. Nothing new starts after either.
+- Only you pause, resume or let a task run: through the API, a host command or the web client. No
+  tool does any of the three.
+- A pause while nixie is paused replaces the cause. A resume while nixie is not paused writes
+  nothing.
+- A log reset empties `nixie_pause` and `pause_let_run` with every other table.
 
-### Which tasks a restore holds
+### What the restore records for you to check
 
-- A restore holds every task that is not done or closed, and every task that owns a pending action,
-  as the platform's [recovery holds](../platform/core/tasks.md#recovery-holds) say: "A host restore
-  holds every unfinished task". A done or closed task that owns a pending action is held, so the
-  action cannot retry.
-- A done, stopped or closed task can own a pending action with a started attempt. A stop cancels
-  only the actions with no started attempt, a started attempt runs on to its outcome
-  ([attempts](../../architecture/core/actions.md#attempts)), and the built action claim skips only
-  the actions of a paused or closed task.
-- No task is exempt. The conversation, the queue check, and the `memory-writer` and
-  `memory-consolidator` rows that an older log holds are held like any other task.
+- `toCheck` holds every task that was running at the backup, and every task that owns an action with
+  no outcome, the conversation included. A done, stopped or closed task can own one: a stop cancels
+  only the actions with no started attempt, and a started attempt runs on to its outcome
+  ([attempts](../../architecture/core/actions.md#attempts)).
 - The install reads `stateAtBackup` and `wasRunning` from each task's row before the start part
   `recovery` moves a running task.
-- nixie takes the steps of a task that the restore did not hold, such as a task created after the
-  restore.
+- The install writes `recovery.started`, then `nixie.paused` with the cause `restore`, in one
+  transaction. `nixie.paused` empties `pause_let_run`, so a let-run list that the backup held never
+  runs a task.
+- `installRestorePause` writes nothing for a `recoveryID` that has a `recoveries` row, so a repeated
+  install never pauses nixie again after you resumed.
+- The start part `restore_pause` runs after the built start part `first_seed`, so the first seed's
+  tasks are paused with the rest.
 
-### Triggers under a hold
+### Triggers while paused
 
-- A restore holds tasks and never a trigger source, so `HoldSubject` has the one kind `task`.
-- Every fire lands on its definition's task or on the conversation, and the restore holds both: a
-  definition's task is never done or closed. So no fire opens a task run before its task's hold
-  release.
-- The start part `recovery_holds` runs after the built start part `first_seed`, so the install also
-  holds each definition's task that a first seed creates.
-- A restored log has a seed in force, so the built start writes no seed before the install. A later
-  seed binds a definition that the restored log lacks to a new task with no hold, such as the task
-  of a one-shot added to the config after the backup.
-- When a trigger can open a task run on a task the restore did not hold, this rule changes in one
-  place: `HoldSubject` gains a source kind, and the trigger core checks it with `isRecoveryHeld`.
+- While nixie is paused, `deliverTriggerBatch` writes nothing, takes no key and returns
+  `{ delivered: 0 }`, for every source and every target, the conversation included. The watermark
+  stays where it was.
+- The source delivers the same events at its next tick, so the first tick after the resume finds
+  each missed fire late, and the catch-up rule of [triggers](triggers.md#decisions) decides: one
+  catch-up within half the interval, and a `too_late` skip beyond it.
+- A definition's task that you let run gets no fire while nixie is paused.
 
 ### The reader gate
 
-- The transaction that writes the first recovery hold closes the gate. The hold release that clears
-  the last one reopens it in its transaction.
+- The transaction that pauses nixie closes the gate. The resume reopens it in its transaction.
 - A migration that runs while the gate is closed reads `open_oldest_reader` in its transaction, sets
   it to the value the built runner would give `oldest_reader`, and never lowers `oldest_reader`.
-- `recoveryHoldMigrationVersion` is the hold migration's index plus one, and the db lib exports it.
-- `syncRecoveryHoldGate` reopens a closed gate with no hold at each start. A log reset is the one
-  case that leaves one.
-- One recovery hold, a hold on a closed task included, stops each release without the hold from
-  starting, with the built `SchemaTooNewError`.
+- `pauseMigrationVersion` is the pause migration's index plus one, and the db lib exports it.
+- `syncPauseGate` reopens a closed gate with no pause at each start. A log reset is the one case
+  that leaves one.
+- While nixie is paused, each release without the pause refuses to start, with the built
+  `SchemaTooNewError`.
 
 ### The claim check
 
-- `claimLease` refuses a candidate whose subject is held, in the transaction that writes the lease
+- `claimLease` refuses a candidate whose task is paused, in the transaction that writes the lease
   and the step start. A refused claim writes nothing.
 - The refusal covers every claim: by any runner, for a retry, by the start part `recovery`, by task
   ID, and for an action that started an attempt before the backup. The sweep that revives waiting
-  tasks writes its records on a held task as on any task, and the claim after it is refused.
+  tasks writes its records on a paused task as on any task, and the claim after it is refused.
 - Every caller of `readCandidate` returns a `ClaimCandidate` in the same change.
-- Each candidate query filters with `buildRecoveryHoldCheck`, so a held task at the head of the
-  order never hides the work behind it. Under `NIXIE_TEST_BUILD`, `claimLease` throws when
-  `readCandidate` returns held work.
+- Each candidate query filters with `buildPauseCheck`, so a paused task at the head of the order
+  never hides a let-run task's work behind it. Under `NIXIE_TEST_BUILD`, `claimLease` throws when
+  `readCandidate` returns paused work.
 - The action query's filter has no `attempt_count = 0` condition, so it covers an action with a
-  started attempt. The actions module needs nothing else from the hold.
-- The hold check sits before the write of `task.run_opened` that the task run records add to the
+  started attempt. The actions module needs nothing else from the pause.
+- The pause check sits before the write of `task.run_opened` that the task run records add to the
   claim's transaction.
 
-### The next start
+### The next start after a restore
 
 1. `startWriter` starts for the server on `holding`, and the migrations run.
-2. The start part `recovery_holds` commits the holds and the closed gate in one transaction, then
-   removes the marker.
+2. The start part `restore_pause` commits the pause, the list and the closed gate in one
+   transaction, then removes the marker.
 3. The start part `recovery` runs, then the runners.
 
 | A kill lands                              | The next start                                                                |
 | ----------------------------------------- | ----------------------------------------------------------------------------- |
 | before the restore writes `holding`       | every build refuses on `replacing`; you run the restore again                 |
 | after the restore, through the migrations | the release before refuses on the marker; this build starts again from step 1 |
-| before the holds commit                   | starts again from step 1                                                      |
-| at `recovery.holds.committed`             | finds the `recoveries` row, places nothing, and removes the marker            |
-| at `recovery.holds.marker_cleared`        | claims nothing held; the release before refuses with `SchemaTooNewError`      |
+| before the pause commits                  | starts again from step 1                                                      |
+| at `recovery.pause.committed`             | finds the `recoveries` row, writes nothing, and removes the marker            |
+| at `recovery.pause.marker_cleared`        | claims nothing paused; the release before refuses with `SchemaTooNewError`    |
 
-### The hold release
+### The resume
 
-- `releaseRecoveryHolds` writes `recovery.hold_released` for each subject in one transaction.
-- After a hold release, the task is in the state its records give it, and the next claim takes it
-  with whatever its inbox holds. A closed task stays closed.
-- When nixie dies before a hold release commits, the hold remains. After the commit, nixie claims
-  the waiting work as any other work.
-- The `resume` control never clears a recovery hold.
-- The API and the commands release one task a call. `releaseRecoveryHolds` takes a list, so a
-  release of several tasks changes only its callers.
+- `resumeNixieInTransaction` writes `nixie.resumed`, deletes the pause and the let-run list, and
+  reopens the gate, in one transaction. When nixie dies before the commit, nixie stays paused.
+- After the resume, each task is in the state its records give it, and the next claim takes it with
+  whatever its inbox holds.
+- Letting a task run and the resume each act at once, with no confirm step. After a restore, the web
+  client shows the `toCheck` list beside the resume control.
 
 ### A rollback
 
 The release before reads this design's changes this way:
 
-| The change                     | The release before                                                         |
-| ------------------------------ | -------------------------------------------------------------------------- |
-| the marker in `holding`        | refuses to start, as on any marker                                         |
-| the migration                  | refuses with `SchemaTooNewError` while a hold exists, and starts when none |
-| `recovery_holds`, `recoveries` | never selects them                                                         |
-| `open_oldest_reader`           | never selects it                                                           |
-| the 3 record kinds             | skips them, once the check under open questions passes                     |
+| The change                                   | The release before                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| the marker in `holding`                      | refuses to start, as on any marker                                 |
+| the migration                                | refuses with `SchemaTooNewError` while paused, and starts when not |
+| `nixie_pause`, `pause_let_run`, `recoveries` | never selects them                                                 |
+| `open_oldest_reader`                         | never selects it                                                   |
+| the 4 record kinds                           | never meets them on a thread: each is on no thread                 |
 
-To roll back after a restore:
+To roll back while nixie is paused, after a restore or not:
 
-1. Start this build once, so the start part `recovery_holds` installs the holds and removes the
-   marker.
-2. Release every recovery hold.
+1. When a restore marker exists, start this build once, so the start part `restore_pause` removes
+   it.
+2. Resume nixie. Tasks run on this build until you stop it.
 3. Start the release before.
 
 ## Decisions
 
-- **The next start installs the holds, not the restore.** The backup's schema can predate the hold's
+- **nixie pauses as a whole, and you can let single tasks run; a restore starts nixie paused.** The
+  owner chose this on 13 Nov, in place of a hold on each task: one switch stops everything, with or
+  without a restore, and letting a task run covers the fine case, such as talking to nixie before
+  you resume.
+- **The next start pauses nixie, not the restore.** The backup's schema can predate the pause
   tables, and the migrations run only at a start.
 - **The gate is the stored `oldest_reader`, never the schema's `oldestReader`.** A raised schema
-  value would stop the release before from reading the database again, holds or none.
-- **A hold has no port.** SQLite is the one store, by the queue's port rules.
-- **A recovery hold is its own row in `recovery_holds`, and `claimLease` checks the hold subject
-  that each claim candidate names.** An agent's call on 13 Nov, which the owner accepted: one check
-  covers every runner and every action attempt, and the platform design keeps the hold apart from
-  the lease and the task state.
+  value would stop the release before from reading the database again, paused or not.
+- **Every pause closes the gate, your own included.** One rule covers every pause, and a release
+  that does not know the pause never runs the tasks you paused.
+- **The pause lives in the log module.** The tasks module, the trigger core and the backup schedule
+  each read it, and each already imports the log module, so none imports another for it.
+- **A pause has no port.** SQLite is the one store, by the queue's port rules.
+- **The pause records go on no thread.** A thread reader of the release before then never meets
+  them.
+- **`claimLease` checks the task that each claim candidate names.** An agent's call on 13 Nov, which
+  the owner accepted: one check covers every runner and every action attempt, and the platform
+  design keeps the pause apart from the lease and the task state.
 - **The restore writes `holding` last, after the move of both databases and the restore note.** An
   agent's call on 13 Nov, which the owner accepted: a kill before the move then leaves `replacing`,
-  so no start places holds on the database the restore meant to replace.
-- **Every restore places holds, and `nixie restore` has no flag that skips them.** An agent's call
-  on 13 Nov, which the owner accepted: the platform's
+  so no start pauses the database the restore meant to replace.
+- **Every restore starts nixie paused, and `nixie restore` has no flag that skips it.** An agent's
+  call on 13 Nov, which the owner accepted: the platform's
   [backup and restore](../platform/deployment/backup-and-restore.md#restoring-on-a-new-host) gives
-  the restore no exception, and a hold release after the start covers a test host.
-- **A restore holds tasks, never a trigger source.** An agent's call on 13 Nov, which the owner
-  accepted: each fire lands on a held task, so a gate on the source would add a second release path
-  and stop nothing more.
-- **The API and the commands release one task a call.** An agent's call on 13 Nov, which the owner
-  accepted: each built task control acts on one task and returns its state, so a list there needs a
-  control of a new shape.
+  the restore no exception, and a resume after the start covers a test host.
 
 ## Builder decides
 
 - The internal names of the queries, the folds and the files.
 - The wording of each refusal and log line.
-- Whether `syncRecoveryHoldGate` runs in the start part `recovery_holds` or in `startWriter`, as
-  long as it runs at each start before a claim.
+- Whether `syncPauseGate` runs in the start part `restore_pause` or in `startWriter`, as long as it
+  runs at each start before a claim.
 - The layout of the tests.
 
 ## Out of scope
 
-- `nixie rollback`, and the holds it would place on the tasks of a discarded span.
-- A gate on a trigger source, and a hold release for a source.
+- `nixie rollback`, and what it would pause.
+- A pause from a tool, and a timed pause that resumes on its own.
 - A config key, and a change to a model's prompt.
-- A marker that lasts until the last hold release.
-- What a fire does for a held task. The [definitions design](definition-tasks.md#the-fire-answer)
-  owns it.
+- A marker that lasts until the resume.
 
 ## Open questions
 
-- **Does a restore leave the conversation unheld?** The owner settles it. For example, after a
-  restore nixie does not answer in chat until you release the conversation. The options: hold it, as
-  every other task; or exempt it. Exempting it means a conversation step left unfinished at the
-  backup can repeat an outside action, and a fire with `target: conversation` runs before any hold
-  release. Recommendation: hold it. Until then, it is held.
-- **Does the web client offer a release of several held tasks at once?** The owner settles it. For
-  example, 6 tasks are held and you have checked all 6. The options: one hold release control per
-  task; or a control that releases the tasks you select. Recommendation: one per task, because the
-  hold exists so that you look at each task. Until then, one per task.
-- **Does every thread reader of the release before skip a record of a kind it does not know?** A
-  check settles it, run on the code before the hold tables land: a sessions test that rebuilds a
-  session from a thread with a `recovery.hold_placed` record, a sessions test that renders an inbox
-  with a record of an unknown inbox kind, and a web client test that renders a thread page with one,
-  under `bun run test` and `bun run test:browser`. Until then, the 3 kinds go on the task's thread.
-  When one reader throws, that reader is fixed in a release before the hold ships, or the kinds go
-  on no thread and `recovery/read` joins by subject. The web client of the release before prints an
-  unknown kind's name in a step's "events:" line, so the owner also settles whether
-  `recovery.hold_placed` may show there.
+None.
