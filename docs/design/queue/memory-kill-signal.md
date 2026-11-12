@@ -82,7 +82,7 @@ interface MemoryKillLine {
   kind: SandboxKind; // from the sandbox's spec
   memoryMiB: number; // from the sandbox's spec; with `kind`, it identifies the size row
   sandboxID: string;
-  kills: number; // the guest's count
+  kills: number; // the rise in the guest's count since the last read of this sandbox; at least 1
 }
 
 // level warn. When nixie cannot judge the end.
@@ -165,6 +165,9 @@ The lines:
 
 ## Decisions
 
+- **`kills` is the rise since the last read of the sandbox, never the guest's count since boot.**
+  The owner chose this on 13 Nov, so a day's kills are the sum of that day's lines.
+
 - **A wrapper around the adapter reads the count and writes log lines.** No caller changes, and a
   killed guest cannot always report.
 
@@ -185,5 +188,4 @@ The lines:
 
 ## Open questions
 
-- **Is `kills` the guest's count or the rise since the last read?** The owner settles it. Until
-  then, it is the count.
+None.
