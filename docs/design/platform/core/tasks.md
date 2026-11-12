@@ -59,7 +59,7 @@ You can pause all of nixie at once, and a restore or a rollback starts nixie pau
 recovered tasks never act before you look. While nixie is paused:
 
 - No task claim and no action attempt starts, retries and reconciliation included, except for a task
-  you let run.
+  you resume on its own.
 - Inbox delivery, timers and outcome recording still run, so nothing is lost while work waits.
 - No trigger fires. The first fire after the resume follows the catch-up rule.
 

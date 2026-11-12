@@ -90,7 +90,7 @@ async function setupTest() {
 - The tasks seeder has one test seed for each `TaskState` that the module's create function cannot
   give. The built `seedConversationStep`, `seedHeldTask` and `seedStartedTask` become its members.
   `seedHeldTask` becomes `pausedTask`, after the state its task ends in, so "held" never reads as
-  [the pause](recovery-hold.md).
+  [the pause](pause.md).
 - The memory seeder has one test seed for each value of each state type of items and of proposals.
 - The connectors seeder holds the built `seedWebFetchLinks`, and the backup seeder holds the built
   `seedFailedBackupNotice`. The server app's built `seedHeldTasks` and `seedRuleConflict` become

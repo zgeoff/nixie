@@ -245,8 +245,8 @@ writes the fire's record. The first answer that holds decides:
   written before a hold opens a task run after the hold ends, however old it is.
 - nixie writes no record for a fire of a disabled definition.
 - The fire answer never reads the pause. While nixie is paused, the trigger core delivers no fire,
-  as [the pause](recovery-hold.md#triggers-while-paused) says, and the catch-up rule decides the
-  first fire after the resume.
+  as [the pause](pause.md#triggers-while-paused) says, and the catch-up rule decides the first fire
+  after the resume.
 
 ### How the built task code handles a definition's task
 
