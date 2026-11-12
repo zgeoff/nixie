@@ -4,16 +4,19 @@
 - **Work items:** [the memory index block](https://linear.app/zgeoff/issue/GEO-2364) builds it, off
   by default. [The index on by default](https://linear.app/zgeoff/issue/GEO-2544) turns it on.
 
-Each session opens with a `memory-index` block that lists every active item that is not pinned, one
-line each, by subject and then by topic. The agent sees what memory holds, and reads an item in full
-with `memory.recall` only when it wants the item. The memory module renders the block within a token
-budget, folding the largest topics to one line each, and the sessions module places it through its
+Each session opens with a `memory-index` block that shows every active item that is not pinned, by
+subject and then by topic: one row per topic, with its count and its items' gists. The agent sees
+where to look, and reads an item in full with `memory.recall` only when it wants the item. A big
+topic folds to its newest items and its sub-topics, so the block still fits at 1,000 items. The
+memory module renders the block within a token budget, and the sessions module places it through its
 `ConversationMemory` port.
 
 Terms of this doc, beside the [glossary](../../glossary.md) and [the labels](memory-labels.md):
 
-- **index line:** one item in the block, as `[shortID] gist`.
-- **folded topic:** a topic the block shows as one line with its item count.
+- **topic row:** one topic in the block: its name, its count and its items, each as
+  `[shortID] gist`.
+- **folded topic:** a topic whose row shows only its newest items and its sub-topics.
+- **sub-topic:** the part of a topic after its first `/`, such as `friends` in `people/friends`.
 - **active item:** an item that is neither retired nor forgotten.
 
 The store's built in-memory item index (`MemoryIndex`) is a search structure, not this block. The
@@ -57,14 +60,13 @@ interface SessionIndex {
 ```text
 <the opening line>
 About Robin:
-  home (3):
-    - [b7kq2m9xza] spare bike pump hangs behind the shed door
-    - [c2hd81mmqa] piano tuned each March by the same tuner
-    - [d9pp20xkcw] recycling goes out Thursday night
-  health (14 items, folded)
+  home (3)           [b7kq2m9xza] spare bike pump behind the shed door · [c2hd81mmqa] piano tuned
+                     each March · [d9pp20xkcw] recycling out Thursday night
+  people (180)       folded · newest: [m8lw1qa2zk] sister in Lisbon · [m2aa5pq7tt] partner's
+                     shift work · [p4ty7cv1mb] neighbour feeds the cat
+                     · sub-topics: family 24, friends 61, colleagues 70, neighbours 25
 Between you and Robin:
-  running jokes (1):
-    - [k1n0zz8w2p] "the lasagne incident"
+  running jokes (1)  [k1n0zz8w2p] "the lasagne incident"
 and 12 more topics with 85 items: list them with memory.recall topics
 ```
 
@@ -72,7 +74,7 @@ and 12 more topics with 85 items: list them with memory.recall topics
 # deployment config, memory module. memoryConfigSchema stays a strict object.
 memory:
   index_tokens: 3000 # the block's token budget; 0 omits the block
-  index_fold_order: largest-first # the one value; see Open questions
+  index_open_topic_items: 25 # a topic with more items folds
   index_item_order: newest-first # the one value
   index_topic_page: 200 # the most lines one memory.recall with `topic` returns; the recall design reads it
 ```
@@ -102,17 +104,22 @@ memory:
   `shared`, `self`, then by topic. A topic belongs to one subject, so `home` under `owner` and
   `home` under `shared` are 2 topics.
 - With no such item, `readIndex` returns `text: ''`.
+- Each topic is one row: its name, its count, then each item as `[shortID] gist`, joined by `·`. A
+  row wraps under its own indent.
 - The items of a topic follow `index_item_order`: newest first.
+- A topic with more than `index_open_topic_items` items folds. Its row shows its count, its 3 newest
+  items, and each sub-topic with its count. A topic with no sub-topic shows its newest items alone.
 - Two topics that differ only by case are one, spelled as its newest item spells it.
 - The opening line tells the agent what the index is, that `memory.recall` with `itemIDs` reads an
-  item, and that `memory.recall` with `topic` opens a folded topic.
-- A folded topic reads `{topic} ({count} items, folded)`. The closing line reads
+  item, and that `memory.recall` with `topic` opens a folded topic or a sub-topic, such as
+  `people/friends`.
+- The closing line reads
   `and {topics} more topics with {items} items: list them with memory.recall topics`.
 
 ### The budget
 
-- The memory module counts every line of the block: the opening line, the headings, the index lines,
-  the folded lines and the closing line.
+- The memory module counts every line of the block: the opening line, the headings, the topic rows
+  and the closing line.
 - While the count is over `index_tokens`, the renderer folds the open topic with the most items.
 - When every topic is folded and the count is still over, the renderer drops topics into the closing
   line, the one with the fewest items first, until the count fits.
@@ -132,6 +139,8 @@ memory:
 
 ## Decisions
 
+- **One row per topic, with its gists inline.** The owner chose this layout over a line per item and
+  over counts alone, so the block stays readable at 1,000 items.
 - **No record of what the index showed.** Its one reader would have been a measurement.
 - **The memory module renders and counts, and the sessions module places.** The sessions module
   reaches memory only through its port.
@@ -155,9 +164,6 @@ memory:
 
 ## Open questions
 
-- **What does `index_fold_order: oldest-first` fold first: the topic whose newest item is oldest, or
-  the topic whose oldest item is oldest?** The owner settles it. Until then, the key takes only
-  `largest-first`, and adding the value later only grows the schema.
 - **What does the block hold when `index_tokens` is smaller than the opening line, the headings and
   the closing line together?** The owner settles it. Until then, the block holds the opening line
   and a closing line that counts every topic, even past the budget.
