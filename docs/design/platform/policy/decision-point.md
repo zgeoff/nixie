@@ -72,7 +72,7 @@ Every tool declares its effects in nixie's tool registry, and rules match on the
 | `note`          | Writes inside nixie, such as a note, a memory proposal or a message to you |
 | `note`          | Creates, edits or retires a memory item                                    |
 | `write`         | Changes data in your outside service that the service can restore          |
-| `delete`        | Removes data in your outside service for good                              |
+| `delete`        | Removes data for good, in your outside service or in nixie's own records   |
 | `send`          | Reaches a person or service other than you                                 |
 | `spend`         | Spends money                                                               |
 | `schedule`      | Creates or changes a job                                                   |
