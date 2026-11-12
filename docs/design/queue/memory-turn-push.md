@@ -214,7 +214,7 @@ memory:
 - **One port method, and the memory module picks the pushes.** The sessions module holds no setting
   that tunes a push.
 - **The similarity push and `memory.rate` go once the owner signs off on a live check of the index,
-  in the same milestone, with no measurement first.**
+  in the same milestone, with no measurement first.** The owner chose this on 12 Nov.
 
 ## Builder decides
 
@@ -235,7 +235,10 @@ memory:
 ## Open questions
 
 - **Which score does `trigger_min_score` floor?** The built search keeps a keyword score and a
-  vector similarity on different scales. A measurement on invented phrases settles it in the trigger
-  push item. Until then, `trigger_min_score` floors the keyword score as the built `minScore` does,
-  vector matches keep the built default similarity floor, and an item passes when either search
-  returns it.
+  vector similarity on different scales. A measurement in the trigger push item settles it: run the
+  built ranked-match search over invented trigger phrases and invented messages, once with the
+  encoder and once with keyword search only, and list the keyword score and the similarity of each
+  match that should push its item and each near miss that should not. When the near misses pass the
+  built similarity floor, the vector search needs a floor key of its own, and the owner names it.
+  Until then, `trigger_min_score` floors the keyword score as the built `minScore` does, vector
+  matches keep the built default similarity floor, and an item passes when either search returns it.

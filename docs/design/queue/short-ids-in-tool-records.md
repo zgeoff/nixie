@@ -6,11 +6,12 @@
   [the short ID of a proposal](https://linear.app/zgeoff/issue/GEO-2589)
 
 The model reads and passes the short ID of a moment, a memory item or a proposal, never its UUID, as
-[short IDs](../../architecture/core/database.md#short-ids) says. 8 memory tools break the rule
-through `log.read`: each stores a UUID in its `record`, and `log.read` prints the stored record to
-the model. Each tool stores the short ID instead and keeps the UUID under `hidden.uuids`, and
-`log.read` swaps a UUID that an older record holds for its short ID.
-[The `hidden` field](tool-hidden-field.md) owns `hidden` and the rule for what `log.read` prints.
+[short IDs](../../architecture/core/database.md#short-ids) says. 12 moment and memory tools break
+the rule: each stores a UUID in its `record`, and `log.read` prints the stored record to the model.
+The 4 write tools also show a proposal's UUID in their result. Each tool stores the short ID instead
+and keeps the UUID under `hidden.uuids`, and `log.read` swaps a UUID that an older record holds for
+its short ID. [The `hidden` field](tool-hidden-field.md) owns `hidden` and the rule for what
+`log.read` prints.
 
 ## Shape
 
@@ -52,6 +53,8 @@ The keys that hold a short ID in each tool's record:
   moment.link     momentID, itemID
   memory.recall   itemID of each item
   memory.pending  proposalID of each entry of `proposals`
+  memory.remember, memory.edit, memory.retire, memory.pin
+                  proposalID, when the status is `proposed`
 ```
 
 ```text
@@ -70,11 +73,12 @@ const swappedKeys = ['momentID', 'itemID', 'changeID'] as const;
 
 ## Constraints
 
-- The input schema, the result and the output schema of each tool are unchanged. A moment tool's
-  `momentID` input still takes a UUID or a short ID.
-- As built, the result of each tool but `memory.pending` already shows the short ID, and only the
-  `record` holds the UUID. A tool entry shows the model the same content as on main, with each UUID
-  replaced by its short ID.
+- The input schema and the output schema of each tool are unchanged, and so is each result except
+  for a proposal's ID. A moment tool's `momentID` input still takes a UUID or a short ID.
+- As built, the result of each tool but `memory.pending` already shows the short ID of a moment or
+  an item, and only the `record` holds the UUID. The result of `memory.pending` and the `proposed`
+  result of a write tool show the proposal's UUID. A tool entry shows the model the same content as
+  on main, with each UUID replaced by its short ID.
 - `hidden` holds the UUIDs alone.
 - No server code reads a UUID out of a stored `result` on main: the decoders of the `tool_result`
   payload outside `readLogPage` read the payload only, and the API passes the erasable fields to the
@@ -95,14 +99,18 @@ const swappedKeys = ['momentID', 'itemID', 'changeID'] as const;
 - A stored `memory.diff` record prints the short ID of each change while the change's row exists,
   and no `changeID` when it does not. So the outcome of the memory gate's check that the change rows
   survive the consolidator's delete needs no change here.
-- The 7 moment and recall tools, every tool of the table but `memory.pending`, cover every UUID in
-  their records as the records stand on main when the work is built. When memory-index-1 lands
-  first, that includes `leftOut.itemIDs` of `memory.recall`. When it lands after, memory-index-1
-  records `leftOut` by this rule.
+- The 7 moment and recall tools, every tool of the table but the 5 that show a `proposalID`, cover
+  every UUID in their records as the records stand on main when the work is built. When
+  memory-index-1 lands first, that includes `leftOut.itemIDs` of `memory.recall`. When it lands
+  after, memory-index-1 records `leftOut` by this rule.
 - A proposal's short ID is the one `buildShortIDFromUUID` gives for its UUID, as a memory
-  consolidation change's is in [short IDs](../../architecture/core/database.md#short-ids). The
-  `memory.proposed` record keeps the shape that the release before reads, so it never carries a
-  short ID.
+  consolidation change's is in [short IDs](../../architecture/core/database.md#short-ids). Every
+  reader derives it from the UUID on each read, and the proposal row gains no column, so the
+  proposal item adds no migration and a rollback needs no step. The `memory.proposed` record keeps
+  the shape that the release before reads, so it never carries a short ID.
+- `memory.pending` and the 4 write tools show the same derived short ID as `proposalID`, so the
+  model meets one ID for one proposal. `log.read` swaps a UUID-shaped `proposalID` by the same
+  derivation, with no row read.
 - The release before prints `hidden.uuids` as it prints any field, so after a rollback the model
   reads those UUIDs.
 
@@ -110,6 +118,12 @@ const swappedKeys = ['momentID', 'itemID', 'changeID'] as const;
 
 - **Each tool stores the short ID, and the UUID moves to `hidden`.** A rule in `log.read` alone
   would leave the UUID in the stored record that the next reader prints.
+- **`log.read` prints the short ID from the row for a UUID in a stored record, and leaves the key
+  out when the row gives none.** An agent's call on 13 Nov, open to the owner's veto: the model can
+  then name the moment or item in a later call, and older entries keep the link newer entries have.
+- **A proposal's short ID is derived from its UUID on each read, with no column.** An agent's call
+  on 13 Nov, open to the owner's veto: the derivation gives the same value a column would hold, so a
+  column adds a migration and a rollback check for nothing.
 
 ## Builder decides
 
@@ -124,11 +138,4 @@ const swappedKeys = ['momentID', 'itemID', 'changeID'] as const;
 
 ## Open questions
 
-- **What does `log.read` print for a UUID in a stored record?** The owner settles it: (a) the short
-  ID from the row, with the key left out when the row gives none; or (b) the key always left out.
-  The short ID rule rules out printing the UUID. Until then, the design follows (a).
-- **Does a proposal's short ID sit in a column?** The owner settles it: (a) a `short_id` column on
-  the proposal row, added by a migration that fills each row with `buildShortIDFromUUID`, as the
-  consolidation change has; or (b) the same value derived on each read, with no migration. The same
-  answer decides whether `memory.remember`, `memory.edit`, `memory.retire` and `memory.pin` show a
-  short ID as `proposalID`. Until then, `memory.pending` shows the UUID, as built.
+None.

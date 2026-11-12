@@ -109,6 +109,10 @@ The read:
   `unsupported`. A rejected exec gives `failed`.
 - The path and the parser live in the imp adapter. `ImpPort` gains no method.
 - A read of a sleeping imp wakes it, as any exec does.
+- A sleep keeps the count. A sleep saves the guest's whole memory, its kernel and that kernel's
+  cgroup counters included, and a wake loads it back, as
+  [imp's sleep and wake doc](https://github.com/zgeoff/impz/blob/main/docs/architecture/lifecycle/sleep-and-wake.md#what-survives-a-sleep)
+  describes. A wake that boots cold resets the count, and the watcher reports it as `counter_reset`.
 - The test sandbox reads `/.memory-kills`. With no such file, the count is 0.
 - Any other adapter returns `unsupported` or reads its own count.
 
@@ -181,9 +185,5 @@ The lines:
 
 ## Open questions
 
-- **Does a sleeping sandbox keep its count?** A spike settles it: the test-imp test of the read
-  sleeps and wakes a sandbox and prints the count before and after. Until then, the watcher is built
-  as above. When the count is 0 after a wake, the watcher is not built, and the day's check reads
-  the runtime's log on the host.
 - **Is `kills` the guest's count or the rise since the last read?** The owner settles it. Until
   then, it is the count.
