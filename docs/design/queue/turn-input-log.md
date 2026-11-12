@@ -288,6 +288,12 @@ threads the cleanup covers.
   copy shows the forgotten text.
 - nixie never searches a request for the item's text, because a search misses a paraphrase.
 
+A forget of a record, through `conversation.forget` or `log.forget`, closes every open capture, then
+removes every logged request with an intake sequence after the record's sequence, on every thread,
+before it writes `record.forgotten`. A request before the record cannot hold it. Any later request
+may, on its own thread or through memory or a task's brief on another, and [redaction](redaction.md)
+removes the record's text from nowhere else.
+
 ### Faults
 
 A fault in the log never fails, delays or changes a model request, and never changes the proxy's

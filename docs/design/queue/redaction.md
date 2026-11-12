@@ -272,8 +272,13 @@ purgeItemEvidence({ itemID, sequence: 4190 });
   never fails on it.
 - The forget's backup state covers each item's old key as well as the record's key.
 - The release before this part skips the 2 new record kinds, as it skips any kind it does not know.
-  It reads the item through the key under its UUID, so it reads the new version and shows each older
-  version as a gap.
+  After a finished purge, it reads the item through the key under its UUID, so it reads the new
+  version and shows each older version as a gap.
+- An unfinished purge leaves the new version and the resealed proposals under `pendingKeyID`, which
+  the release before never reads. So a rollback starts this build once first, and its start finishes
+  every unfinished purge before it serves. Then the release before starts.
+- An item whose evidence nixie purged after the data snapshot of an `older-data` pair is unreadable
+  after that restore, as [the backup pair](backup-pair.md#the-fetch) says.
 - The purge never forgets an item. When an item's own text holds what you remove, you forget the
   item with the memory forget, from the preview's list.
 
@@ -310,7 +315,6 @@ purgeItemEvidence({ itemID, sequence: 4190 });
 
 - A key per field, and a removal of part of a record.
 - A second forget action for moments.
-- What a redaction does to a request in the turn-input log. That log's design owns it.
 - A forget control on a task's records in the web client.
 
 ## Open questions
