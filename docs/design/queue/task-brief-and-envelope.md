@@ -118,11 +118,11 @@ interface TaskEnvelope {
 // sessions module. Plain constants until the owner settles the label question.
 const envelopeLabels = {
   conversation: '{agent}, in the chat with {owner}',
-  personaTask: '{agent} (task: {name}, {id})',
-  plainTask: 'task: {name}, {id}',
+  personaTask: '{agent} (task: {name})',
+  plainTask: 'task: {name}',
   definition: 'task definition: {name}', // phase 2
 } as const;
-// {agent}: agent.names[0], or "nixie". {owner}: owner.name, or "the owner". {id}: the short task ID.
+// {agent}: agent.names[0], or "nixie". {owner}: owner.name, or "the owner".
 
 // tasks module
 interface TaskProfile {
@@ -311,6 +311,14 @@ session. nixie takes the first line that applies:
 
 ## Decisions
 
+- **No label holds a task ID.** The owner chose `{agent} (task: {name})` and `task: {name}` on 5 Nov
+  and confirmed them on 11 Nov. A model that needs a sender's task ID reads it from `tasks.list`.
+- **The guest drops the CLI's own reminders of the environment, the model and the date.** The owner
+  chose this on 5 Nov, if the SDK allows it. The
+  [model-eval spike](../../../research/model-eval/results.md) shows that `CLAUDE_CODE_SIMPLE=1`
+  drops all 3 under a gateway credential, as the guest uses. The work item that sets it first checks
+  what else the setting changes in the guest: tools, MCP loading, settings and hooks.
+
 - **The brief is a `task_message` of kind `request`, with no record kind of its own.** The model
   reads its work the way it reads any message.
 - **`task.created` holds no copy of the brief.** A forget would otherwise have 2 places to reach.
@@ -338,17 +346,9 @@ session. nixie takes the first line that applies:
 
 ## Open questions
 
-- **Does every label hold the sender's task ID?** The owner settles it, for the conversation's
-  label, a `persona: none` label and the `definition` label. Until then, `envelopeLabels` above
-  holds: a task's label ends with its ID, and the conversation's and the definition's labels hold
-  none.
 - **What bounds the depth of a chain of starts?** Every brief has hop 0, so a started task that
   holds `task.start` can start another, and the hop limit never stops the chain. The owner settles
   it: a depth limit, or the gap accepted. Until then, only each task's own limits and the rule that
   a start never widens its starter's tools bound a chain.
 - **What does `{{ task.reportTarget }}` say for a definition's task run and for the report mode
   `none`?** The owner settles it. Until then, the frame keeps its first 2 paragraphs.
-- **Does the guest drop the CLI's own reminders of the environment, the model and the date?** The
-  owner settles it. The [model-eval spike](../../../research/model-eval/results.md) shows that
-  `CLAUDE_CODE_SIMPLE=1` drops all 3 under a gateway credential, as the guest uses, and leaves
-  untested what else the setting changes in the guest. Until then, the guest passes them as built.
