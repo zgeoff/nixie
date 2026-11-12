@@ -82,9 +82,9 @@ distinctly:
 - **Always-ask:** an effect in the always-ask set, a mandate, a proposed rule, or a known contact.
 - **Lifting:** the operation creates or widens a lifting rule.
 
-An always-ask or lifting approval takes the [passkey check](../channels/approvals.md#cards) once
-that check ships, and a tap in the first build. One exception: an unchanged "always allow" on a
-routine proposal stays a tap, as [Always allow](#always-allow) covers.
+An always-ask or lifting approval takes the [passkey check](../channels/approvals.md#cards). One
+exception: an unchanged "always allow" on a routine proposal stays a tap, as
+[Always allow](#always-allow) covers.
 
 ## The approval
 
@@ -128,12 +128,12 @@ Undo. Undo deletes the rule, a narrowing that applies at once. **Why:** you see 
 before it exists, without a second confirmation, and a free-text field such as an email body never
 pins a rule to one message.
 
-An unchanged "always allow" stays a tap once the passkey check ships. A rule wider than the card's
-rule takes the passkey check: a rule you edit wider before you approve it, a gap rule that covers
-several destinations, a mandate, or a lifting rule. The host decides which applies with its widening
-check against the card's rule, never the client. **Why:** the card's rule pins its destinations, so
-injected content cannot redirect it, and a passkey on every "always allow" would add prompts on the
-main route to the 0-prompt target.
+An unchanged "always allow" stays a tap. A rule wider than the card's rule takes the passkey check:
+a rule you edit wider before you approve it, a gap rule that covers several destinations, a mandate,
+or a lifting rule. The host decides which applies with its widening check against the card's rule,
+never the client. **Why:** the card's rule pins its destinations, so injected content cannot
+redirect it, and a passkey on every "always allow" would add prompts on the main route to the
+0-prompt target.
 
 The host supplies the choices each proposal permits and checks them again on your answer, so a
 client cannot add one:

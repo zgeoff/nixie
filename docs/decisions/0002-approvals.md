@@ -22,7 +22,7 @@ because the model would interpret it, and injected content could fake one.
 
 The conversation and workers hold nixie's tools alone under [0003](0003-sdk-placement.md), so no
 built-in tool of the SDK reaches the model, and every action passes this flow. nixie does not use
-`defer`.
+the SDK's `defer` hook.
 
 ## Why
 
