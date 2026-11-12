@@ -1,7 +1,6 @@
 # The memory-kill signal
 
 - **Status:** draft
-- **Decision records:** [0056](../../decisions/0056-a-wrapper-logs-each-memory-kill.md)
 - **Work items:** [the read of memory kills](https://linear.app/zgeoff/issue/GEO-2580),
   [the watcher](https://linear.app/zgeoff/issue/GEO-2526),
   [the day's check of the sizes](https://linear.app/zgeoff/issue/GEO-2583)
@@ -162,7 +161,7 @@ The lines:
 ## Decisions
 
 - **A wrapper around the adapter reads the count and writes log lines.** No caller changes, and a
-  killed guest cannot always report. [0056](../../decisions/0056-a-wrapper-logs-each-memory-kill.md)
+  killed guest cannot always report.
 
 ## Builder decides
 

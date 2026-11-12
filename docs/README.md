@@ -26,10 +26,10 @@
 - [Planned work](https://linear.app/zgeoff/project/nixie-caa59289fb88) — the nixie project in
   Linear: the slice plan, choices that need you, spikes, design tasks and later stages
 
-`decisions/` holds the decision records, which stay. `design/<work>/` holds the design for a piece
-of work that is not built yet, with its spikes in `design/<work>/spikes/`: `design/platform/` is the
-first. `architecture/` holds what is built. Designs and architecture use the topics of the decisions
-below, and planned work lives in Linear.
+`architecture/` holds what is built, with the rules and contracts each part keeps. `design/<work>/`
+holds the design for a piece of work that is not built yet, with its spikes in
+`design/<work>/spikes/`: `design/platform/` is the first. `decisions/` holds the few
+[decision records](#decisions). Planned work lives in Linear.
 
 ## Architecture
 
@@ -76,11 +76,6 @@ below, and planned work lives in Linear.
 - [The Agent SDK contract suite](architecture/core/sdk-contract-suite.md) — the SDK behaviours nixie
   relies on, checked against a stub model on every pull request and against the model on every SDK
   bump
-- [0053: Workers](decisions/0053-workers.md) — a worker is a function behind one tool, with the
-  tools its caller passes, 4 limits, and dollars that count toward the calling task's limit
-- [0055: The report shape of a task](decisions/0055-the-report-shape-of-a-task.md) — a task may
-  declare the fields of its report in a small subset of JSON Schema, which the model fills and nixie
-  checks
 
 ### Policy
 
@@ -269,157 +264,75 @@ rests on.
 
 ## Decisions
 
-The locked design baseline: each record states its decision as it stands, with its reasons and the
-alternatives it rejected, and its changes list gives the history of how it got there. The numbers
-are stable IDs in the order the decisions were made. A record merged into an earlier one leaves its
-number unused, and the earlier record's changes list holds an entry for the merge.
+A choice gets a decision record only when it passes three tests: a capable newcomer would otherwise
+undo it, undoing it is costly, and the option it rejected was real. A security boundary always
+passes the first test. Each record states its decision as it stands, with its reasons and the
+alternatives it rejected. Every other decision lives in the architecture doc or the design that
+describes it. The numbers are stable IDs in the order the decisions were made, and a removed record
+leaves its number unused.
 
 ### Core
 
-The runtime, the durable layer, and how the conversation and tasks share work.
+The durable layer, the sandbox boundary, the database and compaction.
 
 - [0001: The durable layer](decisions/0001-durable-layer.md) — nixie's own event log, with each long
   task as a state machine, instead of a durable execution engine
 - [0003: Where the Agent SDK runs](decisions/0003-sdk-placement.md) — every model loop in an imp,
-  with only nixie's tools, which run on the host, an imp per worker run, and the conversation in a
-  long-lived imp
-- [0018: The conversation and tasks](decisions/0018-the-conversation-and-tasks.md) — you work
-  through the conversation, which routes work to tasks, and the conversation is itself a task
-- [0021: Action outcomes](decisions/0021-action-outcomes.md) — actions run on a durable queue, an
-  unknown outcome is retried only with an idempotency key or a check, and it leads the approval
-  digest
+  with only nixie's tools, which run on the host
 - [0025: The database and the topology](decisions/0025-database-and-topology.md) — one SQLite
-  database with nixie's own dialect, and a modular monolith of workspace packages
-- [0027: Tasks and actions](decisions/0027-tasks-and-actions.md) — pause, stop and close, and
-  trigger details in every job run
-- [0033: Model profiles and model cost](decisions/0033-model-profiles.md) — a profile per model
-  route, a profile per role, and model limits in dollars, tokens and turns
-- [0034: The code layout](decisions/0034-code-layout.md) — 5 workspace folders by trust zone and
-  role, the `@heynixie/` scope, and package boundaries checked by tag
-- [0045: Session opening and compaction](decisions/0045-session-opening-and-compaction.md) — one
-  opening for every new session, and nixie's own compactor with the summary in the event log
-- [0046: Resetting the event log](decisions/0046-resetting-the-event-log.md) — one exception to the
-  append-only log: a full reset that the running server makes, which keeps the live device sessions
+  database on one host, and Postgres only for a second host
+- [0045: Session opening and compaction](decisions/0045-session-opening-and-compaction.md) — nixie's
+  own compactor with the summary in the event log, and the SDK's auto-compaction off
 
 ### Policy
 
-Rules, effects, taint, approvals and auto-mode.
+Approvals, the rule engine, untrusted content and the spending stop.
 
-- [0002: Actions and approvals](decisions/0002-approvals.md) — every action runs through nixie's
-  tools, and an action that needs approval becomes a proposal that ends the turn
-- [0004: The rule engine](decisions/0004-rule-engine.md) — nixie's own rule format with fixed
-  checks, and "no rule matched" means ask
-- [0005: Effects, taint and prompts](decisions/0005-effects-and-taint.md) — declared tool effects,
-  the always-ask set and the bounded rules that lift it, the tool as the boundary, the conversation
-  as always untrusted with taint for jobs in stages, and the 0-prompt target
-- [0006: The approval record](decisions/0006-approval-record.md) — approvals bound to one action and
-  used once, consent, one-tap "always allow", and the approval digest
-- [0008: auto-mode decides the grey zone](decisions/0008-auto-mode.md) — auto-mode decides what the
-  deterministic layers leave open, and nixie runs fully without it
-- [0012: High-risk approvals](decisions/0012-high-risk-approvals.md) — a passkey check for the
-  always-ask set and for any rule wider than the card's, and a tap for everything else
-- [0028: The policy design](decisions/0028-policy-design.md) — the consent checker, your ask rules
-  as their own prompt cause, the spending stop as a host proxy, YAML rule files, and the permissive
-  starter set with notices for jobs
-- [0043: Budgets for paid tools](decisions/0043-paid-tool-budgets.md) — a budget per paid tool,
-  charged before each call, with a push at the limit
-- [0048: One approval system](decisions/0048-one-approval-system.md) — one record, one answer path
-  and one place for rules, and memory's write gate as the default behind rules on `memory_write`
+- [0002: Actions and approvals](decisions/0002-approvals.md) — an action that needs approval becomes
+  a proposal that ends the turn, and you answer it only with a checked action in the client, never
+  with a chat message or a spoken "yes"
+- [0004: The rule engine](decisions/0004-rule-engine.md) — nixie's own rule format and evaluator, in
+  place of Cedar or OPA
+- [0005: The untrusted conversation](decisions/0005-effects-and-taint.md) — the conversation is
+  always untrusted and carries no taint flag, so the destination limits apply to every send
+- [0028: The spending stop](decisions/0028-policy-design.md) — a proxy on the host counts model
+  spend and refuses requests past the budget, in place of the SDK's cap inside the sandbox
 
 ### Memory
 
-The memory store, its writes, how it reaches the model, and definition versioning.
+Forgetting, and the memory writes that skip review.
 
-- [0010: The memory store](decisions/0010-memory-store.md) — memory as rows in nixie's database, the
-  memory view and a raw recall tool, and forgetting by crypto-shredding
-- [0011: Which memory writes skip review](decisions/0011-memory-writes.md) — a write backed by a
-  quote you typed, or covered by your allow rule, applies at once with undo, dictated text backs no
-  write, and every other write is a proposal
-- [0013: Definition versioning](decisions/0013-definition-versioning.md) — a snapshot hash on every
-  record, with rules applying at once and persona and jobs fixed per task
-- [0024: How memory reaches the model](decisions/0024-memory-in-context.md) — the SDK's session with
-  nixie's own compaction, and retrieval by local embeddings and keyword search
-- [0031: Memory capture, context and removal](decisions/0031-memory-capture-context-and-removal.md)
-  — batched capture, the transcript as a cache, reversible chat removal, grouped notices and the
-  first build
-- [0037: Moments](decisions/0037-moments.md) — kept spans of the event log with your note and the
-  model's reflections, reached by tool call and by links from memory items
-- [0039: The local encoder](decisions/0039-local-encoder.md) — `mdbr-leaf-ir` int8 on ONNX Runtime,
-  with 256-number int8 vectors and weights pinned by checksum
-- [0050: No built-in memory tasks](decisions/0050-no-built-in-memory-tasks.md) — the built-in
-  note-taker and consolidator are deleted in one deploy, and example task definitions on a schedule
-  take their place
-- [0051: Memory tools on tasks](decisions/0051-memory-tools-on-tasks.md) — a task start accepts
-  every memory write tool with `memory: read`, a worker holds none, and a task reads the
-  conversation's log only by a grant
-- [0052: The memory index, in its lean form](decisions/0052-the-lean-memory-index.md) — a label edit
-  keeps the approval flow and makes no item version, no record of what the index showed, no
-  measurement before the old push is deleted, and the sensitive flag removed first
-
-### Skills
-
-Procedures from your definitions that the model loads when a task needs them.
-
-- [0038: Skills](decisions/0038-skills.md) — Agent Skills folders in the definitions that grant
-  nothing, vendored at a pinned commit, loaded through nixie's own tools, with scripts in the code
-  tool
+- [0010: The memory store](decisions/0010-memory-store.md) — forgetting destroys the item's key, and
+  stays pending until every backup drops it
+- [0011: Which memory writes skip review](decisions/0011-memory-writes.md) — a write applies at once
+  only when a quote you typed backs it and the token check and the checker pass, and every other
+  write is a proposal
 
 ### Channels
 
-Clients, push and voice.
+The client and voice.
 
 - [0009: The first channel](decisions/0009-first-channel.md) — nixie's own client holds the
   conversation, approvals and voice, and chat apps carry content-free pushes
-- [0029: Channels and clients](decisions/0029-channels-and-clients.md) — oRPC, Start and Expo,
-  device sessions, Defer, two push levels and native Android paste capture
 - [0040: What speaks a voice call](decisions/0040-voice-pipeline.md) — GPT-Live hears and speaks the
-  call and hands each request to nixie's turn, with a filler that never claims an outcome
-- [0041: Approvals during a voice call](decisions/0041-approvals-during-a-voice-call.md) — the card
-  in the call screen, announced by a fixed line, and a spoken "yes" never approves
+  call, and nixie's turn writes every answer
 
 ### Connectors
 
-nixie's interfaces, external MCP servers, credentials, search and code.
+External MCP servers and connector authorization.
 
-- [0007: Credential grants](decisions/0007-grants-and-taint.md) — no grant for an imp that reads
-  untrusted content
-- [0014: Search](decisions/0014-search.md) — Kagi, with full results in the conversation
-- [0016: nixie's own interfaces](decisions/0016-own-interfaces.md) — channel adapter, trigger
-  source, connector, credential store, definitions source and sandbox adapter, with tools from MCP
 - [0017: External MCP servers](decisions/0017-mcp-proxy.md) — every MCP server outside nixie's code
-  goes through a proxy that pins each tool
+  reaches the model only through nixie's proxy
 - [0019: Connector authorization](decisions/0019-connector-authorization.md) — each deployment
   registers its own OAuth clients
-- [0022: Coding and code execution](decisions/0022-coding-and-code-execution.md) — running code in a
-  sandbox with no grants, and coding sessions through adapters, atc first
-- [0030: Connectors and sandbox environments](decisions/0030-connectors-and-sandbox-environments.md)
-  — the reverse-forward route, Google first, web OAuth return, MCP v2, imp only, the code
-  environment, and Disconnect
-- [0047: What the model learns about a connection that stops working](decisions/0047-connections-that-stop-working.md)
-  — a line in the model's context for each connection that is not healthy, and the
-  `connection_unavailable` error on a call
-- [0054: The sandbox sizes ship first](decisions/0054-the-sandbox-sizes-ship-first.md) — the smaller
-  sizes ship without waiting for the runtime's reserved-memory work
-- [0056: A wrapper logs each memory kill](decisions/0056-a-wrapper-logs-each-memory-kill.md) — one
-  read on the sandbox port and a log line for each memory kill
 
 ### Deployment
 
-Definitions and deployment models.
+Backups.
 
-- [0020: Deployment and definitions](decisions/0020-deployment.md) — definitions in their own repo
-  seed the database, running nixie lives with the deployment, and the backup tools run in a
-  scheduled job that holds the backup credentials alone
 - [0032: Offsite backups and replication](decisions/0032-offsite-backups-and-replication.md) —
-  Restic snapshots first, then a Litestream replica through a host rclone crypt gateway to an
-  S3-compatible backend the deployment supplies, with at most 5 minutes of encrypted content lost
-  once the replica ships
-- [0036: Deployment configuration and reference manifests](decisions/0036-deployment-configuration-and-reference-manifests.md)
-  — one YAML file validated by a zod schema, and generic Kubernetes manifests shipped beside the
-  Compose recipe
-- [0049: Milestone deploys and the rollback target](decisions/0049-milestone-deploys-and-the-rollback-target.md)
-  — a deployment takes releases in milestones, and a rollback goes back to the last release it ran,
-  proved by a check before each deploy
+  backups leave the host only as ciphertext encrypted on the host, and a backup job of its own holds
+  the only backup credential
 
 ## Archive
 

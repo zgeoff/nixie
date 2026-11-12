@@ -3,7 +3,7 @@
 This spike runs the web client on TanStack Start as its own server, in front of a stand-in for
 nixie's API, and checks that Start forwards the device session and holds none. It tests the shape in
 the [client design](../../docs/design/platform/channels/client.md), and its host-name finding feeds
-decision [0029](../../docs/decisions/0029-channels-and-clients.md).
+[session forwarding](../../docs/architecture/channels/client.md#session-forwarding).
 
 ## Question
 

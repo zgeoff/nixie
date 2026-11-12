@@ -1,18 +1,15 @@
 # Actions
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
-  [0006](../../../decisions/0006-approval-record.md),
-  [0021](../../../decisions/0021-action-outcomes.md),
-  [0025](../../../decisions/0025-database-and-topology.md),
-  [0027](../../../decisions/0027-tasks-and-actions.md)
+  [0025](../../../decisions/0025-database-and-topology.md)
 
 An action is a tool call with side effects outside nixie, such as sending an email or making a
 payment. It runs as an entry on the action queue in the [event log](event-log.md), with one of 4
-outcomes: pending, done, failed or unknown, under
-[0021](../../../decisions/0021-action-outcomes.md). nixie records each attempt before it calls the
-provider, so a crash mid-call leaves an attempt with no result, and the action becomes unknown. An
-unknown action is retried only with an idempotency key the provider honours or after a check that it
-did not happen; otherwise it comes to you. The model reads outcomes and never sets them.
+outcomes: pending, done, failed or unknown, as [actions](../../../architecture/core/actions.md)
+describes. nixie records each attempt before it calls the provider, so a crash mid-call leaves an
+attempt with no result, and the action becomes unknown. An unknown action is retried only with an
+idempotency key the provider honours or after a check that it did not happen; otherwise it comes to
+you. The model reads outcomes and never sets them.
 
 ## From tool call to queue
 
@@ -24,9 +21,8 @@ An action enters the queue in 2 ways, under [0002](../../../decisions/0002-appro
   approve, nixie queues the action under the same ID.
 
 The action ID is the proposal ID, the queue key and the idempotency key, so one action keeps one
-identity from the tool call to the provider. Each action also holds the action hash from
-[0006](../../../decisions/0006-approval-record.md), which [policy approvals](../policy/approvals.md)
-defines.
+identity from the tool call to the provider. Each action also holds the action hash, which
+[policy approvals](../policy/approvals.md) defines.
 
 An allowed call waits up to 10 s by default for its outcome inside the turn, then returns "queued as
 `<id>`", and the outcome reaches the task's inbox for its next turn.
@@ -50,9 +46,9 @@ action with its own record.
 
 ## Policy before each attempt
 
-Rule changes reach running work at once under
-[0013](../../../decisions/0013-definition-versioning.md), so a queued action runs through the rules,
-the always-ask set and the destination limits again before every attempt:
+Rule changes reach running work at once, as
+[the definitions](../../../architecture/core/definitions.md#seeding) describes, so a queued action
+runs through the rules, the always-ask set and the destination limits again before every attempt:
 
 - **Deny** fails the action with the rule's ID, and the reason goes to the task's inbox.
 - **Ask, on an approved action,** goes ahead, because the approval answered that ask. One exception:
@@ -127,9 +123,8 @@ tried, and each check's answer, with 3 choices:
   duplicate it.
 - **Drop:** nixie marks the action failed.
 
-Retrying a payment with an unknown outcome takes the same passkey check as its first approval, once
-[0012](../../../decisions/0012-high-risk-approvals.md) lands. The item stays on the dashboard until
-you answer, and the task can carry on with other work meanwhile.
+Retrying a payment with an unknown outcome takes the same passkey check as its first approval. The
+item stays on the dashboard until you answer, and the task can carry on with other work meanwhile.
 
 ## Runner pools
 

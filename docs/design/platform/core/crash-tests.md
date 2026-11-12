@@ -1,7 +1,6 @@
 # Crash tests
 
 - Decisions: [0001](../../../decisions/0001-durable-layer.md),
-  [0021](../../../decisions/0021-action-outcomes.md),
   [0025](../../../decisions/0025-database-and-topology.md)
 
 nixie owns its durable layer under [0001](../../../decisions/0001-durable-layer.md), so its own

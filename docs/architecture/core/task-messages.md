@@ -18,6 +18,10 @@ message wakes it. The server builds the directory's built-in tasks from the depl
 each tool call and each conversation step adds the [started tasks](./started-tasks.md) from the log,
 so a task the conversation started a moment ago takes messages at once.
 
+The conversation alone decides which task gets a message of the user's, and nixie keeps no record of
+where each message went. When the conversation needs to know whether a task already covers some
+work, it asks the list tool.
+
 The conversation wakes for a message. The [memory writer](../memory/writer.md) and the
 [consolidator](../memory/consolidation.md) run on their own schedule, so a message to either waits
 unread until its next scheduled session reads it, and that session marks it read. The message tool

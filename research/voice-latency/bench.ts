@@ -20,7 +20,7 @@ import { planPlayback } from './plan-playback.ts';
 import type { SpeechToTextName, TextToSpeech, TextToSpeechName } from './speech.ts';
 import { createSpeechToText, createTextToSpeech, createVad, longWarmUp, sampleRate } from './speech.ts';
 
-// The persona asks for the opening acknowledgement from decision 0040.
+// The persona asks for the opening acknowledgement from the voice calls design.
 const persona = [
   'You are Nixie, a warm and brief personal assistant on a voice call.',
   'Open every reply with a short acknowledgement of two to four words, such as "Sure, let me think." or "Good question.",',

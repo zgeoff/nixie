@@ -112,6 +112,10 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
   such a PR `agent-sdk` and never merges it.
 - **Plans.** A plan for work about to be built lives in its Linear issue or its PR, never in
   `docs/`. Planned work, open choices and later stages live in the nixie project in Linear.
+- **Rollbacks in a design.** A design states what the release a rollback returns to does with each
+  record kind, migration and config key the design adds: it reads it, skips it, refuses to start on
+  it, or never meets it. When that release refuses to start, the design gives the step a rollback
+  takes.
 
 ## Database
 

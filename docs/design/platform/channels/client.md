@@ -1,10 +1,7 @@
 # The client
 
-- Decisions: [0029](../../../decisions/0029-channels-and-clients.md),
-  [0002](../../../decisions/0002-approvals.md), [0009](../../../decisions/0009-first-channel.md),
-  [0011](../../../decisions/0011-memory-writes.md),
-  [0012](../../../decisions/0012-high-risk-approvals.md),
-  [0025](../../../decisions/0025-database-and-topology.md)
+- Decisions: [0002](../../../decisions/0002-approvals.md),
+  [0009](../../../decisions/0009-first-channel.md), [0011](../../../decisions/0011-memory-writes.md)
 
 nixie's own client holds the conversation, the approvals and the live view. The first build ships a
 web client for desktop browsers, and the Android app, built with Expo, follows in tier 2. Both talk
@@ -60,10 +57,10 @@ days without use by default. The client lists every session, and revoking one is
 **Why `Path=/`:** enrolment sets the cookie from an `/rpc` response, and without a path the browser
 sends it only to `/rpc`, so Start would render every page signed out.
 
-With [0012](../../../decisions/0012-high-risk-approvals.md), you register a passkey from a signed-in
-client. New devices then sign in with it, and always-ask approvals ask for it. WebAuthn needs HTTPS
-on a fixed host name, which the expected private-network deployment serves: the one name the web
-client and the API share.
+Once the [passkey check](approvals.md#cards) ships, you register a passkey from a signed-in client.
+New devices then sign in with it, and always-ask approvals ask for it. WebAuthn needs HTTPS on a
+fixed host name, which the expected private-network deployment serves: the one name the web client
+and the API share.
 
 ## Sending a message
 

@@ -1,18 +1,9 @@
 # Proposals and approvals
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
-  [0006](../../../decisions/0006-approval-record.md),
-  [0011](../../../decisions/0011-memory-writes.md),
-  [0012](../../../decisions/0012-high-risk-approvals.md),
-  [0021](../../../decisions/0021-action-outcomes.md),
-  [0005](../../../decisions/0005-effects-and-taint.md),
-  [0027](../../../decisions/0027-tasks-and-actions.md),
-  [0028](../../../decisions/0028-policy-design.md),
-  [0041](../../../decisions/0041-approvals-during-a-voice-call.md),
-  [0048](../../../decisions/0048-one-approval-system.md)
+  [0011](../../../decisions/0011-memory-writes.md)
 
-nixie has one approval system for every kind of proposal, under
-[0048](../../../decisions/0048-one-approval-system.md): one record, one answer path, and one place
+nixie has one approval system for every kind of proposal: one record, one answer path, and one place
 for rules. When the [decision point](decision-point.md) asks, or the memory gate sends a write to
 review, the tool creates a proposal and the turn ends. You answer a proposal with a checked action
 in the client, never with a chat message or a spoken "yes". An approval holds the hash of one exact
@@ -52,8 +43,8 @@ rules as an action: its tool declares `memory_write`, your rules decide first, a
 decides a write that no rule matches, as the
 [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers. A memory proposal
 carries its operation, remember or retire, its quote, and the exact item and version it targets. Its
-review reason is not a prompt cause under [0028](../../../decisions/0028-policy-design.md), so
-memory review counts stay apart from policy prompts.
+review reason is not one of the [prompt causes](decision-point.md#prompt-causes), so memory review
+counts stay apart from policy prompts.
 
 The canonical operation serialises like the [snapshot form](rules.md#the-snapshot-hash): sorted
 keys, no whitespace, NFC strings. The hash covers the kind, the tool, every argument, the target
@@ -91,10 +82,9 @@ distinctly:
 - **Always-ask:** an effect in the always-ask set, a mandate, a proposed rule, or a known contact.
 - **Lifting:** the operation creates or widens a lifting rule.
 
-An always-ask or lifting approval takes the passkey check from
-[0012](../../../decisions/0012-high-risk-approvals.md) once that check ships, and a tap in the first
-build. One exception: an unchanged "always allow" on a routine proposal stays a tap, as
-[Always allow](#always-allow) covers.
+An always-ask or lifting approval takes the [passkey check](../channels/approvals.md#cards) once
+that check ships, and a tap in the first build. One exception: an unchanged "always allow" on a
+routine proposal stays a tap, as [Always allow](#always-allow) covers.
 
 ## The approval
 

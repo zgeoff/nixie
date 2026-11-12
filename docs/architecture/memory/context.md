@@ -247,5 +247,8 @@ is safe to run twice, so a crash mid-cleanup leaves the item forgetting, and the
 the cleanup again before any runner claims work. The aborted turn's step fails and runs again after
 its retry delay, and that rerun finds the invalidated record and rebuilds the session.
 
+The SDK transcript is a cache in the sandbox, and backups and the memory export leave it out, so the
+purge in step 5 removes every copy of it.
+
 A request already sent to the model provider keeps the text it received. The cleanup removes nixie's
 copies and cannot recall that one.

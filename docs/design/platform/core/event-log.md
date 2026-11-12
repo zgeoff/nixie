@@ -2,11 +2,8 @@
 
 - Decisions: [0001](../../../decisions/0001-durable-layer.md),
   [0010](../../../decisions/0010-memory-store.md),
-  [0013](../../../decisions/0013-definition-versioning.md),
   [0005](../../../decisions/0005-effects-and-taint.md),
-  [0018](../../../decisions/0018-the-conversation-and-tasks.md),
-  [0025](../../../decisions/0025-database-and-topology.md),
-  [0027](../../../decisions/0027-tasks-and-actions.md)
+  [0025](../../../decisions/0025-database-and-topology.md)
 
 The event log is nixie's one log of record. Every message you send, model turn, tool call, policy
 decision, proposal, approval and action outcome becomes a record, and no record changes in place.
@@ -34,8 +31,8 @@ Every record carries one envelope, and its payload depends on its kind.
 | Payload           | The kind's own data, with erasable fields encrypted                         |
 
 The source of content sits on every tool result. The first build stores it without acting on it, so
-taint per job run is a later policy change under
-[0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies).
+taint per job run is a later policy change, as
+[the decision point](../policy/decision-point.md#taint-in-the-first-build) describes.
 
 The log keeps the delegation chain. A worker's records point at the tool call that started it
 through the parent field. A started task's creation record names the task that started it and the
@@ -97,8 +94,7 @@ transaction, so a projection never disagrees with the log at a commit. The core 
   `deadlineAt`, deferred-until time and defer generation.
 - **Actions:** each queued action and its outcome, covered in [actions](actions.md).
 - **Tasks:** one row per task with its status, last update and what it waits on, which the
-  conversation's `tasks.list` tool and the dashboard read, under
-  [0018](../../../decisions/0018-the-conversation-and-tasks.md).
+  conversation's `tasks.list` tool and the dashboard read.
 
 Every projection can be dropped and rebuilt by folding the log from the first record. A rebuild test
 in CI folds a recorded log and compares the result with the live tables.
@@ -142,11 +138,10 @@ record that names the memory item and its new version, and the record, the histo
 approval commit in one transaction. The log holds why a memory changed, and the history table holds
 what it changed to.
 
-Retrieval over past conversation searches the log under
-[0024](../../../decisions/0024-memory-in-context.md), and [memory context](../memory/context.md)
-owns the retrieval design. nixie builds the free-text search index in memory at start, from the
-payloads it can still decrypt, and updates it on each append. Forgetting a record removes its
-entries. **Why:** the index never reaches a backup.
+Retrieval over past conversation searches the log, and [memory context](../memory/context.md) owns
+the retrieval design. nixie builds the free-text search index in memory at start, from the payloads
+it can still decrypt, and updates it on each append. Forgetting a record removes its entries.
+**Why:** the index never reaches a backup.
 
 The event log exports as a SQLite file holding the records with decrypted payloads. **Why:** any
 SQLite reader opens it with its schema. A shredded payload stays a gap in the export, and creating

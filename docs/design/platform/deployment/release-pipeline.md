@@ -1,7 +1,5 @@
 # Release pipeline
 
-- Decisions: [0020](../../../decisions/0020-deployment.md)
-
 The [release pipeline](../../../architecture/deployment/release-pipeline.md) builds the
 conversation, fetch, nixie and web images from one commit, publishes them to GitHub Container
 Registry (GHCR) with build provenance attestations, and checks the contract and the migrations

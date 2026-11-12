@@ -1,11 +1,7 @@
 # Budgets
 
-- Decisions: [0005](../../../decisions/0005-effects-and-taint.md),
-  [0012](../../../decisions/0012-high-risk-approvals.md),
-  [0003](../../../decisions/0003-sdk-placement.md),
-  [0028](../../../decisions/0028-policy-design.md),
-  [0033](../../../decisions/0033-model-profiles.md),
-  [0043](../../../decisions/0043-paid-tool-budgets.md)
+- Decisions: [0003](../../../decisions/0003-sdk-placement.md),
+  [0028](../../../decisions/0028-policy-design.md)
 
 nixie spends money in 3 ways and keeps them apart. Spending in the world, such as a purchase, is a
 tool call with the `spend` effect, which always asks unless a lifting rule covers it. A paid tool,
@@ -42,8 +38,8 @@ bounds:
 - **The first build ships lifts for `spend`.** A lift on `policy_widen` or `budget_raise` counts
   occurrences per period, such as "nixie may add 2 allow rules a week for read-only tools", and gets
   its form when you first ask for one. A lift can never create another lift.
-- **Creating or widening a lift always asks,** in the lifting risk class, with the passkey check
-  once [0012](../../../decisions/0012-high-risk-approvals.md) ships. Lowering its cap or removing it
+- **Creating or widening a lift always asks,** in the lifting risk class, with the
+  [passkey check](../channels/approvals.md#cards) once it ships. Lowering its cap or removing it
   narrows.
 - **The record names who proposed it:** you, or nixie from a task.
 
@@ -56,10 +52,9 @@ and an unknown outcome stays charged until you settle it.
 
 ## Paid tools
 
-Each paid tool has a budget scoped to that tool, under
-[0043](../../../decisions/0043-paid-tool-budgets.md), and the tool states its price per call. The
-default limits are $5 a day and $50 a month, and the deployment configuration overrides them. A paid
-tool gets its budget in the same change that builds the tool.
+Each paid tool has a budget scoped to that tool, and the tool states its price per call. The default
+limits are $5 a day and $50 a month, and the deployment configuration overrides them. A paid tool
+gets its budget in the same change that builds the tool.
 
 nixie charges the tool's budget when the call starts, before the provider sees it, and credits back
 a call that fails, the same way the spending ledger charges a purchase. At the limit, the tool
@@ -85,7 +80,8 @@ turns catch a loop whatever the price.
 | Per month      | $600    | 600,000,000 | 20,000 |        |
 
 - **Per worker run.** The runner passes the turn limit to the SDK as `maxTurns`, and stops the
-  worker run when the proxy's dollar or token count for its imp reaches the limit.
+  worker run when the proxy's dollar or token count for its imp reaches the limit. A worker run's
+  dollars also count toward the dollar limit of the task that called it.
 - **Per job run.** The count covers every turn and worker in the job run. The runner checks it
   before each step and stops the job run with a report when a limit is reached.
 - **Per deployment,** a day and a month. These limits feed the hard spending stop.

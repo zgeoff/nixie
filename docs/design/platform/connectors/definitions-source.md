@@ -1,8 +1,5 @@
 # The definitions source
 
-- Decisions: [0013](../../../decisions/0013-definition-versioning.md),
-  [0016](../../../decisions/0016-own-interfaces.md), [0020](../../../decisions/0020-deployment.md)
-
 A definitions source is the adapter through which nixie reads your definitions: the persona, jobs
 and policy seed. A git repo, a local path and bucket storage are all valid, whatever the deployment.
 Every source returns a snapshot: the files, a revision that says where they came from, and a content

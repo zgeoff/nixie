@@ -19,7 +19,8 @@ direct request or a repeat.
    [decision 0004](../../docs/decisions/0004-rule-engine.md), without ever calling a widening a
    narrowing?
 4. How many prompts do scripted scenarios raise against the starter rule set with auto-mode off, and
-   from which of the causes in [decision 0005](../../docs/decisions/0005-effects-and-taint.md)?
+   from which of the
+   [prompt causes](../../docs/design/platform/policy/decision-point.md#prompt-causes)?
 
 ## Setup
 
@@ -198,9 +199,9 @@ the design intends:
 - **No rule matched, 7.** A device tool the starter set does not cover, until "always allow" or an
   accepted proposal added a rule; the proposal appeared after the third approval. One more came from
   a job that a task created with no request from the owner.
-- **An owner's ask rule, 1.** A permanent delete. It fits none of the 5 causes from decision 0005;
-  the script records it under the sixth cause that
-  [decision 0028](../../docs/decisions/0028-policy-design.md) adds.
+- **An owner's ask rule, 1.** A permanent delete. It fits none of the other 5
+  [prompt causes](../../docs/design/platform/policy/decision-point.md#prompt-causes); the script
+  records it under the sixth, your own ask rule.
 
 A job the owner asked for in the conversation ran with no prompt through consent, both a morning
 summary and a job that replies to email.

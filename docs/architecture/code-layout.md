@@ -3,10 +3,10 @@
 nixie's code is one Bun workspace of packages under the `@heynixie/` scope, in 5 folders by trust
 zone and role. The server is one deployable that composes many module packages, and the programs
 that run inside a sandbox live in their own folder, so a boundary check stops sandbox code from
-importing the trusted core. Package boundaries are the module boundaries of
-[0025](../decisions/0025-database-and-topology.md): a package exposes only its entry points, and a
-tag rule decides which kinds of package may depend on which. [The server](deployment/server.md)
-covers how the composition root wires the packages at start, and
+importing the trusted core. Package boundaries are the module boundaries: a package exposes only its
+entry points, and a tag rule decides which kinds of package may depend on which. The database adds
+no boundary of its own: every module reads and writes it through the one writer.
+[The server](deployment/server.md) covers how the composition root wires the packages at start, and
 [the release pipeline](deployment/release-pipeline.md) covers the images built from them.
 
 ## The folders
@@ -28,10 +28,10 @@ libs/       shared code that belongs to no domain
   on the host that every model request of a deployment it guards passes through.
 - **`apps/backup-job`** is [the backup job](deployment/backups.md#the-backup-job), which ships
   nixie's snapshot sets with restic from its own image and holds the backup credentials.
-- **An adapter** implements one of the [0016](../decisions/0016-own-interfaces.md) interfaces
-  against one outside system, and its name is `<interface>-<system>`, such as `sandbox-imp`. An
-  implementation that reaches nothing outside nixie, such as the path definitions source, stays in
-  its module.
+- **An adapter** implements one of
+  [nixie's own interfaces](../design/platform/README.md#nixies-own-interfaces) against one outside
+  system, and its name is `<interface>-<system>`, such as `sandbox-imp`. An implementation that
+  reaches nothing outside nixie, such as the path definitions source, stays in its module.
 - **A guest** holds the code a sandbox image runs. It depends only on `libs/wire`, and speaks to
   nixie through those wire formats over the sandbox's route back to nixie.
 

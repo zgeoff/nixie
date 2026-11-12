@@ -3,7 +3,8 @@
 Policy decides every tool call nixie makes: allow, ask or deny. The decision point runs a fixed
 pipeline over rules, declared effects and destination limits, an ask becomes a proposal that you
 answer in the client, and budgets bound what nixie spends.
-[0028](../../../decisions/0028-policy-design.md) records the policy choices.
+[0028](../../../decisions/0028-policy-design.md) records why the hard spending stop is a proxy on
+the host.
 
 - [The decision point](decision-point.md) — the pipeline, effects, destination limits, consent,
   taint in the first build, auto-mode, the decision record and prompt causes

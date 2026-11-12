@@ -3,11 +3,11 @@
 An action is an allowed tool call whose effects reach outside nixie, such as a send, a write or a
 spend. It never runs inside the model's turn. It goes onto a durable queue, a separate runner
 attempts it against its provider, and its outcome becomes a record in the task's inbox. The queue
-exists so that a crash at any moment can never make an action happen twice, under
-[0021](../../decisions/0021-action-outcomes.md): an action that may have reached its provider is
-marked unknown, never tried again blind. `modules/actions` owns the queue. An action is claimed
-through the same leases as a task step ([leases and recovery](./leases-and-recovery.md)), and
-[tool calls](../connectors/tool-calls.md) covers how a call reaches the queue.
+exists so that a crash at any moment can never make an action happen twice: an action that may have
+reached its provider is marked unknown, never tried again blind. `modules/actions` owns the queue.
+An action is claimed through the same leases as a task step
+([leases and recovery](./leases-and-recovery.md)), and [tool calls](../connectors/tool-calls.md)
+covers how a call reaches the queue.
 
 ## Outcomes
 

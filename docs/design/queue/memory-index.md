@@ -1,7 +1,6 @@
 # The memory index at a session's opening
 
 - **Status:** draft
-- **Decision records:** [0052](../../decisions/0052-the-lean-memory-index.md)
 - **Work items:** [the memory index block](https://linear.app/zgeoff/issue/GEO-2364) builds it, off
   by default. [The index on by default](https://linear.app/zgeoff/issue/GEO-2544) turns it on.
 
@@ -93,7 +92,9 @@ memory:
   the block. The opening record stores the 2 numbers, as it stores every status value, and no item.
 - nixie sends the opening blocks to the model of the turn and to no other provider.
 - The release before refuses a config file that sets an `index_*` key, so a rollback first removes
-  those keys, as [0049](../../decisions/0049-milestone-deploys-and-the-rollback-target.md) says.
+  those keys.
+- No rollback crosses the migration that drops the sensitive flag's column. The way back across it
+  is a restore from a backup taken directly before that deploy.
 
 ### What the block lists
 
@@ -132,7 +133,6 @@ memory:
 ## Decisions
 
 - **No record of what the index showed.** Its one reader would have been a measurement.
-  [0052](../../decisions/0052-the-lean-memory-index.md)
 - **The memory module renders and counts, and the sessions module places.** The sessions module
   reaches memory only through its port.
 

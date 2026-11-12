@@ -7,9 +7,11 @@ remote, restore after process outages and recover without the original database?
 
 The owner chose host-side encryption before upload in
 [0032](../../docs/decisions/0032-offsite-backups-and-replication.md). The owner chose the rclone
-component in the same decision. [rclone serve s3](https://rclone.org/commands/rclone_serve_s3/) is
-experimental; [crypt](https://rclone.org/crypt/) encrypts payloads and filenames before they enter
-the backing store. Litestream 0.5.x does not support client-side age encryption
+component too, as the
+[backup and restore design](../../docs/design/platform/deployment/backup-and-restore.md#the-offsite-replica)
+records. [rclone serve s3](https://rclone.org/commands/rclone_serve_s3/) is experimental;
+[crypt](https://rclone.org/crypt/) encrypts payloads and filenames before they enter the backing
+store. Litestream 0.5.x does not support client-side age encryption
 ([configuration](https://litestream.io/reference/config/#encryption)).
 
 ## Setup

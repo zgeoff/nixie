@@ -1,9 +1,5 @@
 # Rule conflicts and the rule export
 
-- Decisions: [0013](../../../decisions/0013-definition-versioning.md),
-  [0020](../../../decisions/0020-deployment.md#seeding),
-  [0028](../../../decisions/0028-policy-design.md)
-
 Rules change in 2 places: in your definitions repo, which the seed reads, and in nixie at runtime,
 when you approve "always allow", accept a proposed rule, or edit or delete a rule in the client.
 nixie handles both as it handles [skills](../skills.md): a runtime change stays in force, a repo

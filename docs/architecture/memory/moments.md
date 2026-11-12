@@ -4,8 +4,7 @@ A moment is a span of one thread of the event log that nixie keeps whole, with a
 note and the reflections of the models that read it. The moment refers to its records by sequence
 and never copies them, so the event log stays the one history, and a destroy shreds only the
 moment's own text. A model reaches a moment only through a tool call, never through per-turn
-retrieval or the pinned core. The `modules/memory` package holds moments beside the memory store,
-under [0037](../../decisions/0037-moments.md).
+retrieval or the pinned core. The `modules/memory` package holds moments beside the memory store.
 
 [The event log](../core/event-log.md) covers the records a moment spans, and
 [erasable fields](../core/erasable-fields.md) covers the keys that hold its text.
@@ -66,8 +65,9 @@ turn, after it reads the span again.
 | `moment.read`   | `read` | Returns the moment's text and its span in order, a page at a time                  |
 
 The read-only rule allows every moment tool, because each declares `note` or `read` and runs direct.
-A model names a moment by its [short ID](../core/database.md#short-ids). A refusal returns to the
-model as the tool's error, in a fixed sentence that holds no moment text.
+The user's rules on `note` decide whether nixie keeps moments on its own. A model names a moment by
+its [short ID](../core/database.md#short-ids). A refusal returns to the model as the tool's error,
+in a fixed sentence that holds no moment text.
 
 `moment.keep` returns the moment's short ID, the weekly count and a pending reflection, as JSON with
 no prose. `moment.find` decrypts every candidate's text in process memory, a batch at a time, and

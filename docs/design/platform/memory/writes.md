@@ -1,11 +1,8 @@
 # Memory writes
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
-  [0006](../../../decisions/0006-approval-record.md),
   [0011](../../../decisions/0011-memory-writes.md),
-  [0005](../../../decisions/0005-effects-and-taint.md),
-  [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
-  [0048](../../../decisions/0048-one-approval-system.md)
+  [0005](../../../decisions/0005-effects-and-taint.md)
 
 The [memory writes](../../../architecture/memory/writes.md) architecture doc covers the content
 gate, the retirement intent gate, provenance, memory proposals and notices as built. This design
@@ -20,7 +17,7 @@ content gate, on `memory.remember` and `memory.edit`, runs the quote check, the 
 memory checker, a model that confirms your message asserts the memory. The retirement intent gate,
 on `memory.retire`, runs a read check, the quote check and the memory checker, and no token check,
 because a retirement adds no text. Your rules decide a memory write first, and the gate decides a
-write that no rule matches, under [0048](../../../decisions/0048-one-approval-system.md).
+write that no rule matches.
 
 `memory.remember`, `memory.edit` and `memory.retire` declare the `memory_write` effect, whoever
 calls them: the conversation, a task or the memory writer. Each call goes through the
@@ -99,11 +96,11 @@ rule covers job runs.
 ## Dictated text
 
 A voice client marks the words it transcribed as `dictated` spans, and dictated text never counts as
-evidence, under [0011](../../../decisions/0011-memory-writes.md). A write whose quote touches a
-`dictated` span fails the quote check and becomes a proposal, whatever the rest of the quote holds.
-A destination token never passes the token check from dictated text. **Why:** a transcript can
-mishear a name, a number or an address, so the token check would match the misheard value, and a
-microphone also hears a TV or another person, whom a transcript cannot tell apart from you.
+evidence. A write whose quote touches a `dictated` span fails the quote check and becomes a
+proposal, whatever the rest of the quote holds. A destination token never passes the token check
+from dictated text. **Why:** a transcript can mishear a name, a number or an address, so the token
+check would match the misheard value, and a microphone also hears a TV or another person, whom a
+transcript cannot tell apart from you.
 
 During a call, a memory proposal's card appears in the call screen, as
 [channel approvals](../channels/approvals.md#during-a-voice-call) covers, so a dictated fact costs
@@ -113,8 +110,9 @@ one tap.
 
 A memory proposal is a routine proposal in the approval digest. Its card shows the quote inside its
 source message, or "no quote from you", and its review reason. A memory proposal is not a prompt
-cause under [0028](../../../decisions/0028-policy-design.md), and the live view counts proposals by
-review reason. **Why:** the counts show which check sends the most writes to review.
+cause, as [proposals and approvals](../policy/approvals.md#the-proposal) sets, and the live view
+counts proposals by review reason. **Why:** the counts show which check sends the most writes to
+review.
 
 When an approval fails as stale, the client offers the proposal against the current version.
 Stopping a task withdraws its open memory proposals with its other proposals.

@@ -2,8 +2,6 @@
 
 - **Status:** draft. Nothing is built until the owner settles the [open questions](#open-questions),
   which part gets built first among them.
-- **Decision records:** [0037](../../decisions/0037-moments.md),
-  [0031](../../decisions/0031-memory-capture-context-and-removal.md)
 
 You remove one whole record of a span, such as a tool result that holds a pasted secret. nixie
 deletes the record's key, so its text is gone from the thread and from every moment that holds it. A
@@ -180,9 +178,9 @@ const removalControlLabel = 'Remove this record';
 ## Decisions
 
 - **A redaction is the forget of a record.** A moment refers to the log's records and copies none,
-  so one forget path covers the thread and every moment. [0037](../../decisions/0037-moments.md)
-- **Every removal sits behind a preview.**
-  [0031](../../decisions/0031-memory-capture-context-and-removal.md)
+  so one forget path covers the thread and every moment.
+  [Moments](../../architecture/memory/moments.md)
+- **Every removal sits behind a preview.** [The memory view](../../architecture/memory/view.md)
 - **One list of removable kinds, in the API contract package.** The built code holds 5 separate kind
   sets, and copies drift.
 

@@ -3,12 +3,8 @@
 - Decisions: [0001](../../../decisions/0001-durable-layer.md),
   [0002](../../../decisions/0002-approvals.md),
   [0005](../../../decisions/0005-effects-and-taint.md),
-  [0016](../../../decisions/0016-own-interfaces.md),
-  [0018](../../../decisions/0018-the-conversation-and-tasks.md),
   [0025](../../../decisions/0025-database-and-topology.md),
-  [0003](../../../decisions/0003-sdk-placement.md),
-  [0027](../../../decisions/0027-tasks-and-actions.md),
-  [0047](../../../decisions/0047-connections-that-stop-working.md)
+  [0003](../../../decisions/0003-sdk-placement.md)
 
 A task is durable work with its own context, such as "keep the backlog moving today", and nixie runs
 each one as an explicit state machine over the [event log](event-log.md). A runner holds a lease on
@@ -115,17 +111,17 @@ a step makes checks the generation, so a runner whose lease expired cannot commi
 ## Routing from the conversation
 
 The conversation is a task that never closes, flagged as the conversation, on the same state
-machine, leases and recovery. It lives in a long-lived imp that stays awake under
-[0003](../../../decisions/0003-sdk-placement.md#workers-and-the-conversation). Your messages land in
-its inbox by default, and a message you send while a task is open in the client goes straight to
-that task.
+machine, leases and recovery. It lives in a long-lived imp that stays awake, as
+[conversation turns](../../../architecture/core/conversation-turns.md#the-guest-and-its-sandbox)
+describes. Your messages land in its inbox by default, and a message you send while a task is open
+in the client goes straight to that task. A question to you is an ordinary message that ends the
+turn, and your reply starts the next one.
 
-The conversation works with tasks through 3 tools, as
-[0018](../../../decisions/0018-the-conversation-and-tasks.md) decides: `task.start` starts a task
-with a brief, `task.message` sends an existing task a message, and `tasks.list` lists the tasks.
-Each turn carries no task list, and nixie writes no routing record of its own. A task message names
-the messages of yours it passes on in its on-behalf-of IDs. A start also chooses the task's model,
-persona, memory, tools, report mode and limits, within bounds that code checks, as
+The conversation works with tasks through 3 tools: `task.start` starts a task with a brief,
+`task.message` sends an existing task a message, and `tasks.list` lists the tasks. Each turn carries
+no task list, and nixie writes no routing record of its own. A task message names the messages of
+yours it passes on in its on-behalf-of IDs. A start also chooses the task's model, persona, memory,
+tools, report mode and limits, within bounds that code checks, as
 [start options](../../../architecture/core/started-tasks.md#start-options) covers.
 
 ## Messages between tasks
@@ -196,13 +192,12 @@ plus 1, and a step woken by several records takes the lowest hop among them. A m
 
 ## Job runs
 
-A job is a definition: a schedule or trigger, instructions, a tool list and allowed destinations,
-under [0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies). When its trigger
-source starts a job run, nixie creates a task with the job's definition version pinned for the
-task's life. The job run can call only the tools on the job's list, and the first build treats every
-job run as untrusted. The list pins each connector tool to the connections the job may use, within
-the connections its creator may use, and a connection added later never joins the job, as the
-[connection argument](../connectors/connector.md#the-connection-argument) covers.
+A job is a definition: a schedule or trigger, instructions, a tool list and allowed destinations.
+When its trigger source starts a job run, nixie creates a task with the job's definition version
+pinned for the task's life. The job run can call only the tools on the job's list, and the first
+build treats every job run as untrusted. The list pins each connector tool to the connections the
+job may use, within the connections its creator may use, and a connection added later never joins
+the job, as the [connection argument](../connectors/connector.md#the-connection-argument) covers.
 
 Every job run gets its trigger details in its context: when it was scheduled, when it started,
 whether it is a catch-up, and which scheduled times were skipped. **Why:** a morning report that
@@ -210,11 +205,10 @@ starts at 10:40 can say so, and the model never guesses when it was meant to run
 
 Beside the trigger details, a job run gets the
 [status line](../connectors/tools.md#what-the-model-learns-about-a-connection) for the connections
-pinned on the job's list that are `needs_consent`, `disconnected`, `failing` or `expiring`, under
-[0047](../../../decisions/0047-connections-that-stop-working.md). The line leaves out the model
-credential, because a job run can do nothing about it. **Why:** a job run is untrusted and nobody
-watches it, so the line is its only way to report what it could not do. Without the line, a job run
-that finds a tool missing makes something up or fails without a reason.
+pinned on the job's list that are `needs_consent`, `disconnected`, `failing` or `expiring`. The line
+leaves out the model credential, because a job run can do nothing about it. **Why:** a job run is
+untrusted and nobody watches it, so the line is its only way to report what it could not do. Without
+the line, a job run that finds a tool missing makes something up or fails without a reason.
 
 A job run starts whatever the status of its pinned connections. It does what it can, and its result
 says what it skipped and why. **Why:** a part of a report has value, so a morning report without
@@ -233,10 +227,10 @@ runs inside the calling step, has no conversation, and returns a result to its c
 Each worker run gets its own imp through the [sandbox adapter](../connectors/sandbox-adapter.md),
 and the whole worker runs inside it: the model loop and any code it runs. The imp's one credential
 grant is the model credential of the worker's [model profile](models.md), limited to that profile's
-host, under [0003](../../../decisions/0003-sdk-placement.md#workers-and-the-conversation). The
-worker reaches anything else through nixie's tools on the host, where the destination limits apply.
-A worker holds a subset of its caller's tools, so delegation only narrows. Its transcript becomes
-records whose parent is the tool call, and nixie destroys the imp when the tool call returns.
+host, as [sandboxes](../../../architecture/connectors/sandboxes.md) describes. The worker reaches
+anything else through nixie's tools on the host, where the destination limits apply. A worker holds
+a subset of its caller's tools, so delegation only narrows. Its transcript becomes records whose
+parent is the tool call, and nixie destroys the imp when the tool call returns.
 
 A minimal image per kind of work keeps a fresh worker's start short, as the
 [imp worker spike](../../../../research/imp-worker-start/README.md) measured.

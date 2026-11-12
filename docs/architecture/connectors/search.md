@@ -6,8 +6,7 @@ search tool reads none: it sends one request to one fixed API address and parses
 Its API key stays on the server, because a key inside a sandbox could leak through the code that
 runs there. The model fetches a hit's page by the hit's link ID with the [web fetch](./web-fetch.md)
 tool, which reads the page in the fetch sandbox. [Tool calls](./tool-calls.md) covers the endpoint
-that runs the tool, and decision record [0014](../../decisions/0014-search.md) covers why each hit
-carries its title and snippet beside its URL.
+that runs the tool.
 
 ## The tool
 
@@ -38,6 +37,8 @@ forget ended the session.
 The tool declares the source of content of each result field, which the call's
 [result record](./tool-calls.md#records) stores. It declares the hits as `untrusted`, meaning
 outside content: a title and a snippet are text from the page, and a URL can carry text in its path.
+Each hit still carries its title and snippet, because a model that sees only URLs ranks hits it
+cannot read.
 
 The output schema also marks the date as an endorsed type. An endorsed type is a type that can carry
 none of the page's words, such as a number, or a string held to one fixed format. A free-form string

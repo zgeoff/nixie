@@ -1,8 +1,7 @@
 # The channel adapter
 
-- Decisions: [0029](../../../decisions/0029-channels-and-clients.md),
-  [0002](../../../decisions/0002-approvals.md), [0009](../../../decisions/0009-first-channel.md),
-  [0016](../../../decisions/0016-own-interfaces.md)
+- Decisions: [0002](../../../decisions/0002-approvals.md),
+  [0009](../../../decisions/0009-first-channel.md)
 
 A channel adapter connects one way of reaching you to nixie. A full channel carries the conversation
 and the approvals, and nixie's own client is the only one in the first build. A push notifier

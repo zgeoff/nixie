@@ -1,7 +1,6 @@
 # The labels and the revision of a memory item
 
 - **Status:** draft
-- **Decision records:** [0052](../../decisions/0052-the-lean-memory-index.md)
 - **Work items:** [the labels and the revision](https://linear.app/zgeoff/issue/GEO-2549) builds
   this design. [The memory index block](https://linear.app/zgeoff/issue/GEO-2364) reads the gist and
   the topic, and [trigger push](https://linear.app/zgeoff/issue/GEO-2555) reads the trigger phrases.
@@ -245,10 +244,8 @@ await requireItem(db, { target: { itemID, version: 4 }, operation: 'retire', sta
 ## Decisions
 
 - **A label edit takes the approval flow of every memory edit.** No quote can back a label.
-  [0052](../../decisions/0052-the-lean-memory-index.md)
 - **A label edit makes no item version, and a second counter counts label edits.** The paths that
   mean "the model read this text" stay as built.
-  [0052](../../decisions/0052-the-lean-memory-index.md)
 - **A topic is sealed text on each item.** A topic ID or hash would outlive a forget.
 
 ## Builder decides

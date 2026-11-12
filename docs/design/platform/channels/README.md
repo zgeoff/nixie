@@ -2,7 +2,6 @@
 
 Channels cover how you reach nixie and how nixie reaches you: nixie's own client, the push notifier,
 and the trigger sources that start work without you.
-[0029](../../../decisions/0029-channels-and-clients.md) records the choices this design follows.
 
 - [The client](client.md) — the web client and the Expo app, the typed API, device sessions, sending
   a message with its paste spans, messages into a running task, and deep links

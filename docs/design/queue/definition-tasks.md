@@ -1,7 +1,6 @@
 # The task of a definition
 
 - **Status:** draft
-- **Decision records:** [0013](../../decisions/0013-definition-versioning.md)
 - **Work items:** [the task of a definition](https://linear.app/zgeoff/issue/GEO-2531),
   [the `trigger` block and the reminder](https://linear.app/zgeoff/issue/GEO-2534),
   [the trigger core](https://linear.app/zgeoff/issue/GEO-2542),

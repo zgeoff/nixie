@@ -1,10 +1,6 @@
 # The sandbox adapter
 
-- Decisions: [0016](../../../decisions/0016-own-interfaces.md),
-  [0007](../../../decisions/0007-grants-and-taint.md),
-  [0022](../../../decisions/0022-coding-and-code-execution.md),
-  [0003](../../../decisions/0003-sdk-placement.md),
-  [0030](../../../decisions/0030-connectors-and-sandbox-environments.md)
+- Decisions: [0003](../../../decisions/0003-sdk-placement.md)
 
 The sandbox adapter runs everything that executes a model loop or code over untrusted content in a
 sandbox of its own: the conversation, each worker, each code run, and each session on the built-in

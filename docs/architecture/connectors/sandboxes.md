@@ -3,10 +3,11 @@
 nixie runs untrusted work in sandboxes: the conversation's model loop, the memory checker, each
 worker, each code run, the fetch sandbox and each coding session. A sandbox gets only the network
 and the credentials its kind of work needs, and the caller names only that kind. nixie reaches
-sandboxes through its own sandbox interface, under the
-[own interfaces decision](../../decisions/0016-own-interfaces.md). The reference adapter runs each
-sandbox as an [imp](../../glossary.md), a microVM that impd, imp's host daemon, runs. The test
-sandbox runs each guest as a local process, so any module's tests can run a real guest.
+sandboxes through its own sandbox interface, which the
+[sandbox adapter design](../../design/platform/connectors/sandbox-adapter.md) defines. The reference
+adapter runs each sandbox as an [imp](../../glossary.md), a microVM that impd, imp's host daemon,
+runs. The test sandbox runs each guest as a local process, so any module's tests can run a real
+guest.
 
 [Tool calls](./tool-calls.md) covers the endpoint a sandbox's tool route reaches.
 [Web fetch](./web-fetch.md) covers the fetch sandbox's lifetime and the fetcher that runs in it.
@@ -56,7 +57,8 @@ An adapter records a create before it makes anything. A crash between the record
 then leaves a row that recovery finds, and no sandbox exists without a row. A create that fails
 removes what it made and records the sandbox destroyed. From a row's stored spec, an adapter builds
 the in-process handle that reaches the sandbox, so an adapter in a later process can destroy what
-the last process made. Crash recovery destroys every sandbox whose owner no longer runs
+the last process made. Crash recovery destroys every sandbox whose owner no longer runs, each
+through the adapter that made it, and leaves another adapter's sandboxes alone
 ([leases and recovery](../core/leases-and-recovery.md#crash-recovery)). A spec holds each grant's
 placeholders and never its credential, so a sandbox record never holds a credential.
 

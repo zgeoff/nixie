@@ -1,9 +1,7 @@
 # Moments
 
 - Decisions: [0011](../../../decisions/0011-memory-writes.md),
-  [0005](../../../decisions/0005-effects-and-taint.md),
-  [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
-  [0037](../../../decisions/0037-moments.md)
+  [0005](../../../decisions/0005-effects-and-taint.md)
 
 A moment is a range of records in one thread that nixie keeps whole, with a title, your note and the
 model's reflections beside it. The moment refers to its records by sequence and never copies them,
@@ -140,8 +138,8 @@ another task or you keep during a session reaches that session through the event
 
 `moment.read` returns each record with its source of content. A span that holds outside content
 stays untrusted when it is read, so the task that reads it is tainted under
-[0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies), as it would be by reading
-that content first-hand.
+[0005](../../../decisions/0005-effects-and-taint.md), as it would be by reading that content
+first-hand.
 
 The client shows moments on a timeline in time order, with keyword search, and retired moments
 behind a filter. A moment opens as its span, with the note, each reflection with its label, and the
@@ -152,8 +150,8 @@ date.
 
 `moment.retire` from chat retires a moment, with undo. Only a checked action in the client destroys
 a moment, after a preview bound to the moment and its versions, as
-[0031](../../../decisions/0031-memory-capture-context-and-removal.md) sets for memory. An edit after
-the preview opens makes the preview stale.
+[the memory store](../../../architecture/memory/store.md#states) sets for memory. An edit after the
+preview opens makes the preview stale.
 
 Destroying a moment shreds the keys of its own records: every version of the title, the note and
 each reflection. The span's records stay in the event log, because they are your conversation, not

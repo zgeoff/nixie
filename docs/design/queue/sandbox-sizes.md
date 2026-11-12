@@ -1,7 +1,6 @@
 # The sandbox sizes
 
 - **Status:** draft
-- **Decision records:** [0054](../../decisions/0054-the-sandbox-sizes-ship-first.md)
 - **Work items:** [the size table](https://linear.app/zgeoff/issue/GEO-2417),
   [the day's check of the sizes](https://linear.app/zgeoff/issue/GEO-2583)
 
@@ -79,7 +78,6 @@ sandboxLimits: sandboxSizes.fetch,
 ## Decisions
 
 - **The sizes ship before the runtime's reserved-memory work.** They only lower what nixie asks for.
-  [0054](../../decisions/0054-the-sandbox-sizes-ship-first.md)
 - **A row belongs to a role.** Several kinds run one role, and one image runs at several sizes.
 - **A size is a constant with no config key.** A wrong size is a bug that a release fixes.
 

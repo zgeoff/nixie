@@ -1,8 +1,6 @@
 # The trigger core and schedules
 
 - **Status:** draft
-- **Decision records:** [0016](../../decisions/0016-own-interfaces.md),
-  [0027](../../decisions/0027-tasks-and-actions.md)
 - **Work items:** [the trigger core](https://linear.app/zgeoff/issue/GEO-2542),
   [the schedule source and the one-shot](https://linear.app/zgeoff/issue/GEO-1835),
   [the preview definition](https://linear.app/zgeoff/issue/GEO-2537),
@@ -348,17 +346,17 @@ This design replaces these parts of
 - Job filters and task waits in `deliver`: each event names its definition, and `deliver` writes
   `trigger.fired` or `trigger.skipped`.
 - Catch-up "after a restart": the half-interval rule of
-  [0027](../../decisions/0027-tasks-and-actions.md) holds after any late tick, beside
-  `catchUp: skip` and the window skip.
+  [the trigger source](../platform/channels/trigger-source.md#schedules) holds after any late tick,
+  beside `catchUp: skip` and the window skip.
 - The generic `Cursor`: a cursor is a `JSONValue`. `SourceHealth` is defined above.
 
 ## Decisions
 
-- **The trigger core lives in its own module.** 0016 lists the trigger source among nixie's own
-  interfaces, and a source of poll triggers depends on connectors, which the tasks module must not.
-  [0016](../../decisions/0016-own-interfaces.md)
+- **The trigger core lives in its own module.** The
+  [trigger source](../platform/channels/trigger-source.md) is one of nixie's own interfaces, and a
+  source of poll triggers depends on connectors, which the tasks module must not.
 - **A late schedule catches up once within half its interval, and skips beyond it.**
-  [0027](../../decisions/0027-tasks-and-actions.md)
+  [The trigger source](../platform/channels/trigger-source.md#schedules)
 - **The definitions module calls the arming hook directly.** A hook passed in as a function is one a
   second seed path can leave out.
 - **A minutes schedule anchors on the Unix epoch.** A stored start time would differ after a restore

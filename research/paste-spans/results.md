@@ -49,8 +49,9 @@ Android, 2 Gboard paths insert pasted text as `insertText`, and the client label
 clipboard chip and Gboard's own undo. The mapping of that run could not tell them from typing, and
 the client now applies the rule in [the client fix](#the-client-fix). Gboard's voice typing inserts
 each spoken sentence as one composition, and the voice typing run labelled the dictated words
-`typed`, which 0011 forbids. The client applies the same rule to a composition, as
-[voice typing](#android-voice-typing) shows, and only a dictation of one word still lands `typed`.
+`typed`, which [memory writes](../../docs/design/platform/memory/writes.md#dictated-text) forbids.
+The client applies the same rule to a composition, as [voice typing](#android-voice-typing) shows,
+and only a dictation of one word still lands `typed`.
 
 ### Desktop browsers
 
@@ -182,9 +183,10 @@ No `insertText` and no `insertFromDictation` arrived, and Chrome fired a keydown
 before each update.
 
 - **Label in the run:** the mapping of the run counted `insertCompositionText` as typed, and its
-  multi-word rule covered only `insertText`, so all 3 sentences ended `typed`. Under 0011, dictated
-  text never counts as evidence, so that label was wrong. Run 3 shows the risk behind that rule:
-  Gboard misheard the last word, which the log holds as the invented "cap" heard as "cab".
+  multi-word rule covered only `insertText`, so all 3 sentences ended `typed`. Under
+  [memory writes](../../docs/design/platform/memory/writes.md#dictated-text), dictated text never
+  counts as evidence, so that label was wrong. Run 3 shows the risk behind that rule: Gboard
+  misheard the last word, which the log holds as the invented "cap" heard as "cab".
 - **The client rule:** the client applies the multi-word rule to `insertCompositionText` as well,
   and the contract package's tests replay all 3 runs through the shipped span logic, which labels
   each sentence `unknown`. Gboard typing never composes on this phone, and the desktop composition

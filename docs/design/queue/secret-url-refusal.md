@@ -3,7 +3,6 @@
 - **Status:** draft
 - **Work items:** [the secret scan lib](https://linear.app/zgeoff/issue/GEO-2591),
   [the secret refusal in the fetch tool](https://linear.app/zgeoff/issue/GEO-2246)
-- **Decision records:** [0005](../../decisions/0005-effects-and-taint.md)
 
 nixie refuses a web fetch of a URL that holds an API key or a token, so a model that copies a token
 into a URL never sends it to a site. nixie scans the sent URL and every redirect hop against a
@@ -200,7 +199,7 @@ passes use it. The first line that fits decides:
 
 - **No prompt about a refusal.** nixie's target is 0 approval prompts, so a public rule that matches
   an ordinary URL refuses that page on every call, and the log event is how you find such a rule.
-  [0005](../../decisions/0005-effects-and-taint.md)
+  [Prompt causes](../platform/policy/decision-point.md#prompt-causes)
 - **The finder tries own values first.** The exemption decides by the rule's name, so a URL with an
   own value must never report a public rule.
 

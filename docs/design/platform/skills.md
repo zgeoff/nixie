@@ -1,9 +1,5 @@
 # Skills
 
-- Decisions: [0013](../../decisions/0013-definition-versioning.md),
-  [0020](../../decisions/0020-deployment.md),
-  [0022](../../decisions/0022-coding-and-code-execution.md), [0038](../../decisions/0038-skills.md)
-
 A skill is a procedure in the [Agent Skills format](https://agentskills.io/specification): a folder
 with a `SKILL.md` file, reference files and scripts. Skills come from your definitions, stay fixed
 for the life of a task unless a reload moves it on, and reach the model through a catalog in the
@@ -94,8 +90,8 @@ The seed refuses a snapshot when any skill fails one of these checks, run in cod
 4. A vendored skill matches its lock entry.
 
 A new or changed skill that passes applies with a notice in the live view. **Why:** a skill widens
-nothing, so the widening confirmation from [0020](../../decisions/0020-deployment.md) does not
-apply.
+nothing, so the confirmation that a
+[widening rule](../../architecture/policy/rules.md#rules-in-force) waits for does not apply.
 
 ## Versions
 
@@ -174,9 +170,9 @@ effect, the limits and its result as outside content. The skill files count towa
 input size. The code tool's record holds each skill's hash. A rule can match the `skills` argument,
 such as "ask before a script from a vendored skill runs".
 
-A code run has no network, so a script uses only what the code image holds, under
-[0030](../../decisions/0030-connectors-and-sandbox-environments.md). A script that needs a missing
-package fails, and its `compatibility` field shows what it expects.
+A code run has no network, so a script uses only what the
+[code image](connectors/sandbox-adapter.md#images) holds. A script that needs a missing package
+fails, and its `compatibility` field shows what it expects.
 
 ## Skills that nixie writes
 
@@ -197,9 +193,10 @@ proposal. **Why:** the worst skill nixie could write is one that sends future ta
 you never named.
 
 An applied skill holds the ID of the approval or rule that applied it. nixie then exports it to the
-definitions repo as a pull request, as [rule export](../../decisions/0020-deployment.md#seeding)
-works, and the next seed after your merge marks it as yours. A seed that changes a nixie-written
-skill before the export merges shows the conflict in the client to resolve.
+definitions repo as a pull request, as
+[rule export](../../architecture/policy/rules.md#the-rule-export) works, and the next seed after
+your merge marks it as yours. A seed that changes a nixie-written skill before the export merges
+shows the conflict in the client to resolve.
 
 ## What the first build leaves out
 
@@ -207,5 +204,5 @@ skill before the export merges shows the conflict in the client to resolve.
 - A tool that vendors a skill: nixie fetches a skill at a pinned commit and opens a pull request on
   the definitions repo with the lock entry and a review report.
 - Skills in coding sessions: a coding adapter owns its harness, and atc manages its own skills.
-- Per-job-run taint from a skill's provenance, which waits for the later stage of
-  [0005](../../decisions/0005-effects-and-taint.md#where-taint-applies).
+- Per-job-run taint from a skill's provenance, which waits for a later stage in
+  [the decision point](policy/decision-point.md#taint-in-the-first-build).

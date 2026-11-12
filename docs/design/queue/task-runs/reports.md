@@ -1,7 +1,6 @@
 # Task runs: the report
 
 - **Status:** draft
-- **Decision records:** [0055](../../../decisions/0055-the-report-shape-of-a-task.md)
 - **Work items:** [task run records and `task.report`](https://linear.app/zgeoff/issue/GEO-2113),
   [the brief of a definition's task run](https://linear.app/zgeoff/issue/GEO-2586)
 
@@ -222,7 +221,7 @@ const callCapRefusal = 'This run has used its {n} calls to {tool}.';
 ## Decisions
 
 - **A report shape is a closed subset of JSON Schema, checked at the seed and the start, and pinned
-  on the task run.** [0055](../../../decisions/0055-the-report-shape-of-a-task.md)
+  on the task run.**
 
 ## Builder decides
 

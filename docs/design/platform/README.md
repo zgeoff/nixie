@@ -11,3 +11,16 @@ The platform design is the locked baseline of nixie's first build, one folder pe
   credentials
 - [Deployment](deployment/README.md) — the host, backups, the release pipeline and upgrades
 - [Skills](skills.md) — skills in the definitions, the lock, versions and the skill tools
+
+## nixie's own interfaces
+
+nixie takes its tools from MCP and defines 6 interfaces of its own where MCP has none. Each one is a
+boundary where a deployment picks its own technology:
+
+- [Channel adapter](channels/channel-adapter.md): your messages in, replies and pushes out
+- [Trigger source](channels/trigger-source.md): schedules, webhooks and mailbox events
+- [Connector](connectors/connector.md): typed calls to one outside service
+- [Credential store](connectors/credentials.md): OAuth clients, refresh and the credentials a tool
+  gets without the model seeing them
+- [Definitions source](connectors/definitions-source.md): where nixie reads your definitions from
+- [Sandbox adapter](connectors/sandbox-adapter.md): a sandbox for each model loop and code run
