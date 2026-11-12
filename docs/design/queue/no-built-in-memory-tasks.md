@@ -7,11 +7,11 @@
   [the deploy and its rollback](https://linear.app/zgeoff/issue/GEO-2556)
 
 One release deletes nixie's 2 built-in memory tasks, the note-taker and the consolidator. A
-deployment's event log still holds what they wrote, so nixie keeps parsing and folding those records
-and renders them to the agent in words that name no note-taker. A task of the 2 that a log still
-holds gets the built `runOffTaskStep`, which empties its inbox and does nothing else. The config
-refuses the 2 tasks' sections, and a task that the agent starts does their work through the ordinary
-memory tools.
+deployment's event log still holds what they wrote, so nixie keeps parsing and folding those
+records, and shows each one everywhere as nixie's own, as if the note-taker never existed. A task of
+the 2 that a log still holds gets the built `runOffTaskStep`, which empties its inbox and does
+nothing else. The config refuses the 2 tasks' sections, and a task that the agent starts does their
+work through the ordinary memory tools.
 
 Terms that the [glossary](../../glossary.md) lacks:
 
@@ -146,19 +146,11 @@ prompts:
   consolidator: {}
 ```
 
-### The words for the origin `memory_writer`
+### The origin `memory_writer`
 
-Each renderer turns a stored origin into words only when it renders a record for the agent.
-
-| Renderer                  | Words for `memory_writer`                       |
-| ------------------------- | ----------------------------------------------- |
-| `sessionPrompt`           | no sentence, and no `instruction` part          |
-| `renderMemoryLine`        | none                                            |
-| `buildPendingTool`        | none, and its description holds no "note-taker" |
-| `buildProposalAnswerKind` | a neutral phrase, such as "a proposal"          |
-| `buildProposalMergeKind`  | a neutral phrase                                |
-| `buildCatchUpKind`        | a neutral phrase                                |
-| `buildSelfNoteFlagKind`   | a neutral phrase                                |
+nixie reads the stored origin `memory_writer` as `conversation` when it projects a record, so every
+reader gets `conversation`: the agent's renderers, the API and host contracts, the web screens and
+the export. No renderer holds a case for `memory_writer`.
 
 ## Constraints
 
@@ -171,11 +163,14 @@ Each renderer turns a stored origin into words only when it renders a record for
 - Each rewrite or retirement by a task is its own proposal or applied version. nixie never gathers
   them in one diff.
 
-### What the agent reads
+### What anyone reads
 
-- A neutral phrase never holds "note-taker", and nixie never renders "you noted it" for the origin
-  `memory_writer`.
-- nixie never rewrites a stored origin. A stored version or proposal keeps `memory_writer`.
+- No screen, contract, export, tool or prompt shows the note-taker, by name, by origin or by a
+  sentence about it. A record it wrote reads as one the conversation wrote.
+- nixie never rewrites a stored origin. A stored version or proposal keeps `memory_writer` in the
+  event log, and only the parsers of stored records know the value.
+- The web review drops the note-taker from every sentence, such as the one for the reason
+  `sensitive`.
 - No code writes a catch-up record or a self-note flag record. `buildCatchUpKind` and
   `buildSelfNoteFlagKind` stay, and render only the records of each kind that a log holds.
 - Text of an item or of a message that holds "note-taker" renders as stored.
@@ -185,13 +180,14 @@ Each renderer turns a stored origin into words only when it renders a record for
 - nixie parses each of the 11 record kinds, and the `memory_writer` projection and the 2
   consolidation projections fold them, so a rebuild from the log gives the same tables.
 - A rebuild gives the same rows of `memory_consolidation_changes` as before the delete.
-- Every enum that parses a stored record holds the origin `memory_writer`: the parsers of versions
-  and proposals, the table check, the export schema, and the API and host contracts.
+- The parsers of stored versions and proposals and the table check hold the origin `memory_writer`.
+  The API and host contracts and the export schema lose it, which narrows what nixie returns and
+  breaks no client.
 - A pending proposal with the origin `memory_writer` shows in memory review and in `memory.pending`.
-  You approve or reject it, and it lapses at its stored time. An approval writes a version with the
-  origin `memory_writer`.
-- The memory view and the export show the model name of a version that the note-taker applied, read
-  from its batch record.
+  You approve or reject it, and it lapses at its stored time. It shows as a proposal of the
+  conversation.
+- A version that the note-taker applied shows as a version of the conversation, with what a
+  conversation version shows.
 - nixie never publishes a batch that a log holds as planned and not published.
 - No tool, command or procedure answers a pending diff. The built lapse sweep lapses each pending
   change at its stored time, on the thread `memory-consolidator`, and applies nothing.
@@ -252,12 +248,12 @@ release takes v0.41.0 or later before it takes the delete.
 - **nixie has no built-in memory task, and a started task does the work.**
 - **The 2 deletes are one release, with one config break.** A deployment drops both sections and
   takes the release in one deploy.
-- **Stored records stay, and the agent reads no "note-taker".**
+- **Stored records stay, and nothing shows the note-taker.** The log keeps its records, and every
+  reader sees them as the conversation's.
 - **A rollback sets the off config first.**
 
 ## Builder decides
 
-- The exact text of each neutral phrase, within the rules above.
 - The sentence that refuses an approval for a retired prompt ID.
 - How the fixture encodes a sealed field, and the fixture files' names.
 - Internal names and the layout of the tests.
@@ -275,7 +271,4 @@ release takes v0.41.0 or later before it takes the delete.
 
 ## Open questions
 
-- **Does the web review screen show "note-taker" for a record the note-taker wrote?** The owner
-  settles it: show the word, because it names what wrote the record, or use neutral words as the
-  agent's renderers do. The web sentence for the reason `sensitive` holds the word too. Until then,
-  the web review screen shows each origin and each reason as built.
+None.
