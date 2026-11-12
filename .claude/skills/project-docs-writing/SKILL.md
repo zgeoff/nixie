@@ -33,6 +33,8 @@ metadata:
 - Write "you" only where that person acts: "memory shows in 2 ways", not "you see memory in 2 ways".
 - Never call that person "the owner" in a doc. In the glossary, `owner` is a value of a memory
   item's subject.
+- In `docs/design/`, write "the owner" for the person who approves a design and settles its open
+  questions, as the design-docs skill does.
 
 ## Runs
 
