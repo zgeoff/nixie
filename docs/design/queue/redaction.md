@@ -137,7 +137,7 @@ const removalControlLabel = 'Remove this record';
 
 ```ts
 // tools module: the model removes a record through a tool with the effect 'delete'
-forgetRecord({ thread: 'conversation', record: '<the record as the session history names it>' });
+log.forget({ thread: 'conversation', record: '<the record as the session history names it>' });
 // → policy decides first. The starter rule ask-permanent-deletes asks, and the approval shows the
 //   record's kind, its text and the preview's counts. An allow rule you add for this tool lets
 //   it run without asking.
@@ -278,6 +278,8 @@ purgeItemEvidence({ itemID, sequence: 4190 });
   on 13 Nov, with the condition that a rule of the owner's can allow it with no approval.
 - **A removal purges the quote from each memory item that quotes the record.** The owner chose this
   on 13 Nov. The item stays; the preview lists its text, so you can forget it apart.
+- **The names are `conversation.previewForget` and `log.forget`.** The owner chose them on 13 Nov.
+  The preview follows the API's `memory.previewForget`, and the tool follows the model's `log.read`.
 - **One list of removable kinds, in the API contract package.** The built code holds 5 separate kind
   sets, and copies drift.
 
@@ -297,8 +299,5 @@ purgeItemEvidence({ itemID, sequence: 4190 });
 
 ## Open questions
 
-- **What is the preview procedure called?** The owner settles it, because the API contract package
-  is published. `memory.previewForget` already exists for memory items, and the memory store's own
-  read is `readForgetPreview`. Until then, the sketches use `conversation.previewForget`.
 - **Does the thread view also mark a removed record as removed?** The owner settles it. Until then,
   the thread view shows a removed record as it shows any record whose key is gone.
