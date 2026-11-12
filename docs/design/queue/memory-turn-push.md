@@ -2,8 +2,10 @@
 
 - **Status:** draft
 - **Decision records:** [0052](../../decisions/0052-the-lean-memory-index.md)
-- **Work items:** trigger push builds the port and trigger push beside the built similarity search.
-  The similarity push cleanup deletes the similarity search.
+- **Work items:** [trigger push](https://linear.app/zgeoff/issue/GEO-2555) builds the port and
+  trigger push beside the built similarity search.
+  [The similarity push cleanup](https://linear.app/zgeoff/issue/GEO-2550) deletes the similarity
+  search.
 
 On each turn, nixie can place up to 3 memory items in the turn's blocks without a tool call: the
 items whose trigger phrases match your message. The agent sees the memory index only when a session

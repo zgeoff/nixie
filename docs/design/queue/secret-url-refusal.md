@@ -1,7 +1,8 @@
 # The refusal of a URL that carries a secret
 
 - **Status:** draft
-- **Work items:** the secret scan lib, the secret refusal in the fetch tool
+- **Work items:** [the secret scan lib](https://linear.app/zgeoff/issue/GEO-2591),
+  [the secret refusal in the fetch tool](https://linear.app/zgeoff/issue/GEO-2246)
 - **Decision records:** [0005](../../decisions/0005-effects-and-taint.md)
 
 nixie refuses a web fetch of a URL that holds an API key or a token, so a model that copies a token

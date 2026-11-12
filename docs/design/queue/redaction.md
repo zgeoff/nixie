@@ -11,10 +11,12 @@ memory item that quotes the record stays readable until the owner settles that o
 
 The removal is the built `conversation.forget` action, widened in 3 parts that ship apart:
 
-1. The forget takes tool calls and tool results: redaction-tool-records.
+1. The forget takes tool calls and tool results:
+   [redaction-tool-records](https://linear.app/zgeoff/issue/GEO-2553).
 2. A span record carries a mark, so the moment view tells a removed record from any other gap:
-   removal-mark.
-3. The moment view offers the removal behind a preview: removal-control.
+   [removal-mark](https://linear.app/zgeoff/issue/GEO-2554).
+3. The moment view offers the removal behind a preview:
+   [removal-control](https://linear.app/zgeoff/issue/GEO-2560).
 
 A gap is a span record whose text nixie cannot read: a forget deleted its key, a session cleanup
 deleted a summary's key, or its key fails to decrypt. A removed record is a gap that a forget made.

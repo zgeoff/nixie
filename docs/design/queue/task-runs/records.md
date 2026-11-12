@@ -2,8 +2,11 @@
 
 - **Status:** draft
 - **Work items:** [task run records and `task.report`](https://linear.app/zgeoff/issue/GEO-2113),
-  the brief of a definition's task run, [the wake rule](https://linear.app/zgeoff/issue/GEO-1865),
-  the previous task run's start, the runner port, the worker tool
+  [the brief of a definition's task run](https://linear.app/zgeoff/issue/GEO-2586),
+  [the wake rule](https://linear.app/zgeoff/issue/GEO-1865),
+  [the previous task run's start](https://linear.app/zgeoff/issue/GEO-2585),
+  [the runner port](https://linear.app/zgeoff/issue/GEO-2588),
+  [the worker tool](https://linear.app/zgeoff/issue/GEO-1793)
 
 Three records on a task's thread mark each task run, and the `task_runs` projection folds them. This
 part holds the records, the projection and its readers, how a claim opens a task run, how one end

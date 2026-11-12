@@ -3,8 +3,10 @@
 - **Status:** draft
 - **Decision records:** [0050](../../decisions/0050-no-built-in-memory-tasks.md),
   [0049](../../decisions/0049-milestone-deploys-and-the-rollback-target.md)
-- **Work items:** the fixtures, the note-taker delete, the consolidator delete, the deploy and its
-  rollback
+- **Work items:** [the fixtures](https://linear.app/zgeoff/issue/GEO-2551),
+  [the note-taker delete](https://linear.app/zgeoff/issue/GEO-1849),
+  [the consolidator delete](https://linear.app/zgeoff/issue/GEO-2114),
+  [the deploy and its rollback](https://linear.app/zgeoff/issue/GEO-2556)
 
 One release deletes nixie's 2 built-in memory tasks, the note-taker and the consolidator. A
 deployment's event log still holds what they wrote, so nixie keeps parsing and folding those records

@@ -1,7 +1,8 @@
 # The task brief and the message envelope
 
 - **Status:** draft
-- **Work items:** the brief and the envelope, the brief of a definition's task run
+- **Work items:** [the brief and the envelope](https://linear.app/zgeoff/issue/GEO-2357),
+  [the brief of a definition's task run](https://linear.app/zgeoff/issue/GEO-2586)
 
 A task's model reads its brief as a request with an ID, in the same envelope as every other task
 message. A start writes the brief as a `task_message` record on the started task's thread, and a
@@ -9,9 +10,10 @@ definition's task run builds its brief from the definition version it pins. Ever
 model receives shows who sent it: a task message in `<task-message>`, your message in
 `<owner-message>`, and a notice from nixie in `<system-message>`.
 
-The started task's brief ships first, in the brief and the envelope. The parts marked "phase 2" (the
-brief of a definition's task run, and the frame's third paragraph) follow once definitions exist, in
-the brief of a definition's task run.
+The started task's brief ships first, in
+[the brief and the envelope](https://linear.app/zgeoff/issue/GEO-2357). The parts marked "phase 2"
+([the brief of a definition's task run](https://linear.app/zgeoff/issue/GEO-2586), and the frame's
+third paragraph) follow once definitions exist, in the brief of a definition's task run.
 
 Terms:
 

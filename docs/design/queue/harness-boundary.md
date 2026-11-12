@@ -1,8 +1,9 @@
 # The harness boundary
 
-- **Status:** draft. The owner first settles the premise below; the harness boundary item is blocked
-  until then.
-- **Work items:** the harness boundary, the Codex harness
+- **Status:** draft. The owner first settles the premise below;
+  [the harness boundary](https://linear.app/zgeoff/issue/GEO-2547) item is blocked until then.
+- **Work items:** [the harness boundary](https://linear.app/zgeoff/issue/GEO-2547),
+  [the Codex harness](https://linear.app/zgeoff/issue/GEO-2237)
 
 **The question for the owner:** does the boundary take one definition per harness, bound to its
 profile, with one host encoder that checks capabilities? The other options are 4 capability checks
@@ -233,8 +234,9 @@ type SessionStart =
   type.
 - A definition's profile schema is strict, so a key that its harness's loop ignores fails the
   config's load.
-- A profile on a harness outside `harnesses` fails the config's load. The harness list in the models
-  config error owns the text.
+- A profile on a harness outside `harnesses` fails the config's load.
+  [The harness list in the models config error](https://linear.app/zgeoff/issue/GEO-2579) owns the
+  text.
 - A unit test fails when `harnessIDs` and `harnesses` hold different IDs. The built `harnessIDs`
   holds `codex`, so the Codex harness adds the test with the Codex definition.
 - A model secret's name is a digest of the profile ID, `secretHeader` and the model API's host name,
@@ -370,7 +372,8 @@ harness that declares `summarize` and `context-window`.
 
 ## Out of scope
 
-- The Codex definition, its profile and its guest. The Codex harness adds them.
+- The Codex definition, its profile and its guest.
+  [The Codex harness](https://linear.app/zgeoff/issue/GEO-2237) adds them.
 - The fields of a profile outside Claude.
   [Tasks on OpenRouter models](https://linear.app/zgeoff/issue/GEO-2234) adds them.
 - A Codex member or a "none" member in the session point union, and resume, live messages and

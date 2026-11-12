@@ -1,9 +1,11 @@
 # The flow of a page fetch
 
 - **Status:** draft
-- **Work items:** the `retryAfterMs` wire field,
-  [the step list and the URL rewrite](https://linear.app/zgeoff/issue/GEO-2243), the secret refusal
-  in the fetch tool, the pause per host, the page cache
+- **Work items:** [the `retryAfterMs` wire field](https://linear.app/zgeoff/issue/GEO-2592),
+  [the step list and the URL rewrite](https://linear.app/zgeoff/issue/GEO-2243),
+  [the secret refusal in the fetch tool](https://linear.app/zgeoff/issue/GEO-2246),
+  [the pause per host](https://linear.app/zgeoff/issue/GEO-2244),
+  [the page cache](https://linear.app/zgeoff/issue/GEO-2590)
 
 A `url` or `link` call of the web fetch tool runs one fixed list of 9 steps in `runPageFetch`. Four
 work items each add steps to the list: the URL rewrite with its fallback, the secret scan, the pause

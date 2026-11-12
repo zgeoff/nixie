@@ -2,8 +2,10 @@
 
 - **Status:** draft
 - **Work items:** [recall by subject and the page cap](https://linear.app/zgeoff/issue/GEO-2523)
-  builds the subjects, `searched`, `leftOut` and the cap. The labels and the revision adds the 3
-  labels to each item. The memory index block adds the calls with `topic` and `topics`.
+  builds the subjects, `searched`, `leftOut` and the cap.
+  [The labels and the revision](https://linear.app/zgeoff/issue/GEO-2549) adds the 3 labels to each
+  item. [The memory index block](https://linear.app/zgeoff/issue/GEO-2364) adds the calls with
+  `topic` and `topics`.
 
 `memory.recall` gets 2 more kinds of call, a filter by subject, and a result that always fits the
 tool-output limit. nixie writes a recall record that says "the model read these texts", and the

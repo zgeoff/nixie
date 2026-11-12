@@ -3,7 +3,9 @@
 - **Status:** draft
 - **Decision records:** [0020](../../decisions/0020-deployment.md),
   [0032](../../decisions/0032-offsite-backups-and-replication.md)
-- **Work items:** the publish numbers, the fetch and the snapshot list, the restore reads the pair
+- **Work items:** [the publish numbers](https://linear.app/zgeoff/issue/GEO-2570),
+  [the fetch and the snapshot list](https://linear.app/zgeoff/issue/GEO-2562),
+  [the restore reads the pair](https://linear.app/zgeoff/issue/GEO-1816)
 
 A lost host restores from 2 restic repositories: the data repository holds copies of `nixie.db`, and
 the key repository holds copies of `keys.db`. The backup job numbers each publish in both

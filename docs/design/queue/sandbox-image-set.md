@@ -1,7 +1,7 @@
 # The sandbox image set
 
 - **Status:** draft
-- **Work items:** the image set
+- **Work items:** [the image set](https://linear.app/zgeoff/issue/GEO-2582)
 
 One tuple of image keys in the sandbox module drives every image schema and both image workflows, so
 a new sandbox image is one key and no hand-written schema. At start, nixie adds and waits for only
@@ -223,7 +223,8 @@ The release:
   own design.
 - What each image holds and builds from.
   [The bundled conversation guest](https://linear.app/zgeoff/issue/GEO-2491),
-  [the image session](https://linear.app/zgeoff/issue/GEO-2248) and the fetch image's base own that.
+  [the image session](https://linear.app/zgeoff/issue/GEO-2248) and
+  [the fetch image's base](https://linear.app/zgeoff/issue/GEO-2578) own that.
 - A config key for a size, a committed catalog of the images, a workflow matrix, or the size table
   in `release.json`.
 - An interface for the image build.

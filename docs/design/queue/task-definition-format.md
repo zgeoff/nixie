@@ -2,8 +2,12 @@
 
 - **Status:** draft
 - **Decision records:** [0013](../../decisions/0013-definition-versioning.md)
-- **Work items:** the format and the seed, the task of a definition, the runtime layer, the docs say
-  "task definition", the note-taking example, the consolidation example,
+- **Work items:** [the format and the seed](https://linear.app/zgeoff/issue/GEO-1834),
+  [the task of a definition](https://linear.app/zgeoff/issue/GEO-2531),
+  [the runtime layer](https://linear.app/zgeoff/issue/GEO-2533),
+  [the docs say "task definition"](https://linear.app/zgeoff/issue/GEO-2536),
+  [the note-taking example](https://linear.app/zgeoff/issue/GEO-2532),
+  [the consolidation example](https://linear.app/zgeoff/issue/GEO-2530),
   [the moment reflection example](https://linear.app/zgeoff/issue/GEO-1334)
 
 A task definition is a folder `tasks/<id>/` in the definitions repo. Its `task.yaml` holds the input
@@ -241,5 +245,6 @@ interface DefinitionVersion {
   any registered tool or `log: conversation`. Until then, the seed passes the starter and the bounds
   that the conversation's `task.start` passes, so a file definition holds only what a task the
   conversation starts can hold.
-- **Does the rule format rename `jobs` and `job`?** The owner settles it in the rule format names.
-  Until then, the rule format keeps its `jobs` field and its `job` context as built.
+- **Does the rule format rename `jobs` and `job`?** The owner settles it in
+  [the rule format names](https://linear.app/zgeoff/issue/GEO-2535). Until then, the rule format
+  keeps its `jobs` field and its `job` context as built.

@@ -1,8 +1,10 @@
 # Test seeders and the seed lint rules
 
 - **Status:** draft
-- **Work items:** the lint config bump, the actions seeder, every other seeder, the seed rules as
-  errors
+- **Work items:** [the lint config bump](https://linear.app/zgeoff/issue/GEO-2563),
+  [the actions seeder](https://linear.app/zgeoff/issue/GEO-2081),
+  [every other seeder](https://linear.app/zgeoff/issue/GEO-2565),
+  [the seed rules as errors](https://linear.app/zgeoff/issue/GEO-2573)
 
 A test outside a module gets stored state, such as a failed action or a paused task, from a test
 seed that the module publishes, and never writes the module's tables itself. A test then fails only

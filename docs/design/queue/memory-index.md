@@ -2,8 +2,8 @@
 
 - **Status:** draft
 - **Decision records:** [0052](../../decisions/0052-the-lean-memory-index.md)
-- **Work items:** the memory index block builds it, off by default. The index on by default turns it
-  on.
+- **Work items:** [the memory index block](https://linear.app/zgeoff/issue/GEO-2364) builds it, off
+  by default. [The index on by default](https://linear.app/zgeoff/issue/GEO-2544) turns it on.
 
 Each session opens with a `memory-index` block that lists every active item that is not pinned, one
 line each, by subject and then by topic. The agent sees what memory holds, and reads an item in full

@@ -1,7 +1,8 @@
 # The hop gate of a fetch
 
 - **Status:** draft
-- **Work items:** the hop gate, the secret refusal in the fetch tool
+- **Work items:** [the hop gate](https://linear.app/zgeoff/issue/GEO-2587),
+  [the secret refusal in the fetch tool](https://linear.app/zgeoff/issue/GEO-2246)
 
 The fetcher follows redirects inside the fetch sandbox, where nixie's secrets and secret rules never
 go, so a fetch can reach a URL that nixie never scanned. With the hop gate, the fetcher asks the
@@ -164,7 +165,8 @@ A gated fetch has 5 states on the server:
 - A page reader that runs a headless browser. Its guest and its sandbox starter can call
   `makeHopAsker` and `gatePageHops` with the same `scanHop`, and its design owns its navigation
   limit and a first request that differs from the sent URL.
-- A check of whether a hop's host is paused: the pause per host.
+- A check of whether a hop's host is paused:
+  [the pause per host](https://linear.app/zgeoff/issue/GEO-2244).
 
 ## Open questions
 

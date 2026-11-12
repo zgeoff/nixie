@@ -2,8 +2,10 @@
 
 - **Status:** draft
 - **Decision records:** [0013](../../decisions/0013-definition-versioning.md)
-- **Work items:** the task of a definition, the `trigger` block and the reminder, the trigger core,
-  the view procedures
+- **Work items:** [the task of a definition](https://linear.app/zgeoff/issue/GEO-2531),
+  [the `trigger` block and the reminder](https://linear.app/zgeoff/issue/GEO-2534),
+  [the trigger core](https://linear.app/zgeoff/issue/GEO-2542),
+  [the view procedures](https://linear.app/zgeoff/issue/GEO-2545)
 
 nixie binds one task to each definition with `target: task`, and every task run of the definition
 happens on that task, so a definition keeps one thread, one read cursor and one sleeping sandbox for
