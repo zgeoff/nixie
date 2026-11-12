@@ -217,8 +217,9 @@ When a claim finds no open task run on a definition's task, the first of these t
   with the cause `no_report` and opens the fire's task run in the same transaction.
 - Under `context: fresh`, each task run opens a model session of its own, except a carrying task
   run. Under `context: continuing`, each step resumes at `tasks.session_boundary`.
-- Every task run of a definition starts untrusted, so the decision point allows it only tools with
-  the effects `read`, `fetch` and `note`.
+- A task run of a definition may call every tool its definition lists, with no limit on effects,
+  until the approval rules exist. The owner chose this on 5 Nov and again on 13 Nov: a run with
+  nobody watching may send, write or spend.
 
 ### The fire answer
 
