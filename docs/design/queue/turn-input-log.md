@@ -326,8 +326,9 @@ count. A step's end can wait up to `close_wait` for the proxy's `.part` files.
   backed-up keys, a plaintext digest in the spool header), each is fixed above, and a re-check of
   the fixes found each closed.
 - **nixie keeps the bodies in a store of its own, outside the backup set, and never as record
-  attachments.** An agent's call on 13 Nov, open to the owner's veto: an attachment's ciphertext
-  rides in every backup until a forget, and this store keeps every body out of every backup.
+  attachments.** The owner approved this design on 12 Nov with this store in it: an attachment's
+  ciphertext rides in every backup until a forget, and this store keeps every body out of every
+  backup.
 - **The log starts on, with `default: always`.** An agent's call on 13 Nov, open to the owner's
   veto: the log exists to take apart a turn that went wrong, and a log that was off holds nothing
   then; retention, the seal and the forget rules bound what it keeps.
