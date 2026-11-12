@@ -333,6 +333,10 @@ interface DataRestore {
 
 ## Decisions
 
+- **One command fetches the pair.** The owner chose this on 13 Nov. Only a command that sees both
+  copies can refuse a data copy that holds records whose keys the key copy lacks, and the platform's
+  [backup and restore](../platform/deployment/backup-and-restore.md#restoring-on-a-new-host) now
+  names it.
 - **The backup job alone holds the repositories' credentials, and nixie alone opens a database.**
   [0013](../../decisions/0013-host-encrypted-backups.md)
 - **The fetch and the publish reach restic through one interface.** restic is the chosen tool, and
@@ -372,11 +376,4 @@ interface DataRestore {
 
 ## Open questions
 
-- **Does one command fetch the pair?** The owner settles it. For example, a publish lands between 2
-  separate fetches, so the key copy is one publish ahead of the data copy. The options: one
-  `nixie-backup fetch`, as written; or the platform design's `fetch data latest` and
-  `fetch keys latest`
-  ([backup and restore](../platform/deployment/backup-and-restore.md#restoring-on-a-new-host)).
-  Recommendation: one command, because only a command that sees both copies can refuse a data copy
-  that holds records whose keys the key copy lacks. Until then, one command, and the platform design
-  names it only once the owner agrees.
+None.
