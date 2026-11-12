@@ -1,8 +1,8 @@
 # The memory index at a session's opening
 
 - **Status:** draft
-- **Work items:** [the memory index block](https://linear.app/zgeoff/issue/GEO-2364) builds it, off
-  by default. [The index on by default](https://linear.app/zgeoff/issue/GEO-2544) turns it on.
+- **Work items:** [the memory index block](https://linear.app/zgeoff/issue/GEO-2364) builds it, on
+  by default, and sets the similarity push's limits to 0 by default.
 
 Each session opens with a `memory-index` block that shows every active item that is not pinned, by
 subject and then by topic: one row per topic, with its count and its items' gists. The agent sees
