@@ -137,6 +137,8 @@ type FetchReply =
   a 403.
 - The fetcher sets it from `x-ratelimit-reset`, a time in seconds since 1970, when
   `x-ratelimit-remaining` is `0`, on any status.
+- When a reply gives a wait from both headers, the fetcher sends the longer of the 2, so nixie never
+  sends a request inside either window.
 - For a date or a reset time, the fetcher subtracts its own clock and sends the difference, never
   less than 0.
 - A value that the fetcher cannot parse gives null, and so does a reply with neither header.
@@ -150,6 +152,10 @@ type FetchReply =
   pause, and the pause is set before the fallback decides.
 - **A rewrite never hides a page that exists.** A 404 or a spent rate limit on the rewritten URL
   falls back to the named URL, so a wrong guess costs one request.
+- **When both headers give a wait, `retryAfterMs` is the longer one.** An agent's call on 13 Nov,
+  open to the owner's veto: a wait too short spends the next request on a refusal, a wait too long
+  costs one later retry, and `pickOutcome` in the actions module likewise takes the longer of its
+  own delay and the `Retry-After` of a refusal.
 
 ## Builder decides
 
@@ -165,6 +171,4 @@ type FetchReply =
 
 ## Open questions
 
-- **Which header gives `retryAfterMs` when a reply holds both `Retry-After` and a spent
-  `x-ratelimit-reset`?** The owner settles it. Until then, the fetcher sends the longer of the 2
-  waits, so nixie never sends a request inside either window.
+None.

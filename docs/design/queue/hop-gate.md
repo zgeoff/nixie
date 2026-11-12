@@ -154,6 +154,11 @@ A gated fetch has 5 states on the server:
 
 - **A refused hop stops the fetcher; the wire holds no refusal frame.** A fetcher that a page took
   over could ignore a refusal frame, and it cannot ignore a stop.
+- **The server scans each hop on the open stream of the fetch.** An agent's call on 13 Nov, open to
+  the owner's veto: it is the only way to scan every hop against nixie's own secret values, which
+  the owner agreed to, while those values and the rules stay out of the sandbox that reads hostile
+  pages; a sandbox per hop would cost a sandbox start per redirect. The `scanHop` that the secret
+  refusal passes is the one place to change when the approval rules land.
 
 ## Builder decides
 
@@ -170,12 +175,9 @@ A gated fetch has 5 states on the server:
 
 ## Open questions
 
-- **Does nixie scan hops on the server?** The owner settles it, between (a) the server scans each
-  hop on the open stream, (b) the public rules run inside the fetcher and the own values are checked
-  on the sent URL only, and (c) a sandbox for each hop. Only (a) scans every hop against nixie's own
-  secret values and starts no extra sandbox. Until then, the design follows (a).
 - **Does a real sandbox carry several frames each way for the fetch image?** Only the stub sandbox
   and the conversation guest show it. The secret refusal item's 2 tests on a real sandbox settle it,
   and print the time from each `hop` frame to its `hop-pass`, which is what a redirect costs. Until
   then, the hop gate is built on the stub. When a real sandbox cannot carry the exchange, the work
-  stops and the first question returns to the owner.
+  stops, and the owner chooses between a sandbox per hop and another way to scan each hop on the
+  server.

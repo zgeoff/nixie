@@ -7,8 +7,7 @@
 nixie refuses a web fetch of a URL that holds an API key or a token, so a model that copies a token
 into a URL never sends it to a site. nixie scans the sent URL and every redirect hop against a
 pinned public rule set and against the exact values of its own secrets file. A URL that you typed
-yourself runs, unless it holds one of nixie's own values, and nixie never shows a prompt about a
-refusal.
+yourself runs, whatever it holds, and nixie never shows a prompt about a refusal.
 
 The scan runs at step 3 and inside step 6 of [the flow of a page fetch](page-fetch-flow.md), which
 defines the named URL, the sent URL, the hop and the 2 passes. [The hop gate](hop-gate.md) carries
@@ -59,12 +58,11 @@ export const ownValueRule = 'nixie-secret';
 ### The config keys
 
 ```ts
-// connectors module: 4 more keys of the web_fetch section, a strict object
+// connectors module: 3 more keys of the web_fetch section, a strict object
 interface WebFetchSecretKeys {
   secret_typed_url_covers: 'named_url' | 'redirects'; // default 'redirects'
   secret_own_values: readonly SecretsEntryName[]; // default: every name but 'settings'; [] matches the public rules alone
   secret_own_value_min_chars: number; // whole, 1 or more; default 8
-  secret_scan_skill_files: boolean; // default true
 }
 
 // The 6 entries of the secrets file, as built.
@@ -82,7 +80,7 @@ type SecretsEntryName =
 ```ts
 // apps/server, where tool-part-declarations calls startWebFetch
 startWebFetch({
-  // …existing options; config carries the 4 keys
+  // …existing options; config carries the 3 keys
   findSecret: makeSecretFinder(
     collectOwnValues(secrets, {
       entries: config.secretOwnValues,
@@ -114,9 +112,9 @@ type IsOwnerTyped = (run: ToolRun, url: string) => Promise<boolean>;
 ### The exemption and the refusal
 
 ```ts
-// connectors module. Asked only after a match, with the hop's number and the rule that matched.
-// true lets the URL through, and nixie logs nothing.
-type IsExempt = (hop: number, rule: string) => Promise<boolean>;
+// connectors module. Asked only after a match, with the hop's number. true lets the URL through,
+// and nixie logs nothing.
+type IsExempt = (hop: number) => Promise<boolean>;
 
 // The scan of a sent URL: the refusal sentence, or null when the URL holds no secret or is exempt.
 function refuseFetchURL(url: string, scan: SecretScan): Promise<string | null>;
@@ -128,7 +126,6 @@ interface SecretScan {
   findSecret: SecretFinder;
   isExempt: IsExempt;
   logger: Logger; // the server log, not the event log
-  event: 'web_fetch.secret_refused' | 'skill_fetch.secret_refused';
 }
 ```
 
@@ -171,11 +168,10 @@ logger('web_fetch.secret_refused', { rule: 'github-pat', hop: 1 });
 ### The exemption
 
 `runPageFetch` builds one exemption per call, and the scan of the sent URL and of each hop in both
-passes use it. The first line that fits decides:
+passes use it. The exemption gives the same answer for every rule, `nixie-secret` included:
 
-1. The rule is `nixie-secret`: false, at every hop. This line reads no message.
-2. Hop 0: whether `isOwnerTyped` holds for the named URL, the URL before any rewrite.
-3. A later hop: the same answer under `redirects`, and false under `named_url`.
+1. Hop 0: whether `isOwnerTyped` holds for the named URL, the URL before any rewrite.
+2. A later hop: the same answer under `redirects`, and false under `named_url`.
 
 - Typed text is the typed spans of the thread's newest readable messages, as in the memory
   [content gate](../../architecture/memory/writes.md#the-content-gate). A pasted span never counts,
@@ -193,14 +189,11 @@ passes use it. The first line that fits decides:
   itself, the sentence names no host.
 - The tool error and the log event never repeat the URL or the secret. The log event holds no host
   name, because a forget does not reach the server log.
-- The call record holds the refused URL as the model wrote it.
+- The call record holds the refused URL as the model wrote it, as every tool's call record holds its
+  input.
 - For the scan, nixie never sends a value of the secrets file or a rule to a sandbox, in any form, a
   hash included.
-- The skill file reader's `readPage` is wrapped in a function of the skills module's `ReadPage`
-  type. The wrapper runs `refuseFetchURL` and passes `makeHopScan` to its `readPage`, with an
-  exemption that is always false and the event `skill_fetch.secret_refused`. Under
-  `secret_scan_skill_files: false`, it runs neither.
-- A release before the 4 keys refuses a config that holds any of them, so a rollback takes them out
+- A release before the 3 keys refuses a config that holds any of them, so a rollback takes them out
   first. Each key has a default, so a config without them loads on every release.
 
 ## Decisions
@@ -208,8 +201,22 @@ passes use it. The first line that fits decides:
 - **No prompt about a refusal.** nixie's target is 0 approval prompts, so a public rule that matches
   an ordinary URL refuses that page on every call, and the log event is how you find such a rule.
   [Prompt causes](../platform/policy/decision-point.md#prompt-causes)
-- **The finder tries own values first.** The exemption decides by the rule's name, so a URL with an
-  own value must never report a public rule.
+- **The finder tries own values first.** The tool error and the log event then name `nixie-secret`
+  for a URL with an own value, so a reader of the log can tell a leak of nixie's own credential from
+  a public rule's match.
+- **A URL that you typed runs, whatever it holds, one of nixie's own values included.** The owner
+  chose this on 3 Nov.
+- **Under `redirects`, a typed URL's exemption covers every hop, whatever rule matches, an own value
+  included.** An agent's call on 13 Nov, open to the owner's veto: a site that redirects a typed URL
+  with its token to its `www` host would fail under `named_url`, and the exemption that
+  `runPageFetch` builds is the one place to change when the approval rules land.
+- **The call record holds a refused URL as the model wrote it.** An agent's call on 13 Nov, open to
+  the owner's veto: it is the built rule for every tool's input, the secret sits in the session the
+  model read it from, and a typed URL that runs puts the same value in the record anyway.
+- **nixie never scans the skill file reader's fetches.** An agent's call on 13 Nov, open to the
+  owner's veto: the reader builds each URL itself from a skill source's repository and its commit
+  and tree hashes, so the model never writes a URL into it, and adding a scan later is one wrapper
+  around the skills module's `ReadPage`.
 
 ## Builder decides
 
@@ -220,21 +227,11 @@ passes use it. The first line that fits decides:
 ## Out of scope
 
 - A scan of page content or tool results, and the outbound URL check of every tool.
+- A scan of the skill file reader's fetches.
 - A change to what a turn-input log stores of a refused URL.
 - The rules inside the fetcher, a sandbox per hop, and a hash or filter of the own values in a
   sandbox. Each sends a secret or a rule toward a sandbox.
 
 ## Open questions
 
-Each is the owner's to settle. Until then, the design follows the option it states.
-
-- **Does a typed URL's exemption cover its redirect hops?** (a) only the named URL; (b) every hop
-  that a public rule matches. Follows (b), as the default `redirects`: a site that redirects a typed
-  URL with its token to its `www` host fails under (a).
-- **Does a typed URL that holds an own value run?** (a) yes, with its hops under `redirects`; (b)
-  refused at the named URL and every hop; (c) refused at the named URL, with hops under `redirects`.
-  Follows (b), as line 1 of the exemption.
-- **Does the call record hold the refused URL?** (a) yes; (b) the tool's `recordInput` stores the
-  rule instead. Follows (a): the secret sits in the session that the model read it from.
-- **Does nixie scan the skill file reader's fetches?** (a) no; (b) yes. Follows (b), as the default
-  `true`.
+None.
