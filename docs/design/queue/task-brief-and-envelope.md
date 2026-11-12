@@ -115,7 +115,7 @@ interface TaskEnvelope {
   body: string | null; // null renders the built "[a message since forgotten]"
 }
 
-// sessions module. Plain constants until the owner settles the label question.
+// sessions module. Plain constants, as the owner chose.
 const envelopeLabels = {
   conversation: '{agent}, in the chat with {owner}',
   personaTask: '{agent} (task: {name})',
@@ -328,6 +328,10 @@ session. nixie takes the first line that applies:
   live turn and a rebuilt session.
 - **A rollback loses the briefs of the tasks this release started.** The release before reads a
   brief only from `task.created`, and a copy there would give a forget 2 places to reach.
+- **No limit bounds the depth of a chain of starts.** An agent's call on 13 Nov, open to the owner's
+  veto: each task's own limits, the rule that a start never widens its starter's tools, and the
+  deployment budget of the [counting proxy](../../architecture/policy/counting-proxy.md) bound a
+  chain's spend, as the owner chose to rely on spend limits for loops.
 
 ## Builder decides
 
@@ -346,9 +350,5 @@ session. nixie takes the first line that applies:
 
 ## Open questions
 
-- **What bounds the depth of a chain of starts?** Every brief has hop 0, so a started task that
-  holds `task.start` can start another, and the hop limit never stops the chain. The owner settles
-  it: a depth limit, or the gap accepted. Until then, only each task's own limits and the rule that
-  a start never widens its starter's tools bound a chain.
 - **What does `{{ task.reportTarget }}` say for a definition's task run and for the report mode
   `none`?** The owner settles it. Until then, the frame keeps its first 2 paragraphs.

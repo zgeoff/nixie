@@ -222,6 +222,13 @@ const callCapRefusal = 'This run has used its {n} calls to {tool}.';
 
 - **A report shape is a closed subset of JSON Schema, checked at the seed and the start, and pinned
   on the task run.**
+- **When a harness drops or changes an object argument, `fields` becomes a JSON string on every
+  harness.** An agent's call on 13 Nov, open to the owner's veto: `task.report` has one input schema
+  for every task, so one harness cannot take a different type.
+- **The task run records work lands before the definitions work.** An agent's call on 13 Nov, open
+  to the owner's veto: the definitions work fills the `frame` of the `task` prompt that the task run
+  records work builds, so the task run records work passes with started tasks only, and the
+  definitions work calls its exports.
 
 ## Builder decides
 
@@ -238,9 +245,6 @@ const callCapRefusal = 'This run has used its {n} calls to {tool}.';
 
 ## Open questions
 
-- **Does each model runtime pass a free-form object argument unchanged?** A measurement settles it:
-  one probe per harness. When a runtime drops `fields`, the owner chooses between `fields` as a JSON
-  string and no report shape on that harness. Until then, `fields` is an object.
-- **Which lands first: the checks the seed calls, or the definitions functions that the tasks work
-  calls?** The owner settles it. Until then, the task run records work passes with started tasks
-  only, and the definitions work calls its exports.
+- **Does each harness pass a free-form object argument unchanged?** A probe per harness settles it,
+  for `agent-sdk` and `codex`: a model call of `task.report` with an object `fields`, checked at the
+  tool. Until it runs, `fields` is an object.

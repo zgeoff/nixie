@@ -121,7 +121,8 @@ type CheckTaskStart = (
   starter: 'file' | 'conversation', // 'conversation' for a definition from chat
 ) => { status: 'planned' } | { status: 'refused'; reasons: string[] };
 // 'conversation': the starter and the TaskStartBounds that the conversation's task.start passes.
-// 'file': the same until the owner answers the open question on a file definition's starter.
+// 'file': the same TaskStartBounds, with a starter that holds every registered tool, so a file
+// definition may list any tool but those of TaskStartBounds.conversationTools.
 ```
 
 ### The hash, the version store and the snapshot
@@ -180,6 +181,8 @@ interface DefinitionVersion {
 - When a definition omits `model`, its task runs use the model profile of the model role `task`.
 - When a definition has `target: task` and no trigger, nixie loads it and binds its task, and never
   opens a task run from a trigger.
+- The seed refuses a `runner` key as `unknown_key`. Every definition runs on the nixie runner, and a
+  `step` key is always on that runner.
 
 ### The seed
 
@@ -217,6 +220,14 @@ interface DefinitionVersion {
 - **One fault refuses the whole seed.** A partial seed would put half an edit in force.
 - **`Trigger` lives in the contract lib.** The definitions module imports the triggers module, so
   the triggers module cannot import the type from it.
+- **A file definition may list any registered tool.** The owner chose this on 5 Nov and confirmed it
+  on 13 Nov. The owner accepts the risk of a task run that nobody watches, so that less code is cut.
+- **A file definition still cannot list a tool of `conversationTools`.** An agent's call on 13 Nov,
+  open to the owner's veto: the fixed rule that allows `task.define` and `task.undefine` allows them
+  by name and cannot tell who calls them, so a scheduled task run would change definitions.
+- **A definition holds no `runner` key.** An agent's call on 13 Nov, open to the owner's veto: only
+  the nixie runner can start a task, so the key would have one legal value; it arrives with the
+  second runner that can start one.
 
 ## Builder decides
 
@@ -236,15 +247,6 @@ interface DefinitionVersion {
 
 ## Open questions
 
-- **Does a definition hold a `runner` key?** The owner settles it: a `runner` key that
-  `readDefinitionVersion` returns, or the nixie runner for every definition. Until then, the seed
-  refuses `runner` as an unknown key, every definition runs on the nixie runner, and a `step` key is
-  always on that runner.
-- **Which starter and bounds does the seed pass to `planTaskStart` for a file definition?** The
-  owner settles it. A file definition may need a wider grant than the conversation holds, such as
-  any registered tool or `log: conversation`. Until then, the seed passes the starter and the bounds
-  that the conversation's `task.start` passes, so a file definition holds only what a task the
-  conversation starts can hold.
 - **Does the rule format rename `jobs` and `job`?** The owner settles it in
   [the rule format names](https://linear.app/zgeoff/issue/GEO-2535). Until then, the rule format
   keeps its `jobs` field and its `job` context as built.

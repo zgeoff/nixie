@@ -195,19 +195,20 @@ interface DefinitionRunPolicy {
 
 ### What opens a task run
 
-When a claim finds no open task run on a definition's task, the first of these that holds decides:
+When a claim finds no open task run on a definition's task and no limit hold, the first of these
+that holds decides:
 
 1. An unread `trigger.fired` whose dedupe key no task run of the task holds: a task run with
    `origin.kind` `trigger` that pins the fire's hash, with the fire's dedupe key as `triggerKey`. It
    ignores the hash in force, so a one-shot runs although its own fire puts it out of force. When 2
    such fires are unread, the newest opens the task run, and its first step marks both as read and
    renders only the newest.
-2. An unread waking message, and the hash in force is not null: a task run with `origin.kind`
-   `message` that pins the hash in force.
-3. The last task run ended with `limit`, `stopped` or `failed`, and you raised the limit or
+2. The last task run ended with `limit`, `stopped` or `failed`, and you raised the limit or
    restarted the task after that end: a carrying task run with `origin.kind` `raise` or `restart`.
    It pins the ended task run's hash, resumes its model session under `context: fresh` too, copies
-   its `triggerKey` and `briefID`, and names it in `carriesRunID`.
+   its `triggerKey` and `briefID`, and names it in `carriesRunID`. An unread message is read in it.
+3. An unread waking message, and the hash in force is not null: a task run with `origin.kind`
+   `message` that pins the hash in force.
 4. Anything else, such as a resume, a server start, a recovery, or a message while the hash in force
    is null: no task run. `runTaskStep` commits the step with `hold` and calls no runner, the task is
    `waiting`, and an unread message stays unread.
@@ -217,9 +218,10 @@ When a claim finds no open task run on a definition's task, the first of these t
   with the cause `no_report` and opens the fire's task run in the same transaction.
 - Under `context: fresh`, each task run opens a model session of its own, except a carrying task
   run. Under `context: continuing`, each step resumes at `tasks.session_boundary`.
-- A task run of a definition may call every tool its definition lists, with no limit on effects,
-  until the approval rules exist. The owner chose this on 5 Nov and again on 13 Nov: a run with
-  nobody watching may send, write or spend.
+- A task run of a definition gets no limit of its own on effects: the decision point treats its
+  calls as it treats the conversation's. The owner chose this on 5 Nov and again on 13 Nov. Today
+  the built rule `slice1.read-only` denies every call past `read`, `fetch` and `note` for every
+  caller, so a run sends, writes or spends once that rule goes, with no change here.
 
 ### The fire answer
 
@@ -242,6 +244,9 @@ writes the fire's record. The first answer that holds decides:
 - nixie skips a fire and never queues it: a queue would hide a task run that never ends. A fire
   written before a hold opens a task run after the hold ends, however old it is.
 - nixie writes no record for a fire of a disabled definition.
+- The fire answer never reads a recovery hold. A fire to a held task lands unread, as every inbox
+  record does under a hold, and opens its task run after the hold release. Each fire after it skips
+  with `still_running`.
 
 ### How the built task code handles a definition's task
 
@@ -279,6 +284,13 @@ writes the fire's record. The first answer that holds decides:
   run that never ends.
 - **The tasks module reads definitions only through 2 readers that the server app passes in.** The
   tasks module then imports neither the definitions module nor the triggers module.
+- **The fire answer has no answer of its own for a recovery hold.** An agent's call on 13 Nov, open
+  to the owner's veto: the hold keeps every step from running, so the fire waits with no new code,
+  as a fire written before any other hold does.
+- **An unread fire opens a task run before a raise or a restart, and a raise or a restart before an
+  unread message.** An agent's call on 13 Nov, open to the owner's veto: a fire can be unread at a
+  carry only after a stop of an idle task run, which has nothing to carry, while a message after a
+  `limit` end belongs to the unfinished work that the raise carries on.
 
 ## Builder decides
 
@@ -295,11 +307,4 @@ writes the fire's record. The first answer that holds decides:
 
 ## Open questions
 
-- **What does a fire get while its task is under a recovery hold?** The owner settles it with the
-  backup and recovery work: `held` with a skip and a fire at the first slot after the release, or no
-  answer of its own, so the first fire waits unread and each fire after it skips with
-  `still_running`. Until then, `readDefinitionTaskInTransaction` does not read the recovery hold.
-- **Does a raise or a restart open a task run before an unread fire does?** The owner settles it
-  with [the task run records](task-runs/records.md#open-questions). Until then, the 2 designs
-  disagree: the records' claim checks the raise or restart first, and the list under "What opens a
-  task run" puts it third.
+None.
