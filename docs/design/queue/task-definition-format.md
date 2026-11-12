@@ -223,9 +223,9 @@ interface DefinitionVersion {
 - **A file definition may list any registered tool.** The owner chose this on 5 Nov and confirmed it
   on 13 Nov. The owner accepts the risk of a task run that nobody watches, so that less code is cut.
 - **A file definition still cannot list a tool of `conversationTools`.** An agent's call on 13 Nov,
-  open to the owner's veto: the fixed rule that allows `task.define` and `task.undefine` allows them
+  which the owner accepted: the fixed rule that allows `task.define` and `task.undefine` allows them
   by name and cannot tell who calls them, so a scheduled task run would change definitions.
-- **A definition holds no `runner` key.** An agent's call on 13 Nov, open to the owner's veto: only
+- **A definition holds no `runner` key.** An agent's call on 13 Nov, which the owner accepted: only
   the nixie runner can start a task, so the key would have one legal value; it arrives with the
   second runner that can start one.
 

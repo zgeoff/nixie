@@ -153,7 +153,7 @@ type FetchReply =
 - **A rewrite never hides a page that exists.** A 404 or a spent rate limit on the rewritten URL
   falls back to the named URL, so a wrong guess costs one request.
 - **When both headers give a wait, `retryAfterMs` is the longer one.** An agent's call on 13 Nov,
-  open to the owner's veto: a wait too short spends the next request on a refusal, a wait too long
+  which the owner accepted: a wait too short spends the next request on a refusal, a wait too long
   costs one later retry, and `pickOutcome` in the actions module likewise takes the longer of its
   own delay and the `Retry-After` of a refusal.
 

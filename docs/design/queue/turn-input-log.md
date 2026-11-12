@@ -321,21 +321,21 @@ count. A step's end can wait up to `close_wait` for the proxy's `.part` files.
   the data directory or the spool.
 - **The event log holds 2 kinds.** The rest is debugging state in tables, so the last release meets
   only 2 unknown kinds.
-- **The shape stands on one independent security review.** An agent's call on 13 Nov, open to the
-  owner's veto: the review found 3 faults (forget modes that kept text, a false claim about
+- **The shape stands on one independent security review.** An agent's call on 13 Nov, which the
+  owner accepted: the review found 3 faults (forget modes that kept text, a false claim about
   backed-up keys, a plaintext digest in the spool header), each is fixed above, and a re-check of
   the fixes found each closed.
 - **nixie keeps the bodies in a store of its own, outside the backup set, and never as record
   attachments.** The owner approved this design on 12 Nov with this store in it: an attachment's
   ciphertext rides in every backup until a forget, and this store keeps every body out of every
   backup.
-- **The log starts on, with `default: always`.** An agent's call on 13 Nov, open to the owner's
-  veto: the log exists to take apart a turn that went wrong, and a log that was off holds nothing
-  then; retention, the seal and the forget rules bound what it keeps.
-- **The log covers `conversation` and `task` by default.** An agent's call on 13 Nov, open to the
-  owner's veto: those are the prompts that get tuned, and `roles` adds another role in one line.
+- **The log starts on, with `default: always`.** An agent's call on 13 Nov, which the owner
+  accepted: the log exists to take apart a turn that went wrong, and a log that was off holds
+  nothing then; retention, the seal and the forget rules bound what it keeps.
+- **The log covers `conversation` and `task` by default.** An agent's call on 13 Nov, which the
+  owner accepted: those are the prompts that get tuned, and `roles` adds another role in one line.
 - **The log seals a request that holds a secret as it seals every request, and stores no body for
-  one that holds an own secret value.** An agent's call on 13 Nov, open to the owner's veto: a mask
+  one that holds an own secret value.** An agent's call on 13 Nov, which the owner accepted: a mask
   or a dropped tool call would make the logged request differ from what the model received, and a
   forget destroys each body's own key.
 

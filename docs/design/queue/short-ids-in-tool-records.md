@@ -119,10 +119,10 @@ const swappedKeys = ['momentID', 'itemID', 'changeID'] as const;
 - **Each tool stores the short ID, and the UUID moves to `hidden`.** A rule in `log.read` alone
   would leave the UUID in the stored record that the next reader prints.
 - **`log.read` prints the short ID from the row for a UUID in a stored record, and leaves the key
-  out when the row gives none.** An agent's call on 13 Nov, open to the owner's veto: the model can
+  out when the row gives none.** An agent's call on 13 Nov, which the owner accepted: the model can
   then name the moment or item in a later call, and older entries keep the link newer entries have.
 - **A proposal's short ID is derived from its UUID on each read, with no column.** An agent's call
-  on 13 Nov, open to the owner's veto: the derivation gives the same value a column would hold, so a
+  on 13 Nov, which the owner accepted: the derivation gives the same value a column would hold, so a
   column adds a migration and a rollback check for nothing.
 
 ## Builder decides

@@ -328,8 +328,8 @@ session. nixie takes the first line that applies:
   live turn and a rebuilt session.
 - **A rollback loses the briefs of the tasks this release started.** The release before reads a
   brief only from `task.created`, and a copy there would give a forget 2 places to reach.
-- **No limit bounds the depth of a chain of starts.** An agent's call on 13 Nov, open to the owner's
-  veto: each task's own limits, the rule that a start never widens its starter's tools, and the
+- **No limit bounds the depth of a chain of starts.** An agent's call on 13 Nov, which the owner
+  accepted: each task's own limits, the rule that a start never widens its starter's tools, and the
   deployment budget of the [counting proxy](../../architecture/policy/counting-proxy.md) bound a
   chain's spend, as the owner chose to rely on spend limits for loops.
 

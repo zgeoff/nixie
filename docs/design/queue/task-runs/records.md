@@ -373,20 +373,20 @@ In the ending transaction, the end writer takes the first row that applies:
 - **The cap denial uses the outcome `denied`.** The outcomes are a closed list, and a release that
   lacks an outcome fails to decode the record.
 - **For a definition's task, an unread fire opens a task run before a raise or a restart, and a
-  raise or a restart before an unread message.** An agent's call on 13 Nov, open to the owner's
-  veto: a fire can be unread at a carry only after a stop of an idle task run, which has nothing to
-  carry, while a message after a `limit` end belongs to the work that the raise carries on.
+  raise or a restart before an unread message.** An agent's call on 13 Nov, which the owner
+  accepted: a fire can be unread at a carry only after a stop of an idle task run, which has nothing
+  to carry, while a message after a `limit` end belongs to the work that the raise carries on.
 - **A raise carries the piece of work's total less its use, and a restart carries the full totals.**
-  An agent's call on 13 Nov, open to the owner's veto: under one rule for both, a restart after a
+  An agent's call on 13 Nov, which the owner accepted: under one rule for both, a restart after a
   limit end would carry 0 turns and end before its first turn.
 - **A report to a target whose listed state is `finished` is delivered under its report mode.** An
-  agent's call on 13 Nov, open to the owner's veto: the starter asked for the result, a `finished`
+  agent's call on 13 Nov, which the owner accepted: the starter asked for the result, a `finished`
   task accepts messages, and the hop limit bounds the wake.
 - **The late-spend read counts only the open task run's records.** An agent's call on 13 Nov, open
   to the owner's veto: limits count per task run, so another task run's spend never shortens this
   one's turn.
 - **An end with no leased step takes the hop of the task's newest step.** An agent's call on 13 Nov,
-  open to the owner's veto: a stop then wakes the starter whenever the task run's own hop allows it,
+  which the owner accepted: a stop then wakes the starter whenever the task run's own hop allows it,
   and never resets a loop's hop count.
 
 ## Builder decides

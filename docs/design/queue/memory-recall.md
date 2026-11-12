@@ -207,7 +207,7 @@ interface RecallRequest {
   second record that takes items back.
 - **When the interrupted-turn reproducer shows items counted that the model never got, a recall
   counts as held only when its tool result comes before the boundary the interrupted turn commits.**
-  An agent's call on 13 Nov, open to the owner's veto: it keeps the items the model did read and
+  An agent's call on 13 Nov, which the owner accepted: it keeps the items the model did read and
   drops only the ones it missed.
 
 ## Builder decides

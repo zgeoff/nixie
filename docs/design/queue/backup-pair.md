@@ -339,15 +339,15 @@ interface DataRestore {
   the interface is where an alternative fits.
   [Backup and restore](../platform/deployment/backup-and-restore.md)
 - **Publish numbers, which the backup job counts in the repositories, identify a backup set.** An
-  agent's call on 13 Nov, open to the owner's veto: they live where the repositories' credentials
+  agent's call on 13 Nov, which the owner accepted: they live where the repositories' credentials
   live, and need no manifest field, migration or record kind.
 - **A stopped fetch leaves the unfinished-backup marker, which the built restore refuses.** An
-  agent's call on 13 Nov, open to the owner's veto: the restore needs no new code for it.
+  agent's call on 13 Nov, which the owner accepted: the restore needs no new code for it.
 - **The pick takes a named data snapshot under a key snapshot with no publish number, by the pick's
-  table.** An agent's call on 13 Nov, open to the owner's veto: until the first numbered publish, a
+  table.** An agent's call on 13 Nov, which the owner accepted: until the first numbered publish, a
   refusal would leave no older copy to restore, and the worst case is an item that stays unreadable.
 - **An item forgotten after the data snapshot of an `older-data` pair stays unreadable, and
-  `restoreDataBackup` takes no option for it.** An agent's call on 13 Nov, open to the owner's veto:
+  `restoreDataBackup` takes no option for it.** An agent's call on 13 Nov, which the owner accepted:
   the item is unreadable under every option, and a finish of forgets would have to guess, because
   other cleanups remove keys too.
 

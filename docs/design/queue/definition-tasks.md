@@ -288,7 +288,7 @@ writes the fire's record. The first answer that holds decides:
   to the owner's veto: the hold keeps every step from running, so the fire waits with no new code,
   as a fire written before any other hold does.
 - **An unread fire opens a task run before a raise or a restart, and a raise or a restart before an
-  unread message.** An agent's call on 13 Nov, open to the owner's veto: a fire can be unread at a
+  unread message.** An agent's call on 13 Nov, which the owner accepted: a fire can be unread at a
   carry only after a stop of an idle task run, which has nothing to carry, while a message after a
   `limit` end belongs to the unfinished work that the raise carries on.
 

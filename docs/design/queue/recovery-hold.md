@@ -398,22 +398,22 @@ To roll back after a restore:
   value would stop the release before from reading the database again, holds or none.
 - **A hold has no port.** SQLite is the one store, by the queue's port rules.
 - **A recovery hold is its own row in `recovery_holds`, and `claimLease` checks the hold subject
-  that each claim candidate names.** An agent's call on 13 Nov, open to the owner's veto: one check
+  that each claim candidate names.** An agent's call on 13 Nov, which the owner accepted: one check
   covers every runner and every action attempt, and the platform design keeps the hold apart from
   the lease and the task state.
 - **The restore writes `holding` last, after the move of both databases and the restore note.** An
-  agent's call on 13 Nov, open to the owner's veto: a kill before the move then leaves `replacing`,
+  agent's call on 13 Nov, which the owner accepted: a kill before the move then leaves `replacing`,
   so no start places holds on the database the restore meant to replace.
 - **Every restore places holds, and `nixie restore` has no flag that skips them.** An agent's call
-  on 13 Nov, open to the owner's veto: the platform's
+  on 13 Nov, which the owner accepted: the platform's
   [backup and restore](../platform/deployment/backup-and-restore.md#restoring-on-a-new-host) gives
   the restore no exception, and a hold release after the start covers a test host.
-- **A restore holds tasks, never a trigger source.** An agent's call on 13 Nov, open to the owner's
-  veto: each fire lands on a held task, so a gate on the source would add a second release path and
-  stop nothing more.
-- **The API and the commands release one task a call.** An agent's call on 13 Nov, open to the
-  owner's veto: each built task control acts on one task and returns its state, so a list there
-  needs a control of a new shape.
+- **A restore holds tasks, never a trigger source.** An agent's call on 13 Nov, which the owner
+  accepted: each fire lands on a held task, so a gate on the source would add a second release path
+  and stop nothing more.
+- **The API and the commands release one task a call.** An agent's call on 13 Nov, which the owner
+  accepted: each built task control acts on one task and returns its state, so a list there needs a
+  control of a new shape.
 
 ## Builder decides
 

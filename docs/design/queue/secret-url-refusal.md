@@ -207,15 +207,15 @@ passes use it. The exemption gives the same answer for every rule, `nixie-secret
 - **A URL that you typed runs, whatever it holds, one of nixie's own values included.** The owner
   chose this on 3 Nov.
 - **Under `redirects`, a typed URL's exemption covers every hop, whatever rule matches, an own value
-  included.** An agent's call on 13 Nov, open to the owner's veto: a site that redirects a typed URL
+  included.** An agent's call on 13 Nov, which the owner accepted: a site that redirects a typed URL
   with its token to its `www` host would fail under `named_url`, and the exemption that
   `runPageFetch` builds is the one place to change when the approval rules land.
 - **The call record holds a refused URL as the model wrote it.** An agent's call on 13 Nov, open to
   the owner's veto: it is the built rule for every tool's input, the secret sits in the session the
   model read it from, and a typed URL that runs puts the same value in the record anyway.
-- **nixie never scans the skill file reader's fetches.** An agent's call on 13 Nov, open to the
-  owner's veto: the reader builds each URL itself from a skill source's repository and its commit
-  and tree hashes, so the model never writes a URL into it, and adding a scan later is one wrapper
+- **nixie never scans the skill file reader's fetches.** An agent's call on 13 Nov, which the owner
+  accepted: the reader builds each URL itself from a skill source's repository and its commit and
+  tree hashes, so the model never writes a URL into it, and adding a scan later is one wrapper
   around the skills module's `ReadPage`.
 
 ## Builder decides

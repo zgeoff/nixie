@@ -363,13 +363,13 @@ harness that declares `summarize` and `context-window`.
   would carry a harness type parameter through the step code, which is the branching the boundary
   removes.
 - **A turn ends in one of 5 outcomes, and a refusal or an output cap is never `finished`.** An
-  agent's call on 13 Nov, open to the owner's veto: `hasFinishedTurn` reads
+  agent's call on 13 Nov, which the owner accepted: `hasFinishedTurn` reads
   `outcome === 'finished'`, so with 4 outcomes a refused or cut-off turn would count as finished.
 - **Each harness definition is one file in the models module.** An agent's call on 13 Nov, open to
   the owner's veto: a definition reaches nothing outside nixie from the server, which is the case
   where [the code layout](../../architecture/code-layout.md) keeps an implementation in its module.
 - **On a harness with no session, a turn that overflows fails its step, and the step's retries open
-  again from the log.** An agent's call on 13 Nov, open to the owner's veto: it adds no code path,
+  again from the log.** An agent's call on 13 Nov, which the owner accepted: it adds no code path,
   and a smaller-rebuild retry would have nothing to fire on while Codex reports an overflow as a
   plain failure.
 
