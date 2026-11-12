@@ -342,7 +342,11 @@ type RestorePauseFaultPoint =
   never hides a let-run task's work behind it. Under `NIXIE_TEST_BUILD`, `claimLease` throws when
   `readCandidate` returns paused work.
 - The action query's filter has no `attempt_count = 0` condition, so it covers an action with a
-  started attempt. The actions module needs nothing else from the pause.
+  started attempt.
+- The attempt start refuses an action whose task is paused, with `isTaskPaused` in the transaction
+  that writes the attempt record, as it refuses an action that a stop cancelled after its claim. A
+  pause between the claim and the attempt then starts no attempt. The refused action stays pending,
+  and its next claim after the resume, or after you let its task run, starts it.
 - The pause check sits before the write of `task.run_opened` that the task run records add to the
   claim's transaction.
 
