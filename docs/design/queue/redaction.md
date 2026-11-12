@@ -149,12 +149,14 @@ log.forget({ thread: 'conversation', record: '<the record as the session history
 ```ts
 // memory module: run inside the forget, once per item whose evidence quotes the record
 purgeItemEvidence({ itemID, sequence: 4190 });
-// 1. memory.evidence_purge_started { itemID, sequence }
-// 2. make a new key, and seal the item's current text, with no evidence quote, under it: one new
-//    version
-// 3. in one key-store write, replace the old key with the new one under the item's UUID, so every
-//    older version and its quote are gone
-// 4. memory.evidence_purged { itemID, sequence }
+// 1. memory.evidence_purge_started { itemID, sequence, sourceVersion, pendingKeyID }
+//    sourceVersion: the newest version readable under the old key; pendingKeyID: crypto.randomUUID()
+// 2. write a new key to the key store under pendingKeyID
+// 3. under the new key, seal sourceVersion's text with no evidence quote, as one new version, and
+//    reseal each pending proposal of the item; a proposal whose evidence is the record loses its quote
+// 4. in one key-store write, put the new key under the item's UUID and drop pendingKeyID, then
+//    checkpoint the key store, as removeRecordKey does, so the old key leaves the write-ahead log
+// 5. memory.evidence_purged { itemID, sequence }
 ```
 
 ## Constraints
@@ -254,9 +256,16 @@ purgeItemEvidence({ itemID, sequence: 4190 });
 - The new key stays under the item's UUID, the key ID it already has, so every reader finds it as it
   finds the old one.
 - Each step is safe to run twice. The server's start finishes a purge from
-  `memory.evidence_purge_started`. A crash before step 3 leaves the old key in place, and the
-  version sealed under a key that never landed reads as a gap. A crash never leaves an item with no
-  readable key.
+  `memory.evidence_purge_started`:
+  - When the key store lacks `pendingKeyID`, it starts again at step 2.
+  - Before step 4, the new key sits under `pendingKeyID`, so a version or a proposal sealed before
+    the crash stays readable, and the retry seals only what is missing.
+  - After step 4, only the checkpoint and step 5 remain.
+- A crash never leaves an item with no readable key, and never leaves its newest version unreadable.
+- `memory.evidence_purged` waits for the key-store checkpoint, so the old key is gone from the
+  write-ahead log before the purge counts as done.
+- A pending proposal of the item stays pending and readable after the purge, so the proposal list
+  never fails on it.
 - The forget's backup state covers each item's old key as well as the record's key.
 - The release before this part skips the 2 new record kinds, as it skips any kind it does not know.
   It reads the item through the key under its UUID, so it reads the new version and shows each older
