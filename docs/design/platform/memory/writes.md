@@ -19,8 +19,8 @@ on `memory.retire`, runs a read check, the quote check and the memory checker, a
 because a retirement adds no text. Your rules decide a memory write first, and the gate decides a
 write that no rule matches.
 
-`memory.remember`, `memory.edit` and `memory.retire` declare the `memory_write` effect, whoever
-calls them: the conversation, a task or the memory writer. Each call goes through the
+`memory.remember`, `memory.edit` and `memory.retire` declare the `note` effect, whoever calls them:
+the conversation, a task or the memory writer. Each call goes through the
 [decision point](../policy/decision-point.md) like any other tool call, and the rules that match it
 decide what happens:
 
@@ -39,12 +39,11 @@ because it has no token check. Every write that applies takes a notice with undo
 For a memory write, the gate takes the place of the decision point's consent stage and its "no rule
 matched" stage, as [the pipeline](../policy/decision-point.md#the-pipeline) sets.
 
-A rule on `memory_write` can match where the write's content came from, `owner`, `own_data`, `task`
-or `outside`, through the `sources` field of the [rule format](../policy/rules.md#the-rule-format).
-No starter rule matches `memory_write`, so every memory write runs the full gate until you write a
-rule for it. **Why:** the gate's checks let your own typed words apply at once, and a rule that
-allows `outside` lets a page that the conversation fetched write a memory that every later prompt
-reads.
+A rule on `note` can match where the write's content came from, `owner`, `own_data`, `task` or
+`outside`, through the `sources` field of the [rule format](../policy/rules.md#the-rule-format). No
+starter rule matches `note`, so every memory write runs the full gate until you write a rule for it.
+**Why:** the gate's checks let your own typed words apply at once, and a rule that allows `outside`
+lets a page that the conversation fetched write a memory that every later prompt reads.
 
 A pin, an unpin, a rating, a comment, a consolidator suggestion and a self-note declare `note`. Each
 one either changes nothing you rely on or produces a proposal, so the starter rule `allow-notes`

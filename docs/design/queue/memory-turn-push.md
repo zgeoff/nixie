@@ -63,7 +63,7 @@ interface TurnMemoryAsk {
 
 interface SessionHeld {
   readonly readVersions: () => Promise<readonly MemoryRef[]>; // lazy
-  readonly readMessages: () => Promise<readonly number[]>; // lazy; see Open questions
+  readonly readMessages: () => Promise<readonly number[]>; // lazy; the cleanup removes it
 }
 
 type TurnMemory =
@@ -207,13 +207,14 @@ memory:
 - No agent has `memory.rate`, the API has no rating-notes procedure, and the web client has no view
   of rating notes.
 - nixie starts on a log that holds `memory.rated` records, and skips them.
+- The port has no `held.readMessages` and no `messages` in `placed`: the cleanup removes both.
 
 ## Decisions
 
 - **One port method, and the memory module picks the pushes.** The sessions module holds no setting
   that tunes a push.
-- **The similarity push and `memory.rate` go directly after the index is on, in the same milestone,
-  with no measurement first.**
+- **The similarity push and `memory.rate` go once the owner signs off on a live check of the index,
+  in the same milestone, with no measurement first.**
 
 ## Builder decides
 
@@ -238,8 +239,3 @@ memory:
   push item. Until then, `trigger_min_score` floors the keyword score as the built `minScore` does,
   vector matches keep the built default similarity floor, and an item passes when either search
   returns it.
-
-- **Does the port keep `held.readMessages` and the `messages` of `placed` once the similarity push
-  is gone?** The owner settles it. Until then, both stay and `messages` is always empty, so the
-  cleanup changes no line in the code that asks for a turn's memory, renders the blocks or writes
-  the turn-ended record.

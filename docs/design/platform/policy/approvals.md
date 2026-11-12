@@ -39,8 +39,8 @@ changes it. Every kind shares the operation hash, the identity check, the lapse,
 deferral. An action goes to the [action queue](../core/actions.md), a memory write applies an item
 version under the [memory write contract](../memory/writes.md), and an internal change to policy, a
 mandate or a job runs its registered host mutation. A memory write reaches review through the same
-rules as an action: its tool declares `memory_write`, your rules decide first, and the memory gate
-decides a write that no rule matches, as the
+rules as an action: its tool declares `note`, your rules decide first, and the memory gate decides a
+write that no rule matches, as the
 [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers. A memory proposal
 carries its operation, remember or retire, its quote, and the exact item and version it targets. Its
 review reason is not one of the [prompt causes](decision-point.md#prompt-causes), so memory review
@@ -141,7 +141,7 @@ client cannot add one:
 - A prompt from your ask rule offers "change this rule" instead of "always allow".
 - A prompt from the always-ask set offers a lifting rule, for `spend` only, with caps you fill in.
 - A memory proposal offers no "always allow", because accepting a fact never creates a rule on
-  `memory_write` that loosens the write gate.
+  `note` that loosens the write gate.
 
 A direct request that your own message consents to runs with no proposal, through the consent check
 in the [decision point](decision-point.md#consent), and gets an ordinary decision record.

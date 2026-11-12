@@ -23,7 +23,7 @@ Every field except the ID and the outcome is optional, and a missing match field
 | `jobs`         | Job IDs, for a rule that applies to some jobs only              |
 | `checks`       | Argument checks, each an argument path, an operator and a value |
 | `destinations` | Patterns that the call's destinations must match                |
-| `sources`      | For `memory_write`: `owner`, `own_data`, `task` or `outside`    |
+| `sources`      | For `note`: `owner`, `own_data`, `task` or `outside`            |
 | `lift`         | For a lifting rule: a per-action cap and the budget it draws on |
 | `expires`      | When the rule stops matching, for a mandate                     |
 | `mandate`      | The mandate the rule belongs to                                 |
@@ -195,9 +195,9 @@ tier. It has 9 rules:
 
 The always-ask set and the destination limits hold whatever the starter rules say, so the set is
 permissive inside those bounds. An effect the set does not mention, such as `device`, falls to "no
-rule matched" until you add a rule. No starter rule matches `memory_write`, so every memory write
-runs the full memory gate, as the
-[memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers.
+rule matched" until you add a rule. No starter rule matches `note`, so every memory write runs the
+full memory gate, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)
+covers.
 
 ### Jobs
 
