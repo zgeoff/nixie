@@ -1,7 +1,6 @@
 # Redaction of one record of a moment's span
 
-- **Status:** draft. All 5 parts get built, and the [open questions](#open-questions) settle their
-  scope.
+- **Status:** draft. The owner chose every part and its scope.
 
 You remove one whole record of a span, such as a tool result that holds a pasted secret. nixie
 deletes the record's key, so its text is gone from the thread and from every moment that holds it.
@@ -86,7 +85,8 @@ moment.read({ momentID: 'm4k9', records: 'conversation' });
 
 ```ts
 // memory module: MomentSpanEntry. The API contract's span record (read by readMomentSpan)
-// and the memory export's spanRecordSchema carry the same 2 fields.
+// and the memory export's spanRecordSchema carry the same 2 fields. The record that
+// conversation.read and the live stream return carries isRemoved too, for the thread view.
 interface MomentSpanEntry {
   // …existing fields
   readonly isGap: boolean; // as built: erasable status is 'shredded' or 'unreadable'
@@ -183,8 +183,7 @@ purgeItemEvidence({ itemID, sequence: 4190 });
 - A tool record on a task's thread is in that task's session, so this part lands only after
   [the forget reaches a task's session](https://linear.app/zgeoff/issue/GEO-2527).
 - In the thread view, a removed tool record shows its tool name and outcome with no input or
-  content, as the built thread view shows any tool record whose key is gone. It carries no removal
-  mark.
+  content, as the built thread view shows any tool record whose key is gone.
 - `forgettableKinds` holds every record kind with an erasable field, except a kind that holds a
   moment's title, note or reflection and a memory item's own kinds. A test fails when a codec adds
   an erasable field to a kind that is in neither list.
@@ -199,6 +198,8 @@ purgeItemEvidence({ itemID, sequence: 4190 });
 
 ### Part 2
 
+- The thread view reads the same `isRemoved` and words a removed record with "removed", such as
+  "web_fetch — removed". A record whose key fails to decrypt keeps the built gap text.
 - `isGap` stays true for every gap, a removed record included, so a client built against the
   contract without `isRemoved` still shows a gap.
 - When a record's key fails to decrypt, `isGap` is true and `isRemoved` is false.
@@ -280,6 +281,8 @@ purgeItemEvidence({ itemID, sequence: 4190 });
   on 13 Nov. The item stays; the preview lists its text, so you can forget it apart.
 - **The names are `conversation.previewForget` and `log.forget`.** The owner chose them on 13 Nov.
   The preview follows the API's `memory.previewForget`, and the tool follows the model's `log.read`.
+- **The thread view marks a removed record too.** The owner chose this on 13 Nov, so the thread and
+  the moment say the same thing about one record.
 - **One list of removable kinds, in the API contract package.** The built code holds 5 separate kind
   sets, and copies drift.
 
@@ -299,5 +302,4 @@ purgeItemEvidence({ itemID, sequence: 4190 });
 
 ## Open questions
 
-- **Does the thread view also mark a removed record as removed?** The owner settles it. Until then,
-  the thread view shows a removed record as it shows any record whose key is gone.
+None.
