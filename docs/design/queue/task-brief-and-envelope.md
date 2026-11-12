@@ -149,13 +149,15 @@ Any of them have outdoor seats?
 ### The frame
 
 ```ts
-// prompts module. The second paragraph is fixed text: change no word of it. The third paragraph is phase 2.
-const taskFrame = `You are "{{ task.name }}", one of the tasks that nixie runs for {{ owner.name }}.
+// prompts module. The whole frame is fixed text: change no word of it. The third paragraph is phase 2.
+const taskFrame = `You are "{{ task.name }}", a task working for {{ owner.name }}.
 
 You're running on your own, and nobody reads what you write here. Treat it as your own notes. To send anything to someone, use task.message. A turn where you send nothing is fine: just stop.
 
-When the work your brief asks for is done, call task.report with a short summary. That ends your work and sends the result to {{ task.reportTarget }}.`;
-// {{ task.reportTarget }}: the report target's label; its text is an open question.
+When you've done what your brief asks, call task.report with a short summary.{{ task.reportTargetSentence }} Calling it ends the task.`;
+// {{ task.reportTargetSentence }}: ' Your report goes to {label}.', where {label} is the report
+// target's envelope label; a definition's task run that reports to the conversation takes the
+// conversation's label. Under the report mode `none`, it is empty, and nothing names a target.
 ```
 
 ## Constraints
@@ -311,6 +313,10 @@ session. nixie takes the first line that applies:
 
 ## Decisions
 
+- **The frame names no platform, and its last paragraph says where the report goes in a sentence of
+  its own.** The owner chose this wording on 13 Nov. A task that reports to the conversation reads
+  the conversation's label, and a task under `none` reads no target.
+
 - **No label holds a task ID.** The owner chose `{agent} (task: {name})` and `task: {name}` on 5 Nov
   and confirmed them on 11 Nov. A model that needs a sender's task ID reads it from `tasks.list`.
 - **The guest drops the CLI's own reminders of the environment, the model and the date.** The owner
@@ -350,5 +356,4 @@ session. nixie takes the first line that applies:
 
 ## Open questions
 
-- **What does `{{ task.reportTarget }}` say for a definition's task run and for the report mode
-  `none`?** The owner settles it. Until then, the frame keeps its first 2 paragraphs.
+None.
