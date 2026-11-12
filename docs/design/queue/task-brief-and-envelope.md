@@ -162,6 +162,9 @@ When you've done what your brief asks, call task.report with a short summary.{{ 
 
 ## Constraints
 
+- The built first line of the task prompt, in `modules/prompts/src/task-prompt.ts`, changes to the
+  frame's first line, and its tests change with it.
+
 ### The brief record
 
 - A start writes `task.created` and then the brief record in one write transaction. A throw while
