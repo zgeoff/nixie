@@ -76,6 +76,11 @@ below, and planned work lives in Linear.
 - [The Agent SDK contract suite](architecture/core/sdk-contract-suite.md) — the SDK behaviours nixie
   relies on, checked against a stub model on every pull request and against the model on every SDK
   bump
+- [0053: Workers](decisions/0053-workers.md) — a worker is a function behind one tool, with the
+  tools its caller passes, 4 limits, and dollars that count toward the calling task's limit
+- [0055: The report shape of a task](decisions/0055-the-report-shape-of-a-task.md) — a task may
+  declare the fields of its report in a small subset of JSON Schema, which the model fills and nixie
+  checks
 
 ### Policy
 
@@ -341,6 +346,15 @@ The memory store, its writes, how it reaches the model, and definition versionin
   model's reflections, reached by tool call and by links from memory items
 - [0039: The local encoder](decisions/0039-local-encoder.md) — `mdbr-leaf-ir` int8 on ONNX Runtime,
   with 256-number int8 vectors and weights pinned by checksum
+- [0050: No built-in memory tasks](decisions/0050-no-built-in-memory-tasks.md) — the built-in
+  note-taker and consolidator are deleted in one deploy, and example task definitions on a schedule
+  take their place
+- [0051: Memory tools on tasks](decisions/0051-memory-tools-on-tasks.md) — a task start accepts
+  every memory write tool with `memory: read`, a worker holds none, and a task reads the
+  conversation's log only by a grant
+- [0052: The memory index, in its lean form](decisions/0052-the-lean-memory-index.md) — a label edit
+  keeps the approval flow and makes no item version, no record of what the index showed, no
+  measurement before the old push is deleted, and the sensitive flag removed first
 
 ### Skills
 
@@ -384,6 +398,10 @@ nixie's interfaces, external MCP servers, credentials, search and code.
 - [0047: What the model learns about a connection that stops working](decisions/0047-connections-that-stop-working.md)
   — a line in the model's context for each connection that is not healthy, and the
   `connection_unavailable` error on a call
+- [0054: The sandbox sizes ship first](decisions/0054-the-sandbox-sizes-ship-first.md) — the smaller
+  sizes ship without waiting for the runtime's reserved-memory work
+- [0056: A wrapper logs each memory kill](decisions/0056-a-wrapper-logs-each-memory-kill.md) — one
+  read on the sandbox port and a log line for each memory kill
 
 ### Deployment
 
@@ -399,6 +417,9 @@ Definitions and deployment models.
 - [0036: Deployment configuration and reference manifests](decisions/0036-deployment-configuration-and-reference-manifests.md)
   — one YAML file validated by a zod schema, and generic Kubernetes manifests shipped beside the
   Compose recipe
+- [0049: Milestone deploys and the rollback target](decisions/0049-milestone-deploys-and-the-rollback-target.md)
+  — a deployment takes releases in milestones, and a rollback goes back to the last release it ran,
+  proved by a check before each deploy
 
 ## Archive
 

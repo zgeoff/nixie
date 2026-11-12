@@ -1,6 +1,7 @@
 # 0045: Session opening and compaction
 
 - Date: 2026-10-14
+- Updated: 2026-11-11
 - Status: decided
 - Architecture: [session opening](../architecture/core/session-opening.md),
   [compaction](../architecture/core/compaction.md)
@@ -16,9 +17,9 @@ everything a new session opens with, and a forget can erase all of it.
 A new session opens with these slots, in this order, from what defines the model to the current
 turn:
 
-1. **Persona.** The system prompt holds the persona, the line that says who the note-taker is, the
-   rule for pasted and dropped text, the rule for system messages, and any other part that only
-   nixie's definitions set. It holds nothing about memory.
+1. **Persona.** The system prompt holds the persona, the rule for pasted and dropped text, the rule
+   for system messages, and any other part that only nixie's definitions set. It holds nothing about
+   memory.
 2. **Pinned memory.** The pinned core as it stands when the session opens.
 3. **Status.** A readout taken when the session opens: the kind of start and its reason, the time
    the session started, the nixie version, the model, and the moments kept in the last 7 days.
@@ -88,9 +89,10 @@ size recorded.
 
 ## The summary and forgetting
 
-A summary reaches the next session's opening and the live view only. It never becomes memory, and
-per-turn retrieval, the recall tool and the log-read tool never return it. A new summary leaves the
-older ones in place.
+A summary reaches the next session's opening and the live view only. It never becomes memory, so the
+memory that nixie brings to a session or a turn under [0052](0052-the-lean-memory-index.md) never
+holds it, and the recall tool and the log-read tool never return it. A new summary leaves the older
+ones in place.
 
 Every forget runs the session cleanup, and the cleanup deletes the key of every summary on the
 conversation's thread before it purges the guest's transcripts. A memory forget, a record forget and
@@ -136,13 +138,13 @@ a moment destroy all run the cleanup, so each one erases every summary.
 - **Recent turns after a compaction.** They keep the last exchange word for word, and give the model
   two copies of the same turns.
 - **A compaction call with the memory tools.** The model could save facts before the session closes,
-  and the background writer already captures facts from every committed turn.
+  and a compaction call that holds tools can act, which the call with no tools cannot.
 - **Erasing only the summaries that hold the forgotten text.** It keeps more continuity, and needs a
   record of which items each summary read.
 - **Plain tags per block, such as `<events>`.** They need no new element, and give the model a
   different shape for each kind of message from nixie.
-- **A "worth saving" list in the summary.** It flags facts for the next session to save, and repeats
-  what the background writer captures from the same log.
+- **A "worth saving" list in the summary.** It flags facts for the next session to save, and gives
+  the summary a path into memory, which this record closes.
 - **Event IDs only from a log read.** They keep stamps shorter, and leave the model unable to cite a
   message it sees, during a compaction call with no tools above all.
 
@@ -157,3 +159,9 @@ a moment destroy all run the cleanup, so each one erases every summary.
 - A moment that you keep from the client reaches a running session through the events block.
 - A summary's event IDs resolve for as long as the log keeps sequences stable, which
   [0037](0037-moments.md) already requires.
+
+## Changes
+
+- 2026-11-11: the system prompt holds no line about a note-taker, and no background writer captures
+  facts, under [0050](0050-no-built-in-memory-tasks.md); a summary stays out of the memory that
+  nixie brings to a session or a turn under [0052](0052-the-lean-memory-index.md).
