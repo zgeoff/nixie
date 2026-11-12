@@ -75,7 +75,7 @@ Firefox delivers Playwright's `insertText` as `insertCompositionText`, which the
   autocorrect. Undo and redo arrive as `historyUndo` and `historyRedo`, which say nothing about
   where the restored text came from, so the mapping labels them `unknown`.
 - **Failing closed:** every input type outside the typed list becomes `unknown`, so evidence under
-  0011 needs an affirmative `typed`.
+  0008 needs an affirmative `typed`.
 - **Selection:** it pins each edit. Comparing the 2 strings alone is ambiguous next to repeated
   text, and each ambiguity can leave a pasted character labelled typed. Reading the selection and
   the direction of a delete on `beforeinput` resolves each one, and the contract package's unit

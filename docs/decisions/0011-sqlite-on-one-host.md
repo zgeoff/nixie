@@ -1,4 +1,4 @@
-# 0025: One SQLite database on one host
+# 0011: One SQLite database on one host
 
 - Date: 2026-10-09
 - Status: decided

@@ -44,8 +44,8 @@ nixie ships no jobs. It runs these kinds of job, each one defined in your defini
 ## Core
 
 nixie keeps its own event log in one SQLite database, and each long task is a state machine over it
-([0001](decisions/0001-durable-layer.md), [0025](decisions/0025-database-and-topology.md)). nixie is
-a modular monolith of workspace packages.
+([0001](decisions/0001-durable-layer.md), [0011](decisions/0011-sqlite-on-one-host.md)). nixie is a
+modular monolith of workspace packages.
 
 The model runs one turn at a time through the Agent SDK, and nixie owns the loop around it. Every
 model loop runs in an imp: each worker in its own imp, and the conversation in a long-lived imp that
@@ -82,14 +82,14 @@ and every prompt records its cause.
 
 The conversation counts as untrusted, because it reads outside content within minutes. A send to a
 destination that neither you nor a rule named asks first. Taint applies to jobs and workers in
-stages ([0005](decisions/0005-effects-and-taint.md)).
+stages ([0005](decisions/0005-untrusted-conversation.md)).
 
 An approval binds to one exact action and is used once. "Always allow" is one tap that also creates
 the rule shown on the card ([proposals and approvals](design/platform/policy/approvals.md)). A
 consent checker confirms that your own message asked for an action, so a direct request that no rule
 covers runs without a prompt. Consent never overrides a deny rule, an ask rule or the always-ask
 set. A counting proxy on the host enforces a hard spending stop
-([0028](decisions/0028-policy-design.md)), and rules are YAML in your definitions
+([0012](decisions/0012-spending-stop.md)), and rules are YAML in your definitions
 ([rules](architecture/policy/rules.md)). auto-mode decides only what the deterministic layers leave
 open, and nixie runs fully without it
 ([the policy decision point](design/platform/policy/decision-point.md)). Approvals for the
@@ -101,17 +101,18 @@ always-ask set gain a passkey check after the first build
 Memory is rows in nixie's database, each item with its own key, a history and provenance the model
 cannot write. You manage it in the client and export it whole, and forgetting destroys the item's
 key ([the memory store](architecture/memory/store.md),
-[memory export](architecture/memory/export.md), [0010](decisions/0010-memory-store.md)).
+[memory export](architecture/memory/export.md), [0007](decisions/0007-crypto-shredding.md)).
 
 A memory applies at once, with a notice and undo, only when a quote you typed backs it and a checker
-confirms you asserted it. Every other write is a proposal ([0011](decisions/0011-memory-writes.md)).
-The conversation writes memory during chat, and a background writer captures passing facts in
-batches. "Forget that" in chat retires an item with undo, and only a checked action in the client
-destroys one ([the memory store](architecture/memory/store.md)).
+confirms you asserted it. Every other write is a proposal
+([0008](decisions/0008-memory-write-review.md)). The conversation writes memory during chat, and a
+background writer captures passing facts in batches. "Forget that" in chat retires an item with
+undo, and only a checked action in the client destroys one
+([the memory store](architecture/memory/store.md)).
 
 The conversation runs on the SDK's session, and nixie compacts it itself
-([0045](decisions/0045-session-opening-and-compaction.md)). Retrieval uses local embeddings and
-keyword search over memory and past messages, and a compaction summary never becomes memory
+([0015](decisions/0015-own-compaction.md)). Retrieval uses local embeddings and keyword search over
+memory and past messages, and a compaction summary never becomes memory
 ([the memory store](architecture/memory/store.md), [compaction](architecture/core/compaction.md)).
 Every record carries a hash of the definitions in force
 ([the definitions](architecture/core/definitions.md)).
@@ -122,7 +123,7 @@ nixie's own client holds the conversation and the approvals: a web client on Tan
 runs as its own server and forwards your device session to nixie's API, and an Android app built
 with Expo. The web client and the API share one host name, and a reverse proxy splits them by path.
 Both share one oRPC contract served through Elysia, with a live stream over server-sent events. Chat
-apps such as Telegram carry only a content-free push ([0009](decisions/0009-first-channel.md),
+apps such as Telegram carry only a content-free push ([0006](decisions/0006-own-client.md),
 [the client](architecture/channels/client.md), [the API](architecture/channels/api.md)).
 
 A proposal shows as a card in its thread and in the approval digest, with Approve, Always allow,
@@ -141,14 +142,14 @@ the first connector, the first build implements the imp sandbox only, and the co
 offers Node.js, Python and the common Linux tools
 ([sandboxes](architecture/connectors/sandboxes.md),
 [the connector design](design/platform/connectors/connector.md)). You register your own OAuth
-clients ([0019](decisions/0019-connector-authorization.md)), and search runs on Kagi
+clients ([0010](decisions/0010-oauth-clients.md)), and search runs on Kagi
 ([search](architecture/connectors/search.md)).
 
 nixie is not a coding agent. It runs code for general work in a disposable imp with no grants, and
 it steers coding agents through a coding adapter, atc first
 ([the coding adapter design](design/platform/connectors/coding.md)). Every external MCP server
 reaches the model only through a proxy that pins each tool by hash
-([0017](decisions/0017-mcp-proxy.md), [MCP proxy](design/platform/connectors/mcp-proxy.md)). atc
+([0009](decisions/0009-mcp-proxy.md), [MCP proxy](design/platform/connectors/mcp-proxy.md)). atc
 connects as an external server over HTTP, configured by the deployment
 ([MCP proxy](design/platform/connectors/mcp-proxy.md)).
 

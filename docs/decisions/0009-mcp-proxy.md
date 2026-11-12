@@ -1,4 +1,4 @@
-# 0017: External MCP servers reach the model only through nixie's proxy
+# 0009: External MCP servers reach the model only through nixie's proxy
 
 - Date: 2026-10-08
 - Status: decided

@@ -1,4 +1,4 @@
-# 0009: nixie's own client holds the conversation, and chat apps carry only pushes
+# 0006: nixie's own client holds the conversation, and chat apps carry only pushes
 
 - Date: 2026-10-08
 - Status: decided

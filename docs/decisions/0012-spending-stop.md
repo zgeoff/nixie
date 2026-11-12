@@ -1,4 +1,4 @@
-# 0028: A counting proxy on the host is the hard spending stop
+# 0012: A counting proxy on the host is the hard spending stop
 
 - Date: 2026-10-09
 - Status: decided

@@ -1,4 +1,4 @@
-# 0032: Backups leave the host only as host-encrypted ciphertext, shipped by a separate job
+# 0013: Backups leave the host only as host-encrypted ciphertext, shipped by a separate job
 
 - Date: 2026-10-10
 - Status: decided

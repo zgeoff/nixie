@@ -1,7 +1,7 @@
 # Moments
 
-- Decisions: [0011](../../../decisions/0011-memory-writes.md),
-  [0005](../../../decisions/0005-effects-and-taint.md)
+- Decisions: [0008](../../../decisions/0008-memory-write-review.md),
+  [0005](../../../decisions/0005-untrusted-conversation.md)
 
 A moment is a range of records in one thread that nixie keeps whole, with a title, your note and the
 model's reflections beside it. The moment refers to its records by sequence and never copies them,
@@ -44,9 +44,9 @@ approvals and the records of the workers the thread started. A span holds what t
 so the model's reasoning is in a span only when the log records it.
 
 A note comes from the client, or from chat when its text appears word for word in a message you
-typed. The quote check from [0011](../../../decisions/0011-memory-writes.md) decides the chat case.
-A model never writes or suggests a note. **Why:** the note records why the moment mattered to you at
-the time, and a model-written note would be a reconstruction.
+typed. The quote check from [0008](../../../decisions/0008-memory-write-review.md) decides the chat
+case. A model never writes or suggests a note. **Why:** the note records why the moment mattered to
+you at the time, and a model-written note would be a reconstruction.
 
 A moment can hold several reflections. A model edits only a reflection whose label carries its own
 model ID, and a different model adds a reflection of its own. You remove a reflection in the client,
@@ -138,7 +138,7 @@ another task or you keep during a session reaches that session through the event
 
 `moment.read` returns each record with its source of content. A span that holds outside content
 stays untrusted when it is read, so the task that reads it is tainted under
-[0005](../../../decisions/0005-effects-and-taint.md), as it would be by reading that content
+[0005](../../../decisions/0005-untrusted-conversation.md), as it would be by reading that content
 first-hand.
 
 The client shows moments on a timeline in time order, with keyword search, and retired moments

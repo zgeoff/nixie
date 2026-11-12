@@ -1,6 +1,6 @@
 # The MCP proxy
 
-- Decisions: [0017](../../../decisions/0017-mcp-proxy.md)
+- Decisions: [0009](../../../decisions/0009-mcp-proxy.md)
 
 Every external server, your own included, reaches the model only through nixie's proxy. nixie is the
 MCP client, and each of the server's tools becomes one of nixie's tools, with a pinned hash, an

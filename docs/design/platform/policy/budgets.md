@@ -1,7 +1,7 @@
 # Budgets
 
 - Decisions: [0003](../../../decisions/0003-sdk-placement.md),
-  [0028](../../../decisions/0028-policy-design.md)
+  [0012](../../../decisions/0012-spending-stop.md)
 
 nixie spends money in 3 ways and keeps them apart. Spending in the world, such as a purchase, is a
 tool call with the `spend` effect, which always asks unless a lifting rule covers it. A paid tool,

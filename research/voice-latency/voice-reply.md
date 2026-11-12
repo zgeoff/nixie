@@ -11,7 +11,7 @@ to 3.8 s on 8 of the 9 requests it handed to Claude, so it fails the silence gat
 A listening pass ruled Piper's voice out, so the pipeline results measure Claude behind a voice
 nixie will not ship. The same pass heard Grok Voice and GPT-Live as equal. From these results the
 user chose GPT-Live, with Claude writing the answer to each request, under
-[0040](../../docs/decisions/0040-voice-pipeline.md).
+[0014](../../docs/decisions/0014-voice-pipeline.md).
 
 ## Question
 

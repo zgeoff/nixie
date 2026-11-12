@@ -1,8 +1,8 @@
 # Memory writes
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
-  [0011](../../../decisions/0011-memory-writes.md),
-  [0005](../../../decisions/0005-effects-and-taint.md)
+  [0008](../../../decisions/0008-memory-write-review.md),
+  [0005](../../../decisions/0005-untrusted-conversation.md)
 
 The [memory writes](../../../architecture/memory/writes.md) architecture doc covers the content
 gate, the retirement intent gate, provenance, memory proposals and notices as built. This design

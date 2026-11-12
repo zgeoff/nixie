@@ -5,9 +5,8 @@ forget. A separate container, the backup job, ships each set to 2 restic reposit
 receipt into the set, and nixie records the receipt on its next pass. nixie holds no backup
 credential, and the job holds no deployment key, so neither container can both reach the backups and
 read them. The [backup and restore design](../../design/platform/deployment/backup-and-restore.md)
-gives the reasons for the 2 repositories, and
-[0032](../../decisions/0032-offsite-backups-and-replication.md) records the split between the
-containers.
+gives the reasons for the 2 repositories, and [0013](../../decisions/0013-host-encrypted-backups.md)
+records the split between the containers.
 
 ```mermaid
 stateDiagram-v2

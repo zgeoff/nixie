@@ -1,7 +1,7 @@
 # The memory store
 
-- Decisions: [0010](../../../decisions/0010-memory-store.md),
-  [0011](../../../decisions/0011-memory-writes.md)
+- Decisions: [0007](../../../decisions/0007-crypto-shredding.md),
+  [0008](../../../decisions/0008-memory-write-review.md)
 
 The [memory store](../../../architecture/memory/store.md) architecture doc covers what is built:
 items and versions, a key per item, the operations on one item, recall with its index and delivery

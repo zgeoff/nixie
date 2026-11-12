@@ -2,8 +2,8 @@
 
 This spike records, in a text box, which spans of a message you typed and which arrived by paste,
 drop or another route, and keeps those spans correct through later edits. The memory write rules of
-[0011](../../docs/decisions/0011-memory-writes.md) need the record, because a quote from a pasted
-span never counts as your evidence. The page runs the span logic that the web client ships.
+[0008](../../docs/decisions/0008-memory-write-review.md) need the record, because a quote from a
+pasted span never counts as your evidence. The page runs the span logic that the web client ships.
 
 ## Question
 

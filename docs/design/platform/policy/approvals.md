@@ -1,7 +1,7 @@
 # Proposals and approvals
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
-  [0011](../../../decisions/0011-memory-writes.md)
+  [0008](../../../decisions/0008-memory-write-review.md)
 
 nixie has one approval system for every kind of proposal: one record, one answer path, and one place
 for rules. When the [decision point](decision-point.md) asks, or the memory gate sends a write to

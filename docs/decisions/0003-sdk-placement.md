@@ -22,8 +22,8 @@ sees only a placeholder.
   the model finished a multi-step task with 3 nixie tools, and used `run_code` when asked for
   built-in tools.
 - Anything that runs a model loop over untrusted content gets a sandbox. Workers read outside
-  content, and the conversation is always untrusted under [0005](0005-effects-and-taint.md), so both
-  run in an imp, behind a microVM boundary as well as behind nixie's policy.
+  content, and the conversation is always untrusted under [0005](0005-untrusted-conversation.md), so
+  both run in an imp, behind a microVM boundary as well as behind nixie's policy.
 - A warm imp costs nothing a person notices. In a spike, a turn in a warm imp reached its first text
   in about 0.8 s, as fast as the same turn on the host.
 - A new worker is affordable: in the [imp worker spike](../../research/imp-worker-start/), creating

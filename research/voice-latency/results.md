@@ -2,7 +2,7 @@
 
 This spike times nixie's voice pipeline from the end of the caller's speech to the first audio of
 the reply and to the full answer. The pipeline is the one from
-[0040](../../docs/decisions/0040-voice-pipeline.md): voice activity detection, speech-to-text on the
+[0014](../../docs/decisions/0014-voice-pipeline.md): voice activity detection, speech-to-text on the
 host, Haiku 5.5 on one live `stream` process, and text-to-speech on the host, one sentence at a
 time. With the best pair of speech models, the first audio came 1.88 s after the end of speech at
 the median, and the full answer's audio was ready at 2.86 s. The pipeline meets the 2.5 s median to
@@ -20,7 +20,7 @@ real speech.
 ## Question
 
 How long does a spoken turn take from the end of the caller's speech to the first audio and to the
-full answer, against the 2.5 s median gate in 0040? How long do the speech-to-text and
+full answer, against the 2.5 s median gate in 0014? How long do the speech-to-text and
 text-to-speech stages take on their own, so a miss points at the stage to change? Does barge-in with
 voice activity detection cut a reply off fast enough? The first-token spike timed only the turn, and
 assumed 1.3 to 1.5 s for the speech stages.
@@ -213,7 +213,7 @@ that runs 12 to 21 s, and the session still holds the whole reply as said.
   text, at 2.20 s. The full audio met the gate in one part of the run and missed it in the other
   two, so the verdict rests on the model's share at the time of the run.
 - The speech stages take 0.56 s before the turn and 0.09 s before the first audio, against the 1.3
-  to 1.5 s that 0040 assumed. The model's time to its first event, at 1.11 s on this host, is the
+  to 1.5 s that 0014 assumed. The model's time to its first event, at 1.11 s on this host, is the
   largest step.
 - `zipformer` is the fastest recognizer by 206 ms over `moonshine`, at a higher word error rate.
   `whisper` made no word errors and is the slowest.
@@ -233,7 +233,7 @@ swap to speech-to-speech from that host's numbers. 2 changes cut the pipeline's 
 
 - Synthesizing the next sentence while one plays, or speaking at each clause, shortens the 0.60 s
   tail after the full text. This spike did not build either.
-- A small acknowledgement model, the fallback in 0040, makes the first audio independent of the
+- A small acknowledgement model, the fallback in 0014, makes the first audio independent of the
   model's first token. The first audio meets the gate here, so the spike did not build it.
 
 ## Untested
@@ -243,4 +243,4 @@ swap to speech-to-speech from that host's numbers. 2 changes cut the pipeline's 
 - The audio path to and from a device. The times here end when the audio is ready on the host.
 - A reply that calls a tool, which adds model rounds before the answer.
 - How each voice sounds.
-- Hosted speech services. The host candidates kept the speech on the host, as 0040 wants.
+- Hosted speech services. The host candidates kept the speech on the host, as 0014 wants.

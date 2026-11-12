@@ -2,8 +2,8 @@
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
   [0004](../../../decisions/0004-rule-engine.md),
-  [0005](../../../decisions/0005-effects-and-taint.md),
-  [0028](../../../decisions/0028-policy-design.md)
+  [0005](../../../decisions/0005-untrusted-conversation.md),
+  [0012](../../../decisions/0012-spending-stop.md)
 
 The decision point is the one function every nixie tool calls before it acts. It takes a tool call
 with its context and returns allow, ask or deny, with the stage and rule that decided and, for an

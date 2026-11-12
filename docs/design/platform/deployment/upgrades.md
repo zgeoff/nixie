@@ -1,6 +1,6 @@
 # Upgrades
 
-- Decisions: [0025](../../../decisions/0025-database-and-topology.md)
+- Decisions: [0011](../../../decisions/0011-sqlite-on-one-host.md)
 
 An upgrade is a merged pull request that changes the nixie, web and backup image digests in the
 deployment repo, and a rollback is a revert of that commit. nixie copies the database before every

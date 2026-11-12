@@ -46,7 +46,7 @@ drafts and notes inside nixie.
 - A search marks nothing, because the conversation is always untrusted.
 - A job that sends free text to an allowed destination, such as a reply to a sender, can leak
   whatever its tools reach. The tool list limits that, and the job notice shows the list.
-- A memory write applies at once only under the checks in [0011](0011-memory-writes.md).
+- A memory write applies at once only under the checks in [0008](0008-memory-write-review.md).
 - A known contact's compromised account can steer nixie into sends to that contact with no prompt,
   because you chose to trust that contact.
 
@@ -55,4 +55,4 @@ drafts and notes inside nixie.
 - 2026-10-08: the conversation is always untrusted and carries no taint flag, and taint applies to
   jobs and workers in stages. The first version marked the conversation as tainted once it read free
   text, and counted a search API's results as typed.
-- 2026-10-15: record 0015, Where taint applies, merged into this record.
+- 2026-10-15: the record on where taint applies merged into this record.

@@ -1,6 +1,6 @@
 # Connectors
 
-- Decisions: [0019](../../../decisions/0019-connector-authorization.md)
+- Decisions: [0010](../../../decisions/0010-oauth-clients.md)
 
 A connector is nixie's code for one outside service, such as Gmail or a search API. It gives nixie
 typed tools with declared effects, the polls a trigger source runs, the authorization the service

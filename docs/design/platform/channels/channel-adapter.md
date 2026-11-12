@@ -1,7 +1,7 @@
 # The channel adapter
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
-  [0009](../../../decisions/0009-first-channel.md)
+  [0006](../../../decisions/0006-own-client.md)
 
 A channel adapter connects one way of reaching you to nixie. A full channel carries the conversation
 and the approvals, and nixie's own client is the only one in the first build. A push notifier
@@ -80,4 +80,4 @@ batching and quiet hours are settings.
 
 The interface takes later adapters without a change to the core: native push for the Expo app, web
 push for the web client, and a chat app as a full channel, opt-in under
-[0009](../../../decisions/0009-first-channel.md). A chat channel's approvals still open the client.
+[0006](../../../decisions/0006-own-client.md). A chat channel's approvals still open the client.

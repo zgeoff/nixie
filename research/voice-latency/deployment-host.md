@@ -1,10 +1,10 @@
 # Voice latency on the deployment host
 
 This run repeats the [voice-latency spike](README.md) on the host nixie deploys to, so the 2.5 s
-gate in [0040](../../docs/decisions/0040-voice-pipeline.md) rests on that host's network path to the
+gate in [0014](../../docs/decisions/0014-voice-pipeline.md) rests on that host's network path to the
 model. The full answer here means the full answer's audio ready to play, not its text. With
 `zipformer` and `piper`, the full answer's audio was ready 2.85 s after the end of speech at the
-median, so the pipeline misses the gate and 0040's replacement rule triggers. The first audio came
+median, so the pipeline misses the gate and 0014's replacement rule triggers. The first audio came
 at 1.93 s, and the full text at 2.29 s.
 
 The model's time from its request to its first event took 1.17 s at the median, as on the test VM,
@@ -156,7 +156,7 @@ talking to nixie may hesitate less, and the run did not measure speech of that k
 ## Findings
 
 - The pipeline misses the 2.5 s median to the full answer's audio on the deployment host, at 2.85 s
-  with `zipformer`, `piper` and a 500 ms pause. 0040's replacement rule triggers on these numbers.
+  with `zipformer`, `piper` and a 500 ms pause. 0014's replacement rule triggers on these numbers.
   The first audio meets the gate at 1.93 s, with a 90th percentile of 2.41 s, and the full answer's
   audio has a 90th percentile of 3.52 s.
 - The model's share, 1.17 s from request to first event, matches the test VM. The deployed network
@@ -171,14 +171,14 @@ talking to nixie may hesitate less, and the run did not measure speech of that k
 
 ## Recommendation
 
-The rule in 0040 triggers, and the owner decides whether to apply it now. Hold the swap to
+The rule in 0014 triggers, and the owner decides whether to apply it now. Hold the swap to
 speech-to-speech until the pipeline's own synthesis tail is cut and measured. The miss is 0.35 s,
 the pipeline's synthesis after the full text takes 0.61 s, and the first audio meets the gate by
 0.57 s. Synthesizing at each clause, with the next clause synthesized while one plays, bounds the
 sentence length that triggers the Piper stall and moves most of the tail before the full text. If
 the full answer's audio still misses with that change, apply the swap. A speech-to-speech model
 replaces nixie's turn as well as the speech stages, which costs the one runtime, one persona and one
-route that 0040 keeps.
+route that 0014 keeps.
 
 Keep the 500 ms pause. Whichever path voice takes, the end of turn needs more than a pause: the real
 speech here shows that a detector alone cuts off nearly a third of utterances at 500 ms.

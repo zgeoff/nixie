@@ -1,4 +1,4 @@
-# 0011: A memory write skips review only on your quote, a token check and a checker
+# 0008: A memory write skips review only on your quote, a token check and a checker
 
 - Date: 2026-10-08
 - Status: decided
@@ -21,8 +21,9 @@ exceptions.
 
 ## Why
 
-- The conversation is always untrusted under [0005](0005-effects-and-taint.md), so it cannot decide
-  which writes are safe. Your own words can, and injected content cannot place text in your message.
+- The conversation is always untrusted under [0005](0005-untrusted-conversation.md), so it cannot
+  decide which writes are safe. Your own words can, and injected content cannot place text in your
+  message.
 - A real quote does not prove that it supports the memory. The checker closes that gap, and the
   token check stops a memory that points nixie at an attacker's destination, whatever the checker
   says.
@@ -44,6 +45,6 @@ exceptions.
 ## Consequences
 
 - Undo uses the item's history, and permanent deletion uses the crypto-shredding of
-  [0010](0010-memory-store.md).
+  [0007](0007-crypto-shredding.md).
 - A fact that reaches nixie only through outside content, such as a flight time in an email, needs
   approval before it becomes a memory.

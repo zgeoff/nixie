@@ -1,7 +1,7 @@
 # Actions
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
-  [0025](../../../decisions/0025-database-and-topology.md)
+  [0011](../../../decisions/0011-sqlite-on-one-host.md)
 
 An action is a tool call with side effects outside nixie, such as sending an email or making a
 payment. It runs as an entry on the action queue in the [event log](event-log.md), with one of 4

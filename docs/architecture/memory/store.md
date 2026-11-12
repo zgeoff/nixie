@@ -4,7 +4,7 @@ A memory item is one stored fact, such as "the spare key sits under the blue flo
 change to it adds a version that nixie never rewrites. Each item has its own key, and every version
 of the item's text is encrypted under it, so a forget deletes one key and every version becomes
 unreadable at once, in the database and in every backup of it, under
-[0010](../../decisions/0010-memory-store.md). The model and the client reach memory through one
+[0007](../../decisions/0007-crypto-shredding.md). The model and the client reach memory through one
 interface whose verbs are recall, remember, retire, restore, undo, pin and forget. The
 `modules/memory` package holds the store.
 

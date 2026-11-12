@@ -279,10 +279,10 @@ The durable layer, the sandbox boundary, the database and compaction.
   task as a state machine, instead of a durable execution engine
 - [0003: Where the Agent SDK runs](decisions/0003-sdk-placement.md) — every model loop in an imp,
   with only nixie's tools, which run on the host
-- [0025: The database and the topology](decisions/0025-database-and-topology.md) — one SQLite
-  database on one host, and Postgres only for a second host
-- [0045: Session opening and compaction](decisions/0045-session-opening-and-compaction.md) — nixie's
-  own compactor with the summary in the event log, and the SDK's auto-compaction off
+- [0011: The database](decisions/0011-sqlite-on-one-host.md) — one SQLite database on one host, and
+  Postgres only for a second host
+- [0015: Compaction](decisions/0015-own-compaction.md) — nixie's own compactor with the summary in
+  the event log, and the SDK's auto-compaction off
 
 ### Policy
 
@@ -293,46 +293,46 @@ Approvals, the rule engine, untrusted content and the spending stop.
   with a chat message or a spoken "yes"
 - [0004: The rule engine](decisions/0004-rule-engine.md) — nixie's own rule format and evaluator, in
   place of Cedar or OPA
-- [0005: The untrusted conversation](decisions/0005-effects-and-taint.md) — the conversation is
+- [0005: The untrusted conversation](decisions/0005-untrusted-conversation.md) — the conversation is
   always untrusted and carries no taint flag, so the destination limits apply to every send
-- [0028: The spending stop](decisions/0028-policy-design.md) — a proxy on the host counts model
+- [0012: The spending stop](decisions/0012-spending-stop.md) — a proxy on the host counts model
   spend and refuses requests past the budget, in place of the SDK's cap inside the sandbox
 
 ### Memory
 
 Forgetting, and the memory writes that skip review.
 
-- [0010: The memory store](decisions/0010-memory-store.md) — forgetting destroys the item's key, and
+- [0007: Forgetting](decisions/0007-crypto-shredding.md) — forgetting destroys the item's key, and
   stays pending until every backup drops it
-- [0011: Which memory writes skip review](decisions/0011-memory-writes.md) — a write applies at once
-  only when a quote you typed backs it and the token check and the checker pass, and every other
-  write is a proposal
+- [0008: Which memory writes skip review](decisions/0008-memory-write-review.md) — a write applies
+  at once only when a quote you typed backs it and the token check and the checker pass, and every
+  other write is a proposal
 
 ### Channels
 
 The client and voice.
 
-- [0009: The first channel](decisions/0009-first-channel.md) — nixie's own client holds the
+- [0006: The first channel](decisions/0006-own-client.md) — nixie's own client holds the
   conversation, approvals and voice, and chat apps carry content-free pushes
-- [0040: What speaks a voice call](decisions/0040-voice-pipeline.md) — GPT-Live hears and speaks the
+- [0014: What speaks a voice call](decisions/0014-voice-pipeline.md) — GPT-Live hears and speaks the
   call, and nixie's turn writes every answer
 
 ### Connectors
 
 External MCP servers and connector authorization.
 
-- [0017: External MCP servers](decisions/0017-mcp-proxy.md) — every MCP server outside nixie's code
+- [0009: External MCP servers](decisions/0009-mcp-proxy.md) — every MCP server outside nixie's code
   reaches the model only through nixie's proxy
-- [0019: Connector authorization](decisions/0019-connector-authorization.md) — each deployment
-  registers its own OAuth clients
+- [0010: Connector authorization](decisions/0010-oauth-clients.md) — each deployment registers its
+  own OAuth clients
 
 ### Deployment
 
 Backups.
 
-- [0032: Offsite backups and replication](decisions/0032-offsite-backups-and-replication.md) —
-  backups leave the host only as ciphertext encrypted on the host, and a backup job of its own holds
-  the only backup credential
+- [0013: Offsite backups and replication](decisions/0013-host-encrypted-backups.md) — backups leave
+  the host only as ciphertext encrypted on the host, and a backup job of its own holds the only
+  backup credential
 
 ## Archive
 

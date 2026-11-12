@@ -1,9 +1,9 @@
 # Spike: replica encryption
 
 This spike replicates SQLite with Litestream through a host-local rclone S3 gateway over a crypt
-remote, the host-side encryption that
-[0032](../../docs/decisions/0032-offsite-backups-and-replication.md) chose. It checks restores after
-process outages and a recovery without the original database, for the gateway in the
+remote, the host-side encryption that [0013](../../docs/decisions/0013-host-encrypted-backups.md)
+chose. It checks restores after process outages and a recovery without the original database, for
+the gateway in the
 [backup and restore design](../../docs/design/platform/deployment/backup-and-restore.md).
 
 ## Question

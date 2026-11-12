@@ -1,7 +1,7 @@
 # Rules
 
 - Decisions: [0004](../../../decisions/0004-rule-engine.md),
-  [0005](../../../decisions/0005-effects-and-taint.md)
+  [0005](../../../decisions/0005-untrusted-conversation.md)
 
 A rule is plain data in nixie's own format: it matches a tool call by its tool, effects, context,
 arguments and destinations, and gives one outcome: allow, ask or deny. Rules live in nixie's

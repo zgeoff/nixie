@@ -1,7 +1,8 @@
 # The client
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
-  [0009](../../../decisions/0009-first-channel.md), [0011](../../../decisions/0011-memory-writes.md)
+  [0006](../../../decisions/0006-own-client.md),
+  [0008](../../../decisions/0008-memory-write-review.md)
 
 nixie's own client holds the conversation, the approvals and the live view. The first build ships a
 web client for desktop browsers, and the Android app, built with Expo, follows in tier 2. Both talk

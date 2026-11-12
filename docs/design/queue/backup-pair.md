@@ -1,7 +1,7 @@
 # The backup pair: publish numbers, the fetch and the restore note
 
 - **Status:** draft
-- **Decision records:** [0032](../../decisions/0032-offsite-backups-and-replication.md)
+- **Decision records:** [0013](../../decisions/0013-host-encrypted-backups.md)
 - **Work items:** [the publish numbers](https://linear.app/zgeoff/issue/GEO-2570),
   [the fetch and the snapshot list](https://linear.app/zgeoff/issue/GEO-2562),
   [the restore reads the pair](https://linear.app/zgeoff/issue/GEO-1816)
@@ -312,7 +312,7 @@ interface DataRestore {
 ## Decisions
 
 - **The backup job alone holds the repositories' credentials, and nixie alone opens a database.**
-  [0032](../../decisions/0032-offsite-backups-and-replication.md)
+  [0013](../../decisions/0013-host-encrypted-backups.md)
 - **The fetch and the publish reach restic through one interface.** restic is the chosen tool, and
   the interface is where an alternative fits.
   [Backup and restore](../platform/deployment/backup-and-restore.md)

@@ -1,7 +1,7 @@
 # Backup and restore
 
-- Decisions: [0032](../../../decisions/0032-offsite-backups-and-replication.md),
-  [0010](../../../decisions/0010-memory-store.md)
+- Decisions: [0013](../../../decisions/0013-host-encrypted-backups.md),
+  [0007](../../../decisions/0007-crypto-shredding.md)
 
 nixie backs up its SQLite database and its key store every hour by default. nixie copies each with
 `VACUUM INTO`, and the backup job sends the copies to 2 restic repos that hold only ciphertext. The

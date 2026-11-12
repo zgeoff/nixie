@@ -1,15 +1,15 @@
 # The event log and records
 
 - Decisions: [0001](../../../decisions/0001-durable-layer.md),
-  [0010](../../../decisions/0010-memory-store.md),
-  [0005](../../../decisions/0005-effects-and-taint.md),
-  [0025](../../../decisions/0025-database-and-topology.md)
+  [0007](../../../decisions/0007-crypto-shredding.md),
+  [0005](../../../decisions/0005-untrusted-conversation.md),
+  [0011](../../../decisions/0011-sqlite-on-one-host.md)
 
 The event log is nixie's one log of record. Every message you send, model turn, tool call, policy
 decision, proposal, approval and action outcome becomes a record, and no record changes in place.
 Task state, the dashboard and the live view read projections: tables that nixie updates in the same
 transaction as the record that changes them, and rebuilds from the log. The log lives in one SQLite
-database under [0025](../../../decisions/0025-database-and-topology.md).
+database under [0011](../../../decisions/0011-sqlite-on-one-host.md).
 
 ## What a record holds
 
@@ -51,7 +51,7 @@ forgetting deletes their key. The envelope stays, and a replay shows a gap where
 ## Erasable fields and keys
 
 Records use 2 kinds of key, on the pattern of the per-item memory keys from
-[0010](../../../decisions/0010-memory-store.md):
+[0007](../../../decisions/0007-crypto-shredding.md):
 
 - **A key per record** encrypts every free-text field in its payload: your message text, the model's
   text, tool arguments, tool results and worker transcripts. Forgetting one message deletes one key.

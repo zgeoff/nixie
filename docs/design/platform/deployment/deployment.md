@@ -1,7 +1,7 @@
 # Deployment
 
-- Decisions: [0032](../../../decisions/0032-offsite-backups-and-replication.md),
-  [0025](../../../decisions/0025-database-and-topology.md),
+- Decisions: [0013](../../../decisions/0013-host-encrypted-backups.md),
+  [0011](../../../decisions/0011-sqlite-on-one-host.md),
   [0003](../../../decisions/0003-sdk-placement.md)
 
 nixie runs as one container from one image, with the web client in a second container and the backup

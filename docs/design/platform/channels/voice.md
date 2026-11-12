@@ -1,8 +1,8 @@
 # Voice calls
 
-- Decisions: [0040](../../../decisions/0040-voice-pipeline.md)
+- Decisions: [0014](../../../decisions/0014-voice-pipeline.md)
 
-GPT-Live hears and speaks a voice call under [0040](../../../decisions/0040-voice-pipeline.md). It
+GPT-Live hears and speaks a voice call under [0014](../../../decisions/0014-voice-pipeline.md). It
 answers small talk itself, and it hands each request to nixie's own turn, which runs on one Agent
 SDK process that stays open for the whole call. While the turn runs, GPT-Live speaks a short filler,
 such as "Sure, one moment", which never claims an outcome or makes a promise. A proposal made during

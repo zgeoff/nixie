@@ -71,7 +71,7 @@ sync.
 ### What nixie does
 
 nixie sends no push of any kind. The Telegram notifier in
-[0009](../../docs/decisions/0009-first-channel.md) is unbuilt, and a push in the
+[0006](../../docs/decisions/0006-own-client.md) is unbuilt, and a push in the
 [client design](../../docs/design/platform/channels/client.md#deep-links) carries only a link.
 
 An approval passes the server's check through the session alone. The API refuses any call without
@@ -94,7 +94,7 @@ icon, a replaceable notice through `tag`, and loud or quiet notices through `sil
 which match the two push levels of
 [the channel adapter](../../docs/design/platform/channels/channel-adapter.md). Web push encrypts
 each payload end to end ([RFC 8291](https://www.rfc-editor.org/rfc/rfc8291.html)), and FCM keeps no
-chat history, so it stores less outside the home than the Telegram notice that 0009 plans. iOS takes
+chat history, so it stores less outside the home than the Telegram notice that 0006 plans. iOS takes
 no buttons, so an iOS notice opens the card.
 
 ## Links

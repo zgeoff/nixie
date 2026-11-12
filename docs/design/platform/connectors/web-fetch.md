@@ -1,6 +1,6 @@
 # Web fetch
 
-- Decisions: [0005](../../../decisions/0005-effects-and-taint.md)
+- Decisions: [0005](../../../decisions/0005-untrusted-conversation.md)
 
 Web fetch is one of nixie's own tools: it fetches one public web page for the model and returns its
 text. It declares only the `fetch` effect, so it runs `direct`. It declares no destination, as the

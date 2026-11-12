@@ -1,4 +1,4 @@
-# 0045: nixie compacts the conversation's session itself
+# 0015: nixie compacts the conversation's session itself
 
 - Date: 2026-10-14
 - Status: decided

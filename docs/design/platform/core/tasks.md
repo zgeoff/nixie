@@ -2,8 +2,8 @@
 
 - Decisions: [0001](../../../decisions/0001-durable-layer.md),
   [0002](../../../decisions/0002-approvals.md),
-  [0005](../../../decisions/0005-effects-and-taint.md),
-  [0025](../../../decisions/0025-database-and-topology.md),
+  [0005](../../../decisions/0005-untrusted-conversation.md),
+  [0011](../../../decisions/0011-sqlite-on-one-host.md),
   [0003](../../../decisions/0003-sdk-placement.md)
 
 A task is durable work with its own context, such as "keep the backlog moving today", and nixie runs

@@ -1,4 +1,4 @@
-# 0019: Each deployment registers its own OAuth clients
+# 0010: Each deployment registers its own OAuth clients
 
 - Date: 2026-10-08
 - Status: decided

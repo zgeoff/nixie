@@ -1,6 +1,6 @@
 # The trigger source
 
-- Decisions: [0005](../../../decisions/0005-effects-and-taint.md)
+- Decisions: [0005](../../../decisions/0005-untrusted-conversation.md)
 
 A trigger source starts work without you: a schedule, a poll, a held stream or a webhook. A batch of
 events commits in one transaction with the source's cursor and the job runs and task wake-ups it

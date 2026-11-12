@@ -11,8 +11,8 @@ an unpin applies at once, because it adds nothing to memory ([pins](#pins)). A w
 passes the same gates as a write from the conversation.
 
 [The memory store](./store.md) covers the items, versions and keys that a write changes. The gates
-follow [0011](../../decisions/0011-memory-writes.md). [The memory writer](./writer.md) covers the
-batched writer, and [memory consolidation](./consolidation.md) covers the weekly diff of merges,
+follow [0008](../../decisions/0008-memory-write-review.md). [The memory writer](./writer.md) covers
+the batched writer, and [memory consolidation](./consolidation.md) covers the weekly diff of merges,
 rewrites and retirements.
 
 ## The content gate

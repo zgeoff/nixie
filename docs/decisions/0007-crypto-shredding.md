@@ -1,4 +1,4 @@
-# 0010: Forget is crypto-shredding
+# 0007: Forget is crypto-shredding
 
 - Date: 2026-10-08
 - Updated: 2026-10-10

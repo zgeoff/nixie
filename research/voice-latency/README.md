@@ -2,7 +2,7 @@
 
 This spike times nixie's voice pipeline from the end of the caller's speech to the first audio of
 the reply and to the full answer, against the 2.5 s median gate in decision
-[0040](../../docs/decisions/0040-voice-pipeline.md). The pipeline runs voice activity detection,
+[0014](../../docs/decisions/0014-voice-pipeline.md). The pipeline runs voice activity detection,
 speech-to-text and text-to-speech on the host, around Haiku 5.5 on one live `stream` process.
 
 ## Question
@@ -16,7 +16,7 @@ change, and does barge-in with voice activity detection cut a reply off fast eno
 - With `zipformer` and `piper`, the first audio came 1.88 s after the end of speech at the median,
   inside the gate, and the full answer's audio was ready at 2.86 s, outside it.
 - The speech stages took 0.56 s before the turn and 0.09 s for the opening phrase, against the 1.3
-  to 1.5 s that 0040 assumed.
+  to 1.5 s that 0014 assumed.
 - The model's time to its first event took 1.11 s at the median, the largest step, and nearly twice
   what the [first-token spike](../sdk-first-token/README.md) measured on another host.
 - On the deployment host, the full answer's audio was ready at 2.85 s, so the pipeline misses the
@@ -53,7 +53,7 @@ task calls and commands, between Clef-flash's fewer cut-offs and the averaged pa
 The [reply run](voice-reply.md) compares two Claude pipelines with Grok Voice and GPT-Live: Grok
 Voice alone passes the first-audio and silence gates, and GPT-Live is the one that hands real
 requests to Claude. The user chose GPT-Live with Claude writing the answers, under
-[0040](../../docs/decisions/0040-voice-pipeline.md).
+[0014](../../docs/decisions/0014-voice-pipeline.md).
 
 ## Untested
 

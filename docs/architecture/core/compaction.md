@@ -8,8 +8,7 @@ therefore holds everything a new session opens with, and every forget reaches th
 reaches the rest. [Session opening](./session-opening.md) covers the builder that reads the summary,
 [conversation turns](./conversation-turns.md) covers the turn and the fork on each resume, and
 [memory in context](../memory/context.md#forgetting-and-the-live-session) covers the session cleanup
-that a forget runs. [0045](../../decisions/0045-session-opening-and-compaction.md) records the
-choice.
+that a forget runs. [0015](../../decisions/0015-own-compaction.md) records the choice.
 
 The compactor is its own package, apart from the conversation's sessions. It reads only the log, the
 sandbox that runs the summary call and the profile, and its caller passes the system prompt, the

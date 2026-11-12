@@ -1,4 +1,4 @@
-# 0040: GPT-Live speaks a voice call, and Claude's turn writes every answer
+# 0014: GPT-Live speaks a voice call, and Claude's turn writes every answer
 
 - Date: 2026-10-11
 - Updated: 2026-10-25

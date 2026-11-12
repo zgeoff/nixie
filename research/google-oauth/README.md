@@ -1,8 +1,8 @@
 # Spike: a personal Google OAuth client, unverified, in production
 
-Decision [0019](../../docs/decisions/0019-connector-authorization.md) has each owner register their
-own OAuth client. This spike checks whether an unverified client in production can hold Gmail's
-restricted scope, and whether its refresh token outlives the 7-day limit of testing mode.
+Decision [0010](../../docs/decisions/0010-oauth-clients.md) has each owner register their own OAuth
+client. This spike checks whether an unverified client in production can hold Gmail's restricted
+scope, and whether its refresh token outlives the 7-day limit of testing mode.
 
 ## Question
 

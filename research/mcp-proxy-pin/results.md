@@ -1,6 +1,6 @@
 # Spike results: an MCP proxy that pins tools by hash
 
-This spike builds a minimal version of the proxy that [0017](../../docs/decisions/0017-mcp-proxy.md)
+This spike builds a minimal version of the proxy that [0009](../../docs/decisions/0009-mcp-proxy.md)
 puts in front of every outside MCP server, on the v2 TypeScript MCP packages. The proxy pins each
 tool by a hash of its listing, stops a tool whose hash changes until the owner approves it, applies
 the change with a notice for a trusted server, and exposes a tool only with an owner effect
@@ -148,7 +148,7 @@ modes, because it has no pin and no declaration. A removed tool left the exposed
 and its pin was dropped, so a tool that returns later counts as new.
 
 Annotations sit inside the hash, so a server that relabels a send tool as read-only needs the
-owner's approval like any other change. The proxy never reads annotations for a decision, as 0017
+owner's approval like any other change. The proxy never reads annotations for a decision, as 0009
 requires.
 
 ### 2. Destination checks under a trusted server
