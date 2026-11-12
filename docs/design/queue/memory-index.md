@@ -73,7 +73,7 @@ and 12 more topics with 85 items: list them with memory.recall topics
 ```yaml
 # deployment config, memory module. memoryConfigSchema stays a strict object.
 memory:
-  index_tokens: 3000 # the block's token budget; 0 omits the block
+  index_tokens: 3000 # the block's token budget: 0 omits the block, otherwise at least 3000
   index_open_topic_items: 25 # a topic with more items folds
   index_item_order: newest-first # the one value
   index_topic_page: 200 # the most lines one memory.recall with `topic` returns; the recall design reads it
@@ -124,6 +124,8 @@ memory:
 - When every topic is folded and the count is still over, the renderer drops topics into the closing
   line, the one with the fewest items first, until the count fits.
 - The index budget is separate from `pinned_core_tokens`.
+- The config schema refuses an `index_tokens` from 1 to 2,999, so the block always fits its opening
+  and closing lines.
 - When `index_tokens` is 0, `readIndex` returns `text: ''`, and the opening has no `memory-index`
   block and neither index status line.
 
@@ -164,6 +166,4 @@ memory:
 
 ## Open questions
 
-- **What does the block hold when `index_tokens` is smaller than the opening line, the headings and
-  the closing line together?** The owner settles it. Until then, the block holds the opening line
-  and a closing line that counts every topic, even past the budget.
+None.
