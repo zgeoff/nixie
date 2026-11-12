@@ -12,15 +12,14 @@ when the call returns, and a worker run is not durable.
 1. **Its tools are the names its caller passes.** Each is a tool the caller holds. A worker never
    holds a tool that starts a task, sends a message or runs another worker, and it holds no memory
    tool, under [0051](0051-memory-tools-on-tasks.md).
-2. **4 limits.** A worker run stops at the first of its limits on minutes, turns, tokens and
-   dollars.
+2. **Limits on minutes, turns, tokens and dollars.** A worker run stops at the first it reaches.
 3. **One dollar limit.** A worker run's dollars count toward the dollar limit of the task that
    called it.
 
 ## Why
 
-- A worker adds 2 things over a task: its caller gets the answer in the same turn, and the outside
-  text that the worker read never enters the caller's context.
+- The caller of a worker gets the answer in the same turn, and the outside text that the worker read
+  never enters the caller's context.
 - A worker lives inside one tool call, so it needs no lease, inbox, state or report.
 - A tool list that the caller passes never widens what the caller can do.
 - You gave the calling task its dollar limit, so the worker spends from it.

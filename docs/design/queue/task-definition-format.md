@@ -193,9 +193,9 @@ interface DefinitionVersion {
 
 ### The hash and the store
 
-- The definition hash covers 3 inputs: the parsed `task.yaml` with defaults filled, as canonical
-  JSON; the hash of `instructions.md` after `normalizeInstructions`, the persona's normalisation;
-  and the hash of the step file.
+- The definition hash covers the parsed `task.yaml` with defaults filled, as canonical JSON; the
+  hash of `instructions.md` after `normalizeInstructions`, the persona's normalisation; and the hash
+  of the step file.
 - A comment in `task.yaml` leaves the hash unchanged. An edit of `instructions.md` changes it.
 - When a task run's pinned hash has no row in `task_definition_versions`, the step fails, and after
   `maxStepErrors` failed steps nixie sets the task to `failed`.

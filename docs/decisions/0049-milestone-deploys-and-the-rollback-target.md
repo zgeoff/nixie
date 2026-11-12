@@ -25,8 +25,8 @@ goes back to the last release that the deployment ran, which can be several rele
 
 - A deployment holds real memory, so it meets a feature only once the whole feature is built.
 - A rollback by release keeps the log, so it keeps every turn since the deploy.
-- No test starts an earlier release on a newer log. Without the check, the first proof of a rollback
-  is the rollback itself.
+- No test starts an earlier release on a newer log. Without the check, nothing tests a rollback
+  before a real one runs.
 - An older release refuses to start on a config file that holds a key it does not know, so the keys
   go before the release does.
 

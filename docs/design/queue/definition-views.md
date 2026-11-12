@@ -3,10 +3,10 @@
 - **Status:** draft
 - **Work items:** the view procedures, the view routes
 
-The web client shows 3 read views of work that started without you: the list of task definitions,
-the trigger report, and the list of ended task runs. Together they answer why a task run happened or
-why it did not. The API serves each from nixie's own database through one `signedIn` procedure, and
-the client follows the record kinds that change them.
+The web client shows read views of work that started without you: the list of task definitions, the
+trigger report, and the list of ended task runs. Together they answer why a task run happened or why
+it did not. The API serves each from nixie's own database through one `signedIn` procedure, and the
+client follows the record kinds that change them.
 
 Terms: the trigger report lists catch-ups, the fires nixie delivered late, and skips, the fires it
 skipped. An ended task run is a task run that has ended with any cause, and its sequence is the

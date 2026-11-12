@@ -6,9 +6,9 @@
 
 The agent creates, alters and deletes a task definition from the conversation with `task.define` and
 `task.undefine`, and lists them with `tasks.definitions`. nixie puts each change in force at once,
-as a runtime layer over the definitions repo, and writes a notice with an undo. The change ends in
-one of 3 ways: you undo it, nixie retires it, or nixie exports it to a pull request and adopts it
-once a seed reads your merge.
+as a runtime layer over the definitions repo, and writes a notice with an undo. The change ends when
+you undo it, when nixie retires it, or when nixie exports it to a pull request and adopts it once a
+seed reads your merge.
 
 ## Shape
 
@@ -299,9 +299,8 @@ task_definition_exports
 6. It commits, then wakes the export. The tool call does not wait for the export.
 
 - When the seed of step 1 fails or is refused, nixie goes on with the repo version it last read. The
-  fallback loses nothing: the change records that version in `definitions`, and the next seed
-  compares it with the repo, so a merge the decision missed ends as an adoption or a conflict, never
-  as a silent overwrite.
+  change records that version in `definitions`, and the next seed compares it with the repo, so a
+  merge the decision missed ends as an adoption or a conflict, never as a silent overwrite.
 - When any step throws, the transaction rolls back: no notice, no runtime change and no armed
   trigger.
 - A fire that nixie wrote before the change keeps the hash it holds.
@@ -380,8 +379,8 @@ A merge that races an undo:
 ### Boundaries
 
 - The definitions module owns the 5 records, the 2 tables and the functions above.
-- The server app passes 3 things into the definitions module: `CheckTaskStart`, the seed of the
-  definitions source, and the tasks context for the seed hook.
+- The server app passes the definitions module `CheckTaskStart`, the seed of the definitions source,
+  and the tasks context for the seed hook.
 - These pieces that main lacks come from these items: `task_definition_versions` and
   `CheckTaskStart` from the format and the seed; `withdrawDefinitionTaskInTransaction` as
   `retireOneShot` from the trigger core; `seedInForceInTransaction` and the `definition.settled`

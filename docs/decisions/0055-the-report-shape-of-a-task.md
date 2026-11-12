@@ -9,8 +9,8 @@ A definition or a `task.start` call may declare the shape of the report that the
 returns. The model fills every field, and code fills none.
 
 1. **A small subset of JSON Schema.** The key `reportShape` holds `properties` and `required`. A
-   field takes keywords from a closed table of 10: `type`, `description`, `enum`, `items`,
-   `properties`, `required`, `maxLength`, `maxItems`, `minimum` and `maximum`.
+   field takes keywords from a closed table: `type`, `description`, `enum`, `items`, `properties`,
+   `required`, `maxLength`, `maxItems`, `minimum` and `maximum`.
 2. **One check, at the seed and the start.** nixie refuses a shape that holds a keyword outside the
    table, and starts nothing, so nixie never accepts a rule that it does not enforce.
 3. **The model reports through one tool.** `task.report` takes `summary`, which stays required, and

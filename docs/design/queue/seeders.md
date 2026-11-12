@@ -93,7 +93,7 @@ async function setupTest() {
   members of its own `buildSeeder`.
 - The API module publishes the identity seeds, because `claimEnrolmentCode` is the one product code
   that inserts into `identities`.
-- A test writes a table directly only in these 4 places:
+- A test writes a table directly only in these places:
   - in a module's own tests, for that module's tables;
   - in the db lib's migration tests;
   - in tests of the code that stores rows, such as a repository function;

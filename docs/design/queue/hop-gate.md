@@ -118,7 +118,7 @@ A gated fetch has 5 states on the server:
 
 ## Constraints
 
-- A fault is one of 6: `scanHop` throws; the fetcher sends more `hop` frames than the redirect
+- A fault is any of these: `scanHop` throws; the fetcher sends more `hop` frames than the redirect
   limit; the fetcher sends a `hop` frame on a fetch sent with `hops: 'none'`; a frame from the
   fetcher does not decode, or a hop's URL does not parse; the fetcher's output closes before a reply
   frame; the fetch passes its time limit.
