@@ -257,10 +257,14 @@ purgeItemEvidence({ itemID, sequence: 4190 });
   finds the old one.
 - Each step is safe to run twice. The server's start finishes a purge from
   `memory.evidence_purge_started`:
-  - When the key store lacks `pendingKeyID`, it starts again at step 2.
-  - Before step 4, the new key sits under `pendingKeyID`, so a version or a proposal sealed before
-    the crash stays readable, and the retry seals only what is missing.
-  - After step 4, only the checkpoint and step 5 remain.
+  - When the key store holds `pendingKeyID`, it goes on from step 3, and seals only what is missing.
+  - When the key store lacks `pendingKeyID` and the item's key still opens `sourceVersion`, step 4
+    never ran, so it starts again at step 2.
+  - When the key store lacks `pendingKeyID` and the item's key no longer opens `sourceVersion`, step
+    4 ran, so only the checkpoint and step 5 remain.
+- Until step 4, a reader that fails to open a value of the item under the item's key tries the
+  `pendingKeyID` of the item's unfinished purge, so the new version and each resealed proposal stay
+  readable through the purge.
 - A crash never leaves an item with no readable key, and never leaves its newest version unreadable.
 - `memory.evidence_purged` waits for the key-store checkpoint, so the old key is gone from the
   write-ahead log before the purge counts as done.
