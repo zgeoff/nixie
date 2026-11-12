@@ -273,12 +273,17 @@ interface DataRestore {
   no backup credential.
 - A deployment calls only commands, and its script never reads a repository's layout or a file of
   the data directory.
-- No command restores a key copy other than the newest, because that copy makes a forgotten item
-  readable again.
+- No command restores a published key copy other than the newest, because an older one makes a
+  forgotten item readable again.
+- A restore from a `nixie backup --to` directory restores that directory's own `keys.db`. A
+  directory taken before a forget brings the forgotten item's key back, and a forget's backup state
+  never covers a directory nixie did not publish. The restore steps warn of this, and tell you to
+  delete a local copy after a forget you mean to keep.
 - An item forgotten after the data snapshot of an `older-data` pair stays unreadable after the
   restore, and nixie never finishes its forget. A key deleted from the key store never returns with
-  a restore ([erasable fields](../../architecture/core/erasable-fields.md#the-key-store)), and a
-  replay shows a gap where a forgotten item was ([0007](../../decisions/0007-crypto-shredding.md)).
+  a restore from published copies
+  ([erasable fields](../../architecture/core/erasable-fields.md#the-key-store)), and a replay shows
+  a gap where a forgotten item was ([0007](../../decisions/0007-crypto-shredding.md)).
 - The restore steps that name `--data-snapshot` warn that a data snapshot named under a key snapshot
   with no publish number is checked only by its `set-` number.
 - A record with no key in an `older-data` pair does not prove a forget. Besides a forget, the
