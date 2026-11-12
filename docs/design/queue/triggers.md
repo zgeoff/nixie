@@ -338,7 +338,9 @@ decides:
 ## Changes to the trigger source design
 
 This design replaces these parts of
-[the trigger source design](../platform/channels/trigger-source.md):
+[the trigger source design](../platform/channels/trigger-source.md). The owner approved all 5 on 13
+Nov, and [the trigger source baseline](https://linear.app/zgeoff/issue/GEO-2538) rewrites that doc
+to match once the schedule source is built:
 
 - A durable timer per next fire: nixie computes the next fire from the watermark and stores no
   timer.
@@ -381,7 +383,4 @@ This design replaces these parts of
 
 ## Open questions
 
-- **Does the owner approve the changes to the trigger source design?** The owner settles it, because
-  that doc is part of the locked baseline. When approved,
-  [the trigger source baseline](https://linear.app/zgeoff/issue/GEO-2538) rewrites it. Until then,
-  the trigger core and the schedule source follow this design.
+None.
