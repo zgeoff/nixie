@@ -1,7 +1,7 @@
 # The turn-input log
 
-- **Status:** draft. The owner chose the capture shape. This is a security design, so an independent
-  review checks it before either item is built.
+- **Status:** draft. The owner chose the capture shape, and an independent security review checked
+  it.
 - **Work items:** [the capture in the counting proxy](https://linear.app/zgeoff/issue/GEO-2548),
   [the turn-input log in nixie](https://linear.app/zgeoff/issue/GEO-2355)
 
@@ -50,6 +50,10 @@ The CLI's request:          POST https://<proxy_host>/<route>/~in.<tag>/v1/messa
 What the proxy matches:     /<route>/v1/messages
 ```
 
+The Agent SDK's CLI keeps the extra segment. Against a stub server, the CLI of SDK 0.3.322, the
+version the catalog pins, sent each request of `claude -p` with this base URL as
+`POST /<route>/~in.<tag>/v1/messages?beta=true`.
+
 ```ts
 // turn-inputs module. The sessions module opens a capture at a step's start and closes it at the
 // step's end, and has no other part in the log.
@@ -77,10 +81,10 @@ interface TurnInputsOptions {
 ```yaml
 # nixie's config. With no `turn_input_log` section, the log is off.
 turn_input_log:
-  default: off # off | always
+  default: always # off | always; a configurable default
   max_window: 24h # the longest time one `on --for` lasts
   close_wait: 5s # the longest a step's end waits for the proxy's .part files
-  roles: [conversation, task]
+  roles: [conversation, task] # a configurable default
   retention: { days: 7, bytes: 2147483648 } # the default; days: 3 | 7 | 30
   sources:
     proxy:
@@ -209,7 +213,8 @@ nixie turn-input open <input_id>         # prints the body
   `base_url` starts with a `sources` entry's `base_url`. A compaction's `summarize` frame counts
   under `conversation`. With the log off or the role outside `roles`, nixie stores nothing and the
   base URL is the profile's own; with no matching source, it writes one `no_capture_point` miss.
-- With `default: always`, the log starts on. `--for` holds it on for at most `max_window`.
+- With `default: always`, the log starts on. The latest `model.input_log_set` record sets the state
+  across a restart, so `off` holds until `on`. `--for` holds it on for at most `max_window`.
 - The guest has no code for the tag, and the frame schema has no key for it. The proxy removes the
   tag, then matches the endpoint, and its model check and count are as without a tag.
 - The proxy copies a tagged request only when it sends it upstream to `messages` or `responses`. A
@@ -316,6 +321,22 @@ count. A step's end can wait up to `close_wait` for the proxy's `.part` files.
   the data directory or the spool.
 - **The event log holds 2 kinds.** The rest is debugging state in tables, so the last release meets
   only 2 unknown kinds.
+- **The shape stands on one independent security review.** An agent's call on 13 Nov, open to the
+  owner's veto: the review found 3 faults (forget modes that kept text, a false claim about
+  backed-up keys, a plaintext digest in the spool header), each is fixed above, and a re-check of
+  the fixes found each closed.
+- **nixie keeps the bodies in a store of its own, outside the backup set, and never as record
+  attachments.** An agent's call on 13 Nov, open to the owner's veto: an attachment's ciphertext
+  rides in every backup until a forget, and this store keeps every body out of every backup.
+- **The log starts on, with `default: always`.** An agent's call on 13 Nov, open to the owner's
+  veto: the log exists to take apart a turn that went wrong, and a log that was off holds nothing
+  then; retention, the seal and the forget rules bound what it keeps.
+- **The log covers `conversation` and `task` by default.** An agent's call on 13 Nov, open to the
+  owner's veto: those are the prompts that get tuned, and `roles` adds another role in one line.
+- **The log seals a request that holds a secret as it seals every request, and stores no body for
+  one that holds an own secret value.** An agent's call on 13 Nov, open to the owner's veto: a mask
+  or a dropped tool call would make the logged request differ from what the model received, and a
+  forget destroys each body's own key.
 
 ## Builder decides
 
@@ -332,16 +353,7 @@ count. A step's end can wait up to `close_wait` for the proxy's `.part` files.
 
 ## Open questions
 
-- **Is the chosen shape sound?** An independent security review settles it. Until then, neither item
-  is built.
-- **Does the log run by default?** The owner settles it: always, off until you turn it on, or on for
-  a set time. Until then, `default: off`.
-- **Which roles does the log cover?** The owner settles it: `conversation` and `task`, with
-  `worker`, with `checker`, or every role. Until then, `conversation` and `task`.
-- **What does the log do with a request that holds a secret?** The owner settles it: accept and
-  seal, mask the secret before the capture, or drop the tool call; and for an own secret value,
-  store no body or narrow the rule. Until then, the rules above.
-- **Does each harness's CLI accept a base URL with one more path segment?** A probe settles it per
-  harness: the Agent SDK case in [the capture item](https://linear.app/zgeoff/issue/GEO-2548), and
-  the Codex case with [the Codex gates](https://linear.app/zgeoff/issue/GEO-2546). Until then, a
-  harness whose probe fails has no captured step.
+- **Does the Codex CLI keep the tag segment?** The Codex case with
+  [the Codex gates](https://linear.app/zgeoff/issue/GEO-2546) settles it, on the CLI version that
+  the Codex image pins and with the base URL that a Codex profile holds. Until then, a Codex step
+  has no capture.

@@ -362,6 +362,16 @@ harness that declares `summarize` and `context-window`.
   step code holds a `Harness` whose capabilities no type knows. A frame type narrowed by capability
   would carry a harness type parameter through the step code, which is the branching the boundary
   removes.
+- **A turn ends in one of 5 outcomes, and a refusal or an output cap is never `finished`.** An
+  agent's call on 13 Nov, open to the owner's veto: `hasFinishedTurn` reads
+  `outcome === 'finished'`, so with 4 outcomes a refused or cut-off turn would count as finished.
+- **Each harness definition is one file in the models module.** An agent's call on 13 Nov, open to
+  the owner's veto: a definition reaches nothing outside nixie from the server, which is the case
+  where [the code layout](../../architecture/code-layout.md) keeps an implementation in its module.
+- **On a harness with no session, a turn that overflows fails its step, and the step's retries open
+  again from the log.** An agent's call on 13 Nov, open to the owner's veto: it adds no code path,
+  and a smaller-rebuild retry would have nothing to fire on while Codex reports an overflow as a
+  plain failure.
 
 ## Builder decides
 
@@ -384,12 +394,8 @@ harness that declares `summarize` and `context-window`.
 
 ## Open questions
 
-- **Does a turn's outcome have 5 values or 4?** The owner settles it: the 5 above, or the same
-  without `stopped`. Until then, the sketches hold 5.
-- **Where does a harness definition live?** The owner settles it: the models module, `adapters/`, or
-  a folder rule of its own. A harness reaches the model API from a guest and never from the server.
-  Until then, each definition is a file in the models module.
-- **What does a long task do on a harness with no session when one turn overflows?** The owner
-  settles it: retry the step from a smaller rebuild, end the task with a report, or leave it to the
-  step's retries. Until then, the step fails, and its next try opens from the log within the rebuild
-  budget.
+- **What are the words of the 5 outcomes?** The owner settles it: `finished`, `stopped`, `limit`,
+  `interrupted` and `overflow`, or other words. Until then, the sketches hold those 5.
+- **Does Codex report a context overflow as its own error?** The overflow case of
+  [the Codex gates](https://linear.app/zgeoff/issue/GEO-2546) measures it. Until then, a Codex
+  overflow is a `failed` turn, and the step's retries handle it.
