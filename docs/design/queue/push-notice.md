@@ -157,7 +157,7 @@ const pairing = await client.channels.pair({ channel: 'telegram', clientActionID
 
 // The bot sends the confirm code into the chat that claimed the link. You type it into the client.
 const paired = await client.channels.confirmPairing({
-  pairingID: pairing.pairingID, // from channels.pair; any live device session may confirm with it
+  pairingID: pairing.pairingID, // from channels.pair; only the session that started the pairing confirms it
   confirmCode: '402917',
   clientActionID,
 });
@@ -285,8 +285,10 @@ acts on what it finds then:
 - Inside quiet hours, the notifier treats a loud window that does not break through quiet hours as a
   quiet one. When quiet hours end, the notifier sends one loud notice if any item from those windows
   still waits.
-- nixie sends no reminder: an item that a notice has counted never causes a second loud notice,
-  except when it returns from a defer.
+- nixie sends no reminder: an item that a notice has counted never causes a second loud notice.
+  There are 2 exceptions:
+  - the item returns from a defer;
+  - quiet hours held the item's loud notice, and the notice at the end of quiet hours counts it.
 - With no Telegram row, the notifier reads no items and sends nothing.
 - A window that waits, for quiet hours, for presence or for a retry, lives in memory. A restart
   drops it. After the start, the notifier compares the items with the live notice and edits the live
@@ -347,8 +349,10 @@ acts on what it finds then:
 - A confirm names its pairing ID, and nixie checks the confirm code against that pairing alone. A
   confirm code takes at most 5 tries. A wrong try counts, and the fifth wrong try spends the code,
   so a new pairing needs a new link.
-- `confirmPairing` from any live device session, or `nixie channels confirm` on the host, pairs the
-  claimed chat. The columns it sets are those of
+- Only the device session that started a pairing confirms it through `confirmPairing`, and only
+  `nixie channels confirm` on the host confirms a pairing that `nixie channels pair` started. nixie
+  refuses any other confirm as `PAIRING_REFUSED`, because another live session could be another
+  person's device. The confirm pairs the claimed chat. The columns it sets are those of
   [device sessions](../../architecture/channels/api.md#device-sessions). In one transaction, nixie
   marks the code used, creates the Telegram row or reuses the row with the same external ID, sets
   `paired_at`, clears `revoked_at`, points `paired_sequence` at the new `channels.paired` record,
@@ -399,11 +403,12 @@ this way:
 
 ## Decisions
 
-- **The notifier reads quiet hours from the top-level `quiet_hours`.** The proposals module reads
-  the same key to move a defer's return out of quiet hours. This is the interim for the open
-  question on quiet hours in
-  [the approval record work item](https://linear.app/zgeoff/issue/GEO-1804). If the owner decides to
-  put quiet hours under Telegram, only the key path changes, to `channels.telegram.quiet_hours`.
+- **The notifier reads quiet hours from the top-level `quiet_hours`.** An agent's call on 13 Nov
+  2026: the proposals module reads the same key to move a defer's return out of quiet hours, and 2
+  keys would split one setting.
+  [The approval record work item](https://linear.app/zgeoff/issue/GEO-1804) holds the owner's
+  question on where quiet hours live. If the owner decides to put quiet hours under Telegram, only
+  the key path changes, to `channels.telegram.quiet_hours`.
 - **The channels module decides every notice, and the adapter does nothing but call the Bot API.**
   An agent's call on 13 Nov 2026: a module never imports an adapter, and the content-free rule then
   lives in one module with one test.

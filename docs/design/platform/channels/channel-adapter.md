@@ -4,9 +4,10 @@
   [0006](../../../decisions/0006-own-client.md)
 
 A channel adapter connects one way of reaching you to nixie. A full channel carries the conversation
-and the approvals, and nixie's own client is the only one in the first build. A push notifier
-carries only a content-free notice with a link to the client, and Telegram is the first. Every
-adapter resolves each inbound event to you through the identity record, or refuses it.
+and the approvals, and nixie's own client is the only one in the first build. A chat channel carries
+the conversation, and each of its approvals opens the client. A push notifier carries only a
+content-free notice with a link to the client, and Telegram is the first. Every adapter resolves
+each inbound event to you through the identity record, or refuses it.
 
 ## The interface
 
@@ -55,9 +56,9 @@ you register with BotFather, Telegram's bot for creating bots. The bot's token i
 secret, and nixie ships no central bot. To pair the bot, you start from a signed-in client or with
 `nixie channels pair telegram` on the host, and either one shows a link
 `https://t.me/<bot_username>?start=<pairing_code>`. The single-use code lapses after 10 min. The bot
-sends a confirm code to the chat that opened the link, and you type it into any signed-in client or
-into `nixie channels confirm`. nixie then knows that whoever holds the client also reads that
-Telegram chat.
+sends a confirm code to the chat that opened the link, and you type it into the client that started
+the pairing, or into `nixie channels confirm` when the host command started it. nixie then knows
+that whoever holds the client also reads that Telegram chat.
 
 The adapter reads updates by long polling, so Telegram needs no inbound route. The bot never carries
 the conversation: a text from you gets one fixed reply with a link to the client, and a text from
@@ -91,4 +92,4 @@ quiet hours from one setting, which also moves the return of a deferred proposal
 
 The interface takes later adapters without a change to the core: native push for the Expo app, web
 push for the web client, and a chat app as a full channel, opt-in under
-[0006](../../../decisions/0006-own-client.md). A chat channel's approvals still open the client.
+[0006](../../../decisions/0006-own-client.md).
