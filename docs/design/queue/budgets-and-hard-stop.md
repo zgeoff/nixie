@@ -424,8 +424,9 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
   button. On `unreachable` and the lost mark, the client shows that the operator must act, with no
   button.
 - The client reads the notice from `spend.read`. The
-  [Telegram push](https://linear.app/zgeoff/issue/GEO-1812), once built, sends a loud notice with a
-  fixed sentence and no amount, through quiet hours, on each `spend.stop_tripped`. The push notifier
+  [Telegram push](https://linear.app/zgeoff/issue/GEO-1812), once built, sends a loud notice on each
+  `spend.stop_tripped`, through quiet hours, that says only that nixie stopped spending, with no
+  amount or time (the push notice design, `docs/design/queue/push-notice.md`). The push notifier
   reads `spend.stop_tripped` and `spend.stop_cleared` from the log, so the spend module never calls
   it.
 
