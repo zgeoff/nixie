@@ -97,7 +97,8 @@ type TaskUndefineOutput =
 // policy module: a fixed rule, in getFixedRules after slice1.queue-check and before
 // slice1.read-only. PolicyCall holds no caller, so the rule allows by name, and the tools stay out
 // of every task's list: both names join TaskStartBounds.conversationTools, which planTaskStart
-// refuses on any start.
+// refuses on any start. The decision point cutover removes this rule, and both tools then pass the
+// full pipeline (decision-point-cutover.md, "What the cutover removes and keeps").
 const definitionsChatChangeRule: FixedRule = {
   id: 'definitions.chat-change',
   revision: 1,
@@ -275,10 +276,10 @@ task_definition_exports
   definition holds only what a `task.start` from the conversation can hold.
 - The input is the whole version: an optional key it omits takes its default, never the value in
   force.
-- The file-only keys are `context`, `wakeable`, `maxCalls`, `step`, `reportShape` and `log`, and the
-  file-only files are `instructions.md` and a step file. `task.define` sets none of them. A change
-  to a definition whose version in force holds one at a value other than its default, or holds
-  either file, is refused with `FILE_ONLY_KEYS`.
+- The file-only keys are `context`, `wakeable`, `maxCalls`, `step`, `reportShape`, `log` and
+  `destinations`, and the file-only files are `instructions.md` and a step file. `task.define` sets
+  none of them. A change to a definition whose version in force holds one at a value other than its
+  default, or holds either file, is refused with `FILE_ONLY_KEYS`.
 - A change may alter `target`, and may turn a schedule into a one-shot, except over a definition the
   repo holds (`ONE_SHOT_OVER_REPO`).
 - The slug of `name` is its lowercase form with each run of characters outside `a-z` and `0-9`
@@ -287,7 +288,7 @@ task_definition_exports
 - An ID is taken when the repo's last accepted seed holds it, enabled or not, or a runtime change in
   force holds it. An ID whose runtime definition was undone or undefined is free, and a new
   definition under it gets the same task back.
-- nixie writes the notice for every define, with no approval.
+- nixie writes the notice for every define that the decision point allows.
 
 ### One runtime change, in one write transaction
 
