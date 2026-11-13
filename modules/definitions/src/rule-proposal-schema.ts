@@ -1,3 +1,4 @@
+import { effectNames } from '@heynixie/policy';
 import { z } from 'zod';
 
 const ruleSideSchema = z.object({ hash: z.string(), sentence: z.string() }).nullable();
@@ -19,4 +20,10 @@ export const ruleProposalSchema = z.object({
       fields: fieldChangeSchema.array(),
     })
     .array(),
+
+  // effects that leave a tool, which wait for your approval as the rules do
+  effectChanges: z
+    .object({ tool: z.string(), remove: z.enum(effectNames).array() })
+    .array()
+    .default([]),
 });

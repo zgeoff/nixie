@@ -42,7 +42,7 @@ test.each([
 });
 
 test.each([
-  ['format 4, which a newer release writes', 'format: 4\n', '/format'],
+  ['format 5, which a newer release writes', 'format: 5\n', '/format'],
   ['format 1, which two releases back wrote', 'format: 1\n', '/format'],
   ['format 0', 'format: 0\n', '/format'],
   ['a text format', 'format: one\n', '/format'],

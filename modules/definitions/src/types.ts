@@ -1,6 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
-import type { RuleFileEntry, RuleForm } from '@heynixie/policy';
+import type { EffectOverride, RuleFileEntry, RuleForm } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { Generated, Kysely, Transaction } from 'kysely';
 
@@ -38,6 +38,12 @@ export type ToolDeclaration = JSONObject & {
 export interface SnapshotPolicy {
   readonly rules: readonly PolicyRule[];
   readonly tools: readonly ToolDeclaration[];
+
+  // the IDs of the known contacts, never their details
+  readonly contacts?: readonly string[];
+
+  // the consent checker's definition: its prompt hash and the model profile of its role
+  readonly consent?: JSONObject;
 }
 
 export interface DefinitionsSnapshot {
@@ -85,6 +91,7 @@ export interface ParsedDefinitions {
   readonly conversationSkills: readonly string[];
   readonly prompts: PromptOverrides;
   readonly rules: readonly RuleFileEntry[];
+  readonly effects: ReadonlyMap<string, EffectOverride>;
   readonly unapplied: readonly string[];
 }
 

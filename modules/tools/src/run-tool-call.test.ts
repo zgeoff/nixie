@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { makeDecisionPoint } from '@heynixie/policy';
+import type { RuleEntry } from '@heynixie/policy';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildToolRegistry } from './build-tool-registry';
@@ -12,6 +13,8 @@ import { setupTestLog } from './test-utils/setup-test-log';
 
 interface SetupConfig {
   readonly tools: readonly ReturnType<typeof buildMockToolDefinition>[];
+  readonly rules?: readonly RuleEntry[];
+  readonly decisionDeadlineMs?: number;
 }
 
 async function setupTest(config: SetupConfig) {
@@ -22,9 +25,13 @@ async function setupTest(config: SetupConfig) {
 
   const options: ToolCallOptions = {
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
-    }),
+    decide: readStarterDecisionPoint(
+      (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+      { extraRules: config.rules ?? [] },
+    ),
+    ...(config.decisionDeadlineMs === undefined
+      ? {}
+      : { decisionDeadlineMs: config.decisionDeadlineMs }),
     log: testLog.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     queue: queue.queue,
@@ -74,7 +81,7 @@ test('it writes the call with its decision, the tool-use ID and the run model pr
     kind: 'tool_called',
     definitions: { snapshotHash: 'sha256:test' },
     thread: 'task-1',
-    decision: { outcome: 'allow', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
+    decision: { outcome: 'allow', stage: 7, rule: { id: 'allow-reads', revision: 1 } },
     payload: {
       runID: 'run-1',
       toolUseID: 'toolu_2',
@@ -366,7 +373,7 @@ test('it queues an allowed queued call with its call, its run, its decision and 
           tools: ['test.send'],
           model: { model: 'model-a', profile: 'chat-direct' },
         },
-        decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
+        decision: { outcome: 'allow', stage: 7 },
         callSequence: 1,
       },
     },
@@ -523,8 +530,15 @@ test('it returns an action that a stop cancelled as cancelled, never as failed',
   });
 });
 
-test('it denies a listed send tool with the rule ID and sentence', async () => {
+test('it denies a call that a deny rule matches with the rule ID, revision and sentence', async () => {
   const ctx = await setupTest({
+    rules: [
+      {
+        id: 'deny-sends',
+        revision: 3,
+        rule: { id: 'deny-sends', outcome: 'deny', effects: ['send'] },
+      },
+    ],
     tools: [
       buildMockToolDefinition({
         name: 'gmail_send',
@@ -549,15 +563,22 @@ test('it denies a listed send tool with the rule ID and sentence', async () => {
     content: [
       {
         type: 'text',
-        text: 'denied: slice1.read-only: Only a tool whose effects are read, fetch or note may run; every other call is denied.',
+        text: 'Not allowed by rule `deny-sends` (r3): **Deny** a call when it has the effect `send`.',
       },
     ],
     isError: true,
   });
 });
 
-test('it records slice1.read-only as the deciding rule of a denied call, and queues nothing', async () => {
+test('it records the deciding rule of a denied call, and queues nothing', async () => {
   const ctx = await setupTest({
+    rules: [
+      {
+        id: 'deny-sends',
+        revision: 3,
+        rule: { id: 'deny-sends', outcome: 'deny', effects: ['send'] },
+      },
+    ],
     tools: [
       buildMockToolDefinition({
         name: 'gmail_send',
@@ -580,12 +601,232 @@ test('it records slice1.read-only as the deciding rule of a denied call, and que
 
   const entries = await readRecords(ctx.log, { afterSequence: 0 });
 
-  expect(entries.map((entry) => [entry.record.kind, entry.record.decision])).toStrictEqual([
-    ['tool_called', { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } }],
+  expect(
+    entries.map((entry) => [entry.record.kind, entry.record.decision?.rule ?? null]),
+  ).toStrictEqual([
+    ['tool_called', { id: 'deny-sends', revision: 3 }],
     ['tool_result', null],
   ]);
 
   expect(ctx.queue.actions).toStrictEqual([]);
+});
+
+test('it writes one action proposal beside the call of an ask, and tells the model its short ID', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'files_delete',
+        execution: 'queued',
+        declaration: { effects: ['delete'] },
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'files_delete', input: { query: 'old' }, toolUseID: 'toolu_9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['files_delete'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const proposed = entries.find((entry) => entry.record.kind === 'policy.action_proposed');
+  const shortID = proposed?.record.payload['shortID'];
+
+  expect(entries.map((entry) => entry.record.kind)).toStrictEqual([
+    'tool_called',
+    'policy.action_proposed',
+    'tool_result',
+  ]);
+
+  expect(result).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: `Waiting for approval as \`${String(shortID)}\`. You can keep working; you will hear the answer in your inbox.`,
+      },
+    ],
+    isError: false,
+  });
+
+  expect(ctx.queue.actions).toStrictEqual([]);
+});
+
+test('it records an ask with the cause, the proposal and a queued result with no action', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'files_delete',
+        execution: 'queued',
+        declaration: { effects: ['delete'] },
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'files_delete', input: { query: 'old' }, toolUseID: 'toolu_9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['files_delete'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries[0]?.record.decision).toMatchObject({
+    outcome: 'ask',
+    stage: 6,
+    cause: 'ask_rule',
+    rule: { id: 'ask-permanent-deletes', revision: 1 },
+  });
+
+  expect(entries[0]?.record.promptCause).toBeNull();
+
+  expect(entries[1]?.record).toMatchObject({
+    kind: 'policy.action_proposed',
+    parent: 1,
+    promptCause: 'ask_rule',
+    payload: { callSequence: 1, tool: 'files_delete', effects: ['delete'], cause: 'ask_rule' },
+    erasable: { status: 'readable', fields: { input: { query: 'old' }, destinations: [] } },
+  });
+
+  expect(entries[2]?.record.payload).toMatchObject({ outcome: 'queued', actionID: null });
+});
+
+test('it denies a call with a fault when the decision point runs past its deadline', async () => {
+  const ctx = await setupTest({
+    decisionDeadlineMs: 20,
+    tools: [buildMockToolDefinition({ name: 'notes_read' })],
+  });
+
+  const stalled = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    { ...ctx.options, decide: () => Promise.withResolvers<never>().promise },
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(stalled).toStrictEqual({
+    content: [
+      { type: 'text', text: 'Not allowed: nixie could not decide on this call. Try again later.' },
+    ],
+    isError: true,
+  });
+
+  expect(entries[0]?.record.decision).toMatchObject({
+    outcome: 'deny',
+    stage: 1,
+    fault: 'timed_out',
+  });
+});
+
+test('it denies a call with a fault when the decision point throws', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
+
+  const thrown = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    { ...ctx.options, decide: () => Promise.reject(new Error('the rules are unreadable')) },
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(thrown.isError).toBeTrue();
+  expect(entries[0]?.record.decision).toMatchObject({ outcome: 'deny', fault: 'threw' });
+  expect(run).not.toHaveBeenCalled();
+});
+
+test('it resolves the destinations a declaration names before the decision point and records them as erasable', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'mail_send',
+        execution: 'queued',
+        declaration: { effects: ['send'], destinations: ['to'] },
+        input: { properties: { to: { type: 'array', items: { type: 'string' } } } },
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'mail_send', input: { query: 'hi', to: ['sam@example.org'] }, toolUseID: 'toolu_1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['mail_send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries[0]?.record).toMatchObject({
+    decision: { outcome: 'ask', stage: 5, cause: 'outside_steering', permissions: [null] },
+    erasable: {
+      status: 'readable',
+      fields: { destinations: [{ value: 'sam@example.org', replyTarget: false }] },
+    },
+  });
+});
+
+test('it returns the error of a destination that cannot resolve, and never asks the decision point', async () => {
+  const decide = mock(() => Promise.reject(new Error('not reached')));
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'mail_send',
+        execution: 'queued',
+        declaration: { effects: ['send'], destinations: ['to'] },
+        input: { properties: { to: { type: 'number' } } },
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'mail_send', input: { query: 'hi', to: 7 }, toolUseID: 'toolu_1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['mail_send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    { ...ctx.options, decide },
+  );
+
+  expect(result).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: 'the argument to must be text, or a list of text, to name a destination',
+      },
+    ],
+    isError: true,
+  });
+
+  expect(decide).not.toHaveBeenCalled();
 });
 
 test('it rejects invalid input with the schema errors before the decision point', async () => {

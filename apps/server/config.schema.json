@@ -1297,6 +1297,27 @@
       },
       "additionalProperties": false
     },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "consent": {
+          "default": {
+            "link_max_age": 24
+          },
+          "type": "object",
+          "properties": {
+            "link_max_age": {
+              "default": 24,
+              "description": "Hours from when you typed a message. A message that a task passes on carries your consent for this long.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "skills": {
       "type": "object",
       "properties": {

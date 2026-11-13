@@ -3,10 +3,12 @@ import { buildDefinitionsSnapshot } from '@heynixie/definitions';
 import type { ToolDefinition } from '@heynixie/tools';
 import { buildLogConnector } from './build-log-connector';
 import { buildSeedInputs } from './build-seed-inputs';
+import { buildTestModelsConfig } from './test-utils/build-test-models-config';
 
 test("it puts the queue check's tool declaration in the policy, beside the conversation's tools", () => {
   const config = {
     definitions: { source: { kind: 'path', path: '/srv/definitions' }, probeIntervalMs: 300_000 },
+    models: buildTestModelsConfig({ modelURL: 'https://models.example.test' }),
     owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
   } as const;
 
@@ -33,6 +35,7 @@ test.each([
   (name, policyHash) => {
     const config = {
       definitions: { source: { kind: 'path', path: '/srv/d' }, probeIntervalMs: 300_000 },
+      models: buildTestModelsConfig({ modelURL: 'https://models.example.test' }),
       owner: { name, pronouns: { they: 'she', their: 'her' } },
     } as const;
 
@@ -56,6 +59,7 @@ test.each([
 test("it changes the snapshot hash when the queue check's tool declaration changes", () => {
   const config = {
     definitions: { source: { kind: 'path', path: '/srv/definitions' }, probeIntervalMs: 300_000 },
+    models: buildTestModelsConfig({ modelURL: 'https://models.example.test' }),
     owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
   } as const;
 
@@ -95,6 +99,7 @@ test.each([
 ] as const)('it changes the policy hash when the %s prompt has an override', (_label, prompts) => {
   const config = {
     definitions: { source: { kind: 'path', path: '/srv/d' }, probeIntervalMs: 300_000 },
+    models: buildTestModelsConfig({ modelURL: 'https://models.example.test' }),
     owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
   } as const;
 
@@ -117,6 +122,7 @@ test.each([
 test('it keeps the policy hash when only a prompt other than the checkers has an override', () => {
   const config = {
     definitions: { source: { kind: 'path', path: '/srv/d' }, probeIntervalMs: 300_000 },
+    models: buildTestModelsConfig({ modelURL: 'https://models.example.test' }),
     owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
   } as const;
 

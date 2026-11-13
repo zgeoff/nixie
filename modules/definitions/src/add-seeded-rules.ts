@@ -5,9 +5,11 @@ import type { RuleInForce, SnapshotPolicy } from './types';
 export function addSeededRules(
   policy: SnapshotPolicy,
   inForce: readonly RuleInForce[],
+  contacts: readonly string[],
 ): SnapshotPolicy {
   return {
     ...policy,
+    contacts,
     rules: [
       ...policy.rules,
       ...inForce.map((entry) => ({

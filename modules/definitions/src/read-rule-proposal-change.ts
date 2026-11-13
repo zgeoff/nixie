@@ -3,6 +3,7 @@ import { proposalLapseMs } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import { buildRuleProposal } from './build-rule-proposal';
 import type { RuleEdit } from './build-rule-seed-plan';
+import type { HeldEffects } from './pick-seed-effects';
 import { readRuleProposals } from './read-rule-proposals';
 import type { DefinitionsTables } from './types';
 import type { RuleProposalChange } from './write-seed';
@@ -13,6 +14,7 @@ import type { RuleProposalChange } from './write-seed';
 export async function readRuleProposalChange(
   db: Kysely<unknown>,
   held: readonly RuleEdit[],
+  heldEffects: readonly HeldEffects[],
   now: number,
 ): Promise<RuleProposalChange> {
   const proposals = await readRuleProposals(db);
@@ -21,7 +23,10 @@ export async function readRuleProposalChange(
     (state) => state.outcome === null && state.proposedAt + proposalLapseMs > now,
   );
 
-  const proposed = held.length === 0 ? null : buildRuleProposal(createShortID(), held);
+  const proposed =
+    held.length === 0 && heldEffects.length === 0
+      ? null
+      : buildRuleProposal(createShortID(), held, heldEffects);
 
   if (pending?.proposal.proposalHash === proposed?.proposalHash) {
     return { withdrawn: null, proposed: null };

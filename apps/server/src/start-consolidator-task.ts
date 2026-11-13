@@ -24,6 +24,7 @@ export async function startConsolidatorTask(
     secrets: parts.modelSecrets,
     sandboxes: parts.tools.adapter,
     queue: parts.tools.actions.queue,
+    makeDecide: parts.decisions,
     socketDir: join(parts.config.server.dataDir, 'run', 'tools'),
     images: toImageNames(parts.images),
     store,

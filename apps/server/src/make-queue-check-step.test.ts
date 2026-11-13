@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { actionsProjection, writeUnknownOutcomes } from '@heynixie/actions';
 import { readTestActions } from '@heynixie/actions/test-utils';
 import { logProjections, readRecords, startWriter } from '@heynixie/log';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
 import {
   tasksProjections,
@@ -49,7 +50,12 @@ async function setupTest() {
   const actions = buildActions(context, { log, testProviderURL: null });
 
   const runStep = actions.trackSteps(
-    makeQueueCheckStep({ context, queue: actions.queue, tool: actions.logConnector.tool }),
+    makeQueueCheckStep({
+      context,
+      queue: actions.queue,
+      makeDecide: (findDeclaration) => readStarterDecisionPoint(findDeclaration),
+      tool: actions.logConnector.tool,
+    }),
   );
 
   const wake = (taskID: string) =>

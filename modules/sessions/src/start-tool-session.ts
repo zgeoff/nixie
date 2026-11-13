@@ -1,4 +1,4 @@
-import { makeDecisionPoint } from '@heynixie/policy';
+import type { DecisionPoint, EffectDeclaration } from '@heynixie/policy';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition } from '@heynixie/tools';
@@ -14,6 +14,11 @@ export interface ToolSessionOptions {
   readonly socketDir: string;
 
   readonly queue: ActionQueue;
+
+  // builds the decision point of a registry, from the declarations in code
+  readonly makeDecide: (
+    findDeclaration: (tool: string) => EffectDeclaration | null,
+  ) => DecisionPoint;
 }
 
 export interface ToolSessionRequest {
@@ -31,9 +36,7 @@ export async function startToolSession(
   const endpoint = await startToolEndpoint({
     socketDir: options.socketDir,
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
-    }),
+    decide: options.makeDecide((name) => registry.findTool(name)?.definition.declaration ?? null),
     log: options.context.log,
     definitions: options.context.definitions,
     queue: options.queue,

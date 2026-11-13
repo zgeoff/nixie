@@ -1,5 +1,6 @@
 import { readdir } from 'node:fs/promises';
 import { modelsConfigSchema } from '@heynixie/models';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import type { StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { TestSessionHost } from '@heynixie/sessions/test-utils';
 import type { RunStep, TasksContext } from '@heynixie/tasks';
@@ -171,6 +172,7 @@ async function startTestWriterRunner(
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: host.sandboxes,
+    makeDecide: (findDeclaration) => readStarterDecisionPoint(findDeclaration),
 
     queue: {
       enqueue: () => Promise.reject(new Error('no memory writer tool runs queued')),

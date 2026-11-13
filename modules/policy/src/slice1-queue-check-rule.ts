@@ -1,8 +1,7 @@
-import type { FixedRule } from './types';
+import type { RuleEntry } from './types';
 
-export const slice1QueueCheckRule: FixedRule = {
+export const slice1QueueCheckRule: RuleEntry = {
   id: 'slice1.queue-check',
   revision: 1,
-  sentence: "Allow actions.log, which writes one line to nixie's server log.",
-  pickOutcome: (call) => (call.tool === 'actions.log' ? 'allow' : null),
+  rule: { id: 'slice1.queue-check', outcome: 'allow', tools: ['actions.log'] },
 };

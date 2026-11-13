@@ -12,6 +12,7 @@ import type { SandboxAdapterOptions } from './create-sandbox-adapter';
 import type { DeploymentConfig } from './deployment-config-schema';
 import type { CrashHarness } from './join-crash-harness';
 import type { SandboxImages } from './load-sandbox-manifest';
+import type { DecisionPointFactory } from './make-server-decisions';
 import type { Tools } from './tools';
 
 export interface Cleanup {
@@ -38,6 +39,7 @@ export interface ServerParts {
   readonly context: TasksContext;
   readonly apiContext: APIContext;
   readonly tools: Tools;
+  readonly decisions: DecisionPointFactory;
   readonly source: DefinitionsSource;
   readonly buildPolicy: SeedInputs['buildPolicy'];
   readonly inForce: InForce;
@@ -75,6 +77,11 @@ export interface CLIFlags {
   readonly text?: string;
 
   readonly reason?: string;
+
+  readonly name?: string;
+
+  readonly destination?: string;
+  readonly contactID?: string;
 
   readonly files?: string;
 

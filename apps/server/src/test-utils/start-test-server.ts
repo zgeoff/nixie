@@ -157,10 +157,17 @@ function startTestToolEndpoint(
     registry: buildToolRegistry(tools?.definitions ?? []),
     decide:
       tools?.decide ??
-      (() => ({
-        decision: { outcome: 'deny', stage: 1, rule: null },
-        sentence: 'No tool is registered.',
-      })),
+      (() =>
+        Promise.resolve({
+          decision: {
+            outcome: 'deny',
+            stage: 1,
+            rule: null,
+            destinations: [],
+            snapshot: 'sha256:test',
+          },
+          sentence: 'No tool is registered.',
+        })),
     log: context.log,
     definitions: context.definitions,
 

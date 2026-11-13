@@ -7,6 +7,7 @@ import type { MemoryProposal } from '../types';
 import { useNixieClient } from '../use-nixie-client';
 import type { ProposalAnswers } from '../use-proposal-answers';
 import { useProposalAnswers } from '../use-proposal-answers';
+import { ActionProposals } from './action-proposals';
 import { ProposalCard } from './proposal-card';
 import { ProposalSelectionBar } from './proposal-selection-bar';
 import { RuleProposals } from './rule-proposals';
@@ -66,6 +67,7 @@ export function MemoryProposals(props: MemoryProposalsProps): ReactNode {
         ))}
       </ul>
       <RuleProposals />
+      <ActionProposals />
     </main>
   );
 }

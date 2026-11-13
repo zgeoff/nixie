@@ -1,7 +1,7 @@
 import { buildTimeTool, buildWebFetchTool, webFetchDefaults } from '@heynixie/connectors';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
-import { makeDecisionPoint } from '@heynixie/policy';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import type { FetchReply } from '@heynixie/wire';
 import { buildConversationTools } from '../build-conversation-tools';
 import type { BuildTestServerTools } from './start-test-server';
@@ -47,10 +47,9 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
 
       return {
         definitions,
-        decide: makeDecisionPoint({
-          findDeclaration: (name) =>
-            definitions.find((definition) => definition.name === name)?.declaration ?? null,
-        }),
+        decide: readStarterDecisionPoint(
+          (name) => definitions.find((definition) => definition.name === name)?.declaration ?? null,
+        ),
       };
     },
     setStore: (store) => {

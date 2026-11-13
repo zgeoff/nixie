@@ -14,9 +14,11 @@ import { DefinitionsParseError } from './definitions-parse-error';
 import { loadSnapshotSkills } from './load-snapshot-skills';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import { readRulesInForce } from './read-rules-in-force';
+import { readSnapshotToolEffects } from './read-snapshot-tool-effects';
 import { readWrittenSkills } from './read-written-skills';
 import { ruleFiresProjection } from './rule-fires-projection';
 import { runSeed } from './run-seed';
+import { buildTestToolDeclaration } from './test-utils/build-test-tool-declaration';
 import { createStubGitSyncWorktree } from './test-utils/create-stub-git-sync-worktree';
 import { writeSkillExportState } from './write-skill-export-state';
 import { writeWrittenSkill } from './write-written-skill';
@@ -415,7 +417,7 @@ test('it keeps the last seed when the source refuses the snapshot', async () => 
 test('it refuses a first snapshot that fails to parse and leaves no seed', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const result = await runSeed({
@@ -1566,6 +1568,7 @@ test('it writes a rule edit that widens as one rule change proposal beside the s
           fields: [{ field: 'outcome', before: '"deny"', after: '"ask"' }],
         },
       ],
+      effectChanges: [],
     },
   ]);
 });
@@ -1734,4 +1737,78 @@ test('it keeps the snapshot hash when a rule fires', async () => {
   });
 
   expect(result).toStrictEqual({ status: 'unchanged', inForce: first.inForce });
+});
+
+test('it seeds an effect that an override adds at once, and the snapshot holds it', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'effects'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), 'mail.draft:\n  add: [spend]\n');
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [buildTestToolDeclaration('mail.draft')] }),
+  });
+
+  invariant(result.inForce);
+
+  const effects = await readSnapshotToolEffects(ctx.writer.db, result.inForce.snapshotHash);
+
+  expect(effects).toStrictEqual(new Map([['mail.draft', ['send', 'spend', 'write']]]));
+});
+
+test('it holds a removed effect as a proposal until you approve it', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'effects'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [buildTestToolDeclaration('mail.draft')] }),
+  });
+
+  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), 'mail.draft:\n  remove: [send]\n');
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [buildTestToolDeclaration('mail.draft')] }),
+  });
+
+  invariant(result.inForce);
+
+  const records = await readRecords(ctx.log, { afterSequence: 1 });
+  const effects = await readSnapshotToolEffects(ctx.writer.db, result.inForce.snapshotHash);
+
+  expect(records.map((read) => read.record.payload)).toContainEqual(
+    expect.objectContaining({ effectChanges: [{ tool: 'mail.draft', remove: ['send'] }] }),
+  );
+
+  expect(effects).toStrictEqual(new Map([['mail.draft', ['send', 'write']]]));
+});
+
+test('it refuses an override of a tool the code does not declare', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'effects'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), 'mail.nothing:\n  add: [spend]\n');
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [buildTestToolDeclaration('mail.draft')] }),
+  });
+
+  expect(result).toMatchObject({
+    status: 'refused',
+    error: { message: 'an effects override names the unknown tool mail.nothing' },
+  });
 });

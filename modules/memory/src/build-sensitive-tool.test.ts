@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildSensitiveTool } from './build-sensitive-tool';
 import { readItemShortID, startTestMemory } from './test-utils';
@@ -15,10 +16,7 @@ async function setupTest() {
     toolCallOptions: {
       registry,
 
-      decide: () => ({
-        decision: { outcome: 'allow' as const, stage: 3, rule: null },
-        sentence: null,
-      }),
+      decide: buildAllowingDecisionPoint(),
       log: memory.log,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
 

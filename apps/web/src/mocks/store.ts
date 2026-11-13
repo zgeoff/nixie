@@ -375,6 +375,19 @@ const ruleProposals = new Collection({
   }),
 });
 
+const actionProposals = new Collection({
+  schema: z.object({
+    createdAt: z.date().default(() => faker.date.recent()),
+    destinations: z.string().array().default([]),
+    lapseAt: z.date().default(() => faker.date.soon({ days: 3 })),
+    proposalID: z.string().default(buildMockProposalID),
+    reason: z.string().nullable().default(null),
+    sentence: z.string().default('Run mail.send (send).'),
+    status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
+    tool: z.string().default('mail.send'),
+  }),
+});
+
 const moments = new Collection({
   schema: z.object({
     editedAt: z.date().nullable().default(null),
@@ -467,6 +480,7 @@ export const store = {
   records,
   retryActions,
   ruleProposals,
+  actionProposals,
 
   // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
@@ -482,6 +496,7 @@ export const store = {
       memoryNotices,
       memoryProposals,
       ruleProposals,
+      actionProposals,
       memoryWriter,
       memoryConsolidator,
       backupNotices,
@@ -501,3 +516,7 @@ export const store = {
   taskControlActions,
   tasks,
 };
+
+function buildMockProposalID(): string {
+  return faker.string.alphanumeric(10).toLowerCase();
+}

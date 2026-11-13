@@ -44,11 +44,34 @@ export type PromptCause =
   | 'ask_rule'
   | 'no_rule';
 
+export type DestinationPermission = 'owner' | 'reply_target' | 'known_contact' | 'job' | 'rule';
+
+export type CheckerResult = 'yes' | 'no' | 'unsure' | 'unreachable';
+
+export type DecisionFault = 'threw' | 'timed_out';
+
+export interface ConsentCheck {
+  readonly messageSequences: readonly number[];
+  readonly codeCheck: 'pass' | 'fail';
+  readonly checker: CheckerResult;
+}
+
+// What a replay needs beyond the call's input and destinations.
+export interface DecisionInputs {
+  readonly toolList: readonly string[];
+  readonly context: 'conversation' | 'task' | 'job' | 'coding';
+  readonly definitionID: string | null;
+  readonly sources: readonly ('owner' | 'own_data' | 'task' | 'outside')[];
+  readonly turnMessageSequence: number | null;
+  readonly onBehalfOf: readonly number[];
+}
+
 export interface Decision {
   readonly outcome: 'allow' | 'ask' | 'deny';
   readonly stage: number;
   readonly rule: { readonly id: string; readonly revision: number } | null;
 
+  // The first release wrote destinations and consent in these shapes; nothing writes them now.
   readonly destinations?: readonly {
     readonly destination: string;
     readonly permission: string | null;
@@ -60,6 +83,17 @@ export interface Decision {
     readonly reason: string;
     readonly inputsHash: string;
   };
+
+  readonly ruleOthers?: readonly string[];
+  readonly cause?: PromptCause;
+  readonly defect?: 'direct_request' | 'repeat';
+
+  // one per destination, in the order of the record's erasable destinations
+  readonly permissions?: readonly (DestinationPermission | null)[];
+
+  readonly consentCheck?: ConsentCheck;
+  readonly fault?: DecisionFault;
+  readonly inputs?: DecisionInputs;
 }
 
 export interface Definitions {

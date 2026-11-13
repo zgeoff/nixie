@@ -1,6 +1,8 @@
 import { checkPromptProposal } from '@heynixie/definitions';
 import { ORPCError, os } from '@orpc/server';
+import { createHostActionProcedures } from './create-host-action-procedures';
 import { createHostConsolidationProcedures } from './create-host-consolidation-procedures';
+import { createHostContactProcedures } from './create-host-contact-procedures';
 import { createHostItemProcedures } from './create-host-item-procedures';
 import { createHostPromptProposalProcedures } from './create-host-prompt-proposal-procedures';
 import { createHostProposalProcedures } from './create-host-proposal-procedures';
@@ -53,6 +55,12 @@ export function createHostRouter(options: HostRouterOptions) {
       .use(gated)
       .router(
         createHostRuleProcedures({ ...options.context, runInForceSeed: options.runInForceSeed }),
+      ),
+    actions: hostImplementer.actions.use(gated).router(createHostActionProcedures(options.context)),
+    contacts: hostImplementer.contacts
+      .use(gated)
+      .router(
+        createHostContactProcedures({ ...options.context, runInForceSeed: options.runInForceSeed }),
       ),
     prompts: hostImplementer.prompts.use(gated).router({
       proposals: createHostPromptProposalProcedures(promptContext),

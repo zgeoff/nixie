@@ -86,6 +86,8 @@ test('it reads the seed in force with its snapshot row and the payload of its re
       skillChanges: { added: [], changed: [], removed: [] },
       writtenSkills: [],
       adoptedSkills: [],
+      effects: {},
+      heldEffects: [],
       unapplied: [],
       skipped: [],
       rules: { revisions: [], applied: [], held: [], adopted: [], conflicts: [], proposalID: null },

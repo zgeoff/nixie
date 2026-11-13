@@ -23,6 +23,8 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
   const policy = {
     rules: sortUniqueBy(input.policy.rules, 'id', (rule) => rule.id),
     tools: sortUniqueBy(input.policy.tools.map(buildToolForm), 'name', (tool) => tool.name),
+    contacts: [...new Set(input.policy.contacts)].toSorted(),
+    consent: input.policy.consent ?? {},
   };
 
   const skills = sortUniqueBy(input.skills.map(buildSkillForm), 'name', (skill) => skill.name);

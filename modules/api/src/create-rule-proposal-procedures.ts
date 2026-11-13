@@ -1,10 +1,13 @@
 import type { RuleContext } from '@heynixie/definitions';
 import { readPendingRuleProposals } from '@heynixie/definitions';
+import { readPendingActionProposals } from '@heynixie/policy';
 import { apiImplementer } from './api-implementer';
 import { buildRuleProposalEntry } from './build-rule-proposal-entry';
+import { buildActionProposalEntry } from './create-host-action-procedures';
 import { requireCaller } from './require-caller';
 import { runRuleProposalAnswer } from './run-rule-proposal-answer';
 import type { APIContext } from './types';
+import { writeActionProposalAnswer } from './write-action-proposal-answer';
 
 type RuleProposalContext = APIContext & Pick<RuleContext, 'runInForceSeed'>;
 
@@ -34,6 +37,58 @@ export function createRuleProposalProcedures(context: RuleProposalContext) {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       return runRuleProposalAnswer(context, { answer: 'reject', ...options.input }, options.errors);
+    }),
+
+    listActionProposals: rules.listActionProposals.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const pending = await readPendingActionProposals(context.log, context.clock.now());
+
+      return {
+        proposals: pending.map((entry) => {
+          const listed = buildActionProposalEntry(entry);
+
+          return {
+            proposalID: listed.proposalID,
+            tool: listed.tool,
+            sentence: listed.sentence,
+            destinations: listed.destinations,
+            createdAt: listed.createdAt,
+            lapseAt: listed.lapseAt,
+          };
+        }),
+      };
+    }),
+
+    approveActionProposal: rules.approveActionProposal.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const result = await writeActionProposalAnswer(context, {
+        answer: 'approve',
+        proposalID: options.input.proposalID,
+      });
+
+      if (result.status === 'refused') {
+        throw options.errors[result.code]();
+      }
+
+      return { proposalID: result.proposalID };
+    }),
+
+    rejectActionProposal: rules.rejectActionProposal.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const result = await writeActionProposalAnswer(context, {
+        answer: 'reject',
+        proposalID: options.input.proposalID,
+        reason: options.input.reason,
+      });
+
+      if (result.status === 'refused') {
+        throw options.errors[result.code]();
+      }
+
+      return { proposalID: result.proposalID };
     }),
   };
 }

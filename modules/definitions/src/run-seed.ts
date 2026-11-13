@@ -1,7 +1,6 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
-import { addSeededRules } from './add-seeded-rules';
 import { buildDefinitionRule } from './build-definition-rule';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { buildRuleRevisions } from './build-rule-revisions';
@@ -11,6 +10,7 @@ import { parseDefinitions } from './parse-definitions';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 import { readRuleProposalChange } from './read-rule-proposal-change';
 import { readRuleStore } from './read-rule-store';
+import { readSeedPolicy } from './read-seed-policy';
 import { readWrittenSkills } from './read-written-skills';
 import type {
   DefinitionsInForce,
@@ -75,11 +75,22 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     const revisions = buildRuleRevisions(store.current, rules.inForce);
     const now = options.log.writer.clock.now();
 
-    const proposals = await readRuleProposalChange(tx, rules.held, now);
+    const policy = await readSeedPolicy(tx, {
+      base: options.buildPolicy(read.parsed.prompts),
+      overrides: read.parsed.effects,
+      inForce,
+      rules: revisions.inForce,
+    });
+
+    if (policy.status === 'refused') {
+      return { status: 'refused', error: policy.error, inForce };
+    }
+
+    const proposals = await readRuleProposalChange(tx, rules.held, policy.held, now);
 
     const built = buildDefinitionsSnapshot({
       persona: read.parsed.persona,
-      policy: addSeededRules(options.buildPolicy(read.parsed.prompts), revisions.inForce),
+      policy: policy.policy,
       prompts: read.parsed.prompts,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
@@ -111,6 +122,8 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
         contentHash: read.snapshot.contentHash,
       },
       formatVersion: read.parsed.formatVersion,
+      effects: read.parsed.effects,
+      heldEffects: policy.held,
       unapplied: read.parsed.unapplied,
       skipped: read.snapshot.skipped,
       versions: read.parsed.skills,

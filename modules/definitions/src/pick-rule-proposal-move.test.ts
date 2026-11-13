@@ -47,14 +47,18 @@ test.each<RefusalCase>([
     code: 'PROPOSAL_CLOSED',
   },
 ])('it refuses an approval of $label', (refusal) => {
-  const proposal = buildRuleProposal('p-web', [
-    {
-      ruleID: 'allow-web',
-      before: null,
-      after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
-      change: 'widening',
-    },
-  ]);
+  const proposal = buildRuleProposal(
+    'p-web',
+    [
+      {
+        ruleID: 'allow-web',
+        before: null,
+        after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
+        change: 'widening',
+      },
+    ],
+    [],
+  );
 
   const move = pickRuleProposalMove({
     proposals: [{ proposal, proposedAt: refusal.proposedAt, outcome: refusal.outcome }],
@@ -71,14 +75,18 @@ test.each<RefusalCase>([
 });
 
 test('it approves a pending proposal while the seeded rules hold its versions from before', () => {
-  const proposal = buildRuleProposal('p-web', [
-    {
-      ruleID: 'allow-web',
-      before: null,
-      after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
-      change: 'widening',
-    },
-  ]);
+  const proposal = buildRuleProposal(
+    'p-web',
+    [
+      {
+        ruleID: 'allow-web',
+        before: null,
+        after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
+        change: 'widening',
+      },
+    ],
+    [],
+  );
 
   const move = pickRuleProposalMove({
     proposals: [{ proposal, proposedAt: 0, outcome: null }],
@@ -91,14 +99,18 @@ test('it approves a pending proposal while the seeded rules hold its versions fr
 });
 
 test('it rejects a pending proposal with your reason', () => {
-  const proposal = buildRuleProposal('p-web', [
-    {
-      ruleID: 'allow-web',
-      before: null,
-      after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
-      change: 'widening',
-    },
-  ]);
+  const proposal = buildRuleProposal(
+    'p-web',
+    [
+      {
+        ruleID: 'allow-web',
+        before: null,
+        after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
+        change: 'widening',
+      },
+    ],
+    [],
+  );
 
   const move = pickRuleProposalMove({
     proposals: [{ proposal, proposedAt: 0, outcome: null }],

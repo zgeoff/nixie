@@ -73,7 +73,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'tool_endpoint',
-    needs: ['inputs', 'context', 'web_fetch', 'actions'],
+    needs: ['inputs', 'context', 'web_fetch', 'actions', 'decisions'],
     uses: ['memory', 'server_parts', 'checker'],
     start: (parts) => {
       const options = parts.get('inputs').options;
@@ -100,6 +100,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
                 },
           testTools: NIXIE_TEST_BUILD && options.harness !== undefined ? [buildTestSendTool()] : [],
           queue: parts.get('actions').queue,
+          makeDecide: parts.get('decisions'),
           readStore: () => parts.find('memory'),
           readInForce: () => inForce.read(),
           refreshDefinitions: () => refreshDefinitions(parts.find('server_parts'), inForce),

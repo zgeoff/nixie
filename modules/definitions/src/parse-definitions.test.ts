@@ -14,6 +14,7 @@ test('it reads the format version and the persona, and lists every other file un
   expect(
     parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toStrictEqual({
+    effects: new Map(),
     formatVersion: 2,
     persona: '# Persona\n',
     skills: [],
@@ -33,7 +34,7 @@ test('it refuses definitions without a manifest', () => {
 });
 
 test.each([
-  ['format 4, which a newer release writes', 'format: 4\n'],
+  ['format 5, which a newer release writes', 'format: 5\n'],
   ['format 1, which two releases back wrote', 'format: 1\n'],
   ['format 0', 'format: 0\n'],
 ])('it refuses a manifest with %s', (_label, manifest) => {
@@ -46,7 +47,7 @@ test.each([
     parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toThrowWithMessage(
     Error,
-    /^nixie\.yaml: format \d is not one this release reads, which is 2 or 3$/u,
+    /^nixie\.yaml: format \d is not one this release reads, which is 2 or 3 or 4$/u,
   );
 });
 
@@ -132,6 +133,7 @@ test('it ignores the prompts map under format 2 and lists its part files as unap
   expect(
     parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toStrictEqual({
+    effects: new Map(),
     formatVersion: 2,
     persona: '# Persona\n',
     skills: [],
@@ -173,6 +175,7 @@ test('it reads each skill under format 2, and lists none of its files as unappli
   expect(
     parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toStrictEqual({
+    effects: new Map(),
     formatVersion: 2,
     persona: '# Persona\n',
     skills: [
@@ -317,6 +320,7 @@ test('it reads a part override from its file and a template inline under format 
   expect(
     parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
   ).toStrictEqual({
+    effects: new Map(),
     formatVersion: 3,
     persona: '# Persona\n',
     skills: [],

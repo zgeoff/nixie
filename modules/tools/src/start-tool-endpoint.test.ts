@@ -1,7 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { readRecords } from '@heynixie/log';
-import { makeDecisionPoint } from '@heynixie/policy';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry } from './build-tool-registry';
 import { startToolEndpoint } from './start-tool-endpoint';
 import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition';
@@ -21,9 +21,9 @@ async function setupTest(config: SetupConfig) {
   const endpoint = await startToolEndpoint({
     socketDir: join(testLog.dataDir, 'tools'),
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
-    }),
+    decide: readStarterDecisionPoint(
+      (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+    ),
     log: testLog.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
@@ -95,7 +95,7 @@ test('it denies a registered tool missing from the run list at the scope stage w
     isError: true,
   });
 
-  expect(entries[0]?.record.decision).toStrictEqual({ outcome: 'deny', stage: 2, rule: null });
+  expect(entries[0]?.record.decision).toMatchObject({ outcome: 'deny', stage: 2, rule: null });
 });
 
 test("it records the tool-use ID that the call carries under the run's _meta key", async () => {
@@ -465,9 +465,9 @@ test("it leaves a later writer's socket for the same run in place when its run s
   const other = await startToolEndpoint({
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
-    }),
+    decide: readStarterDecisionPoint(
+      (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+    ),
     log: { ...ctx.log, writer: { ...ctx.log.writer, epoch: ctx.log.writer.epoch + 1 } },
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
@@ -528,9 +528,9 @@ test('it gives a sandbox the socket of a run that another endpoint of the same w
   const other = await startToolEndpoint({
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
-    }),
+    decide: readStarterDecisionPoint(
+      (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+    ),
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 

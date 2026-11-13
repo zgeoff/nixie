@@ -1,8 +1,15 @@
 import type { ContentSource, Decision, Definitions, JSONObject, Log } from '@heynixie/log';
-import { writeRecords } from '@heynixie/log';
-import type { DecisionPoint, PolicyDecision } from '@heynixie/policy';
+import { withWriteTransaction, writeRecords, writeRecordsInTransaction } from '@heynixie/log';
+import type { CallDestination, DecisionPoint, PolicyDecision } from '@heynixie/policy';
+import {
+  buildActionProposalInput,
+  makeFaultSafeDecisionPoint,
+  toStoredDecision,
+} from '@heynixie/policy';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
+import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
+import { resolveCallDestinations } from './policy-call/resolve-call-destinations';
 import { toolCalledCodec } from './tool-called-codec';
 import { toolResultCodec } from './tool-result-codec';
 import type {
@@ -20,6 +27,9 @@ import type {
 export interface ToolCallOptions {
   readonly registry: ToolRegistry;
   readonly decide: DecisionPoint;
+
+  // a decision point that runs past this denies the call; 30 seconds when absent
+  readonly decisionDeadlineMs?: number;
 
   readonly log: Log;
 
@@ -41,7 +51,8 @@ export async function runToolCall(
   options: ToolCallOptions,
 ): Promise<CallToolResult> {
   const call: ToolCall = { ...request, callID: crypto.randomUUID() };
-  const recorder = makeCallRecorder(call, run, options);
+  const definitions = options.definitions();
+  const recorder = makeCallRecorder(call, run, options, definitions);
   const registered = options.registry.findTool(call.tool);
   const inputCheck = checkListedInput(registered, call, run);
 
@@ -49,12 +60,48 @@ export async function runToolCall(
     return writeInvalidCall(recorder, inputCheck.errors);
   }
 
-  const policy = options.decide({ tool: call.tool, toolList: run.tools });
+  const resolution =
+    registered !== null && run.tools.includes(call.tool)
+      ? await resolveCallDestinations(registered, call.input, run)
+      : { status: 'ok' as const, destinations: [] };
 
-  const callSequence = await recorder.writeCall(policy);
-  const settled = await runDecidedCall({ policy, registered, call, run, callSequence, options });
+  if (resolution.status === 'error') {
+    return writeInvalidCall(recorder, resolution.message);
+  }
 
-  return recorder.writeResult(callSequence, settled);
+  const destinations = resolution.destinations;
+
+  const deadline =
+    options.decisionDeadlineMs === undefined ? {} : { deadlineMs: options.decisionDeadlineMs };
+
+  const decide = makeFaultSafeDecisionPoint(options.decide, deadline);
+
+  const policyCall = buildToolPolicyCall(run, {
+    tool: call.tool,
+    input: call.input,
+    destinations,
+    definitions,
+    at: options.log.writer.clock.now(),
+  });
+
+  const policy = await decide(policyCall);
+
+  const stored = toStoredDecision(policy.decision, policyCall);
+
+  const written = await recorder.writeCall({ policy, stored, destinations });
+
+  const settled = await runDecidedCall({
+    policy,
+    stored,
+    registered,
+    call,
+    run,
+    callSequence: written.sequence,
+    shortID: written.shortID,
+    options,
+  });
+
+  return recorder.writeResult(written.sequence, settled);
 }
 
 type SettledOutcome = 'result' | 'invalid' | 'denied' | 'error' | 'queued' | 'failed' | 'unknown';
@@ -73,38 +120,92 @@ interface Settled {
     | { readonly kind: 'text'; readonly text: string; readonly isError: boolean };
 }
 
+interface CallPolicy {
+  readonly policy: PolicyDecision;
+  readonly stored: Decision;
+  readonly destinations: readonly CallDestination[];
+}
+
+interface WrittenCall {
+  readonly sequence: number;
+
+  // the short ID of the action proposal that an ask wrote, and null for any other call
+  readonly shortID: string | null;
+}
+
 interface CallRecorder {
-  readonly writeCall: (policy: PolicyDecision | null) => Promise<number>;
+  readonly writeCall: (decided: CallPolicy | null) => Promise<WrittenCall>;
   readonly writeResult: (callSequence: number, settled: Settled) => Promise<CallToolResult>;
 }
 
-function makeCallRecorder(call: ToolCall, run: ToolRun, options: ToolCallOptions): CallRecorder {
-  const definitions = options.definitions();
+function makeCallRecorder(
+  call: ToolCall,
+  run: ToolRun,
+  options: ToolCallOptions,
+  definitions: Definitions,
+): CallRecorder {
   const ids = { callID: call.callID, runID: run.runID, toolUseID: call.toolUseID };
   const recordInput = options.registry.findTool(call.tool)?.definition.recordInput;
 
   return {
-    writeCall: async (policy) => {
-      const [written] = await writeRecords(options.log, [
-        {
-          kind: 'tool_called',
+    writeCall: (decided) =>
+      withWriteTransaction(options.log.writer, async (tx) => {
+        const input = recordInput?.(call.input) ?? call.input;
+        const destinations = decided?.destinations ?? [];
+
+        const [written] = await writeRecordsInTransaction(tx, options.log, [
+          {
+            kind: 'tool_called',
+            definitions,
+            thread: run.thread,
+            payload: toolCalledCodec.encode({
+              ...ids,
+              tool: call.tool,
+              model: run.model.model,
+              profile: run.model.profile,
+            }),
+            erasable: {
+              input,
+              ...(destinations.length === 0
+                ? {}
+                : {
+                    destinations: destinations.map((destination) => ({
+                      value: destination.value,
+                      replyTarget: destination.replyTarget,
+                    })),
+                  }),
+            },
+            ...(decided === null ? {} : { decision: decided.stored }),
+          },
+        ]);
+
+        invariant(written, 'the log wrote no record for the tool call');
+
+        const cause = decided?.policy.decision.cause;
+
+        if (decided === null || decided.policy.decision.outcome !== 'ask' || cause === undefined) {
+          return { sequence: written.sequence, shortID: null };
+        }
+
+        const registered = options.registry.findTool(call.tool);
+
+        invariant(registered, 'a tool that asks is registered');
+
+        const proposal = buildActionProposalInput({
           definitions,
           thread: run.thread,
-          payload: toolCalledCodec.encode({
-            ...ids,
-            tool: call.tool,
-            model: run.model.model,
-            profile: run.model.profile,
-          }),
-          erasable: { input: recordInput?.(call.input) ?? call.input },
-          ...(policy === null ? {} : { decision: policy.decision }),
-        },
-      ]);
+          callSequence: written.sequence,
+          tool: call.tool,
+          effects: registered.definition.declaration.effects,
+          cause,
+          input,
+          destinations,
+        });
 
-      invariant(written, 'the log wrote no record for the tool call');
+        await writeRecordsInTransaction(tx, options.log, [proposal.record]);
 
-      return written.sequence;
-    },
+        return { sequence: written.sequence, shortID: proposal.shortID };
+      }),
     writeResult: async (callSequence, settled) => {
       const contentSource = pickLeastTrusted(Object.values(settled.sources));
 
@@ -172,11 +273,11 @@ function checkListedInput(
 }
 
 async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
-  const callSequence = await recorder.writeCall(null);
+  const written = await recorder.writeCall(null);
 
   // the errors repeat the input's own keys, which the model chose
   return recorder.writeResult(
-    callSequence,
+    written.sequence,
     buildMessage('invalid', errors, { source: 'untrusted' }),
   );
 }
@@ -203,26 +304,51 @@ function buildMessage(
 
 interface DecidedCall {
   readonly policy: PolicyDecision;
+  readonly stored: Decision;
   readonly registered: RegisteredTool | null;
   readonly call: ToolCall;
   readonly run: ToolRun;
   readonly callSequence: number;
+  readonly shortID: string | null;
   readonly options: ToolCallOptions;
 }
 
 function runDecidedCall(decided: DecidedCall): Promise<Settled> {
-  const { policy, registered, ...rest } = decided;
+  const { policy, stored, registered, shortID, ...rest } = decided;
 
-  if (policy.decision.outcome === 'deny' || registered === null) {
-    const message = `denied: ${policy.sentence ?? 'no rule allowed this call'}`;
-
-    // a registry or scope sentence repeats the tool name, which the model chose
-    const source = policy.decision.rule === null ? 'untrusted' : 'owner_data';
-
-    return Promise.resolve(buildMessage('denied', message, { source }));
+  if (policy.decision.outcome === 'ask') {
+    return Promise.resolve(buildAskMessage(shortID));
   }
 
-  return tryRunAllowedCall({ ...rest, registered, decision: policy.decision });
+  if (policy.decision.outcome === 'deny' || registered === null) {
+    const sentence = policy.sentence ?? 'no rule allowed this call';
+
+    // a deny of a rule or a fault prints its own sentence, and the others get a prefix
+    const message = sentence.startsWith('Not allowed') ? sentence : `denied: ${sentence}`;
+
+    // a registry or scope sentence repeats the tool name, which the model chose
+    const isModelText = policy.decision.stage <= 2 && policy.decision.fault === undefined;
+
+    return Promise.resolve(
+      buildMessage('denied', message, { source: isModelText ? 'untrusted' : 'owner_data' }),
+    );
+  }
+
+  return tryRunAllowedCall({
+    ...rest,
+    registered,
+    decision: stored,
+  });
+}
+
+function buildAskMessage(shortID: string | null): Settled {
+  invariant(shortID, 'an ask wrote an action proposal');
+
+  return buildMessage(
+    'queued',
+    `Waiting for approval as \`${shortID}\`. You can keep working; you will hear the answer in your inbox.`,
+    { isError: false },
+  );
 }
 
 interface AllowedCall {

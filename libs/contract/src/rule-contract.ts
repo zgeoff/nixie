@@ -16,6 +16,15 @@ const ruleProposalSchema = z.object({
   lapseAt: z.date(),
 });
 
+const actionProposalSchema = z.object({
+  proposalID: z.string(),
+  tool: z.string(),
+  sentence: z.string(),
+  destinations: z.array(z.string()),
+  createdAt: z.date(),
+  lapseAt: z.date(),
+});
+
 const ruleAnswer = signedIn.errors({
   NOT_FOUND: { message: 'No rule change proposal has this ID', status: 404 },
   PROPOSAL_CLOSED: {
@@ -34,6 +43,16 @@ export const ruleContract = {
     .output(z.object({ proposalID: z.string() })),
 
   rejectProposal: ruleAnswer
+    .input(z.object({ proposalID: proposalIDSchema, reason: z.string().max(500).regex(/\S/u) }))
+    .output(z.object({ proposalID: z.string() })),
+
+  listActionProposals: signedIn.output(z.object({ proposals: z.array(actionProposalSchema) })),
+
+  approveActionProposal: ruleAnswer
+    .input(z.object({ proposalID: proposalIDSchema }))
+    .output(z.object({ proposalID: z.string() })),
+
+  rejectActionProposal: ruleAnswer
     .input(z.object({ proposalID: proposalIDSchema, reason: z.string().max(500).regex(/\S/u) }))
     .output(z.object({ proposalID: z.string() })),
 };

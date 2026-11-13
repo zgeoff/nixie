@@ -4,6 +4,7 @@ import { ruleFiresProjection } from '@heynixie/definitions';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
+import { knownContactsProjection } from '@heynixie/policy';
 import { sandboxesProjection } from '@heynixie/sandbox';
 import { tasksProjections } from '@heynixie/tasks';
 
@@ -19,6 +20,7 @@ export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
       ...apiProjections,
       ...memoryProjections,
       ruleFiresProjection,
+      knownContactsProjection,
     ],
   };
 }

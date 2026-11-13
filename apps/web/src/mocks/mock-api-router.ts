@@ -3,6 +3,7 @@ import { renderSessionCookie } from '@heynixie/contract';
 import { withEventMeta } from '@orpc/server';
 import { match } from 'ts-pattern';
 import type { ReadonlyDeep } from '../types';
+import { mockActionProposalProcedures } from './mock-action-proposal-procedures';
 import { mockImplementer } from './mock-implementer';
 import { mockMemoryRouter } from './mock-memory-router';
 import { mockRuleProcedures } from './mock-rule-procedures';
@@ -146,7 +147,7 @@ export const mockAPIRouter = os.router({
   log: { follow: followProcedure },
   memory: mockMemoryRouter,
   records: { follow: followProcedure },
-  rules: mockRuleProcedures,
+  rules: { ...mockRuleProcedures, ...mockActionProposalProcedures },
   sessions: {
     enrol: os.sessions.enrol.handler(async (options) => {
       const input = options.input;

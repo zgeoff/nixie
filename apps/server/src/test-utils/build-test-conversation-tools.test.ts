@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { startTestMemoryStore } from '@heynixie/memory/test-utils';
+import { buildPolicyCall } from '@heynixie/policy/test-utils';
 import invariant from 'tiny-invariant';
 import { buildTestConversationTools } from './build-test-conversation-tools';
 import { startTestServer } from './start-test-server';
@@ -67,9 +68,9 @@ test('it lets a web fetch through the decision point', async () => {
 
   const tools = buildTestConversationTools({ kind: 'failed', reason: 'no page' });
 
-  const outcome = tools
+  const outcome = await tools
     .buildTools(ctx.server.context)
-    .decide({ tool: 'web_fetch', toolList: ['web_fetch'] });
+    .decide(buildPolicyCall({ tool: 'web_fetch', toolList: ['web_fetch'] }));
 
   expect(outcome).toMatchObject({ decision: { outcome: 'allow' } });
 });

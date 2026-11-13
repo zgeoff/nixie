@@ -3,6 +3,7 @@ import { toErrorFields } from '@heynixie/logger';
 import { buildBackupCommands } from './build-backup-commands';
 import { checkEncoder } from './check-encoder';
 import { createConsolidationCommands } from './create-consolidation-commands';
+import { createContactCommands } from './create-contact-commands';
 import { createDeploymentCommands } from './create-deployment-commands';
 import { createMemoryCommands } from './create-memory-commands';
 import { createPromptCommands } from './create-prompt-commands';
@@ -35,6 +36,7 @@ const commands = new Map<string, Command>([
   ...createSkillCommands(host),
   ...createPromptCommands(host),
   ...createRuleCommands(host),
+  ...createContactCommands(host),
   ...buildBackupCommands(),
 ]);
 

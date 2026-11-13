@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildActionQueue } from '@heynixie/actions';
 import { modelsConfigSchema } from '@heynixie/models';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { startTestSessionHost } from '@heynixie/sessions/test-utils';
 import { runTaskSteps } from '@heynixie/tasks/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
@@ -40,6 +41,7 @@ async function setupTest() {
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: host.sandboxes,
     queue: buildActionQueue(context).queue,
+    makeDecide: (findDeclaration) => readStarterDecisionPoint(findDeclaration),
     socketDir: host.socketDir,
     images: { conversation: 'nixie-conversation-0123456789ab' },
     store,

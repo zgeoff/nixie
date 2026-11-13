@@ -31,7 +31,10 @@
         },
         "format": {
           "type": "number",
-          "const": 3
+          "enum": [
+            3,
+            4
+          ]
         },
         "prompts": {
           "type": "object",

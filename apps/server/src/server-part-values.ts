@@ -4,6 +4,7 @@ import type { StartedMemoryStore } from '@heynixie/memory';
 import type { CheckerTask, NixieRunner } from '@heynixie/sessions';
 import type { APIGate } from './build-api-gate';
 import type { ServerResetControl } from './build-server-reset';
+import type { DecisionPointFactory } from './make-server-decisions';
 import type { ServerInputs } from './server-inputs';
 import type { ConversationImp } from './start-conversation-imp';
 import type { Tools } from './tools';
@@ -13,6 +14,7 @@ export interface ServerPartValues {
   readonly inputs: ServerInputs;
   readonly state: ServerParts['state'];
   readonly context: Pick<ServerParts, 'apiContext' | 'inForce'>;
+  readonly decisions: DecisionPointFactory;
   readonly sandbox_adapter: Tools['adapter'];
   readonly web_fetch: Tools['webFetch'];
   readonly actions: Tools['actions'];
@@ -43,6 +45,7 @@ export interface ServerPartValues {
   readonly skill_lapse_sweep: void;
   readonly prompt_lapse_sweep: void;
   readonly rule_lapse_sweep: void;
+  readonly action_lapse_sweep: void;
   readonly backups: void;
 
   readonly definitions_exports: DefinitionsExportSweep | null;

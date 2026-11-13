@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import type { DefinitionsSource, SnapshotPolicy } from '@heynixie/definitions';
 import { createPathSource } from '@heynixie/definitions';
 import { buildCheckerRules } from '@heynixie/memory';
-import { getFixedRules } from '@heynixie/policy';
+import { resolveRoleProfile } from '@heynixie/models';
+import { consentCheckerPrompt, getFixedRules } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { ToolDefinition } from '@heynixie/tools';
 import { buildSnapshotPolicy } from './build-snapshot-policy';
@@ -18,13 +20,17 @@ export interface SeedTools {
 }
 
 export function buildSeedInputs(
-  config: Pick<DeploymentConfig, 'definitions' | 'owner'>,
+  config: Pick<DeploymentConfig, 'definitions' | 'models' | 'owner'>,
   tools: SeedTools,
 ): SeedInputs {
-  const policy = buildSnapshotPolicy(getFixedRules(), [
-    ...tools.definitions,
-    tools.actions.logConnector.tool,
-  ]);
+  const policy = buildSnapshotPolicy(
+    getFixedRules(),
+    [...tools.definitions, tools.actions.logConnector.tool],
+    {
+      prompt: `sha256:${createHash('sha256').update(consentCheckerPrompt).digest('hex')}`,
+      profile: resolveRoleProfile(config.models, 'checker').id,
+    },
+  );
 
   return {
     source: createPathSource({ directory: config.definitions.source.path }),

@@ -26,6 +26,7 @@ const CLI_OPTIONS = {
   'as-new': { type: 'boolean', default: false },
   text: { type: 'string' },
   reason: { type: 'string' },
+  name: { type: 'string' },
   files: { type: 'string' },
   entry: { type: 'string' },
   keep: { type: 'enum', choices: ['nixie', 'definitions'] },
@@ -66,9 +67,14 @@ const PROPOSAL_ID_OPTIONS = {
   proposalID: { type: 'positional', required: true },
 } as const;
 
-const PROPOSAL_REJECT_OPTIONS = {
-  ...PROPOSAL_ID_OPTIONS,
-  reason: { type: 'string', required: true },
+const CONTACT_MARK_OPTIONS = {
+  ...CLI_OPTIONS,
+  destination: { type: 'positional', required: true },
+} as const;
+
+const CONTACT_UNMARK_OPTIONS = {
+  ...CLI_OPTIONS,
+  contactID: { type: 'positional', required: true },
 } as const;
 
 // A command whose name holds a space is an action under its first word, such as `rules resolve`,
@@ -77,12 +83,15 @@ type ActionOptions =
   | typeof CLI_OPTIONS
   | typeof RULE_RESOLVE_OPTIONS
   | typeof PROPOSAL_ID_OPTIONS
-  | typeof PROPOSAL_REJECT_OPTIONS;
+  | typeof CONTACT_MARK_OPTIONS
+  | typeof CONTACT_UNMARK_OPTIONS;
 
 const ACTION_OPTIONS: Readonly<Record<string, ActionOptions>> = {
   'rules resolve': RULE_RESOLVE_OPTIONS,
   'proposals approve': PROPOSAL_ID_OPTIONS,
-  'proposals reject': PROPOSAL_REJECT_OPTIONS,
+  'proposals reject': PROPOSAL_ID_OPTIONS,
+  'contacts mark-known': CONTACT_MARK_OPTIONS,
+  'contacts unmark': CONTACT_UNMARK_OPTIONS,
 };
 
 interface ActionParams {

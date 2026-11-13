@@ -54,16 +54,43 @@ async function runRuleResolve(host: HostTransport, flags: CLIFlags, io: CLIIO): 
   return 0;
 }
 
+// Both kinds of proposal list together, each with the sentence that says what it would change.
 async function runProposalsList(host: HostTransport, flags: CLIFlags, io: CLIIO): Promise<number> {
   const socketPath = await host.resolveSocketPath(flags.config);
 
-  const pending = await host.sendHostRequest(socketPath, 'proposals list', (client) =>
-    client.rules.proposals.list(),
-  );
+  const pending = await host.sendHostRequest(socketPath, 'proposals list', async (client) => {
+    const rules = await client.rules.proposals.list();
+    const actions = await client.actions.proposals.list();
 
-  io.print(JSON.stringify(pending));
+    return { rules, actions };
+  });
+
+  const entries = [...pending.rules.map(toRuleEntry), ...pending.actions.map(toActionEntry)];
+
+  io.print(JSON.stringify(entries));
 
   return 0;
+}
+
+interface ListedRuleChange {
+  readonly ruleID: string;
+  readonly after: { readonly sentence: string } | null;
+}
+
+interface ListedRuleProposal {
+  readonly changes: readonly ListedRuleChange[];
+}
+
+function toRuleEntry<Proposal extends ListedRuleProposal>(proposal: Proposal) {
+  const sentence = proposal.changes
+    .map((change) => `${change.ruleID}: ${change.after?.sentence ?? 'removed'}`)
+    .join('\n');
+
+  return { kind: 'rule_change' as const, ...proposal, sentence };
+}
+
+function toActionEntry<Proposal extends object>(proposal: Proposal) {
+  return { kind: 'action' as const, ...proposal };
 }
 
 async function runProposalApprove(
@@ -77,9 +104,13 @@ async function runProposalApprove(
 
   const socketPath = await host.resolveSocketPath(flags.config);
 
-  const approved = await host.sendHostRequest(socketPath, 'proposals approve', (client) =>
-    client.rules.proposals.approve({ proposalID }),
-  );
+  const approved = await host.sendHostRequest(socketPath, 'proposals approve', async (client) => {
+    const actions = await client.actions.proposals.list();
+
+    return actions.some((action) => action.proposalID === proposalID)
+      ? client.actions.proposals.approve({ proposalID })
+      : client.rules.proposals.approve({ proposalID });
+  });
 
   io.print(JSON.stringify(approved));
 
@@ -91,13 +122,25 @@ async function runProposalReject(host: HostTransport, flags: CLIFlags, io: CLIIO
   const reason = flags.reason;
 
   invariant(proposalID !== undefined, 'the CLI parser requires a proposal ID');
-  invariant(reason !== undefined, 'the CLI parser requires --reason');
 
   const socketPath = await host.resolveSocketPath(flags.config);
 
-  const rejected = await host.sendHostRequest(socketPath, 'proposals reject', (client) =>
-    client.rules.proposals.reject({ proposalID, reason }),
-  );
+  const rejected = await host.sendHostRequest(socketPath, 'proposals reject', async (client) => {
+    const actions = await client.actions.proposals.list();
+
+    if (actions.some((action) => action.proposalID === proposalID)) {
+      return client.actions.proposals.reject({
+        proposalID,
+        ...(reason === undefined ? {} : { reason }),
+      });
+    }
+
+    if (reason === undefined) {
+      throw new Error('a rule change proposal needs --reason to reject it');
+    }
+
+    return client.rules.proposals.reject({ proposalID, reason });
+  });
 
   io.print(JSON.stringify(rejected));
 

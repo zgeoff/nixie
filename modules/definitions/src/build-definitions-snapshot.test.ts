@@ -19,7 +19,7 @@ test('it builds the canonical form and its hashes', () => {
 
   expect(snapshot).toMatchInlineSnapshot(`
     {
-      "form": "{"conversation":{"skills":["tide-tables"]},"jobs":[],"persona":"0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575","policy":{"rules":[{"effects":["read","fetch","note"],"id":"slice1.read-only","outcome":"allow"}],"tools":[{"destinations":[],"effects":["fetch"],"name":"web_fetch"}]},"skills":[{"name":"pdf-forms","origin":"vendored","skillHash":"b2"},{"name":"tide-tables","origin":"definitions","skillHash":"a1"}]}",
+      "form": "{"conversation":{"skills":["tide-tables"]},"jobs":[],"persona":"0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575","policy":{"consent":{},"contacts":[],"rules":[{"effects":["read","fetch","note"],"id":"slice1.read-only","outcome":"allow"}],"tools":[{"destinations":[],"effects":["fetch"],"name":"web_fetch"}]},"skills":[{"name":"pdf-forms","origin":"vendored","skillHash":"b2"},{"name":"tide-tables","origin":"definitions","skillHash":"a1"}]}",
       "persona": 
     "# Persona
 
@@ -27,9 +27,9 @@ test('it builds the canonical form and its hashes', () => {
     "
     ,
       "personaVersion": "0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575",
-      "policyHash": "cc2abb490283d7746537cbf81e684ede5c607ee8885fbf70a0c460926b9955ef",
+      "policyHash": "46d747ca22ace0b2f20440e0d5e1ac690c774bab7d731cb77cb84b2105338a1d",
       "prompts": {},
-      "snapshotHash": "c3235924f2b04882edd289fe4b864d673e6eaed9d62633b5ddb4657be78ce80e",
+      "snapshotHash": "a263bed38975462c174b140c7fc5ad3630f38ade0ad7d71206a77eaf466b1498",
     }
   `);
 });
@@ -56,7 +56,11 @@ test('it hashes the canonical form for the snapshot and the persona text for its
   });
 
   const personaHash = createHash('sha256').update('# Persona\n').digest('hex');
-  const policyHash = createHash('sha256').update('{"rules":[],"tools":[]}').digest('hex');
+
+  const policyHash = createHash('sha256')
+    .update('{"consent":{},"contacts":[],"rules":[],"tools":[]}')
+    .digest('hex');
+
   const formHash = createHash('sha256').update(snapshot.form).digest('hex');
 
   expect(snapshot.personaVersion).toBe(personaHash);

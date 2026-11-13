@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import type { RateToolOptions } from './build-rate-tool';
 import { buildRateTool } from './build-rate-tool';
@@ -21,10 +22,7 @@ async function setupTest(config: RateToolOptions) {
     toolCallOptions: {
       registry,
 
-      decide: () => ({
-        decision: { outcome: 'allow' as const, stage: 3, rule: null },
-        sentence: null,
-      }),
+      decide: buildAllowingDecisionPoint(),
       log: memory.log,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
 
