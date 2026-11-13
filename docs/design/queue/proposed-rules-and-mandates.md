@@ -3,7 +3,7 @@
 - **Status:** draft
 - **Work items:** [proposed rules and mandates](https://linear.app/zgeoff/issue/GEO-1806)
 
-nixie offers 2 kinds of allow rule that you approve before they take effect:
+nixie proposes 2 kinds of allow rule, and each takes effect only once you approve it:
 
 - **A proposed rule** turns a habit into a rule. When you approve the same kind of call 3 times in
   30 days and decline none, nixie proposes the narrowest allow rule that covers those calls.
@@ -21,7 +21,7 @@ or when you end it.
 
 The [rules design](../platform/policy/rules.md#gaps-and-proposed-rules) holds what these rules mean
 for you. This doc holds the record kinds, the calls, and the constraints the code must keep. The
-action proposals that the gap count reads come from the decision point cutover
+action proposals that a proposed rule counts come from the decision point cutover
 (`docs/design/queue/decision-point-cutover.md`).
 
 Some terms this doc uses:
@@ -32,7 +32,9 @@ Some terms this doc uses:
 - **A checked action** is a client call that the server checks against your session
   ([checked actions](../../architecture/channels/api.md#checked-actions)).
 - **A seed of the definitions in force** rebuilds the rules in force from the 3 layers of the rule
-  store, and writes a new snapshot when they changed. Every runtime change takes effect through one.
+  store (the rules your definitions hold, the version of each that nixie applied, and the runtime
+  changes), and writes a new snapshot when they changed. Every runtime change takes effect through
+  one.
 - **A lift** is the `lift` field on an allow rule, which lets a `spend` call past the always-ask set
   within a budget ([lifting rules](../platform/policy/budgets.md#lifting-rules)). A proposal that
   creates a lift takes the `lifting` risk class.
@@ -60,7 +62,7 @@ of the `internal_change` kind on the proposals module.
 ### Gap groups
 
 The decision point asks with the cause `no_rule` when no rule matches a call, stage 9 of the
-[pipeline](../platform/policy/decision-point.md#the-pipeline). The rules design calls such a call a
+[pipeline](../platform/policy/decision-point.md#the-pipeline). In the rules design, such a call is a
 gap. When you answer its action proposal, the rule store adds the answer to the call's group.
 
 ```ts
@@ -115,7 +117,7 @@ jobs: [weekly-report] # only when every call came from this one definition
 destinations: [sam@example.org] # the group's destinations, exact, with no wildcard
 sources: [own_data] # the union of the calls' sources; left out when no call had one
 checks:
-  - { arg: subject, op: eq, value: Q3 numbers } # each scalar argument with one value in every call
+  - { arg: account, op: eq, value: work } # each scalar argument with one value in every call
 ```
 
 - Each check is `eq`, by argument path, on a scalar argument or a scalar inside an object argument.
@@ -143,7 +145,8 @@ The shared row and the card's body for a proposed rule:
 ```ts
 // The shared row (approval record design)
 { kind: 'internal_change', riskClass: 'always_ask', cause: 'proposed_rule', taskID: null,
-  thread: null, rule: null, deadlineAt: null }
+  thread: null, deadlineAt: null,
+  rule: null } // rule: the rule Always allow would create, which this row never offers
 
 // The body, from the handler's describe()
 { sentence: '**Allow** `mail.send` in a task of `weekly-report` when every destination matches `sam@example.org` …',
@@ -152,12 +155,12 @@ The shared row and the card's body for a proposed rule:
 // choices: ['approve', 'defer', 'decline']. The card labels decline "Not now", and adds Edit.
 ```
 
-The card offers 4 controls. Approve, Defer and Not now send the row's choices through
+The card has 4 controls. Approve, Defer and Not now send the row's choices through
 `approvals.answerProposal`:
 
 | Control | What happens                                                                                        |
 | ------- | --------------------------------------------------------------------------------------------------- |
-| Approve | One runtime change adds the rule under a new runtime ID, with you as its changer                    |
+| Approve | One runtime change adds the rule under a new runtime ID, recorded as changed by you                 |
 | Not now | The `decline` choice: the group's `quiet_until` becomes now plus `policy.proposed_rules.quiet_days` |
 | Defer   | As the approval record design defines it                                                            |
 | Edit    | Opens the rule form on the card's rule, and sends `rules.editProposedRule` when you save it         |
@@ -165,7 +168,8 @@ The card offers 4 controls. Approve, Defer and Not now send the row's choices th
 A lapse of the proposal sets `quiet_until` as Not now does. A Decline of a new action proposal in
 the group withdraws the group's open proposed rule.
 
-Edit is a checked action of its own, because a row keeps its hash and its risk class for life:
+Edit writes a new proposal through a checked action of its own. A row keeps its hash and its risk
+class for life, so an edited rule cannot stay on the old row:
 
 ```ts
 const edited = await client.rules.editProposedRule({
@@ -190,7 +194,7 @@ The rule format already holds `mandate` and `expires`, and the decision point al
 at its `expires`. This design adds the way a mandate starts and ends.
 
 ```ts
-// The chat tool. It declares the `note` effect, which the starter rule allow-notes allows, because
+// The chat tool. It declares the `note` effect (decision point design, Effects), which the starter rule allow-notes allows, because
 // its call only writes a proposal. It sits on the conversation's tool list alone, so no task or
 // job can call it.
 // rules.propose_mandate({
@@ -221,7 +225,7 @@ interface RulesMandateProposed {
   shortID: string; // from createShortID
   mandateID: string; // from createShortID, which fits the rule ID pattern
   ruleHashes: string[]; // each rule's canonical form, with mandate and expires filled in
-  expires: number;
+  expires: number; // milliseconds since the epoch, as every time in the log
   proposedBy: 'owner' | 'nixie'; // the form, or the chat tool
   // erasable: { title, rules: RuleForm[] }
 }
@@ -253,7 +257,7 @@ const { mandates } = await client.rules.listMandates();
 // The client shows the time left from expires.
 
 await client.rules.endMandate({ mandateID: 'h7d2n5r9wb', clientActionID });
-// → { mandateID: 'h7d2n5r9wb', state: 'ended' }. For a mandate that has ended, it returns that state.
+// → { mandateID: 'h7d2n5r9wb', state: 'ended' }. For a mandate the timer ended, state is 'expired'.
 ```
 
 ```bash
@@ -267,14 +271,14 @@ The server adds 2 entries to the
 as these:
 
 ```text
-Mandate h7d2n5r9wb started: Full authority over my calendar invites, until 00:00.
+Mandate h7d2n5r9wb started: Full authority over my calendar invites, until 00:00 Sydney.
 Mandate h7d2n5r9wb ended (expired): Full authority over my calendar invites.
 ```
 
 ### Settings
 
 ```yaml
-# config.yaml. The decision point cutover adds the policy section; this design adds these 2 keys.
+# config.yaml. The decision point cutover adds the policy section; this design adds these 2 sections.
 policy:
   proposed_rules:
     approvals: 3 # approved answers in one group before nixie proposes a rule
@@ -298,13 +302,14 @@ policy:
 - At start, the rule store checks each group that gained an answer since its last check, so a crash
   between an answer and its check loses no proposal.
 - An approved proposed rule goes into the rolling pull request, with its sentence and the reason
-  "proposed after 3 approvals". Undo of the rule removes an allow rule, which narrows.
+  "proposed after 3 approvals". Undo on the rule's notice removes it. Removing an allow rule
+  narrows, so the undo needs no approval.
 
 ### Mandates
 
 - Every rule of a mandate is a new runtime rule. Its ID is the mandate ID and its number, such as
-  `h7d2n5r9wb-1`, which no rule in your definitions, the seeded rules or the store has held. A
-  mandate never edits or removes another rule.
+  `h7d2n5r9wb-1`, an ID that the rule store has never held. A mandate never edits or removes another
+  rule.
 - Every rule of a mandate holds the mandate's `mandate` and `expires`, and the outcome `allow`.
 - An approval writes every rule of the mandate and `rules.mandate_started` in one transaction, then
   runs one seed of the definitions in force, which puts the rules in force.
@@ -313,15 +318,16 @@ policy:
   read as the [time tool](../../architecture/connectors/time.md) reads it.
 - The rule store refuses a runtime edit of a mandate rule. To change a mandate, end it and propose a
   new one.
-- A non-mandate runtime change never replaces a mandate rule, because no other change takes its ID.
+- A non-mandate runtime change never replaces a mandate rule, because each mandate rule ID belongs
+  to its mandate alone.
 
 ### Ending a mandate
 
 - End now and the timer each retire every in-force runtime change of the mandate (`in_force` to
   `retired`), write `rules.mandate_ended`, and run one seed of the definitions in force. Neither
   writes a runtime removal (`rule: null`).
-- That seed takes each rule out of force. The rule's revision goes up by one, its row in the store
-  stays with no version in force, and nixie never gives its ID to another rule.
+- That seed takes each rule out of force. The rule's revision number goes up by one, the store keeps
+  the rule's row with no rule text in force, and nixie never gives its ID to another rule.
 - The decision point checks `expires` against the call's time, so a rule stops matching at its
   expiry whether the timer has run or not. A replay of a call made before the expiry decides as the
   record did, from the snapshot that the record names.
@@ -335,12 +341,13 @@ policy:
 ### The export
 
 - The export filters out every runtime change whose rule holds `mandate`, so a mandate rule never
-  reaches the rolling pull request. A retired change has no rule in force, so nothing of an ended
-  mandate reaches it either. A removal over one of your definitions' rules would export as "remove
-  this rule", which is why a mandate never writes one.
-- Each mandate start and end runs a seed, and the export's ID covers the seed in force, so the
-  rolling pull request rebuilds with the same changes. A test ends a mandate beside an exported
-  change, and checks that the export holds the same changes, no removal and no mandate rule.
+  reaches the rolling pull request. A retired change has no rule in force, so the export never reads
+  an ended mandate. A removal over one of your definitions' rules would export as "remove this
+  rule", which is why a mandate never writes one.
+- The export takes its ID from its changes and from the seed in force. Each mandate start and end
+  runs a seed, so the rolling pull request rebuilds with the same changes. A test ends a mandate
+  beside an exported change, and checks that the export holds the same changes, no removal and no
+  mandate rule.
 
 ### Rollback
 
@@ -363,11 +370,12 @@ release before ran.
   call on 13 Nov 2026: a retired change leaves nothing for the export to read, so ending a mandate
   can never propose that you remove a rule of yours.
 - **The chat tool writes the proposal itself, declares `note`, and only the conversation holds it.**
-  An agent's call on 13 Nov 2026: you get one prompt, and the card shows each rule's sentence. A
-  tool that declared `policy_widen` would ask at stage 4 as an action, and an approved action cannot
-  run until [actions under policy](https://linear.app/zgeoff/issue/GEO-1810) is built.
+  An agent's call on 13 Nov 2026: you answer one prompt, and the card shows each rule's sentence. A
+  tool that declared `policy_widen` would ask at
+  [stage 4](../platform/policy/decision-point.md#the-pipeline) as an action, and an approved action
+  cannot run until [actions under policy](https://linear.app/zgeoff/issue/GEO-1810) is built.
 - **A gap counts only Approve and Decline on a `no_rule` action proposal.** An agent's call on 13
-  Nov 2026: the rules design calls only a prompt with no matching rule a gap.
+  Nov 2026: in the rules design, only a prompt with no matching rule is a gap.
 - **A group's destinations are the exact set, and the rule names them with no wildcard.** An agent's
   call on 13 Nov 2026: the narrowest rule covers only the addresses you approved.
 - **A lapse counts as Not now, and a Decline in the group withdraws its open proposed rule.** An
