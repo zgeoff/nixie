@@ -266,9 +266,9 @@ To roll back:
 1. Remove each plan profile from nixie's config, and each `selectable` entry under `models` that
    names it.
 2. Remove each route's `login` key from the proxy's config.
-3. Remove each plan profile's impd secret, with impd's root access: `impz secret rm <secret name>`.
+3. Delete each plan profile's impd secret with impd's root token, through impd's secret delete call.
    The [names in impd](../../architecture/deployment/impd-names.md#model-secrets) rules give the
-   name.
+   secret's name. Expect: impd's secret list no longer names it.
 4. Start the earlier proxy. Expect: it starts and serves the other routes.
 5. Start earlier nixie. Expect: it starts.
 
