@@ -15,6 +15,10 @@ the backend for each credential.
 interface CredentialStore {
   register(spec: CredentialSpec): Promise<CredentialRef>;
   fetcher(ref: CredentialRef | null, hosts: string[], pairing?: PrivatePairing): AuthorizedFetch; // adds the credential on the host
+  socket(
+    ref: CredentialRef,
+    endpoint: { address: string; port: number },
+  ): Promise<AuthorizedSocket>; // no HTTP
   grant(ref: CredentialRef, sandbox: Sandbox, rule: InjectRule): Promise<GrantRef>;
   revoke(grant: GrantRef): Promise<void>;
   status(ref: CredentialRef): Promise<CredentialStatus>;
@@ -48,6 +52,13 @@ address range, the hop goes to that host, and the resolved address falls in that
 builds the pairing from the service's configuration, with or without a credential. **Why:** a
 connector that follows a link from an email must never carry your token to the address the link
 names.
+
+A service that speaks no HTTP, such as atc's TCP listener, takes its credential through `socket`.
+The store makes the same address checks as the fetcher, then replaces the placeholder in the first
+line the connector writes with the credential's value, once, so the connector still never reads the
+token.
+[The coding session runner](../../queue/coding-session-runner/atc.md#the-config-and-the-token) is
+its first caller.
 
 The fetcher alone sets a request's credential, so it refuses a request that arrives with one of
 these headers set, compared without regard to case, and sends nothing:
