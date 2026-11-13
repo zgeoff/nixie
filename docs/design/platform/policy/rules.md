@@ -195,9 +195,11 @@ tier. It has 9 rules:
 
 The always-ask set and the destination limits hold whatever the starter rules say, so the set is
 permissive inside those bounds. An effect the set does not mention, such as `device`, falls to "no
-rule matched" until you add a rule. No starter rule matches `note`, so every memory write runs the
-full memory gate, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)
-covers.
+rule matched" until you add a rule. `allow-notes` allows every `note` call, and no starter rule
+allows `memory_write`, so every memory write runs the full memory gate, as the
+[memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers. Until memory writes
+declare `memory_write`, they declare `note`, and the memory tools' own gate decides them after
+`allow-notes`, as the [decision point cutover](../../queue/decision-point-cutover.md) says.
 
 ### Jobs
 

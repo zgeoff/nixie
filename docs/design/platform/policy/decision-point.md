@@ -54,12 +54,14 @@ applies; [actions](../core/actions.md) covers how an approval answers each outco
 Slice 1 builds the registry and scope stages and one fixed rule in code, `slice1.read-only`, in
 place of stages 3 to 9. The fixed rule allows a call whose effects are only `read`, `fetch` or
 `note`. It denies every other call, and the decision record names the fixed rule as the deciding
-stage. The model receives the rule's ID and sentence as the tool result. **Why:** proposals arrive
-in slice 3, so a call that would ask has nowhere to wait.
+stage. The model receives the rule's ID and sentence as the tool result. **Why:** a call that would
+ask has nowhere to wait until the cutover adds the action proposal.
 
 A [test build](../../../architecture/code-layout.md#test-builds) registers one more rule,
 `test.allow-send`, which allows `test.send` from the crash tests' test connector. A release build
-holds only the fixed rule. Slice 3 replaces both rules with the full pipeline and your seeded rules.
+holds only the fixed rule. The [decision point cutover](../../queue/decision-point-cutover.md), in
+slice 5, replaces the fixed rule with the full pipeline and your seeded rules, and says what happens
+to the rules beside it.
 
 ## Effects
 
