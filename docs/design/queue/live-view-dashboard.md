@@ -1,21 +1,28 @@
-# The dashboard groups, rows and filters
+# Dashboard states, fires and filters
 
 - **Status:** draft
 - **Work items:** [the view procedures](https://linear.app/zgeoff/issue/GEO-2545),
-  [the view routes](https://linear.app/zgeoff/issue/GEO-1837)
+  [the view routes](https://linear.app/zgeoff/issue/GEO-1837); the `asleep` state and `nextRunAt`
+  come from [the wake rule](https://linear.app/zgeoff/issue/GEO-1865)
 
-The dashboard at `/tasks` lists your tasks by group, and today it knows only the stored task state.
-The tasks module already tells a task that waits for nothing apart from one that waits on a reply,
-and [the wake rule](https://linear.app/zgeoff/issue/GEO-1865) adds a task that is asleep until its
-next fire. This design brings those listed states to the dashboard, shows when a definition's task
-run was scheduled and whether it came late, and filters the list by definition and by state. The
+The dashboard at `/tasks` sorts your tasks into 3 groups by their stored task state: the
+conversation, Working and Held. The conversation's model tool `tasks.list` reads a finer state,
+which tells a task waiting on a reply from one with nothing to do or one that sent its report. This
+design gives the dashboard that finer state, shows on a definition's task when its task run was
+scheduled and whether it fired late, and filters the dashboard by definition and by state. The
 [live view baseline](../platform/channels/live-view.md#the-dashboard) gives the dashboard's purpose,
-and [the views](definition-views.md) give the routes for definitions and ended task runs.
+and [the views of definitions and ended task runs](definition-views.md) give the routes
+`/definitions` and `/tasks/ended`.
 
-Terms: the **listed state** is the state that `pickListedTaskState` of the tasks module gives a
-task, which the conversation's `tasks.list` tool already shows. A **fire** is the `trigger.fired`
-record that opened a task run, as [the 2 fire records](definition-tasks.md#the-2-fire-records)
-define.
+The terms this design uses:
+
+| Term              | Meaning                                                                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| listed state      | the state that `pickListedTaskState` in the tasks module gives a task: a stored task state, or `idle`, `finished` or `asleep` for a task that waits                             |
+| definition's task | the one task that a task definition runs on, as [the task of a definition](definition-tasks.md) says. A task that the conversation or another task starts is a **started task** |
+| task run          | one execution of a task, as [task run records](task-runs/records.md) define, with its `task.run_opened` and `task.run_ended` records                                            |
+| fire              | the `trigger.fired` record that opened a task run, as [the 2 fire records](definition-tasks.md#the-2-fire-records) define                                                       |
+| carrying task run | a task run that a raise of a limit or a restart opens to go on with an ended task run's work; its `carriesRunID` names that task run                                            |
 
 ## Shape
 
@@ -29,7 +36,7 @@ flowchart LR
   fire --> list
   fire --> ended["tasks.listEnded"]
   list --> dash["/tasks: groups, rows, filters"]
-  follow["records.follow"] -->|"a task-list kind"| dash
+  follow["records.follow and a 60-second read"] --> dash
 ```
 
 ## Contracts
@@ -46,25 +53,26 @@ const open = await api.tasks.list({});
 ```
 
 ```ts
-// contract lib. tasks.list gains an optional input; every new output field is optional, so a
-// client reads a missing field as the built behaviour.
+// contract lib. tasks.list gains an optional input. Every new output field is optional, and a
+// client reads a missing field as the dashboard on main does.
 interface TasksListInput {
   definitionID?: string; // only the task of that definition
   states?: ListedState[]; // 1 to 11 distinct values: only tasks in one of them
 }
-type ListedState = TaskState | 'idle' | 'finished' | 'asleep'; // TaskState: built taskStateSchema
+// TaskState: taskStateSchema on main, 8 values from ready to closed
+type ListedState = TaskState | 'idle' | 'finished' | 'asleep';
 
 // listedTaskSchema: { …existing fields, plus: }
 interface ListedTaskAdded {
-  listedState?: ListedState; // a new field, so a client's map of `state` labels still matches
-  definitionID?: string; // set for a definition's task
-  fire?: RunFire | null; // a definition's task only: the fire of its open task run; null with none
-  // wakeable and nextRunAt: the wake rule work adds both.
+  listedState?: ListedState; // a new field: a client's label map for `state` still matches
+  definitionID?: string; // set only on a definition's task
+  fire?: RunFire | null; // a definition's task only; null when its task run has no fire
+  // wakeable and nextRunAt: the wake rule adds both
 }
 
-// tasks.listEnded's runs: { …the fields the views give, plus: }
+// each task run that tasks.listEnded returns: { …the fields of the views design, plus: }
 interface EndedRunAdded {
-  fire: RunFire | null; // null for a task run that a message, the owner or a start opened
+  fire: RunFire | null; // null for a task run that a message, you or a start opened
 }
 
 // contract lib
@@ -82,115 +90,116 @@ const fire = await readRunFire(context, run);
 
 declare function readRunFire(
   context: Pick<TasksContext, 'log'>,
-  run: TaskRun, // task runs work: one row of task_runs
+  run: TaskRun, // one row of task_runs, from task run records
 ): Promise<RunFire | null>;
 ```
 
-The dashboard groups, by listed state. The conversation's own row always sits in the conversation
-group, whatever its state.
+The table maps each listed state to a dashboard group. The conversation is a task too, with the task
+ID `conversation`, and its row always sits in the conversation group.
 
-| Listed state                  | Group   | The row shows besides the built facts                    |
-| ----------------------------- | ------- | -------------------------------------------------------- |
-| `ready`, `running`, `waiting` | Working | the fire, for a definition's task run                    |
-| `idle`                        | Working | nothing more                                             |
-| `asleep`                      | Working | the next fire from `nextRunAt`, once the list carries it |
-| `finished`                    | Working | that the task sent its report                            |
-| `paused`, `stopped`, `failed` | Held    | the fire of the task run that the hold stopped           |
-| `done`, `closed`              | none    | the task leaves the dashboard, as built                  |
+| Listed state                  | Group   | The row adds to its name, state, last activity and brief  |
+| ----------------------------- | ------- | --------------------------------------------------------- |
+| `ready`, `running`, `waiting` | Working | the fire, on a definition's task                          |
+| `idle`                        | Working | nothing                                                   |
+| `asleep`                      | Working | the next fire, from `nextRunAt`                           |
+| `finished`                    | Working | that the task sent its report                             |
+| `paused`, `stopped`, `failed` | Held    | the fire of the task run that was open when the task held |
+| `done`, `closed`              | none    | nothing: the task leaves the dashboard                    |
 
 ## Constraints
 
 ### The listed state
 
 - `tasks.list` and `tasks.read` of the API set `listedState` through the same `pickListedTaskState`
-  that the `tasks.list` tool calls, so you and the conversation see the same state.
+  that the `tasks.list` tool calls, so the dashboard and the conversation show the same state.
 - `state` keeps the stored task state. A client groups and labels by `listedState` when it is set,
-  and by `state` as built when it is not.
+  and by `state` when it is not.
 - While nixie is paused, every task reads as `paused`, as [the pause](pause.md#the-pause) says, so
-  each one sits in the held group.
-- Before the wake rule is built, no task lists as `asleep`, and the dashboard shows no next fire.
+  each task sits in Held.
+- A task lists as `asleep` only once the wake rule is built. Until then, no row shows a next fire.
 
 ### The fire
 
-- `readRunFire` reads `task.run_opened.origin` of the task run. For `origin.kind` `trigger`, the
-  fire is the `trigger.fired` record at `origin.sequence`.
-- For a carrying task run, with `origin.kind` `raise` or `restart`, `readRunFire` follows
-  `carriesRunID` to the first task run of the chain and returns that task run's fire.
-- For any other origin, such as `message`, `readRunFire` returns null, and the row shows no fire.
-- A fire whose record the reset removed gives null.
-- `tasks.list` sets `fire` only for a definition's task: from its open task run, or, for a held
-  task, from its newest task run. A started task gets no `fire` key.
-- `tasks.listEnded` sets `fire` on every run it returns, through the same `readRunFire`.
-- The row shows the scheduled time in your time zone, and a catch-up shows how late it fired, from
-  `firedAt` less `scheduledFor`.
+- `readRunFire` reads the `origin` of the task run's `task.run_opened`. For `origin.kind` `trigger`,
+  the fire is the `trigger.fired` record at `origin.sequence`.
+- For a carrying task run, `readRunFire` follows `carriesRunID` back to the first task run that
+  carries none, and returns that task run's fire.
+- For every other `origin.kind`, such as `message`, `readRunFire` returns null.
+- When a [reset](../../architecture/core/event-log.md#the-reset) removed the fire's record,
+  `readRunFire` returns null.
+- `tasks.list` leaves `fire` out on a started task. On a definition's task, it takes `fire` from the
+  open task run, or from the newest task run when the task is held, and sets null when that task run
+  has no fire or none exists.
+- `tasks.listEnded` sets `fire` on every task run it returns, through the same `readRunFire`.
+- A row shows the scheduled time in your time zone. A catch-up shows how late it fired, as `firedAt`
+  less `scheduledFor`.
 
 ### The filters
 
-- The server applies `definitionID` and `states` before the list's limit of 100, so a filter never
-  misses a task that a later page would hold.
-- `states` matches the listed state. A filter on `paused` therefore holds every task while nixie is
-  paused.
+- The server applies `definitionID` and `states` before the list's limit of 100 tasks, so a filter
+  finds a task that an unfiltered list leaves out.
+- `states` matches the listed state. While nixie is paused, a filter on `paused` therefore matches
+  every task.
 - The dashboard keeps both filters in the route's search parameters, so a reload or a shared link
   keeps them.
-- The dashboard offers each definition that `definitions.listTasks` returns with a `taskID`, by its
-  name, and each listed state, as filter choices. A choice that matches no task shows the empty
-  group text.
+- The definition filter lists each definition that `definitions.listTasks` returns with a non-null
+  `taskID`, by its name. The state filter lists the 11 listed states.
 - With a filter set, the dashboard shows only the groups that hold a matching task, and a control
-  that clears the filters.
+  that clears the filters. With no match, it shows the text it shows for an empty group.
 
 ### Staying current
 
-- The dashboard reads the list again on `trigger.fired`, beside the kinds that `isTaskListRecord`
-  matches, because a fire moves a task's last activity and opens a task run.
-- A pause or a resume of nixie writes its records on no thread, so the live stream never shows them.
-  The dashboard therefore also reads the list again every 60 seconds while the page is visible, and
-  at once when the page becomes visible again.
-- Each read of the list carries the filters in its query key, so a change of filter reads a fresh
-  list and follows the stream from its `readAtSequence`, as built.
+- The dashboard reads the list again on `trigger.fired`, because a fire moves a task's last activity
+  and opens a task run. `isTaskListRecord` already matches every `task.*` and `action.*` kind,
+  `owner_message`, `task_message`, `timer.fired` and `log_reset`.
+- nixie writes the records of a pause and a resume on no thread, and the live stream never carries
+  such a record. The dashboard therefore reads the list again every 60 seconds while the page is
+  visible, and at once when the page becomes visible again.
+- The query key of each read holds the filters, so a change of filter reads a fresh list, and the
+  dashboard follows the stream from that read's `readAtSequence`.
 
 ### A rollback
 
 - This design adds no record kind, no migration and no config key.
-- The release before has no `listedState`, `definitionID` or `fire` in its contract. Its server
-  strips the unknown `tasks.list` input, so a newer client gets the whole list unfiltered, and
-  groups each task by `state`. The newer client hides the definition filter when no listed task has
-  a `definitionID`.
+- The contract of the release before has no `listedState`, `definitionID` or `fire`, and its server
+  strips the unknown `tasks.list` input. A newer client then gets the whole list unfiltered, and
+  groups each task by `state`.
+- The newer client hides the definition filter when no listed task has a `definitionID`.
 
 ## Decisions
 
-- **The dashboard keeps its 3 built groups, and every live task that is not held sits in Working.**
-  An agent's call on 13 Nov: until the owner settles the groups, the smaller change keeps the built
-  layout, and no listed task leaves the page that the built dashboard shows.
-- **`listedState` is a new field, never new members of `state`.** An agent's call on 13 Nov: the
-  built client maps every `state` value to a label, and a client from the release before would show
-  no label for a new member.
-- **The server filters, and the client never filters the loaded list.** An agent's call on 13 Nov:
-  the list stops at 100 tasks, so a client filter would hide a match without a sign.
-- **The fire of a carrying task run is the fire of the task run it carries.** An agent's call on 13
-  Nov: a raise or a restart goes on with the same scheduled work, so its row keeps that work's
-  scheduled time.
-
-- **The dashboard reads the list again on a timer as well as on the stream.** An agent's call on 13
-  Nov: the pause records reach no thread, and the stream is the only other way the list learns of a
-  change.
+- **The dashboard keeps its 3 groups: the conversation, Working and Held. Every task that is not
+  held, done or closed sits in Working.** An agent's call on 13 Nov: until the owner settles the
+  groups, the dashboard keeps its layout, and every task it shows on main stays on it.
+- **`listedState` is a new field, and `state` gains no member.** An agent's call on 13 Nov: the
+  client on main maps every `state` value to a label, and a client of the release before would show
+  no label for a new value.
+- **The server filters, and the client never filters the list it loaded.** An agent's call on 13
+  Nov: the list stops at 100 tasks, so a filter in the client would miss a match and give no sign.
+- **The fire of a carrying task run is the fire of the first task run it carries on from.** An
+  agent's call on 13 Nov: a raise or a restart goes on with the same scheduled work, so its row
+  keeps that work's scheduled time.
+- **The dashboard reads the list on a 60-second timer as well as on the stream.** An agent's call on
+  13 Nov: the pause records reach no thread, so the stream never tells the dashboard of a pause.
 
 ## Builder decides
 
-- The wording of each state label, the fire fact and the filter controls.
+- The wording of each state label, the fire and the filter controls.
 - Where the filters sit on the page.
-- How `readRunFire` reads a page of task runs at once.
+- How `readRunFire` reads the fires of a page of task runs at once.
 - The layout of the tests.
 
 ## Out of scope
 
 - Supervised coding sessions as a group, which [GEO-311](https://linear.app/zgeoff/issue/GEO-311)
   covers.
-- Approvals that wait on you. The [approval record](https://linear.app/zgeoff/issue/GEO-1804) work
-  serves them, and its cards and digest show them.
-- The routes `/tasks/ended` and `/definitions`, which [the views](definition-views.md) cover.
+- Approvals that wait on you. The [approval record](https://linear.app/zgeoff/issue/GEO-1804) serves
+  them, and its cards and its digest show them.
+- The routes `/tasks/ended` and `/definitions`, which
+  [the views of definitions and ended task runs](definition-views.md) cover.
 
 ## Open questions
 
 - **Does the dashboard gain the "needs you" and the "finished in the last 7 days" groups of the
   baseline?** The owner settles it in [the view routes](https://linear.app/zgeoff/issue/GEO-1837).
-  Until then, the dashboard keeps its 3 groups, as the table above maps them.
+  Until then, the dashboard keeps its 3 groups, as the table in Contracts maps them.

@@ -19,7 +19,7 @@ The dashboard lists the conversation first, then every task in 4 groups: needs y
 (`paused`, `stopped`, `failed`) and finished in the last 7 days. Each row shows the title, state,
 last update and what the task waits on, such as "approval: send email". A job run also shows its
 scheduled time and whether it is a catch-up. The dashboard filters by job and state.
-[The dashboard groups, rows and filters](../../queue/live-view-dashboard.md) gives the contracts.
+[Dashboard states, fires and filters](../../queue/live-view-dashboard.md) gives the contracts.
 Whether the dashboard takes the 4 groups is
 [open for the owner](https://linear.app/zgeoff/issue/GEO-1837), and until it is settled the
 dashboard keeps the 3 groups that design maps.

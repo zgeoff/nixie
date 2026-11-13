@@ -4,30 +4,42 @@
 - **Work items:** [the view routes](https://linear.app/zgeoff/issue/GEO-1837),
   [the worker tool](https://linear.app/zgeoff/issue/GEO-1793)
 
-A task's page shows its thread in the conversation view, where each step folds into one line that
-opens to its tool calls. Two kinds of content do not fit that view yet. A worker run writes 3 record
-kinds and its own tool calls on the caller's thread, and the view would list those calls as the
-caller's own. A fetched page or a worker's model text can run to many kilobytes on every record of a
-page read. This design shows each worker run as one line inside the step that called it, and lets
-the client ask for payloads cut to 4 KB, with the whole value loaded on demand. The
-[live view baseline](../platform/channels/live-view.md#a-task-as-a-conversation) gives the purpose,
-and the [client architecture](../../architecture/channels/client.md#the-conversation-view) describes
-the built view.
+A task's page shows the task's thread in the conversation view, which the
+[client architecture](../../architecture/channels/client.md#the-conversation-view) describes. Each
+step, one model turn of the task with its records, folds into one line that opens to its tool calls.
+This design adds 2 things to that view:
 
-Terms: a **worker run** and its 3 records, `worker.run_started`, `worker.turn_ended` and
-`worker.run_ended`, are as [the worker tool](https://linear.app/zgeoff/issue/GEO-1793) defines them.
-A **payload** is a value of a record's erasable fields that the contract record carries: a tool
-call's input, a tool result's content, and a worker turn's text or a worker run's failure detail.
+- **A worker line.** The model calls `worker.run` to run a worker, which writes 3 record kinds and
+  its own tool calls on the thread of the task that called it. The view shows each worker run as one
+  line inside the step that called it, apart from the step's own tool calls.
+- **Clipping.** A fetched page's text or a worker's model text can run past 40 KB on one record. A
+  client can ask for each long string cut to its first 4,096 bytes, and load the whole value when
+  you open it.
+
+The [live view baseline](../platform/channels/live-view.md#a-task-as-a-conversation) gives the
+purpose of both.
+
+The terms this design uses:
+
+| Term          | Meaning                                                                                                                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| worker run    | one execution of a worker, with its records `worker.run_started`, `worker.turn_ended` and `worker.run_ended`, as [the worker tool](https://linear.app/zgeoff/issue/GEO-1793) defines them |
+| tool run ID   | the `runID` that every `tool_called` and `tool_result` record holds. A worker's own tool calls take the worker run's `workerRunID` as theirs                                              |
+| payload field | one of 4 fields of the contract record that carry erasable text: `toolCall.input`, `toolCall.content`, `worker.text` and `worker.detail`                                                  |
+| page read     | one call of `conversation.read`, which returns a page of a thread's records                                                                                                               |
+
+[Erasable fields](../../architecture/core/erasable-fields.md) describes the text that a forget
+destroys with its record's key.
 
 ## Shape
 
 ```mermaid
 flowchart LR
-  log[(caller's thread)] --> map[toContractRecord]
-  map -->|"clipPayloads: cut to 4 KB"| read["conversation.read and records.follow"]
+  log[(task's thread)] --> map[toContractRecord]
+  map -->|"clipPayloads: long strings cut"| read["conversation.read and records.follow"]
   read --> activity[buildActivity]
   activity --> step[step line]
-  step --> worker["worker line: question, answer, sources, use"]
+  step --> worker["worker line: question, answer, sources, usage"]
   worker -->|"load the rest"| whole["records.readPayload"]
   whole --> map
 ```
@@ -47,21 +59,21 @@ const whole = await api.records.readPayload({ thread: 't4k2', sequence: 8812 });
 
 ```ts
 // contract lib
-const payloadClipBytes = 4096; // a constant: the cut size of a clipped string
+const payloadClipBytes = 4096; // the size, in UTF-8 bytes, that a clipped string is cut to
 
 // conversation.read and records.follow: { …existing input, clipPayloads?: boolean }
-// Absent or false: every payload arrives whole, as built.
+// Absent or false: every payload field arrives whole, as on main.
 
 // recordSchema: { …existing fields, plus: }
 interface RecordAdded {
-  clipped?: ClippedPayload[]; // absent: every payload on the record is whole
-  worker?: WorkerView; // set for the 3 worker record kinds
+  clipped?: ClippedPayload[]; // absent: every payload field of the record is whole
+  worker?: WorkerView; // set on the 3 worker record kinds
 }
-// recordSchema.toolCall: { …existing fields, runID?: string } // the tool run ID of the record
+// recordSchema.toolCall: { …existing fields, runID?: string } // the record's tool run ID
 
 interface ClippedPayload {
   field: 'toolCall.input' | 'toolCall.content' | 'worker.text' | 'worker.detail';
-  path: (string | number)[]; // the cut string inside the field; [] when the whole field is left out
+  path: (string | number)[]; // where the cut string sits inside the field; [] when the field is left out
   bytes: number; // the UTF-8 size of the whole value at `path`
 }
 
@@ -70,7 +82,7 @@ type WorkerView =
       phase: 'started';
       workerRunID: string;
       shortID: string;
-      callID: string; // the callID of the worker.run call that started it
+      callID: string; // the callID of the worker.run call that started the worker run
       model: string;
       tools: string[];
       limits: { minutes: number; turns: number; tokens: number; dollars: number };
@@ -108,90 +120,94 @@ type ReadPayloadOutput =
       toolCall?: { input?: Record<string, unknown>; content?: Record<string, unknown> };
       worker?: { text?: string; detail?: string };
     }
-  | { status: 'forgotten' | 'unreadable' };
-// errors: RECORD_NOT_FOUND, 404, when no record has that sequence on that thread
+  | { status: 'forgotten' } // a forget or a reset destroyed the record's key
+  | { status: 'unreadable' }; // the key exists and fails to decrypt the fields
+// errors: RECORD_NOT_FOUND, 404, when the thread holds no record at that sequence
 ```
 
 ## Constraints
 
 ### A worker run on the page
 
-- `buildActivity` joins a worker run to the `worker.run` call whose `callID` its records carry. That
-  call shows as one worker line in its step's tools section.
-- A tool call or result whose `toolCall.runID` is a worker run's `workerRunID` belongs to that
-  worker line. It never joins the step's own calls, its tool count or the step line's tool fact.
-- The worker line shows the worker's short ID, the question's start, the outcome and the use: the
-  `used` of `worker.run_ended`, or, before that record lands, `running` with the turns and dollars
-  that its `worker.turn_ended` records add up to.
-- Opening the worker line shows the question, from the input of the `worker.run` call; the answer,
-  from its result's content; each of the worker's tool calls as a source, with the target the step
-  line gives a call, such as the host and path of a fetched page; and each turn with its tokens,
-  dollars and text.
+- `buildActivity` gives each `worker.run` call that has worker records a worker line. The records
+  join the call by their `callID`, and the line sits in the tools section of the call's step.
+- A tool call or result whose `toolCall.runID` equals a worker run's `workerRunID` belongs to that
+  worker line. The step leaves it out of its own calls, its count of tools and the list of tools on
+  its collapsed line.
+- The collapsed worker line shows the worker run's short ID, the start of the question, the outcome,
+  and the minutes, turns, tokens and dollars from the `used` of `worker.run_ended`.
+- Before `worker.run_ended` lands, the line shows `running`, with the turns and dollars that its
+  `worker.turn_ended` records add up to.
+- The open worker line shows 4 parts:
+  - the question, from the input of the `worker.run` call;
+  - the answer, from the content of the call's result;
+  - each tool call of the worker as a source, with the target that the step line shows for a call,
+    such as the host and path of a fetched page;
+  - each turn, with its tokens, dollars and text.
 - An outcome other than `answered` shows its limit or its detail, as `worker.run_ended` holds them.
-- The answer and each turn's text are untrusted, so the page shows them as plain text, never as
-  Markdown or HTML.
-- A worker record with no matching `worker.run` call on the page, such as one before the page's
-  first record, shows as its own line by its kind, as an unknown kind shows today.
-- A forgotten question, answer or turn text shows as forgotten, and the worker line keeps its use
-  and outcome.
+- The answer and each turn's text come from untrusted content, so the view shows them as plain text,
+  never as Markdown or HTML.
+- When the page holds a worker record but not its `worker.run` call, such as a call before the first
+  record of the page read, the view shows the record as its own line by its kind, as it shows any
+  kind it has no renderer for.
+- A question, answer or turn text that a forget erased shows as forgotten. The worker line keeps its
+  usage and outcome.
 
 ### Clipping
 
-- The web client passes `clipPayloads` on every page read and every follow, on a task's page and in
-  the conversation, because both use the one conversation view.
-- With `clipPayloads` set, the server cuts each string inside a payload whose UTF-8 size passes
-  `payloadClipBytes` to its first `payloadClipBytes` bytes, on a code point boundary, and lists it
-  in `clipped`.
-- When a payload's JSON still passes 64 KiB after the cut, the server leaves the whole field out and
-  lists it with the path `[]`.
-- A message's text, a task's brief and every field outside the 4 payload fields always arrive whole.
-- The server never clips a record that the page read returns as `lastStepEnd`.
-- Every reader of a clipped value shows it as cut, with a control that loads the rest. This covers
-  the step view's tool calls, the worker line, and the sent message block that `collectSentMessages`
-  builds from a `task.message` call's input.
-- The control calls `records.readPayload` and shows the whole value in place of the cut one.
+- The web client sets `clipPayloads` on every page read and every follow. A task's page and the
+  conversation page share the conversation view, so both clip.
+- With `clipPayloads` set, the server walks each payload field. Each string in it that passes
+  `payloadClipBytes` in UTF-8 is cut to its first `payloadClipBytes` bytes, on a code point
+  boundary, and listed in `clipped`.
+- When a payload field's JSON still passes 64 KiB after those cuts, the server leaves the whole
+  field out and lists it with the path `[]`.
+- Every field outside the 4 payload fields arrives whole, such as a message's text and a task's
+  brief.
+- The step that a page read returns as `lastStepEnd` arrives whole, because the failure notice reads
+  its error from it.
+- Each component that shows a clipped value shows it as cut, with a control that loads the rest: the
+  tool calls of a step, the worker line, and the sent message block that `collectSentMessages`
+  builds from the input of a `task.message` call.
 
 ### The on-demand read
 
-- `records.readPayload` reads the record's erasable fields at the call, through the same mapping as
-  the page read, with no cut. A record whose key a forget or a reset destroyed returns `forgotten`.
-- It returns `RECORD_NOT_FOUND` when the sequence is on another thread, so a caller never reads a
-  record through a thread it did not name.
-- The client keeps a loaded payload only in the view's memory, never in local storage. It drops the
-  payload when a forget record that names the record arrives, or a `log_reset` arrives, as it drops
-  a forgotten message's text.
+- The control calls `records.readPayload` and shows the whole value in place of the cut one.
+- `records.readPayload` reads the record's erasable fields when it is called, through the same
+  mapping as a page read, with no cut.
+- `records.readPayload` returns `RECORD_NOT_FOUND` when the sequence is on another thread, so a
+  caller reads a record only through the thread that holds it.
+- The client keeps a loaded value only in the view's memory, never in local storage.
+- The client drops a loaded value when a forget of its record or a `log_reset` arrives on the
+  stream, as it drops a forgotten message's text.
 - When `records.readPayload` fails for any reason, the control shows the failure with a retry, and
-  the cut value stays in place.
+  the cut value stays.
 
 ### A rollback
 
-- This design adds no record kind, no migration and no config key. The worker tool work adds the 3
-  worker kinds, and its design says what the release before does with them.
-- The server of the release before strips `clipPayloads` and sends every payload whole with no
-  `clipped`, so a newer client shows each value whole. A page that loaded clipped records before the
-  rollback keeps its cut values, and its load control fails as the on-demand read says, until a
-  reload reads the page whole.
+- This design adds no record kind, no migration and no config key. The worker tool adds the 3 worker
+  kinds, and its design says what the release a rollback returns to does with them.
+- The server of that release strips `clipPayloads` and sends every payload field whole with no
+  `clipped`, so a newer client shows each value whole.
+- A page that holds clipped records from before the rollback keeps its cut values. Its load control
+  fails, as the on-demand read says, until a reload reads the page whole.
 - A newer server sends `clipped`, `worker` and `toolCall.runID` only as optional fields. A client of
-  the release before passes no `clipPayloads`, so it gets whole payloads, and it shows a worker
+  that release passes no `clipPayloads`, so it gets every payload field whole, and it shows a worker
   record by its kind.
 
 ## Decisions
 
-- **Clipping is opt-in per read.** An agent's call on 13 Nov: a client that predates it, or a server
-  rolled back under a newer client, still shows whole values, and no reader mistakes a cut value for
-  a whole one.
-- **The cut keeps the start of each long string in place.** An agent's call on 13 Nov: the step line
-  reads short fields, such as a fetch's URL, beside a long page text, and the built view already
-  shows a long value's start.
-- **The on-demand read takes one record and returns all of its payloads.** An agent's call on 13
-  Nov: one record rarely holds more than one long value, and a field-by-field read adds an input
-  that no view needs.
+- **A client asks for clipping on each read.** An agent's call on 13 Nov: a client from before
+  clipping, or a newer client under a rolled-back server, still gets whole values, and every cut
+  value arrives with its entry in `clipped`.
+- **A cut keeps the start of each long string in place.** An agent's call on 13 Nov: the step line
+  takes a short field, such as a fetch's URL, from beside a long page text, and the view on main
+  already shows the start of a long value.
+- **The on-demand read takes one record and returns all of its payload fields.** An agent's call on
+  13 Nov: no view on main needs one field of a record without the others, so the input stays at a
+  thread and a sequence.
 - **The cut size is a contract constant.** An agent's call on 13 Nov: it sizes a wire format between
-  client and server, and a config key would add a rollback step for no setting you need.
-- **A task's page offers no control that shows a record in raw form.** An agent's call on 13 Nov,
-  pending the owner's answer: the task route has no such control to reuse, as
-  [the views](definition-views.md#out-of-scope) say, and a record with no renderer still shows by
-  its kind.
+  client and server, and a config key would add a rollback step and serve no setting.
 
 ## Builder decides
 
@@ -209,4 +225,7 @@ type ReadPayloadOutput =
 ## Open questions
 
 - **Does each line on a task's page offer its raw record?** The owner settles it in
-  [the view routes](https://linear.app/zgeoff/issue/GEO-1837). Until then, no line offers it.
+  [the view routes](https://linear.app/zgeoff/issue/GEO-1837). Until then, no line offers it, and a
+  record with no renderer shows by its kind. The
+  [views of definitions and ended task runs](definition-views.md#out-of-scope) leave the control out
+  too, because the task route has none to reuse.
