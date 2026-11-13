@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.70.2](https://github.com/zgeoff/nixie/compare/v0.70.1...v0.70.2) (2026-11-13)
+
+
+### Bug Fixes
+
+* **deps:** update @anthropic-ai/claude-agent-sdk to v0.3.318 ([#983](https://github.com/zgeoff/nixie/issues/983)) ([48ecf61](https://github.com/zgeoff/nixie/commit/48ecf61218df12148b4137194bfaba70804275b9))
+* **deps:** update @hono/node-server to fix advisories ([#1004](https://github.com/zgeoff/nixie/issues/1004)) ([441ef79](https://github.com/zgeoff/nixie/commit/441ef79d7626cad05d60788e2d4990829453530f))
+* **deps:** update tanstack-query monorepo to v5.106.0 ([#996](https://github.com/zgeoff/nixie/issues/996)) ([43be9ca](https://github.com/zgeoff/nixie/commit/43be9ca1091db9837d0ac5e8adc3f74402f52f7b))
+* **sandbox-imp:** accept impd major 7 with imp client 6 ([#1027](https://github.com/zgeoff/nixie/issues/1027)) ([877b57e](https://github.com/zgeoff/nixie/commit/877b57ec74586b97fc0b64feb4a41e06c616abd8))
+
 ## [0.70.1](https://github.com/zgeoff/nixie/compare/v0.70.0...v0.70.1) (2026-11-10)
 
 
