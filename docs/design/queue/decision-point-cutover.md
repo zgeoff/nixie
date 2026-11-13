@@ -178,7 +178,7 @@ with the existing rule renderer.
 // policy module. Stage 5 calls it for a destination with no permission, and stage 8 reuses the answer.
 const consent = await checkConsent(call, messages);
 // → { messageIDs: ['e_19c4'], codeCheck: 'pass', checker: 'yes' }
-//   or null: the call has no turn message and no link within linkMaxAge
+//   or null: the call has no turn message and no link within link_max_age
 
 // The checker is the existing RunCheck of the sessions module, run under the model role `checker`
 // with a consent prompt of its own.
@@ -193,7 +193,7 @@ task messaged.
 # config.yaml: a new section that the policy module owns
 policy:
   consent:
-    linkMaxAge: 24 # hours from when you typed the message; a link older than this carries no consent
+    link_max_age: 24 # hours from when you typed the message; a link older than this carries no consent
 ```
 
 ### Known contacts
@@ -382,9 +382,9 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
   memory quote check.
 - Consent comes from the turn's message, which needs no age check, and from each message that an
   `onBehalfOf` ID names. A linked message counts only when you typed it, within
-  `policy.consent.linkMaxAge` before the call's `at`. A link carries consent through any number of
+  `policy.consent.link_max_age` before the call's `at`. A link carries consent through any number of
   tasks.
-- An `onBehalfOf` ID that names no message you typed, or a message older than `linkMaxAge`, adds
+- An `onBehalfOf` ID that names no message you typed, or a message older than `link_max_age`, adds
   nothing to `messageIDs`.
 - A message whose spans read `unknown` has no typed text, so the code check fails on it.
 - The checker sees each consenting message with its pasted spans marked, and the call as structured
@@ -398,7 +398,7 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
   - the checker answers anything but `yes`;
   - the call asks at stage 5 or 9.
 - The snapshot's policy part holds the consent checker's definition: its prompt hash and the model
-  profile of the `checker` role. `linkMaxAge` is config outside the snapshot.
+  profile of the `checker` role. `link_max_age` is config outside the snapshot.
 - A replay runs every stage again from the record's `input`, `destinations` and `inputs`, and takes
   the code check and the checker's answer from `consentCheck`, because the checker is a model.
 
@@ -458,7 +458,7 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 | A `tool_result` of an ask                            | Reads it as queued with no action                             |
 | The `policy.action_*` and `policy.contact_*` kinds   | Skips each record kind it does not know                       |
 | The `known_contacts` migration                       | Starts, because a migration only expands; reads no row of it  |
-| `policy.consent.linkMaxAge`                          | Refuses to start, because the config schema is strict         |
+| `policy.consent.link_max_age`                        | Refuses to start, because the config schema is strict         |
 | `effects/*.yaml`                                     | Skips the folder, so each override stops applying             |
 | `destinations` in a `task.yaml`                      | Refuses the seed, and keeps the last seed it accepted         |
 
