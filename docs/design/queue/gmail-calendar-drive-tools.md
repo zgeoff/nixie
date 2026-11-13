@@ -30,7 +30,7 @@ flowchart LR
   card -->|approve| queue[action queue]
   dp -->|allow| queue
   queue -->|"3. send, Message-ID holds the action ID"| gmail
-  queue -->|"4. unknown: check after 5 min"| sent[Sent folder check]
+  queue -->|"4. unknown: check after 5 min"| sent[Sent-folder check]
   sent -->|"found, not found, inconclusive"| queue
 ```
 
@@ -59,8 +59,8 @@ list of its conversation, task or worker holds 2 or more Google connections.
 | `calendar.list_calendars`           | `read`  | direct | `calendar.calendarlist.readonly` | none                              |
 | `calendar.list_events`              | `read`  | direct | `calendar.events`                | none                              |
 | `calendar.read_event`               | `read`  | direct | `calendar.events`                | none                              |
-| `calendar.create_event`             | `write` | queued | `calendar.events`                | check: the event ID               |
-| `calendar.create_event_with_guests` | `send`  | queued | `calendar.events`                | check: the event ID               |
+| `calendar.create_event`             | `write` | queued | `calendar.events`                | check: the event ID and marker    |
+| `calendar.create_event_with_guests` | `send`  | queued | `calendar.events`                | check: the event ID and marker    |
 | `calendar.change_event`             | `write` | queued | `calendar.events`                | check: the event's marker         |
 | `calendar.change_event_with_guests` | `send`  | queued | `calendar.events`                | check: the event's marker         |
 | `calendar.cancel_event`             | `write` | queued | `calendar.events`                | check: the event is cancelled     |
@@ -223,16 +223,22 @@ is one of those permissions. `CallDestination` is defined in the decision point 
 | `calendar.respond`                  | the event's organizer                                | the organizer           |
 | every other tool                    | none                                                 | none                    |
 
-- A destination is the bare address, with no display name, in lowercase NFC.
+- The resolver writes each destination as its bare address, with no display name, in lowercase NFC.
+- A reply target covers only the one reply or response its resolver returned it for, never another
+  send. An address the model writes in an argument is never a reply target, even when it equals a
+  sender or an organizer.
 - `mail.reply` marks no recipient as a reply target when the message sits in Spam or Trash, or when
   the message's `From` is the connection's own account. Each recipient of such a reply then needs
-  another permission or your consent, or the reply waits on its card.
+  another permission or your consent. Without one, the reply waits on its card.
 - The resolution is a direct read, with the direct call's time budget. A failure returns the error
   of [a failed direct call](../platform/connectors/tools.md#a-failed-direct-call), and the call
   never reaches the decision point.
-- The action hash covers the resolved destinations. At the attempt, the connector reads the message
-  or event again. When the recipients or guests differ from the hashed destinations, it answers
-  `refused` with `destinations_changed`, and the model proposes again.
+- The [action hash](../platform/policy/approvals.md#the-proposal), the hash an approval binds to,
+  covers the resolved destinations. The action reaches only the destinations that the decision point
+  checked. In its attempt, the connector reads the message or event again. When the recipients or
+  guests differ, such as a new Cc on a reply to all, it answers `refused` with
+  `destinations_changed`. The action fails and sends to none of them, and the model can propose
+  again.
 
 ### The send card
 
@@ -305,8 +311,8 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 | Any call fails, or Gmail answers in a way the check cannot read | inconclusive               |
 
 - Found makes the action done, with the found message's ID and thread as its result.
-- Not found returns the action to pending, and the retry sends the same message with the same
-  Message-ID.
+- When the check finds the mail, nixie never sends it again. Only not found, after the 5 minutes,
+  returns the action to pending, and the retry sends the same message with the same Message-ID.
 - The check reads both headers, because Gmail can replace a `Message-ID` that a client set and keep
   the old one in `X-Google-Original-Message-ID`. Google's docs say neither way, so the check finds
   the mail whichever header Gmail keeps.
@@ -320,26 +326,34 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 // Calendar create: the event ID is the action ID without its hyphens, which fits Google's
 // base32hex event IDs. Google does not promise to refuse a second insert of one ID, so the
 // create reconciles by a check, and a 409 on any insert answers done with the event read by its ID.
-const calendarCheck = { kind: 'check', action: 'calendar.find_change', settleAfter: '1m' };
+// Each check is a read-only connector action that only the action queue calls.
+const calendarCheck = { kind: 'check', action: 'calendar.find_change', settleAfter: '5m' };
 
 // Drive create and change: the check finds a new file through a search, which can lag.
-// Both checks are read-only connector actions that only the action queue calls.
 const driveCheck = { kind: 'check', action: 'drive.find_change', settleAfter: '5m' };
 ```
 
 ```ts
 // The marker: one private property per action, which the action writes in the same request as
-// its change. Each calendar change (with or without guests), drive.create and drive.change writes
-// one; a calendar create, cancel or respond writes none. Calendar keeps it in
+// its change. Each calendar create and change (with or without guests), drive.create and
+// drive.change writes one; a calendar cancel or respond writes none. Calendar keeps it in
 // extendedProperties.private, and Drive in appProperties.
 // key: 'nixie' + the action ID without hyphens (37 characters; Calendar allows 44)
-// value: the attempt's start time, as epoch seconds
+// value: the attempt's start time, as epoch seconds. A write reads these times to keep the
+// newest markers and delete the rest; a check reads only whether its own key is there.
 { 'nixie0b9d3c4e7a214f0e8c551e6f2a9d4c03': '1794550000' }
 ```
 
+- Each write keeps the 10 newest markers of nixie's on the item and deletes the older ones, in the
+  same request. A check that finds no marker of its own and 10 newer ones answers inconclusive.
+  **Why:** a later action on the same item can run while this one is unknown, and its marker must
+  not hide this one.
+- The calendar create searches with `privateExtendedProperty` as well as reading by ID, because
+  Google does not promise that a read by a client-chosen ID finds the event at once.
+
 | Action             | Found when                                                  | Not found when                             |
 | ------------------ | ----------------------------------------------------------- | ------------------------------------------ |
-| a calendar create  | the calendar holds an event with the action's event ID      | the read by ID answers 404                 |
+| a calendar create  | a read by the event ID, or a search by the marker, finds it | both answer with nothing                   |
 | a calendar change  | the event holds the action's marker                         | the event lacks it, with under 10 markers  |
 | a calendar cancel  | the event reads `cancelled`, or 404 or 410                  | the event reads `confirmed` or `tentative` |
 | `calendar.respond` | the account's attendee entry holds the response             | never                                      |
@@ -347,10 +361,7 @@ const driveCheck = { kind: 'check', action: 'drive.find_change', settleAfter: '5
 | `drive.change`     | the file holds the action's marker                          | the file lacks it, with under 10 markers   |
 | `mail.label`       | each thread holds every label in `add` and none in `remove` | never                                      |
 
-- Each write keeps the 10 newest markers of nixie's on the item and deletes the older ones, in the
-  same request. A check that finds no marker of its own and 10 newer ones answers inconclusive.
-  **Why:** a later action on the same item can run while this one is unknown, and its marker must
-  not hide this one.
+- Found wins over every other answer. A check never answers not found while any read it makes fails.
 - Every other answer, a failed call included, is inconclusive. A response or a label that differs is
   inconclusive too: a later change, yours or nixie's, can have replaced it, and a retry would undo
   that change.
@@ -410,10 +421,13 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
 - Each tool that reads text returns it in parts, each at most the `text_bytes` of the `web_fetch`
   config section, cut as
   [pages and parts](../../architecture/connectors/web-fetch.md#pages-and-parts) sets for a page. The
-  tool reads the item from Google again for each part. nixie keeps no copy of mail, attachment or
-  file text outside the call's own records.
-- A mail whose body has only an HTML part goes to a fetch sandbox for its text, as a web page does,
-  so nixie never parses mail HTML on the host. The links of a body take link IDs, as a fetched
+  tool reads the item from Google again for each part. The text the model read sits in the call's
+  `tool_result` record, under that record's own key, as every tool result does. nixie keeps no other
+  copy of mail, attachment or file text.
+- A mail whose body has only an HTML part goes to a
+  [fetch sandbox](../../architecture/connectors/web-fetch.md#the-fetch-sandbox) for its text, as a
+  web page does, so nixie never parses mail HTML on the host. Each link in a body reads as a
+  [link ID](../../architecture/connectors/web-fetch.md#link-ids), such as `[L3]`, as a fetched
   page's links do.
 - `mail.read_attachment` reads text types (`text/*` and `application/json`) as UTF-8 text, and
   images through the [web fetch image](../../architecture/connectors/web-fetch-images.md) decode and
@@ -445,15 +459,15 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
 
 ### A rollback
 
-| The change                              | The release before                                                                             |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| the 20 tools                            | lists none; a queued action of one fails without an attempt, because its tool has no connector |
-| an unknown action of one of the tools   | finds no reconciliation for it, so the action comes to you                                     |
-| `resolveDestinations`                   | never calls it, because it has none of the tools                                               |
-| markers on events and files             | never meets them; they stay at Google and change nothing                                       |
-| the fetch sandbox's HTML text request   | never sends it                                                                                 |
-| `connections.checkPicked`               | answers `NOT_FOUND`; a picked file stays granted at Google                                     |
-| the picker settings on the OAuth client | as the Google connection design's rollback sets for the client's columns                       |
+| The change                                                    | The release before                                                                             |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| the 20 tools                                                  | lists none; a queued action of one fails without an attempt, because its tool has no connector |
+| an unknown action of one of the tools                         | finds no reconciliation for it, so the action comes to you                                     |
+| `resolveDestinations`                                         | never calls it, because it has none of the tools                                               |
+| markers on events and files                                   | never meets them; they stay at Google and change nothing                                       |
+| the request that asks a fetch sandbox for an HTML body's text | never sends it                                                                                 |
+| `connections.checkPicked`                                     | answers `NOT_FOUND`; a picked file stays granted at Google                                     |
+| the picker settings on the OAuth client                       | as the Google connection design's rollback sets for the client's columns                       |
 
 - The design adds no record kind, no migration and no config key.
 
@@ -493,9 +507,10 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
 
 - Drafts, attachments on a send, forwards, and sending HTML mail.
 - Trashing mail, and deleting a Drive file.
-- Sharing a Drive file, until a rule for it is designed.
+- Sharing a Drive file, and changing a shared one:
+  [Drive sharing](https://linear.app/zgeoff/issue/GEO-2648).
 - The Gmail and Calendar polls: [polls](https://linear.app/zgeoff/issue/GEO-1827).
-- PDF and other document text, until nixie has a parser for them in a sandbox.
+- PDF and other document text: [document text](https://linear.app/zgeoff/issue/GEO-2649).
 
 ## Open questions
 
