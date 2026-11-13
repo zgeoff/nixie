@@ -76,7 +76,7 @@ Every tool declares its effects in nixie's tool registry, and rules match on the
 | `send`          | Reaches a person or service other than you                                 |
 | `spend`         | Spends money                                                               |
 | `schedule`      | Creates or changes a job                                                   |
-| `code_run`      | Runs code in the caller's sandbox under its recorded grant boundary        |
+| `code_run`      | Runs code in a fresh sandbox with no network and no grant                  |
 | `device`        | Acts on a physical device, such as a light or a lock                       |
 | `policy_widen`  | Adds or loosens an allow rule, removes a deny or ask rule, or adds a lift  |
 | `policy_narrow` | Removes or tightens an allow rule, or adds a deny or ask rule              |
@@ -95,11 +95,10 @@ A tool also declares which arguments are destinations, which argument holds the 
 declarations are policy data that you can read and edit. Removing an effect from a declaration
 counts as a widening, because it can move a call out of the always-ask set or past an ask rule.
 
-A `code_run` call from the conversation or an ordinary task gets a fresh sandbox with no grants. In
-a worker, it runs in the worker's own sandbox, whose one grant is the model-API credential. The
-sandbox adapter records the actual placement and grants, and the resolved execution profile is part
-of the action hash. Model requests from worker code pass through the counting proxy on the host and
-count against the same budgets, so `code_run` never bypasses the spending limits.
+Every `code_run` call, from the conversation, a task or a worker, gets a fresh sandbox with no
+network and no grants, as [the code tool](../../queue/code-tool.md) sets out. The sandbox record
+holds its spec, so the log shows that the program ran with no grant. A program holds no credential,
+so `code_run` never reaches a budget.
 
 ### The always-ask set and narrowing changes
 
