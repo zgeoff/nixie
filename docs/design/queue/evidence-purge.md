@@ -1,7 +1,8 @@
 # The evidence purge
 
 - **Status:** draft
-- **Work item:** [evidence-purge](https://linear.app/zgeoff/issue/GEO-2605), Part 5 of
+- **Work items:** [the key lookup](https://linear.app/zgeoff/issue/GEO-2637), stage 1;
+  [the purge](https://linear.app/zgeoff/issue/GEO-2605), stage 2. Part 5 of
   [redaction](redaction.md)
 
 You remove one record of a conversation with `conversation.forget`, the record forget of
