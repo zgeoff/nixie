@@ -45,7 +45,9 @@ codex-plan:
   upstream: https://chatgpt.com/backend-api/codex # the proxy adds the rest of the path
   model: gpt-6-luna
   prices: { … } # the profile's prices
-  login: /var/lib/counting-proxy/logins/codex-plan.json # makes this a plan route
+  login: # makes this a plan route
+    file: /var/lib/counting-proxy/logins/codex-plan.json
+    routeKeyFile: /run/secrets/codex-plan-route-key # one line; the plan profile's impd secret value
 ```
 
 ```ts
@@ -152,9 +154,14 @@ const logins = await readPlanLogins(context);
 - The base URL in the turn frame is `https://chatgpt.com/<sandbox>/<profile ID>`, as the budgets
   design builds every base URL. A plan profile's `base_url` is `https://chatgpt.com`, and the schema
   refuses another value.
-- The impd secret of a plan profile holds a value that is no credential, such as a random string,
-  because the proxy replaces it. The deployment adds it as it adds every model secret, with the
-  proxy's model address as its upstream and the path filter `/<sandbox>/**` on each grant.
+- The impd secret of a plan profile holds the route key: 32 random bytes, in hex, that only that
+  secret and the proxy's `routeKeyFile` hold. The deployment adds the secret as it adds every model
+  secret, with the proxy's model address as its upstream and the path filter `/<sandbox>/**` on each
+  grant.
+- The proxy refuses with a 403 a request on a plan route whose `Authorization` is not
+  `Bearer <route key>`, compared in constant time, and sends nothing upstream. The broker sets that
+  header only for a sandbox granted the plan profile's secret, so a sandbox with another model grant
+  cannot reach the plan route by naming it in its path.
 - The broker refuses with a 403 each other ChatGPT path that Codex calls, such as
   `/backend-api/wham/accounts/check`, because the path filter does not cover it.
 - When the broker's 403 on such a path fails a turn of the pinned Codex CLI, the build of the Codex
@@ -162,8 +169,9 @@ const logins = await readPlanLogins(context);
 
 ### The proxy
 
-- On a plan route, the proxy removes the `Authorization` header it receives and sets
-  `Authorization: Bearer <access token>`. It sets no credential on any other route.
+- On a plan route, after the route key check, the proxy removes the `Authorization` header it
+  receives and sets `Authorization: Bearer <access token>`. It sets no credential on any other
+  route.
 - The proxy reads a plan login's refresh token only to refresh it, and sends it only to the token
   endpoint. It sends the access token only to its plan route's upstream.
 - A request on a plan route whose login is not `active` gets a 401 in the Responses error shape, and
@@ -198,6 +206,10 @@ const logins = await readPlanLogins(context);
 - When the sign-in ends, the command writes the login file with a new `loginID`, and prints the
   email and the plan. It prints no token.
 - A login for a route that already has one replaces the login file.
+- The proxy reads the login file's `loginID` before it admits each request on a plan route. When the
+  `loginID` differs from the one its access token came from, the proxy drops that access token and
+  refreshes before it sends the request. When the file is gone, the proxy answers 401 and sends
+  nothing upstream.
 - `counting-proxy logout` removes the login file. OpenAI documents no revocation endpoint for this
   sign-in, so the command tells the operator to sign the device out in ChatGPT.
 - Device code login must be on in the account's ChatGPT security settings. When OpenAI refuses the
@@ -221,6 +233,9 @@ const logins = await readPlanLogins(context);
 
 - Every plan request passes the proxy, so the day and month counts, the per-sandbox limits and the
   stop cover plan turns as they cover every other profile.
+- On a plan route, the proxy refuses with a 400 a body that sets `service_tier`, so no plan request
+  runs at a faster tier that spends credits at a higher rate than the route's prices count. The
+  guest's config sets no service tier.
 - The proxy prices plan turns with the route's prices. A plan has no price per token, but Codex
   usage past a plan's limit can draw on bought credits, so the dollar limit bounds that spend too.
 
