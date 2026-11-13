@@ -21,7 +21,7 @@ last update and what the task waits on, such as "approval: send email". A job ru
 scheduled time and whether it is a catch-up. The dashboard filters by job and state.
 [Dashboard states, fires and filters](../../queue/live-view-dashboard.md) gives the contracts.
 Whether the dashboard takes the 4 groups is
-[open for the owner](https://linear.app/zgeoff/issue/GEO-1837), and until it is settled the
+[open for the owner](https://linear.app/zgeoff/issue/GEO-2650), and until it is settled the
 dashboard keeps the 3 groups that design maps.
 
 ## A task as a conversation

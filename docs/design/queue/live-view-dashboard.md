@@ -1,8 +1,7 @@
 # Dashboard states, fires and filters
 
 - **Status:** draft
-- **Work items:** [the view procedures](https://linear.app/zgeoff/issue/GEO-2545),
-  [the view routes](https://linear.app/zgeoff/issue/GEO-1837)
+- **Work items:** [dashboard states, fires and filters](https://linear.app/zgeoff/issue/GEO-2650)
 - **Blocked by:** [the wake rule](https://linear.app/zgeoff/issue/GEO-1865), which adds the listed
   state `asleep` and the task list fields `wakeable` and `nextRunAt`
 
