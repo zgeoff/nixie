@@ -227,8 +227,8 @@ type SessionStart =
   reads a profile as `ModelProfile`, and only a definition's `bind` reads a field of its own profile
   type.
 - A definition's profile schema holds only the keys its harness's loop reads. The config load
-  ignores any other key in a profile and logs a warning at start that names it, as for every config
-  key that nixie does not know.
+  ignores any other key in a profile, and logs a warning at start that names the key.
+  [The rollback check](rollback-check.md#constraints) sets this rule for every config key.
 - `roleNeeds` lists every capability a role's frames can use, including what its input can hold,
   such as `images` for a role whose input can carry an image. So a capability gap fails the config's
   load, and `encodeHostFrame` throws only on a host bug.
@@ -398,6 +398,6 @@ harness that declares `summarize` and `context-window`.
 
 ## Open questions
 
-- **Does Codex report a context overflow as its own error?** The overflow case of
-  [the ChatGPT plan login](https://linear.app/zgeoff/issue/GEO-2238) measures it. Until then, a
-  Codex overflow is a `failed` turn, and the step's retries handle it.
+- **Does Codex report a context overflow as its own error?** The builder of
+  [the ChatGPT plan login](https://linear.app/zgeoff/issue/GEO-2238) measures it in that work's
+  overflow case. Until then, a Codex overflow is a `failed` turn, and the step's retries handle it.

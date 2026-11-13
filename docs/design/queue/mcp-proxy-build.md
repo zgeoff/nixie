@@ -32,8 +32,8 @@ The build ships in 3 stages, one release or more apart:
 2. **stdio:** a server run as a command in a sandbox of kind `mcp_server`.
 3. **OAuth:** `auth: oauth`, once a server the deployment adds needs it.
 
-The tool-changed record and the pinned hash in the action hash build on stage 1, each in its own
-work item.
+The tool-changed record and the pinned hash in the action hash each ship in their own work item, in
+a release at or after stage 1.
 
 This design uses 2 terms throughout. A **server listing** is the proxy's fetch of one server's
 tools, an MCP `tools/list`. A **tool list** is the set of tools one task run or worker run may call,
