@@ -53,10 +53,11 @@ channel with one identity row per device.
 The push notifier tells you that something waits, and nothing else. Telegram runs through a bot that
 you register with BotFather, Telegram's bot for creating bots. The bot's token is a deployment
 secret, and nixie ships no central bot. To pair the bot, you start from a signed-in client or with
-`nixie channels pair telegram`, and either one shows a link
+`nixie channels pair telegram` on the host, and either one shows a link
 `https://t.me/<bot_username>?start=<pairing_code>`. The single-use code lapses after 10 min. The bot
-sends a confirm code to the chat that opened the link, and you type it into the client, which proves
-that whoever holds the client also reads that Telegram chat.
+sends a confirm code to the chat that opened the link, and you type it into any signed-in client or
+into `nixie channels confirm`. nixie then knows that whoever holds the client also reads that
+Telegram chat.
 
 The adapter reads updates by long polling, so Telegram needs no inbound route. The bot never carries
 the conversation: a text from you gets one fixed reply with a link to the client, and a text from
@@ -68,22 +69,23 @@ A notice holds a count, a fixed sentence and a link, such as "nixie has 3 things
 names a task, a person, an action or an amount. **Why:** Telegram keeps a bot chat's history on its
 servers.
 
-nixie keeps one live notice, the newest it sent, and each push either edits it or sends a new one:
+nixie keeps one live notice, the newest notice it sent. Each push either edits the live notice,
+which makes no sound, or sends a new notice, which buzzes and becomes the live notice:
 
-- A routine proposal edits the live notice, with no buzz.
-- An always-ask proposal, an unknown outcome, a deferred proposal that returns and the hard spending
-  stop each send a new, buzzing notice, which becomes the live notice.
+| What waits                                     | The push           | During quiet hours              |
+| ---------------------------------------------- | ------------------ | ------------------------------- |
+| a routine proposal                             | edits              | edits                           |
+| an always-ask proposal                         | sends a new notice | edits, and buzzes when they end |
+| a deferred proposal that returns               | sends a new notice | edits, and buzzes when they end |
+| an action whose outcome is unknown             | sends a new notice | sends a new notice              |
+| the hard spending stop, which pauses each task | sends a new notice | sends a new notice              |
 
-The [risk classes](../policy/approvals.md#risk-class) define routine and always-ask proposals. nixie
-pushes only when no client has had nixie on screen in the last 2 min, and gathers the items of 30 s
-from the first one into one push. Quiet hours hold buzzing pushes until they end. These pushes break
-through quiet hours:
-
-- an unknown outcome;
-- the hard spending stop.
-
-The 2 min and the 30 s are settings of the Telegram channel. Quiet hours are one setting that the
-defer of a proposal reads too. [The push notice](../../queue/push-notice.md) holds the contracts.
+A proposal is a tool call or a change that waits for your answer, and its
+[risk class](../policy/approvals.md#risk-class) makes it routine or always-ask. nixie gathers every
+push into a window of 30 s from the first item, and sends nothing while a client has had nixie on
+screen in the last 2 min. The 30 s and the 2 min are settings of the Telegram channel. nixie reads
+quiet hours from one setting, which also moves the return of a deferred proposal out of them.
+[The push notice](../../queue/push-notice.md) holds the contracts.
 
 ## Room for later channels
 
