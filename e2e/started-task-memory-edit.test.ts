@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { startSpawnedNixie } from '@heynixie/server/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 
 async function setupTest() {
   const nixie = await startSpawnedNixie({ memoryWriter: true });
@@ -120,8 +121,8 @@ test('it holds the edit of a started task that reads memory as a proposal, made 
   const findRecalled = () =>
     ctx.nixie.model.requests
       .slice(requestsBefore)
-      .map((request) => JSON.stringify(request.body?.messages?.at(-1)))
-      .find((message) => message.includes('tool_result') && message.includes('about'));
+      .map((request) => request.body?.messages?.at(-1))
+      .find((message) => JSON.stringify(message).includes('about'));
 
   await waitForCondition(() => findRecalled() !== undefined);
 
@@ -137,6 +138,13 @@ test('it holds the edit of a started task that reads memory as a proposal, made 
   });
 
   expect(items).toStrictEqual([{ itemID: expect.toBeString(), version: 1, state: 'active' }]);
-  expect(recalled).toContain('Your dentist is on Marsh Lane.');
-  expect(recalled).not.toContain('Marsh Road');
+
+  const itemSchema = z.object({ text: z.string() });
+  const recallResultSchema = z.object({ items: z.array(itemSchema) });
+  const blockSchema = z.object({ content: z.string() });
+  const messageSchema = z.object({ content: z.tuple([blockSchema]) });
+  const recalledContent = messageSchema.parse(recalled).content[0].content;
+  const recalledItems = recallResultSchema.parse(JSON.parse(recalledContent)).items;
+
+  expect(recalledItems.map((item) => item.text)).toStrictEqual(['Your dentist is on Marsh Lane.']);
 });
