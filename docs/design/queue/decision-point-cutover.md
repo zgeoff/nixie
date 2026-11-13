@@ -352,7 +352,15 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
   it declares one. A resolution that fails returns the tool's error to the model, and the call never
   reaches the decision point.
 - A reply target comes from a message or an event that a connector read, never from text the model
-  wrote. A message in Spam or Trash, or one whose From is your own account, gives no reply target.
+  wrote.
+- `replyTarget` is true only in the destinations that a resolver returns for a reply to that message
+  or a response to that event, such as `mail.reply` or `calendar.respond`. It covers that one call
+  and no other send. An address the model puts in an argument is never a reply target, even when it
+  equals a sender or an organizer.
+- The action reaches only the destinations that stage 5 checked. The executor takes them from the
+  resolved set on the `tool_called` record. When the provider's data gives another set at execution,
+  such as a new Cc on a reply to all, the action fails and sends to none of them. A message in Spam
+  or Trash, or one whose From is your own account, gives no reply target.
 - Stage 5 gives each destination the first permission that covers it, in this order: `owner`,
   `reply_target`, `known_contact`, `job`, `rule`.
 - `job` covers a destination that matches a pattern in the allowed destinations of the definition
