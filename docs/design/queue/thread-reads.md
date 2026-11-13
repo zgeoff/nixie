@@ -129,7 +129,8 @@ For the conversation, `logThread` equals `thread`.
 - The start check accepts `log: conversation` only from a starter whose own `log` is `conversation`.
   A chain of starts passes the grant on, and a task without the grant never gives it.
 - A definition file may set `log: conversation`, because you wrote the file. When nixie loads your
-  definitions, it checks each one as a start from the starter `'file'` of
+  definitions ([seeding](../../architecture/core/definitions.md#seeding)), it checks each one as a
+  start from the starter `'file'` of
   [`CheckTaskStart`](task-definition-format.md#the-hash-the-version-store-and-the-snapshot), and
   that starter has `log: conversation`.
 - The start check accepts the grant in the same start as a tool that sends data outside nixie. Each
