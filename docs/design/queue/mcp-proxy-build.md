@@ -8,11 +8,14 @@
 
 You plug an outside MCP server into nixie without trusting it. The deployment configures the server,
 you approve it once, and nixie fetches its tools. A tool reaches the model only after you declare
-its effects, and nixie pins the exact form you reviewed. A changed tool stops until you allow it,
-and every call runs under your rules, with its result as outside content.
-[The MCP proxy design](../platform/connectors/mcp-proxy.md) sets the rules that nixie keeps: when a
-changed tool stops, what a failed fetch of a server's tools leaves the model, how an input request
-reaches you, and which token a server gets. This design adds the contracts that build them.
+its effects, and nixie pins the exact form you reviewed. A changed tool stops working until you
+allow it. Every call runs under your rules, and the
+[decision point](../platform/policy/decision-point.md) marks its result as outside content, of
+source `untrusted`, as [taint](../platform/policy/decision-point.md#taint-in-the-first-build)
+defines. [The MCP proxy design](../platform/connectors/mcp-proxy.md) sets the rules that nixie
+keeps: when a changed tool stops, what a failed fetch of a server's tools leaves the model, how an
+input request reaches you, and which token a server gets. This design adds the contracts that build
+them.
 
 The first server is a hosted MCP server of your own. It serves Streamable HTTP on a private network,
 takes no token, and offers only read tools with no annotations, the hints a server may attach to a
@@ -29,7 +32,7 @@ The build ships in 3 stages, one release or more apart:
 2. **stdio:** a server run as a command in a sandbox of kind `mcp_server`.
 3. **OAuth:** `auth: oauth`, once a server the deployment adds needs it.
 
-Two words carry the rest of this design. A **server listing** is the proxy's fetch of one server's
+This design uses 2 terms throughout. A **server listing** is the proxy's fetch of one server's
 tools, an MCP `tools/list`. A **tool list** is the set of tools one task run or worker run may call,
 which [one endpoint per task run](../platform/connectors/tools.md#one-endpoint-per-task-run)
 defines.
@@ -82,21 +85,27 @@ mcp:
 
 ### Server state and the commands
 
-A **widening** is a change that lets outside code reach the model, or reach it with fewer checks.
-Each widening asks you once, through one proposal. A **narrowing** takes reach away, and applies at
-once with a record. A declaration that drops an effect widens, because a call with fewer effects can
-pass an ask or deny rule that matched the dropped effect.
+Each change in the table below asks you once, through one proposal, when it widens, and applies at
+once with a record when it narrows. A change widens when it lets outside code reach the model, or
+reach it with fewer checks. Trusting a server widens, because a trusted server's changed tool
+applies with a notice, while an untrusted server's changed tool stops until you allow it. A
+declaration that drops an effect widens, because a call with fewer effects gets past an ask or deny
+rule that matched the dropped effect.
 
 | Change                                                                                              | Kind      |
 | --------------------------------------------------------------------------------------------------- | --------- |
 | Adding a server, or trusting it                                                                     | widening  |
 | A first declaration of a tool                                                                       | widening  |
-| A declaration that drops an effect, a destination, the amount or a content argument                 | widening  |
+| A declaration that drops anything: an effect, a destination, the amount or a content argument       | widening  |
+| A declaration that adds a `reconcile`, so nixie settles an interrupted call without you             | widening  |
 | Allowing a changed tool                                                                             | widening  |
 | A config entry with a new host, a wider range, new files, another auth kind, or `trusted` turned on | widening  |
 | Removing a server, or untrusting it                                                                 | narrowing |
-| A declaration that adds an effect, a destination or a content argument                              | narrowing |
+| A declaration that only adds an effect, a destination, the amount or a content argument             | narrowing |
+| A declaration that only removes its `reconcile`                                                     | narrowing |
 | A config entry with a smaller range, or with `trusted` turned off                                   | narrowing |
+
+A declaration that both adds and drops is a widening.
 
 ```ts
 // mcp module. The facts the proxy uses for each server, which records fold into the mcp_servers
@@ -111,7 +120,7 @@ interface ServerFacts {
 
 type ServerState =
   | 'configured' // in the config, never added
-  | 'proposed' // an add or a trust waits for your approval
+  | 'proposed' // an add waits for your approval; a trust proposal leaves an added server 'added'
   | 'added'
   | 'held' // the config entry widened past the facts in use, and waits for your approval
   | 'removed';
@@ -134,14 +143,14 @@ nixie mcp diff notes.search          # the pinned tool form and the latest one, 
 ```ts
 // mcp module: the canonical operation of an mcp proposal, whose SHA-256 is the row's action hash
 type McpOperation =
-  | { change: 'add' | 'trust'; serverID: string; facts: ServerFacts }
+  | { change: 'add' | 'trust' | 'widen'; serverID: string; facts: ServerFacts } // widen: a held entry
   | { change: 'declare'; tool: string; hash: string; declaration: ToolDeclared['declaration'] }
   | { change: 'allow'; tool: string; fromHash: string; hash: string }; // hash: the tool form the card shows
 ```
 
 - The mcp kind's handler recomputes the operation at each answer from the current facts and the
-  tool's `latest_hash`, so an answer from a card that shows an older tool form refuses as
-  `CONFLICT`.
+  tool's `latest_hash`, so the answer path refuses an answer from a card that shows an older tool
+  form as `CONFLICT`.
 - When a server listing moves a tool's `latest_hash` while a `declare` or `allow` proposal of that
   tool is open, the proxy withdraws the proposal and opens one for the new hash in the same
   transaction.
@@ -152,9 +161,12 @@ type McpOperation =
   - A widening: the server is `held`, and the start writes one proposal for the new facts.
   - An entry gone from the config: the server is `removed`, and its pins and declarations stay for a
     later add.
-- `remove` and `untrust` record the config entry they overrode. A later start proposes the entry
-  again only once it differs from that recorded entry, so `untrust` holds over `trusted: true` until
-  the deployment changes the entry or you run `trust`.
+- `remove` and `untrust` set aside part of the config entry, and each records a copy of the entry as
+  it stood. At each later start, the proxy keeps the set-aside in force while the entry still
+  matches that copy. Once the deployment changes the entry, the start compares it as above. `add` or
+  `trust` ends the set-aside through its own proposal.
+- A removed server whose entry is still in the config stays `removed` until you run `add` or the
+  deployment changes the entry.
 
 ### Pins
 
@@ -176,7 +188,7 @@ interface ToolForm {
 type PinState =
   | 'exposed'
   | 'stopped_changed' // an untrusted server's changed hash, until you allow it
-  | 'stopped_unfit' // the declaration names an argument or a result field the latest tool form lacks
+  | 'stopped_unfit' // the declaration names an argument that the latest input schema lacks
   | 'hidden_new' // no declaration yet
   | 'removed';
 ```
@@ -199,10 +211,9 @@ mcp_tool_forms, a projection, one row per tool form a server listing has held
   one. A trusted server's change moves the pin to the hash of the server listing that brought it.
 - A stopped tool stays on each tool list in its pinned tool form. The proxy answers each call with
   an error that names the tool and the wait, such as "notes.search changed and waits for your
-  review". A hidden or removed tool is on no tool list.
+  review". A hidden or removed tool never appears on a tool list.
 - The fit check runs on every server listing. A declaration fits when each argument it names is a
-  property of the latest input schema, and each result field it names is a property of the latest
-  output schema.
+  property of the latest input schema. A declaration names no result field.
 - The model reads a tool as `mcp__nixie__<serverID>_<name>`, after `toSDKToolName`. A tool stays
   `hidden_new` when another tool already holds its model name, or when its model name passes 64
   characters, the Messages API's limit. `nixie mcp tools` shows the reason.
@@ -215,7 +226,8 @@ effects: [read]
 destinations: [] # argument names that hold a destination
 amount: null # the argument that holds the amount of a spend
 content: [query] # free-text arguments
-reconcile: null # or { idempotencyKey: requestID }, or { check: notes.find_request }
+reconcile: null # how nixie settles an interrupted queued call: { idempotencyKey: <argument> }
+# resends with the same key, and { check: <read tool> } asks the server; null brings the call to you
 ```
 
 ```ts
@@ -235,7 +247,9 @@ interface ToolDeclared {
   nobody declares it, because every result field is outside content.
 - `nixie mcp declare --prefill <tool>` prints a declaration file built from the latest tool form's
   annotations: `readOnlyHint: true` gives `[read]`, and `destructiveHint: false` drops `delete`.
-  With no annotations it holds the strictest effects. Only the declaration you approve counts.
+  With no annotations it holds the strictest effects that need no argument named: `write`, `delete`
+  and `send`. `spend` and `device` need an amount or a device, which only you can name. Only the
+  declaration you approve counts.
 - A tool with no declaration in force is `hidden_new`, and the registry denies a call to it.
 - The [snapshot hash](../platform/policy/rules.md#the-snapshot-hash) covers each proxied tool's
   declaration in force and its pinned hash, so a replay reads each decision under the declaration it
@@ -311,8 +325,10 @@ await client.mcp.answerInput({
 ```
 
 - The proxy sends every HTTP request through the credential store's fetcher, which checks the
-  address on every hop, with the server's host and its `privateRange` as the one private pairing.
-  With `auth: none`, the fetcher holds no credential.
+  address on every hop. The proxy passes the server's host and its `privateRange` as the fetcher's
+  one `pairing`, the host that may resolve to a non-public address
+  ([the credential store](../platform/connectors/credentials.md#the-interface)). With `auth: none`,
+  the fetcher holds no credential.
 - The proxy sends each request to the configured URL alone, and refuses every redirect.
 - The proxy sends no `Origin` header, and no cookie.
 - The MCP client runs in `auto` protocol mode, with `inputRequired: { autoFulfill: false }` and no
@@ -332,7 +348,7 @@ await client.mcp.answerInput({
 interface ServerHealth {
   failures: number; // failed server listings in a row
   nextTryAt: Date | null; // set while failures > 0; the backoff from libs/retry, 1 min to 1 h
-  isUnhealthy: boolean; // failures >= 3
+  isUnhealthy: boolean; // failures >= 3; sets the notice, while any failure already blocks calls
   lastError:
     | 'refused'
     | 'error'
@@ -343,8 +359,8 @@ interface ServerHealth {
     | null;
 }
 
-// mcp.health_changed { serverID, isUnhealthy, lastError, nextTryAt }: one record each way, which
-// the client's server list shows as its notice
+// mcp.health_changed { serverID, isUnhealthy, lastError, nextTryAt }: one record when the server
+// becomes unhealthy and one when it recovers. The web client shows each one in its server list.
 ```
 
 - While the latest server listing failed, the proxy answers a call with "notes is unreachable, next
@@ -377,9 +393,10 @@ interface ToolChanged {
 
 ### The pinned hash in the action hash
 
-A proposal's action hash is the SHA-256 of its canonical operation, the tool, its arguments and its
-destinations in one serialised form, as [the proposal](../platform/policy/approvals.md#the-proposal)
-defines. Your answer carries the hash its [card](../../glossary.md) showed.
+Policy hashes each action proposal: the SHA-256 of its canonical operation, the tool, its arguments
+and its destinations in one serialised form, as
+[the proposal](../platform/policy/approvals.md#the-proposal) defines. Your answer carries the hash
+its [card](../../glossary.md) showed.
 
 ```ts
 // policy module: the canonical operation of a proxied tool's action proposal adds the pin
@@ -403,11 +420,11 @@ interface ActionRehashed {
 - The transaction that moves a pin writes one `policy.action_rehashed` for each pending or deferred
   proposal of the tool, and a deferred one returns to pending.
 - The action kind's handler recomputes the hash at each answer (`currentHashes` in the approval
-  record design). It reads the pin through a reader the composition root passes in, so an answer
-  from a card that showed the old tool form refuses as `CONFLICT`.
-- An approved action that has not run yet meets the moved pin at the check before its attempt, which
-  [actions under policy](https://linear.app/zgeoff/issue/GEO-1810) builds, and returns to pending
-  with the new hash.
+  record design). It reads the pin through a reader the composition root passes in, so the answer
+  path refuses an answer from a card that showed the old tool form as `CONFLICT`.
+- An approved action that has not run yet returns to pending with the new hash. The check before
+  each attempt finds the moved pin, and
+  [actions under policy](https://linear.app/zgeoff/issue/GEO-1810) builds that check.
 
 ### The stdio sandbox
 
@@ -417,7 +434,7 @@ interface ActionRehashed {
 // | mcp_server  | None   | No               | No           | No         |
 export const sandboxSizes = {
   // …existing rows
-  mcpServer: { vcpus: 1, memoryMiB: 256, diskMiB: 4096 }, // from the probe on the code image
+  mcpServer: { vcpus: 1, memoryMiB: 256, diskMiB: 4096 }, // 256: the starting figure for the probe
 } as const satisfies Readonly<Record<string, SandboxLimits>>;
 ```
 
@@ -431,8 +448,9 @@ type BridgeFrame =
 - The spec builder gives the `mcp_server` kind egress `none`, no grant and no tool route, and every
   adapter refuses a spec of that kind with any other egress, a grant or a tool route.
 - The proxy keeps one sandbox per added stdio server, with the server ID as its owner. It creates
-  the sandbox at the server's first server listing and keeps it until a stop or a remove. A start
-  destroys every sandbox of kind `mcp_server`, and the next server listing creates it again.
+  the sandbox at the server's first server listing and keeps it until nixie stops or you remove the
+  server. A start destroys every sandbox of kind `mcp_server`, and the next server listing creates
+  it again.
 - The sandbox runs the code image, which the code tool design (`docs/design/queue/code-tool.md`)
   adds, at the `mcpServer` row. The proxy copies the bridge guest and the entry's files in, then
   spawns the bridge. The bridge runs the command and turns its newline-delimited JSON-RPC into
@@ -483,7 +501,7 @@ const spec: OAuthSpec = {
 
 ### Records and tables
 
-- Every `mcp.*` record belongs to no task thread, except `mcp.tool_changed`, `mcp.input_requested`
+- Every `mcp.*` record sits off any task thread, except `mcp.tool_changed`, `mcp.input_requested`
   and `mcp.input_outcome`.
 - The proxy writes `mcp.tool_listed { serverID, tool, hash, toolForm }` once for each pair of a tool
   and a hash that `mcp_tools` has not held, and `mcp.pin_moved { tool, fromHash, toHash, cause }`
@@ -510,26 +528,26 @@ module owns and that has a second real provider in sight, one that does the work
 - The proxy has no port, because it has one real provider. The mcp module holds the HTTP transport
   and, from stage 2, the stdio transport, which reaches the server only through the sandbox
   interface.
-- No import zone holds the MCP client package, because it is a protocol library that the tools
+- The MCP client package needs no import zone, because it is a protocol library that the tools
   module and the server already import.
-- Rule 12 asks a provider that runs in another image for a table of the release pairs that work
-  together. The bridge guest runs in the image of its own release, so its table has one row: the
-  same release.
+- A provider that runs in another image or process needs a table of the release pairs that work
+  together, and nixie stops on a pair the table lacks (rule 12). The bridge guest runs in the image
+  of its own release, so its table has one row: the same release.
 
 ### Rollback
 
-| Added                                            | The release before                                                                                                      |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| The `mcp` config section                         | Refuses to start, because the schema is strict. Remove the section from `config.yaml` before the rollback               |
-| The migration of the 3 tables                    | Never reads them. The migration only adds tables, so the oldest reader does not change                                  |
-| `mcp.*` records off a task thread                | Skips them, because no projection of that release folds them                                                            |
-| `mcp.tool_changed` and `mcp.input_*` on a thread | Skips them: they are not inbox kinds there, so no step reads them and none wakes a task                                 |
-| `policy.action_rehashed`                         | Skips it. A proxied tool's proposal finds no tool in that registry, so an approved action fails at its attempt          |
-| A proxied tool on a started task's tool list     | Keeps the list, and refuses each call as a tool it does not have                                                        |
-| The `mcp_server` kind, at stage 1                | Never meets it, because stage 1 writes none                                                                             |
-| A `sandbox.created` of kind `mcp_server`         | Is stage 1, which reads it and destroys the sandbox at start                                                            |
-| `transport.command` and `auth: oauth` in config  | Refuses to start. Remove the entry, or change it, before the rollback                                                   |
-| A connection of an `mcp:` connector, at stage 3  | Is stage 2. Stage 1 makes the connections list and the refresh sweep skip such a connection, so stage 2 leaves it alone |
+| Added                                            | The release before                                                                                          |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| The `mcp` config section                         | Refuses to start, because the schema is strict. Remove the section from `config.yaml` before the rollback   |
+| The migration of the 3 tables                    | Never reads them. The migration only adds tables, so the oldest reader does not change                      |
+| `mcp.*` records off a task thread                | Skips them, because no projection of that release folds them                                                |
+| `mcp.tool_changed` and `mcp.input_*` on a thread | Skips them: they are not inbox kinds there, so no step reads them and none wakes a task                     |
+| `policy.action_rehashed`                         | Skips it. Its registry lacks the proxied tool, so its action runner fails an approved action at the attempt |
+| A proxied tool on a started task's tool list     | Keeps the list, and refuses each call as a tool it does not have                                            |
+| The `mcp_server` kind, at stage 1                | Never meets it, because stage 1 writes none                                                                 |
+| A `sandbox.created` of kind `mcp_server`         | Reads it, because stage 1 adds the kind, and destroys the sandbox at start                                  |
+| `transport.command` and `auth: oauth` in config  | Refuses to start. Remove the entry, or change it, before the rollback                                       |
+| A connection of an `mcp:` connector, at stage 3  | Skips it, because stage 1 makes the connections list and the refresh sweep skip such a connection           |
 
 ## Decisions
 
@@ -537,18 +555,22 @@ module owns and that has a second real provider in sight, one that does the work
   agent's call on 13 Nov 2026: nixie reads the config only at start, so the commands write records,
   and a start holds a widening for one approval, as a
   [seed](../../architecture/policy/rules.md#rules-in-force) holds a widened rule.
-- **Every widening is one `internal_change` proposal.** An agent's call on 13 Nov 2026: the card
-  that shows a changed tool's old and new form, and the one approval that adding or trusting a
-  server takes, then use the shared answer path, and a host command needs no answer path of its own.
+- **Every widening is one `internal_change` proposal.** An agent's call on 13 Nov 2026: the shared
+  answer path then carries every approval the proxy needs. That covers the card with a changed
+  tool's old and new form, and the one approval to add or trust a server. A host command then needs
+  no answer path of its own.
 - **`add` takes its facts from the config alone.** An agent's call on 13 Nov 2026: a host command
   that took a URL would add a server the deployment never configured.
 - **A stopped or held tool stays on the tool list in its pinned tool form.** An agent's call on 13
-  Nov 2026: it follows the failed server listing's rule, since a tool that vanishes reads to the
-  model as a missing capability, and an unchanged tool list keeps the model's prompt cache.
+  Nov 2026: it follows the rule of
+  [a failed listing](../platform/connectors/mcp-proxy.md#a-failed-listing), since a tool that
+  vanishes reads to the model as a missing capability, and an unchanged tool list keeps the model's
+  prompt cache.
 - **A tool-changed record never wakes a task.** An agent's call on 13 Nov 2026: a waiting task has
   no step that a changed tool affects, and a wake would spend a turn on it.
 - **A proxied declaration has its own record, apart from the effect overrides.** An agent's call on
-  13 Nov 2026: an override changes a declaration in code, and a proxied tool has none.
+  13 Nov 2026: an override changes a declaration in code, and a proxied tool has no declaration in
+  code.
 - **The stdio server runs on the code image behind a bridge guest.** An agent's call on 13 Nov 2026:
   the code image already holds Bun and Python, a spawn stream carries frames, and the sandbox has no
   egress to fetch a package.
@@ -568,8 +590,8 @@ module owns and that has a second real provider in sight, one that does the work
 
 ## Out of scope
 
-- The atc runner, which talks to atc over its own contract, in
-  [the coding session runner](https://linear.app/zgeoff/issue/GEO-1843).
+- Coding sessions, which [the coding session runner](https://linear.app/zgeoff/issue/GEO-1843)
+  reaches over its own contract, never through the proxy.
 - Sampling, roots and logging from a server.
 - A declaration in the definitions repo for a proxied tool.
 - A server reached through a sandbox's own egress.
@@ -577,6 +599,6 @@ module owns and that has a second real provider in sight, one that does the work
 ## Open questions
 
 The owner settles 2 questions, kept in [the work item](https://linear.app/zgeoff/issue/GEO-1842):
-the form of a proxied tool's name, and the risk class of adding and trusting a server. Until then, a
-name is `<serverID>.<name>`, and adding or trusting a server is `always_ask`, while a declaration
-and a changed tool are routine.
+the form of a proxied tool's name, and the [risk class](../platform/policy/approvals.md#risk-class)
+of adding and trusting a server. Until then, a name is `<serverID>.<name>`. Adding or trusting a
+server is always-ask, which takes the passkey, while a declaration and a changed tool are routine.
