@@ -375,8 +375,10 @@ to match once the schedule source is built:
 
 ## Out of scope
 
-- Trigger sources for polls, webhooks and streams, and the match of an event to a definition by
-  filter.
+- Trigger sources for polls, and the match of a polled event to a definition or a wait:
+  [mail and calendar polls](mail-and-calendar-polls.md#changes-to-the-trigger-core-and-the-baseline)
+  extends the port, the arming hook and `deliverTriggerBatch`.
+- Webhooks and streams.
 - Pruning `trigger_keys`.
 - Moving the backup schedule, the lapse sweeps or the definitions poll onto the schedule source.
 - A view of source health.

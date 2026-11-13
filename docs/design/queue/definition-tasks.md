@@ -88,7 +88,8 @@ interface TriggerFired {
   definitionHash: string; // the version a task run of this fire pins
   source: string; // the trigger source's id, such as 'schedule'
   dedupeKey: string;
-  kind: 'schedule' | 'at';
+  kind: 'schedule' | 'at' | 'poll'; // poll: ./mail-and-calendar-polls.md#the-records-and-the-tables
+  polled?: number[]; // poll only: the sequences of the trigger.polled records, oldest first
   scheduledFor: string; // ISO instant
   firedAt: string; // ISO instant: the core's clock at the write
   isCatchUp: boolean; // firedAt is more than 60 seconds after scheduledFor
@@ -213,6 +214,8 @@ that holds decides:
    is null: no task run. `runTaskStep` commits the step with `hold` and calls no runner, the task is
    `waiting`, and an unread message stays unread.
 
+- A claim marks read a `trigger.fired` whose `kind` its codec does not know, and opens no task run
+  for it, so a release meets a fire of a later release's source safely after a rollback.
 - When a claim finds an open task run that is active or waiting on a reply, the step runs inside it.
   When it finds an idle one and an unread fire with another dedupe key, it ends the idle task run
   with the cause `no_report` and opens the fire's task run in the same transaction.
@@ -244,9 +247,11 @@ writes the fire's record. The first answer that holds decides:
 - nixie skips a fire and never queues it: a queue would hide a task run that never ends. A fire
   written before a hold opens a task run after the hold ends, however old it is.
 - nixie writes no record for a fire of a disabled definition.
-- The fire answer never reads the pause. While nixie is paused, the trigger core delivers no fire,
-  as [the pause](pause.md#triggers-while-paused) says, and the catch-up rule decides the first fire
-  after the resume.
+- The fire answer never reads the pause. While nixie is paused, the trigger core delivers no
+  schedule fire to a paused task, and a poll fire lands to open its task run after the resume
+  ([mail and calendar polls](mail-and-calendar-polls.md#one-deliver-call-of-a-poll-batch)). For a
+  schedule, the catch-up rule decides the first fire after the resume, as
+  [the pause](pause.md#triggers-while-paused) says.
 
 ### How the built task code handles a definition's task
 
@@ -284,8 +289,9 @@ writes the fire's record. The first answer that holds decides:
   run that never ends.
 - **The tasks module reads definitions only through 2 readers that the server app passes in.** The
   tasks module then imports neither the definitions module nor the triggers module.
-- **The fire answer has no answer of its own for the pause.** The trigger core delivers nothing
-  while nixie is paused, so the fire answer never meets a paused nixie.
+- **The fire answer has no answer of its own for the pause.** The trigger core delivers no schedule
+  fire to a paused task, and a poll fire waits in the inbox, because no claim starts until the
+  resume.
 - **An unread fire opens a task run before a raise or a restart, and a raise or a restart before an
   unread message.** An agent's call on 13 Nov, which the owner accepted: a fire can be unread at a
   carry only after a stop of an idle task run, which has nothing to carry, while a message after a

@@ -270,7 +270,9 @@ interface DefinitionVersion {
 
 ## Out of scope
 
-- A `poll` trigger, and a trigger kind `log`. The poll sources own `PollFilter`.
+- A `poll` trigger: [mail and calendar polls](mail-and-calendar-polls.md#the-poll-trigger) adds it
+  to `Trigger` and drops the `poll_trigger` fault.
+- A trigger kind `log`.
 - Code that runs a step file.
 - A `skills` key: `task.start` takes no skills, so a task run has no way to use a pinned skill.
 - The keys `inputs` and `reportFields`.
