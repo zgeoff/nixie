@@ -291,8 +291,8 @@ interface DataRestore {
 - The restore steps that name `--data-snapshot` warn that a data snapshot named under a key snapshot
   with no publish number is checked only by its `set-` number.
 - A record with no key in an `older-data` pair does not prove a forget. Besides a forget, the
-  conversation reset, the log reset and the key cleanup of compaction summaries, memory proposals
-  and offers each remove keys.
+  conversation reset, the log reset, the evidence purge and the key cleanup of compaction summaries,
+  memory proposals and offers each remove keys.
 
 ### The restore, steps 1 to 5
 

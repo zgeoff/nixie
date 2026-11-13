@@ -4,7 +4,8 @@
 
 You remove one whole record of a span, such as a tool result that holds a pasted secret. nixie
 deletes the record's key, so its text is gone from the thread and from every moment that holds it.
-Each memory item whose evidence quotes the record keeps its text and loses the quote.
+Each memory item whose evidence quotes the record keeps its text and loses every other copy of the
+record's text.
 
 The removal is the built `conversation.forget` action, widened in 5 parts that ship apart:
 
@@ -124,8 +125,8 @@ interface ForgetPreviewInput {
 
 interface ForgetPreviewOutput {
   momentCount: number; // the moments whose spans hold the record
-  // the memory items whose evidence quotes the record, each with its current text, so you can
-  // forget an item whose own text holds what you remove
+  // the items of the evidence purge's set (evidence-purge.md), each with its current text, so you
+  // can forget an item whose own text holds what you remove
   memoryItems: readonly { itemID: string; text: string }[];
 }
 

@@ -201,10 +201,10 @@ const bridge = {
   evidence: current.evidence?.recordSequence === recordSequence ? null : current.evidence,
   intentEvidence:
     current.intentEvidence?.recordSequence === recordSequence ? null : current.intentEvidence,
-  taskID: null,
-  proposalID: null,
-  checks: null,
-  model: null,
+  taskID: current.taskID,
+  proposalID: current.proposalID,
+  checks: current.checks, // keeps a photo's image source and the check verdicts, which hold no text
+  model: current.model,
   noticeKey: null,
   shortID: null,
 }; // no thread; its memory.version_keyed carries each kept quote of another record
@@ -230,7 +230,7 @@ const historyVersionSchema = z.object({
 const exportVersionSchema = z.strictObject({
   // …existing fields
   isRemoved: z.boolean(), // text and evidenceQuote are null because a purge removed them
-});
+}); // the release before refuses a file of that version, because its version record is strict
 ```
 
 ## Constraints
@@ -271,7 +271,10 @@ const exportVersionSchema = z.strictObject({
 - A stage 2 start that finishes a forget with no `memory.evidence_purge_started`, which stage 1
   began, writes the purge set first, then purges, because the forget has not written
   `record.forgotten` yet.
-- A record forgotten before stage 2 keeps its quotes in memory items.
+- A record forget that writes `record.forgotten` with no purge set, before stage 2 or during a
+  rollback to stage 1, leaves its quotes in memory items.
+- `readPurgeSet` ships with whichever of this work and [Part 3's preview](redaction.md#part-3) lands
+  first, and the other calls it.
 
 ### One item's purge
 
@@ -297,6 +300,8 @@ const exportVersionSchema = z.strictObject({
   every key of the item.
 - The bridge goes through the store's version writer with no write gate, because it changes no text,
   subject or pin, and it updates the item's index entry after the commit as any version does.
+- The events block's memory change line and the memory notices leave out a bridge version, so the
+  conversation never reads the removal as an edit of yours.
 
 | A kill after                          | The start finds                                | It does                                  |
 | ------------------------------------- | ---------------------------------------------- | ---------------------------------------- |
@@ -315,6 +320,11 @@ const exportVersionSchema = z.strictObject({
 - A value reads removed when the key that sealed it has a removal mark, when its item has an
   unfinished row in `memory_evidence_purges` and the value is not the current text, or when it is a
   quote whose record has a `record.forget_started`.
+- The version decode blanks a built version's in-text quote whose pointer names a record with a
+  `record.forget_started`, so a session rebuilt before the bridge never renders it.
+- A pointer `{ recordSequence, start, end }` left in an older row holds offsets and no text. A later
+  memory forget lists its sequence among the forgotten evidence, which changes nothing, because the
+  record is gone.
 - The lookup reads its rows, then the keys, then the removal marks again, so a key the purge deleted
   between the first and second reads reads removed and never shredded.
 - No reader tries a second key. No key ID ever holds 2 different keys.
@@ -384,7 +394,7 @@ An `older-data` restore pairs a data copy from before a purge with the newest ke
   survives.
 - **The purge ships in 2 stages, one release apart.** An agent's call on 13 Nov: the release before
   each stage then reads everything that stage writes, so neither rollback takes a step.
-- **A record forgotten before stage 2 keeps its quotes.** An agent's call on 13 Nov: a catch-up
+- **A record forgotten with no purge set keeps its quotes.** An agent's call on 13 Nov: a catch-up
   purge would finish after its `record.forgotten`, outside the forget's backup state. You forget
   such an item from the memory view.
 
@@ -401,7 +411,7 @@ An `older-data` restore pairs a data copy from before a purge with the newest ke
 
 - A purge of the record's text from a model provider, which keeps what a turn sent it.
 - A removal of part of a record, as [redaction](redaction.md#out-of-scope) says.
-- A purge for records forgotten before stage 2.
+- A purge for records forgotten with no purge set.
 
 ## Open questions
 
