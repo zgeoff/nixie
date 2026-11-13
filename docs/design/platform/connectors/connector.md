@@ -84,10 +84,11 @@ meaning.
 
 A connector whose provider names no account, such as Kagi with an API key, reports a null account
 name, and the label defaults to the connector's ID, such as `kagi`. The Google connector reads the
-address from Gmail's profile, which `gmail.modify` covers. When another connection of the connector
-holds the default label, nixie adds the lowest free number from 2, such as `kagi 2`. **Why:** the
-connector's ID tells you and the model which service the connection reaches, and the number keeps
-the default label unique without asking you for one before the connection works.
+address from the ID token of the token response, so it knows the account when you untick Gmail
+([Google connections](../../queue/google-connections.md#the-connector)). When another connection of
+the connector holds the default label, nixie adds the lowest free number from 2, such as `kagi 2`.
+**Why:** the connector's ID tells you and the model which service the connection reaches, and the
+number keeps the default label unique without asking you for one before the connection works.
 
 The argument appears only when the caller can reach 2 or more connections of the connector, and it
 is then required. With one connection the schema leaves it out, and the call binds to that
@@ -162,7 +163,8 @@ credential, such as an app password or an API key, skips the first 2 steps.
 ## Google
 
 The first connector covers Gmail, Google Calendar and Google Drive on one OAuth client you register,
-with the scopes `gmail.modify`, `calendar.events` and `drive.file`. The
+with the scopes `gmail.modify`, `calendar.events`, `calendar.calendarlist.readonly` and
+`drive.file`, plus `openid` and `email` for the account. The
 [Google spike](../../../../research/google-oauth/README.md) has the consent results, and its
 [setup](../../../../research/google-oauth/results.md#setup) has the setup steps. The app is
 published to production, because testing status expires consent after 7 days, and the spike's

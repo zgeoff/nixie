@@ -23,6 +23,7 @@ is deleted.
 | Moments and forgets | [redaction](redaction.md), [the evidence purge](evidence-purge.md)                                                                                                                                                   |
 | Policy              | [the decision point cutover](decision-point-cutover.md)                                                                                                                                                              |
 | Spending            | [budgets and the hard stop](budgets-and-hard-stop.md)                                                                                                                                                                |
+| Connections         | [Google connections](google-connections.md)                                                                                                                                                                          |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives
 in its Linear issue alone. The decision records these designs follow are in
