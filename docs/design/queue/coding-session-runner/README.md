@@ -7,16 +7,19 @@
 
 You ask nixie for a coding session, such as "fix the flaky login test in the shop repo". nixie
 starts the session in atc, a separate program that runs coding agents, once your policy rules allow
-the start. The session then shows as a task in nixie, which you and the conversation message like
-any other task. This design adds that task's runner, and its first adapter, `coding-atc`.
+the start. The session then shows as a task in nixie. You message it like any other task, and so
+does the conversation, the task where nixie talks with you. This design adds the code that runs such
+a task, the coding runner, and the coding runner's first adapter: the package `coding-atc`, whose
+adapter ID is `atc`.
 
-The coding runner runs no model of its own. Each step of a coding task passes the messages in the
-task's inbox to the session, and turns what the session does into task messages and one report per
-task run. The runner plugs into [the task runner port](https://linear.app/zgeoff/issue/GEO-2588),
-which is not built yet, and this design adds members to that port. It also rewrites the coding
-adapter section of the [coding design](../../platform/connectors/coding.md).
+The coding runner calls no model of its own. Each step of a coding task, one claim of the task that
+reads its new inbox records, passes the messages in the task's inbox to the session, and turns what
+the session does into task messages and one report per task run. The runner plugs into
+[the task runner port](https://linear.app/zgeoff/issue/GEO-2588), which is not built yet, and this
+design adds fields and functions to that port's types. It also rewrites the coding adapter section
+of the [coding design](../../platform/connectors/coding.md).
 
-Three sibling designs, not merged yet, touch this one:
+Three sibling designs touch this one:
 
 - The code tool design, `docs/design/queue/code-tool.md`, owns the code tool section of the coding
   design.
@@ -35,6 +38,8 @@ Three sibling designs, not merged yet, touch this one:
 | the hello      | the first request on a connection to atc, which carries the token and the protocol version; its reply holds atc's limits                            |
 | event trail    | atc's stored list of what each session did, which a caller reads from a cursor                                                                      |
 | coding task    | a task whose runner is a coding runner                                                                                                              |
+| adapter        | a package that reaches one outside system for an interface that nixie owns; the coding runner calls its adapter for every atc call                  |
+| turn           | one reply cycle of the coding agent inside the session, which atc reports when it ends                                                              |
 | bound session  | the coding session that a coding task's start created, once the task has recorded its ID                                                            |
 | coding source  | the [trigger source](../triggers.md) that reads atc's event trail into each coding task's inbox                                                     |
 | report target  | the task that started a coding task, usually the conversation; it receives each report                                                              |
@@ -43,10 +48,9 @@ Three sibling designs, not merged yet, touch this one:
 | claim          | the step of the task runner that takes a task's lease before a step runs ([leases and recovery](../../../architecture/core/leases-and-recovery.md)) |
 | decision point | the code that decides allow, ask or deny for each tool call, in stages ([the decision point design](../../platform/policy/decision-point.md))       |
 | harness        | the model client a profile runs on, such as `agent-sdk` or `codex` ([model profiles](../../../architecture/core/model-profiles.md#harnesses))       |
-| current        | as the code on main does it today                                                                                                                   |
 
-Other terms, such as an inbox, a task run and a projection, are in the
-[glossary](../../../glossary.md).
+[The runner](runner.md) and [the atc adapter](atc.md) use these terms too. Other terms, such as an
+inbox, a task run, a projection and an imp, are in the [glossary](../../../glossary.md).
 
 ## Shape
 
@@ -59,9 +63,13 @@ flowchart LR
   source -->|"trigger.task_input"| thread[coding task's thread]
   queue -->|"outcome"| thread
   thread --> step[coding runner step]
-  step -->|"coding.message action"| queue
-  step -->|"task_message, report"| target[report target]
+  step -->|"coding.message action"| queue  step -->|"task_message, report"| target[report target]
 ```
+
+The start writes the coding task and queues the spawn on the action queue. The spawn's outcome and
+the session's events land on the task's thread. Each step then moves them on: a message to the task
+goes to the session as a `coding.message` action, and the session's answers, notes and reports go
+back to the report target as `task_message` records.
 
 ## Parts
 
@@ -72,26 +80,29 @@ flowchart LR
 
 ## Rollback
 
-The release a rollback returns to has the runner port and lacks this work. That release does this
-with what this work adds:
+The release a rollback returns to has the runner port and lacks the coding runner. The table says
+what that release does with each record kind, table and key that the coding runner adds:
 
-| What this work adds                         | What that release does                                                                     |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `task.created` with `runner: 'atc'`         | the coding task's step throws on the runner key it lacks, so the task fails after 3 errors |
-| `coding.session_bound`, `coding.delivered`  | skips both record kinds                                                                    |
-| `trigger.task_input`                        | skips the record kind in its projections; a task it wakes fails as above                   |
-| the `coding_sessions` table, `tasks.runner` | starts on the migrated schema, and never reads the table or the column                     |
-| the `coding` config section                 | refuses to start, because every config section is strict                                   |
-| a rule that names the effect `coding_start` | refuses the rule file                                                                      |
-| the `coding:atc` row of `trigger_sources`   | never reads it                                                                             |
+| What this work adds                         | What that release does                                                                                               |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `task.created` with `runner: 'atc'`         | each step of the task throws, because that release has no runner for the key `atc`, so the task fails after 3 errors |
+| `coding.session_bound`, `coding.delivered`  | skips both record kinds                                                                                              |
+| `trigger.task_input`                        | skips the record kind in its projections; a task it wakes fails as above                                             |
+| the `coding_sessions` table, `tasks.runner` | starts on the migrated schema, and never reads the table or the column                                               |
+| the `coding` config section                 | refuses to start, because every config section is strict                                                             |
+| a rule that names the effect `coding_start` | refuses the rule file                                                                                                |
+| the `coding:atc` row of `trigger_sources`   | never reads it                                                                                                       |
 
 A rollback takes these steps, in order:
 
-1. Close each coding task with the `close` control, from the dashboard or the task host command. The
-   close calls the runner's `ended` function, which stops the bound session in atc. Expect: each
-   coding task lists as closed, and atc lists each of its sessions as exited.
-2. Remove the `coding` section from the deployment config, and each rule that names `coding_start`
-   from the definitions repo. Expect: the config passes the schema of the release you roll back to.
+1. Close each coding task with the `close` control, from the dashboard or the `close`
+   [task host command](../../../architecture/deployment/host-commands.md#tasks). The close calls the
+   coding runner's `ended` function ([the runner](runner.md#the-runner-definition)), which stops the
+   bound session in atc. Expect: each coding task lists as closed, and atc lists each of its
+   sessions as exited.
+2. Remove the `coding` section from the deployment config, and each policy rule that names the
+   effect `coding_start` from the repo that holds your definitions. Expect: the config passes the
+   schema of the release you roll back to.
 3. Roll back the image. Expect: the server starts.
 
 ## Decisions
@@ -99,11 +110,11 @@ A rollback takes these steps, in order:
 - **A coding runner runs no model.** Its step only moves records between the task and the session,
   so it spends no model money and needs no sandbox.
 - **The coding runner is generic over `CodingAdapter`, and its key is the adapter's ID.** A later
-  adapter, such as a built-in one that runs a session in an imp, gets its own key and its own
-  `task.start` variant.
+  adapter, such as a built-in one that runs a session in an [imp](../../../glossary.md), gets its
+  own key and its own `task.start` variant.
 - **The start and each message delivery are actions on the action queue.** The queue records each
   attempt before it calls atc, uses the action ID as the idempotency key, and marks an attempt with
-  no result `unknown`, so a crash never spawns a second session.
+  no result `unknown` and never tries it again, so a crash never spawns a second session.
 - **One task run is one stretch of the session's work, from a message to the turn that leaves the
   session idle.** The report target then gets one report for each such stretch, as it gets one for
   every task run.
@@ -134,7 +145,7 @@ A rollback takes these steps, in order:
   `task.start` with both variants in the tool's input schema, and the probe checks that the API
   takes the schema and the call parses. Until the probe passes on a harness, the server leaves the
   coding variant out of `task.start` on that harness.
-- **When does a line that nixie types into a session carry your authority?** A design session after
-  approval forwarding settles it, with questions 2 to 11 of
-  [GEO-945](https://linear.app/zgeoff/issue/GEO-945). That issue settled its question 1: the session
-  takes place. Until then, nixie types nothing into a session.
+- **When does a line that nixie types into a session carry your authority?** A design session with
+  the owner, held after the approval forwarding design, settles it, with questions 2 to 11 of
+  [GEO-945](https://linear.app/zgeoff/issue/GEO-945). The owner answered that issue's question 1:
+  the design session takes place. Until then, nixie types nothing into a session.
