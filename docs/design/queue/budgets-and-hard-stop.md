@@ -482,6 +482,8 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 - A lifted call still passes the
   [destination limits](../platform/policy/decision-point.md#the-pipeline).
 - The rule export writes the `lift` field as it writes every other field.
+- A release before lifts skips an allow rule that holds `lift`, and logs a warning that names the
+  rule and the field, so no purchase passes on that release by a lift.
 
 ## Decisions
 

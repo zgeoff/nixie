@@ -225,8 +225,9 @@ interface DefinitionVersion {
 
 ### A rollback of the rule format rename
 
-- The release before ignores the `definitions` field of a rules file, because its rule schema knows
-  only `jobs`. It logs a warning that names the field, and reads the rest of the rule.
+- The release before does not know a rules file's `definitions` field, because its rule schema knows
+  only `jobs`, so it fails closed. It skips an allow rule that holds the field, and drops the field
+  from a deny or an ask rule. Each time it logs a warning that names the rule and the field.
 - The release before reads the context `task` as a task that nixie starts from chat, so a rule with
   that context matches no task run of a definition.
 - A rule that nixie stored needs no step, because nixie writes it in the old names.

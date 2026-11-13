@@ -41,11 +41,15 @@ type RollbackCheckResult =
   then starts the previous release on that data directory and the `config.yaml` the build under
   check used.
 - A release ignores a config key it does not know, and logs a warning that names the key at start. A
-  seed of definition files and rules files does the same with a field it does not know, and keeps
-  the rest of the seed. A newer release's keys then never stop an older release from starting. The
-  cost: a mistyped key or field is no longer refused, only warned about.
-- A previous release built before this rule refuses an unknown key, so the check passes against it
-  only while the test's config holds no key that release lacks.
+  seed of definition files does the same with a field it does not know, and keeps the rest of the
+  seed. A newer release's keys then never stop an older release from starting. The cost: a mistyped
+  key or field is no longer refused, only warned about.
+- A rules file fails closed. When a rule holds a field the release does not know, the seed skips an
+  allow rule whole, so it matches nothing. For a deny or an ask rule, the seed drops only that
+  field, so the rule matches more. Either way it logs a warning that names the rule and the field.
+- A previous release built before this rule refuses an unknown config key or an unknown field in a
+  definition or rules file. The check passes against it only while the test's config, definitions
+  and rules hold nothing that release lacks.
 - A migration never drops a column in the release that stops using it: one release stops reading the
   column, and the next release drops it, so the previous release always starts on the new data.
 - The check runs on a data directory that nixie left unpaused. A release without the pause refuses a
