@@ -71,7 +71,7 @@ countBySandbox: true # the path is /<sandbox>/<route>/…; false keeps /<route>/
 override: /var/lib/counting-proxy/override.json # written only by the host command
 ```
 
-- A config sets either `periods` or the existing `limits`, and the schema refuses one that sets both
+- A config sets either `periods` or the current `limits`, and the schema refuses one that sets both
   or neither.
 - A config with `periods` needs `caps` and `control`. The config of a
   [preview](../../runbooks/preview.md), the throwaway build of one pull request, keeps `limits`, one
@@ -80,7 +80,7 @@ override: /var/lib/counting-proxy/override.json # written only by the host comma
 ### The store
 
 ```ts
-// counting proxy: the store file when the config sets periods; a `limits` config keeps its existing shape
+// counting proxy: the store file when the config sets periods; a `limits` config keeps its current shape
 interface PeriodStore {
   version: 2;
   lost?: true; // the lost mark
@@ -256,7 +256,7 @@ allow-groceries:
 ```
 
 ```ts
-// definitions module, beside the existing format numbers in definitionsFormats: the lowest
+// definitions module, beside the current format numbers in definitionsFormats: the lowest
 // format version in the manifest that applies budgets/*.yaml; the next unreleased format
 const definitionsFormats = { /* …existing fields */ budgets: 5 };
 
@@ -326,7 +326,7 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 ### The proxy's count
 
 - The proxy reads the store and the override file before it admits each request. It refuses the
-  request with its existing limit 403 when any period's count has reached its limit in force.
+  request with its current limit 403 when any period's count has reached its limit in force.
 - While a period's `limit` is null, the proxy answers every request with a 503, so a proxy that the
   server never set sends nothing upstream.
 - Each read of the store, for an admission, a reply or a control call such as `/status`, first
