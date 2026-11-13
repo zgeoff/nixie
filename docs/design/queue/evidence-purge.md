@@ -94,6 +94,8 @@ type ItemValueRef =
       sequence: number; // the version's record
     }
   | {
+      // a version with a version key only; a built version's quotes sit inside its text, so a
+      // caller reads them from its 'version' answer
       value: 'version-quote';
       itemID: string;
       version: number;
@@ -101,6 +103,8 @@ type ItemValueRef =
       recordSequence: number; // the quoted record
     }
   | {
+      // 'proposal' covers a new item's proposal and a rejected edit; a rejection's reason stays
+      // a field of its own record
       value: 'proposal' | 'rating-note' | 'change' | 'comment' | 'summary';
       itemID: string;
       sequence: number; // the record that holds the ciphertext
@@ -119,7 +123,7 @@ memory_item_keys, a projection added in stage 1, one row per key of an item
   version                integer          -- set for a version key
   sealed_evidence_quote  text             -- a version key's quote ciphertext, from memory.version_keyed
   sealed_intent_quote    text
-  from_sequence          integer not null -- the record that opened the key
+  from_sequence          integer not null -- the closing record that opened the key; 0 for generation 0
   removed_sequence       integer          -- the evidence_purge_closed record that closed it
 
 memory_evidence_purges, a projection added in stage 1, one row per item of a purge
@@ -128,6 +132,9 @@ memory_evidence_purges, a projection added in stage 1, one row per item of a pur
   closed_sequence        integer          -- its evidence_purge_closed record
   purged_sequence        integer          -- its evidence_purged record
 ```
+
+The generation in force at a record is the item's generation with the greatest `from_sequence` below
+that record's sequence.
 
 ### The records
 
@@ -218,8 +225,8 @@ const historyVersionSchema = z.object({
 ```
 
 ```ts
-// memory module: the export's version grows one field, under the export version rule
-// in redaction.md
+// memory module: the export's version grows one field in stage 1, which takes the next export
+// version when it lands, under the export version rule in redaction.md
 const exportVersionSchema = z.strictObject({
   // …existing fields
   isRemoved: z.boolean(), // text and evidenceQuote are null because a purge removed them
@@ -232,29 +239,32 @@ const exportVersionSchema = z.strictObject({
 
 - The record forget runs in this order:
   1. one transaction with `record.forget_started` and `memory.evidence_purge_started`;
-  2. the record's key, the image offer keys, and the key of each self-note flag whose source is the
-     record;
-  3. the session cleanup;
-  4. `purgeItemEvidence` for each item of the set;
-  5. `record.forgotten`.
+  2. the record's key, the image offer keys, and the key of each `memory.self_note_flagged` record
+     whose `sourceSequence` is the record;
+  3. the session cleanup, then `purgeItemEvidence` for each item of the set, both inside the closure
+     that `readSessionCleanup()` returns;
+  4. `record.forgotten`, which `runRecordForgetCleanup` writes after the closure returns.
 - The purge set is each active or retired item, and each pending proposal for a new item, that has a
   version of any number or a proposal of any status whose `evidence` or `intent_evidence` names the
   record. An intent quote counts as evidence.
 - The set also holds each item whose key seals a consolidation change, or a comment on one, whose
-  inputs include an item of the first list.
-- From the first transaction, the content gate refuses a quote in the record with the
-  forgotten-evidence reason, so no later write joins the set.
+  inputs include an item of the first list. The second list adds no further items.
+- From `record.forget_started`, the content gate refuses a quote in the record with the
+  forgotten-evidence reason, so no later write joins the set. Stage 1 ships this for every record
+  forget.
 - From the first transaction, every reader reads every value of an item in the set as removed,
   except the current version's text and its quotes of other records. A session the cleanup rebuilds
   therefore never meets a value the purge deletes.
 - From the first transaction until the item's `memory.evidence_purged`, a write of a proposal, a
-  rating note, a change comment, a consolidation diff or a summary that names the item refuses as
-  stale, checked inside its transaction. A write that sealed before the forget started fails the
-  same check, and nothing reseals it.
+  rating note, a change comment, a consolidation diff or a summary that names the item refuses with
+  `ItemPurgingError`, checked inside its transaction. The model reads that the item is changing and
+  to try again later. A write that sealed before the forget started fails the same check, and
+  nothing reseals it.
+- The session cleanup runs before the purges, so a turn that read a value the purge deletes is
+  aborted before any key goes, and the session it rebuilds reads those values as removed.
 - The session cleanup runs once for the record. The conversation's and the tasks' cleanups run the
   same steps whatever their cause, so the purge adds no cleanup per item.
-- The purge runs inside the session cleanup closure that the server builds once memory starts. While
-  `readSessionCleanup()` returns null, neither the purge nor `record.forgotten` runs, and the
+- While `readSessionCleanup()` returns null, neither the purge nor `record.forgotten` runs, and the
   server's start finishes both.
 - `record.forgotten` comes after every item's `memory.evidence_purged`, so the backup due check and
   a forget's backup state, which both read `record.forgotten`, cover every key the purge deletes.
@@ -275,8 +285,8 @@ const exportVersionSchema = z.strictObject({
     include the item;
   - for a built item, the bridge's `memory.version_added` and its `memory.version_keyed`;
   - `memory.evidence_purge_closed`.
-- After the commit, it deletes each closed key with `removeRecordKey`, which checkpoints, then
-  writes `memory.evidence_purged`.
+- After the commit, it deletes each key in `closedKeyIDs` and `closedRecordKeyIDs` with
+  `removeRecordKey`, which checkpoints, then writes `memory.evidence_purged`.
 - An item that is not built needs no bridge. Its quote of the record died with the record's key, and
   its current text stays under its version key.
 - When a built item's current text does not open, the purge writes no bridge and closes the keys
@@ -285,7 +295,8 @@ const exportVersionSchema = z.strictObject({
   purge writes its closing record with no keys.
 - When the item is forgetting or forgotten, the purge skips it, because the memory forget deletes
   every key of the item.
-- A bridge updates the item's index entry after the commit, as any version does.
+- The bridge goes through the store's version writer with no write gate, because it changes no text,
+  subject or pin, and it updates the item's index entry after the commit as any version does.
 
 | A kill after                          | The start finds                                | It does                                  |
 | ------------------------------------- | ---------------------------------------------- | ---------------------------------------- |
@@ -323,8 +334,9 @@ const exportVersionSchema = z.strictObject({
 
 ### The 2 stages and a rollback
 
-- Stage 1 ships the lookup, both tables, the readers of the 4 record kinds, what readers show and
-  the purge. Its record forget writes no `memory.evidence_purge_started`, so it starts no purge.
+- Stage 1 ships the lookup, both tables, the readers of the 4 record kinds, what readers show, the
+  gate's refusal, `VERSION_REMOVED`, `ItemPurgingError`, the memory forget's prefix delete and the
+  purge. Its record forget writes no `memory.evidence_purge_started`, so it starts no purge.
 - Stage 1 seals each new value under the item's current generation key, which is the UUID for an
   item no purge has reached, so the release before reads every value stage 1 writes on such an item.
 - Stage 1's start finishes every purge that a `memory.evidence_purge_started` owes before it writes

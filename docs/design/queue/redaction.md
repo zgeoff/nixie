@@ -156,9 +156,9 @@ log.forget({ thread: 'conversation', record: '<the record as the session history
   every moment whose span holds it.
 - A redaction removes a whole record. One record has one key, and no field has a key of its own.
 - A redaction touches only the record you name. A reply that quotes the same secret stays readable.
-- The forget writes `record.forget_started`, deletes the key, purges each memory item that quotes
-  the record, runs the session cleanup, and writes `record.forgotten` last, so a rebuilt session
-  reads the record as a gap.
+- The forget writes `record.forget_started`, deletes the key, runs the session cleanup, purges each
+  memory item that quotes the record, and writes `record.forgotten` last, so a rebuilt session reads
+  the record as a gap.
 - Each step of a forget is safe to run twice, and the server's start finishes a forget that a crash
   cut short.
 - `conversation.forget` never removes a record that holds a moment's title, note or reflection, and
