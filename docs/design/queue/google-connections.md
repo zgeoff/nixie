@@ -1,8 +1,8 @@
 # Google connections
 
 - **Status:** draft
-- **Work items:** [the connections](https://linear.app/zgeoff/issue/GEO-1824). The callback waits on
-  [the OAuth return spike](https://linear.app/zgeoff/issue/GEO-267).
+- **Work items:** the connections work item in the nixie project. The callback waits on the OAuth
+  return spike.
 - **Decision records:** [0010](../../decisions/0010-oauth-clients.md),
   [0007](../../decisions/0007-crypto-shredding.md)
 
@@ -25,19 +25,25 @@ flowchart LR
   web[web client] -->|"1. connections.startConsent"| api[API]
   api -->|"2. consent URL with state"| web
   web -->|"3. consent"| google[Google consent page]
-  google -->|"4. GET the return route"| route[web server return route]
+  google -->|"4. the browser GETs the return route"| route[web server return route]
   route -->|"5. connections.finishConsent"| api
   api -->|"6. code for tokens"| token[Google token endpoint]
   api -->|"7. one read per scope"| apis[Gmail, Calendar, Drive]
-  api -->|"8. connection.connected"| log[event log]
+  api -->|"8. sealed tokens, connection.connected"| store[connections table and key store]
 ```
+
+Forget runs the other way: one revocation at Google, then the key's deletion, as [Forget](#forget)
+sets out.
 
 ## Contracts
 
 ### The connector
 
 ```ts
-// connectors module. Extends the Connector of the connector design.
+// connectors module. Extends the Connector of the connector design. The connections module is new:
+// it owns the tables below in nixie.db, their keys in keys.db, and the CredentialStore of the
+// credential design for the database backend. A CredentialRef there is a connection ID.
+// disconnect and reconnect refuse a Google connection.
 const googleConnector: Connector = {
   id: 'google',
   auth: googleOAuth,
@@ -51,8 +57,9 @@ interface OAuthSpec {
   tokenURL: string; // 'https://oauth2.googleapis.com/token'
   revokeURL: string; // 'https://oauth2.googleapis.com/revoke'
   identityScopes: string[]; // ['openid', 'email']: the account, whatever else you untick
+  scopes: string[]; // ['gmail.modify', 'calendar.events', 'drive.file']: asked for whether or not an action uses them yet
   authorizeParams: Record<string, string>; // { access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' }
-  hosts: string[]; // ['gmail.googleapis.com', 'www.googleapis.com']; never a URL above
+  hosts: string[]; // ['gmail.googleapis.com', 'www.googleapis.com']; never the host of authorizeURL, tokenURL or revokeURL
   returnPath: string; // '/connections/google/return'
 }
 
@@ -62,6 +69,12 @@ interface SetupStep {
   body: string; // template text; {redirectURI} and {origin} are the only placeholders
   links: { label: string; url: string }[];
   input?: 'oauth_client'; // the step that shows the client form
+}
+
+interface HealthReport {
+  grantedScopes: string[];
+  missing: MissingScope[]; // new: each scope in OAuthSpec.scopes that check found missing
+  accountName: string | null; // for Google, the ID token's email; check reads no account
 }
 ```
 
@@ -91,7 +104,8 @@ and the step data ship in one PR.
 ### The API
 
 ```ts
-// libs/contract, under `connections`. Every action is a checked action.
+// libs/contract, under `connections`. Each procedure that takes a clientActionID is a checked action.
+// list and readForgetStatus are reads, and finishConsent is keyed by state.
 connections.registerClient({
   clientActionID,
   connector: 'google',
@@ -100,8 +114,8 @@ connections.registerClient({
   origin: 'https://nixie.example.org',
 });
 // → { client: 'q7m2x9k4ta', redirectURI: 'https://nixie.example.org/connections/google/return' }
-//   or INVALID_ORIGIN (not https, or holds a path, a query, a user name or a port that differs from the page's)
-//   or CLIENT_EXISTS: one client per connector; remove the old one first
+//   or INVALID_ORIGIN: not https, holds a path, a query or a user name, or differs from the call's Origin header
+//   or CLIENT_EXISTS: one client per connector that is not removed; remove the old one first
 
 connections.removeClient({ clientActionID, client: 'q7m2x9k4ta' });
 // → ok, or CLIENT_IN_USE while a connection that is not forgotten uses it
@@ -125,15 +139,22 @@ connections.forget({ clientActionID, connection: 'k3x9m2p7qa' });
 // → { erasure: 'pending', revocation: 'pending', backup: { state: 'pending' } }
 
 connections.readForgetStatus({ connections: ['k3x9m2p7qa'] });
+// → [{ connection: 'k3x9m2p7qa', erasure: 'done', revocation: 'confirmed', backup: { state: 'complete' } }]
+//   an unknown short ID reads erasure 'pending', as a memory forget reads an unknown item
+
 connections.list();
 // → [{ connection, connector, label, account, status, reason, statusSince, lastSuccessAt,
-//      scopes, missing, fingerprint, lastUsedAt, forget: null | { erasure, revocation, backup } }]
+//      scopes, missing, fingerprint, lastUsedAt, forget: null | ForgetStatus }]
+//   a forgotten connection lists with label and account null
 ```
 
 ```ts
 // libs/contract
 type Erasure = 'pending' | 'done';
 type Revocation = 'pending' | 'confirmed' | 'refused' | 'unknown' | 'not_attempted';
+type ConnectionStatus = 'active' | 'failing' | 'needs_consent' | 'expiring' | 'forgotten';
+type ForgetStatus = { erasure: Erasure; revocation: Revocation; backup: ForgetBackup };
+type ForgetBackup = z.infer<typeof forgetBackupSchema>; // the built schema
 type MissingScope = { scope: string; reason: 'not_granted' | 'api_disabled' };
 // backup: forgetBackupSchema, as built
 ```
@@ -163,8 +184,10 @@ Referrer-Policy: no-referrer
 The web server serves the route, because every path outside `/rpc` reaches it. Its server handler
 calls `connections.finishConsent` with the browser's session as a bearer token, as a render does
 ([the client path](../../architecture/overview.md#the-client-path)). On success it answers 303 to
-the connection's page, which shows `missing`. On a refusal it renders the error page with
-status 400. The API keeps its rule that every procedure is a `POST` with the client header.
+the connection's page, which shows `missing`. On a refusal it renders the error page with status
+400, which names the error code, and for `TOKEN_EXCHANGE_FAILED` Google's error code. A consent
+again lands on the same connection's page. The API keeps its rule that every procedure is a `POST`
+with the client header.
 
 ### The tables
 
@@ -247,7 +270,12 @@ type ConnectionRecord =
       fingerprint: string;
       rotated: boolean;
     }
-  | { kind: 'credential.status_changed'; connection: string; status: string; reason: string | null }
+  | {
+      kind: 'credential.status_changed';
+      connection: string;
+      status: ConnectionStatus;
+      reason: 'unauthorised' | 'service_error' | 'no_answer' | null;
+    }
   | { kind: 'connection.forget_started'; connection: string; counter: number }
   | { kind: 'connection.revocation_started'; connection: string }
   | {
@@ -257,7 +285,12 @@ type ConnectionRecord =
       status: number | null;
       googleError: string | null;
     }
-  | { kind: 'connection.forgotten'; connection: string };
+  | { kind: 'connection.forgotten'; connection: string }
+  | {
+      kind: 'connection.consent_discarded';
+      reason: 'account_mismatch' | 'connection_forgotten';
+      revocation: Revocation;
+    };
 ```
 
 No record of these kinds holds a label, an account address or a `sub`, so the connection's key
@@ -269,9 +302,9 @@ label from the connection row.
 
 ### Consent
 
-- `startConsent` asks for the identity scopes and the scopes of the connector's actions, with
-  `state`, PKCE S256 and `authorizeParams`. `prompt: 'consent'` makes Google issue a refresh token
-  on every consent, the one after a Forget included.
+- `startConsent` asks for `identityScopes` and `scopes`, with `state`, PKCE S256 and
+  `authorizeParams`. `prompt: 'consent'` makes Google issue a refresh token on every consent, the
+  one after a Forget included.
 - `state` is bound to the device session that started it. A call from another session, or after
   `expires_at`, answers `CONSENT_NOT_FOUND`, so a link that an attacker sends you cannot attach the
   attacker's account.
@@ -286,15 +319,19 @@ label from the connection row.
   answers `ACCOUNT_MISMATCH`.
 - A consent again replaces the refresh token, the scopes and `missing`, sets `active`, and advances
   the removal counter, so a refresh that started with the old token saves nothing.
-- When `finishConsent` holds a refresh token it does not keep, it makes one revocation attempt,
-  unless a live connection of the client reaches the same account, because Google's revocation
-  reaches the whole grant.
+- `finishConsent` can end with a refresh token it does not keep, after `ACCOUNT_MISMATCH` or when
+  its connection was forgotten meanwhile. Once the transaction commits, it makes one revocation
+  attempt and records `connection.consent_discarded` with the outcome.
+- It skips that revocation when a live connection of the client reaches the same account, because
+  Google's revocation reaches the whole grant and would end that connection too.
+- `LABEL_TAKEN` and the match of an account to a live connection decrypt the label and account of
+  each live connection of the connector, because no hash of either is kept.
 - The return route's handler and the web server's request log never record the query string.
 
 ### Fewer scopes
 
-- `check` makes one read call per action scope. A scope Google did not grant is `not_granted`. A
-  scope whose call Google refuses because the project has not enabled its API is `api_disabled`.
+- `check` makes one read call per scope in `scopes`. A scope Google did not grant is `not_granted`.
+  A scope whose call Google refuses because the project has not enabled its API is `api_disabled`.
 - The connection keeps every granted scope that passed, and its tools join the registry. The
   endpoint leaves out each action whose scope is in `missing`.
 - The connection's page shows each missing scope with its reason and the tools it holds back, and
@@ -320,12 +357,14 @@ label from the connection row.
   spent the old one, the next refresh gets `invalid_grant` and the connection becomes
   `needs_consent`. The crash test checks that outcome, and that the row keeps the old token whole.
 - A connection whose `refresh_expires_at` falls within 3 days is `expiring`. Past it, the connection
-  is `needs_consent`.
+  is `needs_consent`. The refresh schedule checks the time on each pass and at start.
+- When 2 statuses hold, the first of `needs_consent`, `failing` and `expiring` wins.
 - The fetcher holds a shared lock on the connection for each request it sends. Forget takes the lock
   exclusive, after it aborts every request in flight on that connection. A request Google already
   received stays with Google.
-- The fetcher refuses every URL in `OAuthSpec` above `hosts`, so no tool reaches the token or
-  revocation endpoint.
+- The fetcher refuses the hosts of `authorizeURL`, `tokenURL` and `revokeURL`, and every path under
+  `/oauth2/` on any host, because `www.googleapis.com` also serves an older token endpoint. No tool
+  then reaches a token or revocation endpoint.
 
 ### Tasks that already run
 
@@ -379,8 +418,9 @@ Forget is a durable operation, resumed at start before any runner claims work:
   [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state) reads
   from it.
 - A full [reset](../../architecture/core/event-log.md#the-reset) makes one revocation attempt per
-  live connection before it deletes the keys, 10 s each, and its answer lists each outcome. A failed
-  attempt never stops the reset. A reset of the conversation leaves connections alone.
+  live connection before it deletes the keys, 10 s each. Its answer gains
+  `revocations: { connection: string; outcome: Revocation }[]`. A failed attempt never stops the
+  reset. A reset of the conversation leaves connections alone.
 - A restore of a data copy from before a Forget meets a connection whose key is gone, and finishes
   its Forget with `not_attempted`.
 - A restore of a data copy from before a connection existed loses the connection, and its grant
@@ -393,7 +433,7 @@ Forget is a durable operation, resumed at start before any runner claims work:
 | ----------------------------------- | ------------------------------------------------------------------------------------- |
 | the migration of the 3 tables       | starts on it, because it only adds tables, and never selects them                     |
 | the keys in `record_keys`           | keeps them, and its full reset deletes them                                           |
-| the 10 record kinds                 | never meets them on a thread, and folds none                                          |
+| the 11 record kinds                 | never meets them on a thread, and folds none                                          |
 | `connection.forgotten` as a forget  | stages no forget set for it, so the next scheduled set covers the Forget              |
 | the procedures and the return route | has neither; a consent in flight lands on a 404, and the next start's sweep clears it |
 
@@ -419,8 +459,9 @@ Forget is a durable operation, resumed at start before any runner claims work:
   agent's call on 13 Nov: Google checks it against the client anyway, and a rollback needs no step.
 - **Access tokens stay in memory.** An agent's call on 13 Nov: a restart costs one refresh, and the
   database holds one secret per connection.
-- **One revocation attempt, recorded before it is sent.** An agent's call on 13 Nov: a crash then
-  reads as `unknown` and never sends a second request.
+- **One revocation attempt, recorded before it is sent.** The credential design sets one attempt. An
+  agent's call on 13 Nov: recording it first makes a crash read as `unknown`, and a second request
+  could revoke a grant that a consent made after the Forget.
 - **A consent of an account already connected updates that connection.** An agent's call on 13 Nov:
   a refusal would leave a second grant at Google, and revoking it would revoke the first.
 
@@ -434,9 +475,7 @@ Forget is a durable operation, resumed at start before any runner claims work:
 
 ## Out of scope
 
-- The Gmail, Calendar and Drive tools and the polls:
-  [Gmail](https://linear.app/zgeoff/issue/GEO-1825) and
-  [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826).
+- The Gmail, Calendar and Drive tools and the polls, which have their own work items.
 - A Disconnect or a pause for a Google connection.
 - A second OAuth client per connector, and connectors from other providers.
 - Picking Drive files for `drive.file`.
@@ -445,11 +484,13 @@ Forget is a durable operation, resumed at start before any runner claims work:
 ## Open questions
 
 - **Does Google accept the private-network HTTPS callback, and PKCE on a Web application client?**
-  [The OAuth return spike](https://linear.app/zgeoff/issue/GEO-267) settles it. Until then the
-  return route is built as here, and the guide says the redirect URI's host needs a name under a
-  public suffix.
+  The OAuth return spike settles it. Until then the return route is built as here, and the guide
+  says the redirect URI's host needs a name under a public suffix. The browser, not Google, follows
+  the redirect, so a public name that resolves only inside the private network serves as the
+  fallback. When Google refuses PKCE on a Web application client, nixie drops it, because the
+  return's security never rests on it.
 - **The names: the `connections` procedures, the record kinds, "Settings → Connections" and the
-  return path.** The owner settles them in
-  [the connections issue](https://linear.app/zgeoff/issue/GEO-1824). Until then the names here hold.
+  return path.** The owner settles them in the connections work item. Until then the names here
+  hold.
 - **Where the fewer-scopes notice shows.** The owner settles it in the same issue. Until then it
   shows on the connection's page and in the connections list, never in the conversation.
