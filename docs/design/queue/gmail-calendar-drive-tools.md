@@ -308,7 +308,7 @@ Message-ID: <0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03@example.com>   the action ID @
 ```ts
 // connectors module: the declaration of mail.send and mail.reply. 'mail.find_sent' is a read-only
 // connector action that only the action queue calls; no tool list holds it.
-const reconcile = { kind: 'check', action: 'mail.find_sent', settleAfter: '5m' };
+const reconcile = { kind: 'check', action: 'mail.find_sent', settleAfter: '5m', onNotFound: 'ask' };
 ```
 
 The check runs at least 5 minutes after the attempt started, and asks Gmail 2 ways:
@@ -321,22 +321,21 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 | What the check sees                                             | It answers                           |
 | --------------------------------------------------------------- | ------------------------------------ |
 | Either way finds a message whose header holds the Message-ID    | found; this row wins over the others |
-| Both ways finish and find none                                  | inconclusive                         |
+| Both ways finish and find none                                  | not found                            |
 | The list holds more than 200 messages                           | inconclusive                         |
 | Any call fails, or Gmail answers in a way the check cannot read | inconclusive                         |
 
 - Found makes the action done, with the found message's ID and thread as its result.
-- Inconclusive brings the action to you, as for every check. Its card says "nixie can't tell whether
-  this mail went out".
-- The mail check never answers not found, so nixie never sends a mail again on its own. When you
-  send it again from the card, the attempt sends the same message with the same Message-ID.
+- Not found keeps the action unknown and brings it to you on a card: "nixie can't tell whether this
+  mail went out". `onNotFound: 'ask'` sets this. **Why:** Gmail keeps no other trace of a sent mail,
+  so a Sent copy deleted for good looks the same as a mail that never went out.
+- Inconclusive brings the action to you too, as for every check.
+- nixie never sends a second copy on its own. Your answer on the card is the only thing that sends
+  the mail again, and that attempt sends the same message with the same Message-ID.
 - The check reads both headers, because Gmail can replace a `Message-ID` that a client set and keep
   the old one in `X-Google-Original-Message-ID`. Google does not document which header it keeps, so
   the check finds the mail whichever header Gmail keeps.
 - A sent mail carries no other header that names nixie or the action.
-- When someone deletes the Sent copy for good before the check runs, the check finds none. It cannot
-  tell that case from a mail that never went out, because Gmail keeps no other trace of a sent mail.
-  So both ways finding none is inconclusive, never not found.
 
 ### Reconciliation of the other changes
 
@@ -501,9 +500,8 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
   arrives in your mail, so an answer to it needs no more permission than a reply.
 - **The action ID rides in `Message-ID` alone.** An agent's call on 13 Nov 2026: the check needs one
   header, and a header that names nixie would tell each recipient you use an assistant.
-- **The Sent-folder check waits 5 minutes, and never answers not found.** An agent's call on 13 Nov
-  2026: an empty Sent folder can mean a mail that never went out or a copy deleted for good, and a
-  second send to a person cannot be undone, so every doubt goes to you.
+- **A mail that the Sent-folder check does not find comes to you, and nixie never resends it.** An
+  agent's call on 13 Nov 2026: a duplicate mail to someone outside is worse than asking you once.
 - **Markers are one property per action, 10 kept.** An agent's call on 13 Nov 2026: a single marker
   would let a later action hide an earlier one, and Drive allows 30 private properties.
 - **Recipients and guests come from Google, never from the model's text.** The decision point's
