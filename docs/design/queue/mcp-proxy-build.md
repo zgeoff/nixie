@@ -92,18 +92,18 @@ applies with a notice, while an untrusted server's changed tool stops until you 
 declaration that drops an effect widens, because a call with fewer effects gets past an ask or deny
 rule that matched the dropped effect.
 
-| Change                                                                                              | Kind      |
-| --------------------------------------------------------------------------------------------------- | --------- |
-| Adding a server, or trusting it                                                                     | widening  |
-| A first declaration of a tool                                                                       | widening  |
-| A declaration that drops anything: an effect, a destination, the amount or a content argument       | widening  |
-| A declaration that adds a `reconcile`, so nixie settles an interrupted call without you             | widening  |
-| Allowing a changed tool                                                                             | widening  |
-| A config entry with a new host, a wider range, new files, another auth kind, or `trusted` turned on | widening  |
-| Removing a server, or untrusting it                                                                 | narrowing |
-| A declaration that only adds an effect, a destination, the amount or a content argument             | narrowing |
-| A declaration that only removes its `reconcile`                                                     | narrowing |
-| A config entry with a smaller range, or with `trusted` turned off                                   | narrowing |
+| Change                                                                                          | Kind      |
+| ----------------------------------------------------------------------------------------------- | --------- |
+| Adding a server, or trusting it                                                                 | widening  |
+| A first declaration of a tool                                                                   | widening  |
+| A declaration that drops anything: an effect, a destination, the amount or a content argument   | widening  |
+| A declaration that adds a `reconcile`, so nixie settles an interrupted call without you         | widening  |
+| Allowing a changed tool                                                                         | widening  |
+| A config entry with a new host, a wider range, new files, another auth binding, or `trusted` on | widening  |
+| Removing a server, or untrusting it                                                             | narrowing |
+| A declaration that only adds an effect, a destination, the amount or a content argument         | narrowing |
+| A declaration that only removes its `reconcile`                                                 | narrowing |
+| A config entry with a smaller range, or with `trusted` turned off                               | narrowing |
 
 A declaration that both adds and drops is a widening.
 
@@ -113,7 +113,10 @@ A declaration that both adds and drops is a widening.
 interface ServerFacts {
   transport: { url: string } | { command: string[]; filesHash: string }; // filesHash: SHA-256 of the folder's files
   trusted: boolean;
-  auth: 'none' | 'static' | 'oauth';
+  auth: // the binding, never a secret: a changed reference, header or client is a new binding
+    | { kind: 'none' }
+    | { kind: 'static'; token: string; header: string } // token: the deployment: reference
+    | { kind: 'oauth'; clientID: string };
   privateRange: string | null;
   issuer: string | null; // oauth only: the authorization server that the protected resource metadata named
 }
@@ -204,7 +207,7 @@ mcp_tools, a projection, one row per tool a server listing has held
 
 mcp_tool_forms, a projection, one row per tool form a server listing has held
   hash            text primary key
-  tool_form       text not null    -- the ToolForm as canonical JSON
+  listed_seq      integer not null -- the mcp.tool_listed record whose erasable fields hold the form
 ```
 
 - An approved declaration or allow moves the pin to the hash its operation holds, never to a later
@@ -452,9 +455,11 @@ type BridgeFrame =
   server. A start destroys every sandbox of kind `mcp_server`, and the next server listing creates
   it again.
 - The sandbox runs the code image, which the code tool design (`docs/design/queue/code-tool.md`)
-  adds, at the `mcpServer` row. The proxy copies the bridge guest and the entry's files in, then
-  spawns the bridge. The bridge runs the command and turns its newline-delimited JSON-RPC into
-  frames, because a spawn stream carries framed messages.
+  adds, at the `mcpServer` row. The proxy copies the bridge guest and the entry's files in, hashes
+  the copied files, and spawns the bridge only when that hash equals `filesHash` in the facts in
+  use. A mismatch fails the server listing as `start_failed` and holds the server, so files changed
+  after an approval never run without one. The bridge runs the command and turns its
+  newline-delimited JSON-RPC into frames, because a spawn stream carries framed messages.
 - The proxy caps each frame at 4 MiB. A frame past the cap stops the server, and the server listing
   or the call fails as `unparsable`.
 - A sandbox that fails to start fails its server listing as `start_failed`.
@@ -503,9 +508,12 @@ const spec: OAuthSpec = {
 
 - Every `mcp.*` record sits off any task thread, except `mcp.tool_changed`, `mcp.input_requested`
   and `mcp.input_outcome`.
-- The proxy writes `mcp.tool_listed { serverID, tool, hash, toolForm }` once for each pair of a tool
+- The proxy writes `mcp.tool_listed { serverID, tool, hash }`, with the `toolForm` as canonical JSON
+  in its [erasable fields](../../architecture/core/erasable-fields.md), once for each pair of a tool
   and a hash that `mcp_tools` has not held, and `mcp.pin_moved { tool, fromHash, toHash, cause }`
-  for each move. A server listing that changes nothing writes nothing.
+  for each move. A server listing that changes nothing writes nothing. The proxy reads a form, for a
+  tool list or a change card, from the record at `listed_seq`. When a forget has made that form
+  unreadable, the next server listing that holds the hash writes the record again.
 - A pin move, its `mcp.tool_changed` records and its `policy.action_rehashed` records commit in one
   transaction.
 - `mcp_servers`, `mcp_tools` and `mcp_tool_forms` arrive in one appended migration that only adds
