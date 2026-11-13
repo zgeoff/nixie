@@ -106,8 +106,9 @@ interface PollEvent {
   connectionID: string;
   dedupeKey: string;
   // gmail: '<connectionID>|<messageID>'
-  // calendar: '<connectionID>|<eventID>|<etag>', or '<connectionID>|<eventID>|cancelled' for a
-  // cancellation that Google sends without an etag
+  // calendar: '<connectionID>|<eventID>|<etag>', or, for a cancellation that Google sends without
+  // an etag, '<connectionID>|<eventID>|cancelled'. The core appends '|<sequence>': the sequence of
+  // the event's newest trigger_polled row with an etag, or 0 when it has none.
   occurredAt: string; // ISO: the start of the poll that found it
   payload: PolledEvent;
 }
@@ -281,7 +282,7 @@ For a poll, `trigger.fired` of [the 2 fire records](definition-tasks.md#the-2-fi
 ```text
 2 projections, one appended migration:
 trigger_polled     triggers module. key sequence. source_id, connection_id, match (the thread ID
-                   or the event ID), recurring_id (null for mail), polled_at (epoch ms: the start of
+                   or the event ID), recurring_id (null for mail), has_etag (true for mail), polled_at (epoch ms: the start of
                    the poll that found it).
                    From trigger.polled. Never deleted.
 task_event_waits   tasks module. key wait_id. short_id, task_id, source_id, connection_id, match,
@@ -349,8 +350,10 @@ The core runs these steps inside the transaction of
 [one `deliver` call](triggers.md#one-deliver-call). Steps 1 to 3 run for each poll event, in batch
 order. Step 4 runs once, after the last event.
 
-1. When `trigger_keys` holds the event's dedupe key, or an earlier event of the batch claimed it,
-   the core skips the event.
+1. For a calendar cancellation without an `etag`, the core first completes the dedupe key with the
+   sequence of the event's newest `trigger_polled` row that has an `etag`. A replay finds the same
+   row, and a restore of the event adds a newer one. When `trigger_keys` holds the event's dedupe
+   key, or an earlier event of the batch claimed it, the core skips the event.
 2. The core writes `trigger.polled`. Its fold claims the dedupe key and adds the `trigger_polled`
    row.
 3. For each open event wait of the source and the connection whose `match` equals the thread ID, the
@@ -503,8 +506,8 @@ after the resume.
 - **The calendar's dedupe key holds the event's `etag`.** An agent's call on 13 Nov 2026: Google
   keeps `updated` for a reminder edit. The design takes the `etag` to change with each change of the
   event, as an HTTP entity tag does; Google's reference calls it only the resource's ETag. A
-  cancellation without an `etag` gets the key `cancelled`, so a second such cancellation of the same
-  event, after a restore, is missed.
+  cancellation without an `etag` takes the sequence of the event's newest change with one, so a
+  replay repeats the key, and a cancellation after a restore gets a new key.
 - **One batch gives a definition at most one fire, for all its matching events.** An agent's call on
   13 Nov 2026: a second fire in the batch would skip as `still_running`, and its mail would open no
   task run.
