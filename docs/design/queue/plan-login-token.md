@@ -15,8 +15,8 @@ Terms:
 - A **plan route** is a model gateway route whose config holds a plan login.
 - A **plan profile** is a `codex` model profile whose requests go to a plan route.
 - The **login file** is the file in which the gateway keeps a plan route's login.
-- The **operator** runs commands on the gateway host. An agent can be the operator. Only the owner
-  approves a device code in ChatGPT.
+- The **operator** runs commands on the gateway host. An agent can be the operator. You approve the
+  device code in ChatGPT.
 - **impd** is the daemon that runs each sandbox as an imp. Its **broker** adds a granted secret to a
   sandbox's requests for one host, and a **grant**'s path filter limits the paths it covers
   ([sandboxes](../../architecture/connectors/sandboxes.md#the-imp-adapter)).
@@ -218,7 +218,7 @@ The status and the reason follow each refresh's answer:
 
 - `model-gateway chatgpt-login` runs OpenAI's device code flow, with the endpoints and the client ID
   of the pinned Codex CLI. The operator runs it on the gateway host. It prints the URL, the code and
-  its expiry, and opens no browser. The owner opens the URL and approves the code in ChatGPT.
+  its expiry, and opens no browser. You open the URL and approve the code in ChatGPT.
 - When the sign-in ends, the command writes the login file with a new `loginID`, replacing any file
   the route has, and prints the email and the plan. It prints no token.
 - `model-gateway chatgpt-logout` removes the login file. OpenAI documents no revocation endpoint for
@@ -280,9 +280,9 @@ Each login file stays on disk, so a release that reads it again keeps the login.
   on 13 Nov 2026: in impd, only a host-wide token can replace a secret's value, and that token
   reaches every imp on the host.
 - **The login runs as a gateway host command, with a device code.** The owner's call on 13 Nov 2026:
-  an agent runs the command on the gateway host, and the owner only approves the code in ChatGPT. A
-  device code needs no redirect to the host, so no token passes through the server. A login in a
-  sandbox would put the refresh token in an imp.
+  an agent runs the command on the gateway host, and you only approve the code in ChatGPT. A device
+  code needs no redirect to the host, so no token passes through the server. A login in a sandbox
+  would put the refresh token in an imp.
 - **The names are `chatgpt_login`, `model-gateway chatgpt-login`, `model-gateway chatgpt-logout` and
   `GET /chatgpt-logins`.** The owner's call on 13 Nov 2026.
 - **Codex runs in external token mode, with no `auth.json`.** An agent's call on 13 Nov 2026: in its

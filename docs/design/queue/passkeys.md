@@ -335,17 +335,17 @@ Every passkey registered before the rollback works again once the passkey releas
   later passkey sign-in of a new device needs both, and neither changes after registration.
 - **At most 10 live passkeys.** An agent's call on 13 Nov 2026: a cap bounds what one leaked code or
   one stolen passkey can add, and 10 covers every device of one person.
-- **The first passkey takes a host code.** The owner's decision on 14 Nov 2026.
-- **Up to 10 passkeys, each added with a live passkey or a host code.** The owner's decision on 14
+- **The first passkey takes a host code.** The owner's call on 14 Nov 2026.
+- **Up to 10 passkeys, each added with a live passkey or a host code.** The owner's call on 14
   Nov 2026.
-- **Recovery is a host code alone, with no remote fallback.** The owner's decision on 14 Nov 2026.
+- **Recovery is a host code alone, with no remote fallback.** The owner's call on 14 Nov 2026.
 - **A revoke in the client takes a live passkey, a revoke through a host command needs none, and a
-  waiting approval stays pending.** The owner's decision on 14 Nov 2026.
-- **The server and the browser use SimpleWebAuthn.** The owner's decision on 14 Nov 2026:
+  waiting approval stays pending.** The owner's call on 14 Nov 2026.
+- **The server and the browser use SimpleWebAuthn.** The owner's call on 14 Nov 2026:
   `@simplewebauthn/server` and `@simplewebauthn/browser` verify every step of both WebAuthn
   ceremonies, and run on Web Crypto.
-- **The names are `passkeys.*`, `nixie passkeys` and `nixie passkey-code`.** The owner's decision on
-  14 Nov 2026, modelled on `nixie sessions` and `nixie enrol-code`.
+- **The names are `passkeys.*`, `nixie passkeys` and `nixie passkey-code`.** The owner's call on 14
+  Nov 2026, modelled on `nixie sessions` and `nixie enrol-code`.
 
 ## Builder decides
 

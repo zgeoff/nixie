@@ -533,8 +533,7 @@ To roll back:
 - **A paid tool's limits change only in the definitions.** An agent's call on 13 Nov 2026: a raise
   there passes the widening flow, which asks, and a deployment config would raise it without asking.
 - **`search.daily_call_cap` stays beside the search budget, and both apply.** The owner's call on 14
-  Nov 2026: the call cap bounds the number of searches, and the budget bounds the dollars that Kagi
-  charges.
+  Nov 2026.
 - **The names are `caps`, `model-gateway raise` and `nixie spend raise`.** The owner's call on 14
   Nov 2026.
 - **"Raise today's limit" offers today's limit plus half, up to the cap.** The owner's call on 14

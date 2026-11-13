@@ -423,12 +423,12 @@ the memory checker.
   An agent's call on 13 Nov 2026: the release before then reads every memory, skill and rule
   proposal as it did, and skills and memory move onto the shared path with their tests unchanged.
 - **The states are `pending`, `deferred`, `approved`, `declined`, `lapsed` and `withdrawn`, and
-  "used once" is the `usedBy` mark on `approved`.** The owner's decision on 14 Nov 2026. A queued
-  action is approved and not yet used, and the mark records the use without a seventh state.
-- **Lifting rows join the always-ask group of the digest, first within it.** The owner's decision on
-  14 Nov 2026: the agreed digest has no lifting group, and lifting cards have their own frame.
+  "used once" is the `usedBy` mark on `approved`.** The owner's call on 14 Nov 2026. A queued action
+  is approved and not yet used, and the mark records the use without a seventh state.
+- **Lifting rows join the always-ask group of the digest, first within it.** The owner's call on 14
+  Nov 2026: the agreed digest has no lifting group, and lifting cards have their own frame.
 - **Quiet hours are one top-level setting, `quiet_hours`, which Defer and the Telegram notices
-  read.** The owner's decision on 14 Nov 2026: Defer then works with no Telegram set up.
+  read.** The owner's call on 14 Nov 2026: Defer then works with no Telegram set up.
 - **The row holds no free text.** An agent's call on 13 Nov 2026: a sentence in a plain column would
   outlive a forget of the memory item it quotes.
 - **"Approve all routine" never covers the memory group.** An agent's call on 13 Nov 2026: the
@@ -436,8 +436,8 @@ the memory checker.
 - **An allow rule on `memory_write` skips the quote check and the memory checker.** An agent's call
   on 13 Nov 2026: the work item keeps the built gate's behaviour under a rule. The sources come from
   the quote first, so an `owner` rule covers only a write whose quote lies in your typed words.
-- **A self-note declares `memory_write`.** The owner's decision on 14 Nov 2026: a tool's effects
-  never depend on its arguments, and `memory.remember` writes self-notes. No starter rule matches
+- **A self-note declares `memory_write`.** The owner's call on 14 Nov 2026: a tool's effects never
+  depend on its arguments, and `memory.remember` writes self-notes. No starter rule matches
   `memory_write`, so a self-note always waits for your review.
 - **`memory_write` ships in 2 stages.** An agent's call on 13 Nov 2026: every rule that names the
   effect then parses on the release a rollback lands on, so no rollback takes a step for it.

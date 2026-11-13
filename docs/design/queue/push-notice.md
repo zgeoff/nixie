@@ -388,8 +388,8 @@ acts on what it finds then:
 
 ## Decisions
 
-- **The notifier reads quiet hours from the top-level `quiet_hours`.** The owner's decision on 14
-  Nov 2026: quiet hours are one shared setting, which the notifier and a defer's return both read.
+- **The notifier reads quiet hours from the top-level `quiet_hours`.** The owner's call on 14 Nov
+  2026: quiet hours are one shared setting, which the notifier and a defer's return both read.
 - **The channels module decides every notice, and the adapter does nothing but call the Bot API.**
   An agent's call on 13 Nov 2026: a module never imports an adapter, and the content-free rule then
   lives in one module with one test.
@@ -405,10 +405,10 @@ acts on what it finds then:
   decision on 14 Nov 2026: a link shown on a screen can leak, and with one step a stranger who
   opened it first would take every notice.
 - **The names are `nixie channels confirm`, `channels.telegram.credential`, `client_url`,
-  `presence_seconds`, `batch_seconds` and `sessions.shown`.** The owner's decision on 14 Nov 2026.
-- **The 3 notice sentences and the fixed bot replies are as written above.** The owner's decision on
-  14 Nov 2026.
-- **A notice links the digest, never an item.** The owner's decision on 14 Nov 2026: the chat never
+  `presence_seconds`, `batch_seconds` and `sessions.shown`.** The owner's call on 14 Nov 2026.
+- **The 3 notice sentences and the fixed bot replies are as written above.** The owner's call on 14
+  Nov 2026.
+- **A notice links the digest, never an item.** The owner's call on 14 Nov 2026: the chat never
   holds an item's ID.
 - **A new pairing revokes the live Telegram row.** An agent's call on 13 Nov 2026: the confirm
   proves that whoever holds the signed-in client reads the new chat, and one live row keeps every
