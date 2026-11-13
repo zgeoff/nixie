@@ -2,7 +2,8 @@
 
 - **Status:** draft
 - **Work items:** [the brief and the envelope](https://linear.app/zgeoff/issue/GEO-2357),
-  [the brief of a definition's task run](https://linear.app/zgeoff/issue/GEO-2586)
+  [the brief of a definition's task run](https://linear.app/zgeoff/issue/GEO-2586),
+  [the start time of the previous task run](https://linear.app/zgeoff/issue/GEO-2585)
 
 A task's model reads its brief as a request with an ID, in the same envelope as every other task
 message. A start writes the brief as a `task_message` record on the started task's thread, and a
@@ -160,6 +161,16 @@ When you've done what your brief asks, call task.report with a short summary.{{ 
 // conversation's label. Under the report mode `none`, it is empty, and nothing names a target.
 ```
 
+### The `since` block
+
+```ts
+renderSinceBlock(new Date('2026-11-05T17:39:12.345Z'), new Date('2026-11-12T17:39:10.001Z'));
+// → <input name="since">Your previous run started at 2026-11-05T17:39:12.345Z. This run started at 2026-11-12T17:39:10.001Z. Read messages from the first time up to the second.</input>
+
+// sessions module, phase 2. Pure. Rendered among the blocks of a definition's task run.
+declare function renderSinceBlock(previousStartedAt: Date, startedAt: Date): string;
+```
+
 ## Constraints
 
 - The built first line of the task prompt, in `modules/prompts/src/task-prompt.ts`, changes to the
@@ -202,7 +213,7 @@ The user message of a task run's first turn holds, in order:
 2. the memory blocks, only under `memory: read`, in the order the memory index design gives;
 3. the `trigger` block, only for a definition's task run that a fire opened;
 4. the `report-shape` block, only for a task run with a report shape;
-5. the block with the previous task run's start, only for a definition's task run;
+5. the `since` block, only for a definition's task run;
 6. the brief, in the envelope with the kind `request`.
 
 - Parts 1 to 5 are the preamble. A started task's brief is the first record of the inbox batch. A
@@ -214,6 +225,29 @@ The user message of a task run's first turn holds, in order:
   the `definition` label.
 - `pickTurnInbox` cuts the inbox batch after an unread brief record. A message behind the cut
   renders in the next turn, and that turn runs with no further wake.
+
+### The `since` block
+
+- The block's name is `since`, and its text is the owner's, word for word: "Your previous run
+  started at <previous start>. This run started at <this start>. Read messages from the first time
+  up to the second."
+- The block renders both times to the millisecond, as `YYYY-MM-DDTHH:MM:SS.sssZ`, which `log.read`
+  accepts as `from` and `to`. The built `log.read` reads `from` as at or after the time and `to` as
+  before it, so a read up to a time and a read from the same time return each message once.
+- The previous start is the start of the task run that
+  [`readPreviousRun`](task-runs/records.md#the-projection-and-its-readers) gives. For the first task
+  run of a definition, it is the time the definition was first enabled, as
+  [the task of a definition](definition-tasks.md#how-the-built-task-code-handles-a-definitions-task)
+  gives it.
+- For a carried task run, nixie follows `carriesRunID` back to the first task run of the chain. The
+  carried task run's block gives the start of the task run before that first task run, and the start
+  of that first task run. The carried task run therefore reads the messages that the first task run
+  read.
+- The block renders where `renderRunBlocks` renders the `trigger` and `report-shape` blocks. At the
+  first turn of a carried task run in a session that it resumes, it renders nothing, because the
+  session holds the block.
+- The block is not a member of the `trigger` block. nixie writes it, so it is not an input that a
+  definition declares.
 
 ### Where the brief renders
 
@@ -229,8 +263,8 @@ session. nixie takes the first line that applies:
 | the first turn of a task run, for a brief with no record           | last in the preamble              |
 
 - `pickPinnedBrief` decides between lines 2 and 3. A pinned brief sits after the memory blocks and
-  before the opening's summary, with the open task run's `trigger` and `report-shape` blocks pinned
-  beside it.
+  before the opening's summary, with the open task run's `trigger`, `report-shape` and `since`
+  blocks pinned beside it.
 - For a definition's task, nixie pins the brief of the open task run, never one of an ended task
   run.
 - Under `fresh`, the first turn of a definition's task run opens a session. When a message opened
@@ -341,6 +375,13 @@ session. nixie takes the first line that applies:
   accepted: each task's own limits, the rule that a start never widens its starter's tools, and the
   deployment budget of the [counting proxy](../../architecture/policy/counting-proxy.md) bound a
   chain's spend, as the owner chose to rely on spend limits for loops.
+
+- **The `since` block of a carried task run gives both times of the first task run of its chain.**
+  An agent's call on 13 Nov 2026: the carried task run continues that task run's work, so it reads
+  the same messages, and a chain of 2 raises gives the same times as one.
+- **A rebuilt session pins the `since` block beside the `trigger` and `report-shape` blocks.** An
+  agent's call on 13 Nov 2026: a summary of the turns can drop the 2 times, and the model needs them
+  for each `log.read` of the task run.
 
 ## Builder decides
 
