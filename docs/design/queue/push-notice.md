@@ -17,7 +17,7 @@ is built from.
 Terms:
 
 - A **proposal** is a tool call or a change that waits for your answer, with one row in the approval
-  record (`docs/design/queue/approval-record.md`). Its risk class is `routine`, `always_ask` or
+  record ([approval record](approval-record.md)). Its risk class is `routine`, `always_ask` or
   `lifting`, as [risk class](../platform/policy/approvals.md#risk-class) defines, and a memory write
   is a proposal of the kind `memory_write`.
 - A **defer** puts a proposal aside until a time you pick. The proposal then returns as new.
@@ -25,7 +25,7 @@ Terms:
   deferred proposal becomes an item again only when it returns.
 - An **unknown outcome** is an action that may or may not have reached its provider, as
   [actions](../../architecture/core/actions.md#outcomes) defines.
-- **The stop** is the hard spending stop of `docs/design/queue/budgets-and-hard-stop.md`: at a
+- **The stop** is the hard spending stop of [budgets and hard stop](budgets-and-hard-stop.md): at a
   spending limit, nixie pauses every task until the limit resets or you raise it.
 - A **trigger** is a record that can change a notice: a proposal created, answered, deferred,
   returned, lapsed or withdrawn; an `action.outcome` with the outcome `unknown`; and
@@ -242,7 +242,7 @@ channels:
   [configuration and secrets](../../architecture/deployment/server.md#configuration-and-secrets)
   describes.
 - The notifier reads quiet hours from the top-level `quiet_hours` that
-  `docs/design/queue/approval-record.md` owns, and has no quiet hours of its own.
+  [approval record](approval-record.md) owns, and has no quiet hours of its own.
 
 ## Constraints
 

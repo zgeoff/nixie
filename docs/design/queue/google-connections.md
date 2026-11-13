@@ -502,7 +502,8 @@ every Forget before it hands out any task work:
 - A Disconnect or a pause for a Google connection.
 - A second OAuth client per connector, and connectors from other providers.
 - Picking Drive files for `drive.file`: the browser's own token and the picker belong to
-  `docs/design/queue/gmail-calendar-drive-tools.md`, which reads `picker_key` and `project_number`.
+  [gmail calendar drive tools](gmail-calendar-drive-tools.md), which reads `picker_key` and
+  `project_number`.
 - Finding and forgetting the records whose text names a forgotten account.
 
 ## Open questions

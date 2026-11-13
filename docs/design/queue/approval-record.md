@@ -469,7 +469,7 @@ the memory checker.
 - Answering an unknown outcome, consuming an approval, and the policy check before each attempt of
   an action. The [actions work item](https://linear.app/zgeoff/issue/GEO-1810) owns them.
 - The action kind's create record and its CLI, in the decision point cutover
-  (`docs/design/queue/decision-point-cutover.md`).
+  ([decision point cutover](decision-point-cutover.md)).
 - The passkey, voice cards, proposed rules and mandates.
 
 ## Open questions

@@ -426,9 +426,8 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 - The client reads the notice from `spend.read`. The
   [Telegram push](https://linear.app/zgeoff/issue/GEO-1812), once built, sends a loud notice on each
   `spend.stop_tripped`, through quiet hours, that says only that nixie stopped spending, with no
-  amount or time (the push notice design, `docs/design/queue/push-notice.md`). The push notifier
-  reads `spend.stop_tripped` and `spend.stop_cleared` from the log, so the spend module never calls
-  it.
+  amount or time (the push notice design, [push notice](push-notice.md)). The push notifier reads
+  `spend.stop_tripped` and `spend.stop_cleared` from the log, so the spend module never calls it.
 
 ### Model limits
 

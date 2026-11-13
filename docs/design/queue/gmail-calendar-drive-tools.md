@@ -3,7 +3,7 @@
 - **Status:** draft
 - **Work items:** [Gmail](https://linear.app/zgeoff/issue/GEO-1825), and
   [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826). Both build on the Google
-  connection (`docs/design/queue/google-connections.md`) and on
+  connection ([google connections](google-connections.md)) and on
   [actions under policy](https://linear.app/zgeoff/issue/GEO-1810).
 
 nixie reads, searches and labels your mail, sends mail, and reads and changes your calendar and the
@@ -226,7 +226,7 @@ interface ConnectorAction<Input, Output> {
 The decision point holds back a send to a destination that has no standing permission, as
 [destination limits](../platform/policy/decision-point.md#destination-limits) sets. A reply target
 is one of those permissions. `CallDestination` is defined in the decision point cutover design
-(`docs/design/queue/decision-point-cutover.md`).
+([decision point cutover](decision-point-cutover.md)).
 
 | Tool                                | Its destinations                                     | Reply target            |
 | ----------------------------------- | ---------------------------------------------------- | ----------------------- |

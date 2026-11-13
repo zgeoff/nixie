@@ -25,7 +25,7 @@ Terms:
 
 The proxy's control listener, its model listener, the server's watcher, the `spendStop` config and
 the base URL of each sandbox are in the budgets design,
-`docs/design/queue/budgets-and-hard-stop.md`. The proxy as built is in
+[budgets and hard stop](budgets-and-hard-stop.md). The proxy as built is in
 [the counting proxy](../../architecture/policy/counting-proxy.md). The Codex guest, its config and
 the `codex` profile are in [the Codex harness](https://linear.app/zgeoff/issue/GEO-2237) work item.
 

@@ -418,7 +418,7 @@ order. Step 4 runs once, after the last event.
 - A polled event's free text sits in the erasable fields of its `trigger.polled` record, under that
   record's erasure key.
 - A Forget of the connection keeps every `trigger.polled` record and its erasure key, as the Forget
-  of `docs/design/queue/google-connections.md` keeps every other record that names the account.
+  of [google connections](google-connections.md) keeps every other record that names the account.
 - To erase one `trigger.polled` record, you forget that record. The
   [redaction design](redaction.md#part-1-the-forget-takes-every-record-with-its-own-text) lets the
   record forget take every record with its own text.
@@ -529,7 +529,7 @@ after the resume.
 - A view of source health and of `trigger.resynced` records.
 - Pruning `trigger_polled`.
 - The Gmail and Calendar tools, the reads of the morning report among them:
-  `docs/design/queue/gmail-calendar-drive-tools.md`.
+  [gmail calendar drive tools](gmail-calendar-drive-tools.md).
 
 ## Open questions
 

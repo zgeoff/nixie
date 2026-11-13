@@ -21,12 +21,12 @@ of the [coding design](../../platform/connectors/coding.md).
 
 Three sibling designs touch this one:
 
-- The code tool design, `docs/design/queue/code-tool.md`, owns the code tool section of the coding
+- The code tool design, [code tool](../code-tool.md), owns the code tool section of the coding
   design.
-- The MCP proxy build, `docs/design/queue/mcp-proxy-build.md`, leaves atc out: the proxy carries
+- The MCP proxy build, [mcp proxy build](../mcp-proxy-build.md), leaves atc out: the proxy carries
   none of atc's tools, because this runner calls atc directly.
-- The decision point cutover, `docs/design/queue/decision-point-cutover.md`, builds the policy
-  stages that decide each start of a coding session and each message to one.
+- The decision point cutover, [decision point cutover](../decision-point-cutover.md), builds the
+  policy stages that decide each start of a coding session and each message to one.
 
 ## Terms
 

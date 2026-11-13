@@ -12,7 +12,7 @@ nixie proposes 2 kinds of allow rule, and each takes effect only once you approv
   form in the client, or nixie proposes one from the conversation when you ask for it there.
 
 Each one waits for you as an always-ask proposal on the shared approval record
-(`docs/design/queue/approval-record.md`). Your approval adds its rules to
+([approval record](approval-record.md)). Your approval adds its rules to
 [the rule store](../../architecture/policy/rules.md#rules-in-force) as runtime changes: rules that
 nixie holds beside the ones your definitions repo holds. A proposed rule then goes into the rolling
 pull request of [the rule export](../../architecture/policy/rules.md#the-rule-export), which offers
@@ -22,7 +22,7 @@ or when you end it.
 The [rules design](../platform/policy/rules.md#gaps-and-proposed-rules) holds what these rules mean
 for you. This doc holds the record kinds, the calls, and the constraints the code must keep. The
 action proposals that a proposed rule counts come from the decision point cutover
-(`docs/design/queue/decision-point-cutover.md`).
+([decision point cutover](decision-point-cutover.md)).
 
 Some terms this doc uses:
 
@@ -37,9 +37,9 @@ Some terms this doc uses:
   one.
 - **The proposal terms,** such as the shared row, the always-ask and lifting risk classes, the
   action hash, Always allow, Defer, a lapse and a withdrawal, come from the approval record design
-  (`docs/design/queue/approval-record.md`).
+  ([approval record](approval-record.md)).
 - **An action proposal** and its cause `no_rule` come from the decision point cutover
-  (`docs/design/queue/decision-point-cutover.md`).
+  ([decision point cutover](decision-point-cutover.md)).
 - **A lift** is the `lift` field on an allow rule, which lets a `spend` call past the always-ask set
   within a budget ([lifting rules](../platform/policy/budgets.md#lifting-rules)). A proposal that
   creates a lift takes the `lifting` risk class.
