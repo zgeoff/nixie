@@ -109,7 +109,7 @@ interface CodeRunFile {
 }
 
 interface CodeRunLimitHit {
-  kind: 'wall_time' | 'memory' | 'output' | 'files';
+  kind: 'wall_time' | 'memory' | 'killed' | 'output' | 'files';
   sentence: string; // from the table in Constraints
 }
 ```
@@ -248,17 +248,17 @@ the input schema:
 nixie applies every limit the program reaches, and `limit` holds the first one in table order. A
 program that passes 1 MiB of output and writes 60 files gets `output` as its `limit`, and no files.
 
-| `kind`      | When                                                  | Sentence                                                                                                             |
-| ----------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `wall_time` | the program runs 60 s; nixie stops it                 | The program ran past its limit of 60 s, so nixie stopped it.                                                         |
-| `memory`    | the guest's memory-kill count rose during the program | The program ran out of its 512 MiB of memory. For a large CSV, read it with duckdb.                                  |
-| `output`    | a stream passed 1 MiB                                 | The program wrote more than 1 MiB to {stream}, and nixie kept the first 1 MiB.                                       |
-| `files`     | out/ holds more than 50 files or more than 20 MiB     | The program wrote {count} files of {size} under out/, past the limit of 50 files and 20 MiB, so nixie returned none. |
+| `kind`      | When                                                                                   | Sentence                                                                                                             |
+| ----------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `wall_time` | the program runs 60 s; nixie stops it                                                  | The program ran past its limit of 60 s, so nixie stopped it.                                                         |
+| `memory`    | the guest's memory-kill count rose during the program                                  | The program ran out of its 512 MiB of memory. For a large CSV, read it with duckdb.                                  |
+| `killed`    | the program ended on a `SIGKILL` that nixie did not send, and the count cannot be read | The program was killed by `SIGKILL`, which nixie did not send. Running out of its 512 MiB of memory is one cause.    |
+| `output`    | a stream passed 1 MiB                                                                  | The program wrote more than 1 MiB to {stream}, and nixie kept the first 1 MiB.                                       |
+| `files`     | out/ holds more than 50 files or more than 20 MiB                                      | The program wrote {count} files of {size} under out/, past the limit of 50 files and 20 MiB, so nixie returned none. |
 
 - nixie reads the guest's count of memory kills through `readMemoryKills` from
-  [the memory-kill signal](memory-kill-signal.md), before and after the program. When the count
-  cannot be read, a program that ended on a `SIGKILL` that nixie did not send gets the `memory`
-  limit.
+  [the memory-kill signal](memory-kill-signal.md), before and after the program. Only a count that
+  rose gives the `memory` limit.
 - A maintainer never raises the `codeRun` row after a code run's memory kill, because the program
   chose how much memory to use. For every other row, [the size table](sandbox-sizes.md) has a
   maintainer raise the row in a release after a memory kill.
@@ -308,6 +308,12 @@ Each refusal is a tool error before the program starts:
   the code run, so nixie kept nothing from it."
 - A forget of the `tool_result` record makes its files unreadable with its text. The `code_files`
   row stays, and the next use of its ID gets the "forgotten" refusal.
+- A forget that covers a code run's call reports done only once that code run's sandbox is
+  destroyed, because the sandbox holds unencrypted copies of the inputs and outputs. Before it
+  deletes any key, the forget destroys each code sandbox whose call sits on a record the forget
+  covers, a running one included, and finds each through the sandbox's owner, `code_run:<callID>`.
+  When a destroy fails, the forget fails with the error "nixie could not destroy a code sandbox that
+  holds this text. Try the forget again.", and deletes no key.
 - Each code run can add up to 22 MiB to `nixie.db` and to each backup: 20 MiB of files and two
   stream files of 1 MiB.
 
