@@ -3,17 +3,21 @@
 - **Status:** draft
 - **Work item:** [the passkey check for the always-ask set](https://linear.app/zgeoff/issue/GEO-310)
 
-An approval of an always-ask or lifting proposal takes your passkey: the client asks for a WebAuthn
-assertion with user verification, bound to the one answer you give, and the server refuses the
-answer without it. You register passkeys from a signed-in client, with a one-time code from the host
-for the first one, and nixie keeps each passkey's public key in a table of its own. You revoke a
-passkey from the client with another passkey check, or from the host.
+Your approval of a high-risk proposal needs your passkey. High-risk means the
+[always-ask or lifting risk class](../platform/policy/approvals.md#risk-class): spending, a budget
+raise, a mandate, a proposed rule or a known contact, and any rule that lifts the always-ask set.
+The client asks your passkey for a WebAuthn assertion with user verification, bound to the one
+answer you give. The server refuses the answer without it.
+
+You register a passkey from a signed-in client. The first one needs a one-time code from a host
+command, which runs on the machine nixie runs on. nixie keeps each passkey's public key in a table
+of its own. You revoke a passkey from the client with another passkey check, or with a host command.
 
 [Approvals in the client](../platform/channels/approvals.md#how-the-server-checks-an-answer) sets
-the check itself, and [proposals and approvals](../platform/policy/approvals.md#risk-class) sets
-which proposals take it. The approval record design (`docs/design/queue/approval-record.md`) owns
-`approvals.answerProposal`, which this design extends. A passkey here is a WebAuthn discoverable
-credential, whether one device holds it or a provider syncs it between your devices.
+the check itself. The approval record design (`docs/design/queue/approval-record.md`, not merged
+yet) owns `approvals.answerProposal`, its numbered answer checks and its client action IDs, and this
+design extends them. A passkey here is a WebAuthn discoverable credential, whether one device holds
+it or a provider syncs it between your devices.
 
 ## Shape
 
@@ -25,7 +29,7 @@ flowchart LR
   auth -->|"4. assertion"| card
   card -->|"5. approvals.answerProposal with the assertion"| api
   api -->|"6. verify against the passkeys table"| table[(passkeys)]
-  api -->|"7. passkey.used, then the kind's approve"| log[event log]
+  api -->|"7. passkey.used, then the proposal kind's handler"| log[event log]
 ```
 
 ## Contracts
@@ -79,7 +83,7 @@ type ApprovalItem = /* …existing variants, and on each proposal item: */ {
 
 ```ts
 // api module: the one check every passkey-gated path calls, inside its write transaction.
-// The actions work item calls it for a retry of an always-ask action whose outcome is unknown.
+// The actions module calls it too, for a retry of an always-ask action whose outcome is unknown.
 interface PasskeyCheck {
   verify(
     tx: Transaction,
@@ -102,7 +106,7 @@ type PasskeyFailure =
 ### Registration
 
 ```ts
-// With no live passkey, the host prints a one-time code.
+// A host command prints a one-time code. It works with or without a live passkey.
 // $ nixie passkey-code
 // 7K4M-Q9TR
 // works until 2026-11-14T08:15:00+11:00
@@ -127,12 +131,12 @@ const { passkeyID } = await client.passkeys.register({
 ```
 
 ```text
-passkeys, a plain table that one appended migration adds
+passkeys, a table that one appended migration adds; no record folds into it, as with the identity table
   passkey_id        text primary key   crypto.randomUUID()
   credential_id     text unique        base64url
   public_key        blob               the COSE key from the attestation object
   user_handle       blob               32 random bytes; every row shares one value
-  rp_id             text               the host of origin
+  rp_id             text               the host name of origin
   origin            text               scheme, host and port, such as https://nixie.example.org
   sign_count        integer
   backup_eligible   integer            the BE flag at registration
@@ -159,15 +163,16 @@ await client.passkeys.revoke({ clientActionID, passkeyID: '5d0e…', passkey: as
 
 ```bash
 nixie passkeys                  # every passkey, live and revoked, as JSON
-nixie passkeys revoke 5d0e…     # takes no passkey: the host's control socket is the authority
+nixie passkeys revoke 5d0e…     # needs no passkey: only nixie's user can open the control socket
 nixie passkey-code              # a one-time registration code
 ```
 
 ### Records
 
 ```ts
-// api module. No record belongs to a thread, so no client view shows them.
-{ kind: 'passkey.registered', passkeyID, registeredBy } // erasable: { label }
+// api module. The records belong to no thread, as session records do, so the live stream never
+// carries them.
+{ kind: 'passkey.registered', passkeyID, registeredBy } // the label sits in its erasable fields
 { kind: 'passkey.revoked', passkeyID, revokedBy } // revokedBy: an identity ID or 'host'
 { kind: 'passkey.used', passkeyID, binding: ChallengeFor } // in the transaction of the action it gates
 { kind: 'passkey_code.issued', expiresAt }
@@ -179,23 +184,26 @@ nixie passkey-code              # a one-time registration code
 
 - `approve` and `always_allow` on a row whose risk class is `always_ask` or `lifting` take the
   passkey. `defer` and `decline` never do.
-- An unchanged Always allow on a routine row stays one tap. A wider rule reaches you as an
-  `always_ask` or `lifting` row, such as an edited proposed rule, so the rule above covers it.
-- The host builds `passkeyChoices` with each row's choices, and checks the answer against the row,
+- Always allow on a `routine` row needs no passkey, when the rule it creates is the rule the card
+  shows. A rule wider than the card's, such as a proposed rule you edited, comes as its own
+  `always_ask` or `lifting` row, so its approval needs the passkey.
+- The server builds `passkeyChoices` with each row's choices, and checks the answer against the row,
   never against what the client sends.
-- `answerProposals` refuses each row that takes the passkey with `PASSKEY_REQUIRED`. The batch takes
-  no assertion.
-- An answer through a host command takes no passkey, and its approval records `by: 'host'`. Host
-  access reaches the database and the key store.
+- `answerProposals` has no field for an assertion, and refuses each row that needs the passkey with
+  `PASSKEY_REQUIRED`.
+- An answer through a host command needs no passkey, and `passkey.used` is not written. Whoever runs
+  a host command can already read the database and the key store.
 - When no live passkey exists, the client approves no always-ask or lifting row: the API refuses
   with `NO_PASSKEY`, and the card offers to add a passkey or points to the host command.
 
 ### The order of the checks
 
-- The passkey check runs after check 4 of the approval record's answer checks, the choice, and
-  before check 5, the kind's handler, in the same write transaction.
-- A refusal from the passkey check writes nothing under the client action ID. The input hash leaves
-  out `passkey`, so a retry with the same ID and a fresh assertion runs the checks again.
+- The approval record design numbers its answer checks 1 to 5. The passkey check runs between check
+  4, which checks the choice, and check 5, which hands the row to its kind's handler, in the same
+  write transaction.
+- A refusal from the passkey check writes nothing under the client action ID. The hash of the
+  answer's input, which a retry must match, leaves out `passkey`, so a retry with the same ID and a
+  fresh assertion runs the checks again.
 - A passed check writes `passkey.used` and moves the passkey's `sign_count`, `backed_up` and
   `last_used_at` in the transaction that applies the answer. A handler that then fails rolls them
   back with it.
@@ -213,10 +221,10 @@ nixie passkey-code              # a one-time registration code
 
 ### Verification
 
-- The server verifies each response as WebAuthn
-  [registering a credential](https://www.w3.org/TR/webauthn-3/#sctn-registering-a-new-credential)
-  and [verifying an assertion](https://www.w3.org/TR/webauthn-3/#sctn-verifying-assertion) set, with
-  user verification required: a response without the UV flag fails.
+- The server verifies each response with every step that WebAuthn sets for
+  [registering a credential](https://www.w3.org/TR/webauthn-3/#sctn-registering-a-new-credential) or
+  [verifying an assertion](https://www.w3.org/TR/webauthn-3/#sctn-verifying-assertion), with user
+  verification required: a response without the UV flag fails.
 - The expected origin is the passkey's `origin`, and the expected RP ID hash is SHA-256 of its
   `rp_id`.
 - When the stored or the new signature counter is nonzero and the new one is not greater than the
@@ -229,11 +237,10 @@ nixie passkey-code              # a one-time registration code
 
 ### Registration
 
-- With no live passkey, `registrationOptions` takes a host code and refuses without one as
-  `CODE_REQUIRED`. The same rule covers the first passkey, recovery after every passkey is lost, and
-  the state after a reset.
-- While a live passkey exists, `registrationOptions` takes either a host code or an assertion from a
-  live passkey on a `register` challenge.
+- With no live passkey, `registrationOptions` needs a host code and refuses without one as
+  `CODE_REQUIRED`. This covers the first passkey and recovery after every passkey is lost.
+- While a live passkey exists, `registrationOptions` accepts either a host code or an assertion from
+  a live passkey on a `register` challenge.
 - A host code works once and lapses after 15 minutes. The server keeps only its hash, in memory, and
   a second `nixie passkey-code` replaces the first.
 - The registration options bind to the session that asked, and `register` from another session
@@ -252,16 +259,16 @@ nixie passkey-code              # a one-time registration code
 - While a live passkey exists, a registration from another origin refuses as `ORIGIN_CHANGED`. To
   move nixie to a new host name, revoke every passkey from the host, then register with a host code
   on the new name.
-- Every passkey takes the `user_handle` of the existing rows, live or revoked. With no row, the
+- A new passkey gets the `user_handle` of the existing rows, live or revoked. With no row, the
   server draws 32 random bytes.
 - A synced passkey and a passkey on one device are both accepted, and the list shows which from the
   BE flag ([authenticator data](https://www.w3.org/TR/webauthn-3/#sctn-authenticator-data)).
 
 ### Revoking
 
-- A revoke from the client takes an assertion from any live passkey on a `revoke` challenge for that
+- A revoke from the client needs an assertion from any live passkey on a `revoke` challenge for that
   passkey, the passkey being revoked included.
-- A revoke from the host takes no passkey.
+- A revoke through a host command needs no passkey.
 - A revoke changes no proposal. A waiting approval stays pending, and any live passkey can approve
   it.
 - Revoking the last live passkey leaves the client unable to approve always-ask rows until a host
@@ -270,7 +277,7 @@ nixie passkey-code              # a one-time registration code
 ### Reset, restore and the deployment
 
 - A [reset](../../architecture/core/event-log.md#the-reset) keeps every live passkey and deletes
-  every revoked one. Its records go with the old log.
+  every revoked one. The reset deletes the passkey records with the rest of the old log.
 - A restore brings back the passkeys of the backup. A passkey revoked after that backup is live
   again, so revoke it again after a restore.
 - WebAuthn needs HTTPS with a certificate the browser trusts. A self-signed certificate that the
@@ -283,16 +290,16 @@ nixie passkey-code              # a one-time registration code
 
 ### Rollback
 
-| Added                                                     | The release before                                                                    |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| The `passkeys` table and its migration                    | Never reads it. The migration only adds a table, so the oldest reader does not change |
-| `passkey.registered`, `.revoked`, `.used`, `_code.issued` | Skips them                                                                            |
-| The `passkeys.*` procedures                               | Answers `NOT_FOUND`                                                                   |
-| `passkey` on `answerProposal`, `passkeyChoices`           | Strips the field, and approves an always-ask or lifting row with one tap              |
-| The host commands                                         | Has none, and its host contract refuses the call                                      |
+| Added                                           | The release before                                                                                                           |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| The `passkeys` table and its migration          | Never reads it. The migration only adds a table, so the [oldest reader](../../architecture/core/database.md) does not change |
+| The 4 `passkey` record kinds                    | Skips them                                                                                                                   |
+| The `passkeys.*` procedures                     | Answers `NOT_FOUND`                                                                                                          |
+| `passkey` on `answerProposal`, `passkeyChoices` | Strips the field, and approves an always-ask or lifting row with one tap                                                     |
+| The host commands                               | Has none, and the server refuses the unknown control request                                                                 |
 
-The rollback needs no step. It drops the passkey check until the release comes back, and the
-passkeys registered before still work then.
+The rollback needs no step. The release before has no passkey check, and once the passkey release
+returns, every passkey registered before the rollback works again.
 
 ## Decisions
 
@@ -308,10 +315,11 @@ passkeys registered before still work then.
   13 Nov 2026: the browser binds the passkey to the page's host, and a rollback needs no step.
 - **Challenges and host codes stay in memory.** An agent's call on 13 Nov 2026: both last minutes,
   and a restart costs one more tap or one more code.
-- **A host answer and a host revoke take no passkey.** An agent's call on 13 Nov 2026: the control
-  socket opens only to nixie's user on the host, who reaches every key.
+- **An answer or a revoke through a host command needs no passkey.** An agent's call on 13 Nov 2026:
+  the [control socket](../../architecture/deployment/host-commands.md#the-control-socket) opens only
+  to nixie's user on the host, who can read every key anyway.
 - **Attestation is `none`, and synced passkeys count.** An agent's call on 13 Nov 2026: one person
-  uses nixie, so no list of allowed providers protects anything, and a synced passkey covers a lost
+  uses nixie, so a list of allowed providers protects nothing, and a synced passkey covers a lost
   device.
 - **The credential is discoverable, with one stable user handle.** An agent's call on 13 Nov 2026: a
   later passkey sign-in of a new device needs both, and neither changes after registration.
@@ -328,7 +336,7 @@ passkeys registered before still work then.
   library: `@simplewebauthn/server` and `@simplewebauthn/browser` verify every step of both WebAuthn
   ceremonies, and run on Web Crypto.
 - **The names are `passkeys.*`, `nixie passkeys` and `nixie passkey-code`.** The interim for the
-  open question on names, after `sessions` and `nixie enrol-code`.
+  open question on names, modelled on `nixie sessions` and `nixie enrol-code`.
 
 ## Builder decides
 
@@ -344,7 +352,7 @@ passkeys registered before still work then.
   one way in.
 - The Android app's passkey, which needs the app's signing key as an allowed origin and an asset
   links file at the RP ID's host.
-- The passkey prompt over a voice call's screen.
+- Approving during a voice call, where the passkey prompt shows over the call screen.
 - A retry of an always-ask action whose outcome is unknown. The
   [actions work item](https://linear.app/zgeoff/issue/GEO-1810) calls `PasskeyCheck` for it.
 
