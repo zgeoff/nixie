@@ -207,6 +207,10 @@ memory:
 - No agent has `memory.rate`, the API has no rating-notes procedure, and the web client has no view
   of rating notes.
 - nixie starts on a log that holds `memory.rated` records, and skips them.
+- A rating note stays sealed under its item's key, and nothing reads it. The
+  [evidence purge](evidence-purge.md#the-scrub-of-the-removed-features) deletes it with that key,
+  and a memory forget deletes it with the item. The cleanup ships before stage 1 of the purge,
+  deletes no key and writes no new record, so a rollback from it meets nothing new.
 - The port has no `held.readMessages` and no `messages` in `placed`: the cleanup removes both.
 
 ## Decisions

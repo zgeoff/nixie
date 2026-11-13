@@ -193,6 +193,10 @@ the export. No renderer holds a case for `memory_writer`.
 - A version that an approved change wrote reads as any version.
 - nixie never reads a diff's sealed summary or a change's sealed text. A forget of the item destroys
   the key they are sealed under.
+- This release ships before stage 1 of
+  [the evidence purge](evidence-purge.md#the-2-stages-and-a-rollback), whose stage 2 scrubs each
+  merge change once. This release deletes no key and writes no new record, so a rollback from it
+  meets nothing new.
 
 ### The leftover tasks
 

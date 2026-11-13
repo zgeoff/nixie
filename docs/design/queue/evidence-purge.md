@@ -8,12 +8,11 @@ You remove one record of a conversation with `conversation.forget`, the record f
 [redaction](redaction.md). nixie forgets by deleting keys: each record's text sits under a key of
 its own, and the forget deletes that key ([0007](../../decisions/0007-crypto-shredding.md)). A
 [memory item](../../architecture/memory/store.md) whose evidence quotes that record holds copies of
-the record's text that the record's own key does not reach: the quote, and any older version,
-proposal, rating note or [consolidation](../../architecture/memory/consolidation.md) text the model
-wrote from it. The evidence purge deletes those copies in the same forget. The item keeps its ID,
-its current text and its state. Its current text can still hold what you removed. The forget's
-preview ([Part 3](redaction.md#part-3)) lists that text, and when it holds what you removed, you
-forget the item from the memory view.
+the record's text that the record's own key does not reach: the quote, and any older version or
+proposal the model wrote from it. The evidence purge deletes those copies in the same forget. The
+item keeps its ID, its current text and its state. Its current text can still hold what you removed.
+The forget's preview ([Part 3](redaction.md#part-3)) lists that text, and when it holds what you
+removed, you forget the item from the memory view.
 
 The purge deletes keys and never stores a new key under the ID an old key had, so no reader ever
 tries to decrypt an old value under a new key. Each item gets 3 kinds of key:
@@ -63,24 +62,31 @@ type ItemKeyID =
 
 ### What each key seals
 
-| Value                                                                                                                                 | Sealed under                                                 |
-| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| A version's text, written from stage 2                                                                                                | its version key                                              |
-| A version's text, written before stage 2                                                                                              | the generation key in force at its record                    |
-| A version's evidence or intent quote, written from stage 2                                                                            | the quoted record's key inside, then the version key outside |
-| Any other value: a proposal, a rating note, a consolidation change's text, a comment on a change, a consolidation summary's key share | the item's generation key in force when its record commits   |
-| A proposal for a new item                                                                                                             | generation 0 of that item                                    |
-| A rejection's reason                                                                                                                  | the rejection record's own key                               |
+| Value                                                      | Sealed under                                                 |
+| ---------------------------------------------------------- | ------------------------------------------------------------ |
+| A version's text, written from stage 2                     | its version key                                              |
+| A version's text, written before stage 2                   | the generation key in force at its record                    |
+| A version's evidence or intent quote, written from stage 2 | the quoted record's key inside, then the version key outside |
+| A proposal                                                 | the item's generation key in force when its record commits   |
+| A proposal for a new item                                  | generation 0 of that item                                    |
+| A rejection's reason                                       | the rejection record's own key                               |
 
 A record's generation key in force is the item's generation key with the greatest `from_sequence`
 below that record's sequence, and generation 0 starts at 0. An item is **shared-key** while its
 current version has no version key, so its current text shares generation 0 with every other value.
 Every item that exists when stage 2 ships is shared-key until it gets a new version.
 
+Rating notes and the consolidator's changes, comments and summaries are values of features that
+[memory turn push](memory-turn-push.md) and [the task removal](no-built-in-memory-tasks.md) remove
+before stage 1 ships. No code from stage 1 on reads or writes them, and the purge names none of
+them. [The scrub](#the-scrub-of-the-removed-features) covers the one kind that a purge would miss.
+
 ### The lookup
 
 ```ts
-const [note] = await readItemKeys(log, [{ value: 'rating-note', itemID: 'c1f0…', sequence: 9120 }]);
+const [proposal] = await readItemKeys(log, [
+  { value: 'proposal', itemID: 'c1f0…', sequence: 9120 },
+]);
 // → { status: 'readable', keyID: 'c1f0…/7d2e…', key }
 //   or { status: 'removed' } // a purge deleted, or is about to delete, the key that sealed it
 //   or { status: 'shredded' } // the key is gone and no purge says why
@@ -113,7 +119,7 @@ type ItemValueRef =
   | {
       // 'proposal' covers a new item's proposal and a rejected edit. A rejection's reason stays a
       // field of its own record, which the log reads.
-      value: 'proposal' | 'rating-note' | 'change' | 'comment' | 'summary';
+      value: 'proposal';
       itemID: string;
       sequence: number; // the record that holds the ciphertext
     };
@@ -157,9 +163,10 @@ interface VersionKeyed {
   intentQuote: string | null;
 }
 
-// The API module of stage 2 writes it in the transaction that writes record.forget_started.
+// The API module of stage 2 writes it in the transaction that writes record.forget_started. The
+// scrub writes it with recordSequence null, and its later records carry the sequence of this record.
 interface EvidencePurgeStarted {
-  recordSequence: number;
+  recordSequence: number | null;
   itemIDs: readonly string[]; // the purge set, fixed here
 }
 
@@ -260,9 +267,6 @@ const exportVersionSchema = z.strictObject({
 - The purge set holds each active or retired item, and each pending proposal for a new item, that
   has a version of any number or a proposal of any status whose `evidence` or `intent_evidence`
   names the record. An intent quote counts as evidence.
-- A consolidation change, and each comment on it, sits under the key of one of its input items. When
-  another of its inputs quotes the record, the purge set also holds the item whose key seals the
-  change. An item that joins this way brings no further items with it.
 - From `record.forget_started`, a write whose quote names the record fails with a tool error and
   writes nothing: no item, no version and no proposal. The model reads that the source was removed,
   and it can write the fact again with no quote. Today the
@@ -275,11 +279,10 @@ const exportVersionSchema = z.strictObject({
   ships this refusal for every record forget.
 - From the first transaction, every reader reads each value of an item in the set as removed, except
   the current version's text and its quotes of other records.
-- From the first transaction until the item's `memory.evidence_purged`, a write of a proposal, a
-  rating note, a change comment, a consolidation diff or a summary for the item fails with
-  `ItemPurgingError`, checked inside its transaction. The model reads that the item is changing and
-  that it can try again later. A write that encrypted its value before the forget started fails the
-  same check, and nothing encrypts it again.
+- From the first transaction until the item's `memory.evidence_purged`, a write of a proposal for
+  the item fails with `ItemPurgingError`, checked inside its transaction. The model reads that the
+  item is changing and that it can try again later. A write that encrypted its value before the
+  forget started fails the same check, and nothing encrypts it again.
 - The session cleanup runs before the purges. It aborts every turn that read a value the purge
   deletes before any key goes, and the session it rebuilds reads those values as removed.
 - The session cleanup runs once for the record. It invalidates every session that reads memory,
@@ -309,8 +312,6 @@ const exportVersionSchema = z.strictObject({
   the bridge.
 - It writes one transaction:
   - `memory.proposal_lapsed` for each pending proposal of the item;
-  - `memory.consolidation_lapsed` for each pending change that the item's key seals or whose inputs
-    include the item;
   - for a shared-key item, the bridge's `memory.version_added` and its `memory.version_keyed`;
   - `memory.evidence_purge_closed`.
 - After the commit, it deletes each key in `closedKeyIDs` and `closedRecordKeyIDs` with
@@ -375,11 +376,13 @@ const exportVersionSchema = z.strictObject({
   current text and works.
 - The history shows each removed version with its date and provenance and no text. Every other API
   status reports a removed value as `shredded`, so the API contract only grows.
-- A consolidation summary with a removed key share reads as no summary, as one with a missing key
-  does.
 
 ### The 2 stages and a rollback
 
+- Both removals ship before stage 1: the rating cleanup of [memory turn push](memory-turn-push.md)
+  and the consolidator delete of [the task removal](no-built-in-memory-tasks.md). From stage 1 on,
+  no release writes a rating note or a consolidation value, and stage 2's oldest reader refuses
+  every release that did.
 - Stage 1 ships the lookup, both tables, the readers of the 4 record kinds, what readers show, the
   refusal of a write that quotes a forgetting record, `VERSION_REMOVED`, `ItemPurgingError` and the
   memory forget's delete by prefix. It also ships the purge, which only its start runs, to finish a
@@ -400,9 +403,26 @@ const exportVersionSchema = z.strictObject({
 - A rollback from stage 2 to stage 1 takes no step: stage 1's start finishes every purge.
 - A rollback from stage 1 to the release before it takes no step: stage 1 writes nothing that
   release cannot read, and that release never meets the 2 tables.
+- Stage 1's start finishes a scrub that stage 2 began, as it finishes a purge.
 - Stage 1 holds the stage 2 writes of a new forget behind one constant that is off. Its tests turn
   the constant on to write each stage 2 record and each kill point's state, then read and finish
   them with it off.
+
+### The scrub of the removed features
+
+- A purge deletes the item's generation 0, which also seals the item's rating notes, the changes and
+  comments of the consolidator that sit under its key, and its share of each summary. A summary
+  needs every share, so it dies with any one of them.
+- A merge change and its comments sit under the key of its first input only. When another input
+  quotes a record, a purge of that input leaves the change readable. The scrub closes that case
+  once.
+- Stage 2's server start scrubs, before it serves a turn. It finds each change with more than one
+  input whose first input's generation key in force is still in keys.db, and lists those first
+  inputs in one `memory.evidence_purge_started` with `recordSequence` null.
+- It runs the session cleanup once, then the purge of each listed item, with the same steps, kill
+  table and finish as a record forget's purge. The bridge keeps all of its evidence, and nothing
+  writes `record.forgotten`.
+- A start that finds no such change writes nothing, so the scrub runs once.
 
 ### Backups
 
@@ -416,10 +436,10 @@ before a purge with the newest key copy, which lacks the keys the purge deleted:
 
 - "Unchanged" means the item's current version in the data copy is still current when the purge
   runs.
-- The table covers every item of the purge set, a merge partner included. A shared-key item loses
-  its current text because that text needs generation 0, which the purge deleted, and the data copy
-  holds no bridge. This is the older-data loss that [the backup pair](backup-pair.md#the-pick)
-  states, and nothing wider: an item outside the purge set keeps generation 0 and reads as before.
+- The table covers every item of the purge set and of the scrub. A shared-key item loses its current
+  text because that text needs generation 0, which the purge deleted, and the data copy holds no
+  bridge. This is the older-data loss that [the backup pair](backup-pair.md#the-pick) states, and
+  nothing wider: an item outside both keeps generation 0 and reads as before.
 - A value in the data copy reads shredded, not removed, because the data copy holds no purge record
   for it.
 - A pending proposal whose key is gone stays out of the proposal list.
@@ -437,14 +457,18 @@ before a purge with the newest key copy, which lacks the keys the purge deleted:
   [0007](../../decisions/0007-crypto-shredding.md) still holds after a restore.
 - **A quote needs both its version key and the quoted record's key.** An agent's call on 13 Nov: the
   record forget deletes the quote with no purge step, and the memory forget still deletes it.
-- **The purge drops every older version, pending proposal, consolidation change and rating note of
-  the item, and keeps no copy.** An agent's call on 13 Nov: any of them can hold the record's text,
-  and a copy encrypted again would need records that the release before reads under the wrong key.
+- **The purge drops every older version and pending proposal of the item, and keeps no copy.** An
+  agent's call on 13 Nov: any of them can hold the record's text, and a copy encrypted again would
+  need records that the release before reads under the wrong key.
 - **Every reader treats what the purge deletes as removed from the forget's first transaction.** An
   agent's call on 13 Nov: a session or a writer that runs before the keys go then never copies the
   text under a key that survives.
 - **The purge ships in 2 stages, one release apart.** An agent's call on 13 Nov: the release before
   each stage then reads everything that stage writes, so neither rollback takes a step.
+- **The removed features get one scrub, and the purge names none of their values.** An agent's call
+  on 13 Nov: their values die with generation 0, except a merge change under another input's key,
+  and the scrub at stage 2's start purges each such first input once. Each scrubbed item loses its
+  older versions and its pending proposals at upgrade, with no removal of yours.
 - **A record forgotten with no purge set keeps its quotes.** An agent's call on 13 Nov: a catch-up
   purge would finish after its `record.forgotten`, outside the forget's backup state. You forget
   such an item from the memory view.
