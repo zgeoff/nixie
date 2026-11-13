@@ -211,8 +211,8 @@ For the conversation, `logThread` equals `thread`.
 
 - The release a rollback returns to drops the options key because the options schema is not strict.
   It has no `logThread`, so every task run reads its own thread, a granted one included.
-- That release refuses a load of your definitions while a file sets `log`, because the definition
-  schema is strict, and keeps the last accepted definitions in force.
+- That release skips each definition whose file sets `log`, as it skips any definition with a field
+  it does not know, and logs a warning that names the definition and the field.
 - The design adds no record kind and no migration. Its one new key is `log`, in the start input and
   in a definition file, and it adds no key to `nixie.yaml`.
 - That release cleans no session for the grant on a forget, so a granted task's sandbox can keep the
