@@ -2,41 +2,46 @@
 
 - **Status:** draft
 - **Work items:** [the view procedures](https://linear.app/zgeoff/issue/GEO-2545),
-  [the view routes](https://linear.app/zgeoff/issue/GEO-1837); the `asleep` state and `nextRunAt`
-  come from [the wake rule](https://linear.app/zgeoff/issue/GEO-1865)
+  [the view routes](https://linear.app/zgeoff/issue/GEO-1837)
+- **Blocked by:** [the wake rule](https://linear.app/zgeoff/issue/GEO-1865), which adds the listed
+  state `asleep` and the task list fields `wakeable` and `nextRunAt`
 
-The dashboard at `/tasks` sorts your tasks into 3 groups by their stored task state: the
-conversation, Working and Held. The conversation's model tool `tasks.list` reads a finer state,
-which tells a task waiting on a reply from one with nothing to do or one that sent its report. This
-design gives the dashboard that finer state, shows on a definition's task when its task run was
-scheduled and whether it fired late, and filters the dashboard by definition and by state. The
+The dashboard at `/tasks` puts each task in 1 of 3 groups by its stored task state: Conversation,
+Working and Held. A done or closed task leaves the dashboard. The model tool `tasks.list`, which the
+conversation calls, reads a finer state than the dashboard does. This design gives the dashboard
+that finer state, shows on a definition's task when its task run was scheduled and whether it fired
+late, and filters the dashboard by definition and by state. The
 [live view baseline](../platform/channels/live-view.md#the-dashboard) gives the dashboard's purpose,
 and [the views of definitions and ended task runs](definition-views.md) give the routes
 `/definitions` and `/tasks/ended`.
 
-The terms this design uses:
+The design uses these terms:
 
-| Term              | Meaning                                                                                                                                                                         |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| listed state      | the state that `pickListedTaskState` in the tasks module gives a task: a stored task state, or `idle`, `finished` or `asleep` for a task that waits                             |
-| definition's task | the one task that a task definition runs on, as [the task of a definition](definition-tasks.md) says. A task that the conversation or another task starts is a **started task** |
-| task run          | one execution of a task, as [task run records](task-runs/records.md) define, with its `task.run_opened` and `task.run_ended` records                                            |
-| fire              | the `trigger.fired` record that opened a task run, as [the 2 fire records](definition-tasks.md#the-2-fire-records) define                                                       |
-| carrying task run | a task run that a raise of a limit or a restart opens to go on with an ended task run's work; its `carriesRunID` names that task run                                            |
+| Term              | Meaning                                                                                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| listed state      | the state that `pickListedTaskState` in the tasks module gives a task: its stored state, or one of the 3 below for a task whose stored state is `waiting` with no open wait |
+| `idle`            | a task that can take a message and has nothing to do                                                                                                                        |
+| `finished`        | a task that can take a message and sent the report of its last task run                                                                                                     |
+| `asleep`          | a task that no message wakes, which waits for its next scheduled fire                                                                                                       |
+| definition's task | the one task that a task definition runs on ([the task of a definition](definition-tasks.md)). A task that the conversation or another task starts is a **started task**    |
+| task run          | one execution of a task, which opens with `task.run_opened` and ends with `task.run_ended` ([task run records](task-runs/records.md))                                       |
+| fire              | the `trigger.fired` record that opened a task run ([the 2 fire records](definition-tasks.md#the-2-fire-records))                                                            |
+| catch-up          | a fire whose `isCatchUp` is true: nixie wrote it more than 60 seconds after its scheduled time                                                                              |
+| carrying task run | a task run that opens when you raise a task's limit or restart the task after its task run ended at a limit, a stop or a failure. Its `carriesRunID` names that task run    |
 
 ## Shape
 
 ```mermaid
 flowchart LR
-  tasks[(tasks projection)] --> pick[pickListedTaskState]
-  runs[(task_runs)] --> pick
+  tasks[(stored task state)] --> pick[pickListedTaskState]
+  runs[(task runs)] --> pick
   runs --> fire[readRunFire]
-  fired[trigger.fired record] --> fire
-  pick --> list["tasks.list"]
+  fired[fire] --> fire
+  pick --> list["API tasks.list"]
   fire --> list
   fire --> ended["tasks.listEnded"]
   list --> dash["/tasks: groups, rows, filters"]
-  follow["records.follow and a 60-second read"] --> dash
+  stream["live stream and a 60-second read"] --> dash
 ```
 
 ## Contracts
@@ -53,26 +58,25 @@ const open = await api.tasks.list({});
 ```
 
 ```ts
-// contract lib. tasks.list gains an optional input. Every new output field is optional, and a
-// client reads a missing field as the dashboard on main does.
+// contract lib. The API's tasks.list gains an optional input. Every new output field is optional:
+// a client that gets none groups by `state`, as the dashboard does today.
 interface TasksListInput {
   definitionID?: string; // only the task of that definition
   states?: ListedState[]; // 1 to 11 distinct values: only tasks in one of them
 }
-// TaskState: taskStateSchema on main, 8 values from ready to closed
+// TaskState: the contract's taskStateSchema, 8 values from ready to closed
 type ListedState = TaskState | 'idle' | 'finished' | 'asleep';
 
 // listedTaskSchema: { …existing fields, plus: }
 interface ListedTaskAdded {
-  listedState?: ListedState; // a new field: a client's label map for `state` still matches
-  definitionID?: string; // set only on a definition's task
-  fire?: RunFire | null; // a definition's task only; null when its task run has no fire
-  // wakeable and nextRunAt: the wake rule adds both
+  listedState?: ListedState; // its own field, so `state` keeps its 8 values for older clients
+  definitionID?: string; // present only on a definition's task
+  fire?: RunFire | null; // present only on a definition's task; null when the task run has no fire
 }
 
 // each task run that tasks.listEnded returns: { …the fields of the views design, plus: }
 interface EndedRunAdded {
-  fire: RunFire | null; // null for a task run that a message, you or a start opened
+  fire: RunFire | null;
 }
 
 // contract lib
@@ -94,93 +98,97 @@ declare function readRunFire(
 ): Promise<RunFire | null>;
 ```
 
-The table maps each listed state to a dashboard group. The conversation is a task too, with the task
-ID `conversation`, and its row always sits in the conversation group.
+The table maps each listed state to a group. A task's row shows its name, state, last activity and
+brief, the prompt it started with, and adds what the third column says.
 
-| Listed state                  | Group   | The row adds to its name, state, last activity and brief  |
-| ----------------------------- | ------- | --------------------------------------------------------- |
-| `ready`, `running`, `waiting` | Working | the fire, on a definition's task                          |
-| `idle`                        | Working | nothing                                                   |
-| `asleep`                      | Working | the next fire, from `nextRunAt`                           |
-| `finished`                    | Working | that the task sent its report                             |
-| `paused`, `stopped`, `failed` | Held    | the fire of the task run that was open when the task held |
-| `done`, `closed`              | none    | nothing: the task leaves the dashboard                    |
+| Listed state                  | Group   | The row adds                                            |
+| ----------------------------- | ------- | ------------------------------------------------------- |
+| `ready`, `running`, `waiting` | Working | the fire, on a definition's task                        |
+| `idle`                        | Working | nothing                                                 |
+| `asleep`                      | Working | the next fire, from `nextRunAt`                         |
+| `finished`                    | Working | that the task sent its report                           |
+| `paused`, `stopped`, `failed` | Held    | the fire of its newest task run, on a definition's task |
+| `done`, `closed`              | none    | nothing: the task leaves the dashboard                  |
 
 ## Constraints
 
 ### The listed state
 
-- `tasks.list` and `tasks.read` of the API set `listedState` through the same `pickListedTaskState`
-  that the `tasks.list` tool calls, so the dashboard and the conversation show the same state.
+- The API's `tasks.list` and `tasks.read` set `listedState` through the same `pickListedTaskState`
+  that the model tool `tasks.list` calls, so the dashboard and the conversation show one state.
 - `state` keeps the stored task state. A client groups and labels by `listedState` when it is set,
   and by `state` when it is not.
-- While nixie is paused, every task reads as `paused`, as [the pause](pause.md#the-pause) says, so
-  each task sits in Held.
-- A task lists as `asleep` only once the wake rule is built. Until then, no row shows a next fire.
+- While nixie is paused, every task reads as `paused` ([the pause](pause.md#the-pause)), so each
+  task sits in Held.
+- The conversation is the task with the ID `conversation`. Its row sits in Conversation in every
+  state, a pause of nixie included.
 
 ### The fire
 
 - `readRunFire` reads the `origin` of the task run's `task.run_opened`. For `origin.kind` `trigger`,
   the fire is the `trigger.fired` record at `origin.sequence`.
-- For a carrying task run, `readRunFire` follows `carriesRunID` back to the first task run that
-  carries none, and returns that task run's fire.
-- For every other `origin.kind`, such as `message`, `readRunFire` returns null.
-- When a [reset](../../architecture/core/event-log.md#the-reset) removed the fire's record,
-  `readRunFire` returns null.
-- `tasks.list` leaves `fire` out on a started task. On a definition's task, it takes `fire` from the
-  open task run, or from the newest task run when the task is held, and sets null when that task run
-  has no fire or none exists.
+- For a carrying task run, with `origin.kind` `raise` or `restart`, `readRunFire` follows
+  `carriesRunID` back until it reaches a task run that carries none, and returns that task run's
+  fire.
+- For every other `origin.kind`, such as `message` or `owner`, `readRunFire` returns null.
+- A [reset of the log](../../architecture/core/event-log.md#the-reset) can remove the fire's record.
+  `readRunFire` then returns null.
+- The API's `tasks.list` sets `fire` on a definition's task only. It takes `fire` from the open task
+  run, or from the newest task run when the task has none open. It sets null when that task run has
+  no fire, or when the task has no task run.
 - `tasks.listEnded` sets `fire` on every task run it returns, through the same `readRunFire`.
-- A row shows the scheduled time in your time zone. A catch-up shows how late it fired, as `firedAt`
-  less `scheduledFor`.
+- A row shows the scheduled time in your time zone. A catch-up also shows how late it fired, as
+  `firedAt` less `scheduledFor`.
 
 ### The filters
 
 - The server applies `definitionID` and `states` before the list's limit of 100 tasks, so a filter
-  finds a task that an unfiltered list leaves out.
+  finds a matching task that an unfiltered list would leave out.
 - `states` matches the listed state. While nixie is paused, a filter on `paused` therefore matches
-  every task.
+  every task, the conversation included.
 - The dashboard keeps both filters in the route's search parameters, so a reload or a shared link
   keeps them.
-- The definition filter lists each definition that `definitions.listTasks` returns with a non-null
-  `taskID`, by its name. The state filter lists the 11 listed states.
+- The definition filter offers each definition that has a task, by its name, from
+  `definitions.listTasks` of [the views](definition-views.md#contracts). A definition whose target
+  is the conversation has no task, so the filter leaves it out.
+- The state filter offers the 11 listed states.
 - With a filter set, the dashboard shows only the groups that hold a matching task, and a control
-  that clears the filters. With no match, it shows the text it shows for an empty group.
+  that clears the filters. With no match, it shows its empty-group text.
 
 ### Staying current
 
-- The dashboard reads the list again on `trigger.fired`, because a fire moves a task's last activity
-  and opens a task run. `isTaskListRecord` already matches every `task.*` and `action.*` kind,
-  `owner_message`, `task_message`, `timer.fired` and `log_reset`.
-- nixie writes the records of a pause and a resume on no thread, and the live stream never carries
-  such a record. The dashboard therefore reads the list again every 60 seconds while the page is
-  visible, and at once when the page becomes visible again.
+- `isTaskListRecord` matches `trigger.fired`, beside the kinds it matches today, so the dashboard
+  reads the list again on each fire. A fire moves a task's last activity and opens a task run.
+- The live stream carries only records that belong to a task's thread, and nixie writes the records
+  of a pause and a resume outside every thread. The dashboard therefore reads the list again every
+  60 seconds while the page is visible, and at once when the page becomes visible again.
 - The query key of each read holds the filters, so a change of filter reads a fresh list, and the
   dashboard follows the stream from that read's `readAtSequence`.
 
 ### A rollback
 
 - This design adds no record kind, no migration and no config key.
-- The contract of the release before has no `listedState`, `definitionID` or `fire`, and its server
-  strips the unknown `tasks.list` input. A newer client then gets the whole list unfiltered, and
-  groups each task by `state`.
-- The newer client hides the definition filter when no listed task has a `definitionID`.
+- After a rollback, the server has no `listedState`, `definitionID` or `fire`, and strips the
+  unknown `tasks.list` input. A newer client then gets the whole list unfiltered, and groups each
+  task by `state`. It hides the definition filter when no listed task has a `definitionID`.
+- A client of the release before, under a newer server, sends no filter and ignores the new fields,
+  so it shows the dashboard as it does today.
 
 ## Decisions
 
-- **The dashboard keeps its 3 groups: the conversation, Working and Held. Every task that is not
-  held, done or closed sits in Working.** An agent's call on 13 Nov: until the owner settles the
-  groups, the dashboard keeps its layout, and every task it shows on main stays on it.
-- **`listedState` is a new field, and `state` gains no member.** An agent's call on 13 Nov: the
-  client on main maps every `state` value to a label, and a client of the release before would show
-  no label for a new value.
-- **The server filters, and the client never filters the list it loaded.** An agent's call on 13
-  Nov: the list stops at 100 tasks, so a filter in the client would miss a match and give no sign.
-- **The fire of a carrying task run is the fire of the first task run it carries on from.** An
-  agent's call on 13 Nov: a raise or a restart goes on with the same scheduled work, so its row
-  keeps that work's scheduled time.
+- **The dashboard keeps its 3 groups, Conversation, Working and Held, and Working holds every task
+  that is not held, done or closed.** An agent's call on 13 Nov 2026: the layout stays as it is
+  while the owner's question below is open, and every task the dashboard shows today stays on it.
+- **`listedState` is a field of its own, and `state` gains no value.** An agent's call on 13 Nov
+  2026: today's client maps every `state` value to a label, and a client of the release before would
+  show no label for a new value.
+- **The server filters, never the client.** An agent's call on 13 Nov 2026: the list stops at 100
+  tasks, so a filter in the client would miss a match and give no sign of it.
+- **A carrying task run shows the fire of the task run it carries on from.** An agent's call on 13
+  Nov 2026: a raise or a restart goes on with the same scheduled work, so its row keeps that work's
+  scheduled time.
 - **The dashboard reads the list on a 60-second timer as well as on the stream.** An agent's call on
-  13 Nov: the pause records reach no thread, so the stream never tells the dashboard of a pause.
+  13 Nov 2026: the stream never carries a pause or a resume of nixie.
 
 ## Builder decides
 
@@ -193,8 +201,8 @@ ID `conversation`, and its row always sits in the conversation group.
 
 - Supervised coding sessions as a group, which [GEO-311](https://linear.app/zgeoff/issue/GEO-311)
   covers.
-- Approvals that wait on you. The [approval record](https://linear.app/zgeoff/issue/GEO-1804) serves
-  them, and its cards and its digest show them.
+- Proposals that wait for your answer. The approval cards and the approval digest of
+  [the approval record](https://linear.app/zgeoff/issue/GEO-1804) show them.
 - The routes `/tasks/ended` and `/definitions`, which
   [the views of definitions and ended task runs](definition-views.md) cover.
 
