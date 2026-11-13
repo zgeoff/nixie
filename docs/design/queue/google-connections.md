@@ -1,22 +1,24 @@
 # Google connections
 
 - **Status:** draft
-- **Work items:** the connections work item in the nixie project. The callback waits on the OAuth
-  return spike.
+- **Work items:** [the connections](https://linear.app/zgeoff/issue/GEO-1824). The return route
+  waits on [the OAuth return spike](https://linear.app/zgeoff/issue/GEO-267).
 - **Decision records:** [0010](../../decisions/0010-oauth-clients.md),
   [0007](../../decisions/0007-crypto-shredding.md)
 
 You connect a Google account from the web client. You register your own OAuth client once, consent
-on Google's page, and Google sends your browser back to nixie, which keeps the tokens encrypted
-under a key of the connection's own. nixie refreshes the tokens, shows each connection's status, and
-offers one removal, Forget: it revokes the grant at Google and deletes the connection's key, so the
-tokens are unreadable in the database and, once the key repo prunes, in every backup. Using the
-account again needs a fresh consent.
+on Google's page, and Google sends your browser back to nixie. nixie keeps the tokens encrypted
+under a key of the connection's own, refreshes them, and shows each connection's status. You remove
+a connection with Forget: nixie revokes the grant at Google and deletes the connection's key. The
+tokens are then unreadable in the database at once, and in every backup once the backup job prunes
+the key repository ([backups](../../architecture/deployment/backups.md)). Using the account again
+needs a fresh consent.
 
-This design builds the [credential store](../platform/connectors/credentials.md) on its database
-backend and the [connector interface](../platform/connectors/connector.md) for one connector,
-Google. A Google connection has no Disconnect. The Gmail, Calendar and Drive tools, and the polls,
-belong to their own work items.
+The design builds 2 parts for the one connector, Google: the database backend of the
+[credential store](../platform/connectors/credentials.md), and the
+[connector interface](../platform/connectors/connector.md) in code. A Google connection has no
+Disconnect, the credential design's removal that keeps a secret at its source. The Gmail, Calendar
+and Drive tools, and the Gmail poll, belong to their own work items.
 
 ## Shape
 
@@ -78,9 +80,11 @@ interface HealthReport {
 }
 ```
 
-The account comes from the ID token in the token response, never from `check`. Google sends the ID
-token straight to nixie over TLS, so nixie reads its `sub` and `email` claims without checking a
-signature. `sub` is the account's identity and `email` is its account name.
+nixie reads the account from the ID token in the token response, never from the connector's `check`,
+the read call per scope that runs after consent
+([setting up a connection](../platform/connectors/connector.md#setting-up-a-connection)). Google
+sends the ID token straight to nixie over TLS, so nixie reads its `sub` and `email` claims without
+checking a signature. `sub` is the account's identity and `email` is its account name.
 
 ### The setup steps
 
@@ -91,15 +95,15 @@ The web client shows these steps in order, from the connector's data:
 | `project`  | Create a Google Cloud project | Create one project for this nixie alone. A revocation reaches every client of a project, so 2 deployments on one project forget each other's grants.   |
 | `apis`     | Turn on the APIs              | Enable the Gmail, Google Calendar and Google Drive APIs, one link each.                                                                                |
 | `branding` | Fill in the branding          | Give an app name, your email, and a home page and a privacy policy URL on a domain you control, such as a project site. Publishing needs both URLs.    |
-| `audience` | Publish the app               | Choose External, then publish to production with no test users. Testing status ends consent after 7 days.                                              |
+| `audience` | Publish the app               | Choose External, then publish to production with no test users. In testing status, Google ends each consent after 7 days.                              |
 | `client`   | Create a web client           | Create a Web application client with `{redirectURI}` as its only redirect URI, then paste its client ID and secret here. Google shows the secret once. |
 | `consent`  | Connect an account            | Consent on Google's page. An account that does not own the project sees "Google hasn't verified this app" first.                                       |
 
 The links point at the Google Auth Platform pages of the console: Branding, Audience and Clients,
-and the API library page of each API. The owner's guide is `docs/guides/google.md`. It holds the
-same 6 steps under the same titles, each with what to click, plus a section on the warning page and
-a section on revoking a grant by hand at your Google Account's third-party access page. The guide
-and the step data ship in one PR.
+and the API library page of each API. Your setup guide is `docs/guides/google.md`. It holds the same
+6 steps under the same titles, each with what to click. It adds a section on the warning page, and a
+section on revoking a grant by hand at your Google Account's third-party access page. The guide and
+the step data ship in one PR.
 
 ### The API
 
@@ -156,18 +160,18 @@ type ConnectionStatus = 'active' | 'failing' | 'needs_consent' | 'expiring' | 'f
 type ForgetStatus = { erasure: Erasure; revocation: Revocation; backup: ForgetBackup };
 type ForgetBackup = z.infer<typeof forgetBackupSchema>; // the built schema
 type MissingScope = { scope: string; reason: 'not_granted' | 'api_disabled' };
-// backup: forgetBackupSchema, as built
 ```
 
-- The input hash of `registerClient` leaves `clientSecret` out, and the input hash of `setLabel`
-  leaves `label` out, as a message send keeps no hash of its text. A hash would outlive a Forget and
-  confirm a guess at the label. A retry with the same ID returns the first result and stores
-  nothing.
-- A retry of `startConsent` returns a fresh `state` and consent URL that replace the first, with the
-  first's lapse time, as a code issue retry does
-  ([checked actions](../../architecture/channels/api.md#checked-actions)).
-- `finishConsent` is keyed by `state`, not by a client action ID. A second call with a used `state`
-  answers `CONSENT_NOT_FOUND`.
+[Checked actions](../../architecture/channels/api.md#checked-actions) keep each action's first
+result beside a hash of its input, so a retry with the same `clientActionID` gets that result.
+
+- The hash leaves out `clientSecret` and `label`. A hash of a secret is a copy of it, and a hash of
+  a label outlives a Forget and confirms a guess at the label.
+- A retry of `startConsent` gets a fresh `state` and consent URL, which replace the first ones and
+  keep the first lapse time. The table stores only a hash of each `state`, as it does for an
+  enrolment code.
+- `finishConsent` takes no `clientActionID`, because each `state` works once. A second call with a
+  used `state` answers `CONSENT_NOT_FOUND`.
 
 ### The return route
 
@@ -184,10 +188,11 @@ Referrer-Policy: no-referrer
 The web server serves the route, because every path outside `/rpc` reaches it. Its server handler
 calls `connections.finishConsent` with the browser's session as a bearer token, as a render does
 ([the client path](../../architecture/overview.md#the-client-path)). On success it answers 303 to
-the connection's page, which shows `missing`. On a refusal it renders the error page with status
-400, which names the error code, and for `TOKEN_EXCHANGE_FAILED` Google's error code. A consent
-again lands on the same connection's page. The API keeps its rule that every procedure is a `POST`
-with the client header.
+the connection's page, which shows `missing`, and a consent again lands on the same page. On a
+refusal it renders an error page with status 400. The page shows the error code, and for
+`TOKEN_EXCHANGE_FAILED` also Google's error code. The API keeps its rule that every procedure is a
+`POST` that carries nixie's custom client header
+([a call's way in](../../architecture/channels/api.md#a-calls-way-in)).
 
 ### The tables
 
@@ -239,10 +244,13 @@ consent_requests         plain table, connections module
 
 - Every sealed value binds its key ID, its table and its column as additional data, as
   [erasable fields](../../architecture/core/erasable-fields.md#keys) do.
-- Each key is a row of `record_keys` in `keys.db`, so the key repo carries it and a Forget deletes
-  it with the existing removal and checkpoint.
-- The binding of the credential design lives on the connection row, because a Google connection has
-  one credential and one binding.
+- Each key is a row of `record_keys` in `keys.db`, the key store. The backup job ships the key store
+  to the key repository, and a Forget deletes the key and checkpoints the key store as
+  [forgetting a record](../../architecture/core/erasable-fields.md#forgetting-a-record) does.
+- `binding` and `removal_counter` are the binding and its counter from
+  [Disconnect and forget](../platform/connectors/credentials.md#disconnect-and-forget). Each removal
+  and each consent again advances the counter, and a save checks it, so a refresh that began before
+  either saves nothing. They sit on the connection row, because a Google connection has one binding.
 - Access tokens stay in the server's memory, keyed by connection ID and removal counter, and never
   reach a table, a record or a log.
 
@@ -293,8 +301,8 @@ type ConnectionRecord =
     };
 ```
 
-No record of these kinds holds a label, an account address or a `sub`, so the connection's key
-covers every copy that the connection itself keeps. The
+These records never hold a label, an account address or a `sub`, so the connection's key covers
+every copy that the connection itself keeps. The
 [status line](../platform/connectors/tools.md#what-the-model-learns-about-a-connection) reads the
 label from the connection row.
 
@@ -314,26 +322,27 @@ label from the connection row.
   outcome, success or refusal. A sweep at start and every hour deletes each lapsed request and its
   key.
 - A token response without a refresh token answers `NO_REFRESH_TOKEN` and keeps nothing.
-- A consent that reaches an account a live connection of the client already reaches updates that
-  connection, as a consent again does. A consent again for connection X that reaches another account
-  answers `ACCOUNT_MISMATCH`.
-- A consent again replaces the refresh token, the scopes and `missing`, sets `active`, and advances
-  the removal counter, so a refresh that started with the old token saves nothing.
-- `finishConsent` can end with a refresh token it does not keep, after `ACCOUNT_MISMATCH` or when
-  its connection was forgotten meanwhile. Once the transaction commits, it makes one revocation
-  attempt and records `connection.consent_discarded` with the outcome.
-- It skips that revocation when a live connection of the client reaches the same account, because
-  Google's revocation reaches the whole grant and would end that connection too.
-- `LABEL_TAKEN` and the match of an account to a live connection decrypt the label and account of
-  each live connection of the connector, because no hash of either is kept.
+- A consent again is a consent that `startConsent` began with a connection's short ID. It replaces
+  that connection's refresh token, scopes and `missing`, sets `active`, and advances the removal
+  counter.
+- A new consent whose `sub` matches a live connection counts as a consent again of that connection.
+- A consent again whose `sub` matches another account answers `ACCOUNT_MISMATCH`.
+- To match a `sub` or check `LABEL_TAKEN`, nixie decrypts the account or label of each live
+  connection of the connector, because it keeps no hash of either.
+- `finishConsent` keeps no refresh token after `ACCOUNT_MISMATCH`, or when its connection was
+  forgotten during the consent. After its transaction commits, it makes one revocation attempt and
+  records `connection.consent_discarded` with the outcome.
+- It skips that revocation when a live connection reaches the same account. Google's revocation ends
+  the whole grant, so it would end that connection too.
 - The return route's handler and the web server's request log never record the query string.
 
 ### Fewer scopes
 
 - `check` makes one read call per scope in `scopes`. A scope Google did not grant is `not_granted`.
   A scope whose call Google refuses because the project has not enabled its API is `api_disabled`.
-- The connection keeps every granted scope that passed, and its tools join the registry. The
-  endpoint leaves out each action whose scope is in `missing`.
+- The connection keeps every granted scope that passed, and its tools join the
+  [tool registry](../../architecture/connectors/tool-calls.md). Each run's tool endpoint leaves out
+  each action whose scope is in `missing`.
 - The connection's page shows each missing scope with its reason and the tools it holds back, and
   one button that runs `startConsent` for the connection. The notice stays until a consent clears
   `missing`.
@@ -344,12 +353,12 @@ label from the connection row.
 - [Refresh](../platform/connectors/credentials.md#refresh) holds as written, with these mappings of
   Google's answers:
 
-| Google answers                               | The store                                                        |
-| -------------------------------------------- | ---------------------------------------------------------------- |
-| a token, with or without a new refresh token | saves the rotation, records `credential.refreshed`, `active`     |
-| `invalid_grant`, `admin_policy_enforced`     | `needs_consent`                                                  |
-| `invalid_client`, `unauthorized_client`      | `failing` with `unauthorised`, at once                           |
-| a 5xx, or no answer within 10 s              | backs off; `failing` with `service_error` or `no_answer` after 3 |
+| Google answers                               | The store                                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------------- |
+| a token, with or without a new refresh token | saves the rotation, records `credential.refreshed`, `active`              |
+| `invalid_grant`, `admin_policy_enforced`     | `needs_consent`                                                           |
+| `invalid_client`, `unauthorized_client`      | `failing` with `unauthorised`, at once                                    |
+| a 5xx, or no answer within 10 s              | backs off; `failing` with `service_error` or `no_answer` after 3 in a row |
 
 - A refresh saves only when the removal counter it read still holds, in the transaction that writes
   `credential.refreshed`, and a rotated refresh token goes in that same transaction.
@@ -359,9 +368,10 @@ label from the connection row.
 - A connection whose `refresh_expires_at` falls within 3 days is `expiring`. Past it, the connection
   is `needs_consent`. The refresh schedule checks the time on each pass and at start.
 - When 2 statuses hold, the first of `needs_consent`, `failing` and `expiring` wins.
-- The fetcher holds a shared lock on the connection for each request it sends. Forget takes the lock
-  exclusive, after it aborts every request in flight on that connection. A request Google already
-  received stays with Google.
+- The [fetcher](../platform/connectors/credentials.md#the-interface), which adds the token to a
+  connector's request on the host, holds a shared lock on the connection for each request it sends.
+  Forget takes the lock exclusive, after it aborts every request in flight on that connection. A
+  request Google already received stays with Google.
 - The fetcher refuses the hosts of `authorizeURL`, `tokenURL` and `revokeURL`, and every path under
   `/oauth2/` on any host, because `www.googleapis.com` also serves an older token endpoint. No tool
   then reaches a token or revocation endpoint.
@@ -373,15 +383,16 @@ label from the connection row.
   in flight keeps its list.
 - A worker run keeps its list for its life. A job run keeps its pins, as
   [the connection argument](../platform/connectors/connector.md#the-connection-argument) sets.
-- Every call checks the connection at the time of the call, so a call to a forgotten connection
-  fails with the error for a `forgotten` credential, which names neither the connection nor its
-  status.
+- Every call checks the connection at the time of the call. A call to a forgotten connection fails
+  with the error for a `forgotten` credential, and that error never holds the connection's label or
+  status ([statuses](../platform/connectors/credentials.md#statuses)).
 - A job whose pins all name forgotten connections lists none of the connector's tools. The client's
   view of the job shows the forgotten pin.
 
 ### Forget
 
-Forget is a durable operation, resumed at start before any runner claims work:
+Forget runs in 3 steps. A crash between them leaves the rest to the server's start, which finishes
+every Forget before it hands out any task work:
 
 1. In the checked action's transaction: the binding becomes `removing`, the counter advances, the
    status becomes `forgotten`, and `connection.forget_started` commits. The store refuses every
@@ -396,14 +407,14 @@ Forget is a durable operation, resumed at start before any runner claims work:
    status line or connection argument that named the connection reaches a later turn. It then
    commits `connection.forgotten` with the binding `removed`.
 
-- A start that finds `revocation_started` with no outcome records `unknown` and sends nothing, so
-  the revocation is never sent twice.
-- A start that finds `forget_started` with no `revocation_started` makes the attempt.
+- A server start that finds `revocation_started` with no outcome records `unknown` and sends
+  nothing, so nixie never sends the revocation twice.
+- A server start that finds `forget_started` with no `revocation_started` makes the attempt.
 - The key goes only after the outcome commits, because the revocation needs the refresh token.
 - A connection whose key the key store lacks, such as after a restore, skips step 2 with
   `not_attempted` and finishes step 3.
-- The client shows erasure, revocation and backup state apart. It shows a revocation that is not
-  `confirmed` with the guide's section on revoking by hand.
+- The web client shows erasure, revocation and backup state apart. Beside a revocation that is not
+  `confirmed`, it links the guide's section on revoking by hand.
 - A forgotten connection keeps its row, with its short ID and scopes and no sealed value, so a job
   pin can name it.
 - Forget erases nixie's own copies of the connection: its tokens, label and account. Text that names
@@ -429,17 +440,17 @@ Forget is a durable operation, resumed at start before any runner claims work:
 
 ### A rollback
 
-| The change                          | The release before                                                                    |
-| ----------------------------------- | ------------------------------------------------------------------------------------- |
-| the migration of the 3 tables       | starts on it, because it only adds tables, and never selects them                     |
-| the keys in `record_keys`           | keeps them, and its full reset deletes them                                           |
-| the 11 record kinds                 | never meets them on a thread, and folds none                                          |
-| `connection.forgotten` as a forget  | stages no forget set for it, so the next scheduled set covers the Forget              |
-| the procedures and the return route | has neither; a consent in flight lands on a 404, and the next start's sweep clears it |
+| The change                          | The release before                                                                              |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| the migration of the 3 tables       | starts on it, because it only adds tables, and never selects them                               |
+| the keys in `record_keys`           | keeps them, and its full reset deletes them                                                     |
+| the 11 record kinds                 | never meets them on a thread, and no projection of it reads them                                |
+| `connection.forgotten` as a forget  | stages no forget set for it, so the next scheduled set covers the Forget                        |
+| the procedures and the return route | has neither; a consent in flight lands on a 404, and its row waits for the next upgrade's sweep |
 
 - The design adds no config key.
-- A Forget left part way finishes at the next start of a release that has this design. Before a
-  rollback, wait until every Forget shows erasure `done`.
+- A Forget left part way finishes only at the server start of a release that has this design. Before
+  a rollback, wait until every Forget shows erasure `done`.
 
 ## Decisions
 
@@ -475,7 +486,9 @@ Forget is a durable operation, resumed at start before any runner claims work:
 
 ## Out of scope
 
-- The Gmail, Calendar and Drive tools and the polls, which have their own work items.
+- The Gmail, Calendar and Drive tools and the Gmail poll:
+  [Gmail](https://linear.app/zgeoff/issue/GEO-1825) and
+  [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826).
 - A Disconnect or a pause for a Google connection.
 - A second OAuth client per connector, and connectors from other providers.
 - Picking Drive files for `drive.file`.
@@ -483,14 +496,14 @@ Forget is a durable operation, resumed at start before any runner claims work:
 
 ## Open questions
 
-- **Does Google accept the private-network HTTPS callback, and PKCE on a Web application client?**
-  The OAuth return spike settles it. Until then the return route is built as here, and the guide
-  says the redirect URI's host needs a name under a public suffix. The browser, not Google, follows
-  the redirect, so a public name that resolves only inside the private network serves as the
-  fallback. When Google refuses PKCE on a Web application client, nixie drops it, because the
-  return's security never rests on it.
+- **Does Google accept a redirect URI on a private-network HTTPS name, and PKCE on a Web application
+  client?** [The OAuth return spike](https://linear.app/zgeoff/issue/GEO-267) settles it. Until then
+  the return route is built as here, and the guide says the redirect URI's host needs a name under a
+  public suffix. The browser, not Google, follows the redirect, so a public name that resolves only
+  inside the private network serves as the fallback. When Google refuses PKCE on a Web application
+  client, nixie drops it, because the return's security never rests on it.
 - **The names: the `connections` procedures, the record kinds, "Settings → Connections" and the
-  return path.** The owner settles them in the connections work item. Until then the names here
-  hold.
+  return path.** The owner settles them in
+  [the connections issue](https://linear.app/zgeoff/issue/GEO-1824). Until then the names here hold.
 - **Where the fewer-scopes notice shows.** The owner settles it in the same issue. Until then it
   shows on the connection's page and in the connections list, never in the conversation.
