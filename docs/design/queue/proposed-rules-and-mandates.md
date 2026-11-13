@@ -35,6 +35,11 @@ Some terms this doc uses:
   store (the rules your definitions hold, the version of each that nixie applied, and the runtime
   changes), and writes a new snapshot when they changed. Every runtime change takes effect through
   one.
+- **The proposal terms,** such as the shared row, the always-ask and lifting risk classes, the
+  action hash, Always allow, Defer, a lapse and a withdrawal, come from the approval record design
+  (`docs/design/queue/approval-record.md`).
+- **An action proposal** and its cause `no_rule` come from the decision point cutover
+  (`docs/design/queue/decision-point-cutover.md`).
 - **A lift** is the `lift` field on an allow rule, which lets a `spend` call past the always-ask set
   within a budget ([lifting rules](../platform/policy/budgets.md#lifting-rules)). A proposal that
   creates a lift takes the `lifting` risk class.
@@ -155,7 +160,7 @@ The shared row and the card's body for a proposed rule:
 // choices: ['approve', 'defer', 'decline']. The card labels decline "Not now", and adds Edit.
 ```
 
-The card has 4 controls. Approve, Defer and Not now send the row's choices through
+The card has these controls. Approve, Defer and Not now send the row's choices through
 `approvals.answerProposal`:
 
 | Control | What happens                                                                                        |
