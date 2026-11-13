@@ -50,6 +50,11 @@ removes the imp.
 
    Expect: the output that [scenarios](results.md#scenarios) lists, with each scenario's arguments.
 
+   The conversation image holds the guest's 2 bundles and the CLI, and no `node_modules`. Only
+   `check.sh` and `idle.sh` run on it. The scenarios built on `turn.ts` (`conversation.sh`,
+   `concurrent.sh` and the forms in `runtime.sh`) import the SDK, so they need an image built before
+   the guest ran from a bundle.
+
 3. Time 5 creates and wakes of one image at one memory size and vCPU count:
 
    ```bash

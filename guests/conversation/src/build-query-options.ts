@@ -1,6 +1,7 @@
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import type { HostFrame } from '@heynixie/wire';
 import { toolOutputLimitTokens } from '@heynixie/wire';
+import { findCLIPath } from './find-cli-path';
 import { getConfigDir } from './get-config-dir';
 import { getHome } from './get-home';
 import { getWorkDir } from './get-work-dir';
@@ -21,8 +22,10 @@ export function buildQueryOptions(
   context: QueryContext,
 ): Options {
   const home = getHome(context.env);
+  const cliPath = findCLIPath();
 
   return {
+    ...(cliPath === undefined ? {} : { pathToClaudeCodeExecutable: cliPath }),
     tools: [],
     allowedTools: context.toolServer === null ? [] : [`mcp__${toolServerName}`],
     ...pickMaxTurns(turn, context.toolServer),

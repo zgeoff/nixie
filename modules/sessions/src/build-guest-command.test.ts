@@ -9,7 +9,7 @@ test("it runs the harness guest's entry file from the image", () => {
       'check',
     ),
   ).toStrictEqual({
-    argv: ['bun', '/app/guests/example/src/run-check.ts'],
+    argv: ['bun', '/app/example/run-check.js'],
     env: { HOME: '/home/nixie' },
   });
 });

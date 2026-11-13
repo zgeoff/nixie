@@ -89,6 +89,13 @@ jobs:
           dockerfile: guests/conversation/Dockerfile
           cache-scope: conversation
 
+      # the CLI runs, and the image holds no workspace for the bundles to import from
+      - name: Check that the conversation image runs its CLI and holds no node_modules
+        env:
+          CONVERSATION:
+            ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
+        run: bun run --silent ci:images:check-conversation-image
+
       - name: Build the fetch image
         id: fetch
         uses: ./.github/actions/build-image

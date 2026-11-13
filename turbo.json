@@ -8,6 +8,7 @@
     "tsconfig.base.json",
     "research/tsconfig.base.json",
     "nixie-test-build.d.ts",
+    "guests/conversation/src/nixie-cli-path.d.ts",
     "bun-serve-options.d.ts"
   ],
   "tasks": {

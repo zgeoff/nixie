@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import type { CheckRequest } from '@heynixie/wire';
+import { findCLIPath } from './find-cli-path';
 
 const verdictSchema = {
   type: 'object',
@@ -22,7 +23,10 @@ export function buildCheckOptions(
     throw new Error('the check guest needs HOME');
   }
 
+  const cliPath = findCLIPath();
+
   return {
+    ...(cliPath === undefined ? {} : { pathToClaudeCodeExecutable: cliPath }),
     tools: [],
     allowedTools: [],
     permissionMode: 'dontAsk',

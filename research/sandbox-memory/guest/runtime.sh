@@ -2,7 +2,7 @@
 # In the conversation image: the SDK host run from source, from a bundle, compiled, and with
 # --smol, 3 times each, then the start time of each form and of the CLI.
 . "$(dirname "$0")/setup.sh"
-CLAUDE_BIN=$(find /app/node_modules/.bun -path '*claude-agent-sdk-linux-x64/claude' | head -1)
+CLAUDE_BIN=/app/claude
 export CLAUDE_BIN
 bun build turn.ts --target bun --outfile turn-bundle.js > /dev/null
 bun build turn.ts --compile --outfile turnbin > /dev/null
