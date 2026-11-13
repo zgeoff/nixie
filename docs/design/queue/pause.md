@@ -1,3 +1,15 @@
+### Triggers while paused
+
+- While nixie is paused, `deliverTriggerBatch` writes nothing and takes no key for an event whose
+  task is paused: the definition's task, or the conversation for `target: conversation`. It reads
+  `isTaskPaused` before rows 4 to 6 of its table. The definition's watermark stays where it was.
+- The source delivers the same events at its next tick. So the first tick after the resume, or after
+  you resume that task, finds each missed fire late, and the catch-up rule of
+  [triggers](triggers.md#decisions) decides: one catch-up within half the interval, and a `too_late`
+  skip beyond it. A pause longer than half a schedule's interval skips that fire, as any downtime
+  does.
+- An exempt task takes its fires as on any day.
+
 # The pause, and the restore that starts paused
 
 - **Status:** draft
@@ -20,8 +32,8 @@ only you can check what happened outside nixie in the lost span. So the restore 
 were midway through a step or owned an action that had not finished, and nixie shows you that list.
 You check each one, then resume.
 
-The restore ends by writing the marker in the state `holding`. The next start of the server reads
-the marker, pauses nixie, records the list, and removes the marker.
+The restore ends by writing its marker file in the state `holding`. The next start of the server
+reads the marker, pauses nixie, records the list, and removes the marker.
 [The backup pair](backup-pair.md) holds the restore's steps 1 to 5, which this design follows with
 step 6.
 
@@ -29,7 +41,7 @@ Terms:
 
 - A **recovery** is one restore, under one `recoveryID`.
 - An **exempt task** is one you resumed while nixie is paused. It runs while the rest stay paused. A
-  resume of nixie empties the list.
+  resume of nixie ends every exemption.
 - The **restore marker** is the file `restore-incomplete` in the data directory, which the built
   restore writes.
 - The **reader gate** is the stored `oldest_reader` value, raised while nixie is paused, so that a
@@ -43,13 +55,13 @@ Terms:
 flowchart LR
   restore[nixie restore] -->|"step 6: holding + PendingRestore"| marker[restore marker]
   marker -->|"startWriter, installsRestorePause"| part[start part restore_pause]
-  part -->|"recovery.started, nixie.paused, close the gate"| log[event log]
+  part -->|"pause nixie, list the tasks to check"| log[event log]
   part -->|"remove"| marker
   you[you] -->|"Pause nixie, Resume nixie, Resume on a task"| log
   log --> pause[(nixie_pause, pause_exemptions)]
-  pause -->|"refuse"| claim[claimLease]
-  pause -->|"deliver nothing"| triggers[trigger core]
-  pause -->|"stage nothing after a restore"| backup[backup schedule]
+  log -->|"close while paused"| gate[reader gate]
+  pause -->|"refuse a paused task"| claim[claimLease]
+  pause -->|"no fire to a paused task"| triggers[trigger core]
 ```
 
 ## Contracts
@@ -100,8 +112,10 @@ nixie reads the marker file this way:
 create table nixie_pause (
   id              integer primary key check (id = 1), -- at most one row: nixie is paused
   cause           text not null,                      -- 'restore' or 'owner'
-  recovery_id     text,                               -- set when cause is 'restore'
+  recovery_id     text,                               -- set exactly when cause is 'restore'
   paused_sequence integer not null references records (sequence)
+,
+  check ((cause = 'restore') = (recovery_id is not null))
 ) strict;
 
 create table pause_exemptions (
@@ -125,7 +139,7 @@ type PauseCause = 'restore' | 'owner';
 
 interface NixiePaused {
   kind: 'nixie.paused'; // inserts or replaces the nixie_pause row, and empties pause_exemptions
-  payload: { cause: PauseCause; recoveryID?: string; by?: string }; // by: the identity, for 'owner'
+  payload: { cause: PauseCause; recoveryID: string | null; by: string | null }; // set for 'restore', and for 'owner'
 }
 
 interface NixieResumed {
@@ -168,19 +182,30 @@ interface Pause {
   recoveryID: string | null;
 }
 
-// log module: each writes its record and changes the tables in the caller's transaction
+// log module: each writes its record through writeRecordsInTransaction, in the caller's
+// transaction. `log` and `definitions` are the ones writeRecordsInTransaction takes.
 declare function pauseNixieInTransaction(
   tx: Transaction<unknown>,
-  request: { cause: PauseCause; recoveryID?: string; by?: string },
+  log: PauseLog,
+  request: {
+    cause: PauseCause;
+    recoveryID: string | null;
+    by: string | null;
+    definitions: Definitions;
+  },
 ): Promise<void>;
 declare function resumeNixieInTransaction(
   tx: Transaction<unknown>,
-  request: { by: string },
-): Promise<{ wasPaused: boolean }>;
+  log: PauseLog,
+  request: { by: string; definitions: Definitions },
+): Promise<{ wasPaused: boolean }>; // false: nixie was not paused, and nothing was written
 declare function exemptTaskInTransaction(
   tx: Transaction<unknown>,
-  request: { taskID: string; by: string },
-): Promise<void>;
+  log: PauseLog,
+  request: { taskID: string; by: string; definitions: Definitions },
+): Promise<void>; // throws when nixie is not paused; a repeat for the same task writes nothing new
+
+type PauseLog = Pick<Log, 'deploymentKey' | 'projections'>; // the fields writeRecordsInTransaction reads
 ```
 
 ### The reader gate
@@ -188,14 +213,21 @@ declare function exemptTaskInTransaction(
 ```ts
 // db lib
 await closeToOlderReaders(tx, pauseMigrationVersion);
-// open_oldest_reader := the stored oldest_reader; oldest_reader := the version given
+// When open_oldest_reader is null: open_oldest_reader := the stored oldest_reader. Then
+// oldest_reader := the larger of the stored oldest_reader and the version given. A second call
+// while closed keeps the saved value.
 declare function closeToOlderReaders(tx: Transaction<unknown>, reader: number): Promise<void>;
 
 // oldest_reader := open_oldest_reader; open_oldest_reader := null
 declare function reopenToOlderReaders(tx: Transaction<unknown>): Promise<void>;
 
-// At each start: reopens a closed gate when nixie_pause has no row
+// At each start, after the migrations: reopens a closed gate when nixie_pause has no row, and
+// closes an open one when it has a row, such as after a projection rebuild
 declare function syncPauseGate(db: Kysely<unknown>): Promise<void>;
+
+// db lib, the built migration runner: while open_oldest_reader is set, it writes the value it
+// would give oldest_reader to open_oldest_reader, and sets oldest_reader to the larger of the two
+declare function runMigrations(db: Kysely<unknown>, schema: Schema): Promise<void>;
 ```
 
 ### The claim check
@@ -219,6 +251,7 @@ declare function buildPauseCheck(
 ): Expression<SqlBool>; // true when nixie is not paused, or the task is on pause_exemptions
 
 // tasks module, exported: takes the caller's transaction
+// true when nixie is paused and the task is not exempt; a task's own pause is not part of it
 const paused = await isTaskPaused(tx, '7c1d2e9a'); // → true
 declare function isTaskPaused(tx: Transaction<unknown>, taskID: string): Promise<boolean>;
 ```
@@ -293,7 +326,11 @@ type RestorePauseFaultPoint =
 - When nixie pauses on a running server, a step that holds a lease runs to its commit, and an
   attempt that has started runs to its outcome. Nothing new starts after either.
 - Only you pause or resume nixie, or resume one task: through the API, a host command or the web
-  client. No tool does any of these.
+  client. No tool does any of these. Each record's `by` is the identity of the session that acted,
+  as the built task controls write it.
+- `nixie_pause`, `pause_exemptions` and `recoveries` are projections of the 4 record kinds, so a
+  projection rebuild gives the same rows, and `syncPauseGate` matches the gate to them at the next
+  start.
 - A pause while nixie is paused replaces the cause. A resume while nixie is not paused writes
   nothing.
 - A log reset empties `nixie_pause` and `pause_exemptions` with every other table.
@@ -342,10 +379,13 @@ type RestorePauseFaultPoint =
 - The refusal covers every claim: by any runner, for a retry, by the start part `recovery`, by task
   ID, and for an action that started an attempt before the backup. The sweep that revives waiting
   tasks writes its records on a paused task as on any task, and the claim after it is refused.
-- Every caller of `readCandidate` returns a `ClaimCandidate` in the same change.
+- Every caller of `readCandidate` returns a `ClaimCandidate` in the same change: `claimTask`,
+  `claimAction`, and the test utils that claim a lease. The memory writer claims with its fixed task
+  ID, and a pause stops it as any task.
 - Each candidate query filters with `buildPauseCheck`, so a paused task at the head of the order
   never hides an exempt task's work behind it. Under `NIXIE_TEST_BUILD`, `claimLease` throws when
-  `readCandidate` returns paused work.
+  `readCandidate` returns paused work, so a test shows the refusal through the real candidate
+  queries.
 - The action query's filter has no `attempt_count = 0` condition, so it covers an action with a
   started attempt.
 - The attempt start refuses an action whose task is paused, with `isTaskPaused` in the transaction
@@ -353,7 +393,7 @@ type RestorePauseFaultPoint =
   pause between the claim and the attempt then starts no attempt. The refused action stays pending,
   and its next claim after the resume, or after you resume its task, starts it.
 - The pause check sits before the write of `task.run_opened` that the task run records add to the
-  claim's transaction.
+  claim's transaction. Whichever of the two lands second keeps that order.
 
 ### The next start after a restore
 
@@ -412,7 +452,8 @@ To roll back while nixie is paused, after a restore or not:
 - **The gate is the stored `oldest_reader`, never the schema's `oldestReader`.** A raised schema
   value would stop the release before from reading the database again, paused or not.
 - **Every pause closes the gate, your own included.** One rule covers every pause, and a release
-  that does not know the pause never runs the tasks you paused.
+  that does not know the pause never runs the tasks you paused. The cost: to roll back while paused,
+  you resume first, so tasks run on this build until you stop it.
 - **The pause lives in the log module.** The tasks module, the trigger core and the backup schedule
   each read it, and each already imports the log module, so none imports another for it.
 - **A pause has no port.** SQLite is the one store, by the queue's port rules.

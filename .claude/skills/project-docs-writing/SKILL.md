@@ -30,11 +30,16 @@ metadata:
 
 - Address the person nixie works for as "you". In an architecture doc, call them "the user" instead,
   as the opening of the [glossary](../../../docs/glossary.md) says.
-- Write "you" only where that person acts: "memory shows in 2 ways", not "you see memory in 2 ways".
-- Outside `docs/design/`, never call that person "the owner". The glossary uses `owner` for a memory
-  item that is about that person.
-- In `docs/design/`, call that same person "the owner" where they approve a design and settle its
-  open questions. The design-docs skill names them that way.
+- Write "you" only for an action that person takes: "memory shows in 2 ways", not "you see memory in
+  2 ways".
+- Never call that person "the owner". In the glossary, `owner` is a value of a memory item's
+  subject.
+
+## The owner of a design
+
+- In `docs/design/`, write "the owner" for the person who approves each design and settles its open
+  questions, as in the design-docs skill. That is a role in the project, apart from the person a
+  deployment works for.
 
 ## Runs
 

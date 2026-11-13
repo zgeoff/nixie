@@ -227,7 +227,8 @@ purgeItemEvidence({ itemID, sequence: 4190 });
 - The thread view's built forget control reads the same preview before its confirm, so no web
   control removes a record without a preview.
 - A click on the control reads the preview, and the view shows the 2 counts with a confirm. Only the
-  confirm calls `conversation.forget`.
+  confirm calls `conversation.forget`. When the preview lists a memory item, the confirm says that
+  each listed item keeps its text and loses its older versions and its evidence quotes.
 - When the preview read fails, the view shows an error in place of the confirm and hides the control
   on that record. It never removes without a preview. A client of this part on the release before
   gets the failure, because the procedure does not exist there.
@@ -241,6 +242,8 @@ purgeItemEvidence({ itemID, sequence: 4190 });
 - The approval shows the record's kind, its text and the preview's counts, read before the approval
   is asked.
 - The tool takes only the kinds in `forgettableKinds`, and refuses as `conversation.forget` refuses.
+  For a record of another kind, the tool's answer says that nixie cannot remove that kind of record,
+  where the API answers `RECORD_NOT_FOUND`.
 - The model names the record by an ID the session history shows. When the history shows no stable ID
   for a record, the tool's work item adds one under the
   [short ID rule](../../architecture/core/database.md#short-ids).
