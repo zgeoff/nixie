@@ -179,8 +179,9 @@ interface DefinitionVersion {
 ### The folder and the keys
 
 - Under `tasks/`, `isDefinitionsPath` accepts only `.yaml`, `.md` and `.ts` files.
-- `definitionsLayout.folders` holds `tasks`, `prompts`, `rules` and `skills`. nixie reads no `jobs/`
-  folder, and the seed record lists it among the skipped root entries.
+- `definitionsLayout.folders` holds `tasks`, `prompts`, `rules` and `skills`, and `budgets` once
+  [budgets](budgets-and-hard-stop.md#budgets-and-the-ledger) ship. nixie reads no `jobs/` folder,
+  and the seed record lists it among the skipped root entries.
 - `definitionsFormats.tasks` is 4, and a release reads formats 3 and 4. At format 3, nixie loads no
   task definition, and the seed record lists each file under `tasks/` as not applied.
 - When a definition omits `model`, its task runs use the model profile of the model role `task`.

@@ -22,6 +22,7 @@ is deleted.
 | Model harnesses     | [the harness boundary](harness-boundary.md), [the tool-call wait](tool-call-wait.md), [the turn-input log](turn-input-log.md)                                                                                        |
 | Moments and forgets | [redaction](redaction.md), [the evidence purge](evidence-purge.md)                                                                                                                                                   |
 | Policy              | [the decision point cutover](decision-point-cutover.md)                                                                                                                                                              |
+| Spending            | [budgets and the hard stop](budgets-and-hard-stop.md)                                                                                                                                                                |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives
 in its Linear issue alone. The decision records these designs follow are in
