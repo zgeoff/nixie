@@ -16,8 +16,9 @@ passes in.
 
 Terms: a fire is one event of a trigger for one definition. The hash in force is the definition hash
 that the binding holds, null while the definition is out of force. A definition is out of force when
-its folder is gone, it holds `enabled: false`, or it is a spent one-shot. A pending task run is a
-fire that nixie wrote and no claim has opened yet.
+its folder is gone, it holds `enabled: false`, or it is a spent one-shot. A pending task run is one
+that the next claim opens: rule 1, 2 or 3 of [what opens a task run](#what-opens-a-task-run) holds,
+or an unread fire waits beside an idle task run, and no claim has opened it yet.
 
 ## Shape
 

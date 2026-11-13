@@ -105,7 +105,8 @@ declare function readTaskBriefs(
 ### The envelope
 
 ```ts
-// sessions module. renderTaskMessage and renderHistoryLine each render through it.
+// sessions module. renderTaskEnvelope renders it, and renderTaskMessage and renderHistoryLine each
+// call renderTaskEnvelope.
 interface TaskEnvelope {
   id: string;
   from: string; // a label from envelopeLabels
@@ -277,8 +278,8 @@ session. nixie takes the first line that applies:
 - `on-behalf-of` carries the IDs of your messages that the sender passes on, and the consent check
   reads them.
 - The closing tag repeats the `fence` ID, so body text cannot close the element.
-- The record keeps `hop`, `reply-wakes`, `age` and `name`, and the envelope renders none of them.
-  The body has no "from another task" line.
+- The envelope renders none of the built element's `name`, `age`, `hop` and `reply-wakes`
+  attributes. The `task_message` record keeps its `hop`. The body has no "from another task" line.
 - The conversation's model reads the task messages it receives in the same envelope.
 - nixie picks a task's label by the sender's `speaker`, and the brief of a definition's task run by
   the `definition` label.
