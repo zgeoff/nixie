@@ -88,7 +88,8 @@ interface TriggerFired {
   definitionHash: string; // the version a task run of this fire pins
   source: string; // the trigger source's id, such as 'schedule'
   dedupeKey: string;
-  kind: 'schedule' | 'at';
+  kind: 'schedule' | 'at' | 'poll'; // poll: ./mail-and-calendar-polls.md#the-records-and-the-tables
+  polled?: number; // poll only: the sequence of the trigger.polled record
   scheduledFor: string; // ISO instant
   firedAt: string; // ISO instant: the core's clock at the write
   isCatchUp: boolean; // firedAt is more than 60 seconds after scheduledFor
@@ -213,6 +214,8 @@ that holds decides:
    is null: no task run. `runTaskStep` commits the step with `hold` and calls no runner, the task is
    `waiting`, and an unread message stays unread.
 
+- A claim marks read a `trigger.fired` whose `kind` its codec does not know, and opens no task run
+  for it, so a release meets a fire of a later release's source safely after a rollback.
 - When a claim finds an open task run that is active or waiting on a reply, the step runs inside it.
   When it finds an idle one and an unread fire with another dedupe key, it ends the idle task run
   with the cause `no_report` and opens the fire's task run in the same transaction.

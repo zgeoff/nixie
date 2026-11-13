@@ -341,9 +341,12 @@ type RestorePauseFaultPoint =
 
 ### Triggers while paused
 
-- While nixie is paused, `deliverTriggerBatch` writes nothing, takes no key and returns
-  `{ delivered: 0 }`, for every source and every target, the conversation included. The watermark
-  stays where it was.
+- While nixie is paused, `deliverTriggerBatch` writes nothing for a schedule event, takes no key and
+  counts it in no `delivered`, for every target, the conversation included. The watermark stays
+  where it was.
+- A poll event delivers while nixie is paused, as
+  [mail and calendar polls](mail-and-calendar-polls.md#one-deliver-call-of-a-poll-batch) says. Its
+  fire and its met wait wait in the inbox until the resume.
 - The source delivers the same events at its next tick, so the first tick after the resume finds
   each missed fire late, and the catch-up rule of [triggers](triggers.md#decisions) decides: one
   catch-up within half the interval, and a `too_late` skip beyond it.
