@@ -59,7 +59,7 @@ interface OAuthSpec {
   tokenURL: string; // 'https://oauth2.googleapis.com/token'
   revokeURL: string; // 'https://oauth2.googleapis.com/revoke'
   identityScopes: string[]; // ['openid', 'email']: the account, whatever else you untick
-  scopes: string[]; // ['gmail.modify', 'calendar.events', 'drive.file']: every consent asks for all 3
+  scopes: string[]; // ['gmail.modify', 'calendar.events', 'calendar.calendarlist.readonly', 'drive.file']: every consent asks for all 4
   authorizeParams: Record<string, string>; // { access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' }
   hosts: string[]; // ['gmail.googleapis.com', 'www.googleapis.com']; never the host of authorizeURL, tokenURL or revokeURL
   returnPath: string; // '/connections/google/return'
@@ -90,14 +90,14 @@ checking a signature. `sub` is the account's identity and `email` is its account
 
 The web client shows these steps in order, from the connector's data:
 
-| `id`       | Title                         | What it says                                                                                                                                                  |
-| ---------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `project`  | Create a Google Cloud project | Create one project for this nixie alone. A revocation reaches every client of a project, so one deployment's revocation would end another deployment's grant. |
-| `apis`     | Turn on the APIs              | Enable the Gmail, Google Calendar and Google Drive APIs, one link each.                                                                                       |
-| `branding` | Fill in the branding          | Give an app name, your email, and a home page and a privacy policy URL on a domain you control, such as a project site. Publishing needs both URLs.           |
-| `audience` | Publish the app               | Choose External, then publish to production with no test users. In testing status, Google ends each consent after 7 days.                                     |
-| `client`   | Create a web client           | Create a Web application client with `{redirectURI}` as its only redirect URI, then paste its client ID and secret here. Google shows the secret once.        |
-| `consent`  | Connect an account            | Consent on Google's page. An account that does not own the project sees "Google hasn't verified this app" first.                                              |
+| `id`       | Title                         | What it says                                                                                                                                                                                                                                                                              |
+| ---------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `project`  | Create a Google Cloud project | Create one project for this nixie alone. A revocation reaches every client of a project, so one deployment's revocation would end another deployment's grant.                                                                                                                             |
+| `apis`     | Turn on the APIs              | Enable the Gmail, Google Calendar, Google Drive and Google Picker APIs, one link each.                                                                                                                                                                                                    |
+| `branding` | Fill in the branding          | Give an app name, your email, and a home page and a privacy policy URL on a domain you control, such as a project site. Publishing needs both URLs.                                                                                                                                       |
+| `audience` | Publish the app               | Choose External, then publish to production with no test users. In testing status, Google ends each consent after 7 days.                                                                                                                                                                 |
+| `client`   | Create a web client           | Create a Web application client with `{redirectURI}` as its only redirect URI and `{origin}` as its JavaScript origin. Create an API key restricted to the Picker API and `{origin}`. Paste the client ID, the secret, the key and the project number here. Google shows the secret once. |
+| `consent`  | Connect an account            | Consent on Google's page. An account that does not own the project sees "Google hasn't verified this app" first.                                                                                                                                                                          |
 
 The links point at the Google Auth Platform pages of the console: Branding, Audience and Clients,
 and the API library page of each API. Your setup guide is `docs/guides/google.md`. It holds the same
@@ -116,6 +116,8 @@ connections.registerClient({
   clientID,
   clientSecret,
   origin: 'https://nixie.example.org',
+  pickerKey: 'AIza…', // optional; the Drive picker's API key, no secret: the browser reads it
+  projectNumber: '123456789012', // optional; the picker's app ID, the OAuth client's project
 });
 // → { client: 'q7m2x9k4ta', redirectURI: 'https://nixie.example.org/connections/google/return' }
 //   or INVALID_ORIGIN: not https, holds a path, a query or a user name, or differs from the call's Origin header
@@ -206,6 +208,8 @@ oauth_clients            plain table, connections module
   secret_sealed          blob
   secret_fingerprint     text  8 hex digits of SHA-256
   redirect_uri           text  origin + returnPath, fixed at registration
+  picker_key             text? plain; the browser reads it
+  project_number         text? plain
   created_at             int
   removed_at             int?  the key is gone
 
@@ -338,8 +342,10 @@ label from the connection row.
 
 ### Fewer scopes
 
-- `check` makes one read call per scope in `scopes`. A scope Google did not grant is `not_granted`.
-  A scope whose call Google refuses because the project has not enabled its API is `api_disabled`.
+- `check` makes one read call per scope in `scopes`. For `calendar.calendarlist.readonly` it reads
+  the calendar list, because `calendar.events` cannot list calendars. A scope Google did not grant
+  is `not_granted`. A scope whose call Google refuses because the project has not enabled its API is
+  `api_disabled`.
 - The connection keeps every granted scope that passed, and its tools join the
   [tool registry](../../architecture/connectors/tool-calls.md). The tool endpoint of each task run
   and worker run leaves out each action whose scope is in `missing`.
@@ -493,7 +499,8 @@ every Forget before it hands out any task work:
   [Calendar and Drive](https://linear.app/zgeoff/issue/GEO-1826).
 - A Disconnect or a pause for a Google connection.
 - A second OAuth client per connector, and connectors from other providers.
-- Picking Drive files for `drive.file`.
+- Picking Drive files for `drive.file`: the browser's own token and the picker belong to
+  `docs/design/queue/gmail-calendar-drive-tools.md`, which reads `picker_key` and `project_number`.
 - Finding and forgetting the records whose text names a forgotten account.
 
 ## Open questions
