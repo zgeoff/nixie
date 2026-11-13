@@ -513,7 +513,9 @@ const spec: OAuthSpec = {
   and a hash that `mcp_tools` has not held, and `mcp.pin_moved { tool, fromHash, toHash, cause }`
   for each move. A server listing that changes nothing writes nothing. The proxy reads a form, for a
   tool list or a change card, from the record at `listed_seq`. When a forget has made that form
-  unreadable, the next server listing that holds the hash writes the record again.
+  unreadable, the next server listing that holds the hash writes the record again. A stopped tool
+  whose pinned form is unreadable, and whose server no longer lists that hash, leaves the tool lists
+  until you allow its latest form, and its change card shows the old form as erased.
 - A pin move, its `mcp.tool_changed` records and its `policy.action_rehashed` records commit in one
   transaction.
 - `mcp_servers`, `mcp_tools` and `mcp_tool_forms` arrive in one appended migration that only adds
