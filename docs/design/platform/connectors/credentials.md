@@ -24,7 +24,7 @@ interface CredentialStore {
 }
 
 interface CredentialSpec {
-  kind: 'oauth_client' | 'oauth_token' | 'static' | 'model';
+  kind: 'oauth_client' | 'oauth_token' | 'static' | 'model' | 'model_login';
   backend: string; // such as 'database', 'deployment' or 'imp'
   label: string; // such as 'Google, personal'
   hosts: string[]; // where the credential may go
@@ -105,13 +105,16 @@ Destroying the sandbox removes its grants.
 ## Refresh
 
 The store refreshes OAuth tokens on the host, 5 min before expiry by default, and pushes each new
-value to every grant that holds it, because imp's broker never refreshes. A request the service
-rejects as unauthorised gets one refresh and one retry, and a second rejection marks the credential
-failing. Any other failure goes to the [action queue](../core/actions.md) and its reconciliation.
-The store runs one refresh per credential at a time, and writes a rotated refresh token in the same
-transaction as the refresh's record, so a crash never leaves only a spent token. Every OAuth token
-refreshes at least every 7 days, by default, so a quiet connection never lapses. A refresh that
-fails for a while, such as during a provider outage, backs off as a poll does in the
+value to every grant that holds it. nixie never uses impd's own refresh, because an impd secret that
+refreshes cannot send its requests through the counting proxy. A `model_login` is a ChatGPT plan
+login that a model profile runs on, which [the plan login design](../../queue/plan-login-token.md)
+covers. A request the service rejects as unauthorised gets one refresh and one retry, and a second
+rejection marks the credential failing. Any other failure goes to the
+[action queue](../core/actions.md) and its reconciliation. The store runs one refresh per credential
+at a time, and writes a rotated refresh token in the same transaction as the refresh's record, so a
+crash never leaves only a spent token. Every OAuth token refreshes at least every 7 days, by
+default, so a quiet connection never lapses. A refresh that fails for a while, such as during a
+provider outage, backs off as a poll does in the
 [trigger source](../channels/trigger-source.md#polls), and marks the credential failing after 3
 failures in a row.
 
