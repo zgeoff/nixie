@@ -82,7 +82,7 @@ interface MemoryKillLine {
   kind: SandboxKind; // from the sandbox's spec
   memoryMiB: number; // from the sandbox's spec; with `kind`, it identifies the size row
   sandboxID: string;
-  kills: number; // the guest's count
+  kills: number; // the rise in the guest's count since the last read of this sandbox; at least 1
 }
 
 // level warn. When nixie cannot judge the end.
@@ -109,6 +109,10 @@ The read:
   `unsupported`. A rejected exec gives `failed`.
 - The path and the parser live in the imp adapter. `ImpPort` gains no method.
 - A read of a sleeping imp wakes it, as any exec does.
+- A sleep keeps the count. A sleep saves the guest's whole memory, its kernel and that kernel's
+  cgroup counters included, and a wake loads it back, as
+  [imp's sleep and wake doc](https://github.com/zgeoff/impz/blob/main/docs/architecture/lifecycle/sleep-and-wake.md#what-survives-a-sleep)
+  describes. A wake that boots cold resets the count, and the watcher reports it as `counter_reset`.
 - The test sandbox reads `/.memory-kills`. With no such file, the count is 0.
 - Any other adapter returns `unsupported` or reads its own count.
 
@@ -142,7 +146,8 @@ The lines:
   step or the fetch succeeded.
 - nixie writes no line when the count is the same: a requested stop, a program's own exit, a model
   API failure, a time limit or a lost connection.
-- An end that nixie cannot judge never counts as an end with no kill.
+- An end that nixie cannot judge never counts as an end with no kill, so each end on an adapter that
+  returns `unsupported` gives its own line.
 - The lines are log lines only. nixie writes no event-log record for a memory kill, so a rollback
   needs no step.
 - A line never holds a task ID, a step key, guest output, a URL, a message or a prompt.
@@ -159,6 +164,9 @@ The lines:
   | an adapter that returns `unsupported`                     | unknown, on each end        |
 
 ## Decisions
+
+- **`kills` is the rise since the last read of the sandbox, never the guest's count since boot.**
+  The owner chose this on 13 Nov, so a day's kills are the sum of that day's lines.
 
 - **A wrapper around the adapter reads the count and writes log lines.** No caller changes, and a
   killed guest cannot always report.
@@ -180,11 +188,4 @@ The lines:
 
 ## Open questions
 
-- **Does a sleeping sandbox keep its count?** A spike settles it: the test-imp test of the read
-  sleeps and wakes a sandbox and prints the count before and after. Until then, the watcher is built
-  as above. When the count is 0 after a wake, the watcher is not built, and the day's check reads
-  the runtime's log on the host.
-- **Is `kills` the guest's count or the rise since the last read?** The owner settles it. Until
-  then, it is the count.
-- **How often does an `unsupported` adapter log?** The owner settles it: once per end, once per
-  sandbox, or once when the watcher is applied. Until then, once per end.
+None.

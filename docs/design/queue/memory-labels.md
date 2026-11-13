@@ -157,7 +157,8 @@ await requireItem(db, { target: { itemID, version: 4 }, operation: 'retire', sta
 - In `memory.edit`, a label the call omits keeps its value. The tool merges the call's labels with
   the item's current ones before the gate, so every proposal and record holds a whole label set.
 - The write gate holds every label-only edit as a proposal with the reason `labels`, from the
-  conversation and from a task. The gate's checks on labels are the memory write gate's design.
+  conversation and from a task. The gate's checks on labels are
+  [their own item](https://linear.app/zgeoff/issue/GEO-2557).
 - A change of an item's subject writes no label record, and the item keeps its labels.
 
 ### Where label text lives
@@ -241,6 +242,16 @@ await requireItem(db, { target: { itemID, version: 4 }, operation: 'retire', sta
   reviewed labels are lost. It shows the reason `labels` as `other`, through the built
   `toReviewReason`.
 
+### Review, undo and the export
+
+- The API's proposal output and the web review show a proposal's labels, and a label-only proposal
+  with the reason `labels`. You approve a label edit as you approve a text edit.
+- A label-only proposal refuses `editedText` and `revisionOf`. A labelled text proposal with
+  `editedText` applies its labels unchanged, and one with `revisionOf` applies them to the named
+  item under its key, with `revisionOf.version` a revision.
+- `undo` undoes the last text change only. A label stays as it is, and you change it with an edit.
+- The memory export holds each item's labels and their history, in a new export version.
+
 ## Decisions
 
 - **A label edit takes the approval flow of every memory edit.** No quote can back a label.
@@ -259,23 +270,12 @@ await requireItem(db, { target: { itemID, version: 4 }, operation: 'retire', sta
 
 - The removal of the sensitive flag. [Its own item](https://linear.app/zgeoff/issue/GEO-2363) holds
   it.
-- The gate's checks on labels, and the web review sentence for `labels`. The memory write gate's
-  design owns them.
+- The gate's checks on labels, [their own item](https://linear.app/zgeoff/issue/GEO-2557), and the
+  web review sentence for `labels`.
 - A batch proposal, a gate setting for labels, label editing in the memory view, and a split or
   merge of a topic.
 - A revision column, and a revision for a moment.
 
 ## Open questions
 
-- **Do the API's proposal output and the web client show the labels and the reason `labels`?** The
-  owner settles it, together with the gate's design, which adds the reason. Until then, the API and
-  the web client show a label-only proposal with the reason `other` and its unchanged text, and only
-  `memory.pending` shows its labels.
-- **What does an approval with `editedText` or `revisionOf` do to labels?** The owner settles it.
-  Until then, a label-only proposal refuses both, a labelled text proposal with `editedText` applies
-  its labels unchanged, and one with `revisionOf` applies them to the named item under its key, with
-  `revisionOf.version` a revision.
-- **Does `undo` undo a label edit?** The owner settles it. Until then, it undoes the last text
-  change only.
-- **Does the memory export hold labels?** The owner settles it. Until then, the export holds none
-  and its version stays, and an imported item gets labels from the data step.
+None.

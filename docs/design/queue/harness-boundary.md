@@ -1,14 +1,8 @@
 # The harness boundary
 
-- **Status:** draft. The owner first settles the premise below;
-  [the harness boundary](https://linear.app/zgeoff/issue/GEO-2547) item is blocked until then.
+- **Status:** draft. The owner chose the shape below.
 - **Work items:** [the harness boundary](https://linear.app/zgeoff/issue/GEO-2547),
   [the Codex harness](https://linear.app/zgeoff/issue/GEO-2237)
-
-**The question for the owner:** does the boundary take one definition per harness, bound to its
-profile, with one host encoder that checks capabilities? The other options are 4 capability checks
-in the step code, or a second table of what each session event needs. This doc designs the first
-option. Until the owner chooses, nothing in it is built.
 
 Host code holds one record per profile, `Harness`, and never reads a field that only one harness
 has, so a task runs on a second harness, such as Codex, with no change to the code that runs its
@@ -234,6 +228,9 @@ type SessionStart =
   type.
 - A definition's profile schema is strict, so a key that its harness's loop ignores fails the
   config's load.
+- `roleNeeds` lists every capability a role's frames can use, including what its input can hold,
+  such as `images` for a role whose input can carry an image. So a capability gap fails the config's
+  load, and `encodeHostFrame` throws only on a host bug.
 - A profile on a harness outside `harnesses` fails the config's load.
   [The harness list in the models config error](https://linear.app/zgeoff/issue/GEO-2579) owns the
   text.
@@ -313,6 +310,8 @@ type SessionStart =
 - The built `runOpenedTurn` commits an opening with its point in one step result, and a failed step
   commits neither. So an Agent SDK task finds `unkept` only after its profile moves from a harness
   with no session; it then stores its point and becomes `resumable`.
+- A rebuild reads its clock, its status lines and its block IDs from inputs of the step, so a test
+  that fixes those 3 gets the same opening from the same log.
 - A step on a harness with no session sends a `turn` frame with no `resume` key, no `message` frame
   because it starts no live inbox reader, no `summarize` frame, and an `interrupt` frame only when
   the harness declares `interrupt`. It stores `sessionBoundary: null`.
@@ -353,6 +352,9 @@ harness that declares `summarize` and `context-window`.
 
 ## Decisions
 
+- **The 5 outcomes are `finished`, `stopped`, `limit`, `interrupted` and `overflow`.** The owner
+  chose these words on 13 Nov.
+
 - **The guest sets the outcome.** The host reads one field in the same words for every harness, and
   each guest maps its runtime's words.
 - **`unkept` is derived at each step and stored nowhere.** A stored state would need a migration and
@@ -363,6 +365,16 @@ harness that declares `summarize` and `context-window`.
   step code holds a `Harness` whose capabilities no type knows. A frame type narrowed by capability
   would carry a harness type parameter through the step code, which is the branching the boundary
   removes.
+- **A turn ends in one of 5 outcomes, and a refusal or an output cap is never `finished`.** An
+  agent's call on 13 Nov, which the owner accepted: `hasFinishedTurn` reads
+  `outcome === 'finished'`, so with 4 outcomes a refused or cut-off turn would count as finished.
+- **Each harness definition is one file in the models module.** An agent's call on 13 Nov, open to
+  the owner's veto: a definition reaches nothing outside nixie from the server, which is the case
+  where [the code layout](../../architecture/code-layout.md) keeps an implementation in its module.
+- **On a harness with no session, a turn that overflows fails its step, and the step's retries open
+  again from the log.** An agent's call on 13 Nov, which the owner accepted: it adds no code path,
+  and a smaller-rebuild retry would have nothing to fire on while Codex reports an overflow as a
+  plain failure.
 
 ## Builder decides
 
@@ -385,13 +397,6 @@ harness that declares `summarize` and `context-window`.
 
 ## Open questions
 
-- **The premise at the top of this doc.** The owner settles it first.
-- **Does a turn's outcome have 5 values or 4?** The owner settles it: the 5 above, or the same
-  without `stopped`. Until then, the sketches hold 5.
-- **Where does a harness definition live?** The owner settles it: the models module, `adapters/`, or
-  a folder rule of its own. A harness reaches the model API from a guest and never from the server.
-  Until then, each definition is a file in the models module.
-- **What does a long task do on a harness with no session when one turn overflows?** The owner
-  settles it: retry the step from a smaller rebuild, end the task with a report, or leave it to the
-  step's retries. Until then, the step fails, and its next try opens from the log within the rebuild
-  budget.
+- **Does Codex report a context overflow as its own error?** The overflow case of
+  [the Codex gates](https://linear.app/zgeoff/issue/GEO-2546) measures it. Until then, a Codex
+  overflow is a `failed` turn, and the step's retries handle it.

@@ -115,14 +115,14 @@ interface TaskEnvelope {
   body: string | null; // null renders the built "[a message since forgotten]"
 }
 
-// sessions module. Plain constants until the owner settles the label question.
+// sessions module. Plain constants, as the owner chose.
 const envelopeLabels = {
   conversation: '{agent}, in the chat with {owner}',
-  personaTask: '{agent} (task: {name}, {id})',
-  plainTask: 'task: {name}, {id}',
+  personaTask: '{agent} (task: {name})',
+  plainTask: 'task: {name}',
   definition: 'task definition: {name}', // phase 2
 } as const;
-// {agent}: agent.names[0], or "nixie". {owner}: owner.name, or "the owner". {id}: the short task ID.
+// {agent}: agent.names[0], or "nixie". {owner}: owner.name, or "the owner".
 
 // tasks module
 interface TaskProfile {
@@ -149,16 +149,21 @@ Any of them have outdoor seats?
 ### The frame
 
 ```ts
-// prompts module. The second paragraph is fixed text: change no word of it. The third paragraph is phase 2.
-const taskFrame = `You are "{{ task.name }}", one of the tasks that nixie runs for {{ owner.name }}.
+// prompts module. The whole frame is fixed text: change no word of it. The third paragraph is phase 2.
+const taskFrame = `You are "{{ task.name }}", a task working for {{ owner.name }}.
 
 You're running on your own, and nobody reads what you write here. Treat it as your own notes. To send anything to someone, use task.message. A turn where you send nothing is fine: just stop.
 
-When the work your brief asks for is done, call task.report with a short summary. That ends your work and sends the result to {{ task.reportTarget }}.`;
-// {{ task.reportTarget }}: the report target's label; its text is an open question.
+When you've done what your brief asks, call task.report with a short summary.{{ task.reportTargetSentence }} Calling it ends the task.`;
+// {{ task.reportTargetSentence }}: ' Your report goes to {label}.', where {label} is the report
+// target's envelope label; a definition's task run that reports to the conversation takes the
+// conversation's label. Under the report mode `none`, it is empty, and nothing names a target.
 ```
 
 ## Constraints
+
+- The built first line of the task prompt, in `modules/prompts/src/task-prompt.ts`, changes to the
+  frame's first line, and its tests change with it.
 
 ### The brief record
 
@@ -311,6 +316,18 @@ session. nixie takes the first line that applies:
 
 ## Decisions
 
+- **The frame names no platform, and its last paragraph says where the report goes in a sentence of
+  its own.** The owner chose this wording on 13 Nov. A task that reports to the conversation reads
+  the conversation's label, and a task under `none` reads no target.
+
+- **No label holds a task ID.** The owner chose `{agent} (task: {name})` and `task: {name}` on 5 Nov
+  and confirmed them on 11 Nov. A model that needs a sender's task ID reads it from `tasks.list`.
+- **The guest drops the CLI's own reminders of the environment, the model and the date.** The owner
+  chose this on 5 Nov, if the SDK allows it. The
+  [model-eval spike](../../../research/model-eval/results.md) shows that `CLAUDE_CODE_SIMPLE=1`
+  drops all 3 under a gateway credential, as the guest uses. The work item that sets it first checks
+  what else the setting changes in the guest: tools, MCP loading, settings and hooks.
+
 - **The brief is a `task_message` of kind `request`, with no record kind of its own.** The model
   reads its work the way it reads any message.
 - **`task.created` holds no copy of the brief.** A forget would otherwise have 2 places to reach.
@@ -320,6 +337,10 @@ session. nixie takes the first line that applies:
   live turn and a rebuilt session.
 - **A rollback loses the briefs of the tasks this release started.** The release before reads a
   brief only from `task.created`, and a copy there would give a forget 2 places to reach.
+- **No limit bounds the depth of a chain of starts.** An agent's call on 13 Nov, which the owner
+  accepted: each task's own limits, the rule that a start never widens its starter's tools, and the
+  deployment budget of the [counting proxy](../../architecture/policy/counting-proxy.md) bound a
+  chain's spend, as the owner chose to rely on spend limits for loops.
 
 ## Builder decides
 
@@ -338,15 +359,4 @@ session. nixie takes the first line that applies:
 
 ## Open questions
 
-- **Does every label hold the sender's task ID?** The owner settles it, for the conversation's
-  label, a `persona: none` label and the `definition` label. Until then, `envelopeLabels` above
-  holds: a task's label ends with its ID, and the conversation's and the definition's labels hold
-  none.
-- **What bounds the depth of a chain of starts?** Every brief has hop 0, so a started task that
-  holds `task.start` can start another, and the hop limit never stops the chain. The owner settles
-  it: a depth limit, or the gap accepted. Until then, only each task's own limits and the rule that
-  a start never widens its starter's tools bound a chain.
-- **What does `{{ task.reportTarget }}` say for a definition's task run and for the report mode
-  `none`?** The owner settles it. Until then, the frame keeps its first 2 paragraphs.
-- **Can the Agent SDK drop the CLI's own reminders of the environment, the model and the date?** A
-  spike settles it. Until then, the guest passes them as built.
+None.

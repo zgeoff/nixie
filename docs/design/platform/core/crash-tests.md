@@ -71,7 +71,7 @@ Every test ends with the same checks:
 - Dropping every projection and folding the log rebuilds tables equal to the live ones, using slice
   1's rebuild test.
 - No task holds a lease after recovery. A task in `stopped`, `failed`, `done` or `closed` keeps its
-  state, and a running or waiting task with unread input and no pause or recovery hold is `ready`.
+  state, and a running or waiting task with unread input and no pause is `ready`.
 
 ## Fault points
 
@@ -197,7 +197,7 @@ Each later slice adds its crash tests in this doc before it starts, on the same 
 - **Slice 3:** a proposal at `proposal.commit.after`, consumption at `consume.commit.before`, a
   lapse at `timer.fire.before`, a defer at `defer.commit.after` with a stale return suppressed, a
   policy change at `policy.recheck.after`, and reconciliation under each connector declaration.
-- **Slice 5:** a recovery hold through a restart.
+- **Slice 5:** a restore's pause through a restart.
 - **Slice 7:** a job run's catch-up after downtime.
 
 ## Slice 1 summary

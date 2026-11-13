@@ -39,8 +39,8 @@ changes it. Every kind shares the operation hash, the identity check, the lapse,
 deferral. An action goes to the [action queue](../core/actions.md), a memory write applies an item
 version under the [memory write contract](../memory/writes.md), and an internal change to policy, a
 mandate or a job runs its registered host mutation. A memory write reaches review through the same
-rules as an action: its tool declares `memory_write`, your rules decide first, and the memory gate
-decides a write that no rule matches, as the
+rules as an action: its tool declares `note`, your rules decide first, and the memory gate decides a
+write that no rule matches, as the
 [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers. A memory proposal
 carries its operation, remember or retire, its quote, and the exact item and version it targets. Its
 review reason is not one of the [prompt causes](decision-point.md#prompt-causes), so memory review
@@ -82,9 +82,9 @@ distinctly:
 - **Always-ask:** an effect in the always-ask set, a mandate, a proposed rule, or a known contact.
 - **Lifting:** the operation creates or widens a lifting rule.
 
-An always-ask or lifting approval takes the [passkey check](../channels/approvals.md#cards) once
-that check ships, and a tap in the first build. One exception: an unchanged "always allow" on a
-routine proposal stays a tap, as [Always allow](#always-allow) covers.
+An always-ask or lifting approval takes the [passkey check](../channels/approvals.md#cards). One
+exception: an unchanged "always allow" on a routine proposal stays a tap, as
+[Always allow](#always-allow) covers.
 
 ## The approval
 
@@ -128,12 +128,12 @@ Undo. Undo deletes the rule, a narrowing that applies at once. **Why:** you see 
 before it exists, without a second confirmation, and a free-text field such as an email body never
 pins a rule to one message.
 
-An unchanged "always allow" stays a tap once the passkey check ships. A rule wider than the card's
-rule takes the passkey check: a rule you edit wider before you approve it, a gap rule that covers
-several destinations, a mandate, or a lifting rule. The host decides which applies with its widening
-check against the card's rule, never the client. **Why:** the card's rule pins its destinations, so
-injected content cannot redirect it, and a passkey on every "always allow" would add prompts on the
-main route to the 0-prompt target.
+An unchanged "always allow" stays a tap. A rule wider than the card's rule takes the passkey check:
+a rule you edit wider before you approve it, a gap rule that covers several destinations, a mandate,
+or a lifting rule. The host decides which applies with its widening check against the card's rule,
+never the client. **Why:** the card's rule pins its destinations, so injected content cannot
+redirect it, and a passkey on every "always allow" would add prompts on the main route to the
+0-prompt target.
 
 The host supplies the choices each proposal permits and checks them again on your answer, so a
 client cannot add one:
@@ -141,7 +141,7 @@ client cannot add one:
 - A prompt from your ask rule offers "change this rule" instead of "always allow".
 - A prompt from the always-ask set offers a lifting rule, for `spend` only, with caps you fill in.
 - A memory proposal offers no "always allow", because accepting a fact never creates a rule on
-  `memory_write` that loosens the write gate.
+  `note` that loosens the write gate.
 
 A direct request that your own message consents to runs with no proposal, through the consent check
 in the [decision point](decision-point.md#consent), and gets an ordinary decision record.

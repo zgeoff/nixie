@@ -122,7 +122,7 @@ declare function readPreviousRun(
   context: Pick<TasksContext, 'log'>,
   run: TaskRun,
 ): Promise<TaskRun | null>; // the newest opened before `run` on its task
-declare function readFinishedRuns(
+declare function readEndedRuns(
   context: Pick<TasksContext, 'log'>,
   query: { definitionID?: string; taskID?: string; beforeSequence?: number; limit: number }, // pages by ended.sequence
 ): Promise<readonly TaskRun[]>; // each with `ended` set
@@ -193,14 +193,18 @@ declare function pickReportMode(
   task, the unread waking input is what it opens for. Its `origin.kind` is `start` for the brief,
   and otherwise follows the cause that the built `buildStepWake` picks: `message` for a task
   message, `owner` for your message, `timer` for a timer and `event` for an outside event. For a
-  definition's task, the definitions design's `pickRunDefinition` decides.
+  definition's task, the definitions design's `pickRunDefinition` decides, and its
+  [list](../definition-tasks.md#what-opens-a-task-run) puts an unread fire first, then a raise or a
+  restart, then an unread message.
+- For a started task, a claim checks the limit hold, then a raise or a restart, then the unread
+  waking input. A carried task run reads the unread input in its first step.
 - A claim for a task with an open task run runs the step in it, whether the step is a rerun or a
   waking message caused it.
 - When a claim finds an idle task run and an unread `trigger.fired` record whose dedupe key differs
   from the task run's `triggerKey`, nixie ends the idle task run with `no_report` and opens the next
   one in the same transaction.
 - When a claim finds the limit hold and no open task run, nixie pauses the task and opens no task
-  run.
+  run. The claim checks the limit hold before it checks a raise, a restart or `pickRunDefinition`.
 - `task.run_opened` pins the report mode, the report target, the report shape and the limits, and
   every reader reads those 4 values from it. A change to a definition therefore applies from the
   next task run.
@@ -230,13 +234,13 @@ module does not export it. When a step commits, nixie takes the first row that a
 
 These rows end the task run:
 
-| The commit finds                                   | End cause   | The task's next state          |
-| -------------------------------------------------- | ----------- | ------------------------------ |
-| a report request in this task run                  | `reported`  | what the step asked            |
-| a reached limit in `StepResult.run`                | `limit`     | `paused`, under the limit hold |
-| the runner returned `done`                         | `no_report` | `done`                         |
-| a first step with `StepResult.run.activity` `none` | `no_work`   | `waiting`                      |
-| a quiet turn, and the task is not wakeable         | `no_report` | `waiting`                      |
+| The commit finds                                   | End cause   | The task's next state                         |
+| -------------------------------------------------- | ----------- | --------------------------------------------- |
+| a report request in this task run                  | `reported`  | what the step asked                           |
+| a reached limit in `StepResult.run`                | `limit`     | `paused`, under the limit hold                |
+| the runner returned `done`                         | `no_report` | `done`, and `waiting` for a definition's task |
+| a first step with `StepResult.run.activity` `none` | `no_work`   | `waiting`                                     |
+| a quiet turn, and the task is not wakeable         | `no_report` | `waiting`                                     |
 
 These rows leave the task run open, and the task takes the next state the step asked for:
 
@@ -249,6 +253,8 @@ These rows leave the task run open, and the task takes the next state the step a
   built `TaskProfile.isWokenByMessages`.
 - A started task that reported waits and is wakeable. It is never `done`, because a `done` task
   refuses messages and has no sandbox.
+- A definition's task is never `done`, because it keeps one thread for the life of its definition,
+  as [the task of a definition](../definition-tasks.md#between-task-runs) gives.
 - A started task that reported keeps its sandbox, asleep, as the built sandbox rules do for every
   waiting task, until you close the task.
 - Your stop ends the task run with `stopped` and your close with `closed`, each in the transaction
@@ -267,19 +273,25 @@ These rows leave the task run open, and the task takes the next state the step a
 
 In the ending transaction, the end writer takes the first row that applies:
 
-| The case                              | What nixie writes                                | `delivery`  |
-| ------------------------------------- | ------------------------------------------------ | ----------- |
-| the end cause is `no_work`            | no message                                       | `kept`      |
-| the report target is closed or `done` | no message                                       | `kept`      |
-| the mode `none`                       | no message                                       | `kept`      |
-| the mode `next_turn`                  | a `task_message` of kind `report`, `wake: false` | `next_turn` |
-| the mode `wake`, past the hop limit   | a `task_message` of kind `report`, `wake: false` | `next_turn` |
-| the mode `wake`, inside the hop limit | a `task_message` of kind `report`, with a wake   | `wake`      |
+| The case                                          | What nixie writes                                | `delivery`  |
+| ------------------------------------------------- | ------------------------------------------------ | ----------- |
+| the end cause is `no_work`                        | no message                                       | `kept`      |
+| the report target is `done`, `failed` or `closed` | no message                                       | `kept`      |
+| the mode `none`                                   | no message                                       | `kept`      |
+| the mode `next_turn`                              | a `task_message` of kind `report`, `wake: false` | `next_turn` |
+| the mode `wake`, past the hop limit               | a `task_message` of kind `report`, `wake: false` | `next_turn` |
+| the mode `wake`, inside the hop limit             | a `task_message` of kind `report`, with a wake   | `wake`      |
+
+- Row 2 covers the 3 states that the built `isFinishedState` gives, because
+  `writeInboxRecordsInTransaction` throws on a message to a task in one of them.
 
 - The delivered message goes from the task to the report target, with the `reportID` as its message
   ID and the body of `task.run_ended`.
 - The hop of an end that a step commits is the hop of that step's lease, read through the built
   `readLeasedStepHop`.
+- An end that commits no step, such as a stop, a close, a failure or a claim's end of an idle task
+  run, takes the hop of the task's newest step, the built `tasks.step_hop`, and delivers under the
+  same rows.
 - A kept report exists only on `task.run_ended`. nixie writes no message on the task's own thread,
   because the task would read it as input.
 - This work deletes the built `planTaskReport` and its refusal: a `task.message` of kind `report`
@@ -298,12 +310,16 @@ In the ending transaction, the end writer takes the first row that applies:
   record, and a hold's dollars count once after a lost lease.
 - [The late-spend fix](https://linear.app/zgeoff/issue/GEO-2495) lands first and changes what
   `readTaskUsage` returns. This work then moves its count rule into the dollars meter.
+- During a turn, the late-spend read counts only the spend records whose `taskRunID` is the open
+  task run's, past the sequence of the turn's usage read.
 - During a turn, the nixie runner interrupts the turn at its turn budget and returns the reached
   dollar limit in `StepResult.run`. The nixie runner no longer calls `writeTaskLimitPause`.
 - At a `limit` end, the end writer writes in the commit's transaction what the built
   `writeTaskLimitPause` writes: the `pause` control, the built `task.limit_reached` payload
-  `{ taskID, stepKey, used, limits }` with the task run's turns and dollars, and the limit notice.
-  The notice still skips a starter that is gone or finished, as built.
+  `{ taskID, stepKey, used, limits }` with the piece of work's turns and dollars, and the limit
+  notice. `used` is the piece of work's use since its newest restart, and `limits` its totals, so
+  the value of a raise is a new total. The notice still skips a starter that is gone or finished, as
+  built.
 - When the limit end's report wakes the report target, nixie writes no limit notice. Otherwise nixie
   writes it, and the notice wakes the starter.
 - The built spend writes stay: a failed turn, or a turn whose commit fails, writes
@@ -312,10 +328,17 @@ In the ending transaction, the end writer takes the first row that applies:
 - The claim opens one carried task run when the task's newest task run ended with `limit`, `stopped`
   or `failed` and a raise or a restart is newer than that end. Its `origin.sequence` is that control
   record, and it copies `triggerKey`, `briefID`, `reportShape` and `definitionHash`.
-- Until the owner answers the open question on carried limits, the claim sets each carried limit to
-  the raised value, or to the ended task run's pinned value when the raise does not name it, less
-  that meter's use, and never below 0. A restart uses the ended task run's pinned values. A test of
-  the projection pins this rule.
+- A meter's total for a piece of work is the value of the newest raise that names the meter, or else
+  the first task run's pinned value.
+- After a raise, each carried limit is the meter's total less the piece of work's use of that meter
+  since its newest restart, and never below 0.
+- After a restart, each carried limit is the meter's total, with nothing taken off.
+- A carried task run copies the first task run's `calls`, and each cap counts only the carried task
+  run's own calls, because the tools module counts by `taskRunID`.
+- For example, a task run pinned at 40 turns and $10 ends with `limit` at 40 turns after $3. A raise
+  to 60 turns carries it with 20 turns and $7. It ends with `limit` again at 60 turns after $2 more,
+  and a raise to 80 turns carries it with 20 turns and $5. A restart then carries it with 80 turns
+  and $10. A test of the projection pins these values.
 - Once the carried task run ends, its end is newer than the control record, so no later claim opens
   a second one, after a server start or recovery included.
 - The tools module counts a tool's calls in a task run from its own `tool_called` and `tool_result`
@@ -349,6 +372,22 @@ In the ending transaction, the end writer takes the first row that applies:
   the work can go on.
 - **The cap denial uses the outcome `denied`.** The outcomes are a closed list, and a release that
   lacks an outcome fails to decode the record.
+- **For a definition's task, an unread fire opens a task run before a raise or a restart, and a
+  raise or a restart before an unread message.** An agent's call on 13 Nov, which the owner
+  accepted: a fire can be unread at a carry only after a stop of an idle task run, which has nothing
+  to carry, while a message after a `limit` end belongs to the work that the raise carries on.
+- **A raise carries the piece of work's total less its use, and a restart carries the full totals.**
+  An agent's call on 13 Nov, which the owner accepted: under one rule for both, a restart after a
+  limit end would carry 0 turns and end before its first turn.
+- **A report to a target whose listed state is `finished` is delivered under its report mode.** An
+  agent's call on 13 Nov, which the owner accepted: the starter asked for the result, a `finished`
+  task accepts messages, and the hop limit bounds the wake.
+- **The late-spend read counts only the open task run's records.** An agent's call on 13 Nov, open
+  to the owner's veto: limits count per task run, so another task run's spend never shortens this
+  one's turn.
+- **An end with no leased step takes the hop of the task's newest step.** An agent's call on 13 Nov,
+  which the owner accepted: a stop then wakes the starter whenever the task run's own hop allows it,
+  and never resets a loop's hop count.
 
 ## Builder decides
 
@@ -368,23 +407,4 @@ In the ending transaction, the end writer takes the first row that applies:
 
 ## Open questions
 
-- **Which comes first in a claim: the raise or restart and the limit hold, or `pickRunDefinition`?**
-  The owner settles it with the definitions design, because the 2 orders open different task runs
-  for a claim that finds both an unread fire and a restart. Until then, the claim checks the raise
-  or restart and the limit hold first. Only a definition's task can find both, so the task run
-  records work, which covers started tasks, is not blocked.
-- **How does the claim compute the carried limits per meter, and what are the limits after a
-  restart?** The owner settles it. Until then, the rule under "Limits, a raise and call caps" holds,
-  and a test pins it.
-- **What next state does a definition's task take when its runner returns `done`?** The owner
-  settles it with the definitions design, which returns `waiting` for every definition's task. Until
-  then, the `done` row of the ending table applies to started tasks only.
-- **Is a report target that has the listed state `finished` also kept?** The owner settles it. A
-  `finished` task accepts messages. Until then, row 2 of the delivery table covers only a closed or
-  `done` target, and a test of the end writer pins it.
-- **Does the late-spend read filter by `taskRunID`?** The owner settles it. Until then, it reads the
-  whole thread past the sequence of the turn's usage read, as
-  [the late-spend fix](https://linear.app/zgeoff/issue/GEO-2495) builds it.
-- **Which hop decides `wake` or `next_turn` for an end with no leased step: a stop, a close, a
-  failure, or a claim's end of an idle task run?** The owner settles it. Until then, such an end
-  delivers with `wake: false`, so its delivery is `next_turn`.
+None.

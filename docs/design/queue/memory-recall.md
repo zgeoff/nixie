@@ -205,6 +205,10 @@ interface RecallRequest {
   allows 2 bytes a token for the same limit.
 - **The store cuts, before the record.** A cut in the tool would come after the record and need a
   second record that takes items back.
+- **When the interrupted-turn reproducer shows items counted that the model never got, a recall
+  counts as held only when its tool result comes before the boundary the interrupted turn commits.**
+  An agent's call on 13 Nov, which the owner accepted: it keeps the items the model did read and
+  drops only the ones it missed.
 
 ## Builder decides
 
@@ -230,5 +234,8 @@ interface RecallRequest {
   lowers the limit to the largest size the probe passes whole, and its pull request says so.
 - **Does an interrupted turn count a recall's items as held?** A reproducer settles it: an e2e test
   holds a recall at the fault point `memory.recall.checked`, interrupts the turn, releases the
-  point, and reads the session's deliveries. Until then, the turn end marks the recall's items as
-  held, as built.
+  point, and reads the session's deliveries. The built replay counts every recall record up to the
+  turn's `recalledThrough`, the log head the sessions module reads when the guest reports the turn's
+  end, so a record appended before that report counts even when the model never got its result.
+  Until the reproducer runs, the turn end marks the recall's items as held, as built. The decision
+  on an interrupted turn sets what changes when it fails.

@@ -59,7 +59,8 @@ runs through the rules, the always-ask set and the destination limits again befo
 ## Attempts and outcomes
 
 A runner claims a pending action with the same lease and generation as a task step, and never claims
-an action under a [recovery hold](tasks.md). Each attempt runs in 3 stages:
+an action while [nixie is paused](tasks.md#the-pause), unless you resumed its task on its own. Each
+attempt runs in 3 stages:
 
 1. nixie commits an attempt record with the attempt number.
 2. The connector calls the provider, passing the action ID as the idempotency key where the provider

@@ -32,11 +32,11 @@ last stage always decides, so every call gets exactly one decision.
 Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order never matters, as
 [rules](rules.md#evaluation-order) covers.
 
-A call whose effects include `memory_write` never reaches stages 8 and 9. When no stage before them
-decides it, the memory gate decides it in their place, and the write applies at once or becomes a
-memory proposal, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)
-covers. **Why:** the gate's checks are the default for a memory write, so consent never lets a
-direct "remember that" skip them.
+A call whose effects include `note` never reaches stages 8 and 9. When no stage before them decides
+it, the memory gate decides it in their place, and the write applies at once or becomes a memory
+proposal, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers.
+**Why:** the gate's checks are the default for a memory write, so consent never lets a direct
+"remember that" skip them.
 
 The caller's tool list at stage 2 is the job's list for a job run, and the subset its caller passed
 for a worker, so delegation only narrows. A connector tool on the list names the connections it may
@@ -70,9 +70,9 @@ Every tool declares its effects in nixie's tool registry, and rules match on the
 | `read`          | Reads your data or nixie's own state                                       |
 | `fetch`         | Reads outside content, such as a web page or search results                |
 | `note`          | Writes inside nixie, such as a note, a memory proposal or a message to you |
-| `memory_write`  | Creates, edits or retires a memory item                                    |
+| `note`          | Creates, edits or retires a memory item                                    |
 | `write`         | Changes data in your outside service that the service can restore          |
-| `delete`        | Removes data in your outside service for good                              |
+| `delete`        | Removes data for good, in your outside service or in nixie's own records   |
 | `send`          | Reaches a person or service other than you                                 |
 | `spend`         | Spends money                                                               |
 | `schedule`      | Creates or changes a job                                                   |

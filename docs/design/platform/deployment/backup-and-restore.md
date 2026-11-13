@@ -183,23 +183,24 @@ A restore needs 3 things the lost host does not take: the restic repos, the depl
 recovery key. On a host that meets [the host's needs](deployment.md#the-host):
 
 1. Clone the deployment repo, and put the recovery key where the Compose file expects the host key.
-2. Fetch the newest database snapshot and the key store snapshot with the backup job, which checks
-   each against its restic snapshot:
+2. Fetch the newest database snapshot and the key store snapshot that belongs with it, in one
+   command of the backup job. It checks each against its restic snapshot, and refuses a database
+   copy that holds records whose keys the key copy lacks. `<restore_directory>` is an empty folder
+   on the data volume:
 
    ```bash
-   docker compose run --rm --no-deps nixie-backup fetch data latest
-   docker compose run --rm --no-deps nixie-backup fetch keys latest
+   docker compose run --rm --no-deps nixie-backup fetch --to <restore_directory>
    ```
 
-3. Install them with nixie, which takes the writer lock, moves the copies into the data directory
-   and installs recovery holds:
+3. Install them with nixie, which takes the writer lock and moves the copies into the data
+   directory:
 
    ```bash
    docker compose run --rm --no-deps nixie restore
    ```
 
 4. Start nixie with `docker compose up -d --wait`. Expect the client to become ready once impd
-   answers, with recovered work held for your review.
+   answers, with nixie paused for your review.
 5. Make a new host key, add it to both secrets files with `sops updatekeys`, commit, and put the
    recovery key away.
 
@@ -208,10 +209,10 @@ job's fetch and then nixie's restore. The backup job only fetches and checks. ni
 the database, under the writer lock, while no other nixie runs.
 
 A restored database is up to one interval older than the lost host, so an action may have run after
-the backup. The restore command installs [recovery holds](../core/tasks.md) before startup. Task
-claims, autonomous job runs and new actions stay held until you resume each task. The client shows
-when the backup was taken and which tasks were running. **Why:** a task resumed at once would repeat
-its last uncommitted step, and only you can check the outside world.
+the backup. The next start after a restore [pauses nixie](../core/tasks.md#the-pause) before any
+runner starts. Task claims, scheduled task runs and new actions wait until you resume. The client
+shows when the backup was taken and which tasks were running. **Why:** a task resumed at once would
+repeat its last uncommitted step, and only you can check the outside world.
 
 A later stage adds a monthly restore check. The backup job fetches the newest snapshot of each repo
 into a check directory. nixie opens the copies read-only, runs SQLite's integrity check, decrypts a

@@ -137,6 +137,8 @@ type FetchReply =
   a 403.
 - The fetcher sets it from `x-ratelimit-reset`, a time in seconds since 1970, when
   `x-ratelimit-remaining` is `0`, on any status.
+- When a reply gives a wait from both headers, the fetcher sends the longer of the 2, so nixie never
+  sends a request inside either window.
 - For a date or a reset time, the fetcher subtracts its own clock and sends the difference, never
   less than 0.
 - A value that the fetcher cannot parse gives null, and so does a reply with neither header.
@@ -150,6 +152,10 @@ type FetchReply =
   pause, and the pause is set before the fallback decides.
 - **A rewrite never hides a page that exists.** A 404 or a spent rate limit on the rewritten URL
   falls back to the named URL, so a wrong guess costs one request.
+- **When both headers give a wait, `retryAfterMs` is the longer one.** An agent's call on 13 Nov,
+  which the owner accepted: a wait too short spends the next request on a refusal, a wait too long
+  costs one later retry, and `pickOutcome` in the actions module likewise takes the longer of its
+  own delay and the `Retry-After` of a refusal.
 
 ## Builder decides
 
@@ -160,11 +166,9 @@ type FetchReply =
 
 - A port in front of `readPage`. The tool takes the `readPage` function of `startFetchSandbox`, as
   built. The skills module's `ReadPage` type belongs to the skill file reader, and a second page
-  reader is separate work under the port rules.
+  reader is separate work under [the port rules](https://linear.app/zgeoff/issue/GEO-2581).
 - The skill file reader's URLs, which take no rewrite and no pause.
 
 ## Open questions
 
-- **Which header gives `retryAfterMs` when a reply holds both `Retry-After` and a spent
-  `x-ratelimit-reset`?** The owner settles it. Until then, the fetcher sends the longer of the 2
-  waits, so nixie never sends a request inside either window.
+None.

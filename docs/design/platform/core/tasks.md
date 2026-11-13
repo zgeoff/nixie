@@ -53,22 +53,24 @@ You control a task with 3 checked actions in the client, each with its own recor
 - **Close** ends the task for good. A closed task takes no messages and starts nothing, and it stays
   in the live view.
 
-## Recovery holds
+## The pause
 
-A restore or a rollback holds work so that recovered tasks never act before you look. A host restore
-holds every unfinished task and every job or trigger launch recovered from the snapshot. A rollback
-holds the tasks and launch sources that the discarded span touched. The hold is durable and separate
-from the lease and the task state:
+You can pause all of nixie at once, and a restore or a rollback starts nixie paused, so that
+recovered tasks never act before you look. While nixie is paused:
 
-- No task claim and no action attempt starts on held work, retries and reconciliation included.
+- No task claim and no action attempt starts, retries and reconciliation included, except for a task
+  you resume on its own.
 - Inbox delivery, timers and outcome recording still run, so nothing is lost while work waits.
-- Only your checked resume of the task, or your re-enable of its job or trigger, clears a hold.
+- No trigger fires. The first fire after the resume follows the catch-up rule.
 
-Before it replaces the database, the restore or rollback command writes an incomplete-recovery
-marker outside the database. It commits the holds with the recovered database, then clears the
-marker before any runner starts, and startup refuses to run while the marker exists.
+A resume ends the pause for every task. A restore also lists the tasks that were midway through a
+step or owned an action with no outcome, so you know what to check before you resume.
+
+The restore command writes an incomplete-recovery marker outside the database before it replaces the
+database. The next start pauses nixie and clears the marker before any runner starts, and startup
+refuses to run any other way while the marker exists.
 [Backup and restore](../deployment/backup-and-restore.md) and [upgrades](../deployment/upgrades.md)
-use these holds.
+use the pause.
 
 ## Steps and leases
 

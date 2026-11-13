@@ -4,8 +4,10 @@
 
 An upgrade is a merged pull request that changes the nixie, web and backup image digests in the
 deployment repo, and a rollback is a revert of that commit. nixie copies the database before every
-migration. Each release keeps its schema readable by the release before it, so a rollback by one
-release needs no restore.
+migration. A rollback returns to the last release the deployment ran, and each design states what
+that release does with the records, migrations and config keys the design adds, as
+[deploy in milestones](../../../runbooks/releasing.md#deploy-in-milestones) says. A rollback that
+the design marks as readable needs no restore.
 
 ## The pin and the bot
 
@@ -70,15 +72,15 @@ whether the release before can read the schema it leaves.
 ## Rolling back
 
 A rollback is `git revert` of the upgrade commit and a deploy. When the older build reads the
-schema, the deploy completes the rollback with no writes lost. The first build supports a rollback
-by one release only.
+schema, the deploy completes the rollback with no writes lost. The release it returns to is the last
+one the deployment ran.
 
 A later stage adds `nixie rollback` for a schema the older build refuses. It writes the
 incomplete-recovery marker, sets the current database aside, puts the pre-migration copy in place,
 and keeps the live key store. Writes since the upgrade are lost. Before startup, it imports every
-action from the set-aside database into the restored log with its outcome, and installs recovery
-holds for the affected tasks. **Why:** a task resumed from its pre-upgrade step would repeat those
-actions.
+action from the set-aside database into the restored log with its outcome, and starts nixie paused,
+with the affected tasks listed for you to check. **Why:** a task resumed from its pre-upgrade step
+would repeat those actions.
 
 Every ID that keys the key store is random, such as a UUID, never a row number. **Why:** after a
 rollback, the live key store holds keys for rows the restored database lacks, and a reused row

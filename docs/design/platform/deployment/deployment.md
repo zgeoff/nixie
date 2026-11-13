@@ -28,7 +28,8 @@ The first build ships the smallest deployment that keeps every guarantee true:
 - **Forget completes after the key repo prunes.** A forget stages a key backup at once, and key
   backups publish in the order nixie staged them. The forget reports pending until that job prunes
   every older key snapshot. [Memory](../memory/store.md) owns what forget means.
-- **Restore on a new host,** with recovery holds that stop a restored task from repeating an action.
+- **Restore on a new host,** which starts nixie paused, so a restored task never repeats an action
+  before you check.
 - **Upgrades as pin bumps,** by hand or by a poll timer. Every release keeps its schema readable by
   the release before it, so a rollback by one release is a revert with no restore.
 - **A health endpoint,** with a push notice when a part turns unready.

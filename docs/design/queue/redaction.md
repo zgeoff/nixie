@@ -1,20 +1,24 @@
 # Redaction of one record of a moment's span
 
-- **Status:** draft. Nothing is built until the owner settles the [open questions](#open-questions),
-  which part gets built first among them.
+- **Status:** draft. The owner chose every part and its scope.
 
 You remove one whole record of a span, such as a tool result that holds a pasted secret. nixie
-deletes the record's key, so its text is gone from the thread and from every moment that holds it. A
-memory item that quotes the record stays readable until the owner settles that open question.
+deletes the record's key, so its text is gone from the thread and from every moment that holds it.
+Each memory item whose evidence quotes the record keeps its text and loses every other copy of the
+record's text.
 
-The removal is the built `conversation.forget` action, widened in 3 parts that ship apart:
+The removal is the built `conversation.forget` action, widened in 5 parts that ship apart:
 
-1. The forget takes tool calls and tool results:
+1. The forget takes every record with its own text, tool calls and tool results among them:
    [redaction-tool-records](https://linear.app/zgeoff/issue/GEO-2553).
 2. A span record carries a mark, so the moment view tells a removed record from any other gap:
    [removal-mark](https://linear.app/zgeoff/issue/GEO-2554).
 3. The moment view offers the removal behind a preview:
    [removal-control](https://linear.app/zgeoff/issue/GEO-2560).
+4. nixie removes a record through a tool, under your policy rules:
+   [forget-tool](https://linear.app/zgeoff/issue/GEO-2604).
+5. The removal purges the record's text from each memory item that quotes the record:
+   [evidence-purge](https://linear.app/zgeoff/issue/GEO-2605).
 
 A gap is a span record whose text nixie cannot read: a forget deleted its key, a session cleanup
 deleted a summary's key, or its key fails to decrypt. A removed record is a gap that a forget made.
@@ -40,7 +44,7 @@ flowchart LR
 
 ## Contracts
 
-### Part 1: the forget takes tool records
+### Part 1: the forget takes every record with its own text
 
 ```ts
 conversation.forget({
@@ -51,6 +55,13 @@ conversation.forget({
 // → ok
 //   or RECORD_NOT_FOUND, as built, for a record outside forgettableKinds: the forget looks the
 //   record up among the removable kinds only
+//   or ACTION_NOT_FINISHED for a queued action that has not run: cancel it, or wait for it to run
+```
+
+```ts
+// API contract: conversation.forget's output grows the backup state memory.forget already returns
+.output(z.object({ forgottenAt: z.date(), backup: forgetBackupSchema }))
+// → { forgottenAt, backup: { state: 'pending' } } until a published backup set drops the old key
 ```
 
 ```ts
@@ -75,7 +86,8 @@ moment.read({ momentID: 'm4k9', records: 'conversation' });
 
 ```ts
 // memory module: MomentSpanEntry. The API contract's span record (read by readMomentSpan)
-// and the memory export's spanRecordSchema carry the same 2 fields.
+// and the memory export's spanRecordSchema carry the same 2 fields. The record that
+// conversation.read and the live stream return carries isRemoved too, for the thread view.
 interface MomentSpanEntry {
   // …existing fields
   readonly isGap: boolean; // as built: erasable status is 'shredded' or 'unreadable'
@@ -100,7 +112,8 @@ const spanRecordSchema = z.strictObject({
 
 ```ts
 conversation.previewForget({ thread: 'conversation', sequence: 4190 });
-// → { momentCount: 2, memoryItemCount: 1 }
+// → { momentCount: 2,
+//     memoryItems: [{ itemID: 'k3x9m2p7qa', text: 'The weather service key is sk-…' }] }
 ```
 
 ```ts
@@ -112,12 +125,29 @@ interface ForgetPreviewInput {
 
 interface ForgetPreviewOutput {
   momentCount: number; // the moments whose spans hold the record
-  memoryItemCount: number; // the memory items whose evidence quotes the record
+  // the items of the evidence purge's set (evidence-purge.md), each with its current text, so you
+  // can forget an item whose own text holds what you remove
+  memoryItems: readonly { itemID: string; text: string }[];
 }
 
 // web client: the moment view's control label, word for word
 const removalControlLabel = 'Remove this record';
 ```
+
+### Part 4: the forget tool
+
+```ts
+// tools module: the model removes a record through a tool with the effect 'delete'
+log.forget({ thread: 'conversation', record: '<the record as the session history names it>' });
+// → policy decides first. The starter rule ask-permanent-deletes asks, and the approval shows the
+//   record's kind, its text and the preview's counts. An allow rule you add for this tool lets
+//   it run without asking.
+// → once allowed: the same forget path as conversation.forget, with the same kinds and refusals
+```
+
+### Part 5: the evidence purge
+
+[The evidence purge](evidence-purge.md) holds this part's contracts and constraints.
 
 ## Constraints
 
@@ -127,26 +157,42 @@ const removalControlLabel = 'Remove this record';
   every moment whose span holds it.
 - A redaction removes a whole record. One record has one key, and no field has a key of its own.
 - A redaction touches only the record you name. A reply that quotes the same secret stays readable.
-- The forget writes `record.forget_started`, deletes the key, runs the session cleanup, and writes
-  `record.forgotten` last, so a rebuilt session reads the record as a gap.
+- The forget writes `record.forget_started`, deletes the key, runs the session cleanup, purges each
+  memory item that quotes the record, and writes `record.forgotten` last, so a rebuilt session reads
+  the record as a gap.
 - Each step of a forget is safe to run twice, and the server's start finishes a forget that a crash
   cut short.
 - `conversation.forget` never removes a record that holds a moment's title, note or reflection, and
   never removes a record of a memory item. You remove those by destroying the moment or forgetting
   the item.
 - A redaction never reaches a model provider: a request sent before it keeps the text.
+- A backup copied before the forget still holds the record's key. `conversation.forget` answers with
+  the key backup state, read as
+  [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state)
+  describes, and the web client shows it after the removal.
 
 ### Part 1
 
 - A tool record on a task's thread is in that task's session, so this part lands only after
   [the forget reaches a task's session](https://linear.app/zgeoff/issue/GEO-2527).
 - In the thread view, a removed tool record shows its tool name and outcome with no input or
-  content, as the built thread view shows any tool record whose key is gone. It carries no removal
-  mark.
+  content, as the built thread view shows any tool record whose key is gone.
+- `forgettableKinds` holds every record kind with an erasable field, except a kind that holds a
+  moment's title, note or reflection and a memory item's own kinds. A test fails when a codec adds
+  an erasable field to a kind that is in neither list.
+- A forget refuses a queued action that has not run with `ACTION_NOT_FINISHED`, so an action never
+  runs with its text gone. Once the action has run or you cancel it, the forget takes it.
 - The release before this part returns `RECORD_NOT_FOUND` for the added kinds.
+- When the web client hears `record.forget_started` or `record.forgotten`, it drops every text field
+  of the record: the message, the tool call's input and the tool result's content. The built handler
+  drops only the message.
+- A web client loaded before this part keeps a removed tool record's text on screen until it
+  reloads.
 
 ### Part 2
 
+- The thread view reads the same `isRemoved` and words a removed record with "removed", such as
+  "web_fetch — removed". A record whose key fails to decrypt keeps the built gap text.
 - `isGap` stays true for every gap, a removed record included, so a client built against the
   contract without `isRemoved` still shows a gap.
 - When a record's key fails to decrypt, `isGap` is true and `isRemoved` is false.
@@ -169,11 +215,37 @@ const removalControlLabel = 'Remove this record';
 ### Part 3
 
 - The moment view shows the control on each span record of a kind in `forgettableKinds`.
+- The thread view's built forget control reads the same preview before its confirm, so no web
+  control removes a record without a preview.
 - A click on the control reads the preview, and the view shows the 2 counts with a confirm. Only the
-  confirm calls `conversation.forget`.
+  confirm calls `conversation.forget`. When the preview lists a memory item, the confirm says:
+  "These memories stay, but lose their edit history, their quotes of this message, and any suggested
+  changes you haven't answered." The owner chose this wording on 13 Nov.
 - When the preview read fails, the view shows an error in place of the confirm and hides the control
   on that record. It never removes without a preview. A client of this part on the release before
   gets the failure, because the procedure does not exist there.
+
+### Part 4
+
+- The tool's one effect is `delete`, so your policy rules decide it like any tool that removes data
+  for good. The starter rules ask. A rule you add can allow the tool with no approval.
+- The definition of `delete` covers removing nixie's own records for good, as well as data in an
+  outside service.
+- The approval shows the record's kind, its text and the preview's counts, read before the approval
+  is asked.
+- The tool takes only the kinds in `forgettableKinds`, and refuses as `conversation.forget` refuses.
+  For a record of another kind, the tool's answer says that nixie cannot remove that kind of record,
+  where the API answers `RECORD_NOT_FOUND`.
+- The model names the record by an ID the session history shows. When the history shows no stable ID
+  for a record, the tool's work item adds one under the
+  [short ID rule](../../architecture/core/database.md#short-ids).
+- An allow rule for this tool lets a page or file the model reads lead it to remove records with no
+  approval. Each removal the tool makes posts a notice under nixie's reply, as a job change does, so
+  you see it afterwards.
+
+### Part 5
+
+- [The evidence purge](evidence-purge.md#constraints) holds this part's constraints.
 
 ## Decisions
 
@@ -181,6 +253,19 @@ const removalControlLabel = 'Remove this record';
   so one forget path covers the thread and every moment.
   [Moments](../../architecture/memory/moments.md)
 - **Every removal sits behind a preview.** [The memory view](../../architecture/memory/view.md)
+- **A moment shows a "removed" mark in place of a removed record.** The owner chose this on 30 Oct,
+  with one key per record, so part 2 gets built.
+- **Parts 1 to 3 get built.** The owner chose tool records and the moment view's control on 13 Nov.
+- **A redaction takes every record with its own text.** The owner chose this on 13 Nov, so a secret
+  copied into a drafted action or a task brief can be removed too.
+- **nixie can remove a record through a tool, governed by your policy rules.** The owner chose this
+  on 13 Nov, with the condition that a rule of the owner's can allow it with no approval.
+- **A removal purges the quote from each memory item that quotes the record.** The owner chose this
+  on 13 Nov. The item stays; the preview lists its text, so you can forget it apart.
+- **The names are `conversation.previewForget` and `log.forget`.** The owner chose them on 13 Nov.
+  The preview follows the API's `memory.previewForget`, and the tool follows the model's `log.read`.
+- **The thread view marks a removed record too.** The owner chose this on 13 Nov, so the thread and
+  the moment say the same thing about one record.
 - **One list of removable kinds, in the API contract package.** The built code holds 5 separate kind
   sets, and copies drift.
 
@@ -195,25 +280,8 @@ const removalControlLabel = 'Remove this record';
 
 - A key per field, and a removal of part of a record.
 - A second forget action for moments.
-- What a redaction does to a request in the turn-input log. That log's design owns it.
 - A forget control on a task's records in the web client.
 
 ## Open questions
 
-- **Which parts get built?** The owner settles it. Each part is its own work item, and an item the
-  owner does not choose closes as not planned. Until then, nothing is built. The parts in order of
-  worth: tool records, the mark, the control.
-- **Which record kinds does a redaction take?** The owner settles it: messages and replies only, as
-  built; every record of a thread that has a key, except a moment's or a memory item's own records;
-  or that set only for a record inside a kept span. Until then, part 1 adds `tool_called` and
-  `tool_result` only.
-- **Does the agent also redact, through a tool?** The owner settles it. Until then, no tool removes
-  a record.
-- **Does a redaction forget the memory items whose evidence is the record?** The owner settles it:
-  the preview lists each item for you to forget apart, or the redaction forgets each one too. Until
-  then, it forgets none.
-- **What is the preview procedure called?** The owner settles it, because the API contract package
-  is published. `memory.previewForget` already exists for memory items, and the memory store's own
-  read is `readForgetPreview`. Until then, the sketches use `conversation.previewForget`.
-- **Does the thread view mark a removed record as removed?** The owner settles it. Until then, the
-  thread view shows a removed record as it shows any record whose key is gone.
+None.
