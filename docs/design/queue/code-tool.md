@@ -1,15 +1,19 @@
 # The code tool
 
 - **Status:** draft
-- **Work items:** [the code tool](https://linear.app/zgeoff/issue/GEO-1841)
-- **Decision records:** [0017](../../decisions/0017-a-code-run-gets-a-fresh-sandbox.md)
+- **Work items:** the code tool, GEO-1841
 
 `code.run` runs a short program, such as a calculation, a file conversion or a chart, and returns
-its output and the files it wrote. Every code run gets a fresh sandbox from the code image, with no
-network, no grant and no tool route, and nixie destroys the sandbox when the call returns. The
-caller can be the conversation, a task or a worker. The files a code run writes are attachments of
-its result record, so a forget of that record makes them unreadable, and a later code run reads them
-by a short file ID.
+its output and the files it wrote. Every code run, whether the conversation, a task or a worker
+calls the tool, gets a fresh sandbox from the code image. The sandbox has no network, no grant (a
+credential the sandbox runtime adds to requests) and no tool route (the guest's way back to nixie's
+tools), as [sandboxes](../../architecture/connectors/sandboxes.md#kinds-of-work) describes. nixie
+destroys the sandbox when the tool call returns.
+
+The files a code run writes are sealed under the key of the tool call's result record, as
+[erasable fields](../../architecture/core/erasable-fields.md#keys) describes for attachments. A
+forget deletes that key, so the files become unreadable with the record's text. A later code run
+reads a file by its short file ID.
 
 This design changes the code tool section of the
 [coding design](../platform/connectors/coding.md#the-code-tool), and adds the `code` key to
@@ -209,29 +213,30 @@ the input schema:
 
 ## Constraints
 
-The sandbox:
+### The sandbox
 
-- Each code run creates its own sandbox of kind `code_run`, from the code image at the `codeRun`
-  row, with egress `none`, no grant and no tool route. No code run reuses a sandbox, the caller's
-  included.
-- The sandbox's owner is `code_run:<callID>`. The built start recovery destroys every sandbox whose
-  owner it does not keep, so a code sandbox left by a crash goes at the next start.
+- Each code run creates a sandbox of its own, of kind `code_run`, from the code image at the
+  `codeRun` row, with egress `none`, no grant and no tool route. A code run never runs in the
+  caller's sandbox.
+- The sandbox's owner is `code_run:<callID>`. At each start, nixie destroys every sandbox whose
+  owner is not the conversation, a memory task or an open started task, so a code sandbox that a
+  crash left goes at the next start.
 - nixie destroys the sandbox on every way out of the call, a refusal after the create and a thrown
   error included. The sandbox holds plain copies of the inputs and outputs, so nixie tries a failed
   destroy again every 60 s until it succeeds, and the sandbox counts towards `runsAtOnce` until
-  then. Start recovery removes a sandbox that a stop of nixie left.
+  then.
 - The program runs as the user `code`, in the work folder `/work`. Each input file lands at
-  `/work/<path>`, the program at a path outside `/work`, and each skill folder at `/skills/<name>/`
+  `/work/<path>`, the program at a path outside `/work`, and each skill folder at `/skills/<name>/`,
   owned by root and read-only to `code`.
 - `language` picks the command: `python3` for `python`, `bun` for `javascript` and `typescript`,
   `bash` for `bash`.
-- When `runsAtOnce` code runs already run, a call gets the error "2 code runs already run, which is
-  the most at once. Call again when one has returned." and creates nothing.
+- When `runsAtOnce` code runs are in progress, a call creates nothing and gets the error "2 code
+  runs are in progress, which is the most at once. Call again when one has returned."
 
-The limits:
+### The limits
 
-- Each limit the program reaches gives the result its `limit` and the sentence below. The checks run
-  in table order, and the result holds the first one hit.
+Each limit the program reaches applies its effect, and `limit` holds the first one in table order. A
+program that passes 1 MiB of output and writes 60 files gets `output` as its `limit`, and no files.
 
 | `kind`      | When                                                  | Sentence                                                                                                             |
 | ----------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -240,44 +245,54 @@ The limits:
 | `output`    | a stream passed 1 MiB                                 | The program wrote more than 1 MiB to {stream}, and nixie kept the first 1 MiB.                                       |
 | `files`     | out/ holds more than 50 files or more than 20 MiB     | The program wrote {count} files of {size} under out/, past the limit of 50 files and 20 MiB, so nixie returned none. |
 
-- The memory check reads the count through `readMemoryKills` from
+- nixie reads the guest's count of memory kills through `readMemoryKills` from
   [the memory-kill signal](memory-kill-signal.md), before and after the program. When the count
-  cannot be read, a program that ended on `SIGKILL` that nixie did not send gets the `memory` limit.
-- A code run's memory kill is the program's limit, and never a sign that the `codeRun` row is too
-  small.
+  cannot be read, a program that ended on a `SIGKILL` that nixie did not send gets the `memory`
+  limit.
+- A memory kill in a code run never raises the `codeRun` row, because the program chose how much
+  memory to use. [The size table](sandbox-sizes.md) raises a row after a memory kill of any other
+  kind.
 - The whole call ends within `callMs`. Past it, nixie destroys the sandbox, and the call returns the
   tool error "The code run took more than 120 s, so nixie stopped it." The runtime's own wait for a
   tool call follows [the tool-call wait](tool-call-wait.md).
 
-The refusals, each a tool error before the program starts:
+### The refusals
 
-- A `file` that is not in `code_files`, or whose row holds another thread: "No file {file} belongs
-  to this thread."
-- A `file` whose record reads as shredded or unreadable: "The file {file} was forgotten."
-- A `page` that the call's session does not hold, or a call with no session: "No page {page} is
-  stored in this session." The model then fetches the page again.
-- A skill outside the caller's pinned list: "No skill {name} is on this task's list."
+Each refusal is a tool error before the program starts:
+
+- A `file` with no `code_files` row, or whose row holds another thread: "No file {file} belongs to
+  this thread."
+- A `file` whose result record a forget made unreadable: "The file {file} was forgotten."
+- A `page` that the page store does not hold under the call's session key, or a call with no
+  session, such as a worker's: "No page {page} is stored in this session." The model then fetches
+  the page again. Pages last one session, as
+  [pages and parts](../../architecture/connectors/web-fetch.md#pages-and-parts) describes.
+- A skill outside the skills the calling task pinned: "No skill {name} is on your skill list." The
+  conversation is a task, so it pins skills too.
 - Inputs past `inputBytes`: "The inputs come to {size}, past the limit of 64 MiB."
 - A sandbox that fails to start: "nixie could not start the code sandbox. A second call starts a new
   one."
 
-The files:
+### The files
 
-- The host lists `/work/out/` after the program ends, and copies nothing out when the list passes
+- After the program ends, nixie lists `/work/out/`, and copies nothing out when the list passes
   either `files` limit.
 - When a stream passes 32 KiB, nixie keeps the stream, up to 1 MiB, as a file with the path
   `.stdout` or `.stderr`. The two stream files count toward neither `files` limit.
-- Each file the result returns is one attachment of the `tool_result` record, and one `code_files`
-  row written in the same transaction. A file never sits in a payload or in an erasable field.
+- Each file the result returns is one attachment of the `tool_result` record and one `code_files`
+  row, written in the same transaction. A file's bytes never sit in the record's plain payload or in
+  its encrypted text fields.
 - A file ID resolves only on its own thread. A worker's tool calls write their records on the
   caller's thread, so the caller reads the files of its worker's code runs.
 - `mediaType` comes from the file's bytes for PNG, JPEG, GIF and WebP, else from its extension, else
   `application/octet-stream`.
-- Up to 4 image files reach the model beside the result, each fitted as the web fetch fits an image,
-  and each one counts against the session's images through `reserveImages`. When the call has no
-  `reserveImages`, or the session refuses an image, the file's `isShown` is false.
-- The result record's form adds each skill's name and content hash, and the sandbox ID.
-- When the call has a session, the transaction that writes the result checks first that no forget
+- Up to 4 image files reach the model beside the result, each scaled as
+  [web fetch images](../../architecture/connectors/web-fetch-images.md) are. Each one counts against
+  the session's image caps through the session's `reserveImages`. When the call has no session, or
+  the session refuses an image, the file's `isShown` is false.
+- The result record holds each skill's name and content hash, and the sandbox ID, beside the result.
+  The model never receives these fields.
+- When the call has a session, the transaction that writes the result first checks that no forget
   ended the session, as the web fetch's page write does. When one did, nixie writes no attachment
   and no `code_files` row, and the call returns the tool error "A forget ended this session during
   the code run, so nixie kept nothing from it."
@@ -286,67 +301,68 @@ The files:
 - Each code run can add up to 22 MiB to `nixie.db` and to each backup: 20 MiB of files and two
   stream files of 1 MiB.
 
-The image and the release:
+### The image and the release
 
 - The `code` key follows every rule of [the image set](sandbox-image-set.md): its record, the
   `code_run` part's `images`, a release job, an Images build step and a public registry package.
-- The `codeRun` row follows [the size table](sandbox-sizes.md), and its 512 MiB covers the highest
-  peak that the image's probe measured, 278 MiB for pandas reading a 55 MB CSV.
+- The `codeRun` row follows [the size table](sandbox-sizes.md). Its 512 MiB covers the highest peak
+  that the image's probe measured: 278 MiB, for pandas reading a 55 MB CSV.
 
 ### A rollback
 
-The release a rollback returns to lacks the code tool. What it does with each thing this design
-adds:
+The release a rollback returns to lacks the code tool. What that release does with each thing this
+design adds:
 
-| Added                                                 | The release before                                                                                                       |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| the `code_files` migration                            | runs on it unchanged, because the migration only adds a table, and never reads the table                                 |
-| attachments of a `tool_result`                        | never reads them; a forget of the record still deletes the key that seals them                                           |
-| `tool_called` and `tool_result` records of `code.run` | reads them as it reads any tool record                                                                                   |
-| `sandbox.created` of kind `code_run`                  | reads it, because the built kind list holds `code_run`; its start recovery destroys the sandbox                          |
-| the `code` image key and the `codeRun` row            | never meets them: each release's nixie image holds its own manifest, and a size is a constant                            |
-| a started task with `code.run` on its tool list       | keeps the list, and the registry stage denies each call of `code.run`                                                    |
-| a definition that lists `code.run`                    | refuses its start as `wider_tools`, so a definitions seed refuses as `start_refused` and keeps the last seed it accepted |
+| Added                                                 | The release before                                                                                       |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| the `code_files` migration                            | runs unchanged, because the migration only adds a table; the release never reads the table               |
+| attachments of a `tool_result`                        | never reads them; a forget of the record still deletes the key that seals them                           |
+| `tool_called` and `tool_result` records of `code.run` | reads them as it reads any tool record                                                                   |
+| `sandbox.created` of kind `code_run`                  | reads it, because its list of kinds holds `code_run`; its start destroys the sandbox                     |
+| the `code` image key and the `codeRun` row            | never meets them: each release's nixie image holds its own manifest, and a size is a constant            |
+| a started task with `code.run` on its tool list       | keeps the list, and refuses each call of `code.run` as a tool it does not have                           |
+| a task definition that lists `code.run`               | refuses to start that task, and so refuses the whole seed of the definitions repo and keeps the last one |
 
-- A rollback that needs new definitions seeds takes `code.run` out of each definition first.
+Before a rollback, the operator takes `code.run` out of each task definition in the definitions
+repo, when the release before must take new seeds.
 
 ## Decisions
 
-- **A code run from a worker gets a fresh code sandbox, as from any other caller.** Every code run
-  gets the same image and limits, the worker keeps the smaller conversation image, and the worker's
-  model credential and context stay out of the program's reach.
-  [0017](../../decisions/0017-a-code-run-gets-a-fresh-sandbox.md)
-- **The code run's files are attachments of its result record.** A forget of that one record then
+- **A code run from a worker gets a fresh code sandbox, as from any other caller.** An agent's call
+  on 13 Nov 2026, from the owner's answer on the code image and its 512 MB: the owner sized one
+  image for one code run, a worker keeps the conversation image with no Python, and the program
+  never runs beside the worker's model credential or its context.
+- **A code run's files are attachments of its result record.** A forget of that one record then
   makes its files unreadable in every copy, backups included, with no store of its own to clean.
-- **A code run's limits are constants, with no definition key.** An agent's call on 13 Nov: the size
-  table rules out a size per job, and a new `task.yaml` key would make every older release refuse
-  the whole seed. A task that needs more waits for a measured reason to raise a constant.
-- **A file ID resolves only on its own thread.** An agent's call on 13 Nov: the smallest scope that
-  serves a task and its workers. Passing a file between threads waits for a need.
-- **Input files are earlier code runs' files and stored web pages.** An agent's call on 13 Nov:
-  these are the only bytes nixie holds under a short ID. The images you send carry a marker ID that
-  changes on each render, so they are not inputs.
+- **A code run's limits are constants, with no key in a task definition.** An agent's call on 13 Nov
+  2026: [the size table](sandbox-sizes.md) holds every size as a constant, and a new `task.yaml` key
+  would make every older release refuse the whole seed.
+- **A file ID resolves only on its own thread.** An agent's call on 13 Nov 2026: the smallest scope
+  that serves a task and its workers.
+- **Input files are earlier code runs' files and stored web pages.** An agent's call on 13 Nov 2026:
+  nixie holds no other bytes under an ID that lasts. An image in a message carries a marker ID that
+  changes on each render, so it is not an input.
 - **The result shows 32 KiB of each stream and keeps up to 1 MiB as a file.** An agent's call on 13
-  Nov: 1 MiB of text in one result would fill most of a model's context, and the kept file lets the
-  next code run read the rest.
-- **At most 2 code runs at once, and a third is refused.** An agent's call on 13 Nov: each code run
-  holds 512 MiB of host memory, and a refusal is easier to reason about than a queue inside a tool
-  call.
-- **Every deployment pulls the code image, with no config switch.** An agent's call on 13 Nov: a
-  switch is a config key that a rollback must remove first, for an image of about 690 MB.
+  Nov 2026: 1 MiB of text in one result would fill most of a model's context, and the kept file lets
+  the next code run read the rest.
+- **At most 2 code runs at once, and a third is refused.** An agent's call on 13 Nov 2026: each code
+  run holds 512 MiB of host memory, and a refusal is easier to reason about than a queue inside a
+  tool call.
+- **Every deployment pulls the code image, with no config switch.** An agent's call on 13 Nov 2026:
+  a switch is a config key that a rollback must remove first, for an image of about 690 MB.
 
 ## Builder decides
 
 - The name and place of the code image's Dockerfile, beside the other guest images.
 - How nixie sets the skill folders read-only and runs the program as `code`.
-- The extension table for `mediaType`, and how the host lists `out/`.
+- The extension table for `mediaType`, and how nixie lists `out/`.
 - Test names and layout, and the wording of the tool's description.
 
 ## Out of scope
 
-- How a file a code run writes reaches you. Until the owner settles it in
-  [the code tool](https://linear.app/zgeoff/issue/GEO-1841), the files reach only the model.
-- The images you send as inputs, until the image marker carries a stable file ID.
+- A way for the files a code run writes to reach the person nixie works for. The files reach only
+  the model, and the question stays open in the code tool's work item.
+- An image in a message as an input. It waits for a marker ID that lasts.
 - Network access, a package installer, and an image or size per caller.
 - Coding sessions, which the [coding design](../platform/connectors/coding.md#the-coding-adapter)
   covers.
