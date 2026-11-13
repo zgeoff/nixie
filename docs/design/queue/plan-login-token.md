@@ -6,8 +6,8 @@
 A task on the Codex harness can run on your ChatGPT plan in place of an OpenAI API key. The counting
 proxy, the process on the host that counts and limits every model request, holds the plan's refresh
 token in a file of its own. The proxy refreshes the token and sets the access token on each plan
-request itself. The nixie server and every sandbox hold only placeholders, so each plan request goes
-through the proxy's count and its spending stop.
+request itself. The nixie server and every sandbox hold only placeholders, so every plan request
+passes through the proxy, which counts it under the spending stop.
 
 Terms:
 
@@ -16,7 +16,6 @@ Terms:
 - A **plan profile** is a `codex` model profile whose requests go to a plan route.
 - The **login file** is the file in which the proxy keeps a plan route's login.
 - The **operator** is the person who runs commands on the host.
-- The **earlier release** is the nixie release, or the proxy release, that a rollback returns to.
 - **impd** is the daemon that runs each sandbox as an imp. Its **broker** adds a granted secret to a
   sandbox's requests for one host, and a **grant**'s path filter limits the paths it covers
   ([sandboxes](../../architecture/connectors/sandboxes.md#the-imp-adapter)).
@@ -52,7 +51,7 @@ codex-plan:
   api: openai-responses
   upstream: https://chatgpt.com/backend-api/codex # the proxy adds the rest of the path
   model: gpt-6-luna
-  prices: { … } # equal to the plan profile's prices
+  prices: { … } # the prices the count and the stop use
   login: # present only on a plan route
     file: /var/lib/counting-proxy/logins/codex-plan.json
     routeKeyFile: /run/secrets/codex-plan-route-key # one line: the route key
@@ -201,11 +200,11 @@ const logins = await readPlanLogins(context);
 
 The status and the reason follow each refresh's answer:
 
-| The answer to a refresh                                                                         | Status        | Reason          |
-| ----------------------------------------------------------------------------------------------- | ------------- | --------------- |
-| a token                                                                                         | `active`      | null            |
-| `refresh_token_expired`, `refresh_token_reused`, `refresh_token_invalidated` or `invalid_grant` | `needs_login` | `refused`       |
-| a 5xx or no answer within 10 s, 3 times in a row, counted together                              | `failing`     | the last answer |
+| The answer to a refresh                                                                         | Status        | Reason                                                                   |
+| ----------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------ |
+| a token                                                                                         | `active`      | null                                                                     |
+| `refresh_token_expired`, `refresh_token_reused`, `refresh_token_invalidated` or `invalid_grant` | `needs_login` | `refused`                                                                |
+| 3 in a row of a 5xx or no answer within 10 s, in any mix                                        | `failing`     | `service_error` after a 5xx, `no_answer` after no answer, from the third |
 
 - A `failing` login keeps its retries, with backoff, and returns to `active` on the first token.
 - A `needs_login` login stops its refreshes until the next `counting-proxy login`.
@@ -246,20 +245,21 @@ The status and the reason follow each refresh's answer:
   stop cover plan turns as they cover every other profile.
 - On a plan route, the proxy refuses with a 400 a body that sets `service_tier`. A faster tier
   spends bought credits at a higher rate than the route's prices count. The guest sets no tier.
-- The operator sets the plan profile's prices, and the route's equal prices, to the API prices of
-  the same model. A plan has no price per token, but Codex usage past the plan's limit can draw on
-  bought credits, so the dollar limit bounds that spend.
+- The route's prices are the one source for the count and the stop. The profile's prices price
+  nixie's own records of a turn, and the operator sets them equal to the route's. The operator sets
+  both to the API prices of the same model: a plan has no price per token, but Codex usage past the
+  plan's limit can draw on bought credits, so the dollar limit bounds that spend.
 
 ### A rollback
 
-| The change                         | The earlier release                                      |
-| ---------------------------------- | -------------------------------------------------------- |
-| a route's `login` key              | the earlier proxy refuses to start: its schema is strict |
-| the login file                     | the earlier proxy never reads it                         |
-| `/responses` in the endpoint table | the earlier proxy refuses that path with a 403           |
-| `GET /logins`                      | earlier nixie never calls it                             |
-| a profile's `plan_login` key       | earlier nixie refuses to start: its schema is strict     |
-| `chatgptLogin` in the turn profile | earlier nixie never sends it                             |
+| The change                         | The release a rollback returns to                 |
+| ---------------------------------- | ------------------------------------------------- |
+| a route's `login` key              | that proxy refuses to start: its schema is strict |
+| the login file                     | that proxy never reads it                         |
+| `/responses` in the endpoint table | that proxy refuses that path with a 403           |
+| `GET /logins`                      | that nixie never calls it                         |
+| a profile's `plan_login` key       | that nixie refuses to start: its schema is strict |
+| `chatgptLogin` in the turn profile | that nixie never sends it                         |
 
 To roll back:
 
@@ -269,18 +269,20 @@ To roll back:
 3. Delete each plan profile's impd secret with impd's root token, through impd's secret delete call.
    The [names in impd](../../architecture/deployment/impd-names.md#model-secrets) rules give the
    secret's name. Expect: impd's secret list no longer names it.
-4. Start the earlier proxy. Expect: it starts and serves the other routes.
-5. Start earlier nixie. Expect: it starts.
+4. Start the proxy release a rollback returns to. Expect: it starts and serves the other routes.
+5. Start the nixie release a rollback returns to. Expect: it starts.
 
 Each login file stays on disk, so a release that reads it again keeps the login. Run
 `counting-proxy logout` before step 4 to end the login.
 
 ## Decisions
 
-- **The counting proxy holds the plan login.** Interim, until the owner answers the first open
-  question below. While the spending stop is set, the server holds no model credential, so a plan
-  login in the server would let nixie's own code reach ChatGPT past the count. The proxy already
-  sits on every plan request.
+- **The counting proxy holds the plan login.** Interim until the owner answers
+  [GEO-2238](https://linear.app/zgeoff/issue/GEO-2238), because
+  [decision 8](https://linear.app/zgeoff/document/decision-how-nixie-chooses-and-calls-models-beyond-claude-geo-2231-39da60c58643)
+  named nixie's credential store. While the spending stop is set, the server holds no model
+  credential, so a plan login in the server would let nixie's own code reach ChatGPT past the count.
+  The proxy already sits on every plan request.
 - **The proxy sets the access token itself, and impd holds only the route key.** An agent's call on
   13 Nov 2026: in impd, only a host-wide token can replace a secret's value, and that token reaches
   every imp on the host.
@@ -317,15 +319,7 @@ Each login file stays on disk, so a release that reads it again keeps the login.
 
 ## Open questions
 
-The owner settles each one in [the plan login work item](https://linear.app/zgeoff/issue/GEO-2238),
-and the interim stands until then:
-
-- **The counting proxy holds the plan login, where decision 8 of the
-  [models decision](https://linear.app/zgeoff/document/decision-how-nixie-chooses-and-calls-models-beyond-claude-geo-2231-39da60c58643)
-  named nixie's credential store.** Interim: the proxy, so every model request goes through the
-  stop.
-- **Where does the one-time login run, and what does it show?** Interim:
-  `counting-proxy login --config <config file> --route <route ID>`, which shows the URL, the code
-  and its expiry, then the account's email and plan.
-- **The names `plan_login`, `login`, `GET /logins` and `counting-proxy login`.** Interim: those
-  names.
+The owner settles the open questions in
+[the plan login work item](https://linear.app/zgeoff/issue/GEO-2238): who holds the plan login,
+where the one-time login runs, and the names. This design follows the interim that the work item
+gives for each.
