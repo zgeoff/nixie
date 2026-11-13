@@ -23,7 +23,7 @@ Every field except the ID and the outcome is optional, and a missing match field
 | `definitions`  | Task definition IDs, for a rule that covers only some of them   |
 | `checks`       | Argument checks, each an argument path, an operator and a value |
 | `destinations` | Patterns that the call's destinations must match                |
-| `sources`      | For `note`: `owner`, `own_data`, `task` or `outside`            |
+| `sources`      | For `memory_write`: `owner`, `own_data`, `task` or `outside`    |
 | `lift`         | For a lifting rule: a per-action cap and the budget it draws on |
 | `expires`      | When the rule stops matching, for a mandate                     |
 | `mandate`      | The mandate the rule belongs to                                 |
@@ -61,9 +61,9 @@ content sources read strictly in both directions:
 - **A deny or ask rule catches a call when it catches any part of it.** One shared effect, one
   element that passes a check, one destination that matches, or one shared source is enough.
 
-How the host resolves a memory write's sources, `task` included, is open in
-[the rules core issue](https://linear.app/zgeoff/issue/GEO-1801). A write whose sources the host
-cannot resolve counts as `outside`, so no allow rule for trusted content covers it.
+[Memory writes on rules](../../queue/approval-record.md#memory-writes-on-rules) sets how the host
+resolves a memory write's sources. A write whose sources the host cannot resolve counts as
+`outside`, so no allow rule for trusted content covers it.
 
 ### Rendering
 
@@ -179,7 +179,7 @@ the mandate ended.
 
 The starter rule set ships as a template in the definitions scaffold that you copy, never as rules
 built into the public repo, because the principle "Behaviour is data" keeps policy out of the system
-tier. It has 9 rules:
+tier. It has 10 rules:
 
 | Rule                        | Outcome | Matches                                               |
 | --------------------------- | ------- | ----------------------------------------------------- |
@@ -192,12 +192,15 @@ tier. It has 9 rules:
 | `ask-permanent-deletes`     | Ask     | Effect `delete`                                       |
 | `ask-exports`               | Ask     | Effect `export`, such as a memory or event log export |
 | `ask-stranger-with-memory`  | Ask     | `task.start/nixie` with `memory: read` and no persona |
+| `ask-coding-sessions`       | Ask     | `task.start/atc`                                      |
 
 The always-ask set and the destination limits hold whatever the starter rules say, so the set is
 permissive inside those bounds. An effect the set does not mention, such as `device`, falls to "no
-rule matched" until you add a rule. No starter rule matches `note`, so every memory write runs the
-full memory gate, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)
-covers.
+rule matched" until you add a rule. `allow-notes` allows every `note` call, and no starter rule
+allows `memory_write`, so every memory write runs the full memory gate, as the
+[memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers. Until memory writes
+declare `memory_write`, they declare `note`, and the memory tools' own gate decides them after
+`allow-notes`, as the [decision point cutover](../../queue/decision-point-cutover.md) says.
 
 ### Jobs
 

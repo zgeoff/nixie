@@ -19,6 +19,10 @@ The dashboard lists the conversation first, then every task in 4 groups: needs y
 (`paused`, `stopped`, `failed`) and finished in the last 7 days. Each row shows the title, state,
 last update and what the task waits on, such as "approval: send email". A job run also shows its
 scheduled time and whether it is a catch-up. The dashboard filters by job and state.
+[Dashboard states, fires and filters](../../queue/live-view-dashboard.md) gives the contracts.
+Whether the dashboard takes the 4 groups is
+[open for the owner](https://linear.app/zgeoff/issue/GEO-2650), and until it is settled the
+dashboard keeps the 3 groups that design maps.
 
 ## A task as a conversation
 
@@ -28,6 +32,10 @@ decision and its rule, a worker its question, answer and sources, a proposal its
 [card](approvals.md), an action its recorded outcome, and a memory read or write its items and
 versions. Every line offers its raw record, and a record with no renderer still shows by its kind.
 **Why:** nothing is hidden. Payloads over 4 KB load on demand.
+[Worker runs and large payloads](../../queue/task-view-records.md) gives the contracts of the worker
+line and of the load on demand. Whether each line offers its raw record is
+[open for the owner](https://linear.app/zgeoff/issue/GEO-1837), and until it is settled no line
+offers it.
 
 ## Stepping in
 

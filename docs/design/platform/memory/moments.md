@@ -24,10 +24,6 @@ Each extension below keeps the same contract:
 - **Semantic search:** titles, notes and reflections in the local encoder index from
   [memory in context](context.md#retrieval), for `moment.find` and the timeline only.
 - **Redaction:** removing one part of a span, such as a pasted secret, with a mark in its place.
-- **Several threads:** one moment over several spans, such as a conversation and the task it
-  started.
-- **Links from rules:** a rule in the definitions source that refers to a moment.
-- **Behaviour checks:** kept moments replayed as cases after a model swap.
 
 ## What a moment holds
 

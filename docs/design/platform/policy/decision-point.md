@@ -32,11 +32,11 @@ last stage always decides, so every call gets exactly one decision.
 Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order never matters, as
 [rules](rules.md#evaluation-order) covers.
 
-A call whose effects include `note` never reaches stages 8 and 9. When no stage before them decides
-it, the memory gate decides it in their place, and the write applies at once or becomes a memory
-proposal, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers.
-**Why:** the gate's checks are the default for a memory write, so consent never lets a direct
-"remember that" skip them.
+A call whose effects include `memory_write` never reaches stages 8 and 9. When no stage before them
+decides it, the memory gate decides it in their place, and the write applies at once or becomes a
+memory proposal, as the [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup)
+covers. **Why:** the gate's checks are the default for a memory write, so consent never lets a
+direct "remember that" skip them.
 
 The caller's tool list at stage 2 is the job's list for a job run, and the subset its caller passed
 for a worker, so delegation only narrows. A connector tool on the list names the connections it may
@@ -54,52 +54,58 @@ applies; [actions](../core/actions.md) covers how an approval answers each outco
 Slice 1 builds the registry and scope stages and one fixed rule in code, `slice1.read-only`, in
 place of stages 3 to 9. The fixed rule allows a call whose effects are only `read`, `fetch` or
 `note`. It denies every other call, and the decision record names the fixed rule as the deciding
-stage. The model receives the rule's ID and sentence as the tool result. **Why:** proposals arrive
-in slice 3, so a call that would ask has nowhere to wait.
+stage. The model receives the rule's ID and sentence as the tool result. **Why:** a call that would
+ask has nowhere to wait until the cutover adds the action proposal.
 
 A [test build](../../../architecture/code-layout.md#test-builds) registers one more rule,
 `test.allow-send`, which allows `test.send` from the crash tests' test connector. A release build
-holds only the fixed rule. Slice 3 replaces both rules with the full pipeline and your seeded rules.
+holds only the fixed rule. The [decision point cutover](../../queue/decision-point-cutover.md), in
+slice 5, replaces the fixed rule with the full pipeline and your seeded rules, and says what happens
+to the rules beside it.
 
 ## Effects
 
 Every tool declares its effects in nixie's tool registry, and rules match on them:
 
-| Effect          | The tool                                                                   |
-| --------------- | -------------------------------------------------------------------------- |
-| `read`          | Reads your data or nixie's own state                                       |
-| `fetch`         | Reads outside content, such as a web page or search results                |
-| `note`          | Writes inside nixie, such as a note, a memory proposal or a message to you |
-| `note`          | Creates, edits or retires a memory item                                    |
-| `write`         | Changes data in your outside service that the service can restore          |
-| `delete`        | Removes data for good, in your outside service or in nixie's own records   |
-| `send`          | Reaches a person or service other than you                                 |
-| `spend`         | Spends money                                                               |
-| `schedule`      | Creates or changes a job                                                   |
-| `code_run`      | Runs code in the caller's sandbox under its recorded grant boundary        |
-| `device`        | Acts on a physical device, such as a light or a lock                       |
-| `policy_widen`  | Adds or loosens an allow rule, removes a deny or ask rule, or adds a lift  |
-| `policy_narrow` | Removes or tightens an allow rule, or adds a deny or ask rule              |
-| `budget_raise`  | Raises a budget                                                            |
-| `budget_lower`  | Lowers a budget                                                            |
-| `export`        | Writes decrypted personal data out of nixie to a place you pick            |
+| Effect          | The tool                                                                     |
+| --------------- | ---------------------------------------------------------------------------- |
+| `read`          | Reads your data or nixie's own state                                         |
+| `fetch`         | Reads outside content, such as a web page or search results                  |
+| `note`          | Writes inside nixie, such as a note, a memory proposal or a message to you   |
+| `memory_write`  | Creates, edits or retires a memory item                                      |
+| `write`         | Changes data in your outside service that the service can restore            |
+| `delete`        | Removes data for good, in your outside service or in nixie's own records     |
+| `send`          | Reaches a person or service other than you                                   |
+| `spend`         | Spends money                                                                 |
+| `schedule`      | Creates or changes a job                                                     |
+| `code_run`      | Runs code in a fresh sandbox with no network and no grant                    |
+| `coding_start`  | Starts a coding session outside nixie, which nixie does not see call by call |
+| `device`        | Acts on a physical device, such as a light or a lock                         |
+| `policy_widen`  | Adds or loosens an allow rule, removes a deny or ask rule, or adds a lift    |
+| `policy_narrow` | Removes or tightens an allow rule, or adds a deny or ask rule                |
+| `budget_raise`  | Raises a budget                                                              |
+| `budget_lower`  | Lowers a budget                                                              |
+| `export`        | Writes decrypted personal data out of nixie to a place you pick              |
 
-A tool's effects are fixed per tool and never depend on its arguments. A capability whose effects
-differ by argument splits into tools: moving an email to the trash is a `write`, and purging it is a
-`delete`. **Why:** a rule then reads the same for every call of a tool, and the tool's name tells
-you its risk. Creating a job carries `schedule` plus the effects of every tool on the job's list, so
-your rules decide which jobs nixie schedules on its own.
+A tool's effects are fixed per tool and never depend on its arguments, except through a declared
+discriminator that picks a registered variant, such as `runner` on `task.start`. Each variant has a
+fixed declaration and a rule name of its own, such as `task.start/atc`, as
+[the coding session runner](../../queue/coding-session-runner/runner.md#the-start-and-the-policy)
+sets out. Any other capability whose effects differ by argument splits into tools: moving an email
+to the trash is a `write`, and purging it is a `delete`. **Why:** a rule then reads the same for
+every call of a tool, and the tool's name tells you its risk. Creating a job carries `schedule` plus
+the effects of every tool on the job's list, so your rules decide which jobs nixie schedules on its
+own.
 
 A tool also declares which arguments are destinations, which argument holds the amount for a
 `spend`, which arguments are free-text content, and the source of each field of its result. Effect
 declarations are policy data that you can read and edit. Removing an effect from a declaration
 counts as a widening, because it can move a call out of the always-ask set or past an ask rule.
 
-A `code_run` call from the conversation or an ordinary task gets a fresh sandbox with no grants. In
-a worker, it runs in the worker's own sandbox, whose one grant is the model-API credential. The
-sandbox adapter records the actual placement and grants, and the resolved execution profile is part
-of the action hash. Model requests from worker code pass through the counting proxy on the host and
-count against the same budgets, so `code_run` never bypasses the spending limits.
+Every `code_run` call, from the conversation, a task or a worker, gets a fresh sandbox with no
+network and no grants, as [the code tool](../../queue/code-tool.md) sets out. The sandbox record
+holds its spec, so the log shows that the program ran with no grant. A program holds no credential,
+so `code_run` never reaches a budget.
 
 ### The always-ask set and narrowing changes
 
@@ -117,8 +123,9 @@ conversation is always untrusted, and the first build treats every job run as un
 stage 5 runs for every call with a destination. A destination has standing permission when it is:
 
 - you, through nixie's own channels
-- the reply target: the sender of a message that nixie read through a connector, which the tool
-  resolves from the message ID, never from text the model wrote
+- the reply target, for that one reply or response alone: the sender of a message, or the organizer
+  of a calendar event, that nixie read through a connector, which the tool resolves from the message
+  or event ID, never from text the model wrote
 - a contact you marked as known in the client
 - in the allowed destinations of the job that runs the call
 - matched by the destinations of an allow rule that matches the call

@@ -225,7 +225,10 @@ declare function pickReportMode(
 - A record between one task run's end and the next one's open, such as a message that lands after a
   report, belongs to no task run until a claim opens one for it.
 - Every count of a task run's use reads through `readRunRecords`.
-- A runner never writes one of the 3 kinds and never writes the limit hold.
+- A runner never writes one of the 3 kinds and never writes the limit hold. A runner with no model
+  ends a task run by returning `StepResult.run.report`, and the commit writes
+  `task.run_report_requested` from it, as
+  [the coding session runner](../coding-session-runner/runner.md#what-one-step-does) sets out.
 
 ### Ending a task run
 
@@ -236,7 +239,7 @@ These rows end the task run:
 
 | The commit finds                                   | End cause   | The task's next state                         |
 | -------------------------------------------------- | ----------- | --------------------------------------------- |
-| a report request in this task run                  | `reported`  | what the step asked                           |
+| a report request, or `StepResult.run.report`       | `reported`  | what the step asked                           |
 | a reached limit in `StepResult.run`                | `limit`     | `paused`, under the limit hold                |
 | the runner returned `done`                         | `no_report` | `done`, and `waiting` for a definition's task |
 | a first step with `StepResult.run.activity` `none` | `no_work`   | `waiting`                                     |
@@ -246,7 +249,8 @@ These rows leave the task run open, and the task takes the next state the step a
 
 - more work queued for the task, including a turn that an interrupt cut, which keeps its built
   `isInterrupted` mark;
-- an open wait for a reply to a message the task sent;
+- an open wait for a reply to a message the task sent, or an open event wait
+  ([mail and calendar polls](../mail-and-calendar-polls.md#event-waits));
 - a quiet turn, when the task is wakeable.
 
 - Until [the wake rule](https://linear.app/zgeoff/issue/GEO-1865) renames it, "wakeable" reads the
@@ -301,8 +305,9 @@ In the ending transaction, the end writer takes the first row that applies:
 
 ### Limits, a raise and call caps
 
-- `turns` and `dollars` are meters. Before each step, nixie reads both against the open task run's
-  `limits`. A meter at its limit makes the step run no turn and ends the task run with `limit`.
+- `turns` and `dollars` are meters. Before each step, nixie reads each meter that the runner's
+  definition lists against the open task run's `limits`. A meter at its limit makes the step run no
+  turn and ends the task run with `limit`.
 - The pre-step read skips `calls`. A call past its cap is denied, and the task run goes on.
 - The turns meter counts the task run's `model.turn_ended` records. The dollars meter applies the
   built count rule of `readTaskUsage` to the task run's records from `readRunRecords`, so a limit
@@ -400,7 +405,6 @@ In the ending transaction, the end writer takes the first row that applies:
 
 - A hook for another module to write in the ending transaction.
 - An ordinal or a short ID for a task run.
-- A declared list, per runner, of the limits it can meter.
 - Parsing a definition file, `pickRunDefinition` and the `trigger` block: the task definitions
   design owns them.
 - A close of a started task that reported. Its sandbox sleeps until you close it.

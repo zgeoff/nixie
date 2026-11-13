@@ -149,9 +149,8 @@ nixie is not a coding agent. It runs code for general work in a disposable imp w
 it steers coding agents through a coding adapter, atc first
 ([the coding adapter design](design/platform/connectors/coding.md)). Every external MCP server
 reaches the model only through a proxy that pins each tool by hash
-([0009](decisions/0009-mcp-proxy.md), [MCP proxy](design/platform/connectors/mcp-proxy.md)). atc
-connects as an external server over HTTP, configured by the deployment
-([MCP proxy](design/platform/connectors/mcp-proxy.md)).
+([0009](decisions/0009-mcp-proxy.md), [MCP proxy](design/platform/connectors/mcp-proxy.md)). The
+first external server is a hosted MCP server of your own over HTTPS, configured by the deployment.
 
 ## Deployment
 

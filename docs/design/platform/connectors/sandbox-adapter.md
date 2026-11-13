@@ -115,18 +115,16 @@ it.
 
 ## Images
 
-| Image        | Holds                                                              | Used by                         |
-| ------------ | ------------------------------------------------------------------ | ------------------------------- |
-| Conversation | A minimal base, Bun, and the SDK with its Claude Code build        | The conversation                |
-| Code         | A familiar Linux environment with Node.js, Python and common tools | Code runs outside a worker      |
-| Fetch        | A minimal base and the fetcher that extracts a page's text         | The fetch sandbox               |
-| Worker       | The conversation image plus the code runtimes                      | Workers                         |
-| Coding       | The conversation image plus git and your toolchains                | Built-in coding sessions, later |
+| Image        | Holds                                                       | Used by                         |
+| ------------ | ----------------------------------------------------------- | ------------------------------- |
+| Conversation | A minimal base, Bun, and the SDK with its Claude Code build | The conversation and workers    |
+| Code         | Python with data libraries, Bun, and a command-line toolbox | Every code run                  |
+| Fetch        | A minimal base and the fetcher that extracts a page's text  | The fetch sandbox               |
+| Coding       | The conversation image plus git and your toolchains         | Built-in coding sessions, later |
 
-The code and worker images hold Node.js and Python, and a toolbox with a shell, jq, ripgrep, grep
-and the common Linux file and text tools. Bun stays where nixie's model harness needs it. The image
-build pins every runtime, tool and library version, and the deployment pins the image by digest. The
-model can inspect what is installed. Adding a runtime adds no egress and no grant.
+[The code tool](../../queue/code-tool.md#the-image) lists what the code image holds. The image build
+pins every runtime, tool and library version, and the deployment pins the image by digest. Adding a
+runtime adds no egress and no grant.
 
 ## A container adapter sketch
 

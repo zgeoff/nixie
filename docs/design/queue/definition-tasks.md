@@ -4,19 +4,21 @@
 - **Work items:** [the task of a definition](https://linear.app/zgeoff/issue/GEO-2531),
   [the `trigger` block and the reminder](https://linear.app/zgeoff/issue/GEO-2534),
   [the trigger core](https://linear.app/zgeoff/issue/GEO-2542),
-  [the view procedures](https://linear.app/zgeoff/issue/GEO-2545)
+  [the view procedures](https://linear.app/zgeoff/issue/GEO-2545),
+  [the wake rule](https://linear.app/zgeoff/issue/GEO-1865)
 
 nixie binds one task to each definition with `target: task`, and every task run of the definition
 happens on that task, so a definition keeps one thread, one read cursor and one sleeping sandbox for
 as long as it exists. A fire of the definition's trigger either opens a task run on that task or
 becomes a recorded skip, so one definition never has 2 task runs at once. The tasks module owns the
-binding and the fire answer, and reads the definition only through 2 readers that the server app
+binding and the fire answer, and reads the definition only through 3 readers that the server app
 passes in.
 
 Terms: a fire is one event of a trigger for one definition. The hash in force is the definition hash
 that the binding holds, null while the definition is out of force. A definition is out of force when
-its folder is gone, it holds `enabled: false`, or it is a spent one-shot. A pending task run is a
-fire that nixie wrote and no claim has opened yet.
+its folder is gone, it holds `enabled: false`, or it is a spent one-shot. A pending task run is one
+that the next claim opens: rule 1, 2 or 3 of [what opens a task run](#what-opens-a-task-run) holds,
+or an unread fire waits beside an idle task run, and no claim has opened it yet.
 
 ## Shape
 
@@ -29,6 +31,7 @@ flowchart LR
   fired -->|"wake, cause event"| claim
   claim -->|"pickRunDefinition"| opened[task.run_opened, pinned hash]
   opened -->|"readDefinitionVersion"| runner[nixie runner]
+  list[tasks.list] -->|"readDefinitionNextFire"| next[nextRunAt]
 ```
 
 ## Contracts
@@ -88,7 +91,8 @@ interface TriggerFired {
   definitionHash: string; // the version a task run of this fire pins
   source: string; // the trigger source's id, such as 'schedule'
   dedupeKey: string;
-  kind: 'schedule' | 'at';
+  kind: 'schedule' | 'at' | 'poll'; // poll: ./mail-and-calendar-polls.md#the-records-and-the-tables
+  polled?: number[]; // poll only: the sequences of the trigger.polled records, oldest first
   scheduledFor: string; // ISO instant
   firedAt: string; // ISO instant: the core's clock at the write
   isCatchUp: boolean; // firedAt is more than 60 seconds after scheduledFor
@@ -137,9 +141,13 @@ declare function withdrawDefinitionTaskInTransaction(
 ): Promise<void>;
 ```
 
-### The 2 readers
+### The 3 readers
 
 ```ts
+const nextRunAt = await context.readDefinitionNextFire('water-the-tomatoes');
+// → '2027-03-11T21:00:00.000Z': Fri 12 Mar at 08:00 in Australia/Sydney
+//   or null: no slot is left
+
 // tasks module: TasksContext
 interface TasksContext {
   // …existing fields
@@ -148,6 +156,8 @@ interface TasksContext {
     taskID: string,
     definitionHash: string, // the pinned hash: a fire's version can leave force before its claim
   ) => Promise<DefinitionRunPolicy | null>;
+  // The next fire as an ISO instant, for the nextRunAt of tasks.list. The triggers module builds it.
+  readonly readDefinitionNextFire: (definitionID: string) => Promise<string | null>;
 }
 
 // definitions module
@@ -213,6 +223,8 @@ that holds decides:
    is null: no task run. `runTaskStep` commits the step with `hold` and calls no runner, the task is
    `waiting`, and an unread message stays unread.
 
+- A claim marks read a `trigger.fired` whose `kind` its codec does not know, and opens no task run
+  for it, so a release meets a fire of a later release's source safely after a rollback.
 - When a claim finds an open task run that is active or waiting on a reply, the step runs inside it.
   When it finds an idle one and an unread fire with another dedupe key, it ends the idle task run
   with the cause `no_report` and opens the fire's task run in the same transaction.
@@ -244,9 +256,11 @@ writes the fire's record. The first answer that holds decides:
 - nixie skips a fire and never queues it: a queue would hide a task run that never ends. A fire
   written before a hold opens a task run after the hold ends, however old it is.
 - nixie writes no record for a fire of a disabled definition.
-- The fire answer never reads the pause. While nixie is paused, the trigger core delivers no fire,
-  as [the pause](pause.md#triggers-while-paused) says, and the catch-up rule decides the first fire
-  after the resume.
+- The fire answer never reads the pause. While nixie is paused, the trigger core delivers no
+  schedule fire to a paused task, and a poll fire lands to open its task run after the resume
+  ([mail and calendar polls](mail-and-calendar-polls.md#one-deliver-call-of-a-poll-batch)). For a
+  schedule, the catch-up rule decides the first fire after the resume, as
+  [the pause](pause.md#triggers-while-paused) says.
 
 ### How the built task code handles a definition's task
 
@@ -276,16 +290,45 @@ writes the fire's record. The first answer that holds decides:
 - The time a definition was first enabled is the time of the first `task.definition_set` of its task
   that holds a hash.
 
+### The next fire
+
+- `tasks.list` lists a task as `asleep` when it is `waiting`, is not wakeable and has no open wait,
+  as [the wake rule](https://linear.app/zgeoff/issue/GEO-1865) gives it.
+- `tasks.list` gives `nextRunAt` only for a definition's task that it lists as `asleep`. It calls
+  `readDefinitionNextFire` with the task's `definition_id`, and leaves `nextRunAt` out when the
+  reader returns null.
+- `readDefinitionNextFire` reads the definition's `trigger_definitions` row, and calls
+  `readNextFire` of the [triggers module](triggers.md#fire-times-and-the-rendered-trigger) with the
+  row's `trigger`, its watermark as `after`, and the zone that `ReadZone` resolves. It returns the
+  `scheduledFor` of the answer as an ISO instant with milliseconds, in UTC.
+- For a `window` schedule, the instant is the window's start, because the schedule source picks the
+  instant inside the window only when the window opens.
+- It returns the slot as `readNextFire` gives it, even when the slot is already past. The trigger
+  core decides by its catch-up rule whether that slot fires.
+- It returns null in each of these cases:
+  - the definition has no row, or its row is withdrawn;
+  - the definition has no `schedule` or `at` trigger;
+  - the trigger is an `at` that already fired or was skipped, which nixie knows when the
+    [`trigger_keys` table](triggers.md#the-spent-one-shot) holds its dedupe key. `readNextFire`
+    returns the instant of an `at` for any watermark, so the reader checks the key itself.
+- The `next` of `renderTrigger` is a display string such as "Fri 12 Mar", so `nextRunAt` never reads
+  it.
+
 ## Decisions
 
 - **One task per definition, for its whole life.** One thread and one read cursor let a `continuing`
   definition and a wakeable one carry state between task runs.
 - **Skip, never queue.** Two task runs at once would write to one thread, and a queue hides a task
   run that never ends.
-- **The tasks module reads definitions only through 2 readers that the server app passes in.** The
+- **The tasks module reads definitions only through 3 readers that the server app passes in.** The
   tasks module then imports neither the definitions module nor the triggers module.
-- **The fire answer has no answer of its own for the pause.** The trigger core delivers nothing
-  while nixie is paused, so the fire answer never meets a paused nixie.
+- **The triggers module builds the reader of the next fire.** An agent's call on 13 Nov 2026: that
+  module holds the watermark, the trigger and `readNextFire`, so the reader adds no import. The
+  reader is the interim answer to the open question of
+  [the wake rule](https://linear.app/zgeoff/issue/GEO-1865) until the owner approves it.
+- **The fire answer has no answer of its own for the pause.** The trigger core delivers no schedule
+  fire to a paused task, and a poll fire waits in the inbox, because no claim starts until the
+  resume.
 - **An unread fire opens a task run before a raise or a restart, and a raise or a restart before an
   unread message.** An agent's call on 13 Nov, which the owner accepted: a fire can be unread at a
   carry only after a stop of an idle task run, which has nothing to carry, while a message after a
@@ -306,4 +349,6 @@ writes the fire's record. The first answer that holds decides:
 
 ## Open questions
 
-None.
+- Which code gives the tasks module a schedule's next fire, for `nextRunAt`: the open question of
+  [the wake rule](https://linear.app/zgeoff/issue/GEO-1865). The interim is the reader in
+  [the next fire](#the-next-fire).

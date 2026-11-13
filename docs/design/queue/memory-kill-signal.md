@@ -9,8 +9,8 @@ When a guest uses more memory than its sandbox's size, the guest's kernel kills 
 processes, and nixie sees only a failed turn, step or fetch. A wrapper around the sandbox adapter
 reads each guest's count of memory kills after each guest program ends, and writes a log line when
 the count rose. A guest program is a program nixie starts in a guest: the guest turn, the sandbox
-check, the guest purge, the guest summary or the fetcher. A day of nixie's log with no such line is
-the acceptance of [the sandbox sizes](sandbox-sizes.md).
+check, the guest purge, the guest summary, the fetcher or a code run's program. A day of nixie's log
+with no such line outside a code run is the acceptance of [the sandbox sizes](sandbox-sizes.md).
 
 ## Shape
 

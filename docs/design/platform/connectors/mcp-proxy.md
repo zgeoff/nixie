@@ -5,13 +5,14 @@
 Every external server, your own included, reaches the model only through nixie's proxy. nixie is the
 MCP client, and each of the server's tools becomes one of nixie's tools, with a pinned hash, an
 effect declaration you make, and a name prefixed with the server's ID. The proxy uses the v2
-TypeScript MCP client and arrives with the first external server, which is atc.
+TypeScript MCP client and arrives with the first external server, a hosted MCP server of your own
+reached over HTTPS. The [MCP proxy build](../../queue/mcp-proxy-build.md) holds the contracts.
 
 ## Adding a server
 
 | Field     | Holds                                                            |
 | --------- | ---------------------------------------------------------------- |
-| ID        | A short slug, such as `atc`, which prefixes every tool name      |
+| ID        | A short slug, such as `notes`, which prefixes every tool name    |
 | Transport | A Streamable HTTP URL, or a command that runs over stdio         |
 | Trusted   | Whether a changed tool applies with a notice instead of stopping |
 | Auth      | None, a static token in the credential store, or OAuth           |
@@ -26,12 +27,10 @@ to the address it checked. A server on a private network passes only when its co
 the server's host with an allowed address range, the hop goes to that host, and the resolved address
 falls in that range.
 
-A server whose backend runs outside the sandbox connects as an HTTP server with an OAuth grant whose
-scopes limit the tools nixie can call. The deployment configures the URL and registers nixie as a
-client, and you revoke the grant at the server. atc is the first case, through `atc mcp --http`.
-**Why:** `atc mcp` over stdio talks to atc's daemon on a socket that checks no credential, so
-forwarding that socket into an imp, or running the server on the host, hands nixie full control of
-every session.
+A server whose backend runs outside the sandbox connects as an HTTP server. A server that checks a
+token takes a static token or an OAuth grant whose scopes limit the tools nixie can call, and you
+revoke the grant at the server. A server that checks no token sits on a private network, and its
+configuration pairs its host with the network's range.
 
 ## Pinning
 
@@ -105,8 +104,8 @@ A call to one of those tools reaches the server only when the proxy's latest lis
 passed and left that tool exposed under the table's rules, so a server cannot dodge the hash check
 by failing its listing. When the latest listing failed, a call makes the next try itself once that
 try is due, and lists the server before it calls the tool. A call whose listing fails, or that comes
-before the next try is due, returns an error that names the server and the next try, such as "atc is
-unreachable, next try 14:05".
+before the next try is due, returns an error that names the server and the next try, such as "notes
+is unreachable, next try 14:05".
 
 The proxy keeps one health state per server, shared by every task run. Failed listings back off as a
 poll does in the [trigger source](../channels/trigger-source.md#polls), from 1 min to 1 h by

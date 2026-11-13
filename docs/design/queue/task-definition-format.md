@@ -8,7 +8,8 @@
   [the rule format renames `jobs`](https://linear.app/zgeoff/issue/GEO-2634),
   [the note-taking example](https://linear.app/zgeoff/issue/GEO-2532),
   [the consolidation example](https://linear.app/zgeoff/issue/GEO-2530),
-  [the moment reflection example](https://linear.app/zgeoff/issue/GEO-1334)
+  [the moment reflection example](https://linear.app/zgeoff/issue/GEO-1334),
+  [the full decision point](https://linear.app/zgeoff/issue/GEO-1803), which reads `destinations`
 
 A task definition is a folder `tasks/<id>/` in the definitions repo. Its `task.yaml` holds the input
 of one `task.start` call and an optional trigger, so nixie can start the task without you, from
@@ -73,6 +74,9 @@ interface DefinitionOnly {
   context: 'fresh' | 'continuing'; // default 'fresh'. 'continuing' resumes the last task run's session
   wakeable: boolean; // default false. The task wake work owns its meaning.
   step: { file: string; api: 1 } | null; // default null. The seed hashes the file; no code runs it.
+  destinations: string[]; // default []. Patterns in the rule format, where `*` is the only wildcard.
+  // Stage 5 of the decision point gives a matching destination of the definition's task run the
+  // permission `job`: decision-point-cutover.md
   // maxCalls: added by the task run limits work, with its own seed check and fault code
 }
 
@@ -175,8 +179,9 @@ interface DefinitionVersion {
 ### The folder and the keys
 
 - Under `tasks/`, `isDefinitionsPath` accepts only `.yaml`, `.md` and `.ts` files.
-- `definitionsLayout.folders` holds `tasks`, `prompts`, `rules` and `skills`. nixie reads no `jobs/`
-  folder, and the seed record lists it among the skipped root entries.
+- `definitionsLayout.folders` holds `tasks`, `prompts`, `rules` and `skills`, and `budgets` once
+  [budgets](budgets-and-hard-stop.md#budgets-and-the-ledger) ship. nixie reads no `jobs/` folder,
+  and the seed record lists it among the skipped root entries.
 - `definitionsFormats.tasks` is 4, and a release reads formats 3 and 4. At format 3, nixie loads no
   task definition, and the seed record lists each file under `tasks/` as not applied.
 - When a definition omits `model`, its task runs use the model profile of the model role `task`.
@@ -210,6 +215,14 @@ interface DefinitionVersion {
   nothing from the definitions module. Module-to-module imports pass the boundary tags, and no
   package the tasks module depends on reaches the definitions module.
 - The format adds no port and no config key.
+- `destinations` ships with whichever of this work and
+  [the decision point cutover](decision-point-cutover.md) lands first. The seed refuses a pattern
+  with a space or an empty list item, as the rule parser does. `task.define` refuses the key with
+  `FILE_ONLY_KEYS`, so only a file grants a destination.
+- `destinations` is part of the parsed `task.yaml`, so the definition hash covers it.
+- When `destinations` ships after this format, the release before refuses a `task.yaml` that holds
+  the key as `unknown_key`, and the last accepted seed stays in force. Before you start that
+  release, remove the key from each `task.yaml`.
 
 ### A rollback of the rule format rename
 
@@ -234,8 +247,9 @@ interface DefinitionVersion {
 - **A file definition may list any registered tool.** The owner chose this on 5 Nov and confirmed it
   on 13 Nov. The owner accepts the risk of a task run that nobody watches, so that less code is cut.
 - **A file definition still cannot list a tool of `conversationTools`.** An agent's call on 13 Nov,
-  which the owner accepted: the fixed rule that allows `task.define` and `task.undefine` allows them
-  by name and cannot tell who calls them, so a scheduled task run would change definitions.
+  which the owner accepted: until the decision point cutover, the fixed rule that allows
+  `task.define` and `task.undefine` allows them by name and cannot tell who calls them, so a
+  scheduled task run would change definitions.
 - **A definition holds no `runner` key.** An agent's call on 13 Nov, which the owner accepted: only
   the nixie runner can start a task, so the key would have one legal value; it arrives with the
   second runner that can start one.
@@ -256,11 +270,12 @@ interface DefinitionVersion {
 
 ## Out of scope
 
-- A `poll` trigger, and a trigger kind `log`. The poll sources own `PollFilter`.
+- A `poll` trigger: [mail and calendar polls](mail-and-calendar-polls.md#the-poll-trigger) adds it
+  to `Trigger` and drops the `poll_trigger` fault.
+- A trigger kind `log`.
 - Code that runs a step file.
 - A `skills` key: `task.start` takes no skills, so a task run has no way to use a pinned skill.
 - The keys `inputs` and `reportFields`.
-- A bypass of `slice1.read-only` for the tools that a definition lists.
 - A way to start a definition that has no trigger.
 
 ## Open questions

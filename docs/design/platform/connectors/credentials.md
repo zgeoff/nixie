@@ -14,7 +14,11 @@ the backend for each credential.
 ```ts
 interface CredentialStore {
   register(spec: CredentialSpec): Promise<CredentialRef>;
-  fetcher(ref: CredentialRef, hosts: string[]): AuthorizedFetch; // adds the credential on the host
+  fetcher(ref: CredentialRef | null, hosts: string[], pairing?: PrivatePairing): AuthorizedFetch; // adds the credential on the host
+  socket(
+    ref: CredentialRef,
+    endpoint: { address: string; port: number },
+  ): Promise<AuthorizedSocket>; // no HTTP
   grant(ref: CredentialRef, sandbox: Sandbox, rule: InjectRule): Promise<GrantRef>;
   revoke(grant: GrantRef): Promise<void>;
   status(ref: CredentialRef): Promise<CredentialStatus>;
@@ -31,16 +35,30 @@ interface CredentialSpec {
   header?: string; // static only: the header the value goes in, 'Authorization' by default
   expiresAt?: string;
 }
+
+interface PrivatePairing {
+  host: string; // the one host that may resolve to a non-public address
+  range: string; // a CIDR range; the resolved address must fall in it
+}
 ```
 
 A connector never reads a token. It calls the service through `fetcher`, which adds the credential
-on the host and refuses any host outside the credential's `hosts`. The fetcher drops the credential
+on the host and refuses any host outside the credential's `hosts`. A fetcher with no credential, for
+a service that takes none, makes the same checks and adds nothing. The fetcher drops the credential
 on a redirect to another host. On every hop it resolves the host, refuses any
 [non-public address](web-fetch.md#non-public-addresses), and connects to the address it checked. A
-service on a private network passes only when the credential's configuration pairs its host with an
-allowed address range, the hop goes to that host, and the resolved address falls in that range.
-**Why:** a connector that follows a link from an email must never carry your token to the address
-the link names.
+service on a private network passes only when the fetcher's `pairing` names its host with an allowed
+address range, the hop goes to that host, and the resolved address falls in that range. The caller
+builds the pairing from the service's configuration, with or without a credential. **Why:** a
+connector that follows a link from an email must never carry your token to the address the link
+names.
+
+A service that speaks no HTTP, such as atc's TCP listener, takes its credential through `socket`.
+The store makes the same address checks as the fetcher, then replaces the placeholder in the first
+line the connector writes with the credential's value, once, so the connector still never reads the
+token.
+[The coding session runner](../../queue/coding-session-runner/atc.md#the-config-and-the-token) is
+its first caller.
 
 The fetcher alone sets a request's credential, so it refuses a request that arrives with one of
 these headers set, compared without regard to case, and sends nothing:
@@ -105,13 +123,18 @@ Destroying the sandbox removes its grants.
 ## Refresh
 
 The store refreshes OAuth tokens on the host, 5 min before expiry by default, and pushes each new
-value to every grant that holds it, because imp's broker never refreshes. A request the service
-rejects as unauthorised gets one refresh and one retry, and a second rejection marks the credential
-failing. Any other failure goes to the [action queue](../core/actions.md) and its reconciliation.
-The store runs one refresh per credential at a time, and writes a rotated refresh token in the same
-transaction as the refresh's record, so a crash never leaves only a spent token. Every OAuth token
-refreshes at least every 7 days, by default, so a quiet connection never lapses. A refresh that
-fails for a while, such as during a provider outage, backs off as a poll does in the
+value to every grant that holds it. nixie never uses impd's own refresh, because an impd secret that
+refreshes cannot send its requests through the counting proxy. A ChatGPT plan login is the one model
+credential outside the store: it lives in the counting proxy, as
+[the plan login design](../../queue/plan-login-token.md) gives. A request the service rejects as
+unauthorised gets one refresh and one retry, and a second rejection marks the credential failing.
+Any other failure goes to the [action queue](../core/actions.md) and its reconciliation. The store
+runs one refresh per credential at a time, and writes a rotated refresh token in the same
+transaction as the refresh's record, so a crash after the commit never loses a rotated token. A
+crash before it loses the rotated token, and when the provider has spent the old one, the next
+refresh marks the credential `needs_consent`. Every OAuth token refreshes at least every 7 days, by
+default, so a quiet connection never lapses. A refresh that fails for a while, such as during a
+provider outage, backs off as a poll does in the
 [trigger source](../channels/trigger-source.md#polls), and marks the credential failing after 3
 failures in a row.
 

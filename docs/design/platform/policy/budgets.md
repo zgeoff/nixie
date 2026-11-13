@@ -6,24 +6,25 @@
 nixie spends money in 3 ways and keeps them apart. Spending in the world, such as a purchase, is a
 tool call with the `spend` effect, which always asks unless a lifting rule covers it. A paid tool,
 such as search, costs money for each call without the `spend` effect, and its own budget limits it.
-Model cost is what nixie pays its model provider for each turn, which budgets per job and a hard
-spending stop limit. A budget is one kind of record for both: a limit over a period, and raising one
-always asks.
+Model cost is what nixie pays its model provider for each turn, which the model limits and a hard
+spending stop limit. A budget is one kind of record for the first two: a limit over a period, and
+raising one always asks.
 
 ## Budgets
 
-| Field  | Holds                                                                                  |
-| ------ | -------------------------------------------------------------------------------------- |
-| ID     | A stable slug, such as `shopping-month`                                                |
-| Counts | Spending through `spend` tools, a paid tool's calls, or model dollars, tokens or turns |
-| Limit  | An amount in your currency, a token count or a turn count                              |
-| Period | A day, a week or a month, reset at local midnight on its first day                     |
-| Scope  | The whole deployment, one job, one paid tool, or the lifting rules that name it        |
+| Field  | Holds                                                              |
+| ------ | ------------------------------------------------------------------ |
+| ID     | A stable slug, such as `shopping-month`                            |
+| Counts | Spending through `spend` tools, or a paid tool's calls             |
+| Limit  | An amount in your currency                                         |
+| Period | A day, a week or a month, reset at local midnight on its first day |
 
-The limit is definition data inside the [snapshot hash](rules.md#the-snapshot-hash). The spent
-amount is state in a ledger projection, which every charge updates in the same transaction as its
-record. Raising a limit is `budget_raise`, which always asks; lowering it is `budget_lower`, which
-applies at once with undo.
+Budgets live in the definitions repo under `budgets/`, apart from the rules, and
+[budgets and the hard stop](../../queue/budgets-and-hard-stop.md#budgets) gives the format. The
+limit is definition data inside the [snapshot hash](rules.md#the-snapshot-hash). The spent amount is
+state in a ledger projection, which every charge updates in the same transaction as its record.
+Raising a limit is `budget_raise`, which always asks; lowering it is `budget_lower`, which applies
+at once with undo.
 
 ## Lifting rules
 
@@ -53,8 +54,8 @@ and an unknown outcome stays charged until you settle it.
 ## Paid tools
 
 Each paid tool has a budget scoped to that tool, and the tool states its price per call. The default
-limits are $5 a day and $50 a month, and the deployment configuration overrides them. A paid tool
-gets its budget in the same change that builds the tool.
+limits are $5 a day and $50 a month, and a budget in the definitions with the same ID overrides
+them. A paid tool gets its budget in the same change that builds the tool.
 
 nixie charges the tool's budget when the call starts, before the provider sees it, and credits back
 a call that fails, the same way the spending ledger charges a purchase. At the limit, the tool
@@ -65,17 +66,17 @@ and a looping search hits it long before it costs much.
 
 ## Model cost
 
-Model use has 3 measures, and each limit below sets all 3: dollars, tokens and turns. The
-[counting proxy](#the-hard-spending-stop) counts tokens from each response, and nixie prices them
-with the role's [model profile](../core/models.md#cost), never with the cost the Agent SDK reports.
-A token count includes input, cache writes, cached input and output. **Why:** dollars bound what a
-metered route costs, tokens bound the load on a flat subscription, where dollars are notional, and
-turns catch a loop whatever the price.
+Model use has 3 measures: dollars, tokens and turns. Each limit below sets all 3, except a job run,
+which sets no tokens. The [counting proxy](#the-hard-spending-stop) counts tokens from each
+response, and nixie prices them with the role's [model profile](../core/models.md#cost), never with
+the cost the Agent SDK reports. A token count includes input, cache writes, cached input and output.
+**Why:** dollars bound what a metered route costs, tokens bound the load on a flat subscription,
+where dollars are notional, and turns catch a loop whatever the price.
 
 | Limit          | Dollars | Tokens      | Turns  | Other  |
 | -------------- | ------- | ----------- | ------ | ------ |
 | Per worker run | $2      | 2,000,000   | 25     | 10 min |
-| Per job run    | $5      | 4,000,000   | 100    |        |
+| Per job run    | $5      | none        | 100    |        |
 | Per day        | $60     | 80,000,000  | 1,000  |        |
 | Per month      | $600    | 600,000,000 | 20,000 |        |
 
@@ -83,7 +84,9 @@ turns catch a loop whatever the price.
   worker run when the proxy's dollar or token count for its imp reaches the limit. A worker run's
   dollars also count toward the dollar limit of the task that called it.
 - **Per job run.** The count covers every turn and worker in the job run. The runner checks it
-  before each step and stops the job run with a report when a limit is reached.
+  before each step and stops the job run with a report when a limit is reached. Its dollars price
+  the same tokens, and the deployment's token limits bound a flat subscription, so it sets no token
+  limit.
 - **Per deployment,** a day and a month. These limits feed the hard spending stop.
 
 Each default is at least about twice the heaviest use the
@@ -98,8 +101,9 @@ job that runs too often.
 
 The hard spending stop ends all model spending once a deployment limit is reached. When it trips,
 nixie stops starting turns, pauses every task in place with a record, and tells you through the push
-channel, which needs no model. You resume by raising the budget, which always asks, or by waiting
-for the next period.
+channel, which needs no model. You resume by raising today's limit, up to a cap that only the
+proxy's host config holds, or by waiting for the next period.
+[Budgets and the hard stop](../../queue/budgets-and-hard-stop.md#the-stop) gives the contracts.
 
 The stop is a counting proxy on the host. Every model request passes through it, it counts the
 tokens and the cost from each response, and once a deployment dollar or token limit is reached it

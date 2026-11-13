@@ -16,31 +16,31 @@ approval digest and push.
 A proposal is a row in the proposals projection of the [event log](../core/event-log.md), and each
 change to it is a record. It holds:
 
-| Field             | Holds                                                                       |
-| ----------------- | --------------------------------------------------------------------------- |
-| ID                | The operation ID, which an action keeps as its queue ID and idempotency key |
-| Kind              | Action, memory write or internal change                                     |
-| Action            | The canonical operation: tool, arguments, targets, destinations, effects    |
-| Deadline          | An optional real deadline that the host validates                           |
-| Execution profile | For code: the placement, image, egress and grants that the host resolved    |
-| Action hash       | SHA-256 over the canonical operation                                        |
-| Sentence          | The operation rendered from the tool's template                             |
-| Risk class        | Routine, always-ask or lifting                                              |
-| Cause             | The prompt cause, or the memory gate's review reason                        |
-| Deciding rule     | The rule ID and revision, or none                                           |
-| Proposed rule     | For a gap or "always allow", the rule as data and a sentence                |
-| Task              | The task that proposed it, with its delegation chain                        |
-| Proposer          | You, or nixie from a task                                                   |
-| Created, lapse    | When it was created, and when it lapses                                     |
-| Status            | Pending, approved, rejected, withdrawn, lapsed or consumed                  |
+| Field             | Holds                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| ID                | The operation ID, which an action keeps as its queue ID and idempotency key                      |
+| Kind              | Action, memory write or internal change                                                          |
+| Action            | The canonical operation: tool, arguments, targets, destinations, effects                         |
+| Deadline          | An optional real deadline that the host validates                                                |
+| Execution profile | For code: the placement, image, egress and grants that the host resolved                         |
+| Action hash       | SHA-256 over the canonical operation                                                             |
+| Sentence          | The operation rendered from the tool's template                                                  |
+| Risk class        | Routine, always-ask or lifting                                                                   |
+| Cause             | The prompt cause, or the memory gate's review reason                                             |
+| Deciding rule     | The rule ID and revision, or none                                                                |
+| Proposed rule     | For a gap or "always allow", the rule as data and a sentence                                     |
+| Task              | The task that proposed it, with its delegation chain                                             |
+| Proposer          | You, or nixie from a task                                                                        |
+| Created, lapse    | When it was created, and when it lapses                                                          |
+| State             | One of the states that [the approval record](../../queue/approval-record.md#the-shared-row) sets |
 
 The registered operation fixes the proposal's kind, and neither model output nor a client request
 changes it. Every kind shares the operation hash, the identity check, the lapse, rejection and
 deferral. An action goes to the [action queue](../core/actions.md), a memory write applies an item
 version under the [memory write contract](../memory/writes.md), and an internal change to policy, a
 mandate or a job runs its registered host mutation. A memory write reaches review through the same
-rules as an action: its tool declares `note`, your rules decide first, and the memory gate decides a
-write that no rule matches, as the
+rules as an action: its tool declares `memory_write`, your rules decide first, and the memory gate
+decides a write that no rule matches, as the
 [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers. A memory proposal
 carries its operation, remember or retire, its quote, and the exact item and version it targets. Its
 review reason is not one of the [prompt causes](decision-point.md#prompt-causes), so memory review
@@ -90,9 +90,10 @@ exception: an unchanged "always allow" on a routine proposal stays a tap, as
 
 Your answer is a checked action: the client sends the proposal ID and the action hash it showed, and
 nixie accepts the answer only when the hash matches the proposal's current hash and the answer came
-from your identity on that channel. **Why:** a proposal can return to pending under the same ID with
-a new hash, such as when a rule narrows before an attempt, so a stale screen never approves a
-different operation.
+from your identity on that channel. **Why:** the kind's current hash can differ from the hash a
+screen showed, so a stale screen never approves a different operation. A closed proposal never
+reopens: an approved action that newly falls in the always-ask set waits on a new proposal, as
+[policy before each attempt](../core/actions.md#policy-before-each-attempt) sets.
 
 The approval record holds the proposal ID, the action hash, the rule hash for an "always allow", the
 answer, the channel and device, the check used, and the chosen option. The host checks the current
@@ -141,7 +142,7 @@ client cannot add one:
 - A prompt from your ask rule offers "change this rule" instead of "always allow".
 - A prompt from the always-ask set offers a lifting rule, for `spend` only, with caps you fill in.
 - A memory proposal offers no "always allow", because accepting a fact never creates a rule on
-  `note` that loosens the write gate.
+  `memory_write` that loosens the write gate.
 
 A direct request that your own message consents to runs with no proposal, through the consent check
 in the [decision point](decision-point.md#consent), and gets an ordinary decision record.
@@ -149,14 +150,9 @@ in the [decision point](decision-point.md#consent), and gets an ordinary decisio
 ## The approval digest
 
 The approval digest lists everything that waits for your answer, each item bound to its own action
-hash. Policy owns what it holds and its order; the client lays it out. It holds 4 kinds of item, in
-this order:
-
-1. **Unconfirmed outcomes:** actions whose outcome is unknown and that reconciliation could not
-   settle, each offering "it happened", "retry" and "drop", as [actions](../core/actions.md) covers.
-2. **Lifting items:** proposals that create or widen a lifting rule.
-3. **Always-ask items:** spending, raising a budget, mandates, proposed rules and known contacts.
-4. **Routine items,** grouped by task, oldest first within each task.
+hash. Policy owns what it holds and its order; the client lays it out.
+[Listing](../../queue/approval-record.md#listing) in the approval record sets its groups and their
+order: unknown outcomes first, then always-ask and lifting items, then routine items by task.
 
 **Why:** an unknown outcome may be a fault that changes how you answer the rest, and the riskiest
 items come before the routine ones you can sweep.
@@ -164,7 +160,7 @@ items come before the routine ones you can sweep.
 "Approve all" covers routine items only, and each always-ask or lifting item takes its own approval.
 Approving many items writes one record per item, each with its own action hash, so the batch equals
 approving each item alone. An item you leave waits until it lapses. A gap group with a proposed rule
-shows its pending items beside the proposal, so one visit approves both. Memory proposals join the
-routine items; each row shows its operation, the item and version, the review reason and the
+shows its pending items beside the proposal, so one visit approves both. Memory proposals form a
+group of their own; each row shows its operation, the item and version, the review reason and the
 proposed text, and each still checks its target and applies on its own. Permanent forgetting is a
 separate checked action and never joins the batch.

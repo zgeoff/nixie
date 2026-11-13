@@ -59,7 +59,8 @@ sandboxLimits: sandboxSizes.fetch,
   reserved large memory pages, so a host that keeps all its memory in that pool refuses it.
 - When a row's sandbox is killed for memory, the row rises in 64 MiB steps to the first figure at
   which the memory spike's probe (`research/sandbox-memory/probe.sh`) passes, such as `fetch` from
-  192 to 256 MiB. A release carries the new figure.
+  192 to 256 MiB. A release carries the new figure. The `codeRun` row of
+  [the code tool](code-tool.md) is the one exception: a memory kill there is the program's limit.
 - Every size is fixed. nixie asks for one amount of memory and for no room above it.
 - A size is a constant, and no config key sets one.
 - The vCPUs and the disk of every sandbox stay as they are.
@@ -91,5 +92,6 @@ sandboxLimits: sandboxSizes.fetch,
 - A second sandbox adapter. Its author measures its overhead and adds its own set of rows.
 - The Codex harness's row and its probe, and a harness record that names its own rows. The Codex
   image's work owns them.
-- A row for a worker image or a browser fetch. Each arrives with its image.
+- A row for a worker image or a browser fetch. Each arrives with its image, as the `codeRun` row
+  arrives with [the code tool](code-tool.md).
 - Each step on a host: the reserved-page pool, the developer imps and the read of the runtime's log.

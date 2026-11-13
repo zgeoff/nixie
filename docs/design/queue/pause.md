@@ -1,15 +1,3 @@
-### Triggers while paused
-
-- While nixie is paused, `deliverTriggerBatch` writes nothing and takes no key for an event whose
-  task is paused: the definition's task, or the conversation for `target: conversation`. It reads
-  `isTaskPaused` before rows 4 to 6 of its table. The definition's watermark stays where it was.
-- The source delivers the same events at its next tick. So the first tick after the resume, or after
-  you resume that task, finds each missed fire late, and the catch-up rule of
-  [triggers](triggers.md#decisions) decides: one catch-up within half the interval, and a `too_late`
-  skip beyond it. A pause longer than half a schedule's interval skips that fire, as any downtime
-  does.
-- An exempt task takes its fires as on any day.
-
 # The pause, and the restore that starts paused
 
 - **Status:** draft
@@ -111,7 +99,7 @@ nixie reads the marker file this way:
 -- One migration appended to nixieSchema. It leaves the schema's oldestReader as it is.
 create table nixie_pause (
   id              integer primary key check (id = 1), -- at most one row: nixie is paused
-  cause           text not null,                      -- 'restore' or 'owner'
+  cause           text not null,                      -- 'restore', 'owner' or 'spending'
   recovery_id     text,                               -- set exactly when cause is 'restore'
   paused_sequence integer not null references records (sequence)
 ,
@@ -135,7 +123,7 @@ alter table schema_version add column open_oldest_reader integer; -- null while 
 
 ```ts
 // log module: the 4 record kinds, each on no thread. The tasks projection folds none.
-type PauseCause = 'restore' | 'owner';
+type PauseCause = 'restore' | 'owner' | 'spending'; // 'spending': budgets-and-hard-stop.md
 
 interface NixiePaused {
   kind: 'nixie.paused'; // inserts or replaces the nixie_pause row, and empties pause_exemptions
@@ -326,6 +314,167 @@ type RestorePauseFaultPoint =
 - When nixie pauses on a running server, a step that holds a lease runs to its commit, and an
   attempt that has started runs to its outcome. Nothing new starts after either.
 - Only you pause or resume nixie, or resume one task: through the API, a host command or the web
+  client. No tool does any of these. One exception: the
+  [hard spending stop](budgets-and-hard-stop.md#the-stop) pauses with the cause `spending`, with a
+  `by` of null, and resumes only that pause. Each record's `by` is the identity of the session that
+  acted, as the built task controls write it.
+- `nixie_pause`, `pause_exemptions` and `recoveries` are projections of the 4 record kinds, so a
+  projection rebuild gives the same rows, and `syncPauseGate` matches the gate to them at the next
+  start.
+- A pause while nixie is paused replaces the cause, except a spending pause, which never replaces
+  another cause. A resume while nixie is not paused writes nothing.
+- A log reset empties `nixie_pause` and `pause_exemptions` with every other table.
+
+### What the restore records for you to check
+
+- `toCheck` holds every task that was running at the backup, and every task that owns an action with
+  no outcome, the conversation included. A done, stopped or closed task can own one: a stop cancels
+  only the actions with no started attempt, and a started attempt runs on to its outcome
+  ([attempts](../../architecture/core/actions.md#attempts)).
+- The install reads `stateAtBackup` and `wasRunning` from each task's row before the start part
+  `recovery` moves a running task.
+- The install writes `recovery.started`, then `nixie.paused` with the cause `restore`, in one
+  transaction. `nixie.paused` empties `pause_exemptions`, so an exemption that the backup held never
+  runs a task.
+- `installRestorePause` writes nothing for a `recoveryID` that has a `recoveries` row, so a repeated
+  install never pauses nixie again after you resumed.
+- The start part `restore_pause` runs after the built start part `first_seed`, so the first seed's
+  tasks are paused with the rest.
+
+### Triggers while paused
+
+- While nixie is paused, `deliverTriggerBatch` writes nothing and takes no key for a schedule event
+  whose task is paused: the definition's task, or the conversation for `target: conversation`. It
+  reads `isTaskPaused` before rows 4 to 6 of its table. The definition's watermark stays where it
+  was.
+- The source delivers the same events at its next tick. So the first tick after the resume, or after
+  you resume that task, finds each missed fire late, and the catch-up rule of
+  [triggers](triggers.md#decisions) decides: one catch-up within half the interval, and a `too_late`
+  skip beyond it. A pause longer than half a schedule's interval skips that fire, as any downtime
+  does.
+- An exempt task takes its fires as on any day.
+- A poll event delivers while nixie is paused, as
+  [mail and calendar polls](mail-and-calendar-polls.md#one-deliver-call-of-a-poll-batch) says. Its
+  fire and its met wait stay in the inbox until the task can take a step.
+
+### The reader gate
+
+```ts
+// db lib
+await closeToOlderReaders(tx, pauseMigrationVersion);
+// When open_oldest_reader is null: open_oldest_reader := the stored oldest_reader. Then
+// oldest_reader := the larger of the stored oldest_reader and the version given. A second call
+// while closed keeps the saved value.
+declare function closeToOlderReaders(tx: Transaction<unknown>, reader: number): Promise<void>;
+
+// oldest_reader := open_oldest_reader; open_oldest_reader := null
+declare function reopenToOlderReaders(tx: Transaction<unknown>): Promise<void>;
+
+// At each start, after the migrations: reopens a closed gate when nixie_pause has no row, and
+// closes an open one when it has a row, such as after a projection rebuild
+declare function syncPauseGate(db: Kysely<unknown>): Promise<void>;
+
+// db lib, the built migration runner: while open_oldest_reader is set, it writes the value it
+// would give oldest_reader to open_oldest_reader, and sets oldest_reader to the larger of the two
+declare function runMigrations(db: Kysely<unknown>, schema: Schema): Promise<void>;
+```
+
+### The claim check
+
+```ts
+// tasks module: readCandidate returns a candidate that names the task whose pause stops the claim
+interface ClaimCandidate {
+  workID: string;
+  taskID: string; // the task itself, or the action's owner
+}
+
+interface ClaimRequest {
+  // …existing fields
+  readCandidate: (tx: Transaction<unknown>, now: number) => Promise<ClaimCandidate | null>;
+}
+
+// tasks module: each candidate query adds this to its where clause
+declare function buildPauseCheck(
+  eb: ExpressionBuilder<unknown, never>,
+  taskIDColumn: string,
+): Expression<SqlBool>; // true when nixie is not paused, or the task is on pause_exemptions
+
+// tasks module, exported: takes the caller's transaction
+// true when nixie is paused and the task is not exempt; a task's own pause is not part of it
+const paused = await isTaskPaused(tx, '7c1d2e9a'); // → true
+declare function isTaskPaused(tx: Transaction<unknown>, taskID: string): Promise<boolean>;
+```
+
+### The install at the next start
+
+```ts
+// server app, in the start part restore_pause
+const installed = await installRestorePause(context, {
+  pending: writer.pendingRestore,
+  readTasksWithPendingActions, // from the actions module
+});
+// → { recoveryID: '5b7e0c2a-91d4-4f3b-8e6a-2c1f9d7b4a10', toCheck: 4, isNew: true }, or null when no restore is pending
+
+declare function installRestorePause(
+  context: TasksContext,
+  options: {
+    pending: PendingRestore | null;
+    readTasksWithPendingActions: (tx: Transaction<unknown>) => Promise<readonly string[]>;
+  },
+): Promise<{ recoveryID: string; toCheck: number; isNew: boolean } | null>; // isNew false: the recoveries row existed
+
+const restorePausePart: AnyPartDeclaration<ServerPartValues> = {
+  name: 'restore_pause',
+  needs: ['server_parts', 'first_seed'],
+  // installRestorePause, the fault point recovery.pause.committed, the marker's removal, then
+  // the fault point recovery.pause.marker_cleared
+  start: makeRetriedStart('restore_pause', installPauseAndClearMarker),
+};
+// The built start part `recovery` adds 'restore_pause' to its needs.
+
+type RestorePauseFaultPoint =
+  | 'recovery.pause.committed' // after the commit of the pause, the list and the closed gate
+  | 'recovery.pause.marker_cleared'; // after the marker is removed
+```
+
+## Constraints
+
+### The marker
+
+- Step 6 of the restore writes the `PendingRestore` payload to a second file and renames that file
+  over the marker, so the marker exists at every instant of the step and a kill never gives `none`.
+- Step 6 runs after the move of both databases and after the restore note, and the server never
+  starts on `replacing`. So a started server finds no set folder of the replaced database in
+  staging.
+- On `holding`, `startWriter` starts for a caller with `installsRestorePause` and refuses every
+  other caller. On `replacing`, it refuses every caller.
+- A kill before step 6 leaves `replacing`, and you finish it by running the restore again, as the
+  [built restore](../../architecture/deployment/host-commands.md#backup-and-restore) requires.
+- The restore writes nothing into the restored database. The backup's schema can predate the pause
+  tables, and the migrations run at the next start.
+
+### The pause
+
+- nixie is paused exactly while `nixie_pause` holds its row. nixie stores the pause only there,
+  never as a task state, a lease or a far `claimable_at`. A task state stops records from landing,
+  the start part `recovery` frees every lease of an earlier start, and folds rewrite `claimable_at`.
+- A pause and a resume of nixie, and an exemption, change no task state, lease, `resume_state` or
+  `claimable_at`. A task that you paused yourself stays paused after nixie resumes, and the `resume`
+  control of a task never resumes nixie.
+- Every task is paused while nixie is paused, except a task on `pause_exemptions`. A task created
+  while nixie is paused is paused too, such as a task that an exempt task starts.
+- While nixie is paused, inbox records, fired timers, action outcomes and the records of the start
+  part `recovery` land on each task's thread as on any day, and each task control works. nixie takes
+  no step that reads them until the resume, or until you resume that task.
+- While nixie is paused, each task reads as paused in `tasks/list` and `tasks/read`. The task's
+  `resume` control accepts a task that nixie's pause stops, as well as a task paused on its own. It
+  resumes the task as built when the task is paused on its own, and writes `nixie.task_exempted`
+  when nixie is paused, in one transaction.
+- The task's `pause` control on an exempt task pauses it as built. The exemption stays, and the
+  task's next `resume` runs it again while nixie is paused.
+- When nixie pauses on a running server, a step that holds a lease runs to its commit, and an
+  attempt that has started runs to its outcome. Nothing new starts after either.
+- Only you pause or resume nixie, or resume one task: through the API, a host command or the web
   client. No tool does any of these. Each record's `by` is the identity of the session that acted,
   as the built task controls write it.
 - `nixie_pause`, `pause_exemptions` and `recoveries` are projections of the 4 record kinds, so a
@@ -353,9 +502,12 @@ type RestorePauseFaultPoint =
 
 ### Triggers while paused
 
-- While nixie is paused, `deliverTriggerBatch` writes nothing, takes no key and returns
-  `{ delivered: 0 }`, for every source and every target, the conversation included. The watermark
-  stays where it was.
+- While nixie is paused, `deliverTriggerBatch` writes nothing for a schedule event, takes no key and
+  counts it in no `delivered`, for every target, the conversation included. The watermark stays
+  where it was.
+- A poll event delivers while nixie is paused, as
+  [mail and calendar polls](mail-and-calendar-polls.md#one-deliver-call-of-a-poll-batch) says. Its
+  fire and its met wait wait in the inbox until the resume.
 - The source delivers the same events at its next tick, so the first tick after the resume finds
   each missed fire late, and the catch-up rule of [triggers](triggers.md#decisions) decides: one
   catch-up within half the interval, and a `too_late` skip beyond it.
@@ -481,7 +633,8 @@ To roll back while nixie is paused, after a restore or not:
 ## Out of scope
 
 - `nixie rollback`, and what it would pause.
-- A pause from a tool, and a timed pause that resumes on its own.
+- A pause from a tool, and a timed pause that resumes on its own. The spending pause resumes when
+  the stop clears, which [the hard spending stop](budgets-and-hard-stop.md#the-stop) covers.
 - A config key, and a change to a model's prompt.
 - A marker that lasts until the resume.
 
