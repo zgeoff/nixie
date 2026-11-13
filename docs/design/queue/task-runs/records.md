@@ -246,7 +246,8 @@ These rows leave the task run open, and the task takes the next state the step a
 
 - more work queued for the task, including a turn that an interrupt cut, which keeps its built
   `isInterrupted` mark;
-- an open wait for a reply to a message the task sent;
+- an open wait for a reply to a message the task sent, or an open event wait
+  ([mail and calendar polls](../mail-and-calendar-polls.md#event-waits));
 - a quiet turn, when the task is wakeable.
 
 - Until [the wake rule](https://linear.app/zgeoff/issue/GEO-1865) renames it, "wakeable" reads the
