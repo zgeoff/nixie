@@ -208,5 +208,6 @@ brief, the prompt it started with, and adds what the third column says.
 ## Open questions
 
 - **Does the dashboard gain the "needs you" and the "finished in the last 7 days" groups of the
-  baseline?** The owner settles it in [the view routes](https://linear.app/zgeoff/issue/GEO-1837).
-  Until then, the dashboard keeps its 3 groups, as the table in Contracts maps them.
+  baseline?** The owner settles it in
+  [dashboard states, fires and filters](https://linear.app/zgeoff/issue/GEO-2650). Until then, the
+  dashboard keeps its 3 groups, as the table in Contracts maps them.
