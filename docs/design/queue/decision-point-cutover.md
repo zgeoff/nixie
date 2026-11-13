@@ -85,7 +85,9 @@ interface PolicyCall {
 
 interface CallDestination {
   value: string; // NFC; an address, a phone number or a host
-  replyTarget: boolean; // true only when the tool resolved it from a message ID that nixie read
+  // true only for the sender of a message that nixie read (Reply-To, else From), or the organizer
+  // of a calendar event that nixie read, resolved on the host from the ID the call names
+  replyTarget: boolean;
 }
 
 interface PolicyDecision {
@@ -345,9 +347,12 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 
 ### Destinations
 
-- The tool endpoint resolves each destination before stage 1, from the declaration's destination
-  arguments. A reply target comes from a message ID that a connector read, never from text the model
-  wrote.
+- The tool endpoint resolves each destination on the host before stage 1, from the declaration's
+  destination arguments, or from the connector action's `resolveDestinations(input, context)` when
+  it declares one. A resolution that fails returns the tool's error to the model, and the call never
+  reaches the decision point.
+- A reply target comes from a message or an event that a connector read, never from text the model
+  wrote. A message in Spam or Trash, or one whose From is your own account, gives no reply target.
 - Stage 5 gives each destination the first permission that covers it, in this order: `owner`,
   `reply_target`, `known_contact`, `job`, `rule`.
 - `job` covers a destination that matches a pattern in the allowed destinations of the definition
