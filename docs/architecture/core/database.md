@@ -58,9 +58,16 @@ epoch rises before the first migration runs.
 
 ## Migrations
 
-The build's migrations form one ordered list, and the schema version is the number of them applied.
-A migration appends to the list and never changes one already released, so every database at a given
-version has the same shape.
+Each migration is one file in `libs/db/src/migrations/`, named `NNNN-<name>.ts` with a 4-digit
+number, and the file exports only the migration. `nixieSchema` loads the files in number order, and
+the schema version is the number of migrations applied. A migration takes the next free number and
+never changes one already released, so every database at a given version has the same shape.
+
+The loader refuses a duplicate number, a gap, a file whose name has no number, and a file that does
+not export exactly one migration. Two pull requests that each add a migration therefore merge with
+no text conflict, and the second fails its tests until you rename its file to the next free number.
+The server bundle carries the files as static imports that the build writes into the schema module,
+and applies the same checks when it starts.
 
 Each migration commits in its own transaction together with the new schema version, so a failed
 migration leaves the schema at the version before it. SQLite ignores the foreign key setting inside

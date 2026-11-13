@@ -120,7 +120,8 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
 - Every ID that keys the key store is random, from `crypto.randomUUID()`, and never a row number or
   any other sequence. [The database](docs/architecture/core/database.md#key-store-ids) gives the
   reason.
-- A migration appends to `nixieSchema` and never changes a released one.
+- A migration is a new numbered file in `libs/db/src/migrations/`. It takes the next free number,
+  renames to the next free number when another PR took it first, and never changes a released one.
 - Every new record the model can see exposes a short ID from `createShortID` in `libs/db`, and the
   model reads and passes that ID, never the record's UUID.
   [Short IDs](docs/architecture/core/database.md#short-ids) gives the reason.
