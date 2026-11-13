@@ -217,7 +217,9 @@ The sandbox:
 - The sandbox's owner is `code_run:<callID>`. The built start recovery destroys every sandbox whose
   owner it does not keep, so a code sandbox left by a crash goes at the next start.
 - nixie destroys the sandbox on every way out of the call, a refusal after the create and a thrown
-  error included. A failed destroy is logged, and start recovery removes the sandbox.
+  error included. The sandbox holds plain copies of the inputs and outputs, so nixie tries a failed
+  destroy again every 60 s until it succeeds, and the sandbox counts towards `runsAtOnce` until
+  then. Start recovery removes a sandbox that a stop of nixie left.
 - The program runs as the user `code`, in the work folder `/work`. Each input file lands at
   `/work/<path>`, the program at a path outside `/work`, and each skill folder at `/skills/<name>/`
   owned by root and read-only to `code`.
@@ -239,8 +241,8 @@ The limits:
 | `files`     | out/ holds more than 50 files or more than 20 MiB     | The program wrote {count} files of {size} under out/, past the limit of 50 files and 20 MiB, so nixie returned none. |
 
 - The memory check reads the count through `readMemoryKills` from
-  [the memory-kill signal](memory-kill-signal.md), before and after the program. A count that cannot
-  be read gives no `memory` limit.
+  [the memory-kill signal](memory-kill-signal.md), before and after the program. When the count
+  cannot be read, a program that ended on `SIGKILL` that nixie did not send gets the `memory` limit.
 - A code run's memory kill is the program's limit, and never a sign that the `codeRun` row is too
   small.
 - The whole call ends within `callMs`. Past it, nixie destroys the sandbox, and the call returns the
@@ -275,6 +277,10 @@ The files:
   and each one counts against the session's images through `reserveImages`. When the call has no
   `reserveImages`, or the session refuses an image, the file's `isShown` is false.
 - The result record's form adds each skill's name and content hash, and the sandbox ID.
+- When the call has a session, the transaction that writes the result checks first that no forget
+  ended the session, as the web fetch's page write does. When one did, nixie writes no attachment
+  and no `code_files` row, and the call returns the tool error "A forget ended this session during
+  the code run, so nixie kept nothing from it."
 - A forget of the `tool_result` record makes its files unreadable with its text. The `code_files`
   row stays, and the next use of its ID gets the "forgotten" refusal.
 - Each code run can add up to 22 MiB to `nixie.db` and to each backup: 20 MiB of files and two
