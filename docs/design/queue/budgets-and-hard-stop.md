@@ -61,9 +61,9 @@ flowchart LR
 # counting proxy config: the keys this design adds beside listen, store and routes
 periods:
   zone: Europe/London # an IANA zone, equal to the time tool's default_zone
-caps:
+caps: # defaults: twice nixie's default day and month limits
   day: { dollars: 120, tokens: 160000000 }
-  month: { dollars: 1000, tokens: 1000000000 }
+  month: { dollars: 1200, tokens: 1200000000 }
 control:
   listen: { hostname: 127.0.0.1, port: 8790 } # an address no sandbox reaches
   tokenFile: /run/secrets/proxy-control-token # one line, the same value as the server's secret
@@ -73,9 +73,10 @@ override: /var/lib/counting-proxy/override.json # written only by the host comma
 
 - A config sets either `periods` or the current `limits`, and the schema refuses one that sets both
   or neither.
-- A config with `periods` needs `caps` and `control`. The config of a
-  [preview](../../runbooks/preview.md), the throwaway build of one pull request, keeps `limits`, one
-  count that never resets, and sets none of these keys.
+- A config with `periods` needs `control`. `caps` defaults to twice nixie's default day and month
+  limits, and `day.turnCap` to twice `day.turns`, so a raise from the client works on a deployment
+  that sets neither. The config of a [preview](../../runbooks/preview.md), the throwaway build of
+  one pull request, keeps `limits`, one count that never resets, and sets none of these keys.
 
 ### The store
 
