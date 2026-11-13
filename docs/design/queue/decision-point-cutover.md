@@ -437,16 +437,17 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 
 ### A rollback to the release before
 
-| What the cutover adds                              | What the release before does                                 |
-| -------------------------------------------------- | ------------------------------------------------------------ |
-| The decision's new envelope keys                   | Reads the record, and drops each key it does not know        |
-| `erasable.destinations` on `tool_called`           | Reads the record, and never reads that field                 |
-| A `tool_result` of an ask                          | Reads it as queued with no action                            |
-| The `policy.action_*` and `policy.contact_*` kinds | Skips each record kind it does not know                      |
-| The `known_contacts` migration                     | Starts, because a migration only expands; reads no row of it |
-| `policy.consent.linkMaxAge`                        | Refuses to start, because the config schema is strict        |
-| `effects/*.yaml`                                   | Skips the folder, so each override stops applying            |
-| `destinations` in a `task.yaml`                    | Refuses the seed, and keeps the last seed it accepted        |
+| What the cutover adds                                | What the release before does                                  |
+| ---------------------------------------------------- | ------------------------------------------------------------- |
+| The decision's new envelope keys                     | Reads the record, and drops each key it does not know         |
+| No old `destinations` or `consent` key on a decision | Reads the record, because its schema marks both keys optional |
+| `erasable.destinations` on `tool_called`             | Reads the record, and never reads that field                  |
+| A `tool_result` of an ask                            | Reads it as queued with no action                             |
+| The `policy.action_*` and `policy.contact_*` kinds   | Skips each record kind it does not know                       |
+| The `known_contacts` migration                       | Starts, because a migration only expands; reads no row of it  |
+| `policy.consent.linkMaxAge`                          | Refuses to start, because the config schema is strict         |
+| `effects/*.yaml`                                     | Skips the folder, so each override stops applying             |
+| `destinations` in a `task.yaml`                      | Refuses the seed, and keeps the last seed it accepted         |
 
 - Before you start the release before, remove the `policy` section from `config.yaml`.
 - When the release before parses `task.yaml` files at all, also remove `destinations` from each one,
@@ -458,37 +459,37 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 ## Decisions
 
 - **A rule in code keeps the queue check and the crash tests' send working under any rules.** An
-  agent's call on 13 Nov: the queue check proves the action queue on every start, so it must not
-  wait on your rules.
-- **`task.define` and `task.undefine` pass the full pipeline.** An agent's call on 13 Nov: their
-  rule in code allowed them by name only because no stage could ask, and stage 8 credits your own
-  request.
-- **With no rule of yours in force, every call outside consent asks.** An agent's call on 13 Nov:
-  that state fails closed with no fallback rule, and the cutover order means a live deployment never
-  reaches it.
-- **Stage 5 needs both consent checks, as stage 8 does.** An agent's call on 13 Nov: an address you
-  typed for another reason would otherwise let `allow-sends-within-limits` send to it.
-- **The stored decision keeps the old keys' shapes, and adds new keys.** An agent's call on 13 Nov:
-  the release before then reads every record, with no oldest-reader step.
+  agent's call on 13 Nov 2026: the queue check proves the action queue on every start, so it must
+  not wait on your rules.
+- **`task.define` and `task.undefine` pass the full pipeline.** An agent's call on 13 Nov 2026:
+  their rule in code allowed them by name only because no stage could ask, and stage 8 credits your
+  own request.
+- **With no rule of yours in force, every call outside consent asks.** An agent's call on 13 Nov
+  2026: that state fails closed with no fallback rule, and the cutover order means a live deployment
+  never reaches it.
+- **Stage 5 needs both consent checks, as stage 8 does.** An agent's call on 13 Nov 2026: an address
+  you typed for another reason would otherwise let `allow-sends-within-limits` send to it.
+- **The stored decision keeps the old keys' shapes, and adds new keys.** An agent's call on 13 Nov
+  2026: the release before then reads every record, with no oldest-reader step.
 - **Destination values sit in erasable fields, and the envelope holds only their permissions.** An
-  agent's call on 13 Nov: a record forget then removes a contact's address, as the
+  agent's call on 13 Nov 2026: a record forget then removes a contact's address, as the
   [event log design](../platform/core/event-log.md) needs.
-- **A contact's details sit in its marking record's erasable fields.** An agent's call on 13 Nov:
-  the per-contact key of the event log design is a larger change, and a record forget removes them
-  in its place.
-- **An effect override holds additions and removals, never a full list.** An agent's call on 13 Nov:
-  a full list would hide an effect that a later release adds to the tool.
-- **Effect overrides live in a root folder of their own.** An agent's call on 13 Nov: the release
-  before parses every YAML file under `rules/` as rules and would refuse the seed. Budgets take the
-  same pattern.
+- **A contact's details sit in its marking record's erasable fields.** An agent's call on 13 Nov
+  2026: the per-contact key of the event log design is a larger change, and a record forget removes
+  them in its place.
+- **An effect override holds additions and removals, never a full list.** An agent's call on 13 Nov
+  2026: a full list would hide an effect that a later release adds to the tool.
+- **Effect overrides live in a root folder of their own.** An agent's call on 13 Nov 2026: the
+  release before parses every YAML file under `rules/` as rules and would refuse the seed. Budgets
+  take the same pattern.
 - **A definition's allowed destinations apply at the seed, with no widening proposal.** An agent's
-  call on 13 Nov: a file definition's tool list applies the same way, and `task.define` refuses the
-  key, so only a file you wrote grants a destination.
-- **An approval runs nothing in this work.** An agent's call on 13 Nov: running an approved action
-  without the use-once check and the policy check before each attempt would be wider than the
+  call on 13 Nov 2026: a file definition's tool list applies the same way, and `task.define` refuses
+  the key, so only a file you wrote grants a destination.
+- **An approval runs nothing in this work.** An agent's call on 13 Nov 2026: running an approved
+  action without the use-once check and the policy check before each attempt would be wider than the
   designs that own them.
-- **A deny from a fault records the stage that was running.** An agent's call on 13 Nov: the stage
-  stays a number from 1 to 9, and `fault` tells the fault apart.
+- **A deny from a fault records the stage that was running.** An agent's call on 13 Nov 2026: the
+  stage stays a number from 1 to 9, and `fault` tells the fault apart.
 
 ## Builder decides
 
