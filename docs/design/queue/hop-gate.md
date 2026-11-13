@@ -170,8 +170,8 @@ A gated fetch has 5 states on the server:
 - A page reader that runs a headless browser. Its guest and its sandbox starter can call
   `makeHopAsker` and `gatePageHops` with the same `scanHop`, and its design owns its navigation
   limit and a first request that differs from the sent URL.
-- A check of whether a hop's host is paused:
-  [the pause per host](https://linear.app/zgeoff/issue/GEO-2244).
+- A check of whether a hop's host is paused. This design adds no such check, and
+  [the pause per host](https://linear.app/zgeoff/issue/GEO-2244) checks only the sent URL.
 
 ## Open questions
 

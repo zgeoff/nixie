@@ -101,7 +101,7 @@ type HasSession<ID extends HarnessID> =
 // models module: a definition gives `session` exactly when its capabilities say so
 interface HarnessDefinition<ID extends HarnessID, Profile extends ModelProfile> {
   readonly id: ID;
-  readonly profileSchema: HarnessProfileSchema; // built type, strict
+  readonly profileSchema: HarnessProfileSchema; // built type
   readonly bind: (profile: Profile) => Omit<Harness, 'session'>;
   readonly session: HasSession<ID> extends true ? HarnessSession : null;
 }
@@ -226,8 +226,9 @@ type SessionStart =
 - Host code reads the record and never branches on a harness ID. Outside its definition file, code
   reads a profile as `ModelProfile`, and only a definition's `bind` reads a field of its own profile
   type.
-- A definition's profile schema is strict, so a key that its harness's loop ignores fails the
-  config's load.
+- A definition's profile schema holds only the keys its harness's loop reads. The config load
+  ignores any other key in a profile, and logs a warning at start that names the key.
+  [The rollback check](rollback-check.md#constraints) sets this rule for every config key.
 - `roleNeeds` lists every capability a role's frames can use, including what its input can hold,
   such as `images` for a role whose input can carry an image. So a capability gap fails the config's
   load, and `encodeHostFrame` throws only on a host bug.
@@ -397,6 +398,6 @@ harness that declares `summarize` and `context-window`.
 
 ## Open questions
 
-- **Does Codex report a context overflow as its own error?** The overflow case of
-  [the Codex gates](https://linear.app/zgeoff/issue/GEO-2546) measures it. Until then, a Codex
-  overflow is a `failed` turn, and the step's retries handle it.
+- **Does Codex report a context overflow as its own error?** The builder of
+  [the ChatGPT plan login](https://linear.app/zgeoff/issue/GEO-2238) measures it in that work's
+  overflow case. Until then, a Codex overflow is a `failed` turn, and the step's retries handle it.

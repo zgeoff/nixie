@@ -174,7 +174,8 @@ atc's answers map to replies:
 ### The config and the token
 
 ```yaml
-# deployment config, coding section. Strict, as every section is.
+# deployment config, coding section. As in every section, nixie ignores a key it does not know, with
+# a warning at start.
 coding:
   atc:
     address: 100.64.12.7 # an IP literal: atc's listener binds only an IP address

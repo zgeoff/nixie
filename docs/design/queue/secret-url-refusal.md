@@ -58,7 +58,8 @@ export const ownValueRule = 'nixie-secret';
 ### The config keys
 
 ```ts
-// connectors module: 3 more keys of the web_fetch section, a strict object
+// connectors module: 3 more keys of the web_fetch section. nixie ignores a key it does not know,
+// with a warning at start.
 interface WebFetchSecretKeys {
   secret_typed_url_covers: 'named_url' | 'redirects'; // default 'redirects'
   secret_own_values: readonly SecretsEntryName[]; // default: every name but 'settings'; [] matches the public rules alone
