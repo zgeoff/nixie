@@ -146,8 +146,8 @@ const edited = await client.rules.editProposedRule({
 
 - The edit withdraws the old row with `proposals.withdrawn` and writes a new `rules.rule_proposed`
   with `editOf`, in one transaction. The new row keeps the group and its approvals.
-- The edited rule may hold any field the rule format allows. When it holds `lift`, the new row takes
-  the `lifting` risk class.
+- The edited rule stays an `allow` rule, and may hold any other field the rule format allows. When
+  it holds `lift`, the new row takes the `lifting` risk class.
 - The parser checks the edited rule, and `INVALID` lists each fault.
 
 The answers:
@@ -259,14 +259,16 @@ policy:
 ### Proposed rules
 
 - nixie proposes at most one open rule per group.
-- Every approved call that the proposal lists matches the proposed rule. A call that differs from
-  them in its tool, context, destinations or any checked argument does not match it.
+- Every approved call that the proposal lists matches the proposed rule. A call with another tool or
+  context, a destination outside the group's set, or another value of a checked argument does not
+  match it. A call to only some of the group's destinations matches, because an allow rule covers a
+  call whose every destination matches one of its patterns.
 - An Approve, Decline, lapse or withdrawal of the proposal sets the group's `proposal_id` back to
   null in the same transaction.
 - The group check runs again at start for every answer that joined a group since the check last ran,
   so a crash between an answer and its check loses no proposal.
 - An approved proposed rule exports, with its sentence and the reason "proposed after 3 approvals".
-  Undo of it is an ordinary runtime removal, a narrowing.
+  Undo of it removes an allow rule, a narrowing.
 
 ### Mandates
 
@@ -303,9 +305,9 @@ policy:
 ### The export
 
 - A runtime change of a mandate rule never exports, in force or after it leaves force.
-- The export ID's count of changes that left force counts no mandate change, so ending a mandate
-  leaves the export ID unchanged and rebuilds no pull request. A test ends a mandate beside an
-  exported change and checks that the export holds the same changes, the same ID and no removal.
+- A mandate that starts or ends runs a seed, which makes a new export ID, so the rolling pull
+  request rebuilds with the same changes. A test ends a mandate beside an exported change and checks
+  that the export holds the same changes, no removal and no mandate rule.
 
 ### Rollback
 
@@ -315,7 +317,6 @@ policy:
 | Shared rows of the 2 new families                                                | Has no handler for them, so lists none and refuses each answer as `NOT_ALLOWED`                         |
 | The `gap_answers` and `gap_groups` migration                                     | Starts, because the migration only adds tables; reads no row of them                                    |
 | A mandate's runtime changes in force                                             | Keeps them in force. Each stops matching at its `expires`, never exports, and waits for the timer       |
-| The export ID's count of changes that left force                                 | Counts mandate changes again, so the rolling PR rebuilds once with the same changes                     |
 | `policy.proposed_rules` and `policy.mandates` in config                          | Refuses to start, because the schema is strict. Remove both keys from `config.yaml` before the rollback |
 | `rules.propose_mandate` and the `rules.*` procedures                             | Has neither tool nor procedure; a client call answers `NOT_FOUND`                                       |
 
@@ -327,8 +328,6 @@ release before ran.
 - **A mandate holds only new allow rules, and ending it retires their runtime changes.** An agent's
   call on 13 Nov 2026: the export reads a removal over a definitions rule as "remove this rule", and
   a retired change with no definitions version beneath it leaves nothing to export.
-- **The export's left count leaves mandate changes out.** An agent's call on 13 Nov 2026: a mandate
-  that ends would otherwise rebuild the pull request with no change in it.
 - **The chat tool writes the proposal itself, declares `note`, and only the conversation holds it.**
   An agent's call on 13 Nov 2026: you get one prompt, the card shows each rule's sentence, and an
   ask at stage 4 would wait on running approved actions, which is not built.
