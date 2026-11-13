@@ -14,7 +14,7 @@ the backend for each credential.
 ```ts
 interface CredentialStore {
   register(spec: CredentialSpec): Promise<CredentialRef>;
-  fetcher(ref: CredentialRef, hosts: string[]): AuthorizedFetch; // adds the credential on the host
+  fetcher(ref: CredentialRef | null, hosts: string[]): AuthorizedFetch; // adds the credential on the host
   grant(ref: CredentialRef, sandbox: Sandbox, rule: InjectRule): Promise<GrantRef>;
   revoke(grant: GrantRef): Promise<void>;
   status(ref: CredentialRef): Promise<CredentialStatus>;
@@ -34,7 +34,8 @@ interface CredentialSpec {
 ```
 
 A connector never reads a token. It calls the service through `fetcher`, which adds the credential
-on the host and refuses any host outside the credential's `hosts`. The fetcher drops the credential
+on the host and refuses any host outside the credential's `hosts`. A fetcher with no credential, for
+a service that takes none, makes the same checks and adds nothing. The fetcher drops the credential
 on a redirect to another host. On every hop it resolves the host, refuses any
 [non-public address](web-fetch.md#non-public-addresses), and connects to the address it checked. A
 service on a private network passes only when the credential's configuration pairs its host with an
