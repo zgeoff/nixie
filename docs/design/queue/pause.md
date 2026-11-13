@@ -111,7 +111,7 @@ nixie reads the marker file this way:
 -- One migration appended to nixieSchema. It leaves the schema's oldestReader as it is.
 create table nixie_pause (
   id              integer primary key check (id = 1), -- at most one row: nixie is paused
-  cause           text not null,                      -- 'restore' or 'owner'
+  cause           text not null,                      -- 'restore', 'owner' or 'spending'
   recovery_id     text,                               -- set exactly when cause is 'restore'
   paused_sequence integer not null references records (sequence)
 ,
@@ -135,7 +135,7 @@ alter table schema_version add column open_oldest_reader integer; -- null while 
 
 ```ts
 // log module: the 4 record kinds, each on no thread. The tasks projection folds none.
-type PauseCause = 'restore' | 'owner';
+type PauseCause = 'restore' | 'owner' | 'spending'; // 'spending': budgets-and-hard-stop.md
 
 interface NixiePaused {
   kind: 'nixie.paused'; // inserts or replaces the nixie_pause row, and empties pause_exemptions
@@ -326,13 +326,15 @@ type RestorePauseFaultPoint =
 - When nixie pauses on a running server, a step that holds a lease runs to its commit, and an
   attempt that has started runs to its outcome. Nothing new starts after either.
 - Only you pause or resume nixie, or resume one task: through the API, a host command or the web
-  client. No tool does any of these. Each record's `by` is the identity of the session that acted,
-  as the built task controls write it.
+  client. No tool does any of these. One exception: the
+  [hard spending stop](budgets-and-hard-stop.md#the-stop) pauses with the cause `spending`, with a
+  `by` of null, and resumes only that pause. Each record's `by` is the identity of the session that
+  acted, as the built task controls write it.
 - `nixie_pause`, `pause_exemptions` and `recoveries` are projections of the 4 record kinds, so a
   projection rebuild gives the same rows, and `syncPauseGate` matches the gate to them at the next
   start.
-- A pause while nixie is paused replaces the cause. A resume while nixie is not paused writes
-  nothing.
+- A pause while nixie is paused replaces the cause, except a spending pause, which never replaces
+  another cause. A resume while nixie is not paused writes nothing.
 - A log reset empties `nixie_pause` and `pause_exemptions` with every other table.
 
 ### What the restore records for you to check
@@ -481,7 +483,8 @@ To roll back while nixie is paused, after a restore or not:
 ## Out of scope
 
 - `nixie rollback`, and what it would pause.
-- A pause from a tool, and a timed pause that resumes on its own.
+- A pause from a tool, and a timed pause that resumes on its own. The spending pause resumes when
+  the stop clears, which [the hard spending stop](budgets-and-hard-stop.md#the-stop) covers.
 - A config key, and a change to a model's prompt.
 - A marker that lasts until the resume.
 
