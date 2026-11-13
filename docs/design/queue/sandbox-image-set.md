@@ -219,8 +219,8 @@ The release:
 
 ## Out of scope
 
-- Another image. A `codex`, `worker` or browser image each arrives in its own pull request, with its
-  own design.
+- Another image. [The code tool](code-tool.md) adds the `code` key. A `codex`, `worker` or browser
+  image each arrives in its own pull request, with its own design.
 - What each image holds and builds from.
   [The bundled conversation guest](https://linear.app/zgeoff/issue/GEO-2491),
   [the image session](https://linear.app/zgeoff/issue/GEO-2248) and

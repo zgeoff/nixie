@@ -10,30 +10,16 @@ coding adapter, with atc first and a built-in adapter that runs one session in a
 
 The code tool takes a program, its language and the files it reads, and returns the exit code, the
 output and the files the program wrote. It declares the `code_run` effect, and its result is outside
-content. The code environment is the code and worker images that the
-[sandbox adapter](sandbox-adapter.md) lists.
+content. Every code run, from the conversation, a task or a worker, gets a fresh imp from the code
+image, with egress `none`, no grants and no tool route, destroyed when the call returns. The tool
+runs on the host, so the decision point decides every code run and the record holds it.
 
-- **From the conversation or a task,** each code run gets a fresh imp from the code image, with
-  egress `none` and no grants, destroyed when the call returns.
-- **From a worker,** the program runs in the worker's own imp, which serves one tool call and holds
-  the model credential as its one grant. A second imp would isolate nothing the worker does not
-  hold.
-
-The tool runs on the host in both cases, so the decision point decides every code run and the record
-holds it. A code run has these limits by default, each changeable per job:
-
-| Limit     | Default |
-| --------- | ------- |
-| Wall time | 60 s    |
-| Memory    | 1 GiB   |
-| Output    | 1 MiB   |
-| Files out | 20 MiB  |
-| vCPUs     | 1       |
-
-Input files come from nixie's own store, such as an attachment or a file a connector fetched. A
-`skills` list places each named skill's folder read-only in the sandbox, as the
-[skills design](../skills.md#scripts) sets out. Output files come back as outside content. A program
-that needs outside data gets it through another tool first, because the code imp has no route out.
+A code run has fixed limits: 60 s of wall time, 512 MiB of memory, 1 MiB of output per stream, 20
+MiB of files out and 1 vCPU. Input files are files an earlier code run wrote and pages the web fetch
+stored. A `skills` list places each named skill's folder read-only in the sandbox, as the
+[skills design](../skills.md#scripts) sets out. A program that needs outside data gets it through
+another tool first, because the code imp has no route out. [The code tool](../../queue/code-tool.md)
+holds the contracts, the limits and what the code image holds.
 
 ## The coding adapter
 
