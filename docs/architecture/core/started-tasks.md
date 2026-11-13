@@ -45,14 +45,15 @@ the message tool, and so never more than its starter holds. The nixie runner add
 whatever its start named. A start with `memory: read` also gives the task each memory tool that only
 reads and that its starter holds. A task gets a memory tool that writes only when all 3 hold: the
 start names it in `tools`, the starter holds it, and the start sets `memory: read`. A start never
-gives a write tool by default. A start with `memory: none` may name no memory tool at all. Each
-write from a task goes through the same [write gate](../memory/writes.md) as the conversation's. A
-task's `memory.remember` or text edit cites no message of the user on its own thread, so it waits
-for review with the reason `no_quote`, unless an allow rule covers it. A task's `memory.unpin`
-applies at once, as the conversation's does. A start may name no skill tool either, because only the
-conversation's thread has a skill list, so a skill tool would refuse every call of the task. The
-starter rule that asks before a stranger reads memory needs a decision point that can ask, so until
-then the start refuses that combination
+gives a write tool by default. A start with `memory: none` may name no memory tool at all.
+
+Each write from a task goes through the same [write gate](../memory/writes.md) as the
+conversation's. A task's `memory.remember` or text edit cites no message of the user on its own
+thread, so it waits for review with the reason `no_quote`, unless an allow rule covers it. A task's
+`memory.unpin` applies at once, as the conversation's does. A start may name no skill tool either,
+because only the conversation's thread has a skill list, so a skill tool would refuse every call of
+the task. The starter rule that asks before a stranger reads memory needs a decision point that can
+ask, so until then the start refuses that combination
 ([GEO-1803](https://linear.app/zgeoff/issue/GEO-1803/nixie-policy-the-full-decision-point-with-destination-limits-known)).
 
 Each tool has 2 names. nixie registers a tool under its nixie name, such as `memory.recall`. The
