@@ -7,7 +7,7 @@ export function findRetryAfterMs(
 ): number | null {
   const waits = [
     retryAfterStatuses.has(status)
-      ? findRetryAfterWait(pickFirst(headers['retry-after']), nowMs)
+      ? findRetryAfterWait(findFirstValue(headers['retry-after']), nowMs)
       : null,
     findResetWait(headers, nowMs),
   ].filter((wait): wait is number => wait !== null && Number.isSafeInteger(wait));
@@ -35,7 +35,7 @@ function findRetryAfterWait(value: string | undefined, nowMs: number): number | 
   return Number.isNaN(date) ? null : Math.max(0, Math.ceil(date - nowMs));
 }
 
-function pickFirst(value: string | readonly string[] | undefined): string | undefined {
+function findFirstValue(value: string | readonly string[] | undefined): string | undefined {
   return (typeof value === 'string' ? value : value?.[0])?.trim();
 }
 
@@ -43,9 +43,9 @@ function findResetWait(
   headers: Readonly<Record<string, string | readonly string[] | undefined>>,
   nowMs: number,
 ): number | null {
-  const reset = pickFirst(headers['x-ratelimit-reset']);
+  const reset = findFirstValue(headers['x-ratelimit-reset']);
 
-  if (pickFirst(headers['x-ratelimit-remaining']) !== '0' || reset === undefined) {
+  if (findFirstValue(headers['x-ratelimit-remaining']) !== '0' || reset === undefined) {
     return null;
   }
 
