@@ -1,73 +1,8 @@
-import { actionCancelMigration } from './action-cancel-migration';
-import { actionsMigration } from './actions-migration';
-import { apiMigration } from './api-migration';
-import { backupNoticesMigration } from './backup-notices-migration';
-import { backupSetsMigration } from './backup-sets-migration';
-import { definitionSeedRepositoryMigration } from './definition-seed-repository-migration';
-import { definitionsMigration } from './definitions-migration';
-import { dropMessageRoutesMigration } from './drop-message-routes-migration';
-import { eventLogMigration } from './event-log-migration';
-import { memoryKindsMigration } from './memory-kinds-migration';
-import { memoryMigrations } from './memory-migrations';
-import { memoryPinProposalsMigration } from './memory-pin-proposals-migration';
-import { memorySensitiveMigration } from './memory-sensitive-migration';
-import { memorySubjectChangesMigration } from './memory-subject-changes-migration';
-import { memorySubjectsMigration } from './memory-subjects-migration';
-import { memoryUntilMigration } from './memory-until-migration';
-import { momentsMigration } from './moments-migration';
-import { promptApprovalsMigration } from './prompt-approvals-migration';
-import { recordAttachmentsMigration } from './record-attachments-migration';
-import { ruleExportsMigration } from './rule-exports-migration';
-import { rulesMigration } from './rules-migration';
-import { sandboxesMigration } from './sandboxes-migration';
-import { searchCallsMigration } from './search-calls-migration';
-import { skillExportAttemptsMigration } from './skill-export-attempts-migration';
-import { skillExportsMigration } from './skill-exports-migration';
-import { skillsMigration } from './skills-migration';
-import { taskControlsMigration } from './task-controls-migration';
-import { taskMessagesMigration } from './task-messages-migration';
-import { taskRoutesMigration } from './task-routes-migration';
-import { tasksMigration } from './tasks-migration';
+import { join } from 'node:path';
+import { readMigrations } from './read-migrations';
 import type { BuildSchema } from './types';
-import { webFetchLinksMigration } from './web-fetch-links-migration';
-import { webFetchPagesMigration } from './web-fetch-pages-migration';
-import { writtenSkillsMigration } from './written-skills-migration';
 
 export const nixieSchema: BuildSchema = {
-  migrations: [
-    eventLogMigration,
-    definitionsMigration,
-    sandboxesMigration,
-    tasksMigration,
-    actionsMigration,
-    apiMigration,
-    ...memoryMigrations,
-    recordAttachmentsMigration,
-    memoryKindsMigration,
-    skillsMigration,
-    memorySubjectsMigration,
-    writtenSkillsMigration,
-    skillExportsMigration,
-    skillExportAttemptsMigration,
-    webFetchLinksMigration,
-    memoryUntilMigration,
-    definitionSeedRepositoryMigration,
-    memoryPinProposalsMigration,
-    promptApprovalsMigration,
-    taskMessagesMigration,
-    momentsMigration,
-    memorySensitiveMigration,
-    taskRoutesMigration,
-    memorySubjectChangesMigration,
-    taskControlsMigration,
-    actionCancelMigration,
-    backupSetsMigration,
-    dropMessageRoutesMigration,
-    searchCallsMigration,
-    webFetchPagesMigration,
-    backupNoticesMigration,
-    rulesMigration,
-    ruleExportsMigration,
-  ],
+  migrations: await readMigrations(join(import.meta.dir, 'migrations')),
   oldestReader: 35,
 };

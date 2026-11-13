@@ -132,6 +132,13 @@
       "rules": {
         "max-lines": "off"
       }
+    },
+    {
+      "files": ["libs/db/src/migrations/[0-9][0-9][0-9][0-9]-*.ts"],
+      // the number in the file name orders the migrations, so the name cannot match the export
+      "rules": {
+        "zgeoff/file-named-for-export": "off"
+      }
     }
   ]
 }

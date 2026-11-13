@@ -34,9 +34,15 @@
         "src/run-preview-route-config.ts"
       ]
     },
-    // the release workflows run the migration check and the schema report by their paths, so no
-    // import reaches them
-    "libs/db": { "entry": ["src/run-migration-check.ts", "src/run-schema-report.ts"] },
+    // the release workflows run the migration check and the schema report by their paths, and the
+    // schema loader reaches each migration file by listing its folder, so no import reaches them
+    "libs/db": {
+      "entry": [
+        "src/run-migration-check.ts",
+        "src/run-schema-report.ts",
+        "src/migrations/[0-9][0-9][0-9][0-9]-*.ts"
+      ]
+    },
     // the conversation image runs its guest's entries by their paths, so no import reaches them
     "guests/conversation": { "entry": ["src/main.ts", "src/check.ts"] },
     // an eval run is a script a contributor runs by its path
