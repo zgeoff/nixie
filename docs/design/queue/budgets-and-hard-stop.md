@@ -307,9 +307,9 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
   request with the built 403 when any period's count has reached its limit in force.
 - A period whose `limit` is null refuses every request with a 503, so a proxy that nixie never set
   sends nothing upstream.
-- At the first admission or reply on or after a period's next start in `periods.zone`, the proxy
-  sets that period's count to zero, sets its `start`, and drops its `raise`. It keeps `limit` and
-  `lost`.
+- Each read of the store, for an admission, a reply or a control call such as `/status`, first
+  resets each period whose next start in `periods.zone` has passed: it sets the count to zero, sets
+  `start`, and drops `raise`. It keeps `limit` and `lost`. So a reset needs no model request.
 - A reply adds its dollars and tokens to the day, the month and the sandbox in one write.
 - With `countBySandbox`, the proxy refuses a request whose first path segment holds a sandbox name
   that the store lacks, with a 403, and a request past its sandbox's limit, with the built 403. The
@@ -329,9 +329,11 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
   `/<sandbox name>/<profile ID>`. The profile ID is the proxy's route ID.
 - Each model grant carries the path filter `/<sandbox name>/**`, so a guest reaches only its own
   sandbox's count.
-- nixie adds each model secret with `modelURL` as its upstream. For a secret that the deployment
-  holds, the sandbox adapter reads the secret's rules and refuses the grant when its upstream is not
-  `modelURL`.
+- With `spendStop` set, nixie holds no model credential. The server refuses to start when its
+  secrets file has a `model_credentials` entry, so no nixie code can send a request with the key
+  past the proxy.
+- The deployment adds each model secret with `modelURL` as its upstream. The sandbox adapter reads
+  the secret's rules and refuses the grant when the upstream is not `modelURL`.
 - The host registers each sandbox with the proxy before its first model request. A worker's sandbox
   gets the `workerRun` dollars and tokens, and every other sandbox gets `{ limit: null }`. The host
   deletes the entry when it destroys the sandbox.
@@ -424,8 +426,8 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
   definitions lack, or a budget whose `counts` is not `spend`.
 - Stage 4 of the [decision point](../platform/policy/decision-point.md#the-pipeline) passes a
   `spend` call only when its amount is at most `perAction` and the charge to the lift's budget
-  lands. The charge lands when the action queues, in the queue's transaction, and a failed action
-  credits it.
+  lands. The charge lands when the action queues, in the queue's transaction. A failed action
+  credits it, and so does a stop that cancels the action, in the stop's transaction.
 - The widening check treats an added lift, a higher `perAction` and a changed budget as widening,
   and a removed lift and a lower `perAction` as narrowing. A widening of a lift is in the lifting
   risk class.
@@ -468,6 +470,8 @@ To roll back:
 - **The proxy holds the caps, and nixie sets limits under them.** nixie's config keeps the limits in
   one place with the other model limits, and the proxy's config, which nixie cannot reach, bounds
   every value nixie sends. [0012](../../decisions/0012-spending-stop.md)
+- **With the stop, the deployment holds every model credential.** An agent's call on 13 Nov: a key
+  in nixie's secrets file would let nixie's own code reach the provider past the proxy and its cap.
 - **The cap is the day's total, never the size of a raise.** An agent's call on 13 Nov: the notice
   and the status show a total, so the cap reads in the same terms.
 - **The stop is nixie's pause, with the cause `spending`.** An agent's call on 13 Nov: one switch
