@@ -10,6 +10,7 @@ import { makeStubFetcher } from './test-utils/make-stub-fetcher';
 test("it sends the fetcher the URL, the limits and the deployment's ranges, and returns its page", async () => {
   const answer = mock((request: FetchRequest) => ({
     kind: 'page' as const,
+    retryAfterMs: null,
     url: request.url,
     status: 200,
     contentType: 'text/plain',
@@ -36,6 +37,7 @@ test("it sends the fetcher the URL, the limits and the deployment's ranges, and 
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'https://example.com/',
     status: 200,
     contentType: 'text/plain',
@@ -56,6 +58,7 @@ test('it creates a fetch sandbox with public egress, no grants and no tool route
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -99,6 +102,7 @@ test('it runs two fetches in a row in two different sandboxes, and destroys each
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -147,6 +151,7 @@ test("it starts the next fetch only once the last fetch's destroy ends, and swee
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -195,6 +200,7 @@ test("it returns a fetch's reply before its sandbox's destroy ends", async () =>
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -234,6 +240,7 @@ test('it destroys a sandbox that a create makes after its time limit, as soon as
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -288,6 +295,7 @@ test('it destroys nothing and creates nothing for a fetch whose sweep listed aft
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -357,6 +365,7 @@ test('it creates nothing for a fetch whose sweep destroyed its leftovers after i
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -416,6 +425,7 @@ test('it sweeps before the next fetch after a create that failed, which can leav
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -467,6 +477,7 @@ test('it lists no sandboxes for a fetch after one whose sandbox it destroyed', a
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -509,6 +520,7 @@ test('it reads a reply whose text and link targets fill their limits with charac
     adapter: buildStubSandboxAdapter(
       makeStubFetcher((request) => ({
         kind: 'page',
+        retryAfterMs: null,
         url: request.url,
         status: 200,
         contentType: 'text/plain',
@@ -545,6 +557,7 @@ test('it reads an image reply that fills the image limit, past the size of a rep
     adapter: buildStubSandboxAdapter(
       makeStubFetcher((request) => ({
         kind: 'image',
+        retryAfterMs: null,
         url: request.url,
         status: 200,
         contentType: 'image/jpeg',
@@ -564,6 +577,7 @@ test('it reads an image reply that fills the image limit, past the size of a rep
 
   expect(reply).toStrictEqual({
     kind: 'image',
+    retryAfterMs: null,
     url: 'https://quay.test/chart.jpg',
     status: 200,
     contentType: 'image/jpeg',
@@ -766,6 +780,7 @@ test('it fails a fetch whose time limit passed before its fetcher exited', async
 
       return {
         kind: 'page',
+        retryAfterMs: null,
         url: request.url,
         status: 200,
         contentType: 'text/plain',
@@ -802,6 +817,7 @@ test('it removes the fetch sandboxes a past process left before it creates one',
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -849,6 +865,7 @@ test('it never removes a sandbox of another owner, and creates its own under its
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -901,6 +918,7 @@ test('it runs one fetch at a time', async () => {
   const fetcher = makeGatedCall(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -944,6 +962,7 @@ test('it fails the fetch when the sandbox cannot be created, and tries again on 
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -983,6 +1002,7 @@ test('it fails a fetch whose sandbox never finishes creating', async () => {
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -1027,6 +1047,7 @@ test('it waits on a sandbox that never finishes creating until the time limit pa
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -1071,6 +1092,7 @@ test('it serves the next fetch after a sandbox that never finished creating', as
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -1112,6 +1134,7 @@ test('it fails a fetch after it stops, and creates no sandbox', async () => {
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -1143,6 +1166,7 @@ test("it destroys the last fetch's sandbox before it finishes stopping", async (
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -1177,6 +1201,7 @@ test("it waits on the last fetch's destroy before it finishes stopping", async (
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain',

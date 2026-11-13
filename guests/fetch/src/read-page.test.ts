@@ -41,6 +41,7 @@ test('it returns the readable text of an HTML page over a connection to the chec
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: `https://site.test:${site.port}/page?q=1`,
     status: 200,
     contentType: 'text/html; charset=utf-8',
@@ -180,6 +181,7 @@ test('it returns the https page for an http URL whose host serves https', async 
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'https://site.test/tides',
     status: 200,
     contentType: 'text/html',
@@ -220,6 +222,7 @@ test('it returns the http page, with its http final URL, for an http URL whose h
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'http://site.test/notices',
     status: 200,
     contentType: 'text/html',
@@ -259,6 +262,7 @@ test('it returns the http page within the time limit for an http URL whose host 
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'http://site.test/locks',
     status: 200,
     contentType: 'text/plain',
@@ -325,6 +329,7 @@ test('it returns the http page for an http URL whose host fails the https handsh
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'http://site.test/notices',
     status: 200,
     contentType: 'text/plain',
@@ -363,6 +368,7 @@ test('it fetches an http URL that names a port over http without trying https', 
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: `http://site.test:${plain.port}/buoys`,
     status: 200,
     contentType: 'text/plain',
@@ -405,6 +411,7 @@ test.each([
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'http://site.test/buoys',
     status: 200,
     contentType: 'text/plain',
@@ -660,6 +667,7 @@ test('it follows a redirect to an http URL over http, with no https try first', 
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'http://site.test/chart',
     status: 200,
     contentType: 'text/plain',
@@ -700,6 +708,7 @@ test('it follows redirects up to the limit and returns the final URL', async () 
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: `https://site.test:${site.port}/next?step=2`,
     status: 200,
     contentType: 'text/plain',
@@ -740,6 +749,7 @@ test('it resolves the links of a page against its final URL after a redirect', a
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: `https://site.test:${site.port}/guides/setup/`,
     status: 200,
     contentType: 'text/html',
@@ -778,6 +788,7 @@ test('it returns a page within the text limit whole and not truncated when its l
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: directory,
     status: 200,
     contentType: 'text/html',
@@ -814,6 +825,7 @@ test('it cuts the list of other links before the text of the page at the text li
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: `https://site.test:${site.port}/`,
     status: 200,
     contentType: 'text/html',
@@ -877,6 +889,7 @@ test('it returns the blocked reason for a Cloudflare challenge in place of the p
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: `https://site.test:${site.port}/post`,
     status: 403,
     contentType: 'text/html; charset=UTF-8',
@@ -913,6 +926,7 @@ test('it returns the blocked reason for a challenge page it knows by its markup'
 
   expect(reply).toMatchObject({
     kind: 'page',
+    retryAfterMs: null,
     status: 503,
     blocked: "blocked by the site's bot protection (Cloudflare challenge)",
   });
@@ -944,6 +958,7 @@ test('it returns no blocked reason for a forbidden page with no challenge', asyn
 
   expect(reply).toMatchObject({
     kind: 'page',
+    retryAfterMs: null,
     status: 403,
     text: 'You do not have access.',
     blocked: null,
@@ -1023,6 +1038,7 @@ test('it stops at the body limit and marks the result truncated', async () => {
 
   expect(reply).toMatchObject({
     kind: 'page',
+    retryAfterMs: null,
     text: '0123456789012345678901234',
     links: [],
     isTruncated: true,
@@ -1397,6 +1413,7 @@ test('it returns a binary type with no body', async () => {
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: `https://site.test:${site.port}/a.pdf`,
     status: 200,
     contentType: 'application/pdf',
@@ -1426,6 +1443,7 @@ test('it returns the whole body of an image within the image limit', async () =>
 
   expect(reply).toStrictEqual({
     kind: 'image',
+    retryAfterMs: null,
     url: `https://site.test:${site.port}/a.png`,
     status: 200,
     contentType: 'image/png',
@@ -1458,6 +1476,7 @@ test('it returns no image, marked truncated, for an image past the image limit',
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: `https://site.test:${site.port}/a.png`,
     status: 200,
     contentType: 'image/png',
@@ -1494,6 +1513,7 @@ test('it returns the blocked reason, with no image, for an image a Cloudflare ch
 
   expect(reply).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: `https://site.test:${site.port}/a.png`,
     status: 403,
     contentType: 'image/png',
@@ -1556,6 +1576,7 @@ test('it returns another text type as it arrived', async () => {
 
   expect(reply).toMatchObject({
     kind: 'page',
+    retryAfterMs: null,
     status: 404,
     text: '{"a": "<b>"}',
     links: [],
@@ -1640,4 +1661,43 @@ test('it decodes the text in the charset the page names', async () => {
   });
 
   expect(reply).toMatchObject({ kind: 'page', text: 'café' });
+});
+
+test('it carries the wait that a rate-limited reply asks for', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: () =>
+      new Response('Slow down', {
+        status: 429,
+        headers: { 'content-type': 'text/plain', 'retry-after': '7' },
+      }),
+  });
+
+  const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1']] } });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: {
+      bodyBytes: 1_000_000,
+      timeoutMs: 5000,
+      redirects: 5,
+      textBytes: 1_000_000,
+      imageBytes: 1_000_000,
+    },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: resolver.resolveHost,
+    transports: createWebTransports(),
+    ca: site.ca,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: `https://site.test:${site.port}/`,
+    status: 429,
+    contentType: 'text/plain',
+    text: 'Slow down',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+    retryAfterMs: 7000,
+  });
 });

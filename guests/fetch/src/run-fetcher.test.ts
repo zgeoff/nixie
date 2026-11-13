@@ -49,6 +49,7 @@ test('it reads one request frame, however it arrives, and writes one reply frame
   ).toStrictEqual([
     {
       kind: 'page',
+      retryAfterMs: null,
       url: `https://site.test:${site.port}/`,
       status: 200,
       contentType: 'text/plain;charset=utf-8',

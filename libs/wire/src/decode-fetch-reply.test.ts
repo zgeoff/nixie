@@ -17,6 +17,7 @@ test('it returns a page with its text', () => {
 
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'https://example.com/',
     status: 200,
     contentType: 'text/html',
@@ -43,6 +44,7 @@ test('it returns a binary page with no text', () => {
 
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'https://example.com/a.png',
     status: 200,
     contentType: null,
@@ -66,6 +68,7 @@ test('it returns an image with its body in base64', () => {
 
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'image',
+    retryAfterMs: null,
     url: 'https://example.com/a.png',
     status: 200,
     contentType: 'image/png',
@@ -178,6 +181,7 @@ test('it returns a page with the reason the bot protection blocked it', () => {
 
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'https://example.com/',
     status: 403,
     contentType: 'text/html',
@@ -220,6 +224,7 @@ test('it returns a page with the targets of the links its text marks', () => {
 
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'page',
+    retryAfterMs: null,
     url: 'https://bakery.test/news',
     status: 200,
     contentType: 'text/html',
@@ -277,4 +282,50 @@ test('it refuses a page with no url', () => {
   );
 
   expect(() => decodeFetchReply(bytes)).toThrowWithMessage(TypeError, /url, a string/u);
+});
+
+test('it reads a page wait of whole milliseconds', () => {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({
+      kind: 'page',
+      url: 'https://example.com/',
+      status: 429,
+      contentType: 'text/html',
+      text: 'Slow down',
+      links: [],
+      isTruncated: false,
+      blocked: null,
+      retryAfterMs: 42_000,
+    }),
+  );
+
+  expect(decodeFetchReply(bytes)).toStrictEqual({
+    kind: 'page',
+    url: 'https://example.com/',
+    status: 429,
+    contentType: 'text/html',
+    text: 'Slow down',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+    retryAfterMs: 42_000,
+  });
+});
+
+test.each([-1, '42', 1.5])('it refuses a page with a retryAfterMs of %p', (retryAfterMs) => {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({
+      kind: 'page',
+      url: 'https://example.com/',
+      status: 429,
+      contentType: null,
+      text: null,
+      links: [],
+      isTruncated: false,
+      blocked: null,
+      retryAfterMs,
+    }),
+  );
+
+  expect(() => decodeFetchReply(bytes)).toThrowWithMessage(TypeError, /retryAfterMs/u);
 });

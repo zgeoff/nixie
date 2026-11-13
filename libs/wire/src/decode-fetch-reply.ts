@@ -16,6 +16,7 @@ export function decodeFetchReply(bytes: Uint8Array): FetchReply {
       status: requireStatus(reply),
       contentType: requireStringOrNull(reply, 'contentType'),
       base64: requireString(reply, 'base64'),
+      retryAfterMs: requireRetryAfterMs(reply),
     };
   }
 
@@ -32,6 +33,7 @@ export function decodeFetchReply(bytes: Uint8Array): FetchReply {
     links: requireStrings(reply, 'links'),
     isTruncated: requireBoolean(reply, 'isTruncated'),
     blocked: requireStringOrNull(reply, 'blocked'),
+    retryAfterMs: requireRetryAfterMs(reply),
   };
 }
 
@@ -63,6 +65,20 @@ function requireStringOrNull(
 
   if (value !== null && typeof value !== 'string') {
     throw new TypeError(`a fetch reply needs ${name}, a string or null`);
+  }
+
+  return value;
+}
+
+function requireRetryAfterMs(reply: Readonly<Record<string, unknown>>): number | null {
+  const value = reply['retryAfterMs'];
+
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new TypeError('a fetch reply needs retryAfterMs, a whole number of 0 or more, or null');
   }
 
   return value;

@@ -33,6 +33,7 @@ async function answerRequest(request: FetchRequest): Promise<FetchReply> {
 
     return {
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'text/plain; charset=utf-8',
@@ -51,6 +52,7 @@ async function answerRequest(request: FetchRequest): Promise<FetchReply> {
   if (png.byteLength > request.limits.imageBytes) {
     return {
       kind: 'page',
+      retryAfterMs: null,
       url: request.url,
       status: 200,
       contentType: 'image/png',
@@ -63,6 +65,7 @@ async function answerRequest(request: FetchRequest): Promise<FetchReply> {
 
   return {
     kind: 'image',
+    retryAfterMs: null,
     url: request.url,
     status: 200,
     contentType: 'image/png',
