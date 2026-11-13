@@ -72,9 +72,10 @@ action ID. The server checks the session, checks that the proposal is open and t
 checks that the choice fits the class, and then records the answer. An approved action enters the
 action queue, and an internal operation such as a memory write commits in its own transaction. A
 stale hash returns `CONFLICT`, and the client shows what changed. **Why:** a proposal can change
-under the same ID after a rule narrows. The passkey challenge derives from the proposal ID and the
-action hash and requires WebAuthn user verification, so the assertion covers that one action and the
-server rejects one made without your biometric or PIN check.
+under the same ID after a rule narrows. The passkey challenge hashes fresh random bytes with the
+proposal ID, the action hash and the choice, and requires WebAuthn user verification, so the
+assertion covers that one answer and the server rejects one made without your biometric or PIN
+check. The [passkeys design](../../queue/passkeys.md) holds the check.
 
 The card then follows the outcome from its records, never from the model's words.
 
