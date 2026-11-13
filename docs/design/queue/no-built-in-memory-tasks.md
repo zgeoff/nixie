@@ -8,10 +8,9 @@
 
 One release deletes nixie's 2 built-in memory tasks, the note-taker and the consolidator. A
 deployment's event log still holds what they wrote, so nixie keeps parsing and folding those
-records, and shows each one everywhere as nixie's own, as if the note-taker never existed. A task of
-the 2 that a log still holds gets the built `runOffTaskStep`, which empties its inbox and does
-nothing else. The config refuses the 2 tasks' sections, and a task that the agent starts does their
-work through the ordinary memory tools.
+records, and shows each one everywhere as nixie's own. A task of the 2 that a log still holds gets
+the built `runOffTaskStep`, which empties its inbox and does nothing else. The config refuses the 2
+tasks' sections, and a task that the agent starts does their work through the ordinary memory tools.
 
 Terms that the [glossary](../../glossary.md) lacks:
 

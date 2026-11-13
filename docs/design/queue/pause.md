@@ -267,8 +267,7 @@ type RestorePauseFaultPoint =
 - On `holding`, `startWriter` starts for a caller with `installsRestorePause` and refuses every
   other caller. On `replacing`, it refuses every caller.
 - A kill before step 6 leaves `replacing`, and you finish it by running the restore again, as the
-  [built restore](../../architecture/deployment/host-commands.md#backup-and-restore) requires: a
-  server never starts on `replacing`.
+  [built restore](../../architecture/deployment/host-commands.md#backup-and-restore) requires.
 - The restore writes nothing into the restored database. The backup's schema can predate the pause
   tables, and the migrations run at the next start.
 

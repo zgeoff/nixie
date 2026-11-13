@@ -327,9 +327,9 @@ count. A step's end can wait up to `close_wait` for the proxy's `.part` files.
 - **The event log holds 2 kinds.** The rest is debugging state in tables, so the last release meets
   only 2 unknown kinds.
 - **The shape stands on one independent security review.** An agent's call on 13 Nov, which the
-  owner accepted: the review found 3 faults (forget modes that kept text, a false claim about
-  backed-up keys, a plaintext digest in the spool header), each is fixed above, and a re-check of
-  the fixes found each closed.
+  owner accepted: the review found forget modes that kept text, a false claim about backed-up keys
+  and a plaintext digest in the spool header. Each is fixed above, and a re-check of the fixes found
+  each closed.
 - **nixie keeps the bodies in a store of its own, outside the backup set, and never as record
   attachments.** The owner approved this design on 12 Nov with this store in it: an attachment's
   ciphertext rides in every backup until a forget, and this store keeps every body out of every
