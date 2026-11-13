@@ -19,6 +19,7 @@ async function setupTest() {
     dataDir: testRecorder.log.writer.dataDir,
     log: testRecorder.log,
     recorder: testRecorder.recorder,
+    readSandboxRecords: testRecorder.readSandboxRecords,
     stack,
   };
 }
@@ -268,4 +269,64 @@ test('it keeps the whole text of a page whose text decodes to 3 times its body b
       blocked: null,
     },
   });
+});
+
+test('it creates the web fetch sandbox and the skill fetch sandbox at the fetch size', async () => {
+  const ctx = await setupTest();
+
+  const adapter = createSandboxAdapter({
+    recorder: ctx.recorder,
+    toolTarget: () => ({ path: '/nonexistent.sock' }),
+    sandbox: { adapter: 'test' },
+    testRootDir: ctx.dataDir,
+    hostEnv: {},
+  });
+
+  const webFetch = startWebFetch({
+    adapter,
+    image: 'fetch',
+    argv: [process.execPath, join(import.meta.dir, '../../../guests/fetch/src/main.ts')],
+    deniedRanges: [],
+    log: ctx.log,
+    config: {
+      limits: {
+        bodyBytes: 1000,
+        timeoutMs: 15_000,
+        redirects: 5,
+        textBytes: 1000,
+        imageBytes: 1000,
+      },
+      sandboxLimits: { vcpus: 1, memoryMiB: 192, diskMiB: 4096 },
+      linkPathChars: 24,
+      pageStoreBytes: 20_971_520,
+      imageLongEdge: 1568,
+    },
+  });
+
+  ctx.stack.defer(() => webFetch.stop());
+
+  await webFetch.tool.run(
+    { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://localhost/' }, toolUseID: null },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
+  );
+
+  await webFetch.readSkillPage('https://localhost/skills/SKILL.md');
+
+  const fetchLimits = { vcpus: 1, memoryMiB: 192, diskMiB: 4096 };
+
+  const records = await ctx.readSandboxRecords();
+
+  const created = records.filter((record) => record.kind === 'sandbox.created');
+
+  expect(created).toMatchObject([
+    { payload: { spec: { owner: 'web_fetch', limits: fetchLimits } } },
+    { payload: { spec: { owner: 'skill_fetch', limits: fetchLimits } } },
+  ]);
 });

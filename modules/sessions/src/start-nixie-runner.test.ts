@@ -356,7 +356,7 @@ test("it runs a started task's first step in a worker imp that the task owns", a
       egress: { kind: 'none' },
       grants: [expect.objectContaining({ host: 'models.example.test' })],
       toolRoute: true,
-      limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
+      limits: { vcpus: 1, memoryMiB: 384, diskMiB: 4096 },
     },
   ]);
 });
