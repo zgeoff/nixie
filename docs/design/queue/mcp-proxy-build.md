@@ -590,8 +590,9 @@ module owns and that has a second real provider in sight, one that does the work
 
 ## Out of scope
 
-- Coding sessions, which [the coding session runner](https://linear.app/zgeoff/issue/GEO-1843)
-  reaches over its own contract, never through the proxy.
+- Coding sessions in [atc](../platform/connectors/coding.md), the first coding adapter, which
+  [the coding session runner](https://linear.app/zgeoff/issue/GEO-1843) reaches over atc's own
+  contract, never through the proxy.
 - Sampling, roots and logging from a server.
 - A declaration in the definitions repo for a proxied tool.
 - A server reached through a sandbox's own egress.
