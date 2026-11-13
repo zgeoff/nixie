@@ -117,3 +117,19 @@ test('it reads an all-digit Retry-After as seconds', () => {
 test('it gives null with neither header', () => {
   expect(findRetryAfterMs(429, {}, 1_000_000_000_000)).toBeNull();
 });
+
+test("it ignores a wait too large to count and keeps the other header's wait", () => {
+  const headers = {
+    'retry-after': '9'.repeat(309),
+    'x-ratelimit-remaining': '0',
+    'x-ratelimit-reset': '1000000060',
+  };
+
+  expect(findRetryAfterMs(429, headers, 1_000_000_000_000)).toBe(60_000);
+});
+
+test('it gives null for a reset too large to count', () => {
+  const headers = { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '9'.repeat(309) };
+
+  expect(findRetryAfterMs(200, headers, 1_000_000_000_000)).toBeNull();
+});

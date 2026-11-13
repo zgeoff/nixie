@@ -10,7 +10,7 @@ export function findRetryAfterMs(
       ? findRetryAfterWait(pickFirst(headers['retry-after']), nowMs)
       : null,
     findResetWait(headers, nowMs),
-  ].filter((wait): wait is number => wait !== null);
+  ].filter((wait): wait is number => wait !== null && Number.isSafeInteger(wait));
 
   return waits.length === 0 ? null : Math.max(...waits);
 }
