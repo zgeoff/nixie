@@ -26,6 +26,7 @@ is deleted.
 | Spending            | [budgets and the hard stop](budgets-and-hard-stop.md)                                                                                                                                                                |
 | Connections         | [Google connections](google-connections.md)                                                                                                                                                                          |
 | Google tools        | [Gmail, Calendar and Drive](gmail-calendar-drive-tools.md)                                                                                                                                                           |
+| MCP servers         | [the MCP proxy build](mcp-proxy-build.md)                                                                                                                                                                            |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives
 in its Linear issue alone. The decision records these designs follow are in
