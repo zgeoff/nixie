@@ -446,13 +446,15 @@ every Forget before it hands out any task work:
 
 ### A rollback
 
-| The change                          | The release before                                                                              |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
-| the migration of the 3 tables       | starts, because the migration only adds tables, and never selects the tables                    |
-| the keys in `record_keys`           | keeps them, and its full reset deletes them                                                     |
-| the 11 record kinds                 | never meets them on a thread, and no projection of it reads them                                |
-| `connection.forgotten` as a forget  | stages no forget set for it, so the next scheduled set covers the Forget                        |
-| the procedures and the return route | has neither; a consent in flight lands on a 404, and its row waits for the next upgrade's sweep |
+| The change                          | The release before                                                                                    |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| the migration of the 3 tables       | starts, because the migration only adds tables, and never selects the tables                          |
+| `picker_key`, `project_number`      | never selects them: they are columns of `oauth_clients`, which the same migration adds                |
+| the 4 scopes in a grant             | never meets them: it has no Google connector, and the grant stays live at Google for the next upgrade |
+| the keys in `record_keys`           | keeps them, and its full reset deletes them                                                           |
+| the 11 record kinds                 | never meets them on a thread, and no projection of it reads them                                      |
+| `connection.forgotten` as a forget  | stages no forget set for it, so the next scheduled set covers the Forget                              |
+| the procedures and the return route | has neither; a consent in flight lands on a 404, and its row waits for the next upgrade's sweep       |
 
 - The design adds no config key.
 - A Forget left part way finishes only at the server start of a release that has this design. Before
