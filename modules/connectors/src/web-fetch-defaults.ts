@@ -1,5 +1,6 @@
 import { imageLimits } from '@heynixie/contract';
 import type { SandboxLimits } from '@heynixie/sandbox';
+import { sandboxSizes } from '@heynixie/sandbox';
 import type { FetchLimits } from '@heynixie/wire';
 import { defaultFetchTextBytes } from '@heynixie/wire';
 
@@ -19,7 +20,7 @@ export const webFetchDefaults: WebFetchConfig = {
     textBytes: defaultFetchTextBytes,
     imageBytes: imageLimits.bytes,
   },
-  sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+  sandboxLimits: sandboxSizes.fetch,
   linkPathChars: 24,
   pageStoreBytes: 20_971_520,
   imageLongEdge: imageLimits.longEdge,

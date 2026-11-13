@@ -65,7 +65,7 @@ test('it reads every section, with the default of each setting the file leaves o
         textBytes: 20_000,
         imageBytes: 5_242_880,
       },
-      sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+      sandboxLimits: { vcpus: 1, memoryMiB: 192, diskMiB: 4096 },
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,

@@ -3,6 +3,7 @@ import type { Logger } from '@heynixie/logger';
 import type { ModelSecrets, ModelsConfig } from '@heynixie/models';
 import { getHarness, resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import type { SandboxAdapter } from '@heynixie/sandbox';
+import { sandboxSizes } from '@heynixie/sandbox';
 import type {
   ConversationMemory,
   ConversationMemorySettings,
@@ -60,7 +61,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     tools: options.tools,
     toolNames: options.toolNames,
     image: getHarnessImage(options.images, harness.imageKey),
-    limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
+    limits: sandboxSizes.conversation,
     command: buildGuestCommand(options.sandboxes, harness.guest),
     getDefinitions: options.getDefinitions,
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),

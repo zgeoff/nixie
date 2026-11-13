@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { startTestMemoryStore } from '@heynixie/memory/test-utils';
+import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { startConversation } from './start-conversation';
@@ -1473,4 +1474,28 @@ test('it places no moment text in a turn whose message matches its title and ref
   expect(sent).not.toInclude('chose the bramble shelter over the box');
   expect(sent).not.toInclude(kept.shortID);
   expect(sent).not.toInclude('Bramble shelter hedgehogs');
+});
+
+test('it creates the conversation sandbox at the conversation size', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  ctx.guest.addReplies({ text: 'APPLE' });
+
+  await ctx.conversation.send('Say a fruit.');
+
+  const records = await ctx.readRecords();
+
+  const created = records
+    .filter((record) => record.kind === 'sandbox.created')
+    .map((record) => sandboxCreatedCodec.decode(record.payload).spec)
+    .map((spec) => ({ kind: spec.kind, limits: spec.limits }));
+
+  expect(created).toStrictEqual([
+    { kind: 'conversation', limits: { vcpus: 2, memoryMiB: 512, diskMiB: 4096 } },
+  ]);
 });
