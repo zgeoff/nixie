@@ -101,6 +101,32 @@ test('it holds the edit of a started task that reads memory as a proposal, made 
 
   const items = await ctx.nixie.readMemoryItems();
 
+  // The edit is only held, so the conversation still reads the item's original text.
+  const requestsBefore = ctx.nixie.model.requests.length;
+
+  ctx.nixie.model.addReplies(
+    {
+      toolUse: { name: 'mcp__nixie__memory_recall', input: { itemIDs: [itemID] } },
+      when: (body) => body.tools?.some((tool) => tool.name === 'mcp__nixie__task_start') === true,
+    },
+    {
+      text: 'Read it.',
+      when: (body) => body.tools?.some((tool) => tool.name === 'mcp__nixie__task_start') === true,
+    },
+  );
+
+  void process.request('sendMessage', { thread: 'conversation', text: 'What do you hold?' });
+
+  const findRecalled = () =>
+    ctx.nixie.model.requests
+      .slice(requestsBefore)
+      .map((request) => JSON.stringify(request.body?.messages?.at(-1)))
+      .find((message) => message.includes('tool_result') && message.includes('about'));
+
+  await waitForCondition(() => findRecalled() !== undefined);
+
+  const recalled = findRecalled();
+
   await process.kill();
 
   expect(proposed.payload).toMatchObject({
@@ -111,4 +137,6 @@ test('it holds the edit of a started task that reads memory as a proposal, made 
   });
 
   expect(items).toStrictEqual([{ itemID: expect.toBeString(), version: 1, state: 'active' }]);
+  expect(recalled).toContain('Your dentist is on Marsh Lane.');
+  expect(recalled).not.toContain('Marsh Road');
 });
