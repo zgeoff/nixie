@@ -83,7 +83,7 @@ holds the design for a piece of work that is not built yet, with its spikes in
   rule, effect declarations and the test rule
 - [Rules](architecture/policy/rules.md) — the rule format, matching, evaluation, rendering and the
   widening check
-- [The counting proxy](architecture/policy/counting-proxy.md) — routes, the count and its store, the
+- [The model gateway](architecture/policy/model-gateway.md) — routes, the count and its store, the
   spending limit and the refusals
 
 ### Connectors
@@ -295,8 +295,8 @@ Approvals, the rule engine, untrusted content and the spending stop.
   place of Cedar or OPA
 - [0005: The untrusted conversation](decisions/0005-untrusted-conversation.md) — the conversation is
   always untrusted and carries no taint flag, so the destination limits apply to every send
-- [0012: The spending stop](decisions/0012-spending-stop.md) — a proxy on the host counts model
-  spend and refuses requests past the budget, in place of the SDK's cap inside the sandbox
+- [0012: The spending stop](decisions/0012-spending-stop.md) — a model gateway on the host counts
+  model spend and refuses requests past the budget, in place of the SDK's cap inside the sandbox
 
 ### Memory
 

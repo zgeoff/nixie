@@ -13,9 +13,9 @@ and 60 minutes.
 ## Question
 
 Which CLI setting makes the conversation write 1-hour entries through a base URL other than
-Anthropic's, such as the counting proxy, and what does a day of bursty turns cost with each
-lifetime? The answer informs the conversation's query options, and whether a model profile needs a
-fifth price ([GEO-890](https://linear.app/zgeoff/issue/GEO-890)).
+Anthropic's, such as the model gateway, and what does a day of bursty turns cost with each lifetime?
+The answer informs the conversation's query options, and whether a model profile needs a fifth price
+([GEO-890](https://linear.app/zgeoff/issue/GEO-890)).
 
 ## Setup
 
@@ -47,7 +47,7 @@ production query options now pass the profile's cache lifetime as the setting, s
 lifetime to the arm's setting, or to 5 minutes for an arm without one; a rerun of a default arm
 therefore asks for `5m` where the recorded run asked for no lifetime.
 
-[`start-count-proxy.ts`](start-count-proxy.ts) stands in for the counting proxy and the credential
+[`start-count-proxy.ts`](start-count-proxy.ts) stands in for the model gateway and the credential
 grant. The profile's base URL points at it, and it swaps the guest's placeholder for the signed-in
 Claude login's token before it forwards each request. For each model call it records the lifetimes
 the request asked for, whether the request carried the extended cache lifetime beta, and the
@@ -170,8 +170,8 @@ both.
   bursts gains, and the setting needs no new environment variable through the guest. The checker,
   the memory writer and the consolidator keep 5-minute entries, because each of their sessions
   starts fresh.
-- **Price table.** Give each profile a fifth price, the 1-hour cache write, and have the counting
-  proxy price the 1-hour share of a response's cache writes at it. The response splits its cache
+- **Price table.** Give each profile a fifth price, the 1-hour cache write, and have the model
+  gateway price the 1-hour share of a response's cache writes at it. The response splits its cache
   writes by lifetime, so the proxy needs no guess. A profile that never asks for 1-hour entries can
   set the fifth price to its cache write price. Without the fifth price, the proxy undercharges a
   1-hour write by 37.5% at Anthropic's rates.

@@ -30,7 +30,7 @@ const completedEvent = z.object({
   response: z.object({ usage: z.unknown() }),
 });
 
-// A local stand-in for the counting proxy: it reads HTTP requests only, as the real proxy does,
+// A local stand-in for the model gateway: it reads HTTP requests only, as the real proxy does,
 // forwards each one to `upstream`, the model API's origin, and keeps the usage of each response. It
 // refuses a websocket upgrade, so a CLI that tries one shows in `calls` with its `upgrade` header.
 export function startCountProxy(upstream: string, httpClient: HTTPClient): CountProxy {
@@ -48,7 +48,7 @@ export function startCountProxy(upstream: string, httpClient: HTTPClient): Count
 
     if (forward.upgrade) {
       calls.push(buildRefusedCall(forward.call));
-      return new Response('the counting proxy reads HTTP only', { status: refusedUpgradeStatus });
+      return new Response('the model gateway reads HTTP only', { status: refusedUpgradeStatus });
     }
     const response = await httpClient(forward.target, {
       method: request.method,

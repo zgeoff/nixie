@@ -74,7 +74,7 @@ the conversation never waits behind them
 [sandbox of the task's own](../connectors/sandboxes.md#a-started-tasks-sandbox), on the profile of
 the task's model, or of the `task` role when the start chose none. The sandbox's one grant is that
 profile's credential, and the turn goes to that profile's base URL, so a profile that points at a
-[counting proxy](../policy/counting-proxy.md#routes) route has its replies priced on that route. The
+[model gateway](../policy/model-gateway.md#routes) route has its replies priced on that route. The
 step runs the same turn code as the conversation's steps, with these changes:
 
 - The system prompt is the `task` prompt. In its default parts, the frame holds the task's name and

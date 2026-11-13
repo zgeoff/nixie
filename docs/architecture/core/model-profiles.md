@@ -154,7 +154,7 @@ with the long-prompt set once its prompt passes the length. The prompt length co
 cache writes and the cache reads, the same tokens the provider counts. A table with no long-prompt
 set prices every response with its base set.
 
-The [counting proxy](../policy/counting-proxy.md#the-count) is the one built part that calls the
-call cost, and no built part reads the provider pin. The
-[models design](../../design/platform/core/models.md#cost) sets out how the counting proxy prices
+The [model gateway](../policy/model-gateway.md#the-count) is the one built part that calls the call
+cost, and no built part reads the provider pin. The
+[models design](../../design/platform/core/models.md#cost) sets out how the model gateway prices
 each response with the table.

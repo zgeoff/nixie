@@ -31,7 +31,7 @@ export function buildPreviewRouteConfig(route: string, text: string): PreviewRou
     };
   }
 
-  // a host's counting proxy serves the route at the model API's own host, so the route only
+  // a host's model gateway serves the route at the model API's own host, so the route only
   // extends each profile's base URL
   const profiles = Object.fromEntries(
     Object.entries(parsed.data.models.profiles).map(([name, profile]) => [

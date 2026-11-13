@@ -8,7 +8,7 @@ import { createCounterStore } from './create-counter-store';
 import { makeProxyHandler } from './make-proxy-handler';
 
 async function setupTest() {
-  const directory = await mkdtemp(join(tmpdir(), 'counting-proxy-'));
+  const directory = await mkdtemp(join(tmpdir(), 'model-gateway-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
@@ -208,7 +208,7 @@ test('it refuses a background Responses request, whose reply holds no usage, and
       error: {
         type: 'invalid_request_error',
         message:
-          'the counting proxy needs a JSON body that names its model and asks for no background response for responses',
+          'the model gateway needs a JSON body that names its model and asks for no background response for responses',
       },
     },
     requests: 0,
@@ -295,7 +295,7 @@ test('it refuses every request once the replies it counted reach its dollar limi
     error: {
       type: 'permission_error',
       message:
-        'the counting proxy reached its spending limit ($0.0120 of $0.01), so it refuses every further request',
+        'the model gateway reached its spending limit ($0.0120 of $0.01), so it refuses every further request',
     },
   });
 
@@ -428,7 +428,7 @@ test('it refuses every request when its counter store is down', async () => {
     type: 'error',
     error: {
       type: 'api_error',
-      message: 'the counting proxy cannot read its counter store, so it refuses every request',
+      message: 'the model gateway cannot read its counter store, so it refuses every request',
     },
   });
 
@@ -670,7 +670,7 @@ test('it refuses a request for a model its route does not price', async () => {
     error: {
       type: 'invalid_request_error',
       message:
-        'the counting proxy prices this route for model-small, so it refuses a request for model-large',
+        'the model gateway prices this route for model-small, so it refuses a request for model-large',
     },
   });
 
@@ -714,7 +714,7 @@ test('it refuses a message request whose body names no model', async () => {
     type: 'error',
     error: {
       type: 'invalid_request_error',
-      message: 'the counting proxy needs a JSON body that names its model for messages',
+      message: 'the model gateway needs a JSON body that names its model for messages',
     },
   });
 
@@ -1037,7 +1037,7 @@ test('it refuses every request after a restart once a lost count marks its store
     error: {
       type: 'api_error',
       message:
-        'the counting proxy lost the count of a reply, so it refuses every request until an operator clears the mark in its counter store',
+        'the model gateway lost the count of a reply, so it refuses every request until an operator clears the mark in its counter store',
     },
   });
 

@@ -1,4 +1,4 @@
-// A local stand-in for the counting proxy and the broker's credential grant. The CLI's base URL
+// A local stand-in for the model gateway and the broker's credential grant. The CLI's base URL
 // points here, and the first path segment is the run tag, so http://127.0.0.1:<port>/<tag> is one
 // run's base URL. Each request goes on to the model API with the guest's placeholder credential
 // replaced by the signed-in Claude login's token, as the grant replaces it in production. For every

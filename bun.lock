@@ -101,8 +101,8 @@
         "tiny-invariant": "catalog:",
       },
     },
-    "apps/counting-proxy": {
-      "name": "@heynixie/counting-proxy",
+    "apps/model-gateway": {
+      "name": "@heynixie/model-gateway",
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/logger": "workspace:*",
@@ -1191,8 +1191,6 @@
 
     "@heynixie/conversation": ["@heynixie/conversation@workspace:guests/conversation"],
 
-    "@heynixie/counting-proxy": ["@heynixie/counting-proxy@workspace:apps/counting-proxy"],
-
     "@heynixie/db": ["@heynixie/db@workspace:libs/db"],
 
     "@heynixie/definitions": ["@heynixie/definitions@workspace:modules/definitions"],
@@ -1216,6 +1214,8 @@
     "@heynixie/memory": ["@heynixie/memory@workspace:modules/memory"],
 
     "@heynixie/mock-server": ["@heynixie/mock-server@workspace:libs/mock-server"],
+
+    "@heynixie/model-gateway": ["@heynixie/model-gateway@workspace:apps/model-gateway"],
 
     "@heynixie/models": ["@heynixie/models@workspace:modules/models"],
 

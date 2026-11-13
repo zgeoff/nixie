@@ -1,4 +1,4 @@
-// A local stand-in for the counting proxy: the CLI's base URL points here, each request goes on to
+// A local stand-in for the model gateway: the CLI's base URL points here, each request goes on to
 // the model API, and the usage of every response is kept against the run tag in the URL path. The
 // first path segment is the tag, so http://127.0.0.1:<port>/<tag> is one run's base URL.
 

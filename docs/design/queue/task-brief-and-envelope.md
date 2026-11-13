@@ -375,7 +375,7 @@ session. nixie takes the first line that applies:
   brief only from `task.created`, and a copy there would give a forget 2 places to reach.
 - **nixie never limits the depth of a chain of starts.** An agent's call on 13 Nov, which the owner
   accepted: each task's own limits, the rule that a start never widens its starter's tools, and the
-  deployment budget of the [counting proxy](../../architecture/policy/counting-proxy.md) bound a
+  deployment budget of the [model gateway](../../architecture/policy/model-gateway.md) bound a
   chain's spend, as the owner chose to rely on spend limits for loops.
 
 - **The `since` block of a carried task run gives both times of the first task run of its chain.**

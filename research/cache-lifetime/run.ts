@@ -129,7 +129,7 @@ async function runConversation(): Promise<readonly TurnResult[]> {
   return results;
 }
 
-// runs one turn of the production guest against the scripted tool server and the counting proxy
+// runs one turn of the production guest against the scripted tool server and the model gateway
 async function runGuestTurn(
   label: string,
   session: { home: string; systemPrompt: string; text: string; resume: { harness: 'agent-sdk'; sessionID: string; messageID: string } | null },

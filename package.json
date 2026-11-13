@@ -134,7 +134,7 @@
     "ci:images:tag-rehearsal-images": "bun scripts/images/tag-rehearsal-images.ts",
     "ci:images:write-sandbox-manifest": "bun scripts/images/write-sandbox-manifest.ts",
     "ci:release:check-unused-version": "bun scripts/release/check-unused-version.ts",
-    "ci:release:publish-counting-proxy": "bun scripts/release/publish-counting-proxy.ts",
+    "ci:release:publish-model-gateway": "bun scripts/release/publish-model-gateway.ts",
     "ci:release:publish-release-json": "bun scripts/release/publish-release-json.ts",
     "ci:release:record-sandbox-manifest": "bun scripts/release/record-sandbox-manifest.ts",
     "ci:release:resolve-release": "bun scripts/release/resolve-release.ts",

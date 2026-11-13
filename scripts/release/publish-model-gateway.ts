@@ -4,9 +4,9 @@ import { $ } from 'bun';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 
-// A host that runs the counting proxy outside a container pins this binary by its sha256.
+// A host that runs the model gateway outside a container pins this binary by its sha256.
 async function runCLI(): Promise<void> {
-  const command = parseStepCommand('publish-counting-proxy.ts', [], process.argv.slice(2));
+  const command = parseStepCommand('publish-model-gateway.ts', [], process.argv.slice(2));
 
   if (!command.isValid) {
     console.error(command.usage);
@@ -17,9 +17,9 @@ async function runCLI(): Promise<void> {
   }
 
   const tag = getStepEnv(process.env, 'TAG');
-  const binaryPath = join(getStepEnv(process.env, 'RUNNER_TEMP'), 'counting-proxy-linux-x64');
+  const binaryPath = join(getStepEnv(process.env, 'RUNNER_TEMP'), 'model-gateway-linux-x64');
 
-  await $`bun build --compile --target=bun-linux-x64 --define NIXIE_TEST_BUILD=false apps/counting-proxy/src/main.ts --outfile ${binaryPath}`;
+  await $`bun build --compile --target=bun-linux-x64 --define NIXIE_TEST_BUILD=false apps/model-gateway/src/main.ts --outfile ${binaryPath}`;
 
   // --clobber, because a re-run replaces the binary of an earlier attempt
   await $`gh release upload ${tag} ${binaryPath} --clobber`;
@@ -28,7 +28,7 @@ async function runCLI(): Promise<void> {
 
   appendFileSync(
     getStepEnv(process.env, 'GITHUB_STEP_SUMMARY'),
-    `counting-proxy-linux-x64 sha256: ${digest}\n`,
+    `model-gateway-linux-x64 sha256: ${digest}\n`,
   );
 }
 

@@ -2,12 +2,12 @@
 
 - **Status:** draft. The owner chose the capture shape, and an independent security review checked
   it.
-- **Work items:** [the capture in the counting proxy](https://linear.app/zgeoff/issue/GEO-2548),
+- **Work items:** [the capture in the model gateway](https://linear.app/zgeoff/issue/GEO-2548),
   [the turn-input log in nixie](https://linear.app/zgeoff/issue/GEO-2355)
 
-The counting proxy copies each request, because a copy made by a guest would let the guest vouch for
-its own input. The proxy seals each copy to a key of the step's capture, and nixie keeps the bodies
-outside the backup set.
+The model gateway copies each request, because a copy made by a guest would let the guest vouch for
+its own input. The gateway seals each copy to a key of the step's capture, and nixie keeps the
+bodies outside the backup set.
 
 The log stores the exact body of each model request, so you can open what a model received: the
 system prompt, the reminders the harness added, every message and the tool list. It exists for
@@ -18,7 +18,7 @@ the sandbox.
   `stepRunID`.
 - **Capture.** The window in which nixie collects one step's requests, with a capture ID and a P-256
   key pair.
-- **Capture point.** A counting proxy and its own spool folder: one entry of the config key
+- **Capture point.** A model gateway and its own spool folder: one entry of the config key
   `sources`.
 - **Capture tag.** One path segment in a turn frame's base URL that holds the capture ID and the
   capture's public key, and no secret.
@@ -32,9 +32,9 @@ the sandbox.
 flowchart LR
   step[step start] -->|openCapture| mod[turn-inputs module]
   mod -->|"base URL with the tag"| guest[guest and model runtime]
-  guest -->|request| proxy[counting proxy]
-  proxy -->|"body, untagged"| api[model API]
-  proxy -->|"sealed .cap file"| spool
+  guest -->|request| gateway[model gateway]
+  gateway -->|"body, untagged"| api[model API]
+  gateway -->|"sealed .cap file"| spool
   spool -->|"intake, once a second"| store["turn-inputs folder, keys.db, tables"]
   host[nixie turn-input open] -->|"model.input_opened"| store
 ```
@@ -44,10 +44,10 @@ flowchart LR
 ### The tag and `openCapture`
 
 ```text
-The profile's base URL:     https://<proxy_host>/<route>
-The turn frame's base URL:  https://<proxy_host>/<route>/~in.<tag>
-The CLI's request:          POST https://<proxy_host>/<route>/~in.<tag>/v1/messages
-What the proxy matches:     /<route>/v1/messages
+The profile's base URL:     https://<gateway_host>/<route>
+The turn frame's base URL:  https://<gateway_host>/<route>/~in.<tag>
+The CLI's request:          POST https://<gateway_host>/<route>/~in.<tag>/v1/messages
+What the gateway matches:     /<route>/v1/messages
 ```
 
 The Agent SDK's CLI keeps the extra segment. Against a stub server, the CLI of SDK 0.3.322, the
@@ -58,7 +58,7 @@ version the catalog pins, sent each request of `claude -p` with this base URL as
 // turn-inputs module. The sessions module opens a capture at a step's start and closes it at the
 // step's end, and has no other part in the log.
 const capture = await openCapture({ step, profile, role: 'task' });
-// → { baseURL: 'https://<proxy_host>/<route>/~in.<tag>', close }, or the profile's own base URL
+// → { baseURL: 'https://<gateway_host>/<route>/~in.<tag>', close }, or the profile's own base URL
 await capture.close({ callFrames: 3 }); // the step's `call` frames
 
 interface OpenCaptureInput {
@@ -83,19 +83,19 @@ interface TurnInputsOptions {
 turn_input_log:
   default: always # off | always; a configurable default
   max_window: 24h # the longest time one `on --for` lasts
-  close_wait: 5s # the longest a step's end waits for the proxy's .part files
+  close_wait: 5s # the longest a step's end waits for the gateway's .part files
   roles: [conversation, task] # a configurable default
   retention: { days: 7, bytes: 2147483648 } # the default; days: 3 | 7 | 30
   sources:
-    proxy:
-      base_url: https://<proxy_host>
-      dir: /var/lib/nixie/turn-input-spool # this proxy's own `capture.spool`
+    gateway:
+      base_url: https://<gateway_host>
+      dir: /var/lib/nixie/turn-input-spool # this gateway's own `capture.spool`
 ```
 
 ### The spool file
 
 ```ts
-// wire library: the proxy writes these and nixie reads them. Committed fixtures pin each version.
+// wire library: the gateway writes these and nixie reads them. Committed fixtures pin each version.
 export interface CaptureTag {
   readonly captureID: string; // a random UUID
   readonly sealTo: Uint8Array; // the capture's P-256 public key
@@ -110,7 +110,7 @@ export declare function decodeCaptureTag(segment: string): CaptureTag | null;
 export interface SpoolHeader {
   readonly version: 1;
   readonly captureID: string;
-  readonly writer: string; // random per start of the proxy
+  readonly writer: string; // random per start of the gateway
   readonly counter: number; // from 1 per (capture, writer), one per tagged request sent upstream
   readonly receivedAt: number; // epoch milliseconds
   readonly route: string;
@@ -154,7 +154,7 @@ type InputMissReason =
 ```
 
 ```yaml
-# the counting proxy's config. With no `capture` key, the proxy removes a tag and writes no file.
+# the model gateway's config. With no `capture` key, the gateway removes a tag and writes no file.
 capture:
   spool: /var/lib/nixie/turn-input-spool
   max_bytes: 536870912
@@ -220,7 +220,7 @@ nixie turn-input open <input_id>         # prints the body
 
 ### The capture
 
-- A logged request equals, byte for byte, the body that the model API received. The proxy never
+- A logged request equals, byte for byte, the body that the model API received. The gateway never
   changes a body; for a model outside Claude it copies the bytes the guest's request rewriter sent.
 - nixie captures a step only when the log is on, the step's role is in `roles`, and the profile's
   `base_url` starts with a `sources` entry's `base_url`. A compaction's `summarize` frame counts
@@ -229,27 +229,27 @@ nixie turn-input open <input_id>         # prints the body
 - With `default: always`, the log starts on. The latest `model.input_log_set` record sets the state
   across a restart, so `off` holds until `on`. `--for` holds it on for at most `max_window`.
 - nixie tags a step's requests only when the source's `dir` holds the file `capture-ready`, which a
-  proxy with the capture code writes at its start. With no such file, nixie sends no tag and writes
-  one `no_capture_point` miss. So a proxy without the capture code never meets a tag.
-- The guest has no code for the tag, and the frame schema has no key for it. The proxy removes the
+  gateway with the capture code writes at its start. With no such file, nixie sends no tag and
+  writes one `no_capture_point` miss. So a gateway without the capture code never meets a tag.
+- The guest has no code for the tag, and the frame schema has no key for it. The gateway removes the
   tag, then matches the endpoint, and its model check and count are as without a tag.
 - The tag is the path segment right after the route. `decodeCaptureTag` returns null for a capture
   ID that is not a UUID or a key that is not a P-256 point. A tag on another endpoint, such as
   `count_tokens`, is removed and copied to no file.
-- The proxy copies a tagged request only when it sends it upstream to `messages` or `responses`. A
-  request that the proxy refuses writes no file. It takes the counter value after the model check
+- The gateway copies a tagged request only when it sends it upstream to `messages` or `responses`. A
+  request that the gateway refuses writes no file. It takes the counter value after the model check
   passes, starts the `.part` write just before it sends the request, and renames the file to `.cap`
   when the response's status arrives, after the write ends.
-- The proxy keeps each capture's counters until it stops: it never learns that a capture closed, and
-  a guest can send only the tags nixie gave it. A request sent with no response keeps its counter
-  value, so nixie counts the gap as `not_received`.
-- The proxy never awaits the spool write. It holds at most `max_pending` bodies waiting for the
+- The gateway keeps each capture's counters until it stops: it never learns that a capture closed,
+  and a guest can send only the tags nixie gave it. A request sent with no response keeps its
+  counter value, so nixie counts the gap as `not_received`.
+- The gateway never awaits the spool write. It holds at most `max_pending` bodies waiting for the
   spool; past that, it writes a `queue_full` miss in place of the body. When the model API returns
   no response, it removes the `.part` file. At its start, it removes every `.part` file in its own
-  spool, so 2 proxies never share a folder.
-- When the proxy cannot write a body, it writes a `.miss` file: `spool_full` when the `.part`,
+  spool, so 2 gateways never share a folder.
+- When the gateway cannot write a body, it writes a `.miss` file: `spool_full` when the `.part`,
   `.cap` and `.miss` files in the spool, with the new body, would pass `max_bytes`;
-  `spool_write_failed`; or `seal_failed`. When the `.miss` write fails too, the proxy writes a log
+  `spool_write_failed`; or `seal_failed`. When the `.miss` write fails too, the gateway writes a log
   line with a reason code, and nixie counts the gap.
 - While a capture is open, nixie reads the spool once a second. At the step's end it waits for the
   capture's `.part` files for at most `close_wait`, takes in every file, destroys the capture's key
@@ -259,17 +259,17 @@ nixie turn-input open <input_id>         # prints the body
   `not_received` for the call frames above the files it holds; a refused or retried call can hide
   that last loss, so the count of misses is a lower bound.
 - The log never holds a request's credential or a header. No server log holds a byte of a body. The
-  proxy's 403 and 404 replies echo the path, tag included, which holds no secret.
+  gateway's 403 and 404 replies echo the path, tag included, which holds no secret.
 - A spool header is plain text: a reader of the spool learns each request's time, route, endpoint
   and size, and nothing of its body.
 
 ### The 3 key layers
 
-| Layer                                                     | It stops, beyond file permissions                                                                                       |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| The proxy seals each body to the capture's public key     | A reader of the spool through a volume snapshot, a mount on another host, or a root on the proxy's host after the write |
-| `keys.db` seals the capture's private key, shred at close | A spool file that arrives after the close, such as one written after a forget closed the capture, stays unreadable      |
-| Each body has its own key in `keys.db`                    | A removal deletes the key, so the bytes left on disk, in journals and in any copy of the data directory are unreadable  |
+| Layer                                                     | It stops, beyond file permissions                                                                                         |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| The gateway seals each body to the capture's public key   | A reader of the spool through a volume snapshot, a mount on another host, or a root on the gateway's host after the write |
+| `keys.db` seals the capture's private key, shred at close | A spool file that arrives after the close, such as one written after a forget closed the capture, stays unreadable        |
+| Each body has its own key in `keys.db`                    | A removal deletes the key, so the bytes left on disk, in journals and in any copy of the data directory are unreadable    |
 
 - The third layer is what makes a forget complete: the built forget is complete only when no stored
   copy shows the forgotten text.
@@ -284,7 +284,7 @@ nixie turn-input open <input_id>         # prints the body
   file.
 - `holdsOwnValue` searches each own secret value in its plain and its JSON-escaped form. The values
   come from `collectOwnValues`, which the web fetch's secret URL refusal shares and whose config
-  keys pick the values. The proxy never gets one.
+  keys pick the values. The gateway never gets one.
 - On a match, nixie stores no body and writes a `holds_own_value` miss, so a logged request is
   exact, or nixie holds none. Each later request of that session gives its own miss until the text
   leaves the context.
@@ -324,23 +324,24 @@ may, on the record's own thread, or on another through memory or a task's brief.
 ### Faults
 
 Outside a rollback that skips its steps, a fault in the log never fails, delays or changes a model
-request, and never changes the proxy's count. A step's end can wait up to `close_wait` for the
-proxy's `.part` files.
+request, and never changes the gateway's count. A step's end can wait up to `close_wait` for the
+gateway's `.part` files.
 
-| Fault                                                 | Outcome                                                                          |
-| ----------------------------------------------------- | -------------------------------------------------------------------------------- |
-| nixie cannot write the capture's key or its row       | The turn runs with no tag; a log line with a reason code                         |
-| The proxy cannot decode a `~in.` segment              | It removes the segment and writes no file; the close counts a miss               |
-| The proxy has no `capture` key, or another folder     | No file arrives; the close writes `not_received`                                 |
-| A `.part` file outlasts `close_wait`                  | nixie closes without it; the close writes `not_received`                         |
-| nixie stops mid-step                                  | Its start closes every open capture; the step opens a new one when it runs again |
-| nixie stops between the key, the file and the row     | Its start removes a file with no row and a key with no file                      |
-| A tagged request reaches a proxy with no capture code | only after a rollback that skipped its steps: a 403, and the turn fails          |
+| Fault                                                   | Outcome                                                                          |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| nixie cannot write the capture's key or its row         | The turn runs with no tag; a log line with a reason code                         |
+| The gateway cannot decode a `~in.` segment              | It removes the segment and writes no file; the close counts a miss               |
+| The gateway has no `capture` key, or another folder     | No file arrives; the close writes `not_received`                                 |
+| A `.part` file outlasts `close_wait`                    | nixie closes without it; the close writes `not_received`                         |
+| nixie stops mid-step                                    | Its start closes every open capture; the step opens a new one when it runs again |
+| nixie stops between the key, the file and the row       | Its start removes a file with no row and a key with no file                      |
+| A tagged request reaches a gateway with no capture code | only after a rollback that skipped its steps: a 403, and the turn fails          |
 
 ### What the last release does
 
-- The proxy takes its release first. Before a rollback of the proxy, you turn the log off, remove
-  its `capture` key, which the last proxy refuses, and delete `capture-ready` from its spool.
+- The gateway takes its release first. Before a rollback of the gateway, you turn the log off,
+  remove its `capture` key, which the last gateway refuses, and delete `capture-ready` from its
+  spool.
 - The last nixie release ignores the folder and the 3 tables. A rollback first runs
   `nixie turn-input off --drop`, then removes the `turn_input_log` section, which its strict schema
   refuses.

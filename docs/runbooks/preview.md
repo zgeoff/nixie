@@ -58,7 +58,7 @@ sets both, so every `docker compose` command there keeps the broker in place. Wi
 starts and reports ready, and each turn fails at its model call.
 
 A host that caps each preview's model spend with a
-[counting proxy](../architecture/policy/counting-proxy.md) of its own sends the model API's host to
+[model gateway](../architecture/policy/model-gateway.md) of its own sends the model API's host to
 that proxy and names the preview's route in `PREVIEW_MODEL_ROUTE`. nixie then runs on a copy of
 `config.yaml` with the route on the end of each model profile's base URL.
 

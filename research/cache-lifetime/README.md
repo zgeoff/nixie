@@ -8,8 +8,7 @@ model profile.
 ## Question
 
 Which CLI setting makes the conversation write 1-hour entries through a base URL other than
-Anthropic's, such as the counting proxy, and what does a day of bursty turns cost with each
-lifetime?
+Anthropic's, such as the model gateway, and what does a day of bursty turns cost with each lifetime?
 
 ## Answer
 

@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
 import { startScriptedModel, waitForCondition } from '@heynixie/testing';
-import { startCountingProxy } from './start-counting-proxy';
+import { startModelGateway } from './start-model-gateway';
 
 async function setupTest() {
-  const directory = await mkdtemp(join(tmpdir(), 'counting-proxy-'));
+  const directory = await mkdtemp(join(tmpdir(), 'model-gateway-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
@@ -37,7 +37,7 @@ test('it serves its routes from a config file and writes each count to its store
     ].join('\n'),
   );
 
-  const proxy = await startCountingProxy({
+  const proxy = await startModelGateway({
     configPath: join(ctx.directory, 'proxy.yaml'),
     log: ctx.log,
     waitForDrainDeadline: () => Promise.resolve(),
@@ -93,7 +93,7 @@ test('it refuses every request once long prompts priced at their long-prompt rat
     ].join('\n'),
   );
 
-  const proxy = await startCountingProxy({
+  const proxy = await startModelGateway({
     configPath: join(ctx.directory, 'proxy.yaml'),
     log: ctx.log,
     waitForDrainDeadline: () => Promise.resolve(),
@@ -145,7 +145,7 @@ test('it refuses to start from a config with no limit', async () => {
   );
 
   expect(
-    startCountingProxy({
+    startModelGateway({
       configPath: join(ctx.directory, 'proxy.yaml'),
       log: ctx.log,
       waitForDrainDeadline: () => Promise.resolve(),
@@ -181,7 +181,7 @@ test('it lets a streamed reply under way finish and counts it before a stop reso
   // the drain deadline never passes, so the stop resolves only once the reply has ended
   const deadline = Promise.withResolvers<undefined>();
 
-  const proxy = await startCountingProxy({
+  const proxy = await startModelGateway({
     configPath: join(ctx.directory, 'proxy.yaml'),
     log: ctx.log,
     waitForDrainDeadline: () => deadline.promise,
@@ -244,7 +244,7 @@ test('it closes a reply that outlasts the drain deadline and resolves the stop',
 
   const deadline = Promise.withResolvers<undefined>();
 
-  const proxy = await startCountingProxy({
+  const proxy = await startModelGateway({
     configPath: join(ctx.directory, 'proxy.yaml'),
     log: ctx.log,
     waitForDrainDeadline: () => deadline.promise,
@@ -303,7 +303,7 @@ test('it refuses every request after a restart once a stop cut off a reply at th
     ].join('\n'),
   );
 
-  const proxy = await startCountingProxy({
+  const proxy = await startModelGateway({
     configPath: join(ctx.directory, 'proxy.yaml'),
     log: ctx.log,
     waitForDrainDeadline: () => Promise.resolve(),
@@ -329,7 +329,7 @@ test('it refuses every request after a restart once a stop cut off a reply at th
 
   await proxy.stop();
 
-  const restarted = await startCountingProxy({
+  const restarted = await startModelGateway({
     configPath: join(ctx.directory, 'proxy.yaml'),
     log: ctx.log,
     waitForDrainDeadline: () => Promise.resolve(),
@@ -363,7 +363,7 @@ test('it leaves the count unmarked when a stop finds no reply under way', async 
     ].join('\n'),
   );
 
-  const proxy = await startCountingProxy({
+  const proxy = await startModelGateway({
     configPath: join(ctx.directory, 'proxy.yaml'),
     log: ctx.log,
     waitForDrainDeadline: () => Promise.resolve(),
