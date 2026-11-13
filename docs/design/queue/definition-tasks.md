@@ -89,7 +89,7 @@ interface TriggerFired {
   source: string; // the trigger source's id, such as 'schedule'
   dedupeKey: string;
   kind: 'schedule' | 'at' | 'poll'; // poll: ./mail-and-calendar-polls.md#the-records-and-the-tables
-  polled?: number; // poll only: the sequence of the trigger.polled record
+  polled?: number[]; // poll only: the sequences of the trigger.polled records, oldest first
   scheduledFor: string; // ISO instant
   firedAt: string; // ISO instant: the core's clock at the write
   isCatchUp: boolean; // firedAt is more than 60 seconds after scheduledFor

@@ -82,7 +82,8 @@ type PollSourceCursor<Cursor> = Record<string, { cursor: Cursor; polledAt: numbe
 interface PollEvent {
   kind: 'poll';
   connectionID: string;
-  dedupeKey: string; // gmail: '<connectionID>|<messageID>'; calendar: '<connectionID>|<eventID>|<etag>'
+  dedupeKey: string; // gmail: '<connectionID>|<messageID>'
+  // calendar: '<connectionID>|<eventID>|<etag>', or '<connectionID>|<eventID>|cancelled' for a cancellation
   occurredAt: string; // ISO: the start of the poll that found it
   payload: PolledEvent;
 }
@@ -105,9 +106,11 @@ interface PolledCalendarChange {
   eventID: string;
   recurringEventID: string | null; // set for one instance of a recurring event
   status: 'confirmed' | 'tentative' | 'cancelled';
-  start: string | null; // ISO instant, or 'YYYY-MM-DD' for an all-day event; null when cancelled
+  // A cancelled event can hold its ID alone, so every field below is null or empty when Google
+  // leaves it out.
+  start: string | null; // ISO instant, or 'YYYY-MM-DD' for an all-day event
   end: string | null;
-  updated: string; // ISO
+  updated: string | null; // ISO
   title: string | null; // erasable
   organizer: string | null; // erasable: an address
   attendees: {
@@ -240,7 +243,7 @@ interface TriggerResynced {
 
 The fire records gain one member each, in
 [the 2 fire records](definition-tasks.md#the-2-fire-records): `trigger.fired` takes `kind: 'poll'`
-and `polled`, the sequence of its `trigger.polled` record.
+and `polled`, the sequences of its `trigger.polled` records, oldest first.
 
 ```text
 2 projections, one appended migration:
@@ -292,12 +295,13 @@ task_event_waits   tasks module. key wait_id. short_id, task_id, source_id, conn
   `after:<since in seconds, less 600> -in:sent -in:drafts` and reads each one as above.
 - When Calendar answers 410, the poll resyncs: it lists the calendar in full with the same
   parameters, for the new token, and keeps each event whose `updated` falls at or after `since`,
-  less 10 minutes.
+  less 10 minutes. It drops a cancelled event with no `updated`: a full list returns old
+  cancellations too, and nothing dates them.
 - A resync delivers its events in the batch with its new cursor, and the core writes one
   `trigger.resynced`. The dedupe keys drop each event of the gap that nixie already delivered.
-- A resync can miss a mail received and deleted inside the gap, and a calendar change that left
-  `updated` alone, such as a reminder edit. It delivers an event changed twice in the gap once, in
-  its latest state.
+- A resync can miss a mail received and deleted inside the gap, a calendar change that left
+  `updated` alone, such as a reminder edit, and a cancellation that Google sent with its ID alone.
+  It delivers an event changed twice in the gap once, in its latest state.
 
 ### One `deliver` call of a poll batch
 
@@ -308,19 +312,22 @@ For each poll event, in batch order, inside the transaction of
 2. The core writes `trigger.polled`, whose fold takes the key and adds the `trigger_polled` row.
 3. For each open event wait of the source and connection whose `match` equals the thread ID, the
    event ID or the recurring event ID, oldest first, it calls `writeEventWaitMetInTransaction`.
-4. For each armed definition of the source whose filter matches, by definition ID, rows 2 to 6 of
-   the core's table decide, with the key `<definitionID>|<event key>`.
+4. After the last event, for each armed definition of the source that one or more of the batch's new
+   events match, by definition ID, rows 2 to 6 of the core's table decide once, with the key
+   `<definitionID>|<the key of its first matching event>`. The fire's `polled` holds the sequence of
+   each matching event.
 
 - The core stores a poll batch's cursor whether or not its events were new, so the source never has
   to tell a paused batch from a batch of repeats.
 - While nixie is paused, the core delivers poll events as on any day. A fire and a met wait then
   wait in the inbox, and no claim starts until the resume.
-- A poll fire takes `scheduledFor` as its event's `occurredAt`, with `skipped: []` and
-  `skippedCount: 0`. A poll skip takes `scheduledFor` as `[occurredAt]` and `count: 1`.
+- A poll fire takes `scheduledFor` as the batch's `occurredAt`, with `skipped: []` and
+  `skippedCount: 0`. A poll skip takes `scheduledFor` as `[occurredAt]`, and `count` as the number
+  of its matching events.
 - No fold moves a watermark for a poll event.
-- A mail that matches a definition while its task run is open skips with `still_running`, so that
-  mail never opens a task run. A definition that must see every mail lists the Gmail search tool and
-  searches since its last task run.
+- Mail that matches a definition while its task run is open or pending skips with `still_running`,
+  so that mail never opens a task run. A definition that must see every mail lists the Gmail search
+  tool and searches since its last task run.
 - `from` compares the From address, lowered, with each entry; an entry `@<domain>` matches that
   domain alone, never a subdomain. `subject` matches a substring, both sides in NFC and lowered.
   `label` matches one of `labelIDs`. A `cancelled: true` filter matches `status: cancelled` alone.
@@ -345,9 +352,9 @@ For each poll event, in batch order, inside the transaction of
   wakes runs inside that task run.
 - The conversation never opens an event wait. It starts a task that waits.
 - A wait on a forgotten connection stays open until its task releases it. No event meets it.
-- The step renders a met wait or a poll fire from the `trigger.polled` record that `polled` names,
-  as outside content with the source and the connection. A record whose key is gone renders as
-  forgotten.
+- The step renders a met wait or a poll fire from the `trigger.polled` records at the sequences in
+  `polled`, as outside content with the source and the connection. A record whose key is gone
+  renders as forgotten.
 
 ### Free text and keys
 
@@ -422,7 +429,11 @@ It replaces these parts of
 - **Only the `primary` calendar.** An agent's call on 13 Nov 2026: smaller first; another calendar
   is one more spec entry later.
 - **The calendar key holds the event's `etag`.** An agent's call on 13 Nov 2026: Google keeps
-  `updated` for a reminder edit, and the `etag` changes with every change of the resource.
+  `updated` for a reminder edit, and the `etag` changes with every change of the resource. A
+  cancellation's key holds `cancelled`, because Google can send a deleted event with its ID alone.
+- **One batch gives a definition at most one fire, for all its matching events.** An agent's call on
+  13 Nov 2026: a second fire in the batch would skip as `still_running`, and its mail would open no
+  task run.
 
 ## Builder decides
 
