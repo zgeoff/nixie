@@ -14,9 +14,9 @@ that view:
   3 record kinds and its own tool calls on the calling task's thread. The view shows each worker run
   as one line in the tools section of the step that called `worker.run`, apart from the step's own
   tool calls.
-- **Clipping.** A record that holds a fetched page's text or a worker's model text can pass 40 KB.
-  The client asks the server to cut each long string to its first 4,096 bytes. When you open a cut
-  value, the client loads the whole value.
+- **Clipping.** A record that holds a fetched page's text or a worker's model text can hold one
+  string far past 4 KB, such as a 48 KB page. The client asks the server to cut each long string to
+  its first 4,096 bytes. When you open a cut value, the client loads the whole value.
 
 The [live view baseline](../platform/channels/live-view.md#a-task-as-a-conversation) gives the
 purpose of both.
