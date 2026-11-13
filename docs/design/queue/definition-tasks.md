@@ -322,10 +322,10 @@ writes the fire's record. The first answer that holds decides:
   run that never ends.
 - **The tasks module reads definitions only through 3 readers that the server app passes in.** The
   tasks module then imports neither the definitions module nor the triggers module.
-- **The triggers module builds the reader of the next fire.** An agent's call on 13 Nov 2026: that
-  module holds the watermark, the trigger and `readNextFire`, so the reader adds no import. The
-  reader is the interim answer to the open question of
-  [the wake rule](https://linear.app/zgeoff/issue/GEO-1865) until the owner approves it.
+- **The triggers module builds the reader of the next fire.** An agent's call on 13 Nov 2026, which
+  the owner accepted on 14 Nov in [the wake rule](https://linear.app/zgeoff/issue/GEO-1865): the
+  reader is an internal call. That module holds the watermark, the trigger and `readNextFire`, so
+  the reader adds no import.
 - **The fire answer has no answer of its own for the pause.** The trigger core delivers no schedule
   fire to a paused task, and a poll fire waits in the inbox, because no claim starts until the
   resume.
@@ -349,6 +349,4 @@ writes the fire's record. The first answer that holds decides:
 
 ## Open questions
 
-- Which code gives the tasks module a schedule's next fire, for `nextRunAt`: the open question of
-  [the wake rule](https://linear.app/zgeoff/issue/GEO-1865). The interim is the reader in
-  [the next fire](#the-next-fire).
+None.
