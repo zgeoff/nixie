@@ -96,7 +96,7 @@ type PasskeyFailure =
   | 'origin' // clientDataJSON.origin or the RP ID hash differs from the passkey's
   | 'no_user_verification' // the UV flag is not set
   | 'signature'
-  | 'counter'; // both counters are nonzero and the new one is not greater
+  | 'counter'; // either counter is nonzero and the new one is not greater
 ```
 
 ### Registration
@@ -219,10 +219,11 @@ nixie passkey-code              # a one-time registration code
   user verification required: a response without the UV flag fails.
 - The expected origin is the passkey's `origin`, and the expected RP ID hash is SHA-256 of its
   `rp_id`.
-- When both the stored and the new signature counter are nonzero and the new one is not greater, the
-  check fails with `counter`. A counter of 0 passes, because a synced passkey reports 0 on every
-  assertion ([verifying an assertion](https://www.w3.org/TR/webauthn-3/#sctn-verifying-assertion),
-  the `signCount` step).
+- When the stored or the new signature counter is nonzero and the new one is not greater than the
+  stored one, the check fails with `counter`, so a passkey that once counted and then reports 0
+  fails. Two zeros pass, because a synced passkey reports 0 on every assertion
+  ([verifying an assertion](https://www.w3.org/TR/webauthn-3/#sctn-verifying-assertion), the
+  `signCount` step).
 - The server reads the passkey row inside the answer's write transaction, so a revoke that commits
   first refuses the answer.
 
@@ -236,7 +237,10 @@ nixie passkey-code              # a one-time registration code
 - A host code works once and lapses after 15 minutes. The server keeps only its hash, in memory, and
   a second `nixie passkey-code` replaces the first.
 - The registration options bind to the session that asked, and `register` from another session
-  fails.
+  fails. They lapse after 5 minutes and work once, as a challenge does.
+- When a passkey's assertion authorized the options, `register` checks inside its write transaction
+  that this passkey is still live, and fails with `REGISTRATION_FAILED` when a revoke committed
+  first. A revoked passkey therefore never adds another.
 - At most 10 passkeys are live at once. An 11th refuses as `TOO_MANY_PASSKEYS`.
 - The options ask for a discoverable credential with user verification, `attestation: 'none'`, and
   every live passkey in `excludeCredentials`.
