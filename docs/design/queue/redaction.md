@@ -218,9 +218,9 @@ log.forget({ thread: 'conversation', record: '<the record as the session history
 - The thread view's built forget control reads the same preview before its confirm, so no web
   control removes a record without a preview.
 - A click on the control reads the preview, and the view shows the 2 counts with a confirm. Only the
-  confirm calls `conversation.forget`. When the preview lists a memory item, the confirm says: "Each
-  listed item keeps its current text. It loses its older versions and its quotes of this record, and
-  its unanswered proposals lapse."
+  confirm calls `conversation.forget`. When the preview lists a memory item, the confirm says:
+  "These memories stay, but lose their edit history, their quotes of this message, and any suggested
+  changes you haven't answered." The owner chose this wording on 13 Nov.
 - When the preview read fails, the view shows an error in place of the confirm and hides the control
   on that record. It never removes without a preview. A client of this part on the release before
   gets the failure, because the procedure does not exist there.
