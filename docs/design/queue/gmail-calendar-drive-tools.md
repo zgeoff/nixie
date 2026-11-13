@@ -34,6 +34,10 @@ flowchart LR
   sent -->|"found, not found, inconclusive"| queue
 ```
 
+In this path, the tool endpoint first reads the message to learn whom the reply reaches, the
+decision point then allows the reply or asks on a card, and the action queue sends it.
+[Destinations](#destinations) and [the send card](#the-send-card) hold those 2 steps.
+
 ## Contracts
 
 ### The tools
@@ -46,7 +50,7 @@ the turn, and a `queued` tool runs as an action, as
 A tool that acts on an item a connection returned, such as `mail.reply` on a message, takes its
 connection from the item. Every other tool takes the
 [connection argument](../platform/connectors/connector.md#the-connection-argument) when the tool
-list of its conversation, task or worker holds 2 or more Google connections.
+list of its conversation, task or worker names 2 or more Google connections for it.
 
 | Tool                                | Effect  | Runs   | Scope                            | Reconciliation                    |
 | ----------------------------------- | ------- | ------ | -------------------------------- | --------------------------------- |
@@ -75,7 +79,14 @@ nixie counts every attendee of an event as a guest, except the connection's own 
 attendee whose `self` is true, or whose address is the account. A room or other resource counts as a
 guest, because Google emails its owner.
 
+A marker is a private property that a change writes on the item it changes, so a later check can
+tell whether the change happened.
+[Reconciliation of the other changes](#reconciliation-of-the-other-changes) defines it.
+
 ### Reads
+
+Each tool that reads text returns at most one part of it per call: `part` names the part, counted
+from 1, and `parts` gives how many there are. [Every tool](#every-tool) sets the part size.
 
 ```ts
 mail.search({ query: 'from:sam@example.org newer_than:7d', limit: 20 });
@@ -112,10 +123,12 @@ drive.read({ file: '1Bx9QvR2…', part: 1 });
 
 ```ts
 // connectors module: the source of content of each result field, in the declaration's `results`.
-// 'untrusted' is outside content and 'owner_data' is your own data, as "Taint in the first build"
-// of the decision point sets. Endorsed marks a field whose type cannot carry words (a boolean, a
+// 'untrusted' is outside content and 'owner_data' is your own data, as taint in the first build
+// (../platform/policy/decision-point.md#taint-in-the-first-build) sets. Endorsed marks a field
+// whose type cannot carry words (a boolean, a
 // number, a time, a value from a fixed list); it goes in the output schema as 'x-endorsed' and
 // leaves the field's source as it is.
+// In the first build, endorsement changes no decision; a later taint stage reads it.
 const mailResultSources = {
   message: 'owner_data', // Gmail's own IDs; not endorsed, because a string can carry words
   thread: 'owner_data',
@@ -197,7 +210,8 @@ drive.change({ file: '1Bx9QvR2…', name: null, text: '# Trip plan\n…' }); // 
 
 ```ts
 // connectors module: an optional member of ConnectorAction (connector design). When it is set,
-// the tool endpoint calls it on the host before the decision point's first stage, in place of
+// the tool endpoint calls it on the host before the first stage of the decision point's
+// pipeline (../platform/policy/decision-point.md#the-pipeline), in place of
 // reading destination arguments.
 interface ConnectorAction<Input, Output> {
   // …existing fields
@@ -224,9 +238,9 @@ is one of those permissions. `CallDestination` is defined in the decision point 
 | every other tool                    | none                                                 | none                    |
 
 - The resolver writes each destination as its bare address, with no display name, in lowercase NFC.
-- A reply target covers only the one reply or response its resolver returned it for, never another
-  send. An address the model writes in an argument is never a reply target, even when it equals a
-  sender or an organizer.
+- A reply target covers only the reply or response whose resolver returned that address, and never
+  another send. An address the model writes in an argument is never a reply target, even when it
+  equals a sender or an organizer.
 - `mail.reply` marks no recipient as a reply target when the message sits in Spam or Trash, or when
   the message's `From` is the connection's own account. Each recipient of such a reply then needs
   another permission or your consent. Without one, the reply waits on its card.
@@ -276,8 +290,8 @@ type MailCardFields = {
 };
 ```
 
-- The card lists each destination beside the permission that covered it. A destination that no
-  permission covered carries the mark "no permission", which is the reason the card asks.
+- The card lists each destination beside the permission that covered it. The card marks a
+  destination that no permission covered with "no permission", which is the reason the card asks.
 - The card shows the body as plain text, never as HTML, and shows all of it.
 - A calendar card shows the event's title, times with their zone, calendar, location, and each
   guest. A change card shows each changed field before and after.
@@ -303,24 +317,26 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
    started, read to its last page, with the `Message-ID` and `X-Google-Original-Message-ID` headers
    of each message. The check never relies on the order of the list, which Gmail does not promise.
 
-| What the check sees                                             | It answers                 |
-| --------------------------------------------------------------- | -------------------------- |
-| Either way finds a message whose header holds the Message-ID    | found, whatever else holds |
-| Both ways finish and find none                                  | not found                  |
-| The list holds more than 200 messages                           | inconclusive               |
-| Any call fails, or Gmail answers in a way the check cannot read | inconclusive               |
+| What the check sees                                             | It answers                           |
+| --------------------------------------------------------------- | ------------------------------------ |
+| Either way finds a message whose header holds the Message-ID    | found; this row wins over the others |
+| Both ways finish and find none                                  | not found                            |
+| The list holds more than 200 messages                           | inconclusive                         |
+| Any call fails, or Gmail answers in a way the check cannot read | inconclusive                         |
 
 - Found makes the action done, with the found message's ID and thread as its result.
+- Inconclusive brings the action to you, as for every check.
 - When the check finds the mail, nixie never sends it again. Only not found, after the 5 minutes,
   returns the action to pending, and the retry sends the same message with the same Message-ID.
 - The check reads both headers, because Gmail can replace a `Message-ID` that a client set and keep
-  the old one in `X-Google-Original-Message-ID`. Google's docs say neither way, so the check finds
-  the mail whichever header Gmail keeps.
+  the old one in `X-Google-Original-Message-ID`. Google does not document which header it keeps, so
+  the check finds the mail whichever header Gmail keeps.
 - A sent mail carries no other header that names nixie or the action.
-- A Sent copy that someone deletes for good before the check reads as not found, and nixie sends the
-  mail again. Gmail keeps no other trace of a sent mail that the check could read.
+- When someone deletes the Sent copy for good before the check runs, the check answers not found,
+  and nixie sends the mail again. Gmail keeps no other trace of a sent mail that the check could
+  read.
 
-### Calendar and Drive reconciliation
+### Reconciliation of the other changes
 
 ```ts
 // Calendar create: the event ID is the action ID without its hyphens, which fits Google's
@@ -339,15 +355,17 @@ const driveCheck = { kind: 'check', action: 'drive.find_change', settleAfter: '5
 // drive.change writes one; a calendar cancel or respond writes none. Calendar keeps it in
 // extendedProperties.private, and Drive in appProperties.
 // key: 'nixie' + the action ID without hyphens (37 characters; Calendar allows 44)
+// Only nixie's OAuth client reads the property: a Calendar private property belongs to your copy of
+// the event, which guests never see, and Drive app properties belong to the app.
 // value: the attempt's start time, as epoch seconds. A write reads these times to keep the
 // newest markers and delete the rest; a check reads only whether its own key is there.
 { 'nixie0b9d3c4e7a214f0e8c551e6f2a9d4c03': '1794550000' }
 ```
 
 - Each write keeps the 10 newest markers of nixie's on the item and deletes the older ones, in the
-  same request. A check that finds no marker of its own and 10 newer ones answers inconclusive.
-  **Why:** a later action on the same item can run while this one is unknown, and its marker must
-  not hide this one.
+  same request. When a check finds no marker of its own and 10 markers newer than its attempt's
+  start, it answers inconclusive. **Why:** a later action on the same item can run while this one is
+  unknown, and its marker must not hide this one.
 - The calendar create searches with `privateExtendedProperty` as well as reading by ID, because
   Google does not promise that a read by a client-chosen ID finds the event at once.
 
@@ -386,11 +404,10 @@ in the web client, on the connection's page, with Google Picker:
 // libs/contract, under `connections`: a read procedure
 connections.checkPicked({ connection: 'k3x9m2p7qa', files: ['1Bx9QvR2…', '1Zq7…'] });
 // → [{ file: '1Bx9QvR2…', name: 'Trip plan', isVisible: true },
-//    { file: '1Zq7…', name: null, isVisible: false }]   false: picked under another Google account
+//    { file: '1Zq7…', name: null, isVisible: false }]   false: the server cannot read it
 
 // The OAuth client's picker settings, which the Google connection design stores with the client.
-// Neither is a secret: the page needs both, and Google limits the key to the Picker API and
-// nixie's origin.
+// Neither is a secret: the page needs both, and Google limits the key as the setup bullet below lists.
 type PickerSettings = { pickerKey: string; projectNumber: string };
 ```
 
@@ -399,7 +416,8 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
 - The page reads the token response's `scope` and drops a token that holds any scope besides
   `drive.file`, with an error, before the picker sees it. Google's sign-in library defaults
   `include_granted_scopes` to true, which would add every scope the client was granted before.
-- The page shows each file that `checkPicked` cannot read as "picked under another Google account".
+- The page shows each file that `checkPicked` cannot read as one nixie cannot see, and names the
+  likely cause: a pick under another Google account.
 - Without picker settings, the page hides the button and links the setup step that adds them.
 - Picking a file sends nothing to the model. `drive.search` finds it from then on, and the
   description of `drive.search` tells the model where you pick files.
@@ -411,9 +429,9 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
 
 ### Every tool
 
-- A tool's effects never depend on its arguments or on the item it acts on. A change or cancel tool
-  without guests reads the event before the decision point and again in its attempt. When the event
-  has a guest, it refuses with `has_guests`, so the model uses the with-guests tool.
+- A tool's declared effects never depend on its arguments or on the item it acts on. A change or
+  cancel tool without guests reads the event before the decision point and again in its attempt.
+  When the event has a guest, it refuses with `has_guests`, so the model uses the with-guests tool.
 - A calendar tool without guests calls Google with `sendUpdates: 'none'`, and a with-guests tool
   with `'all'`, so a tool with the `write` effect never makes Google email anyone.
 - The change and cancel tools refuse with `not_organizer` when the connection's account does not
@@ -422,16 +440,17 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
   config section, cut as
   [pages and parts](../../architecture/connectors/web-fetch.md#pages-and-parts) sets for a page. The
   tool reads the item from Google again for each part. The text the model read sits in the call's
-  `tool_result` record, under that record's own key, as every tool result does. nixie keeps no other
-  copy of mail, attachment or file text.
+  `tool_result` record, under that record's own encryption key, as every tool result does, so a
+  forget of the record removes the text. nixie keeps no other copy of mail, attachment or file text.
 - A mail whose body has only an HTML part goes to a
   [fetch sandbox](../../architecture/connectors/web-fetch.md#the-fetch-sandbox) for its text, as a
   web page does, so nixie never parses mail HTML on the host. Each link in a body reads as a
   [link ID](../../architecture/connectors/web-fetch.md#link-ids), such as `[L3]`, as a fetched
   page's links do.
 - `mail.read_attachment` reads text types (`text/*` and `application/json`) as UTF-8 text, and
-  images through the [web fetch image](../../architecture/connectors/web-fetch-images.md) decode and
-  caps. It reads up to 25 MB, and every other type answers `unsupported`.
+  decodes images as [web fetch images](../../architecture/connectors/web-fetch-images.md) does,
+  under the same caps. Every other type answers `unsupported`. An item over 25 MB answers
+  `too_large`, whatever its type.
 - `drive.read` exports a Google Doc as Markdown, a Sheet's first sheet as CSV and a Slides file as
   plain text, and reads other files as `mail.read_attachment` does.
 - Each provider error maps to an action response as the
@@ -451,23 +470,23 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
 
 ### Scopes
 
-- The connector's health check, its `check` function, reads the calendar list with
-  `calendarList.list`, so a connection without `calendar.calendarlist.readonly` lists
-  `calendar.list_calendars` as missing and keeps every other Calendar tool. `calendar.events` alone
-  never permits the calendar list.
+- The connector's health check after consent, its `check` function, which is apart from the
+  reconciliation checks, reads the calendar list with `calendarList.list`, so a connection without
+  `calendar.calendarlist.readonly` lists `calendar.list_calendars` as missing and keeps every other
+  Calendar tool. `calendar.events` alone never permits the calendar list.
 - With the calendar list missing, the Calendar tools take `primary` or a calendar ID you give.
 
 ### A rollback
 
-| The change                                                    | The release before                                                                             |
-| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| the 20 tools                                                  | lists none; a queued action of one fails without an attempt, because its tool has no connector |
-| an unknown action of one of the tools                         | finds no reconciliation for it, so the action comes to you                                     |
-| `resolveDestinations`                                         | never calls it, because it has none of the tools                                               |
-| markers on events and files                                   | never meets them; they stay at Google and change nothing                                       |
-| the request that asks a fetch sandbox for an HTML body's text | never sends it                                                                                 |
-| `connections.checkPicked`                                     | answers `NOT_FOUND`; a picked file stays granted at Google                                     |
-| the picker settings on the OAuth client                       | as the Google connection design's rollback sets for the client's columns                       |
+| The change                                                    | The release before                                                          |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| the 20 tools                                                  | lists none of them; a queued action of any of them fails without an attempt |
+| an unknown action of one of the tools                         | finds no reconciliation for it, so the action comes to you                  |
+| `resolveDestinations`                                         | never calls it, because it has none of the tools                            |
+| markers on events and files                                   | never meets them; they stay at Google and change nothing                    |
+| the request that asks a fetch sandbox for an HTML body's text | never sends it                                                              |
+| `connections.checkPicked`                                     | answers `NOT_FOUND`; a picked file stays granted at Google                  |
+| the picker settings on the OAuth client                       | as the Google connection design's rollback sets for the client's columns    |
 
 - The design adds no record kind, no migration and no config key.
 
