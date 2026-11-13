@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { CheckerAnswer } from './checker-types';
+import type { CheckerAnswer } from './checker-request';
 
 const checkerOutput = z.object({
   verdict: z.enum(['asserted', 'not_asserted', 'unsure']),

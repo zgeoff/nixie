@@ -1,5 +1,5 @@
 import { buildGateReview } from './build-gate-review';
-import type { ContentGateRequest, ContentGateResult } from './gate-types';
+import type { ContentGateRequest, ContentGateResult } from './gate-context';
 import { readTokenVerdict } from './read-token-verdict';
 import type { MemoryContext } from './types';
 

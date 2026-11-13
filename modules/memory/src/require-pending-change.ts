@@ -1,5 +1,5 @@
 import type { Kysely } from 'kysely';
-import type { ConsolidationChangeRow, ConsolidationTables } from './consolidation-types';
+import type { ConsolidationChangeRow, ConsolidationTables } from './memory-consolidations';
 import { MemoryProposalNotFoundError } from './memory-proposal-not-found-error';
 import { ProposalClosedError } from './proposal-closed-error';
 import { ProposalHashError } from './proposal-hash-error';

@@ -1,5 +1,5 @@
 import { buildGateReview } from './build-gate-review';
-import type { ContentGateResult } from './gate-types';
+import type { ContentGateResult } from './gate-context';
 import type { VersionRef } from './types';
 
 export interface SensitiveReviewWrite {

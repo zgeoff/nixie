@@ -1,4 +1,4 @@
-import type { ChangeAnswer, ConsolidationChangeRow } from './consolidation-types';
+import type { ChangeAnswer, ConsolidationChangeRow } from './memory-consolidations';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
 import { parseChangeInputs } from './parse-change-inputs';
 import { planRememberedVersion } from './plan-remembered-version';

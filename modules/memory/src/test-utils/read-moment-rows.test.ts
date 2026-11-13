@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import type { MomentTables } from '../moment-types';
+import type { MomentTables } from '../moment-context';
 import { readMomentRows } from './read-moment-rows';
 import { startTestMemory } from './start-test-memory';
 

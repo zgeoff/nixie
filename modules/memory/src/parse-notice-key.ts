@@ -1,4 +1,4 @@
-import type { ViewNoticeKind } from './view-types';
+import type { ViewNoticeKind } from './memory-view';
 
 export interface NoticeKeyParts {
   readonly kind: ViewNoticeKind;

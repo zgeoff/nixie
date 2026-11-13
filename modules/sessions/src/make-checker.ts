@@ -1,6 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
-import type { CheckerRequest, RunCheck } from './checker-types';
+import type { CheckerRequest, RunCheck } from './checker-request';
 import { parseCheckerAnswer } from './parse-checker-answer';
 
 export interface CheckerOptions {

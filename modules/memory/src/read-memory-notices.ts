@@ -1,4 +1,4 @@
-import type { MemoryNotice, NoticeEntry } from './gate-types';
+import type { MemoryNotice, NoticeEntry } from './gate-context';
 import type { MemoryTables, StoreParts } from './types';
 
 export async function readMemoryNotices(

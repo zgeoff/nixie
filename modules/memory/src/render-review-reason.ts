@@ -1,4 +1,4 @@
-import type { GateContext, ReviewReason } from './gate-types';
+import type { GateContext, ReviewReason } from './gate-context';
 
 interface ReviewWords {
   readonly owner: string;

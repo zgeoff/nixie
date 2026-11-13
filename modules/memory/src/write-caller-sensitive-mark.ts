@@ -1,4 +1,4 @@
-import type { SensitiveMarkRequest, WriteOutcome } from './gate-types';
+import type { SensitiveMarkRequest, WriteOutcome } from './gate-context';
 import type { StoreParts } from './types';
 import { writeSensitiveMark } from './write-sensitive-mark';
 

@@ -1,8 +1,12 @@
 import type { MemorySubjectCounts } from '@heynixie/db';
-import type { ChangeOutcome, ConsolidationDiff, MemoryConsolidations } from './consolidation-types';
-import type { ApprovalResult, MemoryProposal, MemoryProposals } from './gate-types';
+import type { ApprovalResult, MemoryProposal, MemoryProposals } from './gate-context';
+import type {
+  ChangeOutcome,
+  ConsolidationDiff,
+  MemoryConsolidations,
+} from './memory-consolidations';
+import type { ItemHistory } from './memory-view';
 import type { ForgetStatus, MemoryStore, Provenance, VersionRef } from './types';
-import type { ItemHistory } from './view-types';
 
 export type HostMemoryStore = Pick<
   MemoryStore,

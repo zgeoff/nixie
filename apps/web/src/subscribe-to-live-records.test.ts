@@ -3,7 +3,7 @@ import type { LogRecord } from '@heynixie/contract';
 import { waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { buildBrowserClient } from './build-browser-client';
-import { server } from './mocks/node';
+import { server } from './mocks/server';
 import { store } from './mocks/store';
 import { subscribeToLiveRecords } from './subscribe-to-live-records';
 import { buildStubTimer } from './test-utils/build-stub-timer';

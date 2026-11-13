@@ -3,8 +3,8 @@ import { conversationTaskID } from '@heynixie/tasks';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { VersionRef } from './types';
 import type { BatchOutcome } from './write-memory-batch';
+import type { BatchBounds, BatchMode, StagedFlag, WriterRow, WriterUsage } from './writer-model';
 import type { WriterParts } from './writer-parts';
-import type { BatchBounds, BatchMode, StagedFlag, WriterRow, WriterUsage } from './writer-types';
 
 export interface PublishedBatch {
   readonly row: WriterRow;

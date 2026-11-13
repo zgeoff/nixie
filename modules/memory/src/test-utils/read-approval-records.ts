@@ -1,7 +1,7 @@
 import type { JSONObject, Log, RecordWithChanges } from '@heynixie/log';
 import { JSON_OBJECT_SCHEMA, readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import type { MemoryProposal } from '../gate-types';
+import type { MemoryProposal } from '../gate-context';
 
 export async function readApprovalRecords(
   log: Pick<Log, 'deploymentKey' | 'writer'>,

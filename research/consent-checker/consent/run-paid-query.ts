@@ -3,7 +3,7 @@ import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
 import { buildCheckOptions } from '../../../guests/conversation/src/build-check-options.ts';
 // @boundaries-ignore a spike imports the code it measures
-import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
+import type { CheckRequest } from '../../../libs/wire/src/check-request-schema.ts';
 import { queryLimits } from './types.ts';
 
 // A failed reply keeps the cost its result reported, and a query that ended with no result has no

@@ -13,9 +13,9 @@ import type {
   VersionRef,
   WriteInTransaction,
 } from './types';
-import type { WriterGate } from './writer-types';
+import type { WriterGate } from './writer-model';
 
-export type { ContentGateRequest, ContentGateResult } from './content-gate-types';
+export type { ContentGateRequest, ContentGateResult } from './content-gate-request';
 
 export interface GateContext {
   readonly check: RunCheck;

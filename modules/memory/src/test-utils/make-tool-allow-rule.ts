@@ -1,4 +1,4 @@
-import type { AllowRuleCall, FindAllowRule } from '../gate-types';
+import type { AllowRuleCall, FindAllowRule } from '../gate-context';
 
 export function makeToolAllowRule(tool: AllowRuleCall['tool']): FindAllowRule {
   return (call) => {

@@ -1,3 +1,5 @@
+// oxlint-disable zgeoff/file-named-for-export -- TanStack Start loads the server entry from this file path
+
 import { join } from 'node:path';
 import handler, { createServerEntry } from '@tanstack/react-start/server-entry';
 import { makeWebFetch } from './make-web-fetch';

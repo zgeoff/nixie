@@ -1,4 +1,4 @@
-import type { ContentGateResult, GatedRememberRequest } from './gate-types';
+import type { ContentGateResult, GatedRememberRequest } from './gate-context';
 import { getRowSubject } from './get-row-subject';
 import { pickSubjectChangeReview } from './pick-subject-change-review';
 import { requireImageSource } from './require-image-source';

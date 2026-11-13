@@ -1,4 +1,4 @@
-import type { WriteCaller } from './gate-types';
+import type { WriteCaller } from './gate-context';
 
 export interface WriteGroup {
   readonly capGroup: string;

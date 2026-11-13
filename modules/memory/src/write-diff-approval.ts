@@ -1,4 +1,4 @@
-import type { ChangeAnswer, ChangeOutcome } from './consolidation-types';
+import type { ChangeAnswer, ChangeOutcome } from './memory-consolidations';
 import type { StoreParts } from './types';
 import { writeChangeApproval } from './write-change-approval';
 

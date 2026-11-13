@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { act, waitFor } from '@testing-library/react';
 import { http } from 'msw';
 import invariant from 'tiny-invariant';
-import { server } from './mocks/node';
+import { server } from './mocks/server';
 import { store } from './mocks/store';
 import { readOutboxImages } from './read-outbox-images';
 import { createDeviceSession } from './test-utils/create-device-session';

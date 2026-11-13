@@ -3,7 +3,7 @@ import type { Transaction } from 'kysely';
 import { readForgottenSequences } from './read-forgotten-sequences';
 import type { StoreParts } from './types';
 import type { GatedWrite } from './write-memory-batch';
-import type { StagedFlag } from './writer-types';
+import type { StagedFlag } from './writer-model';
 
 export interface ReadableWrites {
   readonly writes: readonly GatedWrite[];

@@ -1,7 +1,7 @@
 import { renderPrompt } from '@heynixie/prompts';
 import { toSDKToolName } from '@heynixie/tools';
 import { renderWriterPrompt } from '../render-writer-prompt';
-import type { SourceMessage } from '../writer-types';
+import type { SourceMessage } from '../writer-model';
 import type { WriterCase, WriterCases } from './load-writer-cases';
 
 interface EvalTool {

@@ -1,9 +1,9 @@
 import type { Log } from '@heynixie/log';
-import type { MemoryProposal } from './gate-types';
+import type { MemoryProposal } from './gate-context';
+import type { ViewEvidence, ViewProposal } from './memory-view';
 import { readEvidenceMessage } from './read-evidence-message';
 import { readPendingProposals } from './read-pending-proposals';
 import type { StoreParts } from './types';
-import type { ViewEvidence, ViewProposal } from './view-types';
 
 export async function readViewProposals(parts: StoreParts): Promise<readonly ViewProposal[]> {
   const pending = await readPendingProposals(parts);

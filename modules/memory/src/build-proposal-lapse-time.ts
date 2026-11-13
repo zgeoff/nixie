@@ -1,4 +1,4 @@
-import type { GateLimits } from './gate-types';
+import type { GateLimits } from './gate-context';
 
 export function buildProposalLapseTime(
   now: number,

@@ -2,7 +2,7 @@ import type { Log } from '@heynixie/log';
 import type { TurnNoteRange } from '@heynixie/sessions';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { MemoryChange, MemoryOrigin, MemoryTables } from './types';
-import type { WriterTables } from './writer-types';
+import type { WriterTables } from './writer-model';
 
 export interface OutsideVersion {
   readonly item_id: string;

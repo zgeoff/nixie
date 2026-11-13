@@ -2,7 +2,7 @@ import type { CommentToolStore } from './build-comment-tool';
 import type { DiffToolStore } from './build-diff-tool';
 import type { MomentStore } from './build-moment-store';
 import type { PendingToolStore } from './build-pending-tool';
-import type { ModelWriteStore } from './gate-types';
+import type { ModelWriteStore } from './gate-context';
 import type { StartedMemoryStore } from './start-memory-store';
 import type { ItemIDStore } from './types';
 

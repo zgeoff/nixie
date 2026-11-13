@@ -1,6 +1,6 @@
 import { conversationTaskID } from '@heynixie/tasks';
 import type { Kysely } from 'kysely';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 
 export interface MomentWeekCount {
   readonly total: number;

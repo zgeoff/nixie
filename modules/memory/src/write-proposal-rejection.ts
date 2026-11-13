@@ -1,5 +1,5 @@
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { ProposalRejection } from './gate-types';
+import type { ProposalRejection } from './gate-context';
 import { requirePendingProposal } from './require-pending-proposal';
 import type { MemoryTables, StoreParts } from './types';
 

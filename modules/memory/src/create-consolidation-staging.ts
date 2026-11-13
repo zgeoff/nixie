@@ -1,6 +1,6 @@
 import type { ContentSource } from '@heynixie/log';
-import type { ChangeKind, StagedChange } from './consolidation-types';
 import { findMissingToken } from './find-missing-token';
+import type { ChangeKind, StagedChange } from './memory-consolidations';
 import { pickLeastTrustedSource } from './pick-least-trusted-source';
 import type { MemorySubject } from './types';
 

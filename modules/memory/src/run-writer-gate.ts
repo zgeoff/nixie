@@ -1,7 +1,7 @@
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { GatedWrite } from './write-memory-batch';
-import type { GateBatch, SourceMessage, StagedWrite, WriterGate } from './writer-types';
+import type { GateBatch, SourceMessage, StagedWrite, WriterGate } from './writer-model';
 
 export interface GateLookups {
   readonly findSource: (sequence: number) => SourceMessage | undefined;

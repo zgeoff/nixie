@@ -1,3 +1,5 @@
+// oxlint-disable zgeoff/file-named-for-export -- TanStack Router finds the root route by this file path
+
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { buildThemeScript } from '../build-theme-script';

@@ -1,5 +1,5 @@
 import { buildGateReview } from './build-gate-review';
-import type { AllowRuleCall, ContentGateRequest, ContentGateResult } from './gate-types';
+import type { AllowRuleCall, ContentGateRequest, ContentGateResult } from './gate-context';
 import { readEventEvidence } from './read-event-evidence';
 import { readQuoteEvidence } from './read-quote-evidence';
 import { runQuotedGate } from './run-quoted-gate';

@@ -1,6 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
-import type { ConsolidationChange, MemoryConsolidations } from './consolidation-types';
+import type { ConsolidationChange, MemoryConsolidations } from './memory-consolidations';
 import type { ItemIDStore } from './types';
 
 export interface DiffToolStore extends Pick<ItemIDStore, 'readShortIDs'> {

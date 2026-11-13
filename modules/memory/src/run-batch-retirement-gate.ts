@@ -4,7 +4,7 @@ import { readSourceEvidence } from './read-source-evidence';
 import type { BatchGateResult } from './run-batch-gate';
 import { runRetirementChecker } from './run-retirement-checker';
 import type { StoreParts } from './types';
-import type { SourceMessage, StagedWrite } from './writer-types';
+import type { SourceMessage, StagedWrite } from './writer-model';
 
 export async function runBatchRetirementGate(
   parts: StoreParts,

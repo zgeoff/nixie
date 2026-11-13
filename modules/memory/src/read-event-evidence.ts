@@ -2,10 +2,10 @@ import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { ownerMessageCodec } from '@heynixie/tasks';
 import { z } from 'zod';
-import type { ReviewReason } from './gate-types';
+import type { ReviewReason } from './gate-context';
 import type { QuoteEvidenceResult } from './read-quote-evidence';
 import { readSourceEvidence } from './read-source-evidence';
-import type { SourceMessage } from './writer-types';
+import type { SourceMessage } from './writer-model';
 
 export interface EventSearch {
   readonly thread: string;

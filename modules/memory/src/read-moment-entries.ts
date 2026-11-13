@@ -3,7 +3,7 @@ import { buildMomentText } from './build-moment-text';
 import type { MomentEntries } from './collect-moment-entries';
 import { collectMomentEntries } from './collect-moment-entries';
 import { isIndexedMomentState } from './is-indexed-moment-state';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 import { readMomentDetail } from './read-moment-detail';
 
 export async function readMomentEntries(

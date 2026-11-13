@@ -3,7 +3,7 @@ import { formatAge } from '@heynixie/clock';
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { match } from 'ts-pattern';
-import type { MemoryProposal, MemoryProposals } from './gate-types';
+import type { MemoryProposal, MemoryProposals } from './gate-context';
 import type { ItemIDStore, ProposalOrigin } from './types';
 
 export interface PendingToolStore extends Pick<ItemIDStore, 'readShortIDs'> {

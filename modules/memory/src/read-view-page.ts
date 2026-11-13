@@ -1,9 +1,9 @@
 import type { Log } from '@heynixie/log';
+import type { ViewListState, ViewPage, ViewPageRequest } from './memory-view';
 import { parseItemCursor } from './parse-item-cursor';
 import { readViewItems } from './read-view-items';
 import { subjectColumn } from './subject-column';
 import type { MemoryState, MemoryTables } from './types';
-import type { ViewListState, ViewPage, ViewPageRequest } from './view-types';
 
 const defaultLimit = 50;
 const maxLimit = 100;

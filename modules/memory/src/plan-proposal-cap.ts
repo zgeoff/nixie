@@ -2,7 +2,7 @@ import { planBatchSplit } from './plan-batch-split';
 import type { WriterBatch } from './read-writer-batch';
 import type { GatedWrite } from './write-memory-batch';
 import type { WriterConfig } from './writer-config-schema';
-import type { BatchBounds } from './writer-types';
+import type { BatchBounds } from './writer-model';
 
 export type CappedBatch =
   | { readonly kind: 'split'; readonly bounds: BatchBounds }

@@ -1,10 +1,10 @@
 import type { Log } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import type { ForgetPreview } from './memory-view';
 import { readEvidenceSequences } from './read-evidence-sequences';
 import { readItemDetail } from './read-item-detail';
 import { requireItem } from './require-item';
 import type { MemoryTables, VersionRef } from './types';
-import type { ForgetPreview } from './view-types';
 
 export async function readForgetPreview(
   log: Pick<Log, 'deploymentKey' | 'writer'>,

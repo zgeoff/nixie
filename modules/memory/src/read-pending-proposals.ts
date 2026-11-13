@@ -7,7 +7,7 @@ import type {
   PendingFilter,
   ProposalImage,
   ProposalSource,
-} from './gate-types';
+} from './gate-context';
 import { getRowSubject } from './get-row-subject';
 import { parseEvidence } from './parse-evidence';
 import { subjectColumn } from './subject-column';

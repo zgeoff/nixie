@@ -1,7 +1,7 @@
 import type { RecordInput } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import type { ConsolidationDiff, StagedChange } from '../consolidation-types';
+import type { ConsolidationDiff, StagedChange } from '../memory-consolidations';
 import { memoryConsolidatorTaskID } from '../memory-consolidator-task-id';
 import type { PlannedSummary } from '../plan-diff-record';
 import { planDiffRecord } from '../plan-diff-record';

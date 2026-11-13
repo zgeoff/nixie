@@ -1,7 +1,7 @@
 import type { Log } from '@heynixie/log';
 import type { BacklogEntry } from './read-writer-backlog';
 import { readWriterBacklog } from './read-writer-backlog';
-import type { BatchBounds, SourceMessage } from './writer-types';
+import type { BatchBounds, SourceMessage } from './writer-model';
 
 export interface WriterBatch {
   readonly bounds: BatchBounds;

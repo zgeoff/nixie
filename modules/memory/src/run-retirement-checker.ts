@@ -1,6 +1,6 @@
 import { renderPrompt } from '@heynixie/prompts';
 import { buildGateReview } from './build-gate-review';
-import type { ContentGateResult } from './gate-types';
+import type { ContentGateResult } from './gate-context';
 import { pickCheckerReviewReason } from './pick-checker-review-reason';
 import { renderCheckerInput } from './render-checker-input';
 import type { FoundEvidence } from './run-memory-checker';

@@ -3,7 +3,7 @@ import { writeRecords } from '@heynixie/log';
 import { readTestRecordRows } from '@heynixie/log/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import type { ConsolidationTables } from './consolidation-types';
+import type { ConsolidationTables } from './memory-consolidations';
 import { createConsolidationDiff } from './test-utils/create-consolidation-diff';
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemory } from './test-utils/start-test-memory';

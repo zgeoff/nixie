@@ -1,9 +1,9 @@
 import type { Definitions, JSONObject, Log, RecordInput } from '@heynixie/log';
 import { readRecordKeys } from '@heynixie/log';
 import { buildConsolidationHash } from './build-consolidation-hash';
-import type { StagedChange } from './consolidation-types';
 import { encodeChangeText } from './encode-change-text';
 import { encodeConsolidationSummary } from './encode-consolidation-summary';
+import type { StagedChange } from './memory-consolidations';
 
 export interface PlannedSummary {
   readonly text: string;

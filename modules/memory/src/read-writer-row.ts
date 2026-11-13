@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { memoryWriterTaskID } from './memory-writer-task-id';
-import type { WriterRow, WriterTables } from './writer-types';
+import type { WriterRow, WriterTables } from './writer-model';
 
 export function readWriterRow(log: Pick<Log, 'writer'>): Promise<WriterRow> {
   return log.writer.db

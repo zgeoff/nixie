@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { runWriterGate } from './run-writer-gate';
-import type { GateVerdict } from './writer-types';
+import type { GateVerdict } from './writer-model';
 
 test('it releases the verdicts it gathered when a later check throws', async () => {
   const proposed: GateVerdict = {

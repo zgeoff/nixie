@@ -1,5 +1,5 @@
 import type { GrantSpec } from '@heynixie/sandbox';
-import type { HarnessDescriptor } from './harness-types';
+import type { HarnessDescriptor } from './harness-descriptor';
 
 const nixieBrokerPlaceholder = 'nixie-broker-placeholder';
 

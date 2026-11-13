@@ -1,3 +1,5 @@
+// oxlint-disable zgeoff/file-named-for-export -- TanStack Start loads the router from this file path
+
 import { buildQueryUtils } from '@heynixie/contract';
 import { QueryClient } from '@tanstack/react-query';
 import { createRouter } from '@tanstack/react-router';

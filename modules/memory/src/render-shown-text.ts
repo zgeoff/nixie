@@ -1,4 +1,4 @@
-import type { SourceSpan } from './writer-types';
+import type { SourceSpan } from './writer-model';
 
 export function renderShownText(text: string, spans: readonly SourceSpan[]): string {
   if (spans.length === 0) {

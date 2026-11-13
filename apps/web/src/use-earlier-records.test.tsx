@@ -3,7 +3,7 @@ import { focusManager, onlineManager } from '@tanstack/react-query';
 import { act, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { buildBrowserClient } from './build-browser-client';
-import { server } from './mocks/node';
+import { server } from './mocks/server';
 import { store } from './mocks/store';
 import { buildMockLogRecord } from './test-utils/build-mock-log-record';
 import { createDeviceSession } from './test-utils/create-device-session';

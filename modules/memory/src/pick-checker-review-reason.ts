@@ -1,5 +1,5 @@
 import type { CheckerAnswer } from '@heynixie/sessions';
-import type { ReviewReason } from './gate-types';
+import type { ReviewReason } from './gate-context';
 
 export function pickCheckerReviewReason(answer: CheckerAnswer): ReviewReason {
   if (answer.failure === 'timeout' || answer.failure === 'error') {

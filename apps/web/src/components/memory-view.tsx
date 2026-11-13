@@ -9,8 +9,8 @@ import { makeMemoryItemRenderer } from './make-memory-item-renderer';
 import { MemoryExportButton } from './memory-export-button';
 import { MemoryItemList } from './memory-item-list';
 import { MemoryRetiredForgetControl } from './memory-retired-forget-control';
-import { MemorySearchResults } from './memory-search';
 import { MemorySearchForm } from './memory-search-form';
+import { MemorySearchResults } from './memory-search-results';
 import { PinnedCorePanel } from './pinned-core-panel';
 import { WriterStatusPanel } from './writer-status-panel';
 

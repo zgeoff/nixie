@@ -1,3 +1,4 @@
+import type { MemoryView } from './memory-view';
 import { readForgetPreview } from './read-forget-preview';
 import { readForgetStatus } from './read-forget-status';
 import { readItemDetail } from './read-item-detail';
@@ -9,7 +10,6 @@ import { readViewNotices } from './read-view-notices';
 import { readViewPage } from './read-view-page';
 import { readViewProposals } from './read-view-proposals';
 import type { MemoryTables, StoreParts } from './types';
-import type { MemoryView } from './view-types';
 
 export function buildMemoryView(parts: StoreParts): MemoryView {
   const log = parts.context.log;

@@ -64,7 +64,7 @@ export type { SystemTaskOptions, SystemTaskRunner } from './make-system-task-run
 export { makeSystemTaskRunner } from './make-system-task-runner';
 export type { ToolSessionOptions } from './start-tool-session';
 export { startToolSession } from './start-tool-session';
-export type { CheckerAnswer, CheckerRequest, CheckerVerdict, RunCheck } from './checker-types';
+export type { CheckerAnswer, CheckerRequest, CheckerVerdict, RunCheck } from './checker-request';
 
 export type {
   EventKind,

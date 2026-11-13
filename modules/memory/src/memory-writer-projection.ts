@@ -3,7 +3,7 @@ import type { Transaction } from 'kysely';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { WriterRecord } from './parse-writer-record';
 import { parseWriterRecord } from './parse-writer-record';
-import type { WriterTables } from './writer-types';
+import type { WriterTables } from './writer-model';
 
 export const memoryWriterProjection: Projection = {
   table: 'memory_writer',

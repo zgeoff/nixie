@@ -49,7 +49,7 @@ import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
-import { isGuestPurged, pickCleanedTaskIDs } from './plan-task-session-cleanup';
+import { isGuestPurged, pickCleanedTaskIDs } from './pick-cleaned-task-ids';
 import { planTaskStep } from './plan-task-step';
 import { planTaskTurnEnd } from './plan-task-turn-end';
 import { readTaskUsage } from './read-task-usage';

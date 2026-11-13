@@ -16,7 +16,7 @@ import type {
   StagedFlag,
   StagedWrite,
   WriterTables,
-} from './writer-types';
+} from './writer-model';
 
 export interface GatedWrite {
   readonly write: StagedWrite;

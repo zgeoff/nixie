@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 import type { MomentCursor, ShownReflection } from './pick-moment-page';
 import { pickMomentPage } from './pick-moment-page';
 import { readMomentDetail } from './read-moment-detail';

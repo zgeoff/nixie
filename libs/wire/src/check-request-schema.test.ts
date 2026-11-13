@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { checkReplySchema, checkRequestSchema } from './check-frame';
+import { checkReplySchema, checkRequestSchema } from './check-request-schema';
 
 test('it accepts a check request', () => {
   const payload = {

@@ -1,7 +1,7 @@
 import { planBackoffDelay } from '@heynixie/retry';
 import type { StepResult } from '@heynixie/tasks';
+import type { WriterRow } from './writer-model';
 import type { WriterParts } from './writer-parts';
-import type { WriterRow } from './writer-types';
 
 export interface WriterFailure {
   readonly row: WriterRow;

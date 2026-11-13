@@ -1,6 +1,6 @@
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
-import type { ApprovalResult, ProposalAnswer } from './gate-types';
+import type { ApprovalResult, ProposalAnswer } from './gate-context';
 import { readOpenProposal } from './read-open-proposal';
 import { RevisionTargetError } from './revision-target-error';
 import { toAppliedResult } from './to-applied-result';

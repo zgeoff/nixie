@@ -4,7 +4,7 @@ import { renderImageMarkers } from '@heynixie/sessions';
 import { conversationTaskID, ownerMessageCodec } from '@heynixie/tasks';
 import { z } from 'zod';
 import { memoryWriterTaskID } from './memory-writer-task-id';
-import type { SourceSpan } from './writer-types';
+import type { SourceSpan } from './writer-model';
 
 export interface BacklogEntry {
   readonly sequence: number;

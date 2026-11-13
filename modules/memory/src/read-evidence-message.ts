@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import type { EvidenceMessage } from './view-types';
+import type { EvidenceMessage } from './memory-view';
 
 export async function readEvidenceMessage(
   log: Pick<Log, 'deploymentKey' | 'writer'>,

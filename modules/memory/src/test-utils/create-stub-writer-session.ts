@@ -2,7 +2,7 @@ import { mock } from 'bun:test';
 import { match } from 'ts-pattern';
 import type { WriterStaging } from '../create-writer-staging';
 import { createWriterStaging } from '../create-writer-staging';
-import type { StagedFlag, WriterModel } from '../writer-types';
+import type { StagedFlag, WriterModel } from '../writer-model';
 
 export type StubStagedWrite =
   | Parameters<WriterStaging['stage']>[0]

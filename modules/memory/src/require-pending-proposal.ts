@@ -1,5 +1,5 @@
 import type { Kysely } from 'kysely';
-import type { MemoryProposalRow } from './gate-types';
+import type { MemoryProposalRow } from './gate-context';
 import { MemoryProposalNotFoundError } from './memory-proposal-not-found-error';
 import { ProposalClosedError } from './proposal-closed-error';
 import { ProposalHashError } from './proposal-hash-error';

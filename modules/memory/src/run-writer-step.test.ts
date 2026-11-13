@@ -9,7 +9,7 @@ import { createWriterStaging } from './create-writer-staging';
 import { startMemoryWriter } from './start-memory-writer';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writerConfigSchema } from './writer-config-schema';
-import type { WriterModel } from './writer-types';
+import type { WriterModel } from './writer-model';
 
 interface WriterSetup {
   readonly runSession?: WriterModel['runSession'];

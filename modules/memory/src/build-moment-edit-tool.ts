@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { buildMomentCaller } from './build-moment-caller';
 import type { MomentStore } from './build-moment-store';
 import { makeInputRecorder } from './make-input-recorder';
-import type { MomentChange } from './moment-types';
+import type { MomentChange } from './moment-context';
 import { renderMomentRefusal } from './render-moment-refusal';
 
 const eventIDPattern = '^[0-9]{1,15}$';

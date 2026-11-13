@@ -1,8 +1,8 @@
 import { match } from 'ts-pattern';
 import { formatZonedTime } from './format-zoned-time';
-import type { MemoryProposal } from './gate-types';
+import type { MemoryProposal } from './gate-context';
 import type { MemorySubject } from './types';
-import type { BatchMessage } from './writer-types';
+import type { BatchMessage } from './writer-model';
 
 export interface ShownItem {
   readonly itemID: string;

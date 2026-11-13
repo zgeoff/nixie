@@ -4,7 +4,7 @@ import type { Transaction } from 'kysely';
 import { buildMergeRecord } from './build-merge-record';
 import type { WriteGroup } from './build-write-group';
 import { createSealedProposal } from './create-sealed-proposal';
-import type { ReviewReason, WriteCaller } from './gate-types';
+import type { ReviewReason, WriteCaller } from './gate-context';
 import { readMatchingProposal } from './read-matching-proposal';
 import type {
   MemorySubject,

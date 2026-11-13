@@ -1,5 +1,5 @@
 import type { MemoryApproval } from '@heynixie/sessions';
-import type { ReviewReason } from './gate-types';
+import type { ReviewReason } from './gate-context';
 import type { ProposalOperationKind } from './types';
 
 export interface ApprovedProposal {

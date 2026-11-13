@@ -1,6 +1,6 @@
 import { defineSealedCodec } from './define-sealed-codec';
 import { proposalTextSchema } from './proposal-text-schema';
-import type { ProposalText } from './sealed-types';
+import type { ProposalText } from './sealed-codec';
 
 const proposalText = defineSealedCodec('proposal/', proposalTextSchema);
 

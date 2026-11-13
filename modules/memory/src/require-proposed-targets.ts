@@ -3,7 +3,7 @@ import type { ItemRequirement } from './require-item';
 import { requireItem } from './require-item';
 import type { MemoryTables } from './types';
 import type { GatedWrite } from './write-memory-batch';
-import type { StagedWrite } from './writer-types';
+import type { StagedWrite } from './writer-model';
 
 export async function requireProposedTargets(
   tx: Transaction<unknown>,

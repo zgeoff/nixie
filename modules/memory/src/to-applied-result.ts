@@ -1,4 +1,4 @@
-import type { ApprovalResult } from './gate-types';
+import type { ApprovalResult } from './gate-context';
 import type { VersionRef } from './types';
 
 export function toAppliedResult(ref: VersionRef): ApprovalResult {

@@ -1,6 +1,6 @@
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
-import type { ProposalAnswer } from './gate-types';
+import type { ProposalAnswer } from './gate-context';
 import { parseEvidence } from './parse-evidence';
 import type { OpenedProposal } from './read-open-proposal';
 import { RetirementEditError } from './retirement-edit-error';

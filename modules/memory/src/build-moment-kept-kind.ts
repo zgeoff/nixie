@@ -2,8 +2,8 @@ import type { Log, LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/sessions';
 import { conversationTaskID } from '@heynixie/tasks';
+import type { MomentTables } from './moment-context';
 import { momentKeptCodec } from './moment-kept-codec';
-import type { MomentTables } from './moment-types';
 import { readWeekCount } from './read-week-count';
 
 export interface MomentKeptEvent {

@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { server } from '../mocks/node';
+import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { buildStubSaveFilePicker } from '../test-utils/build-stub-save-file-picker';
 import { createDeviceSession } from '../test-utils/create-device-session';

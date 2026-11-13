@@ -1,5 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { ChangeAnswer, ConsolidationTables } from './consolidation-types';
+import type { ChangeAnswer, ConsolidationTables } from './memory-consolidations';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
 import { requirePendingChange } from './require-pending-change';
 import type { StoreParts } from './types';

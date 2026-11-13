@@ -3,7 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { renderOwnerText } from '@heynixie/sessions';
 import { conversationKinds } from './conversation-kinds';
 import { countBatchTokens } from './count-batch-tokens';
-import type { MomentSpan } from './moment-types';
+import type { MomentSpan } from './moment-context';
 
 export type MomentSpanRecords = 'conversation' | 'all';
 

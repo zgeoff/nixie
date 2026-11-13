@@ -1,7 +1,7 @@
 import type { LogTables } from '@heynixie/log';
 import { sql } from 'kysely';
 import { buildGateReview } from './build-gate-review';
-import type { ContentGateResult } from './gate-types';
+import type { ContentGateResult } from './gate-context';
 import { readQuoteEvidence } from './read-quote-evidence';
 import { runRetirementChecker } from './run-retirement-checker';
 import type { MemoryContext, VersionRef } from './types';

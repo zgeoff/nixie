@@ -1,9 +1,9 @@
 import { countPinnedCoreTokens } from './count-pinned-core-tokens';
 import { getPinnedCoreBudget } from './get-pinned-core-budget';
+import type { PinnedCoreView } from './memory-view';
 import { readPinnedItems } from './read-pinned-items';
 import { readViewItems } from './read-view-items';
 import type { MemoryTables, StoreParts } from './types';
-import type { PinnedCoreView } from './view-types';
 
 export async function readPinnedCoreView(parts: StoreParts): Promise<PinnedCoreView> {
   const log = parts.context.log;

@@ -1,8 +1,8 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { memoryRatedCodec } from './memory-rated-codec';
+import type { MemoryRating, RateRequest } from './memory-rating';
 import { MemoryRatingError } from './memory-rating-error';
-import type { MemoryRating, RateRequest } from './rating-types';
 import { readItemIDMap } from './read-item-id-map';
 import { readLatestRecall } from './read-latest-recall';
 import { readShortIDs } from './read-short-ids';

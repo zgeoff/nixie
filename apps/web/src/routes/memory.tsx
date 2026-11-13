@@ -1,3 +1,5 @@
+// oxlint-disable zgeoff/file-named-for-export -- TanStack Router builds the route from this file path and its Route export
+
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { MemoryView } from '../components/memory-view';

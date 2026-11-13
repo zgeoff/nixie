@@ -1,5 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { ConsolidationTables } from './consolidation-types';
+import type { ConsolidationTables } from './memory-consolidations';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
 import type { MemoryTables, StoreParts } from './types';
 
