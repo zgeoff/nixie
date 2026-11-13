@@ -279,13 +279,18 @@ acts on what it finds then:
   sends a new message with `disable_notification`. A quiet notice that only lowers the count never
   sends a new message.
 - When a client is present at the close of the window, the notifier sends nothing new and only edits
-  the live notice. The items of that window never cause a loud notice later.
+  the live notice. A loud window waits until no client is present. The notifier then sends the loud
+  notice when an item of that window still waits, or the stop still stands, and otherwise sends
+  nothing.
 - Inside quiet hours, the notifier treats a loud window that does not break through quiet hours as a
   quiet one. When quiet hours end, the notifier sends one loud notice if any item from those windows
   still waits.
 - nixie sends no reminder: an item that a notice has counted never causes a second loud notice,
   except when it returns from a defer.
 - With no Telegram row, the notifier reads no items and sends nothing.
+- A window that waits, for quiet hours, for presence or for a retry, lives in memory. A restart
+  drops it. After the start, the notifier compares the items with the live notice and edits the live
+  notice once, with no sound, when they differ.
 
 ### Telegram failures
 
@@ -375,16 +380,17 @@ acts on what it finds then:
 The release before is the nixie release that a rollback returns to. It reads this design's changes
 this way:
 
-| The change                                                    | The release before                                        |
-| ------------------------------------------------------------- | --------------------------------------------------------- |
-| `channels.telegram` in `config.yaml`                          | refuses to start, because the config schema is strict     |
-| the migration: `push_notices` and `pairing_codes`             | never reads either table                                  |
-| a Telegram row in `identities`                                | never meets it in its session reads                       |
-| a Telegram row at a reset                                     | keeps it only when it was last seen within the idle limit |
-| `channels.code_issued`, `channels.paired`, `channels.revoked` | never meets them on a thread, since each is on no thread  |
-| `identity.refused` with the channel `telegram`                | reads it as it reads any refusal                          |
-| `sessions.shown`                                              | answers `NOT_FOUND`, which the client ignores             |
-| `channels.pair`, `channels.confirmPairing`                    | answers `NOT_FOUND`                                       |
+| The change                                                    | The release before                                                  |
+| ------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `channels.telegram` in `config.yaml`                          | refuses to start, because the config schema is strict               |
+| the migration: `push_notices` and `pairing_codes`             | never reads either table                                            |
+| a Telegram row in `identities`                                | never meets it in its session reads                                 |
+| a Telegram row at a reset                                     | keeps it only when it was last seen within the idle limit           |
+| `channels.code_issued`, `channels.paired`, `channels.revoked` | never meets them on a thread, since each is on no thread            |
+| `identity.refused` with the channel `telegram`                | reads it as it reads any refusal                                    |
+| a reset on the release before                                 | empties both new tables, as it empties every table it does not keep |
+| `sessions.shown`                                              | answers `NOT_FOUND`, which the client ignores                       |
+| `channels.pair`, `channels.confirmPairing`                    | answers `NOT_FOUND`                                                 |
 
 - The migration adds tables and changes none, so the
   [oldest reader](../../architecture/core/database.md) of the database does not change.
@@ -443,11 +449,14 @@ this way:
 
 ## Open questions
 
-The owner settles the first two in
-[the push notifier work item](https://linear.app/zgeoff/issue/GEO-1812), and the interim stands
-until then:
+The owner settles these in [the push notifier work item](https://linear.app/zgeoff/issue/GEO-1812),
+and the interim stands until then:
 
-- **The wording of the 3 sentences and the 2 fixed replies.** Interim: the wording above.
+- **Pairing ends with a confirm code that the bot sends and you type into the client.** Interim: the
+  2 steps, so a leaked link alone never pairs an account.
+- **The names `nixie channels confirm`, `credential`, `client_url`, `presence_seconds`,
+  `batch_seconds` and `sessions.shown`.** Interim: those names.
+- **The wording of the 3 sentences and the fixed replies.** Interim: the wording above.
 - **Does a notice that counts one item link that item's card?** Interim: every notice links the
   digest, so the chat never holds an item's ID.
 
@@ -460,6 +469,8 @@ it lands, the code follows the assumption, and the fallback applies when the spi
   every notice sends a new message, quiet ones with `disable_notification`.
 - **A message with `disable_notification` arrives with no sound.** Fallback: a quiet notice that
   finds no live notice waits for the next loud one.
+- **The bot can send to a chat right after that chat's `/start`.** Fallback: the client shows the
+  confirm code, and you send it to the bot as a plain message.
 - **A second account's update carries `from.id` and `chat.id`, so nixie refuses it without a
   reply.** Fallback: refuse on `chat.id` alone.
 - **One long poller gets each update once, and a block of the bot answers 403 on the next send.**
