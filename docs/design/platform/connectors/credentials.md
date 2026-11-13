@@ -14,7 +14,7 @@ the backend for each credential.
 ```ts
 interface CredentialStore {
   register(spec: CredentialSpec): Promise<CredentialRef>;
-  fetcher(ref: CredentialRef | null, hosts: string[]): AuthorizedFetch; // adds the credential on the host
+  fetcher(ref: CredentialRef | null, hosts: string[], pairing?: PrivatePairing): AuthorizedFetch; // adds the credential on the host
   grant(ref: CredentialRef, sandbox: Sandbox, rule: InjectRule): Promise<GrantRef>;
   revoke(grant: GrantRef): Promise<void>;
   status(ref: CredentialRef): Promise<CredentialStatus>;
@@ -31,6 +31,11 @@ interface CredentialSpec {
   header?: string; // static only: the header the value goes in, 'Authorization' by default
   expiresAt?: string;
 }
+
+interface PrivatePairing {
+  host: string; // the one host that may resolve to a non-public address
+  range: string; // a CIDR range; the resolved address must fall in it
+}
 ```
 
 A connector never reads a token. It calls the service through `fetcher`, which adds the credential
@@ -38,10 +43,11 @@ on the host and refuses any host outside the credential's `hosts`. A fetcher wit
 a service that takes none, makes the same checks and adds nothing. The fetcher drops the credential
 on a redirect to another host. On every hop it resolves the host, refuses any
 [non-public address](web-fetch.md#non-public-addresses), and connects to the address it checked. A
-service on a private network passes only when the credential's configuration pairs its host with an
-allowed address range, the hop goes to that host, and the resolved address falls in that range.
-**Why:** a connector that follows a link from an email must never carry your token to the address
-the link names.
+service on a private network passes only when the fetcher's `pairing` names its host with an allowed
+address range, the hop goes to that host, and the resolved address falls in that range. The caller
+builds the pairing from the service's configuration, with or without a credential. **Why:** a
+connector that follows a link from an email must never carry your token to the address the link
+names.
 
 The fetcher alone sets a request's credential, so it refuses a request that arrives with one of
 these headers set, compared without regard to case, and sends nothing:
