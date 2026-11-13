@@ -11,9 +11,11 @@ tools), as [sandboxes](../../architecture/connectors/sandboxes.md#kinds-of-work)
 destroys the sandbox when the tool call returns.
 
 The files a code run writes are sealed under the key of the tool call's result record, as
-[erasable fields](../../architecture/core/erasable-fields.md#keys) describes for attachments. A
-forget deletes that key, so the files become unreadable with the record's text. A later code run
-reads a file by its short file ID.
+[erasable fields](../../architecture/core/erasable-fields.md#keys) describes for attachments. When
+nixie forgets the record, it deletes that key, as
+[forgetting a record](../../architecture/core/erasable-fields.md#forgetting-a-record) describes, so
+the files become unreadable with the record's text. The rest of this doc calls that a forget. A
+later code run reads a file by its short file ID.
 
 This design changes the code tool section of the
 [coding design](../platform/connectors/coding.md#the-code-tool), and adds the `code` key to
@@ -133,7 +135,7 @@ const codeRunDeclaration: EffectDeclaration = {
 export const codeRunLimits = {
   wallTimeMs: 60_000, // the program, from its start to its exit
   callMs: 120_000, // the whole call: create, copy in, the program, copy out, destroy
-  streamBytes: 1024 * 1024, // per stream, the built exec cap
+  streamBytes: 1024 * 1024, // per stream, the current exec cap
   shownStreamBytes: 32 * 1024, // per stream, in the result's text
   inputBytes: 64 * 1024 * 1024, // the program, every input file and every skill file
   outputFiles: 50,
@@ -144,7 +146,7 @@ export const codeRunLimits = {
 ```
 
 ```ts
-// sandbox module, a new row in the built size table. memoryMiB is in MiB.
+// sandbox module, a new row in the current size table. memoryMiB is in MiB.
 export const sandboxSizes = {
   // …existing rows
   codeRun: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
@@ -165,7 +167,7 @@ code_files: one row per file a code run wrote, written in the transaction of its
 ```
 
 ```ts
-// tools module, built types extended
+// tools module, current types extended
 interface DirectResult extends TypedResult {
   // …existing fields
   // Sealed under the result record's key, in order, as record attachments.
@@ -178,7 +180,7 @@ interface DirectResult extends TypedResult {
 ### The image
 
 ```ts
-// sandbox module, the built tuple and records
+// sandbox module, the current tuple and records
 export const sandboxImageKeys = ['conversation', 'fetch', 'code'] as const;
 // sandboxImageRecords.code: { repository: 'nixie-code', dockerfile: <beside the other guests> }
 
