@@ -80,8 +80,8 @@ The card then follows the outcome from its records, never from the model's words
 
 ## The approval digest
 
-The approval digest lists every waiting item, opened from a badge or a push link, in policy's order:
-unknown outcomes, then always-ask items, then routine items by task. Each item is one line that
+The approval digest lists every waiting item, opened from a badge or a push link, in the order that
+[the approval record](../../queue/approval-record.md#listing) sets. Each item is one line that
 expands to its card. Routine items take "Approve selected" and "Approve all routine", and always-ask
 items never join a batch. A batch covers only the items on screen, and the server checks each item
 on its own, so one stale item fails alone. An item answered on another device collapses with that
