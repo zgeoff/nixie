@@ -26,11 +26,14 @@ request and a tool that changes.
 
 The build ships in 3 stages, one release or more apart:
 
-1. **HTTP:** the proxy, with `auth: none` and `auth: static`, the pins, the declarations, the
-   health, the input requests, the tool-changed record and the pinned hash in the action hash. Stage
-   1 also adds the `mcp_server` sandbox kind to the spec schema, which nothing writes until stage 2.
+1. **HTTP:** the proxy, with `auth: none` and `auth: static`, the pins, the declarations, the health
+   and the input requests. Stage 1 also adds the `mcp_server` sandbox kind to the spec schema, which
+   nothing writes until stage 2.
 2. **stdio:** a server run as a command in a sandbox of kind `mcp_server`.
 3. **OAuth:** `auth: oauth`, once a server the deployment adds needs it.
+
+The tool-changed record and the pinned hash in the action hash build on stage 1, each in its own
+work item.
 
 This design uses 2 terms throughout. A **server listing** is the proxy's fetch of one server's
 tools, an MCP `tools/list`. A **tool list** is the set of tools one task run or worker run may call,
@@ -58,7 +61,8 @@ flowchart LR
 ### The config
 
 ```yaml
-# config.yaml: the mcp section, which the mcp module's schema owns. Every object is strict.
+# config.yaml: the mcp section, which the mcp module's schema owns. nixie ignores a key it does not
+# know, with a warning at start.
 mcp:
   listingTimeoutSeconds: 10 # the default
   servers:

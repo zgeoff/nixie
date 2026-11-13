@@ -27,7 +27,7 @@ Terms that the [glossary](../../glossary.md) lacks:
 
 ```mermaid
 flowchart LR
-  config[config.yaml] -->|strict schema| start[server start]
+  config[config.yaml] -->|unknown keys ignored, with a warning| start[server start]
   start -->|systemSteps| off[runOffTaskStep for each leftover task]
   log[(event log: 11 record kinds)] --> proj[3 projections]
   proj --> review[memory review and memory.pending]

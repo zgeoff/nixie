@@ -64,7 +64,7 @@ trigger:
 ```
 
 ```ts
-// definitions module. The schema is strict: a key outside both groups is a fault.
+// definitions module. The seed skips a definition that holds a key outside both groups, with a warning.
 type TaskDefinition = TaskStartInput & DefinitionOnly;
 // TaskStartInput: the output of parseTaskStartInput, tasks module, from the task runner port work
 // (not built). It holds `name` and `brief` (both required), `model`, `persona`, `memory`, `tools`
@@ -114,7 +114,6 @@ type SeedFaultCode =
   | 'reminder_key' // target: conversation with a key other than name, brief, target, trigger, enabled
   | 'reminder_without_trigger'
   | 'bad_slot' // a slot in instructions.md that the `task` prompt does not accept; trigger.* and inputs.* never are
-  | 'poll_trigger' // the trigger holds `poll`
   | 'bad_schedule' // a Schedule key outside its rule
   | 'at_without_offset'
   | 'start_refused'; // checkTaskStart refuses the task.start input
@@ -271,7 +270,8 @@ interface DefinitionVersion {
 ## Out of scope
 
 - A `poll` trigger: [mail and calendar polls](mail-and-calendar-polls.md#the-poll-trigger) adds it
-  to `Trigger` and drops the `poll_trigger` fault.
+  to `Trigger`. Until then, the seed skips a definition whose trigger holds `poll`, as it skips any
+  definition with a field it does not know.
 - A trigger kind `log`.
 - Code that runs a step file.
 - A `skills` key: `task.start` takes no skills, so a task run has no way to use a pinned skill.

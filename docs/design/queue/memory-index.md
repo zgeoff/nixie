@@ -71,7 +71,7 @@ and 12 more topics with 85 items: list them with memory.recall topics
 ```
 
 ```yaml
-# deployment config, memory module. memoryConfigSchema stays a strict object.
+# deployment config, memory module. memoryConfigSchema ignores an unknown key, with a warning at start.
 memory:
   index_tokens: 3000 # the block's token budget: 0 omits the block, otherwise at least 3000
   index_open_topic_items: 25 # a topic with more items folds

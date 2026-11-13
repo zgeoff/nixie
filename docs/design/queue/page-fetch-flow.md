@@ -171,4 +171,7 @@ type FetchReply =
 
 ## Open questions
 
-None.
+- **Does a `url` or `link` call read a page cache?** The owner picks one of 3 options: no cache, so
+  the pause alone; the cache, on by default at 5 minutes; or the cache with `cache_ms: 0` as the
+  default. This design follows the second. Until the owner answers, every `url` or `link` call
+  fetches. [The page cache](https://linear.app/zgeoff/issue/GEO-2590) holds the question.
