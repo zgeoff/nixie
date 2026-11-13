@@ -70,7 +70,7 @@ interface SetupStep {
   title: string;
   body: string; // template text; {redirectURI} and {origin} are the only placeholders
   links: { label: string; url: string }[];
-  input?: 'oauth_client'; // the step that shows the client form
+  input?: 'oauth_client'; // the step that shows the OAuth client form
 }
 
 interface HealthReport {
@@ -317,8 +317,8 @@ label from the connection row.
 - `state` is bound to the device session that started it. A call from another session, or after
   `expires_at`, answers `CONSENT_NOT_FOUND`, so a link that an attacker sends you cannot attach the
   attacker's account.
-- The token exchange sends the client secret, the PKCE verifier and the stored `redirect_uri`. The
-  security of the return rests on `state` and the client secret, never on PKCE.
+- The token exchange sends the OAuth client secret, the PKCE verifier and the stored `redirect_uri`.
+  The security of the return rests on `state` and the OAuth client secret, never on PKCE.
 - `finishConsent` deletes the consent request and its key in the transaction that records the
   outcome, success or refusal. A sweep at start and every hour deletes each lapsed request and its
   key.
@@ -454,27 +454,29 @@ every Forget before it hands out any task work:
 
 ## Decisions
 
-- **Forget only, no Disconnect.** The owner chose this on 13 Nov: a pause is rare for one person,
-  and a paused token still sits in the database and its backups.
+- **Forget only, no Disconnect.** The owner chose this on 13 Nov 2026: a pause is rare for one
+  person, and a paused token still sits in the database and its backups.
 - **The account comes from the ID token, with `openid` and `email` asked for.** An agent's call on
-  13 Nov: Google shows sign-in scopes on a page of their own, so the account is known when you
+  13 Nov 2026: Google shows sign-in scopes on a page of their own, so the account is known when you
   untick Gmail, and `sub` survives an address change.
-- **Connections are plain tables beside audit records, not projections.** An agent's call on 13 Nov:
-  a token changes at runtime, and a projection would put every value into the append-only log.
+- **Connections are plain tables beside audit records, not projections.** An agent's call on 13 Nov
+  2026: a token changes at runtime, and a projection would put every value into the append-only log.
 - **Label, account and tokens sit under the connection's key, and no record carries them.** An
-  agent's call on 13 Nov: Forget then erases every copy the connection keeps, and a hash of the
+  agent's call on 13 Nov 2026: Forget then erases every copy the connection keeps, and a hash of the
   account would outlive it, as a message hash would.
-- **The return route is a web server route that calls a procedure.** An agent's call on 13 Nov: the
-  API keeps one way in, and the browser's `Lax` cookie reaches a top-level navigation from Google.
+- **The return route is a web server route that calls a procedure.** An agent's call on 13 Nov 2026:
+  the API keeps one way in, and the browser's `Lax` cookie reaches a top-level navigation from
+  Google.
 - **The redirect URI comes from the page's origin at registration, not from a config key.** An
-  agent's call on 13 Nov: Google checks it against the client anyway, and a rollback needs no step.
-- **Access tokens stay in memory.** An agent's call on 13 Nov: a restart costs one refresh, and the
-  database holds one secret per connection.
+  agent's call on 13 Nov 2026: Google checks it against the OAuth client anyway, and a rollback
+  needs no step.
+- **Access tokens stay in memory.** An agent's call on 13 Nov 2026: a restart costs one refresh, and
+  the database holds one secret per connection.
 - **One revocation attempt, recorded before it is sent.** The credential design sets one attempt. An
-  agent's call on 13 Nov: recording it first makes a crash read as `unknown`, and a second request
-  could revoke a grant that a consent made after the Forget.
-- **A consent of an account already connected updates that connection.** An agent's call on 13 Nov:
-  a refusal would leave a second grant at Google, and revoking it would revoke the first.
+  agent's call on 13 Nov 2026: recording it first makes a crash read as `unknown`, and a second
+  request could revoke a grant that a consent made after the Forget.
+- **A consent of an account already connected updates that connection.** An agent's call on 13 Nov
+  2026: a refusal would leave a second grant at Google, and revoking it would revoke the first.
 
 ## Builder decides
 
