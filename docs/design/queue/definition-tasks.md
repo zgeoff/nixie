@@ -297,13 +297,14 @@ writes the fire's record. The first answer that holds decides:
   `scheduledFor` of the answer as an ISO instant with milliseconds, in UTC.
 - For a `window` schedule, the instant is the window's start, because the schedule source picks the
   instant inside the window only when the window opens.
-- It returns the slot as `readNextFire` gives it, even when the slot is already past. The catch-up
-  rule decides what that slot does.
+- It returns the slot as `readNextFire` gives it, even when the slot is already past. The trigger
+  core decides by its catch-up rule whether that slot fires.
 - It returns null in each of these cases:
   - the definition has no row, or its row is withdrawn;
   - the definition has no `schedule` or `at` trigger;
-  - the trigger is an `at` whose dedupe key `trigger_keys` holds, because `readNextFire` returns the
-    instant of an `at` for any watermark.
+  - the trigger is an `at` that already fired or was skipped, which nixie knows when the
+    [`trigger_keys` table](triggers.md#the-spent-one-shot) holds its dedupe key. `readNextFire`
+    returns the instant of an `at` for any watermark, so the reader checks the key itself.
 - The `next` of `renderTrigger` is a display string such as "Fri 12 Mar", so `nextRunAt` never reads
   it.
 

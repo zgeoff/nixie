@@ -133,11 +133,11 @@ interface TaskProfile {
 ```
 
 ```xml
-<task-message id="p3x9" from="Pip (task: Cafe search, t4m2)" kind="reply" reply-to="m7k2" sent="Thu 5 Nov, 17:41" fence="a90c">
+<task-message id="p3x9" from="Pip (task: Cafe search)" kind="reply" reply-to="m7k2" sent="Thu 5 Nov, 17:41" fence="a90c">
 The one on Mill Lane opens at 6.
 </task-message fence="a90c">
 
-<owner-message id="16022" from="Rowan" sent="Thu 5 Nov, 18:02">
+<owner-message id="16035" from="Rowan" sent="Thu 5 Nov, 18:02">
 Any of them have outdoor seats?
 </owner-message>
 
@@ -216,9 +216,10 @@ The user message of a task run's first turn holds, in order:
 5. the `since` block, only for a definition's task run;
 6. the brief, in the envelope with the kind `request`.
 
-- Parts 1 to 5 are the preamble. A started task's brief is the first record of the inbox batch. A
-  definition's brief is the last block of the preamble, and the inbox batch follows it: the
-  `trigger.fired` record, which renders no text, or the message that opened the task run.
+- For a started task, parts 1 to 5 are the preamble, and the brief is the first record of the inbox
+  batch. For a definition's task run, the preamble holds all 6 parts, and the inbox batch follows
+  the brief: the `trigger.fired` record, which renders no text, or the message that opened the task
+  run.
 - Under `memory: none`, the default, a task gets no memory block and no memory tool, whatever its
   persona.
 - The label of a started task's brief is the starter's label. The label of a definition's brief is
@@ -239,10 +240,9 @@ The user message of a task run's first turn holds, in order:
   run of a definition, it is the time the definition was first enabled, as
   [the task of a definition](definition-tasks.md#how-the-built-task-code-handles-a-definitions-task)
   gives it.
-- For a carried task run, nixie follows `carriesRunID` back to the first task run of the chain. The
-  carried task run's block gives the start of the task run before that first task run, and the start
-  of that first task run. The carried task run therefore reads the messages that the first task run
-  read.
+- A carried task run renders the block of the first task run of its chain, which nixie finds by
+  following `carriesRunID` back. The carried task run therefore reads the messages that the first
+  task run read.
 - The block renders where `renderRunBlocks` renders the `trigger` and `report-shape` blocks. At the
   first turn of a carried task run in a session that it resumes, it renders nothing, because the
   session holds the block.
@@ -354,8 +354,9 @@ session. nixie takes the first line that applies:
   its own.** The owner chose this wording on 13 Nov. A task that reports to the conversation reads
   the conversation's label, and a task under `none` reads no target.
 
-- **No label holds a task ID.** The owner chose `{agent} (task: {name})` and `task: {name}` on 5 Nov
-  and confirmed them on 11 Nov. A model that needs a sender's task ID reads it from `tasks.list`.
+- **A label never holds a task ID.** The owner chose `{agent} (task: {name})` and `task: {name}` on
+  5 Nov and confirmed them on 11 Nov. A model that needs a sender's task ID reads it from
+  `tasks.list`.
 - **The guest drops the CLI's own reminders of the environment, the model and the date.** The owner
   chose this on 5 Nov, if the SDK allows it. The
   [model-eval spike](../../../research/model-eval/results.md) shows that `CLAUDE_CODE_SIMPLE=1`
@@ -371,7 +372,7 @@ session. nixie takes the first line that applies:
   live turn and a rebuilt session.
 - **A rollback loses the briefs of the tasks this release started.** The release before reads a
   brief only from `task.created`, and a copy there would give a forget 2 places to reach.
-- **No limit bounds the depth of a chain of starts.** An agent's call on 13 Nov, which the owner
+- **nixie never limits the depth of a chain of starts.** An agent's call on 13 Nov, which the owner
   accepted: each task's own limits, the rule that a start never widens its starter's tools, and the
   deployment budget of the [counting proxy](../../architecture/policy/counting-proxy.md) bound a
   chain's spend, as the owner chose to rely on spend limits for loops.
