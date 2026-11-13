@@ -16,7 +16,7 @@ The removal is the built `conversation.forget` action, widened in 5 parts that s
    [removal-control](https://linear.app/zgeoff/issue/GEO-2560).
 4. nixie removes a record through a tool, under your policy rules:
    [forget-tool](https://linear.app/zgeoff/issue/GEO-2604).
-5. The removal purges the quote from each memory item that quotes the record:
+5. The removal purges the record's text from each memory item that quotes the record:
    [evidence-purge](https://linear.app/zgeoff/issue/GEO-2605).
 
 A gap is a span record whose text nixie cannot read: a forget deleted its key, a session cleanup
@@ -146,18 +146,7 @@ log.forget({ thread: 'conversation', record: '<the record as the session history
 
 ### Part 5: the evidence purge
 
-```ts
-// memory module: run inside the forget, once per item whose evidence quotes the record
-purgeItemEvidence({ itemID, sequence: 4190 });
-// 1. memory.evidence_purge_started { itemID, sequence, sourceVersion, pendingKeyID }
-//    sourceVersion: the newest version readable under the old key; pendingKeyID: crypto.randomUUID()
-// 2. write a new key to the key store under pendingKeyID
-// 3. under the new key, seal sourceVersion's text with no evidence quote, as one new version, and
-//    reseal each pending proposal of the item; a proposal whose evidence is the record loses its quote
-// 4. in one key-store write, put the new key under the item's UUID and drop pendingKeyID, then
-//    checkpoint the key store, as removeRecordKey does, so the old key leaves the write-ahead log
-// 5. memory.evidence_purged { itemID, sequence }
-```
+[The evidence purge](evidence-purge.md) holds this part's contracts and constraints.
 
 ## Constraints
 
@@ -167,8 +156,9 @@ purgeItemEvidence({ itemID, sequence: 4190 });
   every moment whose span holds it.
 - A redaction removes a whole record. One record has one key, and no field has a key of its own.
 - A redaction touches only the record you name. A reply that quotes the same secret stays readable.
-- The forget writes `record.forget_started`, deletes the key, runs the session cleanup, and writes
-  `record.forgotten` last, so a rebuilt session reads the record as a gap.
+- The forget writes `record.forget_started`, deletes the key, purges each memory item that quotes
+  the record, runs the session cleanup, and writes `record.forgotten` last, so a rebuilt session
+  reads the record as a gap.
 - Each step of a forget is safe to run twice, and the server's start finishes a forget that a crash
   cut short.
 - `conversation.forget` never removes a record that holds a moment's title, note or reflection, and
@@ -228,7 +218,8 @@ purgeItemEvidence({ itemID, sequence: 4190 });
   control removes a record without a preview.
 - A click on the control reads the preview, and the view shows the 2 counts with a confirm. Only the
   confirm calls `conversation.forget`. When the preview lists a memory item, the confirm says that
-  each listed item keeps its text and loses its older versions and its evidence quotes.
+  each listed item keeps its text and loses its older versions, its evidence quotes, its pending
+  proposals and its rating notes.
 - When the preview read fails, the view shows an error in place of the confirm and hides the control
   on that record. It never removes without a preview. A client of this part on the release before
   gets the failure, because the procedure does not exist there.
@@ -253,37 +244,7 @@ purgeItemEvidence({ itemID, sequence: 4190 });
 
 ### Part 5
 
-- A forget purges the evidence of every memory item that quotes the record, before it writes
-  `record.forgotten`. The item keeps its ID, its current text and its state, and loses its older
-  versions and every evidence quote.
-- The new key stays under the item's UUID, the key ID it already has, so every reader finds it as it
-  finds the old one.
-- Each step is safe to run twice. The server's start finishes a purge from
-  `memory.evidence_purge_started`:
-  - When the key store holds `pendingKeyID`, it goes on from step 3, and seals only what is missing.
-  - When the key store lacks `pendingKeyID` and the item's key still opens `sourceVersion`, step 4
-    never ran, so it starts again at step 2.
-  - When the key store lacks `pendingKeyID` and the item's key no longer opens `sourceVersion`, step
-    4 ran, so only the checkpoint and step 5 remain.
-- Until step 4, a reader that fails to open a value of the item under the item's key tries the
-  `pendingKeyID` of the item's unfinished purge, so the new version and each resealed proposal stay
-  readable through the purge.
-- A crash never leaves an item with no readable key, and never leaves its newest version unreadable.
-- `memory.evidence_purged` waits for the key-store checkpoint, so the old key is gone from the
-  write-ahead log before the purge counts as done.
-- A pending proposal of the item stays pending and readable after the purge, so the proposal list
-  never fails on it.
-- The forget's backup state covers each item's old key as well as the record's key.
-- The release before this part skips the 2 new record kinds, as it skips any kind it does not know.
-  After a finished purge, it reads the item through the key under its UUID, so it reads the new
-  version and shows each older version as a gap.
-- An unfinished purge leaves the new version and the resealed proposals under `pendingKeyID`, which
-  the release before never reads. So a rollback starts this build once first, and its start finishes
-  every unfinished purge before it serves. Then the release before starts.
-- An item whose evidence nixie purged after the data snapshot of an `older-data` pair is unreadable
-  after that restore, as [the backup pair](backup-pair.md#the-fetch) says.
-- The purge never forgets an item. When an item's own text holds what you remove, you forget the
-  item with the memory forget, from the preview's list.
+- [The evidence purge](evidence-purge.md#constraints) holds this part's constraints.
 
 ## Decisions
 
