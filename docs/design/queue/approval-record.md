@@ -1,8 +1,9 @@
 # The approval record
 
 - **Status:** draft
-- **Work items:** the approval record and its answer path, then the approval cards and the digest,
-  which read it
+- **Work items:**
+  [the approval record and its answer path](https://linear.app/zgeoff/issue/GEO-1804), built first;
+  then [the approval cards and the digest](https://linear.app/zgeoff/issue/GEO-1805), which read it
 
 You answer every proposal, a tool call or a change that waits for you, through one checked call. A
 proposal comes from 1 of 3 places: an action that the
@@ -10,9 +11,9 @@ proposal comes from 1 of 3 places: an action that the
 [memory gate](../../architecture/memory/writes.md) sends to review, or an internal change, such as a
 skill that nixie wrote or a rule widening that a
 [seed of your definitions](../../architecture/policy/rules.md#rules-in-force) waits to apply. Every
-proposal of every kind has one shared row, and the checked call is `approvals.answerProposal`, with
-Approve, Always allow, Defer or Decline. Each kind keeps its own store and records, and the
-proposals module builds the shared row from those records, as a
+proposal of every kind has one shared row, the approval record, and the checked call is
+`approvals.answerProposal`, with Approve, Always allow, Defer or Decline. Each kind keeps its own
+store and records, and the proposals module builds the shared row from those records, as a
 [projection](../../architecture/core/event-log.md#projections) of the log, and runs the checks that
 every answer shares. The memory write tools declare the `memory_write`
 [effect](../platform/policy/decision-point.md#effects), so your rules decide a memory write before
@@ -81,8 +82,8 @@ type ProposalState = 'pending' | 'deferred' | 'approved' | 'declined' | 'lapsed'
 - `pending` and `deferred` are open, and the other 4 states are closed. A record never reopens a
   closed row.
 - One exception: when a rule changes after an action's approval and before the action runs, policy
-  moves the row back to `pending` under the same ID with a new hash. The actions work item owns that
-  check.
+  moves the row back to `pending` under the same ID with a new hash. The
+  [actions work item](https://linear.app/zgeoff/issue/GEO-1810) owns that check.
 
 | Kind              | Its store                                                                                      | Its states map to the shared row                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -332,8 +333,8 @@ approvals:
   no message carries a zone.
 - The client computes "this evening" and "tomorrow morning" from the `defer` settings that
   `listItems` returns. The server checks only the `deferUntil` that the answer sends.
-- The Telegram push notices read `quiet_hours` too, and keep their presence and batch settings under
-  `channels.telegram`.
+- The [Telegram push notices](https://linear.app/zgeoff/issue/GEO-1812) read `quiet_hours` too, and
+  keep their presence and batch settings under `channels.telegram`.
 
 ### Memory writes on rules
 
@@ -459,12 +460,13 @@ the memory checker.
 
 - The cards and the digest layout, in [approvals in the client](../platform/channels/approvals.md).
 - Answering an unknown outcome, consuming an approval, and the policy check before each attempt of
-  an action. The actions work owns them.
+  an action. The [actions work item](https://linear.app/zgeoff/issue/GEO-1810) owns them.
 - The action kind's create record and its CLI, in the decision point cutover
   (`docs/design/queue/decision-point-cutover.md`).
 - The passkey, voice cards, proposed rules and mandates.
 
 ## Open questions
 
-The owner settles 3 questions, kept in the work item: the state names, the lifting group, and where
-quiet hours live. Until then the code follows the interims in [Decisions](#decisions).
+The owner settles 3 questions, kept in [the work item](https://linear.app/zgeoff/issue/GEO-1804):
+the state names, the lifting group, and where quiet hours live. Until then the code follows the
+interims in [Decisions](#decisions).
