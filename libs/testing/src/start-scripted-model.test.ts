@@ -309,3 +309,30 @@ test('it holds a gated reply until its gate resolves', async () => {
   expect(statusBeforeGate).toBe('pending');
   expect(answered.json()).resolves.toMatchObject({ content: [{ type: 'text', text: 'held' }] });
 });
+
+test('it answers a request with the first reply whose condition its body meets', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies(
+    {
+      text: 'for the helper',
+      when: (body) => body.tools?.some((tool) => tool.name === 'helper') === true,
+    },
+    { text: 'for anyone' },
+  );
+
+  const sendRequest = async (tools: readonly { name: string }[]) => {
+    const response = await fetch(`${ctx.model.url}/v1/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-a', messages: [], tools }),
+    });
+
+    return response.json();
+  };
+
+  const plain = await sendRequest([{ name: 'other' }]);
+  const helper = await sendRequest([{ name: 'helper' }]);
+
+  expect(plain).toMatchObject({ content: [{ type: 'text', text: 'for anyone' }] });
+  expect(helper).toMatchObject({ content: [{ type: 'text', text: 'for the helper' }] });
+});

@@ -21,11 +21,7 @@ export interface TaskStartChoice {
     | undefined;
 }
 
-type ToolRefusalReason =
-  | 'wider_tools'
-  | 'conversation_tools'
-  | 'memory_tools'
-  | 'memory_write_tools';
+type ToolRefusalReason = 'wider_tools' | 'conversation_tools' | 'memory_tools';
 
 interface ToolRefusal {
   readonly reason: ToolRefusalReason;
@@ -110,16 +106,22 @@ export function planTaskStart(
     choice.tools?.map((name) => findHeldToolName(name, starterTools) ?? name) ??
     startedTaskDefaultTools.filter((tool) => starterTools.includes(tool));
 
-  const memoryTools = memory === 'read' ? bounds.memoryTools.read : [];
+  // With memory read, a task may get each memory tool its starter holds; a write tool joins only
+  // when the start names it, while the read tools join by default.
+  const defaultMemoryTools = memory === 'read' ? bounds.memoryTools.read : [];
+
+  const allowedMemoryTools =
+    memory === 'read' ? [...bounds.memoryTools.read, ...bounds.memoryTools.write] : [];
+
+  const allMemoryTools = new Set([...bounds.memoryTools.read, ...bounds.memoryTools.write]);
 
   const accepted = starterTools.filter(
     (tool) =>
       !bounds.conversationTools.includes(tool) &&
-      !bounds.memoryTools.write.includes(tool) &&
-      (memoryTools.includes(tool) || !bounds.memoryTools.read.includes(tool)),
+      (allowedMemoryTools.includes(tool) || !allMemoryTools.has(tool)),
   );
 
-  const refused = pickToolRefusal(asked, starterTools, bounds, memoryTools);
+  const refused = pickToolRefusal(asked, starterTools, bounds, allowedMemoryTools);
 
   if (refused !== null) {
     return refuse({ ...refused, accepted });
@@ -128,7 +130,7 @@ export function planTaskStart(
   const tools = [
     ...startedTaskBaseTools,
     ...asked,
-    ...memoryTools.filter((tool) => starterTools.includes(tool)),
+    ...defaultMemoryTools.filter((tool) => starterTools.includes(tool)),
   ];
 
   return {
@@ -167,10 +169,11 @@ function pickToolRefusal(
   const checks: readonly [ToolRefusalReason, (tool: string) => boolean][] = [
     ['wider_tools', (tool) => !starterTools.includes(tool)],
     ['conversation_tools', (tool) => bounds.conversationTools.includes(tool)],
-    ['memory_write_tools', (tool) => bounds.memoryTools.write.includes(tool)],
     [
       'memory_tools',
-      (tool) => bounds.memoryTools.read.includes(tool) && !memoryTools.includes(tool),
+      (tool) =>
+        (bounds.memoryTools.read.includes(tool) || bounds.memoryTools.write.includes(tool)) &&
+        !memoryTools.includes(tool),
     ],
   ];
 

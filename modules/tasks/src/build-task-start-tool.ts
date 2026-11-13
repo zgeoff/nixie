@@ -228,11 +228,6 @@ function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
         `a task gets ${memory.tools.join(', ')} only with memory set to read, so nixie started nothing. ${renderAcceptedTools(memory.accepted)}`,
     )
     .with(
-      { reason: 'memory_write_tools' },
-      (write) =>
-        `a task cannot get ${write.tools.join(', ')} with any memory setting, so nixie started nothing. ${renderAcceptedTools(write.accepted)}`,
-    )
-    .with(
       { reason: 'conversation_tools' },
       (conversation) =>
         `only the conversation can use ${conversation.tools.join(', ')}, so nixie started nothing. ${renderAcceptedTools(conversation.accepted)}`,

@@ -27,14 +27,14 @@ start of the same step committed in between.
 The start tool takes these options beside the name and the brief. The start checks each one in code,
 writes nothing when one fails, and tells the model why:
 
-| Option    | Values                       | When the start leaves it out            | The start refuses                                                                 |
-| --------- | ---------------------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
-| `model`   | a name of a selectable model | the `task` role's profile               | a name that is not a choice, or a model whose harness lacks what a task needs     |
-| `persona` | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                 |
-| `memory`  | `none` or `read`             | `none`                                  | a memory tool that the value leaves out, or `read` from a starter that reads none |
-| `tools`   | names of tools               | the clock                               | a tool that the starter does not hold, under either of its names                  |
-| `report`  | `wake`, `next_turn`, `none`  | `wake`                                  | nothing                                                                           |
-| `limits`  | turns, dollars or both       | the defaults of `models.limits.taskRun` | a value above the max of `models.limits.taskRun`                                  |
+| Option    | Values                       | When the start leaves it out            | The start refuses                                                                                 |
+| --------- | ---------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `model`   | a name of a selectable model | the `task` role's profile               | a name that is not a choice, or a model whose harness lacks what a task needs                     |
+| `persona` | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                                 |
+| `memory`  | `none` or `read`             | `none`                                  | a memory tool, read or write, that the value leaves out, or `read` from a starter that reads none |
+| `tools`   | names of tools               | the clock                               | a tool that the starter does not hold, under either of its names                                  |
+| `report`  | `wake`, `next_turn`, `none`  | `wake`                                  | nothing                                                                                           |
+| `limits`  | turns, dollars or both       | the defaults of `models.limits.taskRun` | a value above the max of `models.limits.taskRun`                                                  |
 
 The [selectable models](./model-profiles.md#selectable-models) give the choices of `model`, which
 the tool's input schema lists with their descriptions. The conversation has the persona and reads
@@ -43,11 +43,17 @@ more. The tools a task holds are its starter's tools that the start named, plus 
 the message tool, and so never more than its starter holds. The nixie runner adds the
 [silent end](./conversation-turns.md#a-turn-that-ends-with-nothing-sent) to every task's tool run,
 whatever its start named. A start with `memory: read` also gives the task each memory tool that only
-reads and that its starter holds, and a start may name no memory tool that writes. A start with
-`memory: none` may name no memory tool at all. A start may name no skill tool either, because only
-the conversation's thread has a skill list, so a skill tool would refuse every call of the task. The
-starter rule that asks before a stranger reads memory needs a decision point that can ask, so until
-then the start refuses that combination
+reads and that its starter holds. A task gets a memory tool that writes only when all 3 hold: the
+start names it in `tools`, the starter holds it, and the start sets `memory: read`. A start never
+gives a write tool by default. A start with `memory: none` may name no memory tool at all.
+
+Each write from a task goes through the same [write gate](../memory/writes.md) as the
+conversation's. A task's `memory.remember` or text edit cites no message of the user on its own
+thread, so it waits for review with the reason `no_quote`, unless an allow rule covers it. A task's
+`memory.unpin` applies at once, as the conversation's does. A start may name no skill tool either,
+because only the conversation's thread has a skill list, so a skill tool would refuse every call of
+the task. The starter rule that asks before a stranger reads memory needs a decision point that can
+ask, so until then the start refuses that combination
 ([GEO-1803](https://linear.app/zgeoff/issue/GEO-1803/nixie-policy-the-full-decision-point-with-destination-limits-known)).
 
 Each tool has 2 names. nixie registers a tool under its nixie name, such as `memory.recall`. The
@@ -56,8 +62,8 @@ builds as `mcp__nixie__` and then the nixie name with each character outside let
 and `-` replaced by `_`. The `tools` option takes either name, and the start records the nixie name.
 
 When the start refuses a tool, the start's error message holds both names of each tool that a start
-with the same options from the same starter would accept. When the start refuses a memory tool that
-only reads, the message also holds the `memory: read` setting that the tool needs.
+with the same options from the same starter would accept. When the start refuses a memory tool, the
+message also holds the `memory: read` setting that the tool needs.
 
 The report mode decides how the task's result reaches its starter. Under `wake` a report wakes the
 starter unless the task sends it with `wake: false`, under `next_turn` the message tool sends each
