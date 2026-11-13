@@ -1,0 +1,91 @@
+# Evidence lanes
+
+An evidence lane is a way to get acceptance evidence for a build without sending a turn to a
+production deployment. Use a lane from the first table to check a change. Use a read path from the
+second table only when you have a grant from you for it, and only to read a production deployment.
+
+## Lanes
+
+Each row gives the lane, the command that runs it, the kind of credential it needs, and what its
+result does and does not prove.
+
+| Lane                          | Command                                                                                                                                                  | Credential                       | What it proves                                                                                                | What it cannot prove                                                            |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Static checks                 | `bun run lint`, `typecheck`, `boundaries`, `deadcode`, `format:check`, `prose` and `check:docs`                                                          | none                             | The code compiles, the packages keep their boundaries, and the docs pass their checks                         | Any behaviour. A check of a doc's text belongs here                             |
+| Unit                          | `bun run test`                                                                                                                                           | none                             | Each module's behaviour in process, with stand-ins for outside systems                                        | That the modules work as one program                                            |
+| `test:related`                | `bun run test:related`                                                                                                                                   | none                             | The unit tests that relate to the files you changed                                                           | A change that reaches a file the relation misses                                |
+| Spawned nixie, scripted model | `bun run test:e2e`, for the suites that call `startSpawnedNixie`, with its `memoryWriter` option for the memory writer                                   | none                             | nixie as a child process with the real event log, runners and tools, a scripted model and the provider double | The behaviour of a real model, and any deployment's data and configuration      |
+| e2e crash tests               | `bun run test:e2e`, for the suites in `e2e/crash/`                                                                                                       | none                             | A crash at a named fault point loses nothing and repeats nothing                                              | A crash at a point no suite arms, and a host that loses power                   |
+| `test:browser`                | `bun run test:browser`                                                                                                                                   | none                             | The web client in a real browser                                                                              | The client against a real nixie                                                 |
+| `test:journeys`               | `bun run test:journeys`                                                                                                                                  | none                             | A user journey in a real browser against a test build of nixie                                                | A journey on a deployment                                                       |
+| `test:bundle`                 | `bun run test:bundle`                                                                                                                                    | none                             | The release bundle starts and serves requests                                                                 | A deployment's configuration                                                    |
+| `test:agent-sdk`              | `bun run test:agent-sdk`                                                                                                                                 | none                             | The Agent SDK behaviour that nixie relies on, in process                                                      | The SDK's behaviour against the model's API                                     |
+| `test:restic`                 | `bun run test:restic`                                                                                                                                    | none, and a restic binary        | The backup job's shipping and retention against real restic repositories                                      | A deployment's repositories and credentials                                     |
+| `test:imp`                    | `bun run test:imp`, as [the imp isolation tests](imp-isolation-tests.md) say                                                                             | imp access                       | A conversation imp reaches the model host through the broker                                                  | Anything on a deployment's own host                                             |
+| `test:model-api`              | `NIXIE_SDK_CONTRACT=1 bun run test:model-api`, with the steps in [the SDK contract suite](sdk-contract-suite.md)                                         | a model API key through a broker | The model's API keeps the behaviour that the Agent SDK bump relies on                                         | nixie's own behaviour                                                           |
+| Memory writer eval            | `env -u ANTHROPIC_API_KEY bun evals/memory-writer/run-memory-writer-eval.ts`, with the steps in [the writer eval](../architecture/memory/writer-eval.md) | a local model login              | How the production writer prompt and tools score on the cases                                                 | The writer's behaviour on your own messages                                     |
+| Memory checker eval           | `env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts <set>`, with the steps in [the checker eval](memory-checker-eval.md)       | a local model login              | How the production checker prompt scores on a labelled set                                                    | The checker's behaviour on your own memories                                    |
+| Committed eval reports        | `bun test evals`                                                                                                                                         | none                             | The committed eval reports came from the current prompts and tools, skipped no case and meet their rules      | A score that is better than the report's, because the tests do not call a model |
+| Preview                       | The steps of [the preview](preview.md) and [the preview API check](preview-api-check.md)                                                                 | none, and a model broker         | A turn on a throwaway nixie of one pull request, read back from its event log                                 | Anything about production. A preview holds invented data only                   |
+| Read-only read of production  | One read path from [the read paths](#read-paths)                                                                                                         | a grant from you                 | The state of a production deployment at the time of the read                                                  | Behaviour, because a read sends no turn                                         |
+
+## Read paths
+
+A read path reads a production deployment and sends it no turn. The host commands run inside nixie's
+container and ask the running server over its control socket, as
+[the host commands](../architecture/deployment/host-commands.md) describe. The side effect column
+comes from reading each command's handler down to the host procedure and the module function it
+calls. The word "none" means the trace reached the database query and found no write. The words
+"none known" mean the trace stopped before it reached the bottom.
+
+| Read path                           | Command                                             | What it reads                                                             | Side effect                                                                                                                                                      |
+| ----------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Readiness                           | `nixie health`                                      | The readiness report: each part's state, with its reason                  | None in the database or the event log. The server logs a line when a part changes state                                                                          |
+| Liveness                            | `nixie health --live`                               | The liveness report                                                       | None in the database or the event log, beyond a `SELECT 1` and the same log line                                                                                 |
+| Device sessions                     | `nixie sessions`                                    | The live device sessions                                                  | None                                                                                                                                                             |
+| Memory proposals                    | `nixie memory-pending`                              | The pending memory proposals, with their texts                            | None                                                                                                                                                             |
+| Memory item                         | `nixie memory-show <item_id>`                       | One memory item with every version                                        | None                                                                                                                                                             |
+| Consolidation diff                  | `nixie memory-diff`                                 | The pending consolidation changes and the last summary                    | None                                                                                                                                                             |
+| Memory subjects                     | `nixie memory-subjects`                             | The count of memory items and proposals of each subject                   | None                                                                                                                                                             |
+| Memory subjects on a copy           | `nixie memory-subjects --dry-run --database <path>` | The counts of a database copy before and after the build's migrations     | None on the copy's source. The command migrates a temporary copy and removes it. The path is a copy from `nixie backup --to`, never a file in the data directory |
+| Skill proposals                     | `nixie skill-pending`                               | The pending skill proposals and the skills in force                       | None                                                                                                                                                             |
+| Skills nixie wrote                  | `nixie skill-written`                               | The skills nixie wrote that are in force, with their conflicts            | None                                                                                                                                                             |
+| Prompt proposals                    | `nixie prompt-pending`                              | The pending prompt proposals                                              | None                                                                                                                                                             |
+| Rules in force                      | `nixie rules list`                                  | The rules in force                                                        | None                                                                                                                                                             |
+| Rule conflicts                      | `nixie rules conflicts`                             | The rules whose repo version and nixie's version differ                   | None                                                                                                                                                             |
+| Rule proposals                      | `nixie proposals list`                              | The pending rule change proposals                                         | None                                                                                                                                                             |
+| Copy of the databases               | `nixie backup --to <directory>`                     | A copy of `nixie.db` and `keys.db`, the one way to copy the databases out | Writes the copies into a new directory. It never writes to the databases and never waits on the writer                                                           |
+| `memory/readRatingNotes`            | API read of a device session                        | The rating notes that the call asks for                                   | None known                                                                                                                                                       |
+| `memory/writerStatus`               | API read of a device session                        | The memory writer's backlog, cursor, failures and last error              | None known                                                                                                                                                       |
+| `memory/consolidatorStatus`         | API read of a device session                        | Whether the consolidator is on                                            | None known                                                                                                                                                       |
+| Other API reads of a device session | `<group>/<procedure>`, listed below                 | The records, tasks, memory or backup notice that the procedure returns    | None known                                                                                                                                                       |
+
+The API read procedures of a device session are `conversation/read`, `conversation/readImage`,
+`tasks/list`, `tasks/read`, `tasks/readActions`, `memory/readVersions`, `memory/readRatingNotes`,
+`memory/writerStatus`, `memory/consolidatorStatus`, `memory/listItems`, `memory/findItems`,
+`memory/readPinnedCore`, `memory/readItem`, `memory/listNotices`, `memory/previewForget`,
+`memory/previewForgetRetired`, `memory/readForgetStatus`, `memory/listProposals`,
+`backups/readNotice`, `rules/listProposals`, `sessions/list`, `records/follow` and `log/follow`.
+
+An API read needs a device session, and getting one has side effects:
+
+- `nixie enrol-code` issues an enrolment code, which writes a record in a write transaction.
+- Enrolling a device with the code writes a session.
+- Each call of a device session updates that session's last-seen time when the last update is older
+  than the update interval, which writes one row.
+
+## Rules
+
+1. A lane never sends a turn to a production deployment.
+2. Only "Read-only read of production" reads a production deployment, and only with a grant from you
+   for the read path it uses. The agent reports which read path it used.
+3. An agent never runs the memory export, and nobody reads a production deployment's database files
+   in place. A read takes a copy from `nixie backup --to`.
+4. A lane that skips its tests has not passed.
+5. A pull request that adds a harness, such as an eval, adds its lane to this doc.
+6. When a design describes a lane in its own words, it means the lane with the nearest name. A check
+   of a doc's text is "Static checks". "e2e" is "e2e crash tests" when the check kills nixie at a
+   fault point, and "Spawned nixie, scripted model" otherwise.
+7. You make a config edit on a production deployment, for a deploy, and it never counts as
+   acceptance evidence.
+8. A step that only one deployment needs belongs in that deployment's own notes, outside this repo.
