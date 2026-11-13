@@ -383,8 +383,6 @@ acts on what it finds then:
 
 - The migration adds tables and changes none, so the
   [oldest reader](../../architecture/core/database.md) of the database does not change.
-- Before the rollback, remove the `channels` key from `config.yaml`. Expect: the release before
-  starts, and no notice goes out.
 
 ## Decisions
 

@@ -327,9 +327,7 @@ Each refusal is a tool error before the program starts:
 ### A rollback
 
 A release from before this design refuses the whole seed of a task definition that lists `code.run`,
-as [the task definition format](task-definition-format.md#what-a-seed-refuses) sets out. When the
-release before must take new seeds, the operator takes `code.run` out of each task definition in the
-definitions repo before the rollback.
+as [the task definition format](task-definition-format.md#what-a-seed-refuses) sets out.
 
 ## Decisions
 
@@ -354,8 +352,7 @@ definitions repo before the rollback.
   run holds 512 MiB of host memory, and a refusal is easier to reason about than a queue inside a
   tool call.
 - **Every deployment pulls the code image, with no config switch.** An agent's call on 13 Nov 2026:
-  a switch would save a deployment the 690 MB image, but it is a config key that a rollback must
-  remove first.
+  a switch would save a deployment the 690 MB image, too small a saving for another config key.
 
 ## Builder decides
 

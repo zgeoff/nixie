@@ -259,7 +259,7 @@ destinations:
 
 The key is one of the definition-only keys of the
 [task definition format](task-definition-format.md#the-folder-and-taskyaml). That design holds the
-key's parsing and its rollback.
+key's parsing.
 
 ### The action proposal
 
@@ -451,10 +451,6 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 
 ### A rollback to the release before
 
-- Before you start the release before, remove the `policy` section from `config.yaml`.
-- When the release before parses `task.yaml` files at all, also remove `destinations` from each one,
-  as [the format](task-definition-format.md#the-hash-and-the-store) says. Otherwise its seeds fail
-  until you do.
 - The release before decides every call with `slice1.read-only` again, and never reads an action
   proposal, so each pending one stays pending.
 

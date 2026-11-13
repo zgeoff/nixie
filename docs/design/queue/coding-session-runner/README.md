@@ -78,21 +78,6 @@ back to the report target as `task_message` records.
 | [the runner](runner.md)   | the start and its policy, the runner definition, the records, what one step does, delivery, ends and limits, `tasks.list` |
 | [the atc adapter](atc.md) | `CodingAdapter`, the coding source, the map onto atc, the config and the token, the release pairs, typing                 |
 
-## Rollback
-
-A rollback to a release that has the runner port and lacks the coding runner takes these steps, in
-order:
-
-1. Close each coding task with the `close` control, from the dashboard or the `close`
-   [task host command](../../../architecture/deployment/host-commands.md#tasks). The close calls the
-   coding runner's `ended` function ([the runner](runner.md#the-runner-definition)), which stops the
-   bound session in atc. Expect: each coding task lists as closed, and atc lists each of its
-   sessions as exited.
-2. Remove the `coding` section from the deployment config, and each policy rule that names the
-   effect `coding_start` from the repo that holds your definitions. Expect: the config passes the
-   schema of the release you roll back to.
-3. Roll back the image. Expect: the server starts.
-
 ## Decisions
 
 - **A coding runner runs no model.** Its step only moves records between the task and the session,

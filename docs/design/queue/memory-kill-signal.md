@@ -148,8 +148,7 @@ The lines:
   API failure, a time limit or a lost connection.
 - An end that nixie cannot judge never counts as an end with no kill, so each end on an adapter that
   returns `unsupported` gives its own line.
-- The lines are log lines only. nixie writes no event-log record for a memory kill, so a rollback
-  needs no step.
+- The lines are log lines only. nixie writes no event-log record for a memory kill.
 - A line never holds a task ID, a step key, guest output, a URL, a message or a prompt.
 - Each case gives this line:
 

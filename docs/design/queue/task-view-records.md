@@ -212,7 +212,7 @@ type ReadPayloadOutput =
   13 Nov 2026: no view needs one field of a record without the others, so the input stays at a
   thread and a sequence.
 - **The cut size is a contract constant.** An agent's call on 13 Nov 2026: it sizes a wire format
-  between client and server, and a config key would add a rollback step and serve no setting.
+  between client and server, and a config key would serve no setting.
 - **No line on a task's page offers its raw record, the record as the log holds it.** The owner's
   call on 14 Nov 2026: a record kind with no renderer shows by its kind's name.
 

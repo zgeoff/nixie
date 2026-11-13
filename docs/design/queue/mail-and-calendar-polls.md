@@ -451,10 +451,8 @@ order. Step 4 runs once, after the last event.
 
 The seed of the release a rollback returns to refuses a `poll` trigger with the fault
 `poll_trigger`, and `events.wait` in `tools` with `start_refused`
-([what a seed refuses](task-definition-format.md#what-a-seed-refuses)). Before a rollback:
-
-1. Remove each `poll` trigger and each `events.wait` from the definitions repo.
-2. Let a seed run on the current release.
+([what a seed refuses](task-definition-format.md#what-a-seed-refuses)), and the definitions in force
+stay those of its last accepted seed.
 
 The definitions format number stays at 4, so the release a rollback returns to still reads the
 manifest ([the folder and the keys](task-definition-format.md#the-folder-and-the-keys)).

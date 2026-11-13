@@ -307,9 +307,9 @@ nixie passkey-code              # a one-time registration code
 
 ### Rollback
 
-The rollback needs no step, and it removes the passkey check from every high-risk approval until the
-passkey release returns. This is accepted: a rollback is a short, deliberate act from the host.
-Every passkey registered before the rollback works again once the passkey release returns.
+A rollback removes the passkey check from every high-risk approval until the passkey release
+returns. This is accepted: a rollback is a short, deliberate act from the host. Every passkey
+registered before the rollback works again once the passkey release returns.
 
 ## Decisions
 
@@ -322,7 +322,7 @@ Every passkey registered before the rollback works again once the passkey releas
 - **A failed passkey check stores no result under the client action ID.** An agent's call on 13 Nov
   2026: the client retries the same action with a fresh assertion.
 - **The origin comes from the first passkey's registration, with no config key.** An agent's call on
-  13 Nov 2026: the browser binds the passkey to the page's hostname, and a rollback needs no step.
+  13 Nov 2026: the browser binds the passkey to the page's hostname.
 - **Challenges and host codes stay in memory.** An agent's call on 13 Nov 2026: both last minutes,
   and a restart costs one more tap or one more code.
 - **An answer or a revoke through a host command needs no passkey.** An agent's call on 13 Nov 2026:

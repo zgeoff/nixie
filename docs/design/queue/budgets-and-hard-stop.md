@@ -483,19 +483,6 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
   [destination limits](../platform/policy/decision-point.md#the-pipeline).
 - The rule export writes the `lift` field as it writes every other field.
 
-### A rollback
-
-To roll back:
-
-1. Clear the stop on this build. For a day trip, raise the limit or wait for midnight. For a month
-   trip, use the host command. For `unreachable`, start the gateway. For the lost mark, remove it
-   from the store. Expect: nixie resumes, and `spend.read` returns `{ state: 'clear' }`.
-2. Remove the added keys from nixie's config, the `lift` fields from the rules, and the manifest's
-   step up to `definitionsFormats.budgets`.
-3. Restore the gateway's config to one `limits`, and move its store file aside.
-4. Start the gateway before, then the release before. Expect: the gateway starts a new count at
-   zero, and nixie starts.
-
 ## Decisions
 
 - **The gateway holds the caps, and nixie sets limits under them.** nixie's config keeps the limits

@@ -544,13 +544,6 @@ module owns and that has a second real provider in sight, one that does the work
   together, and nixie stops on a pair the table lacks (rule 12). The bridge guest runs in the image
   of its own release, so its table has one row: the same release.
 
-### Rollback
-
-- A release from before this design refuses to start on the `mcp` config section, because its schema
-  is strict. Remove the section from `config.yaml` before the rollback.
-- A release from before stage 2 refuses to start on `transport.command`, and one from before stage 3
-  on `auth: oauth`. Remove each such entry, or change it, before the rollback.
-
 ## Decisions
 
 - **A proxied tool's name is `<serverID>.<tool>`, such as `github.create_issue`.** The owner chose

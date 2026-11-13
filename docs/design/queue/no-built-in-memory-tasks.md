@@ -234,9 +234,8 @@ The target is the last release the deployment ran. Every shipped release from v0
 `enabled` keys, each with the default `true`, and `runOffTaskStep`. A deployment on an earlier
 release takes v0.41.0 or later before it takes the delete.
 
-- Before a rollback to a release with the built-in tasks, the deployment sets
-  `builtInMemoryTasksOffConfig` in `config.yaml`. The config edit and the release change are one
-  deploy. A later deploy of the delete release removes both sections again.
+- After a rollback to a release with the built-in tasks, both tasks run again, because each
+  `enabled` key defaults to `true`.
 
 ## Decisions
 
@@ -245,7 +244,6 @@ release takes v0.41.0 or later before it takes the delete.
   takes the release in one deploy.
 - **Stored records stay, and nothing shows the note-taker.** The log keeps its records, and every
   reader sees them as the conversation's.
-- **A rollback sets the off config first.**
 
 ## Builder decides
 

@@ -323,28 +323,22 @@ may, on the record's own thread, or on another through memory or a task's brief.
 
 ### Faults
 
-Outside a rollback that skips its steps, a fault in the log never fails, delays or changes a model
-request, and never changes the gateway's count. A step's end can wait up to `close_wait` for the
-gateway's `.part` files.
+A fault in the log never fails, delays or changes a model request, and never changes the gateway's
+count. A step's end can wait up to `close_wait` for the gateway's `.part` files.
 
-| Fault                                                   | Outcome                                                                          |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| nixie cannot write the capture's key or its row         | The turn runs with no tag; a log line with a reason code                         |
-| The gateway cannot decode a `~in.` segment              | It removes the segment and writes no file; the close counts a miss               |
-| The gateway has no `capture` key, or another folder     | No file arrives; the close writes `not_received`                                 |
-| A `.part` file outlasts `close_wait`                    | nixie closes without it; the close writes `not_received`                         |
-| nixie stops mid-step                                    | Its start closes every open capture; the step opens a new one when it runs again |
-| nixie stops between the key, the file and the row       | Its start removes a file with no row and a key with no file                      |
-| A tagged request reaches a gateway with no capture code | only after a rollback that skipped its steps: a 403, and the turn fails          |
+| Fault                                               | Outcome                                                                          |
+| --------------------------------------------------- | -------------------------------------------------------------------------------- |
+| nixie cannot write the capture's key or its row     | The turn runs with no tag; a log line with a reason code                         |
+| The gateway cannot decode a `~in.` segment          | It removes the segment and writes no file; the close counts a miss               |
+| The gateway has no `capture` key, or another folder | No file arrives; the close writes `not_received`                                 |
+| A `.part` file outlasts `close_wait`                | nixie closes without it; the close writes `not_received`                         |
+| nixie stops mid-step                                | Its start closes every open capture; the step opens a new one when it runs again |
+| nixie stops between the key, the file and the row   | Its start removes a file with no row and a key with no file                      |
 
 ### What the last release does
 
-- The gateway takes its release first. Before a rollback of the gateway, you turn the log off,
-  remove its `capture` key, which the last gateway refuses, and delete `capture-ready` from its
-  spool.
-- The last nixie release ignores the folder and the 3 tables. A rollback first runs
-  `nixie turn-input off --drop`, then removes the `turn_input_log` section, which its strict schema
-  refuses.
+- The gateway takes its release first.
+- The last nixie release ignores the folder and the 3 tables.
 
 ## Decisions
 

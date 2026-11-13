@@ -281,8 +281,6 @@ contract's protocol version in the hello:
 
 - The release a rollback returns to builds none of its tables from `trigger.task_input`. A coding
   task that such a record wakes fails, because that release lacks the runner.
-- That release refuses to start on the `coding` config section, so the
-  [rollback steps](README.md#rollback) remove it.
 
 ## Decisions
 

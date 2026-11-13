@@ -356,9 +356,6 @@ policy:
 
 ### Rollback
 
-Before a rollback, remove `policy.proposed_rules` and `policy.mandates` from `config.yaml`, because
-the release before refuses to start on either key.
-
 After a roll forward, the timer's check at start ends every mandate whose `expires` passed while the
 release before ran.
 

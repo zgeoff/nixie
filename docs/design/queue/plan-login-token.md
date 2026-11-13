@@ -254,19 +254,8 @@ The status and the reason follow each refresh's answer:
 
 ### A rollback
 
-To roll back:
-
-1. Remove each plan profile from nixie's config, and each `selectable` entry under `models` that
-   names it.
-2. Remove each route's `login` key from the gateway's config.
-3. Delete each plan profile's impd secret with impd's root token, through impd's secret delete call.
-   The [names in impd](../../architecture/deployment/impd-names.md#model-secrets) rules give the
-   secret's name. Expect: impd's secret list no longer names it.
-4. Start the gateway release a rollback returns to. Expect: it starts and serves the other routes.
-5. Start the nixie release a rollback returns to. Expect: it starts.
-
-Each login file stays on disk, so a release that reads it again keeps the login. Run
-`model-gateway chatgpt-logout` before step 4 to end the login.
+Each login file stays on disk, so the plan login works again once the release with this design
+returns.
 
 ## Decisions
 

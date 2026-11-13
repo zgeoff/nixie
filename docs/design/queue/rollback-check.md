@@ -7,7 +7,7 @@
 A rollback returns a deployment to an earlier release, which then starts on the data directory and
 the config that the newer release wrote. The rollback check is one cheap CI test of that start: CI
 starts the build under check on a fresh data directory, stops it, and starts the previous release on
-that data directory and config. The previous release must reach ready.
+that data directory and the same `config.yaml`. The previous release must reach ready.
 
 Terms:
 
@@ -38,7 +38,13 @@ type RollbackCheckResult =
 ## Constraints
 
 - The build under check starts once on a fresh data directory, reaches ready, and stops. The check
-  then starts the previous release on that data directory and that config.
+  then starts the previous release on that data directory and the `config.yaml` the build under
+  check used.
+- A release ignores a config key it does not know, and logs a warning that names the key at start. A
+  newer release's keys then never stop an older release from starting. The cost: a mistyped key is
+  no longer refused, only warned about.
+- A previous release built before this rule refuses an unknown key, so the check passes against it
+  only while the test's config holds no key that release lacks.
 - The check passes when the previous release reaches ready. It fails when the previous release exits
   first or does not reach ready in time, and prints the release's output.
 - The check takes no step between the 2 starts. It never edits the config or the data directory.

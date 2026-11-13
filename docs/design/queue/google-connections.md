@@ -447,8 +447,7 @@ every Forget before it hands out any task work:
 
 ### A rollback
 
-- A Forget left part way finishes only at the server start of a release that has this design. Before
-  a rollback, wait until every Forget shows erasure `done`.
+- A Forget left part way finishes only at the server start of a release that has this design.
 
 ## Decisions
 

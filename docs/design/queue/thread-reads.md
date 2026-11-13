@@ -212,27 +212,11 @@ For the conversation, `logThread` equals `thread`.
 - The release a rollback returns to drops the options key because the options schema is not strict.
   It has no `logThread`, so every task run reads its own thread, a granted one included.
 - That release refuses a load of your definitions while a file sets `log`, because the definition
-  schema is strict, and keeps the last accepted definitions in force. Remove the key to load other
-  changes.
+  schema is strict, and keeps the last accepted definitions in force.
 - The design adds no record kind and no migration. Its one new key is `log`, in the start input and
   in a definition file, and it adds no key to `nixie.yaml`.
 - That release cleans no session for the grant on a forget, so a granted task's sandbox can keep the
-  text of a record that you forget after the rollback. Before you start that release, take these
-  steps:
-  1. Close each open started task with `log: conversation`.
-  2. Set `enabled: false` on each definition that sets `log`, and load your definitions.
-  3. Run `nixie task-sandbox-destroy --log-grant`, and wait for it to exit 0.
-- `nixie task-sandbox-destroy --log-grant` destroys the sandbox of every task whose options, or any
-  definition version it ran, held `log: conversation`, whatever state the task is in. It prints each
-  task ID with its sandbox's outcome. A task with no sandbox row prints `none` and changes nothing.
-- The command refuses a task whose step runs, exits non-zero, and destroys nothing more. Run it
-  again once the step ends.
-- A later step of such a task, on any release, creates a new sandbox and opens its session from the
-  log, as [the sandbox life](../../architecture/connectors/sandboxes.md) describes.
-- The command ships in the same release as the grant, so every release that can grant
-  `log: conversation` can run it before a rollback. It is a
-  [host command](../../architecture/deployment/host-commands.md), and the release a rollback returns
-  to never meets it.
+  text of a record that you forget after the rollback.
 - The newer-log test, in the sessions module, runs the code of the last release on a log written by
   this release. The log grant adds its keys to that test. When the grant lands before the other work
   that the test covers, it creates the test
@@ -262,9 +246,6 @@ For the conversation, `logThread` equals `thread`.
 - **A forget on the conversation's thread cleans each granted task's session.** An agent's call on
   13 Nov 2026: the forget fix cleans only tasks that read memory, and a granted task with
   `memory: none` would keep the forgotten text.
-- **A rollback destroys the sandbox of each task that held the grant.** An agent's call on 13 Nov
-  2026: a destroyed sandbox holds no transcript, whatever the release a rollback returns to cleans
-  on a forget. The owner named the command `nixie task-sandbox-destroy --log-grant` on 14 Nov 2026.
 
 ## Builder decides
 

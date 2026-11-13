@@ -221,8 +221,7 @@ interface DefinitionVersion {
   `FILE_ONLY_KEYS`, so only a file grants a destination.
 - `destinations` is part of the parsed `task.yaml`, so the definition hash covers it.
 - When `destinations` ships after this format, the release before refuses a `task.yaml` that holds
-  the key as `unknown_key`, and the last accepted seed stays in force. Before you start that
-  release, remove the key from each `task.yaml`.
+  the key as `unknown_key`, and the last accepted seed stays in force.
 
 ### A rollback of the rule format rename
 
@@ -231,7 +230,6 @@ interface DefinitionVersion {
   rules in force, it retries the first seed and never finishes starting.
 - The release before reads the context `task` as a task that nixie starts from chat, so a rule with
   that context matches no task run of a definition.
-- Before you start the release before, restore each rules file in the old names, `jobs` and `job`.
 - A rule that nixie stored needs no step, because nixie writes it in the old names.
 
 ## Decisions
