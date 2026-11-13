@@ -51,7 +51,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
     {
       profile: { profile: { id: 'writer-direct', model: 'claude-test-writer' } },
       image: 'nixie-conversation-0123456789ab',
-      limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
+      limits: { vcpus: 1, memoryMiB: 384, diskMiB: 4096 },
       command: { argv: ['bun', '/app/guests/conversation/src/main.ts'] },
     },
   ]);

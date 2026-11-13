@@ -47,6 +47,23 @@ record or reaches its runtime:
 A model loop's one credential, its model grant, reaches only the model's API, and the loop has no
 other network.
 
+## Sizes
+
+One constant in the sandbox module, `sandboxSizes`, holds the memory of every sandbox. A row belongs
+to a role. A sandbox kind or an image never picks a row.
+
+```text
+| Role         | Used by                                             | vCPUs | Memory  | Disk     |
+| ------------ | --------------------------------------------------- | ----- | ------- | -------- |
+| conversation | the conversation                                    | 2     | 512 MiB | 4096 MiB |
+| system task  | the checker, each started task and each system task | 1     | 384 MiB | 4096 MiB |
+| fetch        | web fetch and skill fetch                           | 1     | 192 MiB | 4096 MiB |
+```
+
+A size is a constant with no config key, and a release changes it. A kept sandbox whose stored size
+differs from its row is replaced once, by the rule that finds a kept sandbox.
+[The sandbox sizes design](../../design/queue/sandbox-sizes.md) gives the reasons for each figure.
+
 ## Records and recovery
 
 Every create, grant, sleep, wake and destroy writes a sandbox record. The sandboxes
