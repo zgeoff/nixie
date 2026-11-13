@@ -488,6 +488,8 @@ before a purge with the newest key copy, which lacks the keys the purge deleted:
 - A purge of the record's text from a model provider, which keeps what a turn sent it.
 - A removal of part of a record, as [redaction](redaction.md#out-of-scope) says.
 - A purge for records forgotten with no purge set.
+- A copy of the record's text in an item that does not quote the record: its text, a rating note or
+  a comment on its own change. Nothing records that tie, and the preview does not list the item.
 
 ## Open questions
 
