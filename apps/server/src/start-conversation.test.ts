@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { startTestMemoryStore } from '@heynixie/memory/test-utils';
+import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { startConversation } from './start-conversation';
@@ -1489,13 +1490,12 @@ test('it creates the conversation sandbox at the conversation size', async () =>
 
   const records = await ctx.readRecords();
 
-  const created = records.filter((record) => record.kind === 'sandbox.created');
+  const created = records
+    .filter((record) => record.kind === 'sandbox.created')
+    .map((record) => sandboxCreatedCodec.decode(record.payload).spec)
+    .map((spec) => ({ kind: spec.kind, limits: spec.limits }));
 
-  expect(created).toMatchObject([
-    {
-      payload: {
-        spec: { kind: 'conversation', limits: { vcpus: 2, memoryMiB: 512, diskMiB: 4096 } },
-      },
-    },
+  expect(created).toStrictEqual([
+    { kind: 'conversation', limits: { vcpus: 2, memoryMiB: 512, diskMiB: 4096 } },
   ]);
 });

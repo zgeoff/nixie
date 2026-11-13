@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
+import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -319,14 +320,15 @@ test('it creates the web fetch sandbox and the skill fetch sandbox at the fetch 
 
   await webFetch.readSkillPage('https://localhost/skills/SKILL.md');
 
-  const fetchLimits = { vcpus: 1, memoryMiB: 192, diskMiB: 4096 };
-
   const records = await ctx.readSandboxRecords();
 
-  const created = records.filter((record) => record.kind === 'sandbox.created');
+  const created = records
+    .filter((record) => record.kind === 'sandbox.created')
+    .map((record) => sandboxCreatedCodec.decode(record.payload).spec)
+    .map((spec) => ({ owner: spec.owner, limits: spec.limits }));
 
-  expect(created).toMatchObject([
-    { payload: { spec: { owner: 'web_fetch', limits: fetchLimits } } },
-    { payload: { spec: { owner: 'skill_fetch', limits: fetchLimits } } },
+  expect(created).toStrictEqual([
+    { owner: 'web_fetch', limits: { vcpus: 1, memoryMiB: 192, diskMiB: 4096 } },
+    { owner: 'skill_fetch', limits: { vcpus: 1, memoryMiB: 192, diskMiB: 4096 } },
   ]);
 });
