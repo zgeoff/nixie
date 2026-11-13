@@ -13,7 +13,7 @@ Connectors, the MCP proxy and nixie's own features define tools the same way:
 
 ```ts
 interface ToolDefinition<Input, Output> {
-  name: string; // such as 'gmail_send'; the model sees 'mcp__nixie__gmail_send'
+  name: string; // such as 'mail.send'; the model sees 'mcp__nixie__mail_send'
   description: string;
   input: JsonSchema;
   output: JsonSchema; // the typed result; free-text fields are strings

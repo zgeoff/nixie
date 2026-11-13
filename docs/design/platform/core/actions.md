@@ -99,7 +99,8 @@ Each connector declares, per action, what it can do after an unknown outcome:
 - **Neither.** The action comes to you.
 
 A check returns found, not found or inconclusive. Found makes the action done. Not found returns it
-to pending for a retry. Inconclusive brings it to you, and so do 3 unknown outcomes in a row.
+to pending for a retry, unless the declaration sets `onNotFound: 'ask'`: then the action stays
+unknown and comes to you. Inconclusive brings it to you, and so do 3 unknown outcomes in a row.
 **Why:** 3 unknowns in a row point at a provider fault that another retry will not clear. A tool on
 an [external server](../connectors/mcp-proxy.md) declares nothing by default, so an interrupted call
 to it comes to you unless its effect declaration names a check.
