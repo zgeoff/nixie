@@ -56,8 +56,8 @@ const result = await runRollbackCheck({ target, toDeploy, expectations });
 //     entries: [
 //       { id: 'push-notice/channels', expected: 'refuses', observed: 'not-in-schema', pass: true },
 //       { id: 'pause/migration', expected: 'refuses', observed: 'refused', pass: true },
-//       { id: 'push-notice/tables', expected: 'never-meets', observed: 'ready', pass: true },
-//       // the target opens the migrated database and never selects the 2 tables it adds
+//       { id: 'push-notice/channels.paired', expected: 'never-meets', observed: 'ready', pass: true },
+//       // a record on no thread, which no reader of the target meets
 //     ],
 //   }
 
@@ -77,7 +77,7 @@ type RollbackCheckResult =
       entryID: string; // the entry that expects no-rollback
       entries: readonly EntryResult[]; // each observed 'not-started'
     }
-  | { verdict: 'skipped'; reason: 'no-milestone-tag' };
+  | { verdict: 'skipped'; reason: 'no-milestone-tag' | 'target-without-list' };
 
 // The check finds the milestone tag, then reads the v* tag on the same commit.
 type TargetName = { tag: string; milestone: string }; // such as v0.70.1, tagged milestone-1 too
@@ -95,6 +95,8 @@ interface EntryResult {
   id: string;
   expected: Expected['outcome'];
   observed: 'ready' | 'refused' | 'not-in-schema' | 'in-schema' | 'not-started';
+  // not-started: the check started no target, on a no-rollback verdict or a failure before the
+  // first start
   pass: boolean;
 }
 ```
@@ -119,17 +121,18 @@ type Added =
   | { kind: 'config-key'; path: string; yaml: string } // yaml: the key and a value, as in config.yaml
   | { kind: 'removal'; path: string };
 // removal: a config section that the release to deploy deletes and refuses, such as
-// `memory_writer`. The target still reads the section, so the rollback puts it back: the entry
-// holds a `before` step that sets it, and expects 'reads'.
+// `memory_writer`. The deletion is a change after the target, so its ID is missing from the
+// target's list and the entry applies. The target still reads the section, so the rollback puts
+// it back: the entry holds a `before` step that sets it, and expects 'reads'.
 
 type Expected =
   | { outcome: 'reads' }
   | { outcome: 'skips' }
   | { outcome: 'never-meets' }
-  | { outcome: 'refuses'; error: string; step: RollbackStep }
-  // error: text in the target's output when it refuses, such as 'SchemaTooNewError'
-  // step: the design's rollback step. For a config key it is { kind: 'config', remove: [path] },
-  // which the check takes in step 1 of Starts and steps, with every other unknown key.
+  | { outcome: 'refuses'; error?: string; step?: RollbackStep }
+  // error, step: required for every kind but 'config-key'. error is text in the target's output
+  // when it refuses, such as 'SchemaTooNewError'; step is the design's rollback step.
+  // A config-key entry holds neither: step 1 of Starts and steps removes the key.
   | { outcome: 'no-rollback' }; // a migration that no rollback crosses; the way back is a restore
 
 type RollbackStep =
@@ -158,7 +161,7 @@ PR.
 interface RollbackTarget {
   name: TargetName;
   readConfigSchema(): Promise<JSONSchema>; // config.schema.json at the target's tag
-  readExpectationIDs(): Promise<readonly string[]>; // the list's IDs at the target's tag; [] before the list exists
+  readExpectationIDs(): Promise<readonly string[] | null>; // the list's IDs at the target's tag; null before the list exists
   start(input: { dataDir: string; configPath: string }): Promise<TargetStart>;
 }
 
@@ -188,10 +191,12 @@ interface ReleaseToDeploy {
   succeeds.
 - With no milestone tag, the check skips and prints `no milestone tag: no rollback target`. A
   milestone deploy needs a passing check, and a skipped check counts as no pass.
-- Each entry in the copy of the list at the target's tag describes a change that the target's own
-  release already holds, so the check skips it.
-- The first list holds entries only for changes after the first milestone tag. Before the list
-  exists at a tag, every entry applies.
+- The check reads the target's `config.schema.json` and its copy of the list from the commit that
+  carries both the milestone tag and the target's `v*` tag.
+- Each entry in the target's copy of the list describes a change that the target's own release
+  already holds, so the check skips it.
+- The check runs only against a target whose tag carries the list. Against an older target it skips
+  with `target-without-list`, because a missing ID there tells nothing.
 - The release to deploy writes the data directory and the config. Its config holds the `yaml` of
   each applying `config-key` entry.
 - The release to deploy starts, runs the `write` of each applying `record` entry in list order, and
