@@ -28,35 +28,6 @@ interface ScriptedResponsesUsage {
   readonly output_tokens_details?: { readonly reasoning_tokens: number };
 }
 
-type ScriptedMessage = (
-  | { readonly text: string }
-  | {
-      readonly toolUse: {
-        readonly name: string;
-        readonly input: Readonly<Record<string, unknown>>;
-      };
-    }
-) & {
-  readonly gate?: Promise<void>;
-
-  readonly inputTokens?: number;
-
-  readonly usage?: ScriptedUsage;
-  readonly responsesUsage?: ScriptedResponsesUsage;
-};
-
-interface ScriptedRefusal {
-  readonly refusal: string;
-  readonly gate?: Promise<void>;
-}
-
-interface ScriptedAuthFailure {
-  readonly authFailure: string;
-  readonly gate?: Promise<void>;
-}
-
-export type ScriptedReply = ScriptedMessage | ScriptedRefusal | ScriptedAuthFailure;
-
 const scriptedMessageSchema = z.looseObject({ role: z.string(), content: z.unknown() });
 const scriptedToolSchema = z.looseObject({ name: z.string() });
 
@@ -69,6 +40,40 @@ const scriptedModelBodySchema = z.looseObject({
 });
 
 type ScriptedModelBody = z.infer<typeof scriptedModelBodySchema>;
+
+interface ScriptedMatch {
+  readonly when?: (body: ScriptedModelBody) => boolean;
+}
+
+type ScriptedMessage = (
+  | { readonly text: string }
+  | {
+      readonly toolUse: {
+        readonly name: string;
+        readonly input: Readonly<Record<string, unknown>>;
+      };
+    }
+) &
+  ScriptedMatch & {
+    readonly gate?: Promise<void>;
+
+    readonly inputTokens?: number;
+
+    readonly usage?: ScriptedUsage;
+    readonly responsesUsage?: ScriptedResponsesUsage;
+  };
+
+interface ScriptedRefusal extends ScriptedMatch {
+  readonly refusal: string;
+  readonly gate?: Promise<void>;
+}
+
+interface ScriptedAuthFailure extends ScriptedMatch {
+  readonly authFailure: string;
+  readonly gate?: Promise<void>;
+}
+
+export type ScriptedReply = ScriptedMessage | ScriptedRefusal | ScriptedAuthFailure;
 
 export interface ScriptedModelRequest {
   readonly path: string;
@@ -163,7 +168,10 @@ function renderScriptedReply(
     return { response: renderNotFound() };
   }
 
-  const reply = script.shift();
+  // A reply with a `when` answers only a request whose body it accepts, so two callers that ask
+  // at the same time each get their own reply.
+  const index = script.findIndex((entry) => entry.when === undefined || entry.when(body));
+  const reply = index === -1 ? undefined : script.splice(index, 1)[0];
 
   if (reply === undefined) {
     return { response: renderRefusal('the scripted model has no reply left') };
