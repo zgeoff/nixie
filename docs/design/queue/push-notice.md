@@ -45,13 +45,16 @@ flowchart LR
 
 ```ts
 // channels module: what the notifier hands the adapter
-const result = await telegram.push(row, {
-  level: 'loud',
-  count: 3,
-  sentence: 'items',
-  link: 'https://nixie.example.org/digest',
-  edit: null, // null sends a new message; a message ID edits that message
-});
+const result = await telegram.push(
+  { identityID, externalID: '81234567:81234567' },
+  {
+    level: 'loud',
+    count: 3,
+    sentence: 'items',
+    link: 'https://nixie.example.org/digest',
+    edit: null, // null sends a new message; a message ID edits that message
+  },
+);
 // → { status: 'sent', messageID: '4417' }
 //   or { status: 'edited', messageID: '4417' }, { status: 'unchanged' },
 //   { status: 'edit_failed' }, { status: 'gone' } or { status: 'retry', afterMs: 3000 }
@@ -89,13 +92,19 @@ type PushResult =
 // channels module: the ChannelAdapter of channel-adapter.md, with push taking the row it targets
 interface ChannelAdapter {
   // …existing fields
-  push?(row: Identity, notice: PushNotice): Promise<PushResult>;
+  push?(target: PushTarget, notice: PushNotice): Promise<PushResult>;
+}
+
+// channels module: the notifier reads it from the live Telegram row
+interface PushTarget {
+  identityID: string;
+  externalID: string; // the row's external_id; the adapter sends to its chat ID part
 }
 
 // channels module: ChannelContext gains the pairing claim
 interface ChannelContext {
   // …existing fields
-  claimPairing(claim: PairingClaim): Promise<'paired' | 'refused'>;
+  claimPairing(claim: PairingClaim): Promise<{ confirmCode: string } | 'refused'>;
 }
 
 interface PairingClaim {
@@ -126,12 +135,23 @@ create table push_notices (
 ```ts
 // contract: channels, a checked action from a signed-in client
 const pairing = await client.channels.pair({ channel: 'telegram', clientActionID });
-// → { link: 'https://t.me/nixie_home_bot?start=Qx7…', lapsesAt: '2026-11-13T10:25:00Z' }
+// → { pairingID: 'c41f…', link: 'https://t.me/nixie_home_bot?start=Qx7…',
+//     lapsesAt: '2026-11-13T10:25:00Z' }
 //   or ORPCError NOT_CONFIGURED when the config has no channels.telegram
+
+// The bot sends the confirm code into the chat that claimed the link. You type it into the client.
+const paired = await client.channels.confirmPairing({
+  pairingID: pairing.pairingID, // the pairing this client started; the client keeps it
+  confirmCode: '402917',
+  clientActionID,
+});
+// → { identityID: '9c1e…', channel: 'telegram' }
+//   or ORPCError PAIRING_REFUSED for a wrong, lapsed or spent confirm code
 ```
 
 ```bash
-nixie channels pair telegram   # the link on its first line, then until when it works
+nixie channels pair telegram                # the pairing ID and the link, then until when they work
+nixie channels confirm <pairing_id> <code>  # the confirm code the bot sent; pairs the account
 nixie channels list            # each live channel row: ID, channel, label, paired, last seen, as JSON
 nixie channels revoke <id>     # revokes one channel row; a device session refuses as NOT_FOUND
 ```
@@ -139,12 +159,16 @@ nixie channels revoke <id>     # revokes one channel row; a device session refus
 ```sql
 -- The same migration. Apart from enrolment_codes, so a pairing code never enrols a device.
 create table pairing_codes (
-  code_hash    text primary key,           -- SHA-256 of the code; nixie never keeps the code
+  pairing_id   text primary key,           -- random, from crypto.randomUUID()
+  code_hash    text not null unique,       -- SHA-256 of the code; nixie never keeps the code
   channel      text not null,
   issued_at    integer not null,
   expires_at   integer not null,           -- issued_at plus 10 minutes
   issued_by    text references identities (identity_id), -- null from the host command
-  used_at      integer,
+  claimed_external_id text,                -- the first private chat that sent /start with the code
+  confirm_hash text,                       -- SHA-256 of the confirm code the bot sent that chat
+  confirm_tries integer not null default 0,
+  used_at      integer,                    -- set by the confirm that pairs
   identity_id  text references identities (identity_id),
   check ((used_at is null) = (identity_id is null))
 ) strict;
@@ -263,12 +287,12 @@ acts on what it finds then:
 - The adapter calls `getUpdates` with a long-poll timeout, one call at a time, and asks only for
   `message` updates. Telegram therefore needs no inbound route to nixie.
 - The adapter keeps the update offset in memory. After a restart, Telegram sends again each update
-  the adapter had not confirmed. A replayed `/start` meets a used code and refuses, and a replayed
-  text gets the fixed reply again.
+  the adapter had not confirmed. A replayed `/start` meets a claimed code and refuses, and a
+  replayed text gets the fixed reply again.
 - An update from a chat other than a private chat gets a refusal record and no reply.
-- `/start <code>` from a private chat calls `claimPairing`. On `paired`, the bot replies with the
-  fixed text "Paired. nixie sends its notices here." On `refused`, the adapter writes a refusal and
-  sends no reply.
+- `/start <code>` from a private chat calls `claimPairing`. On a confirm code, the bot replies with
+  the fixed text "Type this code into nixie to pair: " and the code. On `refused`, the adapter
+  writes a refusal and sends no reply.
 - Any other text from the Telegram row's account gets one fixed reply: "nixie reads messages only in
   the app:" and the client's link. The adapter keeps none of the text. Each reply moves the row's
   last seen time.
@@ -280,12 +304,24 @@ acts on what it finds then:
 
 - A code is 32 random characters from the base64url alphabet, so the `start` payload fits Telegram's
   limit of 64 characters from `A-Z`, `a-z`, `0-9`, `_` and `-`.
-- A code works once and lapses 10 minutes after its issue. A used, lapsed or unknown code refuses.
-- A claim that succeeds marks the code used, creates the Telegram row or reuses the row with the
-  same external ID, sets `paired_at`, clears `revoked_at`, points `paired_sequence` at the new
-  `channels.paired` record, and labels the row "Telegram", in one transaction.
-- One Telegram row is live at a time. A claim that pairs another account revokes the live row in the
-  same transaction, with the reason `repaired`.
+- Pairing takes 2 steps, so a leaked link alone never pairs an account. The link proves which chat
+  claims the code. The confirm code, which only that chat receives, proves that the person at the
+  signed-in client reads that chat.
+- A code lapses 10 minutes after its issue, and the confirm must land within the same 10 minutes. A
+  lapsed, used or unknown code refuses the claim.
+- The first claim of a code wins. It stores the chat's external ID and the hash of a 6-digit confirm
+  code from a random source. A second claim of the same code, from any chat, refuses.
+- A confirm names its pairing ID and checks the confirm code against that pairing alone. A confirm
+  code takes at most 5 tries. A wrong try counts, and the fifth wrong try spends the code, so a new
+  pairing needs a new link.
+- `confirmPairing` from any live device session, or `nixie channels confirm`, pairs the claimed
+  chat. In one transaction it marks the code used, creates the Telegram row or reuses the row with
+  the same external ID, sets `paired_at`, clears `revoked_at`, points `paired_sequence` at the new
+  `channels.paired` record, and labels the row "Telegram". The bot then sends the fixed text
+  "Paired. nixie sends its notices here."
+- Nothing changes before the confirm. A claim writes no identity row and revokes nothing.
+- One Telegram row is live at a time. A confirm that pairs another account revokes the live row in
+  the same transaction, with the reason `repaired`.
 - A Telegram row has no token hash and never lapses at the session idle limit. The device session
   reads, the first enrolment code and the device revoke keep their filter on the `client` channel.
 - `nixie channels revoke` sets `revoked_at` and writes `channels.revoked`. A revoked row resolves to
@@ -313,7 +349,7 @@ The release before reads this design's changes this way:
 | `channels.code_issued`, `channels.paired`, `channels.revoked` | never meets them on a thread: each is on no thread                                                         |
 | `identity.refused` with the channel `telegram`                | reads it as it reads any refusal                                                                           |
 | `sessions.shown`                                              | answers `NOT_FOUND`, and the client ignores the error                                                      |
-| `channels.pair`                                               | answers `NOT_FOUND`                                                                                        |
+| `channels.pair`, `channels.confirmPairing`                    | answers `NOT_FOUND`                                                                                        |
 
 ## Decisions
 
@@ -332,15 +368,18 @@ The release before reads this design's changes this way:
   push. A restart that forgets presence at worst sends one notice too many.
 - **Pairing codes have their own table.** An agent's call on 13 Nov 2026: in `enrolment_codes`, a
   pairing code would claim a device session through enrolment.
-- **A new pairing revokes the live Telegram row.** An agent's call on 13 Nov 2026: the code proves
-  that whoever holds the signed-in client holds the new account, and one live row keeps every notice
-  on one chat.
+- **Pairing confirms in the client with a code the bot sends.** An agent's call on 13 Nov 2026: a
+  link shown on a screen can leak, and with one step a stranger who opened it first would take every
+  notice.
+- **A new pairing revokes the live Telegram row.** An agent's call on 13 Nov 2026: the confirm
+  proves that whoever holds the signed-in client reads the new chat, and one live row keeps every
+  notice on one chat.
 - **The bot token is `credential: deployment:<name>`.** An agent's call on 13 Nov 2026: the config
   file names every secret reference that way, as the search key does.
 - **`client_url` sits under `channels.telegram`.** An agent's call on 13 Nov 2026: the notice is the
   only reader of a public origin, and a server-wide key can move there when a second reader comes.
 - **The update offset stays in memory.** An agent's call on 13 Nov 2026: a replayed update meets a
-  used code or gets the fixed reply again, and neither harms anything.
+  claimed code or gets the fixed reply again, and neither harms anything.
 - **The Telegram row's label is "Telegram".** An agent's call on 13 Nov 2026: a Telegram display
   name is a person's name, which the plain-text row would keep.
 
