@@ -145,7 +145,7 @@ export interface SpoolMiss {
 // turn-inputs module: every reason a listed miss can hold
 type InputMissReason =
   | SpoolMiss['reason'] // from a .miss file
-  | 'no_capture_point' // no source matched the profile, or its folder holds no capture-ready file
+  | 'no_capture_point' // no source matched the profile, or its gateway did not say it can capture
   | 'not_received' // a gap in a writer's counters, or a call frame above the files nixie holds
   | 'undecodable' // a file failed its header, its key or its AES-GCM tag
   | 'capture_closed' // a file arrived after its capture closed
@@ -228,9 +228,10 @@ nixie turn-input open <input_id>         # prints the body
   base URL is the profile's own; with no matching source, it writes one `no_capture_point` miss.
 - With `default: always`, the log starts on. The latest `model.input_log_set` record sets the state
   across a restart, so `off` holds until `on`. `--for` holds it on for at most `max_window`.
-- nixie tags a step's requests only when the source's `dir` holds the file `capture-ready`, which a
-  gateway with the capture code writes at its start. With no such file, nixie sends no tag and
-  writes one `no_capture_point` miss. So a gateway without the capture code never meets a tag.
+- At each start, nixie asks each source's gateway, over the gateway's API, whether it can capture to
+  that source's `dir`. nixie tags a step's requests only when the gateway answered yes. When the
+  gateway answers no or does not answer, nixie sends no tag and writes one `no_capture_point` miss.
+  So a gateway without the capture code, such as after a rollback of the gateway, never meets a tag.
 - The guest has no code for the tag, and the frame schema has no key for it. The gateway removes the
   tag, then matches the endpoint, and its model check and count are as without a tag.
 - The tag is the path segment right after the route. `decodeCaptureTag` returns null for a capture

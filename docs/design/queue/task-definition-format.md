@@ -13,9 +13,10 @@
 
 A task definition is a folder `tasks/<id>/` in the definitions repo. Its `task.yaml` holds the input
 of one `task.start` call and an optional trigger, so nixie can start the task without you, from
-files you read and diff. A seed parses every folder with one strict schema, refuses the whole seed
-on one fault, hashes each definition and stores each version under its hash. A definition that the
-agent makes from chat follows the same schema and the same store.
+files you read and diff. A seed parses every folder with one schema, refuses the whole seed on one
+fault, hashes each definition and stores each version under its hash. A field the schema does not
+know is no fault: the seed ignores it, logs a warning that names it, and keeps the rest. A
+definition that the agent makes from chat follows the same schema and the same store.
 
 Terms: the definitions repo is the git repo that the definitions source reads. The definition ID is
 the folder name. A definition version is the content of one definition at one seed, and the
@@ -107,7 +108,6 @@ interface SeedFault {
 type SeedFaultCode =
   | 'missing_task_yaml' // a tasks/<id>/ folder with no task.yaml
   | 'bad_id' // an ID outside [a-z0-9-], or longer than 64 characters
-  | 'unknown_key' // includes role, inputs, reportFields, runner and skills
   | 'unnamed_step_file' // a .ts file that step.file does not name
   | 'reminder_key' // target: conversation with a key other than name, brief, target, trigger, enabled
   | 'reminder_without_trigger'
@@ -187,8 +187,8 @@ interface DefinitionVersion {
 - When a definition omits `model`, its task runs use the model profile of the model role `task`.
 - When a definition has `target: task` and no trigger, nixie loads it and binds its task, and never
   opens a task run from a trigger.
-- The seed refuses a `runner` key as `unknown_key`. Every definition runs on the nixie runner, and a
-  `step` key is always on that runner.
+- The seed ignores a `runner` key with a warning, as it ignores every field it does not know. Every
+  definition runs on the nixie runner, and a `step` key is always on that runner.
 
 ### The seed
 
@@ -220,14 +220,13 @@ interface DefinitionVersion {
   with a space or an empty list item, as the rule parser does. `task.define` refuses the key with
   `FILE_ONLY_KEYS`, so only a file grants a destination.
 - `destinations` is part of the parsed `task.yaml`, so the definition hash covers it.
-- When `destinations` ships after this format, the release before refuses a `task.yaml` that holds
-  the key as `unknown_key`, and the last accepted seed stays in force.
+- When `destinations` ships after this format, the release before ignores the key with a warning,
+  and keeps the rest of the seed.
 
 ### A rollback of the rule format rename
 
-- The release before refuses a rules file that uses `definitions`, because its rule schema knows
-  only `jobs`. Its seed fails with a fault that names the file, and the rules in force stay. With no
-  rules in force, it retries the first seed and never finishes starting.
+- The release before ignores the `definitions` field of a rules file, because its rule schema knows
+  only `jobs`. It logs a warning that names the field, and reads the rest of the rule.
 - The release before reads the context `task` as a task that nixie starts from chat, so a rule with
   that context matches no task run of a definition.
 - A rule that nixie stored needs no step, because nixie writes it in the old names.

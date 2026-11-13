@@ -326,8 +326,8 @@ Each refusal is a tool error before the program starts:
 
 ### A rollback
 
-A release from before this design refuses the whole seed of a task definition that lists `code.run`,
-as [the task definition format](task-definition-format.md#what-a-seed-refuses) sets out.
+A release from before this design ignores `code.run` in a task definition's tools, logs a warning
+that names it, and keeps the rest of the seed.
 
 ## Decisions
 
@@ -338,8 +338,8 @@ as [the task definition format](task-definition-format.md#what-a-seed-refuses) s
 - **A code run's files are attachments of its result record.** A forget of that one record then
   makes its files unreadable in every copy, backups included, with no store of its own to clean.
 - **A code run's limits are constants, with no key in a task definition.** An agent's call on 13 Nov
-  2026: [the size table](sandbox-sizes.md) holds every size as a constant, and a new `task.yaml` key
-  would make every older release refuse the whole seed.
+  2026: [the size table](sandbox-sizes.md) holds every size as a constant, and a code run's limits
+  follow it.
 - **A file ID resolves only on its own thread.** An agent's call on 13 Nov 2026: the smallest scope
   that serves a task and its workers.
 - **Input files are earlier code runs' files and stored web pages.** An agent's call on 13 Nov 2026:
