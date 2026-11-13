@@ -1,5 +1,5 @@
 // Drives nixie-shaped turns through `codex app-server` against a mock MCP server and a stand-in for
-// the counting proxy, and writes every message to runs/<run_name>/.
+// the model gateway, and writes every message to runs/<run_name>/.
 // Usage: OPENAI_API_KEY=<key> bun run.ts <run_name> <model>
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';

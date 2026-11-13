@@ -202,8 +202,8 @@ memory:
 ### After the cleanup
 
 - Trigger push is the only push. Past messages reach the agent only through `log.read`.
-- The memory config has no `retrieval_*` key. nixie refuses to start on a file that sets one, so the
-  cleanup's deploy removes them first.
+- The memory config has no `retrieval_*` key. nixie ignores a `retrieval_*` key that a file still
+  sets, and logs a warning at start that names it.
 - No agent has `memory.rate`, the API has no rating-notes procedure, and the web client has no view
   of rating notes.
 - nixie starts on a log that holds `memory.rated` records, and skips them.

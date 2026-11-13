@@ -1,6 +1,6 @@
 import { makeLogger, startLineLog, toErrorFields } from '@heynixie/logger';
 import { cli, define } from 'gunshi';
-import { startCountingProxy } from './start-counting-proxy';
+import { startModelGateway } from './start-model-gateway';
 
 const received = Promise.withResolvers<string>();
 
@@ -23,11 +23,11 @@ const log = makeLogger();
 const drainTimeoutMs = 30_000;
 
 const command = define({
-  name: 'counting-proxy',
+  name: 'model-gateway',
   description: 'Counts the spend of each model reply and refuses requests past the limit',
   args: { config: { type: 'string', required: true, description: 'the proxy config file' } },
   run: async (ctx) => {
-    const proxy = await startCountingProxy({
+    const proxy = await startModelGateway({
       configPath: ctx.values.config,
       log,
       waitForDrainDeadline: () => Bun.sleep(drainTimeoutMs),

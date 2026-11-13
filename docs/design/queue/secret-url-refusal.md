@@ -193,8 +193,6 @@ passes use it. The exemption gives the same answer for every rule, `nixie-secret
   input.
 - For the scan, nixie never sends a value of the secrets file or a rule to a sandbox, in any form, a
   hash included.
-- A release before the 3 keys refuses a config that holds any of them, so a rollback takes them out
-  first. Each key has a default, so a config without them loads on every release.
 
 ## Decisions
 

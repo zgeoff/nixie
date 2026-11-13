@@ -7,10 +7,10 @@
 - **Decision records:** [0012](../../decisions/0012-spending-stop.md)
 
 Every model request in production passes the
-[counting proxy](../../architecture/policy/counting-proxy.md) on the host. The proxy counts a day
-and a month, each reset at local midnight. nixie sets the proxy's limits, and the proxy refuses any
-limit above a cap that only its own config holds. When a limit is reached, nixie pauses every task
-with the [pause](pause.md), shows a notice, and resumes on its own at the reset. You can raise
+[model gateway](../../architecture/policy/model-gateway.md) on the host. The gateway counts a day
+and a month, each reset at local midnight. nixie sets the gateway's limits, and the gateway refuses
+any limit above a cap that only its own config holds. When a limit is reached, nixie pauses every
+task with the [pause](pause.md), shows a notice, and resumes on its own at the reset. You can raise
 today's limit from the client, up to the cap.
 
 Paid tools, such as search, and purchases that a lifting rule lets through charge a budget in
@@ -19,17 +19,17 @@ reasons and the default limits, and this design gives the contracts that build t
 
 Terms:
 
-- The **host** is the machine that runs nixie and the proxy. The **operator** is the person who runs
-  commands on it. The **server** is nixie's server process on the host.
-- The **release before** is the nixie release, or the proxy release, that a rollback returns to.
+- The **host** is the machine that runs nixie and the gateway. The **operator** is the person who
+  runs commands on it. The **server** is nixie's server process on the host.
+- The **release before** is the nixie release, or the gateway release, that a rollback returns to.
 - The **cap** is the highest that the day's or the month's limit can reach without a host command.
   It is a total, never the size of a raise.
-- The **control listener** is the proxy's second listener, which only the server reaches.
-- The **lost mark** is the `lost` field that the proxy writes to its store when the store holds less
-  than the model spent, such as after a reply it could not count
-  ([failing closed](../../architecture/policy/counting-proxy.md#failing-closed)). While it stands,
-  the proxy refuses every request, and only an operator removes it.
-- The **watcher** is the part of the server that reads the proxy's status and trips or clears the
+- The **control listener** is the gateway's second listener, which only the server reaches.
+- The **lost mark** is the `lost` field that the gateway writes to its store when the store holds
+  less than the model spent, such as after a reply it could not count
+  ([failing closed](../../architecture/policy/model-gateway.md#failing-closed)). While it stands,
+  the gateway refuses every request, and only an operator removes it.
+- The **watcher** is the part of the server that reads the gateway's status and trips or clears the
   stop.
 - A **lift** is an allow rule's `lift` field, which lets a purchase, a tool call with the `spend`
   effect, through without asking, within a budget
@@ -44,21 +44,21 @@ Terms:
 ```mermaid
 flowchart LR
   guest[guest in a sandbox] -->|"/sandbox/route/v1/messages"| broker[credential broker]
-  broker -->|"adds the credential"| proxy[counting proxy]
-  proxy --> api[model API]
+  broker -->|"adds the credential"| gateway[model gateway]
+  gateway --> api[model API]
   server[nixie server] -->|"limits, raise, sandboxes, status"| control[control listener]
-  control --- proxy
+  control --- gateway
   server -->|"tripped: pause, cause spending"| log[event log]
   you[you] -->|"Raise today's limit"| server
-  host[host command] -->|"override file"| proxy
+  host[host command] -->|"override file"| gateway
 ```
 
 ## Contracts
 
-### The proxy's config
+### The gateway's config
 
 ```yaml
-# counting proxy config: the keys this design adds beside listen, store and routes
+# model gateway config: the keys this design adds beside listen, store and routes
 periods:
   zone: Europe/London # an IANA zone, equal to the time tool's default_zone
 caps: # defaults: twice nixie's default day and month limits
@@ -66,9 +66,9 @@ caps: # defaults: twice nixie's default day and month limits
   month: { dollars: 1200, tokens: 1200000000 }
 control:
   listen: { hostname: 127.0.0.1, port: 8790 } # an address no sandbox reaches
-  tokenFile: /run/secrets/proxy-control-token # one line, the same value as the server's secret
+  tokenFile: /run/secrets/gateway-control-token # one line, the same value as the server's secret
 countBySandbox: true # the path is /<sandbox>/<route>/…; false keeps /<route>/…
-override: /var/lib/counting-proxy/override.json # written only by the host command
+override: /var/lib/model-gateway/override.json # written only by the host command
 ```
 
 - A config sets either `periods` or the current `limits`, and the schema refuses one that sets both
@@ -81,7 +81,7 @@ override: /var/lib/counting-proxy/override.json # written only by the host comma
 ### The store
 
 ```ts
-// counting proxy: the store file when the config sets periods; a `limits` config keeps its current shape
+// model gateway: the store file when the config sets periods; a `limits` config keeps its current shape
 interface PeriodStore {
   version: 2;
   lost?: true; // the lost mark
@@ -105,7 +105,7 @@ interface SandboxCount {
 
 type Measures = { dollars: number; tokens: number };
 
-// counting proxy: the override file, read before each admission
+// model gateway: the override file, read before each admission
 interface Override {
   period: 'day' | 'month';
   start: string; // the period it applies to; ignored once that period ends
@@ -156,7 +156,7 @@ DELETE /sandboxes/<name>   → 204, also for a name the store lacks
 ### The host commands
 
 ```bash
-counting-proxy raise --config <config file> --period day --dollars 200 --tokens 250000000
+model-gateway raise --config <config file> --period day --dollars 200 --tokens 250000000
 # → writes the override file for the period in force, through a second file and a rename
 ```
 
@@ -178,9 +178,9 @@ models:
     day: { dollars: 60, tokens: 80000000, turns: 1000, turnCap: 2000 }
     month: { dollars: 600, tokens: 600000000, turns: 20000 }
 spendStop:
-  control: http://127.0.0.1:8790 # the proxy's control listener
-  token: deployment:proxy-control # a reference into the secrets file
-  modelURL: http://10.0.0.2:8789 # the proxy's model listener, as the credential broker reaches it
+  control: http://127.0.0.1:8790 # the gateway's control listener
+  token: deployment:gateway-control # a reference into the secrets file
+  modelURL: http://10.0.0.2:8789 # the gateway's model listener, as the credential broker reaches it
 ```
 
 ### The stop in nixie
@@ -324,18 +324,18 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 
 ## Constraints
 
-### The proxy's count
+### The gateway's count
 
-- The proxy reads the store and the override file before it admits each request. It refuses the
+- The gateway reads the store and the override file before it admits each request. It refuses the
   request with its current limit 403 when any period's count has reached its limit in force.
-- While a period's `limit` is null, the proxy answers every request with a 503, so a proxy that the
-  server never set sends nothing upstream.
+- While a period's `limit` is null, the gateway answers every request with a 503, so a gateway that
+  the server never set sends nothing upstream.
 - Each read of the store, for an admission, a reply or a control call such as `/status`, first
   resets each period whose next start in `periods.zone` has passed: it sets the count to zero, sets
   `start`, and drops `raise`. It keeps `limit` and the lost mark. A reset therefore needs no model
   request.
 - A reply adds its dollars and tokens to the day, the month and the sandbox in one write.
-- With `countBySandbox`, the proxy refuses with a 403 a request whose first path segment holds a
+- With `countBySandbox`, the gateway refuses with a 403 a request whose first path segment holds a
   sandbox name that the store lacks. It refuses a request past its sandbox's limit with the
   limit 403. It takes the route from the second segment, and strips the sandbox segment and the
   route segment before it sends the request upstream.
@@ -344,23 +344,23 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 - The control listener refuses a request without the token from `control.tokenFile` with a 401. The
   model listener serves no control path.
 - The host command is the only writer of the override file. The server has no path to it, to the
-  store, or to the proxy's config.
+  store, or to the gateway's config.
 
 ### Routing every request
 
-- Every model request reaches the proxy: the conversation's, each task run's and worker run's, the
+- Every model request reaches the gateway: the conversation's, each task run's and worker run's, the
   checker's, the memory writer's and the consolidator's.
 - The base URL in each turn frame is the model profile's base URL followed by
   `/<sandbox name>/<profile ID>`. The server builds it. A turn frame holds the settings that a
   guest's model loop gets for one turn
   ([conversation turns](../../architecture/core/conversation-turns.md)). The profile ID is the
-  proxy's route ID.
+  gateway's route ID.
 - Each model grant, the credential that the broker adds for a sandbox
   ([model profiles](../../architecture/core/model-profiles.md#credentials)), carries the path filter
   `/<sandbox name>/**`. A guest therefore reaches only its own sandbox's count.
 - With `spendStop` set, the server holds no model credential. It refuses to start when its secrets
   file has a `model_credentials` entry, so no nixie code can send a request with the key past the
-  proxy.
+  gateway.
 - The deployment adds each model secret to impd with `modelURL` as the secret's upstream, the
   address where the broker sends the request in place of the model host. The sandbox adapter reads
   each model secret's upstream from impd, and refuses to grant a secret whose upstream is not
@@ -373,17 +373,17 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 
 - At each start, after the migrations, a step of the server's start sends the configured day and
   month limits with `PUT /limits`. On `above_cap`, the server refuses to start with an error that
-  holds the cap. When the proxy does not answer, the server starts, pauses with the cause `spending`
-  and the reason `unreachable`, and sends the limits once the proxy answers.
+  holds the cap. When the gateway does not answer, the server starts, pauses with the cause
+  `spending` and the reason `unreachable`, and sends the limits once the gateway answers.
 - At start, the server refuses to start when the zone in `/status` differs from the time tool's
-  `default_zone`, so the proxy's periods and the budgets' periods reset together.
+  `default_zone`, so the gateway's periods and the budgets' periods reset together.
 - The watcher reads `/status` every 10 seconds. The runner calls `readSpendStop` before it counts a
   failed step that ran a model turn.
 - The runner counts the deployment's turns since the day's start and the month's start from the turn
   records, and checks both before each turn. At `day.turns` or `month.turns`, plus any raise, the
   runner trips the stop with the measure `turns`. The watcher reads this count beside `/status`, and
   the stop stands while either one shows a trip.
-- The stop trips when the status shows `tripped`, when the lost mark stands, or when the proxy has
+- The stop trips when the status shows `tripped`, when the lost mark stands, or when the gateway has
   not answered for 30 seconds. The server then writes `spend.stop_tripped` and, when nixie is not
   paused, pauses with the cause `spending`, in one transaction.
 - When nixie is already paused, for a restore or by you, a trip writes only `spend.stop_tripped`,
@@ -392,14 +392,14 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
   `spending`, resumes in one transaction. A clear never resumes a pause of another cause.
 - A `limit` trip clears at the period's reset, or when a raise lifts every tripped measure. This
   holds for turns as for dollars and tokens: a raise from the client up to `day.turnCap`, the host
-  command `nixie spend raise` above it, or the next period. `unreachable` clears at the proxy's
+  command `nixie spend raise` above it, or the next period. `unreachable` clears at the gateway's
   first answer. The lost mark clears only when an operator removes it from the store.
 - When the runner finds the stop tripped after a failed step, the step counts no step error. The
   task keeps its state and its work, and its next claim after the resume runs the step again.
 - While the stop stands, nixie refuses `Resume nixie` and a task's Resume, whatever the pause's
-  cause, with a message on how the stop clears. Only a raise, the period's reset, the proxy's answer
-  or an operator's removal of the lost mark ends the stop, so a resume never restarts turns while it
-  stands. A task's Pause and Stop work as on any day.
+  cause, with a message on how the stop clears. Only a raise, the period's reset, the gateway's
+  answer or an operator's removal of the lost mark ends the stop, so a resume never restarts turns
+  while it stands. A task's Pause and Stop work as on any day.
 - When you pause nixie while the stop stands, the cause becomes `owner`, and the clear leaves nixie
   paused for you to resume.
 - The spending pause raises the database's oldest reader version to this design's migration
@@ -413,11 +413,13 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 - `spend.raise` covers the day only. A month trip clears at the month's reset, or when the
   deployment raises the month's limit in the config, up to its cap, or with the host command.
 - One confirm in the client is the one approval. The record's `by` is the session that confirmed.
-- `spend.raise` writes `spend.limit_raised`, then calls `POST /raise`. When the proxy refuses or
+- `spend.raise` writes `spend.limit_raised`, then calls `POST /raise`. When the gateway refuses or
   does not answer, the record stands, and the watcher sends the raise again until the day ends.
 - The turn raise is capped at `day.turnCap`. nixie's config file is read-only to nixie, so nixie
-  never moves that cap. The proxy's caps bound the dollars and the tokens, whatever the server
+  never moves that cap. The gateway's caps bound the dollars and the tokens, whatever the server
   sends.
+- "Raise today's limit" offers today's limit plus half, up to the cap. You can change the amount
+  before you confirm.
 - On a day trip, the client shows: "Model spending stopped: the daily limit of $60 was reached at
   16:42. All tasks are paused where they were. Nothing is lost. [Raise today's limit] Resumes on its
   own at midnight." On a month trip, the client shows the month and the date of its reset, with no
@@ -432,7 +434,7 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 ### Model limits
 
 - The runner passes `workerRun.turns` to the SDK as `maxTurns`, and ends the worker run at
-  `workerRun.minutes`. The proxy ends it at its sandbox's dollar and token limits.
+  `workerRun.minutes`. The gateway ends it at its sandbox's dollar and token limits.
 - At the end of a worker run, the server reads `GET /sandboxes/<name>`. The worker's result record
   holds those dollars and tokens, and its dollars count toward the calling task run's dollar limit.
 - A task run has no token limit. Its meters are turns and dollars, as
@@ -480,68 +482,37 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 - A lifted call still passes the
   [destination limits](../platform/policy/decision-point.md#the-pipeline).
 - The rule export writes the `lift` field as it writes every other field.
-
-### A rollback
-
-The release before reads this design's changes this way:
-
-| The change                                         | The release before                                             |
-| -------------------------------------------------- | -------------------------------------------------------------- |
-| the added `models.limits` keys, `spendStop`        | refuses to start: the config schema is strict                  |
-| the `lift` field                                   | refuses the seed; the rules in force stay                      |
-| a manifest at `definitionsFormats.budgets`         | refuses the format, when it reads only the format before       |
-| the migration                                      | never selects the 2 tables                                     |
-| `spend.*` and `budget.*` records                   | never meets them on a thread: each is on no thread             |
-| the cause `spending`                               | refuses with `SchemaTooNewError` while it stands               |
-| the `/<sandbox>/<route>` base URL and path filters | sends `/<route>` paths, which a `countBySandbox` proxy refuses |
-
-The proxy before reads its changes this way:
-
-| The change             | The proxy before                             |
-| ---------------------- | -------------------------------------------- |
-| the added config keys  | refuses to start, so no model request passes |
-| the store at version 2 | never reads it: step 3 moves the file aside  |
-| the override file      | never reads it                               |
-
-To roll back:
-
-1. Clear the stop on this build. For a day trip, raise the limit or wait for midnight. For a month
-   trip, use the host command. For `unreachable`, start the proxy. For the lost mark, remove it from
-   the store. Expect: nixie resumes, and `spend.read` returns `{ state: 'clear' }`.
-2. Remove the added keys from nixie's config, the `lift` fields from the rules, and the manifest's
-   step up to `definitionsFormats.budgets`.
-3. Restore the proxy's config to one `limits`, and move its store file aside.
-4. Start the proxy before, then the release before. Expect: the proxy starts a new count at zero,
-   and nixie starts.
+- A release before lifts skips an allow rule that holds `lift`, and logs a warning that names the
+  rule and the field, so no purchase passes on that release by a lift.
 
 ## Decisions
 
-- **The proxy holds the caps, and nixie sets limits under them.** nixie's config keeps the limits
-  with the other model limits, and the proxy's config, which nixie cannot reach, bounds every value
-  nixie sends. [0012](../../decisions/0012-spending-stop.md)
+- **The gateway holds the caps, and nixie sets limits under them.** nixie's config keeps the limits
+  with the other model limits, and the gateway's config, which nixie cannot reach, bounds every
+  value nixie sends. [0012](../../decisions/0012-spending-stop.md)
 - **With the stop, the deployment holds every model credential.** An agent's call on 13 Nov 2026: a
-  key in nixie's secrets file would let nixie's own code reach the provider past the proxy.
+  key in nixie's secrets file would let nixie's own code reach the provider past the gateway.
 - **The cap is the day's total, never the size of a raise.** An agent's call on 13 Nov 2026: the
   notice and the status show a total, so the cap reads in the same terms.
 - **The stop is nixie's pause, with the cause `spending`.** An agent's call on 13 Nov 2026: the
   pause already stops every task with nothing lost, and the cause keeps the stop's clear from
   resuming a pause of yours or a restore's.
-- **An unreachable proxy pauses nixie.** An agent's call on 13 Nov 2026: every model request fails
-  while the proxy is down, and without the pause each task would fail on its step errors.
+- **An unreachable gateway pauses nixie.** An agent's call on 13 Nov 2026: every model request fails
+  while the gateway is down, and without the pause each task would fail on its step errors.
 - **The raise is your own control, with no proposal.** An agent's call on 13 Nov 2026: nixie makes a
   proposal when nixie asks for something, and this raise starts with you, as the
   [pause controls](pause.md#the-pause) do.
 - **The client raises only the day.** An agent's call on 13 Nov 2026: the owner gave the client
   today's limit only, and a month's raise is rare enough for the config or the host command.
-- **Turns stay in nixie, with a cap in nixie's config.** An agent's call on 13 Nov 2026: the proxy
-  sees requests, never turns, and the proxy's dollar and token caps already bound what any turn
+- **Turns stay in nixie, with a cap in nixie's config.** An agent's call on 13 Nov 2026: the gateway
+  sees requests, never turns, and the gateway's dollar and token caps already bound what any turn
   costs.
 - **A task run has no token limit.** An agent's call on 13 Nov 2026: nixie's pre-step meters count
-  only turns and dollars, the proxy limits only a worker's sandbox, and the built raise names only
+  only turns and dollars, the gateway limits only a worker's sandbox, and the built raise names only
   turns and dollars, so a task run token limit would have no enforcer and no raise. The dollar limit
   prices the same tokens, and the day and month token limits bound a flat subscription.
-- **One proxy for the deployment, with a count per sandbox.** An agent's call on 13 Nov 2026: the
-  day and month counts must cover every sandbox, and a proxy per sandbox would split them.
+- **One gateway for the deployment, with a count per sandbox.** An agent's call on 13 Nov 2026: the
+  day and month counts must cover every sandbox, and a gateway per sandbox would split them.
 - **The host command writes the override file.** An agent's call on 13 Nov 2026: the server holds
   the control token, so a control call that passed the cap would let nixie move it.
 - **Budgets live in `budgets/`, apart from `rules/`.** An agent's call on 13 Nov 2026: a rules file
@@ -550,6 +521,12 @@ To roll back:
   live in the config, so a budget that counted model use would be a second copy of them.
 - **A paid tool's limits change only in the definitions.** An agent's call on 13 Nov 2026: a raise
   there passes the widening flow, which asks, and a deployment config would raise it without asking.
+- **`search.daily_call_cap` stays beside the search budget, and both apply.** The owner's call on 14
+  Nov 2026.
+- **The names are `caps`, `model-gateway raise` and `nixie spend raise`.** The owner's call on 14
+  Nov 2026.
+- **"Raise today's limit" offers today's limit plus half, up to the cap.** The owner's call on 14
+  Nov 2026: you can change the amount before you confirm.
 - **Money in the ledger is integer millionths of a dollar.** An agent's call on 13 Nov 2026: a
   search costs a fraction of a cent, and an integer sum never drifts.
 
@@ -558,10 +535,11 @@ To roll back:
 - The internal names, files and modules of the watcher, the spend reads and the ledger, as long as
   the spend module is the one writer of `spend.*` and the budgets module the one writer of
   `budget.*`.
-- How the proxy keeps the reads of the store and the override file cheap.
+- How the gateway keeps the reads of the store and the override file cheap.
 - The wording of each refusal, log line and notice, past the stop's notice and the model's "budget
   reached" text.
-- How the client shows the cap and the amount it offers for a raise.
+- How the client shows the cap and the amount it offers for a raise, within the rule in
+  [the raise](#the-raise).
 - The layout of the tests.
 
 ## Out of scope
@@ -571,13 +549,3 @@ To roll back:
 - The search tool and its provider.
 - A raise of a budget from the client. A budget's limit changes in the definitions.
 - The Telegram push.
-
-## Open questions
-
-The owner settles each one in [the budgets work item](https://linear.app/zgeoff/issue/GEO-1811), and
-the interim stands until then:
-
-- **Does `search.daily_call_cap` stay beside the search budget?** Interim: both apply.
-- **The names `caps`, `counting-proxy raise` and `nixie spend raise`.** Interim: those names.
-- **What the raise control offers.** Interim: today's limit plus half, up to the cap, and you can
-  change the amount before you confirm.

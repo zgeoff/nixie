@@ -93,10 +93,8 @@ memory:
   tokens against its budget. Both come from the one `readIndex` call of that opening, so they match
   the block. The opening record stores the 2 numbers, as it stores every status value, and no item.
 - nixie sends the opening blocks to the model of the turn and to no other provider.
-- The release before refuses a config file that sets an `index_*` key, so a rollback first removes
-  those keys.
-- No rollback crosses the migration that drops the sensitive flag's column. The way back across it
-  is a restore from a backup taken directly before that deploy.
+- The sensitive flag's column is dropped in the release after the one that stops reading it, so the
+  previous release always starts on the data of the next one.
 
 ### What the block lists
 

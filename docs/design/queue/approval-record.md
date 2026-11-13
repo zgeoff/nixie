@@ -359,8 +359,10 @@ so it declares `memory_write` too. These calls declare the `note` effect:
 `memory_write` ships in 2 stages, one release apart, because a release refuses to parse a rule that
 names an effect it does not know:
 
-1. The rule format, the rules core and the effect table accept `memory_write`. No tool declares it,
-   so a rule on it matches nothing.
+1. The rule format, the rules core and the effect table accept `memory_write`. No tool declares it.
+   A deny or an ask rule on `memory_write` applies to the `note` effect as well, so a restriction on
+   memory writes holds on a stage 1 release after a rollback from stage 2. An allow rule on
+   `memory_write` matches nothing at stage 1.
 2. The 3 memory tools declare `memory_write`, and the gate asks the rules first.
 
 [The content gate](../../architecture/memory/writes.md#the-content-gate) backs a write with a quote:
@@ -417,31 +419,18 @@ the memory checker.
   refuses every answer as `NOT_ALLOWED`.
 - A deferred row counts in no push and no routine batch.
 
-### Rollback
-
-| Added                                            | The release before                                                                                                           |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| The `proposals` table and its migration          | Never reads it. The migration only adds a table, so the [oldest reader](../../architecture/core/database.md) does not change |
-| `proposals.deferred`, `.returned`, `.withdrawn`  | Skips them. A deferred memory or skill proposal reads as pending, with the lapse its own store holds                         |
-| A withdrawn memory proposal                      | Reads it as pending until it lapses, and an approval there applies it under memory's own hash check                          |
-| `memory_write` in the rule format, at stage 1    | Is stage 1 itself. A rollback from stage 2 lands on stage 1, which parses every rule that names it                           |
-| `memory_write` on the 3 memory tools, at stage 2 | Stage 1 declares `note` on them, so a rule on `memory_write` matches nothing and every memory write runs every check         |
-| The `approvals.*` procedures                     | Answers `NOT_FOUND`. Its own memory procedures still work                                                                    |
-| `quiet_hours` and `approvals.defer` in config    | Refuses to start, because the schema is strict. Remove both keys from `config.yaml` before the rollback                      |
-
 ## Decisions
 
 - **Each kind keeps its own store and records, and one projection folds them into the shared row.**
   An agent's call on 13 Nov 2026: the release before then reads every memory, skill and rule
   proposal as it did, and skills and memory move onto the shared path with their tests unchanged.
 - **The states are `pending`, `deferred`, `approved`, `declined`, `lapsed` and `withdrawn`, and
-  "used once" is the `usedBy` mark on `approved`.** The interim for the open question on the state
-  names. A queued action is approved and not yet used, and the mark records the use without a
-  seventh state.
-- **Lifting rows join the always-ask group, first within it.** The interim for the open question on
-  the lifting group.
-- **Quiet hours are one setting, `quiet_hours`, outside any channel.** The interim for the open
-  question on quiet hours, so Defer works with no Telegram set up.
+  "used once" is the `usedBy` mark on `approved`.** The owner's call on 14 Nov 2026. A queued action
+  is approved and not yet used, and the mark records the use without a seventh state.
+- **Lifting rows join the always-ask group of the digest, first within it.** The owner's call on 14
+  Nov 2026: the agreed digest has no lifting group, and lifting cards have their own frame.
+- **Quiet hours are one top-level setting, `quiet_hours`, which Defer and the Telegram notices
+  read.** The owner's call on 14 Nov 2026: Defer then works with no Telegram set up.
 - **The row holds no free text.** An agent's call on 13 Nov 2026: a sentence in a plain column would
   outlive a forget of the memory item it quotes.
 - **"Approve all routine" never covers the memory group.** An agent's call on 13 Nov 2026: the
@@ -449,9 +438,9 @@ the memory checker.
 - **An allow rule on `memory_write` skips the quote check and the memory checker.** An agent's call
   on 13 Nov 2026: the work item keeps the built gate's behaviour under a rule. The sources come from
   the quote first, so an `owner` rule covers only a write whose quote lies in your typed words.
-- **A self-note declares `memory_write`.** An agent's call on 13 Nov 2026: a tool's effects never
-  depend on its arguments, and `memory.remember` writes self-notes. Under the starter rules, every
-  self-note still becomes a proposal.
+- **A self-note declares `memory_write`.** The owner's call on 14 Nov 2026: a tool's effects never
+  depend on its arguments, and `memory.remember` writes self-notes. No starter rule matches
+  `memory_write`, so a self-note always waits for your review.
 - **`memory_write` ships in 2 stages.** An agent's call on 13 Nov 2026: every rule that names the
   effect then parses on the release a rollback lands on, so no rollback takes a step for it.
 - **A reopened action gets a new row, and the approved row stays closed.** An agent's call on 13 Nov
@@ -476,9 +465,3 @@ the memory checker.
 - The action kind's create record and its CLI, in the decision point cutover
   ([decision point cutover](decision-point-cutover.md)).
 - The passkey, voice cards, proposed rules and mandates.
-
-## Open questions
-
-The owner settles 3 questions, kept in [the work item](https://linear.app/zgeoff/issue/GEO-1804):
-the state names, the lifting group, and where quiet hours live. Until then the code follows the
-interims in [Decisions](#decisions).

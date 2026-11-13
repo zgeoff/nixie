@@ -381,34 +381,13 @@ acts on what it finds then:
 
 ### Rollback
 
-The release before is the nixie release that a rollback returns to. It reads this design's changes
-this way:
-
-| The change                                                    | The release before                                                  |
-| ------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `channels.telegram` in `config.yaml`                          | refuses to start, because the config schema is strict               |
-| the migration: `push_notices` and `pairing_codes`             | never reads either table                                            |
-| a Telegram row in `identities`                                | never meets it in its session reads                                 |
-| a Telegram row at a reset                                     | keeps it only when it was last seen within the idle limit           |
-| `channels.code_issued`, `channels.paired`, `channels.revoked` | never meets them on a thread, since each is on no thread            |
-| `identity.refused` with the channel `telegram`                | reads it as it reads any refusal                                    |
-| a reset on the release before                                 | empties both new tables, as it empties every table it does not keep |
-| `sessions.shown`                                              | answers `NOT_FOUND`, which the client ignores                       |
-| `channels.pair`, `channels.confirmPairing`                    | answers `NOT_FOUND`                                                 |
-
 - The migration adds tables and changes none, so the
   [oldest reader](../../architecture/core/database.md) of the database does not change.
-- Before the rollback, remove the `channels` key from `config.yaml`. Expect: the release before
-  starts, and no notice goes out.
 
 ## Decisions
 
-- **The notifier reads quiet hours from the top-level `quiet_hours`.** An agent's call on 13 Nov
-  2026: the proposals module reads the same key to move a defer's return out of quiet hours, and 2
-  keys would split one setting.
-  [The approval record work item](https://linear.app/zgeoff/issue/GEO-1804) holds the owner's
-  question on where quiet hours live. If the owner decides to put quiet hours under Telegram, only
-  the key path changes, to `channels.telegram.quiet_hours`.
+- **The notifier reads quiet hours from the top-level `quiet_hours`.** The owner's call on 14 Nov
+  2026: quiet hours are one shared setting, which the notifier and a defer's return both read.
 - **The channels module decides every notice, and the adapter does nothing but call the Bot API.**
   An agent's call on 13 Nov 2026: a module never imports an adapter, and the content-free rule then
   lives in one module with one test.
@@ -420,9 +399,15 @@ this way:
   push. A restart that forgets presence at worst sends one notice too many.
 - **Pairing codes have their own table.** An agent's call on 13 Nov 2026: in `enrolment_codes`, a
   pairing code would claim a device session through enrolment.
-- **Pairing confirms in the client with a code the bot sends.** An agent's call on 13 Nov 2026: a
-  link shown on a screen can leak, and with one step a stranger who opened it first would take every
-  notice.
+- **Pairing keeps 2 steps and confirms in the client with a code the bot sends.** The owner's
+  decision on 14 Nov 2026: a link shown on a screen can leak, and with one step a stranger who
+  opened it first would take every notice.
+- **The names are `nixie channels confirm`, `channels.telegram.credential`, `client_url`,
+  `presence_seconds`, `batch_seconds` and `sessions.shown`.** The owner's call on 14 Nov 2026.
+- **The 3 notice sentences and the fixed bot replies are as written above.** The owner's call on 14
+  Nov 2026.
+- **A notice links the digest, never an item.** The owner's call on 14 Nov 2026: the chat never
+  holds an item's ID.
 - **A new pairing revokes the live Telegram row.** An agent's call on 13 Nov 2026: the confirm
   proves that whoever holds the signed-in client reads the new chat, and one live row keeps every
   notice on one chat.
@@ -453,17 +438,6 @@ this way:
 - A revoke from the client. The host command revokes.
 
 ## Open questions
-
-The owner settles these in [the push notifier work item](https://linear.app/zgeoff/issue/GEO-1812),
-and the interim stands until then:
-
-- **Pairing ends with a confirm code that the bot sends and you type into the client.** Interim: the
-  2 steps, so a leaked link alone never pairs an account.
-- **The names `nixie channels confirm`, `credential`, `client_url`, `presence_seconds`,
-  `batch_seconds` and `sessions.shown`.** Interim: those names.
-- **The wording of the 3 sentences and the fixed replies.** Interim: the wording above.
-- **Does a notice that counts one item link that item's card?** Interim: every notice links the
-  digest, so the chat never holds an item's ID.
 
 [The round-trip spike](https://linear.app/zgeoff/issue/GEO-252) settles each assumption below. Until
 it lands, the code follows the assumption, and the fallback applies when the spike disproves it:

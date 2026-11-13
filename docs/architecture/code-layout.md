@@ -12,7 +12,7 @@ no boundary of its own: every module reads and writes it through the one writer.
 ## The folders
 
 ```text
-apps/       deployables: the server, the web client, the counting proxy and the backup job
+apps/       deployables: the server, the web client, the model gateway and the backup job
 modules/    domain modules, one package each
 guests/     programs that run inside a sandbox and ship in a sandbox image
 adapters/   implementations of nixie's own interfaces that reach one outside system
@@ -24,8 +24,8 @@ libs/       shared code that belongs to no domain
   them.
 - **`apps/web`** is the TanStack Start server and its client code. It reaches nixie only through the
   oRPC contract in `libs/contract`, as [the API](channels/api.md) describes.
-- **`apps/counting-proxy`** is [the counting proxy](policy/counting-proxy.md), a process of its own
-  on the host that every model request of a deployment it guards passes through.
+- **`apps/model-gateway`** is [the model gateway](policy/model-gateway.md), a process of its own on
+  the host that every model request of a deployment it guards passes through.
 - **`apps/backup-job`** is [the backup job](deployment/backups.md#the-backup-job), which ships
   nixie's snapshot sets with restic from its own image and holds the backup credentials.
 - **An adapter** implements one of
@@ -81,19 +81,19 @@ dependency against the rules in the root `turbo.json`. The check fails on a depe
 deny, an import of a workspace package that the importer does not declare, an import of a file
 outside the importer's package, and a cycle between packages.
 
-| Tag           | Packages                             | May depend on                     |
-| ------------- | ------------------------------------ | --------------------------------- |
-| `app`         | `apps/server`, `apps/counting-proxy` | modules, adapters, libs           |
-| `client`      | `apps/web`                           | libs without `server-only`        |
-| `sidecar`     | `apps/backup-job`                    | libs without `server-only`        |
-| `module`      | `modules/*`                          | other modules, libs               |
-| `adapter`     | `adapters/*`                         | modules, libs                     |
-| `guest`       | `guests/*`                           | libs without `server-only`        |
-| `lib`         | `libs/*`                             | libs                              |
-| `deploy`      | `deploy/pulumi-k8s`                  | no workspace package              |
-| `e2e`         | `e2e/`                               | the apps, modules, adapters, libs |
-| `integration` | `integration/`                       | the app, modules, adapters, libs  |
-| `eval`        | `evals/`                             | modules, guests, libs             |
+| Tag           | Packages                            | May depend on                     |
+| ------------- | ----------------------------------- | --------------------------------- |
+| `app`         | `apps/server`, `apps/model-gateway` | modules, adapters, libs           |
+| `client`      | `apps/web`                          | libs without `server-only`        |
+| `sidecar`     | `apps/backup-job`                   | libs without `server-only`        |
+| `module`      | `modules/*`                         | other modules, libs               |
+| `adapter`     | `adapters/*`                        | modules, libs                     |
+| `guest`       | `guests/*`                          | libs without `server-only`        |
+| `lib`         | `libs/*`                            | libs                              |
+| `deploy`      | `deploy/pulumi-k8s`                 | no workspace package              |
+| `e2e`         | `e2e/`                              | the apps, modules, adapters, libs |
+| `integration` | `integration/`                      | the app, modules, adapters, libs  |
+| `eval`        | `evals/`                            | modules, guests, libs             |
 
 The backup job depends on libs alone, so it never reaches the modules that hold the deployment key.
 Nothing depends on the `e2e`, `integration` and `eval` packages, so their wide rules never let

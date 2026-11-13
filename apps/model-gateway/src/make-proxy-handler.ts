@@ -80,7 +80,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(
         404,
         'not_found_error',
-        `the counting proxy has no route for ${url.pathname}`,
+        `the model gateway has no route for ${url.pathname}`,
       );
     }
 
@@ -90,7 +90,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(
         403,
         'permission_error',
-        `the counting proxy forwards only requests whose spend it can count, so it refuses ${request.method} ${target.path}`,
+        `the model gateway forwards only requests whose spend it can count, so it refuses ${request.method} ${target.path}`,
       );
     }
 
@@ -100,7 +100,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(
         503,
         'api_error',
-        'the counting proxy cannot read its counter store, so it refuses every request',
+        'the model gateway cannot read its counter store, so it refuses every request',
       );
     }
 
@@ -108,7 +108,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(
         503,
         'api_error',
-        'the counting proxy lost the count of a reply, so it refuses every request until an operator clears the mark in its counter store',
+        'the model gateway lost the count of a reply, so it refuses every request until an operator clears the mark in its counter store',
       );
     }
 
@@ -130,7 +130,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(
         400,
         'invalid_request_error',
-        `the counting proxy needs a JSON body that ${rule.needs} for ${endpoint.name}`,
+        `the model gateway needs a JSON body that ${rule.needs} for ${endpoint.name}`,
       );
     }
 
@@ -138,7 +138,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(
         400,
         'invalid_request_error',
-        `the counting proxy prices this route for ${target.route.model}, so it refuses a request for ${parsed.data.model}`,
+        `the model gateway prices this route for ${target.route.model}, so it refuses a request for ${parsed.data.model}`,
       );
     }
 
@@ -161,7 +161,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
         await loseCount();
       }
 
-      return renderAPIError(502, 'api_error', 'the counting proxy could not reach the model API');
+      return renderAPIError(502, 'api_error', 'the model gateway could not reach the model API');
     }
 
     const init = {
@@ -202,7 +202,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
         await loseCount();
       }
 
-      return renderAPIError(502, 'api_error', 'the counting proxy lost the reply of the model API');
+      return renderAPIError(502, 'api_error', 'the model gateway lost the reply of the model API');
     }
 
     await count(target.route, dialect.parseUsage(findBodyUsage(text)), spent);
@@ -250,7 +250,7 @@ function formatLimitRefusal(totals: SpendTotals, limits: ProxyLimits): string {
     limits.tokens === null ? null : `${String(totals.tokens)} of ${String(limits.tokens)} tokens`,
   ].filter((part) => part !== null);
 
-  return `the counting proxy reached its spending limit (${spent.join(', ')}), so it refuses every further request`;
+  return `the model gateway reached its spending limit (${spent.join(', ')}), so it refuses every further request`;
 }
 
 // hop-by-hop headers, and the ones the proxy sets again for the body it sends on

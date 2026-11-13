@@ -4,7 +4,7 @@ import { proxyConfigSchema } from './proxy-config-schema';
 test('it reads a route that names the Responses API', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
-    store: '/var/lib/counting-proxy/counter.json',
+    store: '/var/lib/model-gateway/counter.json',
     limits: { dollars: 5 },
     routes: {
       review: {
@@ -22,7 +22,7 @@ test('it reads a route that names the Responses API', () => {
 test('it rejects a route that names an API the proxy does not count', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
-    store: '/var/lib/counting-proxy/counter.json',
+    store: '/var/lib/model-gateway/counter.json',
     limits: { dollars: 5 },
     routes: {
       review: {
@@ -40,7 +40,7 @@ test('it rejects a route that names an API the proxy does not count', () => {
 test('it reads a config into its typed shape, with a trailing slash cut from the upstream and the Messages API as the default', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { hostname: '0.0.0.0', port: 18_090 },
-    store: '/var/lib/counting-proxy/counter.json',
+    store: '/var/lib/model-gateway/counter.json',
     limits: { dollars: 5 },
     routes: {
       preview: {
@@ -53,7 +53,7 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
 
   expect(result.data).toStrictEqual({
     listen: { hostname: '0.0.0.0', port: 18_090 },
-    store: '/var/lib/counting-proxy/counter.json',
+    store: '/var/lib/model-gateway/counter.json',
     limits: { dollars: 5, tokens: null },
     routes: {
       preview: {
@@ -69,7 +69,7 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
 test('it listens on the loopback when the config names no host', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
-    store: '/var/lib/counting-proxy/counter.json',
+    store: '/var/lib/model-gateway/counter.json',
     limits: { tokens: 1000 },
     routes: {
       preview: {
@@ -86,7 +86,7 @@ test('it listens on the loopback when the config names no host', () => {
 test('it rejects limits that name neither dollars nor tokens', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
-    store: '/var/lib/counting-proxy/counter.json',
+    store: '/var/lib/model-gateway/counter.json',
     limits: {},
     routes: {
       preview: {
@@ -103,7 +103,7 @@ test('it rejects limits that name neither dollars nor tokens', () => {
 test('it rejects a config with no route', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
-    store: '/var/lib/counting-proxy/counter.json',
+    store: '/var/lib/model-gateway/counter.json',
     limits: { dollars: 5 },
     routes: {},
   });
@@ -114,7 +114,7 @@ test('it rejects a config with no route', () => {
 test('it rejects a route with no 1-hour cache write price', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
-    store: '/var/lib/counting-proxy/counter.json',
+    store: '/var/lib/model-gateway/counter.json',
     limits: { dollars: 5 },
     routes: {
       preview: {
@@ -133,7 +133,7 @@ test('it rejects a route with no 1-hour cache write price', () => {
 test('it rejects a route ID that is not a lowercase slug', () => {
   const result = proxyConfigSchema.safeParse({
     listen: { port: 18_090 },
-    store: '/var/lib/counting-proxy/counter.json',
+    store: '/var/lib/model-gateway/counter.json',
     limits: { dollars: 5 },
     routes: {
       'Preview/A': {

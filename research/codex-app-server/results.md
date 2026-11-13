@@ -1,7 +1,7 @@
 # Spike results: a nixie turn through `codex app-server`
 
 This spike drives nixie-shaped turns through `codex app-server` over stdio JSON-RPC, against a mock
-MCP server named `nixie` and a local stand-in for the counting proxy. This report gives the methods
+MCP server named `nixie` and a local stand-in for the model gateway. This report gives the methods
 and notifications a Codex guest uses, and the harness capabilities that guest can declare. Every
 answer below ends each fact with its source: [measured] for a fact this spike ran and saw, [read in
 the code] for a fact read in Codex's generated protocol or in this repo, and [from a record] for a
@@ -210,16 +210,16 @@ its commit hash [measured, in a pass whose logs held local paths and are not kep
 `git init` in its working directory, so the kept logs show only
 `{"<state>/work":{"has_changes":false}}` [measured].
 
-## A websocket the counting proxy can't read
+## A websocket the model gateway can't read
 
 Decision it informs: the provider config the Codex guest writes, so every model call passes the
-counting proxy as HTTP.
+model gateway as HTTP.
 
 With `supports_websockets = false` on the custom provider, Codex sent every model call as an HTTP
 `POST /v1/responses` [measured]. With `supports_websockets = true`, Codex first asked for a
 websocket upgrade on `/v1/responses`, and after the proxy's 426 it sent the call as an HTTP POST
-[measured]. The real counting proxy forwards HTTP only
-([the counting proxy](../../docs/architecture/policy/counting-proxy.md)) [from a record].
+[measured]. The real model gateway forwards HTTP only
+([the model gateway](../../docs/architecture/policy/model-gateway.md)) [from a record].
 
 ```bash
 jq -c '.[] | {path, upgrade, status}' proxy.json | sort | uniq -c
@@ -410,6 +410,6 @@ These would change the pick:
 - A turn long enough for automatic compaction, and a model call that fails or retries.
 - Reasoning effort above `low`, and models other than `gpt-6-luna`.
 - An MCP server that refuses the bearer token, and an MCP server that is down at `required = true`.
-- Codex inside an imp sandbox, behind the real counting proxy.
+- Codex inside an imp sandbox, behind the real model gateway.
 - A plan login against the real ChatGPT backend and token endpoint, and an external-mode login whose
   model calls answer 401 twice.

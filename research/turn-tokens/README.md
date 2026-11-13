@@ -1,7 +1,7 @@
 # Spike: token use per turn
 
 This spike measures the input, cache write, cached input and output tokens of a turn for each model
-role, through the production guest code and a local stand-in for the counting proxy. Its numbers set
+role, through the production guest code and a local stand-in for the model gateway. Its numbers set
 the [model cost](../../docs/design/platform/policy/budgets.md#model-cost) defaults.
 
 ## Question

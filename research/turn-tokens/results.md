@@ -35,7 +35,7 @@ those tools over Streamable HTTP, as the run's endpoint does, and returns a scri
 call.
 
 Every model request goes through [`start-count-proxy.ts`](start-count-proxy.ts), a local stand-in
-for the [counting proxy](../../docs/design/platform/policy/budgets.md#the-hard-spending-stop). The
+for the [model gateway](../../docs/design/platform/policy/budgets.md#the-hard-spending-stop). The
 profile's base URL points at the proxy, which forwards each request to the model API and reads the
 usage from each response. The proxy's totals matched the guest's turn-ended usage in every turn, so
 the turn records count every model call a turn makes.

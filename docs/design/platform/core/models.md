@@ -42,7 +42,7 @@ backend like any other credential, and the profile holds only the reference.
 
 nixie computes every turn's cost from token counts, never from the cost the Agent SDK reports. The
 SDK prices every model at Anthropic's rates, which is wrong for any other model and notional on a
-flat subscription. The [counting proxy](../policy/budgets.md#the-hard-spending-stop) reads the token
+flat subscription. The [model gateway](../policy/budgets.md#the-hard-spending-stop) reads the token
 counts from each response and prices them with the profile's table:
 
 ```text
@@ -57,7 +57,7 @@ a profile for an endpoint that charges no cache write premium sets both cache wr
 input price. A profile that never asks for 1-hour cache entries sets its 1-hour cache write price to
 its cache write price. A 1-hour entry costs more to write than a 5-minute one, 2 times the input
 price against 1.25 times at Anthropic's rates, so one price for both would undercharge every 1-hour
-write. The response's usage splits its cache writes by lifetime, and the proxy prices the 1-hour
+write. The response's usage splits its cache writes by lifetime, and the gateway prices the 1-hour
 share at the 1-hour price and the rest at the cache write price. Only the writes a response reports
 as 5-minute take the cache write price, so a response that leaves out the split, or part of it, has
 its unreported writes priced at the 1-hour price. A response that reports no cached count is priced

@@ -350,7 +350,8 @@ label from the connection row.
   [tool registry](../../architecture/connectors/tool-calls.md). The tool endpoint of each task run
   and worker run leaves out each action whose scope is in `missing`.
 - The connection's page shows each missing scope with its reason and the tools it holds back, and
-  one button that runs `startConsent` for the connection. The notice stays until a consent clears
+  one button that runs `startConsent` for the connection. The connections list marks the connection
+  with the same notice. The conversation never shows it. The notice stays until a consent clears
   `missing`.
 - A connection with only the identity scopes still connects, and lists no tools.
 
@@ -446,22 +447,14 @@ every Forget before it hands out any task work:
 
 ### A rollback
 
-| The change                          | The release before                                                                                    |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| the migration of the 3 tables       | starts, because the migration only adds tables, and never selects the tables                          |
-| `picker_key`, `project_number`      | never selects them: they are columns of `oauth_clients`, which the same migration adds                |
-| the 4 scopes in a grant             | never meets them: it has no Google connector, and the grant stays live at Google for the next upgrade |
-| the keys in `record_keys`           | keeps them, and its full reset deletes them                                                           |
-| the 11 record kinds                 | never meets them on a thread, and no projection of it reads them                                      |
-| `connection.forgotten` as a forget  | stages no forget set for it, so the next scheduled set covers the Forget                              |
-| the procedures and the return route | has neither; a consent in flight lands on a 404, and its row waits for the next upgrade's sweep       |
-
-- The design adds no config key.
-- A Forget left part way finishes only at the server start of a release that has this design. Before
-  a rollback, wait until every Forget shows erasure `done`.
+- A Forget left part way finishes only at the server start of a release that has this design.
 
 ## Decisions
 
+- **The names: the `connections.*` procedures, the `connection.*` and `credential.*` record kinds,
+  "Settings → Connections" and `/connections/google/return`.** The owner chose them on 14 Nov 2026.
+- **The fewer-scopes notice shows on the connection's page and in the connections list, never in the
+  conversation.** The owner chose this on 14 Nov 2026.
 - **Forget only, no Disconnect.** The owner chose this on 13 Nov 2026: a pause is rare for one
   person, and a paused token still sits in the database and its backups.
 - **The account comes from the ID token, with `openid` and `email` asked for.** An agent's call on
@@ -476,8 +469,8 @@ every Forget before it hands out any task work:
   the API keeps one way in, and the browser's `Lax` cookie reaches a top-level navigation from
   Google.
 - **The redirect URI comes from the page's origin at registration, not from a config key.** An
-  agent's call on 13 Nov 2026: Google checks it against the OAuth client anyway, and a rollback
-  needs no step.
+  agent's call on 13 Nov 2026: Google checks it against the OAuth client anyway, and a config key
+  would add a value to keep in step with the client.
 - **Access tokens stay in memory.** An agent's call on 13 Nov 2026: a restart costs one refresh, and
   the database holds one secret per connection.
 - **One revocation attempt, recorded before it is sent.** The credential design sets one attempt. An
@@ -514,8 +507,3 @@ every Forget before it hands out any task work:
   public suffix. The browser, not Google, follows the redirect, so a public name that resolves only
   inside the private network serves as the fallback. When Google refuses PKCE on a Web application
   client, nixie drops it, because the return's security never rests on it.
-- **The names: the `connections` procedures, the record kinds, "Settings → Connections" and the
-  return path.** The owner settles them in
-  [the connections issue](https://linear.app/zgeoff/issue/GEO-1824). Until then the names here hold.
-- **Where the fewer-scopes notice shows.** The owner settles it in the same issue. Until then it
-  shows on the connection's page and in the connections list, never in the conversation.

@@ -11,9 +11,11 @@ the code names `conversationTaskID`. Each tool that returns records of the log r
 code picks that thread for the model.
 
 The conversation and every task read their own thread. One grant, `log: conversation`, lets a task
-read the conversation's thread through 2 readers: `log.read`, and the memory write gate's read of a
-message that a save cites. A moment that you or a model kept is memory, so `moment.read` reads the
-moment's own thread for any caller that has the tool.
+read the conversation's thread through 3 readers: `log.read`, `log.read_image`, and the memory write
+gate's read of a message that a save cites. A moment that you or a model kept is memory, so
+`moment.read` reads the moment's own thread for any caller that has the tool. The tools and grants
+you give a task set what it reaches, and no fixed limit narrows them, so you can set up an unusual
+task.
 
 Two kinds of task carry the grant, as [the task definition format](task-definition-format.md)
 describes. A started task gets its options from a `task.start` call, and they never change. A
@@ -30,7 +32,8 @@ flowchart LR
   runner -->|"logThread: own or the conversation's"| run
   run -->|logThread| logread[log.read]
   run -->|logThread| cited[gate: cited message]
-  run -->|thread| own["gate: window and allow rule, log.read_image, moment.keep, tool records"]
+  run -->|logThread| image[log.read_image]
+  run -->|thread| own["gate: window and allow rule, moment.keep, tool records"]
   moment[(kept moment)] -->|"the moment's thread"| momentread[moment.read]
 ```
 
@@ -89,7 +92,7 @@ release that has definitions reads a stored `log`.
 interface ToolRun {
   // …existing fields
   readonly thread: string; // current: the caller's own thread
-  readonly logThread: string; // the thread that log.read and a cited message read
+  readonly logThread: string; // the thread of log.read, log.read_image and a cited message
 }
 
 // memory module
@@ -114,7 +117,7 @@ lets a tool's saves skip the quote, and the gate looks the rule up by thread.
 | the gate's read of a cited message | `logThread`        | its own                | the conversation's              | its own          |
 | the gate's window search           | `thread`           | its own                | its own                         | its own          |
 | the gate's lookup of an allow rule | `thread`           | its own                | its own                         | its own          |
-| `log.read_image`                   | `thread`           | its own                | its own                         | its own          |
+| `log.read_image`                   | `logThread`        | its own                | the conversation's              | its own          |
 | `moment.keep`                      | `thread`           | its own                | its own                         | its own          |
 | `moment.read`                      | none               | the moment's           | the moment's                    | the moment's     |
 
@@ -153,10 +156,10 @@ For the conversation, `logThread` equals `thread`.
   [task report](task-runs/reports.md#contracts) on the conversation's thread. The task's model then
   tells your words apart from a report.
 - `log.read` shows each image you attached as a `<dropped-image>` marker line
-  ([reading the log](../../architecture/memory/context.md#reading-the-log)). For a marker of the
-  conversation's thread, a granted task's `log.read_image` returns `image unavailable`. The
-  description of `log.read_image` tells the model that the tool opens images of the caller's own
-  thread only.
+  ([reading the log](../../architecture/memory/context.md#reading-the-log)). `log.read_image`
+  follows the `log` grant as `log.read` does: it opens the image of a marker on `logThread`, so a
+  granted task opens the images of the conversation's thread. The description of `log.read_image`
+  tells the model that the tool opens images of the thread that `log.read` reads.
 
 ### The write gate
 
@@ -169,16 +172,21 @@ For the conversation, `logThread` equals `thread`.
   uncited quote waits with `no_quote`. Such a task must cite the event.
 - The grant adds no review reason and no error sentence, and never sends a save to review on its
   own.
+- A grant that the task's setup loses in the middle of a step counts until the step ends. The gate
+  reads `logThread` as the runner set it at the start of the step, and a save in a later step reads
+  the new setup. A started task's options never change, and a definition's task run pins its
+  version, so no designed path loses the grant mid-step. The rule covers any later path.
 
 ### Moments and images
 
 - A [moment](../../architecture/memory/moments.md) keeps one span of records on one thread.
   `moment.keep` keeps a span of the caller's own thread only.
-- `moment.read` reads the span on the moment's own thread, for any caller that has the tool. A task
-  gets the tool only under `memory: read`, so `memory: read` decides which task reads a moment's
-  records, and the log grant does not.
-- `log.read_image` reads only the caller's own thread. For a moment on another thread, `moment.read`
-  lists the images, and `log.read_image` returns `image unavailable` for each.
+- `moment.read` reads the span on the moment's own thread, on any thread, for any caller that has
+  the tool. A task gets the tool only under `memory: read`, so `memory: read` decides which task
+  reads a moment's records, and the log grant does not. To stop a task reading kept moments, leave
+  `moment.read` out of its tools.
+- `log.read_image` reads only `logThread`. For a moment on another thread, `moment.read` lists the
+  images, and `log.read_image` returns `image unavailable` for each.
 
 ### Other paths to your messages
 
@@ -201,40 +209,14 @@ For the conversation, `logThread` equals `thread`.
 
 ### Rollback
 
-These rows say what the release a rollback returns to does with each thing this design stores.
-
-| What this design stores                              | That release                        |
-| ---------------------------------------------------- | ----------------------------------- |
-| the `log` key in `task.created`'s options            | reads the record and drops the key  |
-| the `log` key in a definition file                   | refuses the load with `unknown_key` |
-| a stored definition version with `log: conversation` | reads it                            |
-| a save that a granted task cites                     | sends it to review with `no_quote`  |
-| `ToolRun.logThread`, `WriteCaller.logThread`         | never meets them                    |
-
-- That release drops the options key because the options schema is not strict. It has no
-  `logThread`, so every task run reads its own thread, a granted one included.
+- The release a rollback returns to drops the options key because the options schema is not strict.
+  It has no `logThread`, so every task run reads its own thread, a granted one included.
 - That release refuses a load of your definitions while a file sets `log`, because the definition
-  schema is strict, and keeps the last accepted definitions in force. Remove the key to load other
-  changes.
+  schema is strict, and keeps the last accepted definitions in force.
 - The design adds no record kind and no migration. Its one new key is `log`, in the start input and
   in a definition file, and it adds no key to `nixie.yaml`.
 - That release cleans no session for the grant on a forget, so a granted task's sandbox can keep the
-  text of a record that you forget after the rollback. Before you start that release, take these
-  steps:
-  1. Close each open started task with `log: conversation`.
-  2. Set `enabled: false` on each definition that sets `log`, and load your definitions.
-  3. Run `nixie task-sandbox-destroy --log-grant`, and wait for it to exit 0.
-- `nixie task-sandbox-destroy --log-grant` destroys the sandbox of every task whose options, or any
-  definition version it ran, held `log: conversation`, whatever state the task is in. It prints each
-  task ID with its sandbox's outcome. A task with no sandbox row prints `none` and changes nothing.
-- The command refuses a task whose step runs, exits non-zero, and destroys nothing more. Run it
-  again once the step ends.
-- A later step of such a task, on any release, creates a new sandbox and opens its session from the
-  log, as [the sandbox life](../../architecture/connectors/sandboxes.md) describes.
-- The command ships in the same release as the grant, so every release that can grant
-  `log: conversation` can run it before a rollback. It is a
-  [host command](../../architecture/deployment/host-commands.md), and the release a rollback returns
-  to never meets it.
+  text of a record that you forget after the rollback.
 - The newer-log test, in the sessions module, runs the code of the last release on a log written by
   this release. The log grant adds its keys to that test. When the grant lands before the other work
   that the test covers, it creates the test
@@ -246,9 +228,14 @@ These rows say what the release a rollback returns to does with each thing this 
 
 ## Decisions
 
-- **Only `log.read` and the gate's read of a cited message follow the grant.** An agent's call on 13
-  Nov 2026: a note-taking task needs those 2 readers, and they are the smallest widening of what a
-  task reads.
+- **The tools and grants you give a task set what it reaches, never a fixed limit.** The owner's
+  call on 14 Nov 2026: you can then set up an unusual task. So a task with `moment.read` reads a
+  moment kept on any thread, and you leave the tool out to stop it.
+- **`log.read`, `log.read_image` and the gate's read of a cited message follow the grant.** The
+  owner's call on 14 Nov 2026 for `log.read_image`, which follows the grant as `log.read` does. A
+  note-taking task needs the other 2 readers.
+- **A grant lost in the middle of a step counts until the step ends.** The owner's call on 14 Nov
+  2026: a save in a later step reads the new setup.
 - **The runner sets `logThread` per step, and nothing stores it.** An agent's call on 13 Nov 2026:
   the model never picks a thread, and the release a rollback returns to never meets the field.
 - **A granted read writes its records on the task's own thread.** An agent's call on 13 Nov 2026: a
@@ -259,10 +246,6 @@ These rows say what the release a rollback returns to does with each thing this 
 - **A forget on the conversation's thread cleans each granted task's session.** An agent's call on
   13 Nov 2026: the forget fix cleans only tasks that read memory, and a granted task with
   `memory: none` would keep the forgotten text.
-
-- **A rollback destroys the sandbox of each task that held the grant.** An agent's call on 13 Nov
-  2026: a destroyed sandbox holds no transcript, whatever the release a rollback returns to cleans
-  on a forget.
 
 ## Builder decides
 
@@ -277,22 +260,3 @@ These rows say what the release a rollback returns to does with each thing this 
 - Which thread `log.forget` removes a record from. [Redaction](redaction.md#part-4-the-forget-tool)
   owns that tool, and the grant widens reads only.
 - A moment over several threads.
-
-## Open questions
-
-- **Does a grant that a task's setup loses in the middle of a step still count for a save in that
-  step?** A started task's options never change, and a definition's task run pins its version, so no
-  designed path loses the grant mid-step. The question covers any later path. The owner settles it
-  in [the gate reads a granted task's cited event](https://linear.app/zgeoff/issue/GEO-2552). Until
-  then, the gate reads `logThread` as the runner set it at the start of the step, and a later step
-  reads the new setup.
-- **Does `log.read_image` always read the caller's own thread only?** The owner settles it in
-  [the photos in a kept moment](https://linear.app/zgeoff/issue/GEO-1913). Until then,
-  `log.read_image` reads the caller's own thread only.
-- **Does a task with `memory: read` read a moment kept on the conversation's thread?** The owner
-  settles it in [the log grant](https://linear.app/zgeoff/issue/GEO-2525). The recommendation is
-  yes: a moment is memory you chose to keep, as an item that quotes your message is. Until then,
-  `moment.read` reads any moment for a caller that has the tool, as the current code does.
-- **What is the name of the command that destroys the granted tasks' sandboxes?** The owner settles
-  it in [the log grant](https://linear.app/zgeoff/issue/GEO-2525). The recommendation, and the name
-  until then, is `nixie task-sandbox-destroy --log-grant`.

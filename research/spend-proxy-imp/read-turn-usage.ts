@@ -1,5 +1,5 @@
 // Prints one JSON line per thread with the tokens its turn-ended records hold, summed the way the
-// counting proxy counts them, and a last line with the totals. It runs in the preview's nixie
+// model gateway counts them, and a last line with the totals. It runs in the preview's nixie
 // container, which holds no package for it, so run-spike.ts sends it there as one bundled file.
 import { Database } from 'bun:sqlite';
 // @boundaries-ignore a spike imports the code it measures

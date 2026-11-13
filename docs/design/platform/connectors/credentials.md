@@ -124,8 +124,8 @@ Destroying the sandbox removes its grants.
 
 The store refreshes OAuth tokens on the host, 5 min before expiry by default, and pushes each new
 value to every grant that holds it. nixie never uses impd's own refresh, because an impd secret that
-refreshes cannot send its requests through the counting proxy. A ChatGPT plan login is the one model
-credential outside the store: it lives in the counting proxy, as
+refreshes cannot send its requests through the model gateway. A ChatGPT plan login is the one model
+credential outside the store: it lives in the model gateway, as
 [the plan login design](../../queue/plan-login-token.md) gives. A request the service rejects as
 unauthorised gets one refresh and one retry, and a second rejection marks the credential failing.
 Any other failure goes to the [action queue](../core/actions.md) and its reconciliation. The store

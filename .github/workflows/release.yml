@@ -3,7 +3,7 @@
 # goes through one stage per job, each after the one before succeeds: the sandbox images and the
 # backup image, the nixie image with the sandbox digests, the web image, the migrations and the
 # config schema in the release notes, a pull of each sandbox image with no credentials, the version
-# tag on every image, and the counting proxy binary, release.json, config.schema.json,
+# tag on every image, and the model gateway binary, release.json, config.schema.json,
 # definitions-manifest.schema.json and definitions-rules.schema.json assets, and last the Kubernetes
 # component, with the backup image as its backup job's default, and the API contract on npm at the
 # release's version.
@@ -362,12 +362,12 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Publish the counting proxy binary
+      - name: Publish the model gateway binary
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.resolve.outputs.tag }}
-        run: bun run --silent ci:release:publish-counting-proxy
+        run: bun run --silent ci:release:publish-model-gateway
 
       - name: Publish release.json, the config schema and the definitions schemas
         env:

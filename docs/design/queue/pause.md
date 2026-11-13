@@ -571,25 +571,6 @@ type RestorePauseFaultPoint =
 - Each resume acts at once, with no confirm step. After a restore, the web client shows the
   `toCheck` list beside the resume control.
 
-### A rollback
-
-The release before reads this design's changes this way:
-
-| The change                                      | The release before                                                 |
-| ----------------------------------------------- | ------------------------------------------------------------------ |
-| the marker in `holding`                         | refuses to start, as on any marker                                 |
-| the migration                                   | refuses with `SchemaTooNewError` while paused, and starts when not |
-| `nixie_pause`, `pause_exemptions`, `recoveries` | never selects them                                                 |
-| `open_oldest_reader`                            | never selects it                                                   |
-| the 4 record kinds                              | never meets them on a thread: each is on no thread                 |
-
-To roll back while nixie is paused, after a restore or not:
-
-1. When a restore marker exists, start this build once, so the start part `restore_pause` removes
-   it.
-2. Resume nixie. Tasks run on this build until you stop it.
-3. Start the release before.
-
 ## Decisions
 
 - **nixie pauses as a whole, and the Resume of one task runs that task alone; a restore starts nixie
@@ -604,8 +585,8 @@ To roll back while nixie is paused, after a restore or not:
 - **The gate is the stored `oldest_reader`, never the schema's `oldestReader`.** A raised schema
   value would stop the release before from reading the database again, paused or not.
 - **Every pause closes the gate, your own included.** One rule covers every pause, and a release
-  that does not know the pause never runs the tasks you paused. The cost: to roll back while paused,
-  you resume first, so tasks run on this build until you stop it.
+  that does not know the pause never runs the tasks you paused. The cost: while nixie is paused, a
+  release without the pause refuses to start.
 - **The pause lives in the log module.** The tasks module, the trigger core and the backup schedule
   each read it, and each already imports the log module, so none imports another for it.
 - **A pause has no port.** SQLite is the one store, by the queue's port rules.

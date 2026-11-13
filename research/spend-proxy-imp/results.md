@@ -1,4 +1,4 @@
-# Spike results: the counting proxy behind imp's broker
+# Spike results: the model gateway behind imp's broker
 
 This spike sends model calls from an imp on a host that counts model spend, reads the count, and
 tries other ways from the imp to the model API. It ran on the previews of nixie pull requests #834
@@ -21,22 +21,22 @@ read that shows it, and [read in the code] when the spike's author read it in th
 - **Preview service**: a service on the host that builds a nixie pull request into a throwaway
   nixie, a preview, and runs it in an imp of its own.
 - **Model route listener**: the preview service's listener on the host for model calls. It starts a
-  [counting proxy](../../docs/architecture/policy/counting-proxy.md) for each preview's imp, which
+  [model gateway](../../docs/architecture/policy/model-gateway.md) for each preview's imp, which
   adds each reply's tokens and dollars to that imp's count.
 - **Count file**: `<imp>.count.json` in the preview service's spend directory on the host, where the
-  counting proxy keeps the imp's count as tokens and dollars.
+  model gateway keeps the imp's count as tokens and dollars.
 - **One-line request**: a 93-byte model call with one short user message, which the `own-route`
   probe sends.
 - **Worker** and **sandbox adapter**: as the [glossary](../../docs/glossary.md) defines them.
 
 ## Questions
 
-1. **Does the broker send each model call from an imp through the counting proxy, and does the
-   counting proxy count it?** If both hold, the
+1. **Does the broker send each model call from an imp through the model gateway, and does the model
+   gateway count it?** If both hold, the
    [hard spending stop](../../docs/design/platform/policy/budgets.md#the-hard-spending-stop) can
    count spend on the host.
 2. **Can code in the guest get a request to the model API with the credential on it, by any way that
-   skips the counting proxy?** If it can, code in an imp can get past the hard stop.
+   skips the model gateway?** If it can, code in an imp can get past the hard stop.
 
 ## Setup
 
@@ -49,15 +49,15 @@ The preview service grants each preview's imp one secret for the model API's hos
   `pv-921a15b9-834`.
 - The secret's upstream is the model route listener, in place of the model API.
 
-The listener takes the imp's name from the first path segment, starts that imp's counting proxy on
-its first call, and passes the call on with its headers. The counting proxy strips the name, sends
+The listener takes the imp's name from the first path segment, starts that imp's model gateway on
+its first call, and passes the call on with its headers. The model gateway strips the name, sends
 the rest to the model API, and adds the reply's usage to the count [read in the code].
 
 ```mermaid
 flowchart LR
   N["nixie in the guest"] -->|"POST /&lt;imp&gt;/v1/messages, no credential"| B["broker"]
   B -->|"adds the credential"| L["model route listener"]
-  L --> P["the imp's counting proxy"]
+  L --> P["the imp's model gateway"]
   P -->|"POST /v1/messages"| U["model API"]
 ```
 
@@ -75,7 +75,7 @@ cache tokens [read in the code]. The spike sums them to set beside the count.
 | Component      | Pull request #834                                                       | Pull request #858                                        |
 | -------------- | ----------------------------------------------------------------------- | -------------------------------------------------------- |
 | imp            | 6.4.0, `impd` and `impz`                                                | 6.4.2, `impd` and `impz`                                 |
-| Counting proxy | `counting-proxy-linux-x64` from nixie 0.42.0                            | `counting-proxy-linux-x64` from nixie 0.42.0             |
+| Model gateway  | `model-gateway-linux-x64` from nixie 0.42.0                             | `model-gateway-linux-x64` from nixie 0.42.0              |
 | nixie          | commit `3e2d0d4`, as a preview test build                               | commit `71f58e6`, then `9a4112d`, as preview test builds |
 | Model          | `claude-haiku-5-5`, the preview's one model profile                     | `claude-haiku-5-5`, the preview's one model profile      |
 | Count limit    | $2 for the life of the pull request                                     | $2 for the life of the pull request                      |
@@ -143,7 +143,7 @@ nixie to start a task got the same 429, so the conversation started no task [mea
 The preview service logged `proxy.started` for the imp at 12:55:24, a second before the first call
 reached the model API [measured]. The count file read `{"dollars":0,"tokens":0}` after every call,
 and the `model.turn_ended` records sum to 0 tokens [measured]. A 429 reply carries no usage, and the
-counting proxy adds nothing for a reply with no usage [read in the code].
+model gateway adds nothing for a reply with no usage [read in the code].
 
 ### The probes
 
@@ -151,25 +151,25 @@ Each probe ran in the guest after the model calls, and sent no credential of its
 went to the broker, as the guest's HTTPS proxy. The last 2 probes are the exception, and went
 straight from the guest. The count stayed at `{"dollars":0,"tokens":0}` [measured].
 
-| Probe                 | URL path, as sent                     | Answered by        | Status |
-| --------------------- | ------------------------------------- | ------------------ | ------ |
-| `own-route`           | `/<imp>/v1/messages`                  | the model API      | 429    |
-| `unrouted`            | `/v1/messages`                        | the broker         | 403    |
-| `other-route`         | `/pv-00000000-1/v1/messages`          | the broker         | 403    |
-| `dot-segment`         | `/<imp>/../v1/messages`               | the broker         | 403    |
-| `encoded-dot-segment` | `/<imp>/%2e%2e/v1/messages`           | the broker         | 403    |
-| `encoded-slash`       | `/<imp>%2F..%2Fv1/messages`           | the broker         | 403    |
-| `double-slash`        | `//v1/messages`                       | the broker         | 403    |
-| `batches`             | `/<imp>/v1/messages/batches`          | the counting proxy | 403    |
-| `direct-no-broker`    | `/v1/messages`, to the model API      | the model API      | 401    |
-| `route-listener`      | `/<imp>/v1/messages`, to the listener | the model API      | 401    |
+| Probe                 | URL path, as sent                     | Answered by       | Status |
+| --------------------- | ------------------------------------- | ----------------- | ------ |
+| `own-route`           | `/<imp>/v1/messages`                  | the model API     | 429    |
+| `unrouted`            | `/v1/messages`                        | the broker        | 403    |
+| `other-route`         | `/pv-00000000-1/v1/messages`          | the broker        | 403    |
+| `dot-segment`         | `/<imp>/../v1/messages`               | the broker        | 403    |
+| `encoded-dot-segment` | `/<imp>/%2e%2e/v1/messages`           | the broker        | 403    |
+| `encoded-slash`       | `/<imp>%2F..%2Fv1/messages`           | the broker        | 403    |
+| `double-slash`        | `//v1/messages`                       | the broker        | 403    |
+| `batches`             | `/<imp>/v1/messages/batches`          | the model gateway | 403    |
+| `direct-no-broker`    | `/v1/messages`, to the model API      | the model API     | 401    |
+| `route-listener`      | `/<imp>/v1/messages`, to the listener | the model API     | 401    |
 
 The broker refused each path outside `/<imp>/` with
 `the grant for api.anthropic.com does not cover POST <path>`, and its audit lists each refusal with
 the reason `outside-filter` [measured]. The broker resolved both dot-segment paths to `/v1/messages`
-before it checked them [measured]. The counting proxy refused the batch endpoint with
-`the counting proxy forwards only requests whose spend it can count` [measured]. A batch spends
-after its reply, out of the count's reach [read in the code].
+before it checked them [measured]. The model gateway refused the batch endpoint with
+`the model gateway forwards only requests whose spend it can count` [measured]. A batch spends after
+its reply, out of the count's reach [read in the code].
 
 The last 2 probes went straight from the guest, with its HTTPS proxy turned off: one to the model
 API, one to the model route listener. The model API answered both with `authentication_error`,
@@ -223,7 +223,7 @@ nixie's 4 `model.turn_ended` records sum to 59183 tokens: 53964 in the conversat
 5219 in the task's 1 turn [measured]. That sum and the memory writer's 5222 tokens, which the count
 held before the turns, make 64405, the count's total [measured]. By kind, the 4 turns held 16 input,
 482 output, 41599 cache read and 17086 cache write tokens [measured]. The preview service on the
-host sets the prices that the counting proxy uses, per million tokens: $0.10 input, $0.50 output,
+host sets the prices that the model gateway uses, per million tokens: $0.10 input, $0.50 output,
 $0.01 cache read and $0.125 cache write [measured]. At those prices, the 4 turns cost $0.00279434,
 the same as the count's rise over the turns, $0.00345904 less $0.0006647 [measured]. The memory
 writer's call wrote no record, so the spike never checked its $0.0006647.
@@ -242,14 +242,14 @@ the spike ran.
 
 ## Answers
 
-1. **The broker sends each call through the counting proxy, and the counting proxy counts each
+1. **The broker sends each call through the model gateway, and the model gateway counts each
    reply.** The broker added the credential to every model call from the preview, from the
-   conversation, its task and the memory writer, and sent each one through the imp's counting proxy
+   conversation, its task and the memory writer, and sent each one through the imp's model gateway
    [measured]. The count's tokens equal those of nixie's turns plus the memory writer's call, and
    its rise over the turns equals the turns' tokens at the preview's prices [measured].
-2. **The guest has no way to put the credential on a request that skips the counting proxy.** The
+2. **The guest has no way to put the credential on a request that skips the model gateway.** The
    broker adds the credential only under `/<imp>/`, and refused every other path the probes tried,
-   dot segments and encoded slashes included [measured]. Under that path, the counting proxy refused
+   dot segments and encoded slashes included [measured]. Under that path, the model gateway refused
    the batch endpoint, whose spend it cannot count [measured]. The guest reaches the model API
    without the broker, but with no credential [measured]. On pull request #834, the guest reached
    the model route listener without the broker, with no credential. On pull request #858, the host
@@ -265,4 +265,4 @@ the spike ran.
 - The production hard stop's own route and limits, which the
   [budgets design](../../docs/design/platform/policy/budgets.md#the-hard-spending-stop) describes.
 - Methods other than `POST`, the token count and model list endpoints, and the endpoints other than
-  batches that the counting proxy refuses.
+  batches that the model gateway refuses.

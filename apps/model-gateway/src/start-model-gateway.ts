@@ -4,12 +4,12 @@ import { createCounterStore } from './create-counter-store';
 import { makeProxyHandler } from './make-proxy-handler';
 import { proxyConfigSchema } from './proxy-config-schema';
 
-export interface CountingProxy {
+export interface ModelGateway {
   readonly url: string;
   readonly stop: () => Promise<void>;
 }
 
-export interface CountingProxyOptions {
+export interface ModelGatewayOptions {
   readonly configPath: string;
   readonly log: Logger;
 
@@ -18,7 +18,7 @@ export interface CountingProxyOptions {
   readonly waitForDrainDeadline: () => Promise<void>;
 }
 
-export async function startCountingProxy(options: CountingProxyOptions): Promise<CountingProxy> {
+export async function startModelGateway(options: ModelGatewayOptions): Promise<ModelGateway> {
   const text = await Bun.file(options.configPath).text();
 
   const config = proxyConfigSchema.parse(Bun.YAML.parse(text));

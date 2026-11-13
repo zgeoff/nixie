@@ -37,7 +37,7 @@ probe() {
   fi
 }
 
-# the imp's own route, where the broker adds the credential and the counting proxy counts the reply
+# the imp's own route, where the broker adds the credential and the model gateway counts the reply
 probe own-route "https://api.anthropic.com/$imp/v1/messages"
 
 # the broker's grant covers only /<imp>/**, so each of these needs a refusal from the broker
@@ -48,7 +48,7 @@ probe encoded-dot-segment --path-as-is "https://api.anthropic.com/$imp/%2e%2e/v1
 probe encoded-slash "https://api.anthropic.com/$imp%2F..%2Fv1/messages"
 probe double-slash --path-as-is "https://api.anthropic.com//v1/messages"
 
-# inside the route, the counting proxy refuses an endpoint whose spend it cannot count
+# inside the route, the model gateway refuses an endpoint whose spend it cannot count
 probe batches "https://api.anthropic.com/$imp/v1/messages/batches"
 
 # around the broker: the guest's egress reaches the API, with no credential on the request

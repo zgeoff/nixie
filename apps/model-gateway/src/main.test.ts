@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { startScriptedModel, waitForCondition } from '@heynixie/testing';
 
 async function setupTest() {
-  const directory = await mkdtemp(join(tmpdir(), 'counting-proxy-cli-'));
+  const directory = await mkdtemp(join(tmpdir(), 'model-gateway-cli-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 

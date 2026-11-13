@@ -9,8 +9,9 @@
 One release deletes nixie's 2 built-in memory tasks, the note-taker and the consolidator. A
 deployment's event log still holds what they wrote, so nixie keeps parsing and folding those
 records, and shows each one everywhere as nixie's own. A task of the 2 that a log still holds gets
-the built `runOffTaskStep`, which empties its inbox and does nothing else. The config refuses the 2
-tasks' sections, and a task that the agent starts does their work through the ordinary memory tools.
+the built `runOffTaskStep`, which empties its inbox and does nothing else. nixie ignores the 2
+tasks' config sections with a warning, and a task that the agent starts does their work through the
+ordinary memory tools.
 
 Terms that the [glossary](../../glossary.md) lacks:
 
@@ -72,7 +73,7 @@ function startTestLog(options?: { deploymentKey?: CryptoKey }): Promise<TestLog>
 ### The off config
 
 ```ts
-// server test-utils. The tests of the delete and the rollback check read this one constant.
+// server test-utils. The tests of the delete read this one constant.
 export const builtInMemoryTasksOffConfig = `
 memory_writer:
   enabled: false
@@ -126,10 +127,10 @@ memory.consolidatorStatus();
 // log.follow has. consolidatorStatus's built schema is { isEnabled: boolean }.
 ```
 
-### The config that nixie refuses
+### The config that nixie ignores
 
 ```yaml
-# config.yaml: nixie refuses to start when any of these keys is present, whatever it holds
+# config.yaml: nixie ignores each of these keys, whatever it holds, and logs a warning that names it
 memory_writer: {}
 memory_consolidation: {}
 models:
@@ -139,7 +140,7 @@ models:
 ```
 
 ```yaml
-# nixie.yaml: the seed refuses the manifest when either key is present
+# nixie.yaml: the seed ignores either key, logs a warning that names it, and keeps the rest
 prompts:
   writer: {}
   consolidator: {}
@@ -208,10 +209,11 @@ the export. No renderer holds a case for `memory_writer`.
 
 ### The config and the manifest
 
-- The strict config schemas give the refusal of `config.yaml`. nixie has no start check of its own
-  on the 2 tasks, and refuses a section with any content, `enabled: false` included.
-- When `nixie.yaml` holds a refused key, the server starts, the seed logs the status `refused`, and
-  the definitions in force stay those of the last accepted manifest.
+- nixie ignores each of these keys in `config.yaml`, as it ignores every key it does not know, and
+  logs a warning at start that names it. A section with any content, `enabled: false` included, has
+  no effect.
+- When `nixie.yaml` holds one of these keys, the seed ignores it, logs a warning that names it, and
+  keeps the rest of the manifest.
 
 ### Stored prompt IDs
 
@@ -234,26 +236,16 @@ The target is the last release the deployment ran. Every shipped release from v0
 `enabled` keys, each with the default `true`, and `runOffTaskStep`. A deployment on an earlier
 release takes v0.41.0 or later before it takes the delete.
 
-- Before a rollback to a release with the built-in tasks, the deployment sets
-  `builtInMemoryTasksOffConfig` in `config.yaml`. The config edit and the release change are one
-  deploy. A later deploy of the delete release removes both sections again.
-
-| The deployment                                                  | What the rollback target does                                                              |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| took the delete, and sets the constant                          | accepts the config, gives both tasks the off step, and parses every record kind in the log |
-| took the delete, a started task wrote memory, sets the constant | reads those versions and proposals, whose origin is `task`                                 |
-| took the delete, and rolls back with neither section            | starts both tasks: the note-taker reads every message since its cursor                     |
-| first installed on the delete, with the constant                | creates neither task                                                                       |
-| first installed on the delete, with neither section             | creates both tasks: the note-taker reads the conversation from its first message           |
+- After a rollback to a release with the built-in tasks, both tasks run again, because each
+  `enabled` key defaults to `true`.
 
 ## Decisions
 
 - **nixie has no built-in memory task, and a started task does the work.**
-- **The 2 deletes are one release, with one config break.** A deployment drops both sections and
-  takes the release in one deploy.
+- **The 2 deletes are one release.** A deployment takes the release in one deploy, and its old
+  sections only log a warning until it drops them.
 - **Stored records stay, and nothing shows the note-taker.** The log keeps its records, and every
   reader sees them as the conversation's.
-- **A rollback sets the off config first.**
 
 ## Builder decides
 

@@ -449,21 +449,9 @@ order. Step 4 runs once, after the last event.
 
 ### A rollback
 
-| The change                                  | The release a rollback returns to                                                                                                                                                                                                      |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| the migration of the 2 projections          | starts, because the migration only adds tables, and that release never selects them                                                                                                                                                    |
-| `trigger.polled`, `trigger.resynced`        | never meets them on a thread, and its projections never read them                                                                                                                                                                      |
-| the 3 `task.event_wait_*` kinds             | never counts them as inbox records, because its `isInboxRecord` takes only the kinds it knows: a met wait wakes nothing, and a task that waits only on mail shows as `waiting` in the task list; you message it to wake it, or stop it |
-| a poll `trigger.fired`                      | marks it read and opens no task run, under the rule for a fire of an unknown kind                                                                                                                                                      |
-| the `gmail` and `calendar` cursors and keys | has no such source and never reads the rows; after the next upgrade, the polls resume from those cursors                                                                                                                               |
-| a `poll` trigger, `events.wait` in `tools`  | refuses the whole seed and keeps the last accepted one                                                                                                                                                                                 |
-
-That release's seed refuses a `poll` trigger with the fault `poll_trigger`, and `events.wait` in
-`tools` with `start_refused` ([what a seed refuses](task-definition-format.md#what-a-seed-refuses)).
-Before a rollback:
-
-1. Remove each `poll` trigger and each `events.wait` from the definitions repo.
-2. Let a seed run on the current release.
+The seed of the release a rollback returns to skips each definition whose trigger holds `poll`, so
+it never runs, and logs a warning that names the definition and the field. It drops `events.wait`
+from a definition's `tools` with a warning, and keeps the rest of that definition.
 
 The definitions format number stays at 4, so the release a rollback returns to still reads the
 manifest ([the folder and the keys](task-definition-format.md#the-folder-and-the-keys)).

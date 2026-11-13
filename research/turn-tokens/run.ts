@@ -1,5 +1,5 @@
 // Runs one role's sessions on one model and effort through the production guest code, with every
-// model request going through the local counting proxy, and writes runs/<role>-<model>-<effort>.json.
+// model request going through the local model gateway, and writes runs/<role>-<model>-<effort>.json.
 //
 //   bun run.ts <role> <model> <effort>
 //
@@ -328,7 +328,7 @@ interface GuestSession {
   readonly resume: { harness: 'agent-sdk'; sessionID: string; messageID: string } | null;
 }
 
-// runs one turn of the production guest against the scripted tool server and the counting proxy
+// runs one turn of the production guest against the scripted tool server and the model gateway
 async function runGuestSession(
   label: string,
   tools: ToolSet,

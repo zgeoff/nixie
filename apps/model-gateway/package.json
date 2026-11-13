@@ -1,5 +1,5 @@
 {
-  "name": "@heynixie/counting-proxy",
+  "name": "@heynixie/model-gateway",
   "version": "0.0.0",
   "private": true,
   "type": "module",

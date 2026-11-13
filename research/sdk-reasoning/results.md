@@ -45,7 +45,7 @@ timetable question that needs a few steps of working, under 3 thinking settings:
 - `omitted`: adaptive thinking with the SDK's `omitted` display.
 
 [`start-capture-proxy.ts`](start-capture-proxy.ts) sits between the CLI and the model API, as the
-counting proxy does in [token use per turn](../turn-tokens/README.md). It keeps the thinking setting
+model gateway does in [token use per turn](../turn-tokens/README.md). It keeps the thinking setting
 each request sent and rebuilds each response's content blocks from the stream. `run.ts` also keeps
 the content blocks of every assistant message the SDK yielded, the SDK's thinking-token progress
 messages, and the blocks of the session transcript the CLI wrote. Each run file in [`runs/`](runs/)

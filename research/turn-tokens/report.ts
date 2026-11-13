@@ -1,5 +1,5 @@
 // Prints, for each run in runs/, the mean and the largest session's tokens and list-price cost, from
-// the counting proxy's per-call usage. A session is one turn for the conversation, one query for
+// the model gateway's per-call usage. A session is one turn for the conversation, one query for
 // the checker, one batch for the writer, and one run for the consolidator, a task and a worker.
 //
 //   bun report.ts

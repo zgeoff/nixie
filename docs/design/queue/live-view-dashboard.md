@@ -176,8 +176,8 @@ brief, the prompt it started with, and adds what the third column says.
 ## Decisions
 
 - **The dashboard keeps its 3 groups, Conversation, Working and Held, and Working holds every task
-  that is not held, done or closed.** An agent's call on 13 Nov 2026: the layout stays as it is
-  while the owner's question below is open, and every task the dashboard shows today stays on it.
+  that is not held, done or closed.** The owner's call on 14 Nov 2026: the dashboard keeps 3 groups,
+  and every task the dashboard shows today stays on it.
 - **`listedState` is a field of its own, and `state` gains no value.** An agent's call on 13 Nov
   2026: today's client maps every `state` value to a label, and a client of the release before would
   show no label for a new value.
@@ -200,14 +200,8 @@ brief, the prompt it started with, and adds what the third column says.
 
 - Supervised coding sessions as a group, which [GEO-311](https://linear.app/zgeoff/issue/GEO-311)
   covers.
+- A "needs you" group. The dashboard gains it once the approval cards land.
 - Proposals that wait for your answer. The approval cards and the approval digest of
   [the approval record](https://linear.app/zgeoff/issue/GEO-1804) show them.
 - The routes `/tasks/ended` and `/definitions`, which
   [the views of definitions and ended task runs](definition-views.md) cover.
-
-## Open questions
-
-- **Does the dashboard gain the "needs you" and the "finished in the last 7 days" groups of the
-  baseline?** The owner settles it in
-  [dashboard states, fires and filters](https://linear.app/zgeoff/issue/GEO-2650). Until then, the
-  dashboard keeps its 3 groups, as the table in Contracts maps them.

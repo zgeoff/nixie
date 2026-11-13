@@ -1,14 +1,14 @@
 # Spike: a nixie turn through `codex app-server`
 
 This spike drives tool-using turns through `codex app-server` against a mock MCP server and a local
-stand-in for the counting proxy. Its answers set the Codex guest's requests, its config and the
+stand-in for the model gateway. Its answers set the Codex guest's requests, its config and the
 capabilities the `codex` harness declares ([GEO-2236](https://linear.app/zgeoff/issue/GEO-2236)).
 
 ## Question
 
 Which app-server methods, parameters and notifications does a nixie turn use? Does Codex report
-usage for each model call, and send a tool-call ID in `_meta`? Can a model call bypass the counting
-proxy over a websocket? Can a resume or a fork cut a thread at a chosen turn? With a ChatGPT plan
+usage for each model call, and send a tool-call ID in `_meta`? Can a model call bypass the model
+gateway over a websocket? Can a resume or a fork cut a thread at a chosen turn? With a ChatGPT plan
 login, does the CLI refresh its own token? Should the Codex guest use app-server or
 `codex exec --json`?
 

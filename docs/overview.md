@@ -88,7 +88,7 @@ An approval binds to one exact action and is used once. "Always allow" is one ta
 the rule shown on the card ([proposals and approvals](design/platform/policy/approvals.md)). A
 consent checker confirms that your own message asked for an action, so a direct request that no rule
 covers runs without a prompt. Consent never overrides a deny rule, an ask rule or the always-ask
-set. A counting proxy on the host enforces a hard spending stop
+set. A model gateway on the host enforces a hard spending stop
 ([0012](decisions/0012-spending-stop.md)), and rules are YAML in your definitions
 ([rules](architecture/policy/rules.md)). auto-mode decides only what the deterministic layers leave
 open, and nixie runs fully without it

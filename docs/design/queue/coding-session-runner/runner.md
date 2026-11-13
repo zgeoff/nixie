@@ -279,13 +279,7 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   defaults, because the envelope's type needs them. The claim never reads them for a coding task.
 - nixie limits a coding task in 3 ways: your rule on each start and each message, the hop limit on a
   loop of messages, and your stop. The coding agent's spend and wall time sit in atc, outside
-  nixie's [budgets](../../platform/policy/budgets.md) and its counting proxy.
-
-### Rollback
-
-The [rollback table](README.md#rollback) of the README says what the release a rollback returns to
-does with `coding.session_bound`, `coding.delivered`, the `coding_sessions` table, the
-`tasks.runner` column and the `coding` config section.
+  nixie's [budgets](../../platform/policy/budgets.md) and its model gateway.
 
 ## Decisions
 

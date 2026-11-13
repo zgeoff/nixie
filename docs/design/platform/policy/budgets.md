@@ -67,11 +67,11 @@ and a looping search hits it long before it costs much.
 ## Model cost
 
 Model use has 3 measures: dollars, tokens and turns. Each limit below sets all 3, except a job run,
-which sets no tokens. The [counting proxy](#the-hard-spending-stop) counts tokens from each
-response, and nixie prices them with the role's [model profile](../core/models.md#cost), never with
-the cost the Agent SDK reports. A token count includes input, cache writes, cached input and output.
-**Why:** dollars bound what a metered route costs, tokens bound the load on a flat subscription,
-where dollars are notional, and turns catch a loop whatever the price.
+which sets no tokens. The [model gateway](#the-hard-spending-stop) counts tokens from each response,
+and nixie prices them with the role's [model profile](../core/models.md#cost), never with the cost
+the Agent SDK reports. A token count includes input, cache writes, cached input and output. **Why:**
+dollars bound what a metered route costs, tokens bound the load on a flat subscription, where
+dollars are notional, and turns catch a loop whatever the price.
 
 | Limit          | Dollars | Tokens      | Turns  | Other  |
 | -------------- | ------- | ----------- | ------ | ------ |
@@ -81,7 +81,7 @@ where dollars are notional, and turns catch a loop whatever the price.
 | Per month      | $600    | 600,000,000 | 20,000 |        |
 
 - **Per worker run.** The runner passes the turn limit to the SDK as `maxTurns`, and stops the
-  worker run when the proxy's dollar or token count for its imp reaches the limit. A worker run's
+  worker run when the gateway's dollar or token count for its imp reaches the limit. A worker run's
   dollars also count toward the dollar limit of the task that called it.
 - **Per job run.** The count covers every turn and worker in the job run. The runner checks it
   before each step and stops the job run with a report when a limit is reached. Its dollars price
@@ -102,16 +102,16 @@ job that runs too often.
 The hard spending stop ends all model spending once a deployment limit is reached. When it trips,
 nixie stops starting turns, pauses every task in place with a record, and tells you through the push
 channel, which needs no model. You resume by raising today's limit, up to a cap that only the
-proxy's host config holds, or by waiting for the next period.
+gateway's host config holds, or by waiting for the next period.
 [Budgets and the hard stop](../../queue/budgets-and-hard-stop.md#the-stop) gives the contracts.
 
-The stop is a counting proxy on the host. Every model request passes through it, it counts the
-tokens and the cost from each response, and once a deployment dollar or token limit is reached it
-refuses further requests. The proxy holds one route per model profile, so it prices each response
-with that profile's table. The runner counts turns from the turn records and trips the stop at the
-deployment turn limit. The proxy fails closed, so a proxy that is down stops turns instead of
+The stop is a model gateway on the host. Every model request passes through it, it counts the tokens
+and the cost from each response, and once a deployment dollar or token limit is reached it refuses
+further requests. The gateway holds one route per model profile, so it prices each response with
+that profile's table. The runner counts turns from the turn records and trips the stop at the
+deployment turn limit. The gateway fails closed, so a gateway that is down stops turns instead of
 letting them run uncounted. A spend limit set with the model provider, where one exists, backs it
 up. **Why:** a limit the SDK enforces runs inside the imp, next to code that reads untrusted
 content, and the runner's checks between steps let one turn overshoot, so the stop sits on the host
-route that every model request takes. The proxy relies on imp's broker to forward a worker's model
+route that every model request takes. The gateway relies on imp's broker to forward a worker's model
 requests through it, which a spike in [Linear](https://linear.app/zgeoff/issue/GEO-248) checks.
