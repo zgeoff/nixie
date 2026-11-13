@@ -20,6 +20,7 @@ is deleted.
 | Operations          | [the backup pair](backup-pair.md), [the pause after a restore](pause.md), [seeders](seeders.md)                                                                                                                      |
 | Model harnesses     | [the harness boundary](harness-boundary.md), [the tool-call wait](tool-call-wait.md), [the turn-input log](turn-input-log.md)                                                                                        |
 | Moments and forgets | [redaction](redaction.md), [the evidence purge](evidence-purge.md)                                                                                                                                                   |
+| Google tools        | [Gmail, Calendar and Drive](gmail-calendar-drive-tools.md)                                                                                                                                                           |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives
 in its Linear issue alone. The decision records these designs follow are in

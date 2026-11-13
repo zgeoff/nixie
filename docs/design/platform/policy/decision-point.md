@@ -117,8 +117,9 @@ conversation is always untrusted, and the first build treats every job run as un
 stage 5 runs for every call with a destination. A destination has standing permission when it is:
 
 - you, through nixie's own channels
-- the reply target: the sender of a message that nixie read through a connector, which the tool
-  resolves from the message ID, never from text the model wrote
+- the reply target: the sender of a message, or the organizer of a calendar event, that nixie read
+  through a connector, which the tool resolves from the message or event ID, never from text the
+  model wrote
 - a contact you marked as known in the client
 - in the allowed destinations of the job that runs the call
 - matched by the destinations of an allow rule that matches the call
