@@ -238,6 +238,7 @@ const historyVersionSchema = z.object({
 const exportVersionSchema = z.strictObject({
   // …existing fields
   isRemoved: z.boolean(), // text and evidenceQuote are null because a purge removed them
+  isBridge: z.boolean(), // a purge wrote this version; its change and origin are not your edit
 }); // the release before stage 1 refuses such a file, because it parses each version strictly
 ```
 
@@ -262,10 +263,16 @@ const exportVersionSchema = z.strictObject({
 - A consolidation change, and each comment on it, sits under the key of one of its input items. When
   another of its inputs quotes the record, the purge set also holds the item whose key seals the
   change. An item that joins this way brings no further items with it.
-- From `record.forget_started`, the
-  [content gate](../../architecture/memory/writes.md#the-content-gate) treats a quote found in the
-  record as forgotten evidence, so no later write joins the set. Stage 1 ships this for every record
-  forget.
+- From `record.forget_started`, a write whose quote names the record fails with a tool error and
+  writes nothing: no item, no version and no proposal. The model reads that the source was removed,
+  and it can write the fact again with no quote. Today the
+  [content gate](../../architecture/memory/writes.md#the-content-gate) turns forgotten evidence into
+  a proposal that keeps the quote, and this refusal replaces that path for a record forget only. A
+  memory forget's evidence keeps today's proposal.
+- Each write checks for the record's `record.forget_started` inside its own transaction, the
+  proposal writer included. A write that found its quote before the forget started therefore fails
+  the same check, and the remember's fallback never turns that failure into a proposal. Stage 1
+  ships this refusal for every record forget.
 - From the first transaction, every reader reads each value of an item in the set as removed, except
   the current version's text and its quotes of other records.
 - From the first transaction until the item's `memory.evidence_purged`, a write of a proposal, a
@@ -324,6 +331,11 @@ const exportVersionSchema = z.strictObject({
 - The memory change line of
   [the events block](../../architecture/core/conversation-turns.md#the-events-block) and the memory
   notices leave out a bridge version, so the conversation never reports your removal as an edit.
+- Every reader that shows who changed a version reads `isBridge` before `change` and `origin`: the
+  history, the export, the change line and the notices. A bridge shows as the purge's version, never
+  as your edit. The record keeps `change: 'edited'` and `origin: 'owner'` only because the strict
+  parser of `memory.version_added`, unchanged since the release before stage 1, accepts no other
+  marker.
 
 | A kill after                          | The start finds                                    | The start does                          |
 | ------------------------------------- | -------------------------------------------------- | --------------------------------------- |
@@ -369,8 +381,9 @@ const exportVersionSchema = z.strictObject({
 ### The 2 stages and a rollback
 
 - Stage 1 ships the lookup, both tables, the readers of the 4 record kinds, what readers show, the
-  content gate's refusal, `VERSION_REMOVED`, `ItemPurgingError` and the memory forget's delete by
-  prefix. It also ships the purge, which only its start runs, to finish a purge that stage 2 began.
+  refusal of a write that quotes a forgetting record, `VERSION_REMOVED`, `ItemPurgingError` and the
+  memory forget's delete by prefix. It also ships the purge, which only its start runs, to finish a
+  purge that stage 2 began.
 - Stage 1's record forget writes no `memory.evidence_purge_started`, so stage 1 starts no purge, and
   new values written from stage 1 get no version key.
 - Stage 1 seals each new value under the item's current generation key. For an item that no purge
@@ -403,6 +416,12 @@ before a purge with the newest key copy, which lacks the keys the purge deleted:
 
 - "Unchanged" means the item's current version in the data copy is still current when the purge
   runs.
+- The table covers every item of the purge set, a merge partner included. A shared-key item loses
+  its current text because that text needs generation 0, which the purge deleted, and the data copy
+  holds no bridge. This is the older-data loss that [the backup pair](backup-pair.md#the-pick)
+  states, and nothing wider: an item outside the purge set keeps generation 0 and reads as before.
+- A value in the data copy reads shredded, not removed, because the data copy holds no purge record
+  for it.
 - A pending proposal whose key is gone stays out of the proposal list.
 - The warning in the restore steps belongs to [the backup pair](backup-pair.md#the-fetch).
 
