@@ -75,9 +75,10 @@ interface TaskStarter {
 type WiderLogRefusal = { readonly reason: 'wider_log' }; // rendered as logGrantRefusal
 ```
 
-A definition file takes the same `log` key. The definitions design gives each stored definition
-version the field `DefinitionVersion.log`, with both values
-([the version store](task-definition-format.md#the-hash-the-version-store-and-the-snapshot)).
+A definition file takes the same `log` key. The release that ships
+[the task definition format](task-definition-format.md#the-hash-the-version-store-and-the-snapshot)
+adds the field `DefinitionVersion.log` to each stored definition version, with both values, so every
+release that has definitions reads a stored `log`.
 
 ### The thread on a tool run
 
@@ -191,9 +192,11 @@ For the conversation, `logThread` equals `thread`.
 - A forget of a record on the conversation's thread cleans the session of each open task with
   `log: conversation`, as it cleans each open task that reads memory. That task's session can hold
   the record's text from a `log.read`.
-- The cleanup covers a definition's task with `log: conversation` too. It reads the task's `log`
-  from the pinned definition version, the same source
-  [the task-session forget fix](https://linear.app/zgeoff/issue/GEO-2527) reads `memory` from.
+- The cleanup reads a started task's `log` from the options of its `task.created` record, through
+  `readTaskSetup`.
+- The cleanup reads a definition's task's `log` from 2 versions: the one its newest task run pinned,
+  and the one in force. When either holds `log: conversation`, the cleanup cleans the task, because
+  its session can outlive a task run.
 
 ### Rollback
 
@@ -212,7 +215,8 @@ These rows say what the release a rollback returns to does with each thing this 
 - That release refuses a load of your definitions while a file sets `log`, because the definition
   schema is strict, and keeps the last accepted definitions in force. Remove the key to load other
   changes.
-- The design adds no record kind, no migration and no key of `nixie.yaml`.
+- The design adds no record kind and no migration. Its one new key is `log`, in the start input and
+  in a definition file, and it adds no key to `nixie.yaml`.
 - That release cleans no session for the grant on a forget, so a granted task's session can keep a
   record that you forget after the rollback. Before you start that release, close each open started
   task with `log: conversation`, and set `enabled: false` on each definition that sets `log`.
