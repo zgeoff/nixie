@@ -288,6 +288,9 @@ part:
 
 ## Decisions
 
+- **This doc holds the coding adapter's signatures, and the coding design links to it.** An agent's
+  call on 13 Nov 2026: the Events section needs `start` to return `fromCursor`, and one copy of the
+  interface keeps the two docs from drifting.
 - **The adapter package is `coding-atc`, and only it imports `@atcx/contract` and the oRPC client.**
   Rules 2 and 5 of the port rules: an adapter package is named after the interface and the outside
   system, and one package holds all of nixie's code that imports a system's client.

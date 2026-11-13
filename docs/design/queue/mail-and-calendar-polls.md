@@ -419,9 +419,19 @@ order. Step 4 runs once, after the last event.
   record's erasure key.
 - A Forget of the connection keeps every `trigger.polled` record and its erasure key, as the Forget
   of [google connections](google-connections.md) keeps every other record that names the account.
-- To erase one `trigger.polled` record, you forget that record. The
-  [redaction design](redaction.md#part-1-the-forget-takes-every-record-with-its-own-text) lets the
-  record forget take every record with its own text.
+- A `trigger.polled` record is on no thread, so you erase it through the record on a task's thread
+  that names it: a `task.event_wait_met` or a poll `trigger.fired`. `conversation.forget` on that
+  record, by its thread and sequence as
+  [the redaction design](redaction.md#part-1-the-forget-takes-every-record-with-its-own-text) sets,
+  also deletes the erasure key of each `trigger.polled` record it names. The forget runs the session
+  cleanup of every task whose met wait or poll fire names one of those records.
+- `task.event_wait_met` and `trigger.fired` join `forgettableKinds`, and `trigger.polled` joins its
+  exceptions. This lands with the redaction design's Part 1, after the forget reaches a task's
+  session.
+- A polled event that met no wait and fired nothing sits on no task's thread, and has no forget. No
+  model read its text.
+- The release a rollback returns to answers `RECORD_NOT_FOUND` for a forget of either kind, as it
+  does for every kind that Part 1 adds.
 - The payloads, the projections and the cursors hold only Google's IDs, labels, times and statuses.
 - A definition's `from` and `subject` sit in plain text in `trigger.armed` and
   `trigger_definitions`, as they do in the definition's files and in `task_definition_versions`.
@@ -492,6 +502,9 @@ after the resume.
 - **A wait names one thread or one event.** An agent's call on 13 Nov 2026: a match by ID keeps free
   text out of the projections, and covers a reply and an answer to an invitation. Wider filters
   belong to definitions.
+- **A polled event is forgotten through the task record that names it.** An agent's call on 13 Nov
+  2026: the built forget names a record by its thread and sequence, and a met wait or a poll fire is
+  where you see the event.
 - **nixie stores every polled event, matched or not.** An agent's call on 13 Nov 2026: the look back
   needs it, so a reply that lands between a send and the wait still wakes the task.
 - **A resync recovers the gap from the time of the last good poll.** An agent's call on 13 Nov 2026:

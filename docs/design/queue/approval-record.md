@@ -86,10 +86,12 @@ type ProposalState = 'pending' | 'deferred' | 'approved' | 'declined' | 'lapsed'
   consumes the approval: an action in the transaction that queues it, a memory write when its
   version applies, and an internal change with its mutation.
 - `pending` and `deferred` are open, and the other 4 states are closed. A record never reopens a
-  closed row.
-- One exception: when a rule changes after an action's approval and before the action runs, policy
-  moves the row back to `pending` under the same ID with a new hash. The
-  [actions work item](https://linear.app/zgeoff/issue/GEO-1810) owns that check.
+  closed row, with no exception.
+- An approved action that newly falls in the always-ask set before an attempt gets a new row, under
+  a new proposal ID and the `always_ask` risk class, for the same action, as
+  [policy before each attempt](../platform/core/actions.md#policy-before-each-attempt) sets. The
+  [actions work item](https://linear.app/zgeoff/issue/GEO-1810) owns that check, and the record that
+  opens the new row, with its rollback.
 
 | Kind              | Its store                                                                                      | Its states map to the shared row                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -452,6 +454,9 @@ the memory checker.
   self-note still becomes a proposal.
 - **`memory_write` ships in 2 stages.** An agent's call on 13 Nov 2026: every rule that names the
   effect then parses on the release a rollback lands on, so no rollback takes a step for it.
+- **A reopened action gets a new row, and the approved row stays closed.** An agent's call on 13 Nov
+  2026: a row keeps its risk class for life and moves to `approved` once, and the passkey check
+  reads the row's risk class, so only a new `always_ask` row makes that approval take the passkey.
 - **A defer past the deadline is accepted, and the row lapses at the deadline.** An agent's call on
   13 Nov 2026: the smaller rule, and the return timer already leaves a closed row closed.
 

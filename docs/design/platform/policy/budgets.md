@@ -66,17 +66,17 @@ and a looping search hits it long before it costs much.
 
 ## Model cost
 
-Model use has 3 measures, and each limit below sets all 3: dollars, tokens and turns. The
-[counting proxy](#the-hard-spending-stop) counts tokens from each response, and nixie prices them
-with the role's [model profile](../core/models.md#cost), never with the cost the Agent SDK reports.
-A token count includes input, cache writes, cached input and output. **Why:** dollars bound what a
-metered route costs, tokens bound the load on a flat subscription, where dollars are notional, and
-turns catch a loop whatever the price.
+Model use has 3 measures: dollars, tokens and turns. Each limit below sets all 3, except a job run,
+which sets no tokens. The [counting proxy](#the-hard-spending-stop) counts tokens from each
+response, and nixie prices them with the role's [model profile](../core/models.md#cost), never with
+the cost the Agent SDK reports. A token count includes input, cache writes, cached input and output.
+**Why:** dollars bound what a metered route costs, tokens bound the load on a flat subscription,
+where dollars are notional, and turns catch a loop whatever the price.
 
 | Limit          | Dollars | Tokens      | Turns  | Other  |
 | -------------- | ------- | ----------- | ------ | ------ |
 | Per worker run | $2      | 2,000,000   | 25     | 10 min |
-| Per job run    | $5      | 4,000,000   | 100    |        |
+| Per job run    | $5      | none        | 100    |        |
 | Per day        | $60     | 80,000,000  | 1,000  |        |
 | Per month      | $600    | 600,000,000 | 20,000 |        |
 
@@ -84,7 +84,9 @@ turns catch a loop whatever the price.
   worker run when the proxy's dollar or token count for its imp reaches the limit. A worker run's
   dollars also count toward the dollar limit of the task that called it.
 - **Per job run.** The count covers every turn and worker in the job run. The runner checks it
-  before each step and stops the job run with a report when a limit is reached.
+  before each step and stops the job run with a report when a limit is reached. Its dollars price
+  the same tokens, and the deployment's token limits bound a flat subscription, so it sets no token
+  limit.
 - **Per deployment,** a day and a month. These limits feed the hard spending stop.
 
 Each default is at least about twice the heaviest use the

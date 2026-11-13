@@ -20,9 +20,9 @@ An action enters the queue in 2 ways, under [0002](../../../decisions/0002-appro
 - **An approved proposal.** The tool gets ask and creates a proposal under that ID. When you
   approve, nixie queues the action under the same ID.
 
-The action ID is the proposal ID, the queue key and the idempotency key, so one action keeps one
-identity from the tool call to the provider. Each action also holds the action hash, which
-[policy approvals](../policy/approvals.md) defines.
+The action ID is the ID of the action's first proposal, the queue key and the idempotency key, so
+one action keeps one identity from the tool call to the provider. Each action also holds the action
+hash, which [policy approvals](../policy/approvals.md) defines.
 
 An allowed call waits up to 10 s by default for its outcome inside the turn, then returns "queued as
 `<id>`", and the outcome reaches the task's inbox for its next turn.
@@ -40,9 +40,10 @@ checks that too.
 
 The approval is consumed in the transaction that queues the action. That transaction checks that the
 action hash matches the approved proposal, marks the approval used with the action ID, and inserts
-the pending action, so one approval creates one queue entry. Every attempt of that action, retries
-included, runs under that one approval. Your choice to retry an unknown action is its own checked
-action with its own record.
+the pending action, so one approval creates one queue entry. The approval of a reopened action, in
+[policy before each attempt](#policy-before-each-attempt), releases that same entry and inserts
+none. Every attempt of that action, retries included, runs under that one approval. Your choice to
+retry an unknown action is its own checked action with its own record.
 
 ## Policy before each attempt
 
@@ -52,7 +53,10 @@ runs through the rules, the always-ask set and the destination limits again befo
 
 - **Deny** fails the action with the rule's ID, and the reason goes to the task's inbox.
 - **Ask, on an approved action,** goes ahead, because the approval answered that ask. One exception:
-  an action that newly falls in the always-ask set returns to a proposal under the same ID.
+  an action that newly falls in the always-ask set waits on a new proposal. The approved row stays
+  closed, and nixie opens a new row under a new proposal ID, with the `always_ask` risk class, for
+  the same action ID. Its approval takes the passkey and lets the action's next attempt start; a
+  decline or a lapse fails the action.
 - **Ask, on an action a rule allowed,** returns the action to a proposal under the same ID.
 - **Allow** goes ahead.
 

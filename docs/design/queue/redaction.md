@@ -178,8 +178,9 @@ log.forget({ thread: 'conversation', record: '<the record as the session history
 - In the thread view, a removed tool record shows its tool name and outcome with no input or
   content, as the built thread view shows any tool record whose key is gone.
 - `forgettableKinds` holds every record kind with an erasable field, except a kind that holds a
-  moment's title, note or reflection and a memory item's own kinds. A test fails when a codec adds
-  an erasable field to a kind that is in neither list.
+  moment's title, note or reflection, a memory item's own kinds, and `trigger.polled`, which
+  [a forget of the task record that names it](mail-and-calendar-polls.md#free-text-and-erasure)
+  takes. A test fails when a codec adds an erasable field to a kind that is in neither list.
 - A forget refuses a queued action that has not run with `ACTION_NOT_FINISHED`, so an action never
   runs with its text gone. Once the action has run or you cancel it, the forget takes it.
 - The release before this part returns `RECORD_NOT_FOUND` for the added kinds.

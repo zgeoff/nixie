@@ -254,6 +254,11 @@ is one of those permissions. `CallDestination` is defined in the decision point 
   guests differ, such as a new Cc on a reply to all, it answers `refused` with
   `destinations_changed`. The action fails and sends to none of them, and the model can propose
   again.
+- The change and cancel tools with guests send the `etag` of the attempt's read in an `If-Match`
+  header, so Google refuses the write with 412 when the event changed after that read. On a 412 the
+  connector reads the event again: when the guests differ, it answers `refused` with
+  `destinations_changed`; otherwise it answers `retry`, and the next attempt reads afresh. A create
+  needs no precondition, because its guests come from its input.
 
 ### The send card
 
@@ -504,6 +509,9 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
   agent's call on 13 Nov 2026: a duplicate mail to someone outside is worse than asking you once.
 - **Markers are one property per action, 10 kept.** An agent's call on 13 Nov 2026: a single marker
   would let a later action hide an earlier one, and Drive allows 30 private properties.
+- **A with-guests change or cancel writes only the event version its attempt read.** An agent's call
+  on 13 Nov 2026: a guest added between the read and the write would otherwise get Google's email
+  unchecked, and Calendar refuses an update or delete whose `If-Match` etag is stale.
 - **Recipients and guests come from Google, never from the model's text.** The decision point's
   reply target rule, extended to the event a with-guests tool acts on.
 - **The picker runs on a browser token of its own.** An agent's call on 13 Nov 2026: the

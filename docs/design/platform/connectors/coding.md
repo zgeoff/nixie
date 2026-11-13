@@ -28,24 +28,10 @@ credentials. nixie defines the interface, and each adapter owns how a session ru
 credentials, lifecycle and agent harness. A coding runner drives one adapter, and its key is the
 adapter's ID.
 
-```ts
-interface CodingAdapter {
-  id: string; // the runner key, such as 'atc'
-  start(brief: SessionBrief, key: string): Promise<AdapterReply<SessionRef>>;
-  status(session: SessionRef): Promise<AdapterReply<SessionStatus>>;
-  message(
-    session: SessionRef,
-    text: string,
-    key: string,
-  ): Promise<AdapterReply<{ messageRef: string }>>;
-  results(session: SessionRef): Promise<AdapterReply<SessionResult>>; // the last finished turn's final reply
-  stop(session: SessionRef): Promise<AdapterReply<{ stopped: boolean }>>;
-  events(
-    cursor: JSONValue | null,
-    signal: AbortSignal,
-  ): AsyncIterable<{ cursor: JSONValue; events: SessionEvent[] }>;
-}
-```
+The interface has 6 calls: `start`, `status`, `message`, `results`, `stop` and `events`.
+[The coding adapter contract](../../queue/coding-session-runner/atc.md#the-coding-adapter) holds
+their signatures, and `start` answers with the session and the event cursor read just before the
+spawn.
 
 A session is a task, so it shows on the dashboard and the conversation routes your messages to it.
 Starting a session is the `task.start/<key>` variant, which declares `coding_start`, and a message

@@ -90,9 +90,10 @@ exception: an unchanged "always allow" on a routine proposal stays a tap, as
 
 Your answer is a checked action: the client sends the proposal ID and the action hash it showed, and
 nixie accepts the answer only when the hash matches the proposal's current hash and the answer came
-from your identity on that channel. **Why:** a proposal can return to pending under the same ID with
-a new hash, such as when a rule narrows before an attempt, so a stale screen never approves a
-different operation.
+from your identity on that channel. **Why:** the kind's current hash can differ from the hash a
+screen showed, so a stale screen never approves a different operation. A closed proposal never
+reopens: an approved action that newly falls in the always-ask set waits on a new proposal, as
+[policy before each attempt](../core/actions.md#policy-before-each-attempt) sets.
 
 The approval record holds the proposal ID, the action hash, the rule hash for an "always allow", the
 answer, the channel and device, the check used, and the chosen option. The host checks the current

@@ -168,13 +168,13 @@ nixie spend raise --turns 3000
 ### nixie's config
 
 ```yaml
-# deployment config. Built: models.limits.taskRun with turns and dollars. This design adds the rest.
+# deployment config. Built: models.limits.taskRun, with turns and dollars only. This design adds the rest.
 models:
   limits:
     workerRun: { dollars: 2, tokens: 2000000, turns: 25, minutes: 10 }
     taskRun:
-      default: { turns: 25, dollars: 2, tokens: 4000000 }
-      max: { turns: 100, dollars: 10, tokens: 16000000 }
+      default: { turns: 25, dollars: 2 }
+      max: { turns: 100, dollars: 10 }
     day: { dollars: 60, tokens: 80000000, turns: 1000, turnCap: 2000 }
     month: { dollars: 600, tokens: 600000000, turns: 20000 }
 spendStop:
@@ -434,10 +434,10 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 - The runner passes `workerRun.turns` to the SDK as `maxTurns`, and ends the worker run at
   `workerRun.minutes`. The proxy ends it at its sandbox's dollar and token limits.
 - At the end of a worker run, the server reads `GET /sandboxes/<name>`. The worker's result record
-  holds those dollars and tokens, and they count toward the calling task run's limits.
-- A task run's tokens count from the same records as its dollars, as
-  [started tasks](../../architecture/core/started-tasks.md#limits) builds them. The schema refuses a
-  `default` that is above its `max` in any one measure.
+  holds those dollars and tokens, and its dollars count toward the calling task run's dollar limit.
+- A task run has no token limit. Its meters are turns and dollars, as
+  [task runs](task-runs/records.md#limits-a-raise-and-call-caps) sets, and the day and month token
+  limits bound its tokens. The schema refuses a `default` that is above its `max` in either measure.
 - The memory writer, the checker and the consolidator come under the day and month limits, and under
   no task run or worker run limit.
 
@@ -536,6 +536,10 @@ To roll back:
 - **Turns stay in nixie, with a cap in nixie's config.** An agent's call on 13 Nov 2026: the proxy
   sees requests, never turns, and the proxy's dollar and token caps already bound what any turn
   costs.
+- **A task run has no token limit.** An agent's call on 13 Nov 2026: nixie's pre-step meters count
+  only turns and dollars, the proxy limits only a worker's sandbox, and the built raise names only
+  turns and dollars, so a task run token limit would have no enforcer and no raise. The dollar limit
+  prices the same tokens, and the day and month token limits bound a flat subscription.
 - **One proxy for the deployment, with a count per sandbox.** An agent's call on 13 Nov 2026: the
   day and month counts must cover every sandbox, and a proxy per sandbox would split them.
 - **The host command writes the override file.** An agent's call on 13 Nov 2026: the server holds
