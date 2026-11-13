@@ -12,7 +12,8 @@ returns its result at once. A change or a send runs as an [action](../platform/c
 the action queue, and the [decision point](../platform/policy/decision-point.md) decides it before
 every attempt. When an attempt's outcome is unknown, a read-only check at Google settles it, and
 nixie never repeats the action blind. A sent mail carries its action ID in its `Message-ID`, so a
-check of the Sent folder settles an unknown send.
+check of the Sent folder can find an unknown send. When it finds none, nixie asks you and never
+sends again on its own.
 
 The Google connection design owns the tokens, the consent, the scopes and the setup steps. The
 [connector interface](../platform/connectors/connector.md) owns the shape of a connector action, and
@@ -31,7 +32,7 @@ flowchart LR
   dp -->|allow| queue
   queue -->|"3. send, Message-ID holds the action ID"| gmail
   queue -->|"4. unknown: check after 5 min"| sent[Sent-folder check]
-  sent -->|"found, not found, inconclusive"| queue
+  sent -->|"found, inconclusive"| queue
 ```
 
 In this path, the tool endpoint first reads the message to learn whom the reply reaches, the
@@ -320,21 +321,22 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 | What the check sees                                             | It answers                           |
 | --------------------------------------------------------------- | ------------------------------------ |
 | Either way finds a message whose header holds the Message-ID    | found; this row wins over the others |
-| Both ways finish and find none                                  | not found                            |
+| Both ways finish and find none                                  | inconclusive                         |
 | The list holds more than 200 messages                           | inconclusive                         |
 | Any call fails, or Gmail answers in a way the check cannot read | inconclusive                         |
 
 - Found makes the action done, with the found message's ID and thread as its result.
-- Inconclusive brings the action to you, as for every check.
-- When the check finds the mail, nixie never sends it again. Only not found, after the 5 minutes,
-  returns the action to pending, and the retry sends the same message with the same Message-ID.
+- Inconclusive brings the action to you, as for every check. Its card says "nixie can't tell whether
+  this mail went out".
+- The mail check never answers not found, so nixie never sends a mail again on its own. When you
+  send it again from the card, the attempt sends the same message with the same Message-ID.
 - The check reads both headers, because Gmail can replace a `Message-ID` that a client set and keep
   the old one in `X-Google-Original-Message-ID`. Google does not document which header it keeps, so
   the check finds the mail whichever header Gmail keeps.
 - A sent mail carries no other header that names nixie or the action.
-- When someone deletes the Sent copy for good before the check runs, the check answers not found,
-  and nixie sends the mail again. Gmail keeps no other trace of a sent mail that the check could
-  read.
+- When someone deletes the Sent copy for good before the check runs, the check finds none. It cannot
+  tell that case from a mail that never went out, because Gmail keeps no other trace of a sent mail.
+  So both ways finding none is inconclusive, never not found.
 
 ### Reconciliation of the other changes
 
@@ -499,8 +501,9 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
   arrives in your mail, so an answer to it needs no more permission than a reply.
 - **The action ID rides in `Message-ID` alone.** An agent's call on 13 Nov 2026: the check needs one
   header, and a header that names nixie would tell each recipient you use an assistant.
-- **The Sent-folder check waits 5 minutes, and every doubt is inconclusive.** An agent's call on 13
-  Nov 2026: not found sends the mail again, so the check says it only when both ways finish clean.
+- **The Sent-folder check waits 5 minutes, and never answers not found.** An agent's call on 13 Nov
+  2026: an empty Sent folder can mean a mail that never went out or a copy deleted for good, and a
+  second send to a person cannot be undone, so every doubt goes to you.
 - **Markers are one property per action, 10 kept.** An agent's call on 13 Nov 2026: a single marker
   would let a later action hide an earlier one, and Drive allows 30 private properties.
 - **Recipients and guests come from Google, never from the model's text.** The decision point's
