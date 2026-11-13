@@ -4,25 +4,39 @@
 - **Work items:** [the Telegram push notifier](https://linear.app/zgeoff/issue/GEO-1812), after
   [the Telegram round-trip spike](https://linear.app/zgeoff/issue/GEO-252)
 
-When something waits for you and no client shows nixie, a Telegram bot that you register tells you
-so. The notice holds a count, a fixed sentence and a link to the client, and nothing else, because
-Telegram keeps a bot chat's history on its servers. The channels module follows the event log,
-decides when a notice goes out and how loud it is, and hands the notice to the Telegram adapter,
-which only talks to the Bot API.
+When a proposal or an unknown outcome waits for your answer and no client has nixie on screen, a
+Telegram bot that you register sends a notice. The notice holds a count, a fixed sentence and a link
+to the client, and nothing else, because Telegram keeps a bot chat's history on its servers. The
+channels module follows the event log, decides when a notice goes out and whether it buzzes, and
+hands it to the Telegram adapter. The adapter does nothing but call the Bot API.
 
 [The channel adapter](../platform/channels/channel-adapter.md) holds the interface, the identity
-record and the reasons for the push notifier. This design gives the contracts that build it.
+record and the reasons for the push notifier. This design gives the contracts that the push notifier
+is built from.
 
 Terms:
 
-- An **item** is one entry of `approvals.listItems` outside the deferred group, as
-  `docs/design/queue/approval-record.md` defines the list.
-- A **trigger** is a record that can change what a notice says: a proposal created, answered,
-  lapsed, withdrawn or returned from a defer, an `action.outcome` with the outcome `unknown`, and
-  `spend.stop_tripped` and `spend.stop_cleared` from `docs/design/queue/budgets-and-hard-stop.md`.
+- A **proposal** is a tool call or a change that waits for your answer, with one row in the approval
+  record (`docs/design/queue/approval-record.md`). Its risk class is `routine`, `always_ask` or
+  `lifting`, as [risk class](../platform/policy/approvals.md#risk-class) defines, and a memory write
+  is a proposal of the kind `memory_write`.
+- A **defer** puts a proposal aside until a time you pick. The proposal then returns as new.
+- An **item** is one waiting proposal or unknown outcome, as `approvals.listItems` lists them. A
+  deferred proposal is no item until it returns.
+- An **unknown outcome** is an action that may or may not have reached its provider, as
+  [actions](../../architecture/core/actions.md#outcomes) defines.
+- **The stop** is the hard spending stop of `docs/design/queue/budgets-and-hard-stop.md`: at a
+  spending limit, nixie pauses every task until the limit resets or you raise it.
+- A **trigger** is a record that can change a notice: a proposal created, answered, deferred,
+  returned, lapsed or withdrawn; an `action.outcome` with the outcome `unknown`; and
+  `spend.stop_tripped` and `spend.stop_cleared`.
 - The **live notice** is the newest notice the bot sent. nixie edits it, or sends a new one that
   takes its place.
-- The **Telegram row** is the identity record row of the paired Telegram account.
+- The **Telegram row** is the row of the identity record, the `identities` table of
+  [device sessions](../../architecture/channels/api.md#device-sessions), for the paired Telegram
+  account.
+- A record **on no thread** belongs to no task's thread, so no task reads it and the live stream
+  never shows it ([the event log](../../architecture/core/event-log.md)).
 
 ## Shape
 
@@ -141,7 +155,7 @@ const pairing = await client.channels.pair({ channel: 'telegram', clientActionID
 
 // The bot sends the confirm code into the chat that claimed the link. You type it into the client.
 const paired = await client.channels.confirmPairing({
-  pairingID: pairing.pairingID, // the pairing this client started; the client keeps it
+  pairingID: pairing.pairingID, // from channels.pair; any live device session may confirm with it
   confirmCode: '402917',
   clientActionID,
 });
@@ -157,7 +171,8 @@ nixie channels revoke <id>     # revokes one channel row; a device session refus
 ```
 
 ```sql
--- The same migration. Apart from enrolment_codes, so a pairing code never enrols a device.
+-- The same migration. A table of its own, kept separate from the device enrolment codes, so a
+-- pairing code never enrols a device.
 create table pairing_codes (
   pairing_id   text primary key,           -- random, from crypto.randomUUID()
   code_hash    text not null unique,       -- SHA-256 of the code; nixie never keeps the code
@@ -220,7 +235,8 @@ channels:
 
 - With `channels.telegram` left out, no Telegram adapter starts, and `channels.pair` answers
   `NOT_CONFIGURED`.
-- `credential` accepts only the `deployment:<name>` form, as the search key does.
+- The config schema accepts only the `deployment:<name>` form for `credential`, as it does for the
+  search key.
 - The notifier reads quiet hours from the top-level `quiet_hours` that
   `docs/design/queue/approval-record.md` owns, and has no quiet hours of its own.
 
@@ -231,7 +247,7 @@ channels:
 - A notice holds only the count, one sentence from `NoticeSentence` and the link. A test renders
   every notice the notifier can build and finds no task name, person, action, amount, time or record
   text in it.
-- The count is the number of items. A deferred row counts in no notice.
+- The count is the number of items, so a deferred proposal never counts.
 - While the stop stands, the sentence is `stop` and the link is the client's root, whatever the
   count. When the count drops to 0 with no stop, the sentence is `nothing`.
 - The link never carries an item ID, so the bot's chat never holds an ID of one item.
@@ -246,32 +262,35 @@ acts on what it finds then:
 | --------------------------------------------------------------- | ----- | ------------------- |
 | An `action.outcome` with the outcome `unknown`                  | loud  | yes                 |
 | `spend.stop_tripped`                                            | loud  | yes                 |
-| A new `always_ask` or `lifting` row                             | loud  | no                  |
-| `proposals.returned`, a row back from a defer                   | loud  | no                  |
-| A new `routine` or `memory_write` row                           | quiet | n/a                 |
+| A new `always_ask` or `lifting` proposal                        | loud  | no                  |
+| `proposals.returned`, a proposal back from a defer              | loud  | no                  |
+| A new `routine` proposal, or a new `memory_write` proposal      | quiet | n/a                 |
 | An answer, a lapse, a withdrawal, a defer, `spend.stop_cleared` | quiet | n/a                 |
 
-- A window holds the loudest level among its triggers.
+- A window takes the loudest level among its triggers. A loud window breaks through quiet hours when
+  any of its triggers does.
 - A loud notice sends a new, buzzing message, which becomes the live notice.
 - A quiet notice edits the live notice. When no live notice exists, a quiet notice for a new item
   sends a new message with `disable_notification`. A quiet notice that only lowers the count never
   sends a new message.
 - When a client is present at the close of the window, the notifier sends nothing new and only edits
   the live notice. The items of that window never cause a loud notice later.
-- Inside quiet hours, a loud window that does not pass quiet hours edits the live notice. At the end
-  of quiet hours, the notifier sends one loud notice when any item from those windows still waits.
+- Inside quiet hours, the notifier sends a loud window that does not break through as a quiet edit
+  of the live notice. When quiet hours end, the notifier sends one loud notice if any item from
+  those windows still waits.
 - nixie sends no reminder: an item that a notice has counted never causes a second loud notice,
   except when it returns from a defer.
-- A paired Telegram row is needed for any push. With none, the notifier reads no items and sends
-  nothing.
+- With no live Telegram row, the notifier reads no items and sends nothing.
 
 ### Telegram failures
 
-- `edit_failed` sends a new quiet message in place of the edit, which becomes the live notice.
-- `retry` waits `afterMs`, then sends the newest notice once. A newer window replaces a notice that
-  waits, so a burst of failures never sends a stale count.
-- `gone` deletes the live notice row and logs a warning. The Telegram row stays paired, so you can
-  unblock the bot without a new pairing.
+- On `edit_failed`, the notifier sends a new quiet message in place of the edit, and that message
+  becomes the live notice.
+- On `retry`, the notifier waits `afterMs` and sends the newest notice once. When that send fails
+  too, the notice waits for the next window. A newer window replaces a notice that waits, so a burst
+  of failures never sends a stale count.
+- On `gone`, the notifier deletes the live notice row and logs a warning. The Telegram row stays
+  paired, so you can unblock the bot without a new pairing.
 - The adapter refuses to start when `getMe` answers 401, and logs the error without the token. The
   server starts without the Telegram adapter.
 
@@ -280,85 +299,97 @@ acts on what it finds then:
 - The token reaches the adapter and no other part of nixie.
 - The Bot API puts the token in the request path, so the adapter never logs a request URL, and each
   error it logs or returns holds the method name and the status only.
-- No record, error, health report or notice holds the token.
+- The token never appears in a record, an error, a health report or a notice.
 
 ### Inbound updates
 
 - The adapter calls `getUpdates` with a long-poll timeout, one call at a time, and asks only for
   `message` updates. Telegram therefore needs no inbound route to nixie.
 - The adapter keeps the update offset in memory. After a restart, Telegram sends again each update
-  the adapter had not confirmed. A replayed `/start` meets a claimed code and refuses, and a
-  replayed text gets the fixed reply again.
-- An update from a chat other than a private chat gets a refusal record and no reply.
-- `/start <code>` from a private chat calls `claimPairing`. On a confirm code, the bot replies with
-  the fixed text "Type this code into nixie to pair: " and the code. On `refused`, the adapter
-  writes a refusal and sends no reply.
-- Any other text from the Telegram row's account gets one fixed reply: "nixie reads messages only in
-  the app:" and the client's link. The adapter keeps none of the text. Each reply moves the row's
-  last seen time.
-- A text from any other account gets an `identity.refused` record, at most one per external ID per
-  refusal interval, and no reply, as [refusals](../../architecture/channels/api.md#refusals) builds
-  them. The external ID is `${from.id}:${chat.id}`.
+  the adapter had not confirmed. nixie refuses a replayed `/start`, because its code is already
+  claimed, and the bot sends a replayed text the fixed reply again.
+- Every refusal below is an `identity.refused` record with the channel `telegram` and no content.
+  nixie writes at most one per external ID per hour, as
+  [refusals](../../architecture/channels/api.md#refusals) describes, and the bot never replies to a
+  refused update.
+- The external ID of an update is `${from.id}:${chat.id}`.
+- nixie refuses an update from any chat other than a private chat.
+- `/start <code>` from a private chat calls `claimPairing`. When the claim returns a confirm code,
+  the bot replies with the fixed text "Type this code into nixie to pair: " and the code. When it
+  returns `refused`, the adapter writes a refusal.
+- The bot answers any other text from the Telegram row's account with one fixed reply: "nixie reads
+  messages only in the app:" and the client's link. The adapter keeps none of the text. Each reply
+  moves the row's last seen time.
+- nixie refuses a text from any other account.
 
 ### Pairing
 
 - A code is 32 random characters from the base64url alphabet, so the `start` payload fits Telegram's
   limit of 64 characters from `A-Z`, `a-z`, `0-9`, `_` and `-`.
-- Pairing takes 2 steps, so a leaked link alone never pairs an account. The link proves which chat
-  claims the code. The confirm code, which only that chat receives, proves that the person at the
-  signed-in client reads that chat.
-- A code lapses 10 minutes after its issue, and the confirm must land within the same 10 minutes. A
-  lapsed, used or unknown code refuses the claim.
-- The first claim of a code wins. It stores the chat's external ID and the hash of a 6-digit confirm
-  code from a random source. A second claim of the same code, from any chat, refuses.
-- A confirm names its pairing ID and checks the confirm code against that pairing alone. A confirm
-  code takes at most 5 tries. A wrong try counts, and the fifth wrong try spends the code, so a new
-  pairing needs a new link.
+- Pairing takes 2 steps, so a leaked link alone never pairs an account. nixie records the first chat
+  that sends `/start` with the code, and sends the confirm code to that chat alone. Typing the
+  confirm code into a signed-in client shows that the person at the client reads that chat.
+- A code lapses 10 minutes after its issue, and the confirm must land within the same 10 minutes.
+  nixie refuses a claim with a lapsed, used or unknown code.
+- The first claim of a code wins. nixie stores the chat's external ID and the hash of a 6-digit
+  confirm code from a random source. nixie refuses every later claim of the same code, from any
+  chat.
+- A confirm names its pairing ID, and nixie checks the confirm code against that pairing alone. A
+  confirm code takes at most 5 tries. A wrong try counts, and the fifth wrong try spends the code,
+  so a new pairing needs a new link.
 - `confirmPairing` from any live device session, or `nixie channels confirm`, pairs the claimed
-  chat. In one transaction it marks the code used, creates the Telegram row or reuses the row with
-  the same external ID, sets `paired_at`, clears `revoked_at`, points `paired_sequence` at the new
-  `channels.paired` record, and labels the row "Telegram". The bot then sends the fixed text
+  chat. In one transaction, nixie marks the code used, creates the Telegram row or reuses the row
+  with the same external ID, sets `paired_at`, clears `revoked_at`, points `paired_sequence` at the
+  new `channels.paired` record, and labels the row "Telegram". The bot then sends the fixed text
   "Paired. nixie sends its notices here."
-- Nothing changes before the confirm. A claim writes no identity row and revokes nothing.
+- A claim alone changes nothing: it writes no identity row and revokes nothing.
 - One Telegram row is live at a time. A confirm that pairs another account revokes the live row in
   the same transaction, with the reason `repaired`.
-- A Telegram row has no token hash and never lapses at the session idle limit. The device session
-  reads, the first enrolment code and the device revoke keep their filter on the `client` channel.
+- A Telegram row has no token hash, and nixie never lapses it after the idle limit of device
+  sessions. The API's code that lists, labels and revokes device sessions, and the code that issues
+  the first enrolment code, keeps reading only rows of the `client` channel.
 - `nixie channels revoke` sets `revoked_at` and writes `channels.revoked`. A revoked row resolves to
-  nobody, so its next text gets a refusal and no reply, and the notifier sends it nothing.
+  nobody, so nixie refuses its next text and the notifier sends it nothing.
 - A retry of `channels.pair` with the same client action ID answers with a fresh code that keeps the
   first code's lapse time, as the enrolment code issue does in
   [checked actions](../../architecture/channels/api.md#checked-actions).
 
 ### Resets
 
-- A reset keeps each live Telegram row, as it keeps each live device session, whatever its last seen
-  time.
+- A [reset](../../architecture/core/event-log.md#the-reset) empties the log and keeps each live
+  device session. It keeps each live Telegram row too, whatever the row's last seen time.
 - A reset deletes every pairing code and every `push_notices` row, so the next push sends a new
   message.
 
 ### Rollback
 
-The release before reads this design's changes this way:
+The release before is the nixie release that a rollback returns to. It reads this design's changes
+this way:
 
-| The change                                                    | The release before                                                                                         |
-| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `channels.telegram` in `config.yaml`                          | refuses to start: the schema is strict. Remove the `channels` key before the rollback                      |
-| the migration: `push_notices` and `pairing_codes`             | never reads either table. The migration only adds tables, so the oldest reader does not change             |
-| a Telegram row in `identities`                                | never meets it in its session reads, which filter on `client`. A reset keeps it only within the idle limit |
-| `channels.code_issued`, `channels.paired`, `channels.revoked` | never meets them on a thread: each is on no thread                                                         |
-| `identity.refused` with the channel `telegram`                | reads it as it reads any refusal                                                                           |
-| `sessions.shown`                                              | answers `NOT_FOUND`, and the client ignores the error                                                      |
-| `channels.pair`, `channels.confirmPairing`                    | answers `NOT_FOUND`                                                                                        |
+| The change                                                    | The release before                                        |
+| ------------------------------------------------------------- | --------------------------------------------------------- |
+| `channels.telegram` in `config.yaml`                          | refuses to start, because the config schema is strict     |
+| the migration: `push_notices` and `pairing_codes`             | never reads either table                                  |
+| a Telegram row in `identities`                                | never meets it in its session reads                       |
+| a Telegram row at a reset                                     | keeps it only when it was last seen within the idle limit |
+| `channels.code_issued`, `channels.paired`, `channels.revoked` | never meets them on a thread, since each is on no thread  |
+| `identity.refused` with the channel `telegram`                | reads it as it reads any refusal                          |
+| `sessions.shown`                                              | answers `NOT_FOUND`, which the client ignores             |
+| `channels.pair`, `channels.confirmPairing`                    | answers `NOT_FOUND`                                       |
+
+- The migration only adds tables, so the [oldest reader](../../architecture/core/database.md) of the
+  database does not change.
+- Before the rollback, remove the `channels` key from `config.yaml`. Expect: the release before
+  starts, and no notice goes out.
 
 ## Decisions
 
-- **Quiet hours are the top-level `quiet_hours`, shared with Defer.** The interim for the open
+- **Quiet hours are the top-level `quiet_hours`, which a defer reads too.** The interim for the open
   question on quiet hours in
-  [the approval record work item](https://linear.app/zgeoff/issue/GEO-1804). When the owner keeps
-  quiet hours under Telegram, only the key path changes, to `channels.telegram.quiet_hours`.
-- **The channels module decides every notice, and the adapter only talks to the Bot API.** An
-  agent's call on 13 Nov 2026: a module never imports an adapter, and the content-free rule then
+  [the approval record work item](https://linear.app/zgeoff/issue/GEO-1804). If the owner decides to
+  put quiet hours under Telegram, only the key path changes, to `channels.telegram.quiet_hours`.
+- **The channels module decides every notice, and the adapter does nothing but call the Bot API.**
+  An agent's call on 13 Nov 2026: a module never imports an adapter, and the content-free rule then
   lives in one module with one test.
 - **The notifier follows the log, and no module calls it.** An agent's call on 13 Nov 2026: the stop
   records are on no thread and the proposals have several writers, and the log already carries each
