@@ -5,10 +5,17 @@ export interface CleanupCandidate {
   readonly setup: TaskSetup | null;
 }
 
-// Only a task that reads memory can hold a forgotten item in its session.
-export function pickCleanedTaskIDs(candidates: readonly CleanupCandidate[]): readonly string[] {
+// A task is picked for 1 of 2 reasons: it reads memory, so it can hold a forgotten item in its
+// session, or its thread holds the forgotten record, so its session holds that record's text.
+export function pickCleanedTaskIDs(
+  candidates: readonly CleanupCandidate[],
+  recordThread: string | null,
+): readonly string[] {
   return candidates
-    .filter((candidate) => candidate.setup?.options?.memory === 'read')
+    .filter(
+      (candidate) =>
+        candidate.setup?.options?.memory === 'read' || candidate.taskID === recordThread,
+    )
     .map((candidate) => candidate.taskID);
 }
 

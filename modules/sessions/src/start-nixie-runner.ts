@@ -49,9 +49,10 @@ import type { SessionGuard } from './make-session-guard';
 import { makeSessionGuard } from './make-session-guard';
 import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
-import { isGuestPurged, pickCleanedTaskIDs } from './pick-cleaned-task-ids';
+import { isGuestPurged } from './pick-cleaned-task-ids';
 import { planTaskStep } from './plan-task-step';
 import { planTaskTurnEnd } from './plan-task-turn-end';
+import { readCleanedTaskIDs } from './read-cleaned-task-ids';
 import { readTaskUsage } from './read-task-usage';
 import { runConversationStep } from './run-conversation-step';
 import { runGuestPurge } from './run-guest-purge';
@@ -544,15 +545,9 @@ async function runTaskSessionCleanup(
   runner: TaskRunner,
   cause: SessionCleanupCause,
 ): Promise<void> {
-  const context = runner.options.context;
+  const cleaned = await readCleanedTaskIDs(runner.options.context, cause);
 
-  const open = await readStartedTaskIDs(context, { end: 'open' });
-
-  const candidates = await Promise.all(
-    open.map(async (taskID) => ({ taskID, setup: await readTaskSetup(context, taskID) })),
-  );
-
-  for (const taskID of pickCleanedTaskIDs(candidates)) {
+  for (const taskID of cleaned) {
     await resolveTaskGuard(runner, taskID).withInvalidation(() =>
       cleanTaskSession(runner, taskID, cause),
     );

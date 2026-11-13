@@ -887,6 +887,68 @@ test('it leaves the session of a task that reads no memory as it is on a forget'
   expect(ctx.guest.purged).toStrictEqual([]);
 });
 
+test('it purges and invalidates the session of a task that reads no memory when a forgotten record is on its thread', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { memory: 'none' });
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const replies = await ctx.readKinds('model.reply');
+
+  const recordSequence = replies.find((record) => record.thread === taskID)?.sequence ?? 0;
+
+  await runner.cleanupSessions({ recordSequence });
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+  const completed = await ctx.readKinds('model.session_cleanup_completed');
+
+  const [, second] = ctx.guest.turns;
+
+  expect(recordSequence).toBeGreaterThan(0);
+
+  expect(invalidated.map((record) => [record.thread, record.payload])).toStrictEqual([
+    [taskID, { recordSequence }],
+  ]);
+
+  expect(completed.map((record) => [record.thread, record.payload])).toStrictEqual([
+    [taskID, { recordSequence }],
+  ]);
+
+  expect(ctx.guest.purged).toHaveLength(1);
+  expect(second?.resume).toBeNull();
+});
+
+test('it leaves a closed task with no sandbox and no invalidation when a forgotten record is on its thread', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { memory: 'none' });
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const replies = await ctx.readKinds('model.reply');
+
+  const recordSequence = replies.find((record) => record.thread === taskID)?.sequence ?? 0;
+
+  await writeTaskControl(ctx.context, { taskID, control: 'close' });
+
+  await runner.cleanupSessions({ recordSequence });
+
+  await waitForCondition(async () => {
+    const sandboxes = await ctx.sandboxes.list(taskID);
+
+    return sandboxes.length === 0;
+  });
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+
+  expect(invalidated).toStrictEqual([]);
+});
+
 test('it pauses a task at its turn limit with no turn, and tells its starter in a limit notice', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();

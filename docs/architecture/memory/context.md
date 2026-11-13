@@ -237,8 +237,10 @@ record it ran for. The cleanup runs in order:
 6. It commits a session-cleanup-completed record.
 
 The cleanup then runs the same steps on the thread and in the sandbox of each open
-[started task](../core/started-tasks.md) that reads memory, one task at a time. A task that reads no
-memory never received an item, so the cleanup leaves its session as it is.
+[started task](../core/started-tasks.md) that reads memory, one task at a time. A forget of a record
+also cleans the open task whose thread holds the record, whatever its memory setting, because that
+task's session holds the record's text. A task that reads no memory never received an item, so a
+memory item forget or a moment destroy leaves its session as it is.
 
 A turn and a cleanup never overlap: a turn that starts while a cleanup runs waits for it, and each
 cleanup waits for the one before it. Turns never wait for each other, because a runner that took a
