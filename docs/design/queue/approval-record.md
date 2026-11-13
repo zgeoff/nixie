@@ -359,8 +359,10 @@ so it declares `memory_write` too. These calls declare the `note` effect:
 `memory_write` ships in 2 stages, one release apart, because a release refuses to parse a rule that
 names an effect it does not know:
 
-1. The rule format, the rules core and the effect table accept `memory_write`. No tool declares it,
-   so a rule on it matches nothing.
+1. The rule format, the rules core and the effect table accept `memory_write`. No tool declares it.
+   A deny or an ask rule on `memory_write` applies to the `note` effect as well, so a restriction on
+   memory writes holds on a stage 1 release after a rollback from stage 2. An allow rule on
+   `memory_write` matches nothing at stage 1.
 2. The 3 memory tools declare `memory_write`, and the gate asks the rules first.
 
 [The content gate](../../architecture/memory/writes.md#the-content-gate) backs a write with a quote:

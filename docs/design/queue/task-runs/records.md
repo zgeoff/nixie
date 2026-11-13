@@ -362,8 +362,8 @@ In the ending transaction, the end writer takes the first row that applies:
 - The release before reads the `pause` control, `task.limit_reached` and the limit notice that a
   `limit` end writes, because they keep their built payloads, so its raise path works on a task this
   release paused. Its own runner calls `writeTaskLimitPause` again after a rollback.
-- The release before ignores `reportShape` and `maxCalls` in a definition file, logs a warning that
-  names each, and keeps the rest of the seed.
+- The release before skips each definition that holds `reportShape` or `maxCalls`, so it never runs
+  without its caps, and logs a warning that names the definition and the field.
 
 ## Decisions
 

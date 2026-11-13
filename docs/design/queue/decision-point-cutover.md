@@ -335,7 +335,9 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 ### Memory writes
 
 - Memory writes declare `note`, and the approval record design moves them to `memory_write`. While
-  they declare `note`, the starter rule `allow-notes` allows them at stage 7, and each memory tool's
+  they declare `note`, a deny or an ask rule on `memory_write` applies to `note` too, as
+  [memory writes on rules](approval-record.md#memory-writes-on-rules) sets, and comes before the
+  starter rule `allow-notes`. Otherwise `allow-notes` allows them at stage 7, and each memory tool's
   own gate decides whether the write applies or becomes a memory proposal, as it does in the code
   today.
 - While memory writes declare `note`, a `note` call that no rule allows reaches stages 8 and 9 like

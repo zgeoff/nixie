@@ -326,8 +326,8 @@ Each refusal is a tool error before the program starts:
 
 ### A rollback
 
-A release from before this design ignores `code.run` in a task definition's tools, logs a warning
-that names it, and keeps the rest of the seed.
+A release from before this design drops `code.run` from a task definition's tools, logs a warning
+that names it, and keeps the rest of the definition, so the task gets less, never more.
 
 ## Decisions
 

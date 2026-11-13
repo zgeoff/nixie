@@ -15,8 +15,10 @@ A task definition is a folder `tasks/<id>/` in the definitions repo. Its `task.y
 of one `task.start` call and an optional trigger, so nixie can start the task without you, from
 files you read and diff. A seed parses every folder with one schema, refuses the whole seed on one
 fault, hashes each definition and stores each version under its hash. A field the schema does not
-know is no fault: the seed ignores it, logs a warning that names it, and keeps the rest. A
-definition that the agent makes from chat follows the same schema and the same store.
+know is no fault of the seed: the seed skips that definition whole, so it never runs and its
+triggers never fire, and logs a warning that names the definition and the field. An unknown tool
+name in `tools` is dropped with a warning, and the definition keeps the rest. A definition that the
+agent makes from chat follows the same schema and the same store.
 
 Terms: the definitions repo is the git repo that the definitions source reads. The definition ID is
 the folder name. A definition version is the content of one definition at one seed, and the
@@ -187,8 +189,8 @@ interface DefinitionVersion {
 - When a definition omits `model`, its task runs use the model profile of the model role `task`.
 - When a definition has `target: task` and no trigger, nixie loads it and binds its task, and never
   opens a task run from a trigger.
-- The seed ignores a `runner` key with a warning, as it ignores every field it does not know. Every
-  definition runs on the nixie runner, and a `step` key is always on that runner.
+- The seed skips a definition that holds a `runner` key, as it skips one with any field it does not
+  know. Every definition runs on the nixie runner, and a `step` key is always on that runner.
 
 ### The seed
 
@@ -220,8 +222,8 @@ interface DefinitionVersion {
   with a space or an empty list item, as the rule parser does. `task.define` refuses the key with
   `FILE_ONLY_KEYS`, so only a file grants a destination.
 - `destinations` is part of the parsed `task.yaml`, so the definition hash covers it.
-- When `destinations` ships after this format, the release before ignores the key with a warning,
-  and keeps the rest of the seed.
+- When `destinations` ships after this format, the release before skips each definition that holds
+  the key, and logs a warning that names the definition and the field.
 
 ### A rollback of the rule format rename
 

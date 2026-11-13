@@ -41,9 +41,12 @@ type RollbackCheckResult =
   then starts the previous release on that data directory and the `config.yaml` the build under
   check used.
 - A release ignores a config key it does not know, and logs a warning that names the key at start. A
-  seed of definition files does the same with a field it does not know, and keeps the rest of the
-  seed. A newer release's keys then never stop an older release from starting. The cost: a mistyped
-  key or field is no longer refused, only warned about.
+  newer release's config keys then never stop an older release from starting. The cost: a mistyped
+  key is no longer refused, only warned about.
+- A task definition fails closed. When a definition holds a field the release does not know, the
+  seed skips that definition whole: it never runs, and its triggers never fire. The release logs a
+  warning that names the definition and the field. An unknown tool name in a definition's `tools` is
+  dropped with a warning, because the task then gets less, never more.
 - A rules file fails closed. When a rule holds a field the release does not know, the seed skips an
   allow rule whole, so it matches nothing. For a deny or an ask rule, the seed drops only that
   field, so the rule matches more. Either way it logs a warning that names the rule and the field.

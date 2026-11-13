@@ -449,9 +449,9 @@ order. Step 4 runs once, after the last event.
 
 ### A rollback
 
-The seed of the release a rollback returns to ignores a trigger's `poll` field and `events.wait` in
-`tools`, logs a warning that names each, and keeps the rest of the seed. A definition whose only
-trigger is a poll then has no trigger on that release.
+The seed of the release a rollback returns to skips each definition whose trigger holds `poll`, so
+it never runs, and logs a warning that names the definition and the field. It drops `events.wait`
+from a definition's `tools` with a warning, and keeps the rest of that definition.
 
 The definitions format number stays at 4, so the release a rollback returns to still reads the
 manifest ([the folder and the keys](task-definition-format.md#the-folder-and-the-keys)).
