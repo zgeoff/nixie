@@ -109,9 +109,11 @@ value to every grant that holds it, because imp's broker never refreshes. A requ
 rejects as unauthorised gets one refresh and one retry, and a second rejection marks the credential
 failing. Any other failure goes to the [action queue](../core/actions.md) and its reconciliation.
 The store runs one refresh per credential at a time, and writes a rotated refresh token in the same
-transaction as the refresh's record, so a crash never leaves only a spent token. Every OAuth token
-refreshes at least every 7 days, by default, so a quiet connection never lapses. A refresh that
-fails for a while, such as during a provider outage, backs off as a poll does in the
+transaction as the refresh's record, so a crash after the commit never loses a rotated token. A
+crash before it loses the rotated token, and when the provider has spent the old one, the next
+refresh marks the credential `needs_consent`. Every OAuth token refreshes at least every 7 days, by
+default, so a quiet connection never lapses. A refresh that fails for a while, such as during a
+provider outage, backs off as a poll does in the
 [trigger source](../channels/trigger-source.md#polls), and marks the credential failing after 3
 failures in a row.
 
