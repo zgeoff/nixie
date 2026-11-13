@@ -116,10 +116,10 @@ async function readFeatures(
   };
 }
 
-// impd 3 drops only IMP_BUILD_ISOLATION, 4 only image builds, 5 only the loose secrets.add body,
-// and 6 changes only how a host runs impd. nixie sets no IMP_BUILD_ISOLATION, adds images by ref
-// and sends the custom kind, so imp client 6 speaks impd 2, 3, 4 and 5.
-const EXTRA_IMPD_MAJORS: ReadonlySet<number> = new Set([2, 3, 4, 5]);
+// impd 3 drops only IMP_BUILD_ISOLATION, 4 image builds, 5 the loose secrets.add body, 6 changes
+// how a host runs impd, and 7 its MCP sign-in and oauth calls. nixie uses none of these, so imp
+// client 6 speaks impd 2, 3, 4, 5 and 7.
+const EXTRA_IMPD_MAJORS: ReadonlySet<number> = new Set([2, 3, 4, 5, 7]);
 
 function isExtraImpdMajor(version: string): boolean {
   const major = /^(?<major>\d+)\.\d+\.\d+/u.exec(version)?.groups?.['major'];
