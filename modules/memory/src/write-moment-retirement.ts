@@ -1,11 +1,11 @@
 import { canMoveMoment } from './can-move-moment';
-import { momentRetiredCodec } from './moment-retired-codec';
 import type {
   MomentContext,
   MomentRefusal,
   MomentWrite,
   RetireMomentRequest,
-} from './moment-types';
+} from './moment-context';
+import { momentRetiredCodec } from './moment-retired-codec';
 import type { MomentChangeState, PlannedMomentRecord } from './write-moment-change';
 import { writeMomentChange } from './write-moment-change';
 

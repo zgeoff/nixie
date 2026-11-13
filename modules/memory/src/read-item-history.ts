@@ -1,8 +1,8 @@
 import { decodeVersionText } from './decode-version-text';
 import { getRowSubject } from './get-row-subject';
+import type { HistoryVersion, ItemHistory } from './memory-view';
 import { readItemKey } from './read-item-key';
 import type { MemoryTables, MemoryVersionRow, StoreParts } from './types';
-import type { HistoryVersion, ItemHistory } from './view-types';
 
 export async function readItemHistory(
   parts: StoreParts,

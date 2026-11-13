@@ -1,7 +1,7 @@
 import type { HarnessID } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { agentSDKHarness } from './agent-sdk-harness';
-import type { HarnessDescriptor } from './harness-types';
+import type { HarnessDescriptor } from './harness-descriptor';
 
 const harnesses: Readonly<Partial<Record<HarnessID, HarnessDescriptor>>> = {
   'agent-sdk': agentSDKHarness,

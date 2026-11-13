@@ -1,6 +1,6 @@
 import type { LogTables } from '@heynixie/log';
 import type { Kysely } from 'kysely';
-import type { MomentSpan } from './moment-types';
+import type { MomentSpan } from './moment-context';
 
 export async function probeThreadSpan(
   db: Kysely<unknown>,

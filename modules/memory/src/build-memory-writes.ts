@@ -1,5 +1,5 @@
 import { buildWriterGate } from './build-writer-gate';
-import type { MemoryWrites } from './gate-types';
+import type { MemoryWrites } from './gate-context';
 import type { StoreParts } from './types';
 import { withFreshChecker } from './with-fresh-checker';
 import { writeCallerSensitiveMark } from './write-caller-sensitive-mark';

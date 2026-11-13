@@ -1,5 +1,5 @@
 import { buildWriteGroup } from './build-write-group';
-import type { GatedPinRequest, WriteOutcome } from './gate-types';
+import type { GatedPinRequest, WriteOutcome } from './gate-context';
 import { isItemLapsed } from './is-item-lapsed';
 import { MemoryStateError } from './memory-state-error';
 import { readItemText } from './read-item-text';

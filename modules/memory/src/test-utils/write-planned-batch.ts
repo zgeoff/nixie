@@ -1,7 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import type { BatchBounds } from '../writer-types';
+import type { BatchBounds } from '../writer-model';
 
 export interface PlannedBatch {
   readonly sequences: readonly number[];

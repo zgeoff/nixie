@@ -2,6 +2,8 @@ import { buildShortIDFromUUID } from '@heynixie/db';
 import type { LogTables } from '@heynixie/log';
 import { readRecordKeys } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { decodeChangeComment } from './decode-change-comment';
+import { decodeChangeText } from './decode-change-text';
 import type {
   ChangeComment,
   ChangeInput,
@@ -9,9 +11,7 @@ import type {
   ConsolidationChangeRow,
   ConsolidationDiff,
   ConsolidationTables,
-} from './consolidation-types';
-import { decodeChangeComment } from './decode-change-comment';
-import { decodeChangeText } from './decode-change-text';
+} from './memory-consolidations';
 import { parseChangeInputs } from './parse-change-inputs';
 import { readConsolidationSummary } from './read-consolidation-summary';
 import { readVersionTexts } from './read-version-texts';

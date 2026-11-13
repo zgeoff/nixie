@@ -4,7 +4,7 @@ import type {
   ChangeAnswer,
   ConsolidationChangeRow,
   ConsolidationTables,
-} from './consolidation-types';
+} from './memory-consolidations';
 import { parseChangeInputs } from './parse-change-inputs';
 import { planChangeVersions } from './plan-change-versions';
 import { requirePendingChange } from './require-pending-change';

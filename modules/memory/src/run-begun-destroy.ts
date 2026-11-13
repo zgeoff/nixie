@@ -1,4 +1,4 @@
-import type { MomentDestroyContext, MomentTables } from './moment-types';
+import type { MomentDestroyContext, MomentTables } from './moment-context';
 import { readMomentRow } from './read-moment-row';
 import { runMomentDestroyCleanup } from './run-moment-destroy-cleanup';
 

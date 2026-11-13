@@ -3,9 +3,9 @@ import { readRecordKeys } from '@heynixie/log';
 import type { Selectable } from 'kysely';
 import { getItemShortID } from './get-item-short-id';
 import { getRowSubject } from './get-row-subject';
+import type { ViewItem } from './memory-view';
 import { readViewText } from './read-view-text';
 import type { MemoryTables } from './types';
-import type { ViewItem } from './view-types';
 
 export async function readViewItems(
   log: Pick<Log, 'deploymentKey' | 'writer'>,

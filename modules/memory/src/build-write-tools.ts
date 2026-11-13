@@ -5,7 +5,7 @@ import { buildRememberTool } from './build-remember-tool';
 import { buildRetireTool } from './build-retire-tool';
 import { buildSensitiveTool } from './build-sensitive-tool';
 import { buildUnpinTool } from './build-unpin-tool';
-import type { ModelWriteStore } from './gate-types';
+import type { ModelWriteStore } from './gate-context';
 import type { ItemIDStore } from './types';
 
 export function buildWriteTools(memory: ModelWriteStore & ItemIDStore): readonly ToolDefinition[] {

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { ChangeKind } from './consolidation-types';
+import type { ChangeKind } from './memory-consolidations';
 import type { VersionRef } from './types';
 
 export interface ChangeOperation {

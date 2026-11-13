@@ -1,5 +1,5 @@
 import type { JSONObject } from '@heynixie/log';
-import type { ContentGateResult, ReviewReason } from './gate-types';
+import type { ContentGateResult, ReviewReason } from './gate-context';
 import type { QuoteEvidence } from './types';
 
 export interface GateReviewDetail {

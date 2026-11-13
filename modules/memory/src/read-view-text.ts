@@ -1,5 +1,5 @@
 import { decodeVersionText } from './decode-version-text';
-import type { ViewText } from './view-types';
+import type { ViewText } from './memory-view';
 
 export interface SealedVersion {
   readonly itemID: string;

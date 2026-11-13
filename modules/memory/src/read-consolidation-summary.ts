@@ -1,8 +1,8 @@
 import { readRecordKeys } from '@heynixie/log';
 import type { Selectable } from 'kysely';
 import { z } from 'zod';
-import type { ConsolidationSummary, ConsolidationTables } from './consolidation-types';
 import { decodeConsolidationSummary } from './decode-consolidation-summary';
+import type { ConsolidationSummary, ConsolidationTables } from './memory-consolidations';
 import type { StoreParts } from './types';
 
 type ConsolidationRow = Selectable<ConsolidationTables['memory_consolidations']>;

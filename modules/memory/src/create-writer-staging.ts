@@ -1,6 +1,6 @@
 import invariant from 'tiny-invariant';
 import type { MemorySubject } from './types';
-import type { SourceMessage, StagedFlag, StagedWrite, WriterSubject } from './writer-types';
+import type { SourceMessage, StagedFlag, StagedWrite, WriterSubject } from './writer-model';
 
 interface ShownVersion {
   readonly version: number;

@@ -3,7 +3,7 @@ import { readRecords } from '@heynixie/log';
 import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/sessions';
 import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
-import type { MemoryProposals } from './gate-types';
+import type { MemoryProposals } from './gate-context';
 import type { MemoryStore, MemoryTables, ProposalOrigin, VersionRef } from './types';
 
 export interface ProposalAnswerEvent {

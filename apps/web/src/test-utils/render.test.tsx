@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { HttpResponse, http } from 'msw';
 import { Conversation } from '../components/conversation';
-import { server } from '../mocks/node';
+import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { createDeviceSession } from './create-device-session';
 import { render } from './render';

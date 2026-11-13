@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { act, waitFor } from '@testing-library/react';
 import { HttpResponse, delay, http } from 'msw';
-import { server } from './mocks/node';
+import { server } from './mocks/server';
 import { store } from './mocks/store';
 import { buildStubTimer } from './test-utils/build-stub-timer';
 import { createDeviceSession } from './test-utils/create-device-session';

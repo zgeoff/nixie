@@ -1,6 +1,6 @@
 import { changeTextSchema } from './change-text-schema';
 import { defineSealedCodec } from './define-sealed-codec';
-import type { ChangeText } from './sealed-types';
+import type { ChangeText } from './sealed-codec';
 
 const changeText = defineSealedCodec('consolidation/', changeTextSchema);
 

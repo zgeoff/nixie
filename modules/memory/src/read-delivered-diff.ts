@@ -1,4 +1,4 @@
-import type { ConsolidationDiff } from './consolidation-types';
+import type { ConsolidationDiff } from './memory-consolidations';
 import { readPendingDiff } from './read-pending-diff';
 import type { MemoryTables, StoreParts } from './types';
 

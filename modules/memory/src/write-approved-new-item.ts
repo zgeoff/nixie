@@ -1,7 +1,7 @@
 import { removeRecordKey } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { CloseMatchError } from './close-match-error';
-import type { ApprovalResult, ProposalAnswer } from './gate-types';
+import type { ApprovalResult, ProposalAnswer } from './gate-context';
 import { getRowSubject } from './get-row-subject';
 import { readCloseMatch } from './read-close-match';
 import type { OpenedProposal } from './read-open-proposal';

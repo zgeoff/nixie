@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely';
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
-import type { MemoryProposalRow, ProposalAnswer } from './gate-types';
+import type { MemoryProposalRow, ProposalAnswer } from './gate-context';
 import { getRowSubject } from './get-row-subject';
 import { parseEvidence } from './parse-evidence';
 import { ProposalClosedError } from './proposal-closed-error';

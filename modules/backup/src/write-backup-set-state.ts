@@ -1,6 +1,6 @@
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
-import { requireBackupSetMove } from './backup-set-moves';
+import { requireBackupSetMove } from './require-backup-set-move';
 import type { BackupSetState, BackupTables } from './types';
 
 export interface BackupSetReceiptFields {

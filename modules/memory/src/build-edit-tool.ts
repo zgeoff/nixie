@@ -2,7 +2,7 @@ import { untilConventions } from '@heynixie/prompts';
 import type { ToolCall, ToolContext, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildWriteCaller } from './build-write-caller';
-import type { ModelWriteStore } from './gate-types';
+import type { ModelWriteStore } from './gate-context';
 import { makeInputRecorder } from './make-input-recorder';
 import { memoryWriteOutput } from './memory-write-output';
 import { parseUntilInput } from './parse-until-input';

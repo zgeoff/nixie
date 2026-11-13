@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { server } from '../mocks/node';
+import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { buildStubTimer } from '../test-utils/build-stub-timer';
 import { createDeviceSession } from '../test-utils/create-device-session';

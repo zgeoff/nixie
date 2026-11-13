@@ -1,7 +1,7 @@
 import type { ToolCall, ToolContext, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildWriteCaller } from './build-write-caller';
-import type { ModelWriteStore } from './gate-types';
+import type { ModelWriteStore } from './gate-context';
 import { readItemIDs } from './read-item-ids';
 import { runWriteCall } from './run-write-call';
 import type { ItemIDStore } from './types';

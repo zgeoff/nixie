@@ -4,7 +4,7 @@ import type { GateLookups } from './run-writer-gate';
 import { runWriterGate } from './run-writer-gate';
 import { StaleVersionError } from './stale-version-error';
 import type { GatedWrite } from './write-memory-batch';
-import type { StagedWrite, WriterGate } from './writer-types';
+import type { StagedWrite, WriterGate } from './writer-model';
 
 export async function tryRunWriterGate(
   gate: WriterGate,

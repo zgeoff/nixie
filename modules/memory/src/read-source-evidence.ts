@@ -1,10 +1,10 @@
 import type { Log } from '@heynixie/log';
-import type { MessageSpan, OwnerMessage, ReviewReason } from './gate-types';
+import type { MessageSpan, OwnerMessage, ReviewReason } from './gate-context';
 import type { QuoteMatch } from './get-typed-quote';
 import { getTypedQuote } from './get-typed-quote';
 import { readForgottenSequences } from './read-forgotten-sequences';
 import type { QuoteEvidenceResult } from './read-quote-evidence';
-import type { SourceMessage } from './writer-types';
+import type { SourceMessage } from './writer-model';
 
 const invisible = /\p{Cf}/u;
 

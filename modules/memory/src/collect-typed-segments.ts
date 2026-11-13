@@ -1,6 +1,6 @@
 import type { TextRange } from './collect-quoted-blocks';
 import { collectQuotedBlocks } from './collect-quoted-blocks';
-import type { OwnerMessage } from './gate-types';
+import type { OwnerMessage } from './gate-context';
 
 export function collectTypedSegments(message: OwnerMessage): readonly string[] {
   const blocks = collectQuotedBlocks(message.text);

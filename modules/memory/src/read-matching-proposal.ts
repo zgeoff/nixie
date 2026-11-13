@@ -4,7 +4,7 @@ import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { decodeProposalText } from './decode-proposal-text';
 import { findImageSource } from './find-image-source';
-import type { ImageRef, MemoryProposalRow } from './gate-types';
+import type { ImageRef, MemoryProposalRow } from './gate-context';
 import { normalizeFactText } from './normalize-fact-text';
 import { subjectColumn } from './subject-column';
 import type {

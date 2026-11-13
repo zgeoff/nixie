@@ -1,7 +1,7 @@
 import type { LogTables } from '@heynixie/log';
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { MomentDestroyContext, MomentTables } from './moment-context';
 import { momentDestroyedCodec } from './moment-destroyed-codec';
-import type { MomentDestroyContext, MomentTables } from './moment-types';
 
 // Every step is safe to run twice, so the store's start finishes a destroy that a crash cut short.
 export async function runMomentDestroyCleanup(

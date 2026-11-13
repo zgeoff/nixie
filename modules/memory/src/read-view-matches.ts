@@ -1,8 +1,8 @@
+import type { ViewItem, ViewMatch, ViewMatches } from './memory-view';
 import type { MatchScores } from './merge-rankings';
 import { readRankedMatches } from './read-ranked-matches';
 import { readViewItems } from './read-view-items';
 import type { StoreParts } from './types';
-import type { ViewItem, ViewMatch, ViewMatches } from './view-types';
 
 const matchLimit = 100;
 

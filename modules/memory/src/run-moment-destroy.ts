@@ -1,11 +1,11 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { momentDestroyedCodec } from './moment-destroyed-codec';
 import type {
   MomentDestroy,
   MomentDestroyContext,
   MomentTables,
   MomentTarget,
-} from './moment-types';
+} from './moment-context';
+import { momentDestroyedCodec } from './moment-destroyed-codec';
 import { readMomentRow } from './read-moment-row';
 import { runMomentDestroyCleanup } from './run-moment-destroy-cleanup';
 import type { WriteInTransaction } from './types';

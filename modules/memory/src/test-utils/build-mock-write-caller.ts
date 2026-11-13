@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import type { WriteCaller } from '../gate-types';
+import type { WriteCaller } from '../gate-context';
 
 export function buildMockWriteCaller(overrides: Partial<WriteCaller> = {}): WriteCaller {
   return {

@@ -1,4 +1,4 @@
-import type { MemoryProposals } from './gate-types';
+import type { MemoryProposals } from './gate-context';
 import { readPendingProposals } from './read-pending-proposals';
 import { readRejectedEdits } from './read-rejected-edits';
 import { runProposalLapses } from './run-proposal-lapses';

@@ -3,12 +3,12 @@ import { readRecordKeys, withWriteTransaction, writeRecordsInTransaction } from 
 import type { Kysely } from 'kysely';
 import { ConsolidationChangeClosedError } from './consolidation-change-closed-error';
 import { ConsolidationChangeNotFoundError } from './consolidation-change-not-found-error';
+import { encodeChangeComment } from './encode-change-comment';
 import type {
   ChangeCommentRequest,
   ConsolidationChangeRow,
   ConsolidationTables,
-} from './consolidation-types';
-import { encodeChangeComment } from './encode-change-comment';
+} from './memory-consolidations';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
 import type { StoreParts } from './types';
 

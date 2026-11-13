@@ -4,8 +4,8 @@ import type {
   KagiSearchRequest,
   KagiSearchResponse,
   KagiSearchResult,
-} from '../kagi-contract';
-import { kagiSearchRequestSchema } from '../kagi-contract';
+} from '../kagi-search-request-schema';
+import { kagiSearchRequestSchema } from '../kagi-search-request-schema';
 import { kagiAPIURL } from './kagi-api-url';
 import { kagiStore } from './kagi-store';
 

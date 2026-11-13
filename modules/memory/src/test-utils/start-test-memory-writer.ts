@@ -9,7 +9,7 @@ import { buildTestClock } from '@heynixie/testing';
 import { defaultGateLimits } from '../default-gate-limits';
 import { defaultOwnerPronouns } from '../default-owner-pronouns';
 import { findNoAllowRule } from '../find-no-allow-rule';
-import type { GateContext } from '../gate-types';
+import type { GateContext } from '../gate-context';
 import type { WriterStatus } from '../read-writer-status';
 import type { StartedMemoryStore } from '../start-memory-store';
 import { startMemoryStore } from '../start-memory-store';

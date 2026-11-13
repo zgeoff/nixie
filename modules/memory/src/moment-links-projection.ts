@@ -1,6 +1,6 @@
 import type { Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 import { parseMemoryRecord } from './parse-memory-record';
 import { parseMomentRecord } from './parse-moment-record';
 

@@ -1,6 +1,6 @@
 import type { TextRange } from './collect-quoted-blocks';
 import { formatZonedTime } from './format-zoned-time';
-import type { OwnerMessage } from './gate-types';
+import type { OwnerMessage } from './gate-context';
 
 export interface CheckedText {
   readonly kind: 'candidate_memory' | 'item_to_retire';

@@ -1,7 +1,7 @@
 import type { SearchProvider, SearchReply, SearchRequest } from '@heynixie/connectors';
 import { parseJSONOrNull } from '@heynixie/wire';
-import type { KagiSearchRequest } from './kagi-contract';
-import { kagiErrorSchema, kagiSearchResponseSchema } from './kagi-contract';
+import type { KagiSearchRequest } from './kagi-search-request-schema';
+import { kagiErrorSchema, kagiSearchResponseSchema } from './kagi-search-request-schema';
 import { toPlainText } from './to-plain-text';
 
 export interface KagiSearchOptions {

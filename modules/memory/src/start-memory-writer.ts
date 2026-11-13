@@ -6,8 +6,8 @@ import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { WriterStatus } from './read-writer-status';
 import { readWriterStatus } from './read-writer-status';
 import { runWriterStep } from './run-writer-step';
+import type { WriterTables } from './writer-model';
 import type { WriterParts } from './writer-parts';
-import type { WriterTables } from './writer-types';
 
 export interface MemoryWriterOptions extends WriterParts {
   readonly onError: (error: unknown) => void;

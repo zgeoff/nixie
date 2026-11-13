@@ -1,12 +1,12 @@
 import type { Log } from '@heynixie/log';
-import type { MemoryNotice, NoticeEntry } from './gate-types';
+import type { MemoryNotice, NoticeEntry } from './gate-context';
+import type { ViewNotice } from './memory-view';
 import { parseNoticeKey } from './parse-notice-key';
 import type { BatchNotice } from './read-batch-notices';
 import { readBatchNotices } from './read-batch-notices';
 import { readMemoryNotices } from './read-memory-notices';
 import { readViewItems } from './read-view-items';
 import type { MemoryChange, MemoryTables, StoreParts } from './types';
-import type { ViewNotice } from './view-types';
 
 export async function readViewNotices(
   parts: StoreParts,

@@ -8,7 +8,7 @@ import type {
   MomentTarget,
   MomentWrite,
   RetireMomentRequest,
-} from './moment-types';
+} from './moment-context';
 import type { MomentRead, MomentReadRequest } from './read-moment';
 import { readMoment } from './read-moment';
 import type { MomentDestroyPreviewRead } from './read-moment-destroy-preview';

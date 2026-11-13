@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import type { OwnerMessage, ReviewReason } from './gate-types';
+import type { OwnerMessage, ReviewReason } from './gate-context';
 import type { QuoteMatch } from './get-typed-quote';
 import { getTypedQuote } from './get-typed-quote';
 import { readForgottenSequences } from './read-forgotten-sequences';

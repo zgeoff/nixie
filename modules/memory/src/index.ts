@@ -22,7 +22,7 @@ export type {
   ConsolidationDiff,
   ConsolidationSchedule,
   MemoryConsolidations,
-} from './consolidation-types';
+} from './memory-consolidations';
 
 export type { ConsolidationStaging } from './create-consolidation-staging';
 export { createConsolidationStaging } from './create-consolidation-staging';
@@ -103,7 +103,7 @@ export type {
   ReviewReason,
   WriteCaller,
   WriteOutcome,
-} from './gate-types';
+} from './gate-context';
 
 export type {
   EvidenceMessage,
@@ -126,7 +126,7 @@ export type {
   ViewProposal,
   ViewText,
   ViewVersion,
-} from './view-types';
+} from './memory-view';
 
 export type {
   CleanupSessions,
@@ -173,7 +173,7 @@ export type {
   WriterModel,
   WriterSessionInput,
   WriterUsage,
-} from './writer-types';
+} from './writer-model';
 
 export { getTypedQuote } from './get-typed-quote';
 export type { UntypedTokenQuery } from './check-untyped-token';

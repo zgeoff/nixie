@@ -1,4 +1,4 @@
-import type { MomentState } from './moment-types';
+import type { MomentState } from './moment-context';
 
 const transitions: Readonly<Record<MomentState, readonly MomentState[]>> = {
   active: ['retired', 'destroying'],

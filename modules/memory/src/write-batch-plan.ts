@@ -1,8 +1,8 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import { memoryWriterTaskID } from './memory-writer-task-id';
+import type { BatchBounds, BatchMode } from './writer-model';
 import type { WriterParts, WriterStepState } from './writer-parts';
-import type { BatchBounds, BatchMode } from './writer-types';
 
 export interface BatchPlanRecord extends Pick<WriterStepState, 'input' | 'now'> {
   readonly bounds: BatchBounds;

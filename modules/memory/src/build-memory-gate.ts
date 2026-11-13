@@ -1,8 +1,8 @@
 import { buildMemoryConsolidations } from './build-memory-consolidations';
 import { buildMemoryProposals } from './build-memory-proposals';
 import { buildMemoryWrites } from './build-memory-writes';
-import type { MemoryConsolidations } from './consolidation-types';
-import type { MemoryNotice, MemoryProposals, MemoryWrites, ReviewReason } from './gate-types';
+import type { MemoryNotice, MemoryProposals, MemoryWrites, ReviewReason } from './gate-context';
+import type { MemoryConsolidations } from './memory-consolidations';
 import { readMemoryNotices } from './read-memory-notices';
 import { renderReviewReason } from './render-review-reason';
 import type { StoreParts } from './types';

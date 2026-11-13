@@ -1,6 +1,6 @@
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
-import type { ProposalAnswer } from './gate-types';
+import type { ProposalAnswer } from './gate-context';
 import { PinEditError } from './pin-edit-error';
 import type { OpenedProposal } from './read-open-proposal';
 import type { StoreParts, VersionRef } from './types';

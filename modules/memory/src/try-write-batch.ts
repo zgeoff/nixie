@@ -5,8 +5,8 @@ import type { CappedBatch } from './plan-proposal-cap';
 import { StaleCheckerError } from './stale-checker-error';
 import { StaleVersionError } from './stale-version-error';
 import type { PublishResult } from './write-memory-batch';
+import type { BatchBounds, StagedFlag, WriterUsage } from './writer-model';
 import type { WriterParts, WriterStepState } from './writer-parts';
-import type { BatchBounds, StagedFlag, WriterUsage } from './writer-types';
 
 export interface BatchToWrite extends WriterStepState {
   readonly bounds: BatchBounds;

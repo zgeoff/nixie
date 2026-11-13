@@ -1,5 +1,5 @@
 // @boundaries-ignore a spike imports the code it measures
-import type { CheckRequest } from '../../../libs/wire/src/check-frame.ts';
+import type { CheckRequest } from '../../../libs/wire/src/check-request-schema.ts';
 import { buildLabelFingerprint } from './build-label-fingerprint.ts';
 import { buildLabelRecord } from './build-label-record.ts';
 import { buildLedgerWriter } from './build-ledger-writer.ts';

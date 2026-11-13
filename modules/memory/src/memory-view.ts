@@ -1,5 +1,5 @@
 import type { ContentSource, JSONObject } from '@heynixie/log';
-import type { MemoryNotice, MemoryProposal, NoticeEntry, ProposalImage } from './gate-types';
+import type { MemoryNotice, MemoryProposal, NoticeEntry, ProposalImage } from './gate-context';
 import type { MemoryExportRequest } from './read-memory-export';
 import type {
   ForgetStatus,

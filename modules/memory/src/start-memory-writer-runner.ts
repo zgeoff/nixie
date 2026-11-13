@@ -10,7 +10,7 @@ import type { StartedMemoryStore } from './start-memory-store';
 import type { MemoryWriter } from './start-memory-writer';
 import { startMemoryWriter } from './start-memory-writer';
 import type { WriterConfig } from './writer-config-schema';
-import type { WriterGate } from './writer-types';
+import type { WriterGate } from './writer-model';
 
 export interface MemoryWriterRunnerOptions extends SystemTaskOptions, ToolSessionOptions {
   readonly store: StartedMemoryStore;

@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant';
-import type { MemoryProposal, WriteCaller } from '../gate-types';
+import type { MemoryProposal, WriteCaller } from '../gate-context';
 import type { StartedMemoryStore } from '../start-memory-store';
 import type { VersionRef } from '../types';
 import { buildMockWriteCaller } from './build-mock-write-caller';

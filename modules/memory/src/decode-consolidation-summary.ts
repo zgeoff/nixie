@@ -1,8 +1,8 @@
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { defineSealedCodec } from './define-sealed-codec';
+import type { SealedSummary, SummaryShare } from './sealed-codec';
 import { sealedTextSchema } from './sealed-text-schema';
-import type { SealedSummary, SummaryShare } from './sealed-types';
 import { summaryKeyBytes } from './summary-key-bytes';
 
 const summaryText = defineSealedCodec('consolidation-summary/', sealedTextSchema);

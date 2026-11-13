@@ -1,8 +1,8 @@
 import type { Log } from '@heynixie/log';
+import type { ForgetLoss, RetiredForgetPreview, ViewItem } from './memory-view';
 import { readEvidenceSequences } from './read-evidence-sequences';
 import { readViewItems } from './read-view-items';
 import type { MemoryTables } from './types';
-import type { ForgetLoss, RetiredForgetPreview, ViewItem } from './view-types';
 
 const previewLimit = 100;
 

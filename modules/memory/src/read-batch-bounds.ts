@@ -2,8 +2,8 @@ import { countBatchTokens } from './count-batch-tokens';
 import { planWriterBatch } from './plan-writer-batch';
 import { readWriterBacklog } from './read-writer-backlog';
 import { writeBatchPlan } from './write-batch-plan';
+import type { BatchBounds } from './writer-model';
 import type { WriterParts, WriterStepState } from './writer-parts';
-import type { BatchBounds } from './writer-types';
 
 export async function readBatchBounds(
   parts: WriterParts,

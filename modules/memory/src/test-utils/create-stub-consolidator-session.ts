@@ -1,7 +1,7 @@
 import { mock } from 'bun:test';
 import type { ChangeRequest, ConsolidationStaging } from '../create-consolidation-staging';
 import { createConsolidationStaging } from '../create-consolidation-staging';
-import type { WriterModel } from '../writer-types';
+import type { WriterModel } from '../writer-model';
 
 export interface StubConsolidatorSession {
   readonly staging: ConsolidationStaging;

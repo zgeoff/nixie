@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ImageRef } from './gate-types';
+import type { ImageRef } from './gate-context';
 
 const imageChecks = z.object({
   image: z.object({

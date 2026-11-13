@@ -18,7 +18,62 @@
   ],
   "rules": {
     // a library contract fixes each name; the project-code-style skill gives the reasons
-    "zgeoff/function-verb": ["error", { "exemptNames": ["executeQuery"] }],
+    "zgeoff/function-verb": [
+      "error",
+      {
+        "exemptNames": [
+          "executeQuery",
+          // the seeder work deletes each name as it moves that seed
+          "seed",
+          "seedClientAction",
+          "seedConversationStep",
+          "seedData",
+          "seedFailedStep",
+          "seedFailedTurn",
+          "seedSessionBoundary",
+          "seedStartedTask",
+          "seedTask",
+          "seedWrittenSkills"
+        ]
+      }
+    ],
+    // the seeder work turns both seed rules on once every seeder exists
+    "zgeoff/seed-only": "off",
+    "zgeoff/test-beside-seed": "off",
+    // the list holds the packages not yet folded and shrinks as each is folded
+    "zgeoff/feature-folders": [
+      "error",
+      {
+        "pending": [
+          "adapters/sandbox-imp",
+          "apps/model-gateway",
+          "apps/server",
+          "apps/web",
+          "guests/conversation",
+          "guests/fetch",
+          "libs/contract",
+          "libs/db",
+          "libs/testing",
+          "libs/wire",
+          "modules/actions",
+          "modules/api",
+          "modules/backup",
+          "modules/compaction",
+          "modules/connectors",
+          "modules/definitions",
+          "modules/log",
+          "modules/memory",
+          "modules/models",
+          "modules/ops",
+          "modules/policy",
+          "modules/prompts",
+          "modules/sandbox",
+          "modules/sessions",
+          "modules/skills",
+          "modules/tasks"
+        ]
+      }
+    ],
     // the import boundaries: each outside system has one package that may import it, and every
     // import names its module where the zones can see it
     "zgeoff/import-zones": [

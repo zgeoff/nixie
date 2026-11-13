@@ -1,4 +1,4 @@
-import type { MomentRefusal } from './moment-types';
+import type { MomentRefusal } from './moment-context';
 
 // Each sentence holds no moment text, because the tool result record keeps the refusal.
 const refusals: Readonly<Record<MomentRefusal, string>> = {

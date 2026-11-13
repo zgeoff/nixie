@@ -1,5 +1,5 @@
 import type { Projection } from '@heynixie/log';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 import { parseMomentRecord } from './parse-moment-record';
 
 export const momentTextsProjection: Projection = {

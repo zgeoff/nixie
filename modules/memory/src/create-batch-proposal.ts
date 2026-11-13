@@ -2,11 +2,11 @@ import { removeRecordKey } from '@heynixie/log';
 import { buildProposalRecords } from './build-proposal-records';
 import { buildWriteGroup } from './build-write-group';
 import { createSealedProposal } from './create-sealed-proposal';
-import type { ContentGateResult, WriteCaller } from './gate-types';
+import type { ContentGateResult, WriteCaller } from './gate-context';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { StoreParts } from './types';
 import type { ProposalPlan } from './write-memory-proposal';
-import type { GateBatch, GateVerdict, StagedWrite } from './writer-types';
+import type { GateBatch, GateVerdict, StagedWrite } from './writer-model';
 
 export interface ReviewedWrite {
   readonly write: StagedWrite;

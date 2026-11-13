@@ -1,4 +1,4 @@
-import type { BatchBounds } from './writer-types';
+import type { BatchBounds } from './writer-model';
 
 export interface SplitRecord {
   readonly sequence: number;

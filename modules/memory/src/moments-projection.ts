@@ -3,7 +3,7 @@ import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { canMoveMoment } from './can-move-moment';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 import type { MomentRecord } from './parse-moment-record';
 import { parseMomentRecord } from './parse-moment-record';
 

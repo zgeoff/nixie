@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { requireBackupSetMove } from './backup-set-moves';
+import { requireBackupSetMove } from './require-backup-set-move';
 
 test.each([
   ['staging', 'staged'],

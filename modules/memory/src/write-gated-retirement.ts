@@ -1,7 +1,7 @@
 import type { WriteGroup } from './build-write-group';
 import { buildWriteGroup } from './build-write-group';
 import { ForgottenEvidenceError } from './forgotten-evidence-error';
-import type { ContentGateResult, GatedRetireRequest, WriteOutcome } from './gate-types';
+import type { ContentGateResult, GatedRetireRequest, WriteOutcome } from './gate-context';
 import { readItemText } from './read-item-text';
 import { readNewestMessage } from './read-newest-message';
 import { requireCheckerSnapshot } from './require-checker-snapshot';

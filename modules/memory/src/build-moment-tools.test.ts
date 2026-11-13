@@ -5,7 +5,7 @@ import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildMemoryTools } from './build-memory-tools';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 

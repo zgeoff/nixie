@@ -1,6 +1,6 @@
 import type { RecordInput } from '@heynixie/log';
 import { buildProposalLapseTime } from './build-proposal-lapse-time';
-import type { MemoryProposalRow } from './gate-types';
+import type { MemoryProposalRow } from './gate-context';
 import type { StoreParts } from './types';
 import type { ProposalPlan } from './write-memory-proposal';
 

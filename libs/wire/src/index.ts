@@ -1,5 +1,5 @@
-export type { CheckReply, CheckRequest } from './check-frame';
-export { checkReplySchema, checkRequestSchema } from './check-frame';
+export type { CheckReply, CheckRequest } from './check-request-schema';
+export { checkReplySchema, checkRequestSchema } from './check-request-schema';
 export { defaultFetchTextBytes } from './default-fetch-text-bytes';
 export { parseJSONOrNull } from './parse-json-or-null';
 export { decodeFetchReply } from './decode-fetch-reply';
@@ -18,8 +18,8 @@ export { frameHeaderBytes } from './frame-header-bytes';
 export { FrameTooLargeError } from './frame-too-large-error';
 export type { GuestFrame, ModelAPIErrorKind } from './guest-frame';
 export { guestFrameSchema } from './guest-frame';
-export type { HarnessCapability, HarnessID } from './harness';
-export { harnessCapabilities, harnessIDs } from './harness';
+export type { HarnessCapability, HarnessID } from './harness-ids';
+export { harnessCapabilities, harnessIDs } from './harness-ids';
 export { findModelAPIEndpoint } from './find-model-api-endpoint';
 export type { ModelAPI, ModelAPIEndpointName } from './model-api';
 export { modelAPIs } from './model-api';

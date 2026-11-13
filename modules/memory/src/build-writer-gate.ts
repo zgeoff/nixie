@@ -3,7 +3,7 @@ import { createBatchProposal } from './create-batch-proposal';
 import { removeUnpublishedKeys } from './remove-unpublished-keys';
 import { runBatchGate } from './run-batch-gate';
 import type { StoreParts } from './types';
-import type { GateVerdict, WriterGate } from './writer-types';
+import type { GateVerdict, WriterGate } from './writer-model';
 
 export function buildWriterGate(parts: StoreParts): WriterGate {
   const newItems = new WeakMap<GateVerdict, string>();

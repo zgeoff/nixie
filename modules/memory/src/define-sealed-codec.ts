@@ -1,6 +1,6 @@
 import type { JSONValue } from '@heynixie/log';
 import type { z } from 'zod';
-import type { SealedCodec } from './sealed-types';
+import type { SealedCodec } from './sealed-codec';
 
 export function defineSealedCodec<Value extends JSONValue>(
   prefix: string,

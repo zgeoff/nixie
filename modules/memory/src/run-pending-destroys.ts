@@ -1,4 +1,4 @@
-import type { MomentDestroyContext, MomentTables } from './moment-types';
+import type { MomentDestroyContext, MomentTables } from './moment-context';
 import { runMomentDestroyCleanup } from './run-moment-destroy-cleanup';
 
 export async function runPendingDestroys(context: MomentDestroyContext): Promise<void> {

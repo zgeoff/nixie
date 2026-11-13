@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { isGuestPurged, pickCleanedTaskIDs } from './plan-task-session-cleanup';
+import { isGuestPurged, pickCleanedTaskIDs } from './pick-cleaned-task-ids';
 
 test('it picks only the tasks that read memory', () => {
   expect(

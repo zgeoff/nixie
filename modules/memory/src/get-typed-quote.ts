@@ -1,6 +1,6 @@
 import type { TextRange } from './collect-quoted-blocks';
 import { collectQuotedBlocks } from './collect-quoted-blocks';
-import type { OwnerMessage } from './gate-types';
+import type { OwnerMessage } from './gate-context';
 import type { MatchText } from './normalize-match-text';
 import { normalizeMatchText } from './normalize-match-text';
 

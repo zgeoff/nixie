@@ -1,10 +1,10 @@
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { TaskMessaging, TasksContext } from '@heynixie/tasks';
 import type { ConsolidationConfig } from './consolidation-config-schema';
-import type { MemoryConsolidations } from './consolidation-types';
 import type { ConsolidationStaging } from './create-consolidation-staging';
+import type { MemoryConsolidations } from './memory-consolidations';
 import type { MemoryStore } from './types';
-import type { WriterModel } from './writer-types';
+import type { WriterModel } from './writer-model';
 
 export interface ConsolidatorParts {
   readonly context: TasksContext;

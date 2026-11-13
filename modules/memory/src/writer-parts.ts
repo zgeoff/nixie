@@ -1,11 +1,11 @@
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { StepInput, TaskMessaging, TasksContext } from '@heynixie/tasks';
 import type { WriterStaging } from './create-writer-staging';
-import type { MemoryProposals } from './gate-types';
+import type { MemoryProposals } from './gate-context';
 import type { MemoryStore } from './types';
 import type { BatchPublication, PublishResult } from './write-memory-batch';
 import type { WriterConfig } from './writer-config-schema';
-import type { WriterGate, WriterModel, WriterRow } from './writer-types';
+import type { WriterGate, WriterModel, WriterRow } from './writer-model';
 
 export interface WriterParts {
   readonly context: TasksContext;

@@ -1,9 +1,9 @@
 import type { Log } from '@heynixie/log';
-import type { ConsolidationChangeRow } from './consolidation-types';
 import { decodeChangeText } from './decode-change-text';
+import type { ConsolidationChangeRow } from './memory-consolidations';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { readItemKey } from './read-item-key';
-import type { ChangeText } from './sealed-types';
+import type { ChangeText } from './sealed-codec';
 
 export async function readChangeText(
   log: Pick<Log, 'deploymentKey' | 'writer'>,

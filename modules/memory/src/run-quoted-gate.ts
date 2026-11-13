@@ -1,6 +1,6 @@
 import { buildGateReview } from './build-gate-review';
 import { findMissingToken } from './find-missing-token';
-import type { ContentGateRequest, ContentGateResult } from './gate-types';
+import type { ContentGateRequest, ContentGateResult } from './gate-context';
 import type { QuoteEvidenceResult } from './read-quote-evidence';
 import { runMemoryChecker } from './run-memory-checker';
 import type { MemoryContext } from './types';

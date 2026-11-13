@@ -1,5 +1,5 @@
 import type { WriterConfig } from './writer-config-schema';
-import type { BatchBounds, BatchMode } from './writer-types';
+import type { BatchBounds, BatchMode } from './writer-model';
 
 interface PlannedMessage {
   readonly sequence: number;

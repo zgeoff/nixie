@@ -2,6 +2,7 @@ import type { Log, LogTables } from '@heynixie/log';
 import { findCheckerModel } from './find-checker-model';
 import { findImageSource } from './find-image-source';
 import { loadWriterModel } from './load-writer-model';
+import type { EvidenceMessage, ViewItemDetail, ViewVersion } from './memory-view';
 import { parseChecks } from './parse-checks';
 import { parseEvidence } from './parse-evidence';
 import { readEvidenceMessage } from './read-evidence-message';
@@ -9,7 +10,6 @@ import { readItemKey } from './read-item-key';
 import { readViewItems } from './read-view-items';
 import { readViewText } from './read-view-text';
 import type { MemoryTables, MemoryVersionRow } from './types';
-import type { EvidenceMessage, ViewItemDetail, ViewVersion } from './view-types';
 
 export async function readItemDetail(
   log: Pick<Log, 'deploymentKey' | 'writer'>,

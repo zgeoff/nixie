@@ -1,5 +1,5 @@
 import type { Kysely } from 'kysely';
-import type { CloseMatch } from './gate-types';
+import type { CloseMatch } from './gate-context';
 import { readDeliverableItems } from './read-deliverable-items';
 import { readRecall } from './read-recall';
 import { subjectColumn } from './subject-column';

@@ -2,8 +2,8 @@ import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { memoryWriterTaskID } from './memory-writer-task-id';
+import type { KeepMomentRequest, MomentContext, MomentWrite } from './moment-context';
 import { momentKeptCodec } from './moment-kept-codec';
-import type { KeepMomentRequest, MomentContext, MomentWrite } from './moment-types';
 import { probeThreadSpan } from './probe-thread-span';
 import type { WriteInTransaction } from './types';
 

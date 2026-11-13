@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { ownerMessageCodec } from '@heynixie/tasks';
-import type { ImageRef } from './gate-types';
+import type { ImageRef } from './gate-context';
 import { ImageSourceError } from './image-source-error';
 import { readThreadRecord } from './read-thread-record';
 

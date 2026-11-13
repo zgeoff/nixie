@@ -3,7 +3,7 @@ import { planRememberedVersion } from './plan-remembered-version';
 import { planRetiredVersion } from './plan-retired-version';
 import type { Provenance } from './types';
 import type { VersionPlan } from './write-version-in-transaction';
-import type { GateVerdict, StagedWrite } from './writer-types';
+import type { GateVerdict, StagedWrite } from './writer-model';
 
 export function planBatchVersion(
   write: StagedWrite,

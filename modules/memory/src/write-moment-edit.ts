@@ -1,6 +1,5 @@
 import { createShortID } from '@heynixie/db';
 import { P, match } from 'ts-pattern';
-import { momentEditedCodec } from './moment-edited-codec';
 import type {
   EditMomentRequest,
   MomentCaller,
@@ -9,7 +8,8 @@ import type {
   MomentRefusal,
   MomentTables,
   MomentWrite,
-} from './moment-types';
+} from './moment-context';
+import { momentEditedCodec } from './moment-edited-codec';
 import { probeThreadSpan } from './probe-thread-span';
 import type { WriteInTransaction } from './types';
 import type { MomentChangeState, PlannedMomentRecord } from './write-moment-change';

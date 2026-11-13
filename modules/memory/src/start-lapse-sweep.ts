@@ -1,5 +1,5 @@
-import type { MemoryConsolidations } from './consolidation-types';
-import type { MemoryProposals } from './gate-types';
+import type { MemoryProposals } from './gate-context';
+import type { MemoryConsolidations } from './memory-consolidations';
 import type { MemoryStore } from './types';
 
 export interface LapseSweepOptions {

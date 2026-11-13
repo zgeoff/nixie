@@ -9,7 +9,7 @@ import type {
   MomentTables,
   MomentTarget,
   MomentWrite,
-} from './moment-types';
+} from './moment-context';
 import type { MomentRow } from './read-moment-row';
 import { readMomentRow } from './read-moment-row';
 import type { WriteInTransaction } from './types';

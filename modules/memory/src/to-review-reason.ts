@@ -1,4 +1,4 @@
-import type { ReviewReason } from './gate-types';
+import type { ReviewReason } from './gate-context';
 import { reviewReasons } from './review-reasons';
 
 export function toReviewReason(stored: string): ReviewReason {

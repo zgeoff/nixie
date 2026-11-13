@@ -1,6 +1,6 @@
 import type { Projection } from '@heynixie/log';
 import type { Kysely } from 'kysely';
-import type { ConsolidationTables } from './consolidation-types';
+import type { ConsolidationTables } from './memory-consolidations';
 import type { ConsolidationRecord } from './parse-consolidation-record';
 import { parseConsolidationRecord } from './parse-consolidation-record';
 

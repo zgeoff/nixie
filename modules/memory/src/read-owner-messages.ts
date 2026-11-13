@@ -2,7 +2,7 @@ import type { Log, LogTables } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { ownerMessageCodec } from '@heynixie/tasks';
 import { z } from 'zod';
-import type { OwnerMessage } from './gate-types';
+import type { OwnerMessage } from './gate-context';
 
 export interface OwnerMessageQuery {
   readonly thread: string;

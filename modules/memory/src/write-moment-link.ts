@@ -1,5 +1,5 @@
+import type { LinkMomentRequest, MomentContext, MomentTables, MomentWrite } from './moment-context';
 import { momentLinkedCodec } from './moment-linked-codec';
-import type { LinkMomentRequest, MomentContext, MomentTables, MomentWrite } from './moment-types';
 import type { MemoryTables, WriteInTransaction } from './types';
 import type { MomentChangeState, PlannedMomentRecord } from './write-moment-change';
 import { writeMomentChange } from './write-moment-change';

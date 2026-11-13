@@ -3,7 +3,7 @@ import { writeRecords } from '@heynixie/log';
 import { makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { makeDeliveryLock } from './make-delivery-lock';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 import type { MomentIndexes } from './start-store-indexes';
 import { startVectorIndex } from './start-vector-index';
 import { buildStubEncoder } from './test-utils/build-stub-encoder';

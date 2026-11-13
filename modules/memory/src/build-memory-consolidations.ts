@@ -1,4 +1,4 @@
-import type { MemoryConsolidations } from './consolidation-types';
+import type { MemoryConsolidations } from './memory-consolidations';
 import { readConsolidationSchedule } from './read-consolidation-schedule';
 import { readDeliveredDiff } from './read-delivered-diff';
 import { readPendingDiff } from './read-pending-diff';

@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecords, writeRecords, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { memoryWriterTaskID } from './memory-writer-task-id';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {

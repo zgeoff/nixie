@@ -8,7 +8,7 @@ import type {
   MessageRecallRequest,
   MessageRecallResult,
   PastMessage,
-} from './message-recall-types';
+} from './message-recall-request';
 import { readForgottenSequences } from './read-forgotten-sequences';
 import type { VectorMatch } from './start-vector-index';
 import type { SearchMode, StoreParts } from './types';

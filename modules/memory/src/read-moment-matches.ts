@@ -3,7 +3,7 @@ import invariant from 'tiny-invariant';
 import { buildMomentText } from './build-moment-text';
 import { defaultMinSimilarity } from './default-min-similarity';
 import { mergeRankings } from './merge-rankings';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 import type { MomentDetail } from './read-moment-detail';
 import { readMomentDetail } from './read-moment-detail';
 import type { MomentRow } from './read-moment-row';

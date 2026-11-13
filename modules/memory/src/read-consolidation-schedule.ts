@@ -1,4 +1,4 @@
-import type { ConsolidationSchedule, ConsolidationTables } from './consolidation-types';
+import type { ConsolidationSchedule, ConsolidationTables } from './memory-consolidations';
 import type { StoreParts } from './types';
 
 export async function readConsolidationSchedule(parts: StoreParts): Promise<ConsolidationSchedule> {

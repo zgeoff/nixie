@@ -1,9 +1,9 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import type { MomentTables } from './moment-context';
 import { momentEditedCodec } from './moment-edited-codec';
 import { momentKeptCodec } from './moment-kept-codec';
-import type { MomentTables } from './moment-types';
 import type { MomentDetail } from './read-moment-detail';
 import { readMomentDetail } from './read-moment-detail';
 import type { MomentRow } from './read-moment-row';

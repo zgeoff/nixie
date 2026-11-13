@@ -2,7 +2,7 @@ import { expect, mock, test } from 'bun:test';
 import { act, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import invariant from 'tiny-invariant';
-import { server } from './mocks/node';
+import { server } from './mocks/server';
 import { store } from './mocks/store';
 import { readOutboxImages } from './read-outbox-images';
 import { buildStubTimer } from './test-utils/build-stub-timer';

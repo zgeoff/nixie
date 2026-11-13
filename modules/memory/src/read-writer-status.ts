@@ -2,7 +2,7 @@ import type { Log, RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import { memoryWriterTaskID } from './memory-writer-task-id';
-import type { WriterRow, WriterTables } from './writer-types';
+import type { WriterRow, WriterTables } from './writer-model';
 
 export interface WriterStatus {
   readonly cursor: number;

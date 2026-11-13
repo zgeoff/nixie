@@ -1,7 +1,7 @@
 import type { Log, LogTables } from '@heynixie/log';
 import { match } from 'ts-pattern';
 import type { MemoryExportMoment } from './memory-export-schema';
-import type { MomentTables } from './moment-types';
+import type { MomentTables } from './moment-context';
 import { readMomentDetail } from './read-moment-detail';
 import type { MomentRow } from './read-moment-row';
 import { readMomentSpanPage } from './read-moment-span-page';

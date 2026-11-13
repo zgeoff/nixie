@@ -1,5 +1,5 @@
 import type { ToolOutcome } from '@heynixie/tools';
-import type { ModelWriteStore, WriteOutcome } from './gate-types';
+import type { ModelWriteStore, WriteOutcome } from './gate-context';
 import { ImageSourceError } from './image-source-error';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { MemoryStateError } from './memory-state-error';

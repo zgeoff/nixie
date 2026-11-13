@@ -1,6 +1,6 @@
 import { collectTypedSegments } from './collect-typed-segments';
 import { findMissingToken } from './find-missing-token';
-import type { ContentGateRequest } from './gate-types';
+import type { ContentGateRequest } from './gate-context';
 import { readOwnerMessages } from './read-owner-messages';
 import type { MemoryContext } from './types';
 

@@ -2,7 +2,7 @@ import type { JSONObject } from '@heynixie/log';
 import { buildGateReview } from './build-gate-review';
 import { collectTypedSegments } from './collect-typed-segments';
 import { findMissingToken } from './find-missing-token';
-import type { ContentGateRequest, ContentGateResult } from './gate-types';
+import type { ContentGateRequest, ContentGateResult } from './gate-context';
 import { readOwnerMessages } from './read-owner-messages';
 import type { MemoryContext } from './types';
 

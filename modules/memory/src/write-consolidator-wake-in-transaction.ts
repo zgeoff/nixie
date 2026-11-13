@@ -1,7 +1,7 @@
 import type { TasksTables } from '@heynixie/tasks';
 import { isFinishedState, writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
-import type { ConsolidationTables } from './consolidation-types';
+import type { ConsolidationTables } from './memory-consolidations';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
 import type { StoreParts } from './types';
 

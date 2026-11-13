@@ -1,4 +1,4 @@
-import type { UnpinRequest, WriteOutcome } from './gate-types';
+import type { UnpinRequest, WriteOutcome } from './gate-context';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { NotPinnedError } from './not-pinned-error';
 import type { MemoryTables, StoreParts } from './types';

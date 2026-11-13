@@ -9,9 +9,9 @@ import type { WriterBatch } from './read-writer-batch';
 import { renderShownText } from './render-shown-text';
 import type { SpeakerNames } from './render-writer-prompt';
 import { renderWriterPrompt } from './render-writer-prompt';
+import type { BatchMessage, StagedFlag, StagedWrite, WriterUsage } from './writer-model';
 import type { WriterParts } from './writer-parts';
 import { writerSubjects } from './writer-subjects';
-import type { BatchMessage, StagedFlag, StagedWrite, WriterUsage } from './writer-types';
 
 export interface WriterExtraction {
   readonly writes: readonly StagedWrite[];

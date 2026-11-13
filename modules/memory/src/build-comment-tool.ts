@@ -2,8 +2,8 @@ import type { ToolCall, ToolContext, ToolDefinition, ToolOutcome } from '@heynix
 import { z } from 'zod';
 import { ConsolidationChangeClosedError } from './consolidation-change-closed-error';
 import { ConsolidationChangeNotFoundError } from './consolidation-change-not-found-error';
-import type { MemoryConsolidations } from './consolidation-types';
 import { makeInputRecorder } from './make-input-recorder';
+import type { MemoryConsolidations } from './memory-consolidations';
 
 export interface CommentToolStore {
   readonly consolidations: Pick<MemoryConsolidations, 'comment'>;

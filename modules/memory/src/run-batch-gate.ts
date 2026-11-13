@@ -1,5 +1,5 @@
 import { buildGateReview } from './build-gate-review';
-import type { ContentGateResult } from './gate-types';
+import type { ContentGateResult } from './gate-context';
 import { getRowSubject } from './get-row-subject';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import { pickSensitiveReview } from './pick-sensitive-review';
@@ -8,7 +8,7 @@ import { requireItem } from './require-item';
 import { runBatchRetirementGate } from './run-batch-retirement-gate';
 import { runQuotedGate } from './run-quoted-gate';
 import type { MemoryItemRow, MemoryTables, StoreParts, VersionRef } from './types';
-import type { SourceMessage, StagedWrite } from './writer-types';
+import type { SourceMessage, StagedWrite } from './writer-model';
 
 export interface BatchGateResult {
   readonly gate: ContentGateResult;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { findImageSource } from './find-image-source';
-import type { MemoryProposalRow } from './gate-types';
+import type { MemoryProposalRow } from './gate-context';
 import type { Provenance } from './types';
 
 const checksColumn = z.record(z.string(), z.json());

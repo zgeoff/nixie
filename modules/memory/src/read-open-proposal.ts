@@ -1,9 +1,9 @@
 import { decodeProposalText } from './decode-proposal-text';
-import type { MemoryProposalRow, ProposalAnswer } from './gate-types';
+import type { MemoryProposalRow, ProposalAnswer } from './gate-context';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { readItemKey } from './read-item-key';
 import { requirePendingProposal } from './require-pending-proposal';
-import type { ProposalText } from './sealed-types';
+import type { ProposalText } from './sealed-codec';
 import type { MemoryTables, StoreParts } from './types';
 
 export interface OpenedProposal {

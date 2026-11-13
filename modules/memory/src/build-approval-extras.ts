@@ -1,4 +1,4 @@
-import type { MemoryProposalRow, ProposalAnswer } from './gate-types';
+import type { MemoryProposalRow, ProposalAnswer } from './gate-context';
 import { requirePendingProposal } from './require-pending-proposal';
 import type { StoreParts } from './types';
 import type { VersionExtras } from './write-memory-version';
