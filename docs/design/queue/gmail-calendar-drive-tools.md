@@ -484,22 +484,18 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
 
 ### A rollback
 
-| The change                                                    | The release before                                                          |
-| ------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| the 20 tools                                                  | lists none of them; a queued action of any of them fails without an attempt |
-| an unknown action of one of the tools                         | finds no reconciliation for it, so the action comes to you                  |
-| `resolveDestinations`                                         | never calls it, because it has none of the tools                            |
-| markers on events and files                                   | never meets them; they stay at Google and change nothing                    |
-| the request that asks a fetch sandbox for an HTML body's text | never sends it                                                              |
-| `connections.checkPicked`                                     | answers `NOT_FOUND`; a picked file stays granted at Google                  |
-| the picker settings on the OAuth client                       | as the Google connection design's rollback sets for the client's columns    |
-
 - The design adds no record kind, no migration and no config key.
 
 ## Decisions
 
-- **Every with-guests change is its own `send` tool.** An agent's call on 13 Nov 2026: a tool's
-  effects are fixed per tool, and the owner made an event with guests a `send`.
+- **The tool names are `mail.search`, `mail.read`, `mail.read_attachment`, `mail.label`,
+  `mail.send`, `mail.reply`, and the `calendar.*` and `drive.*` names in [the tools](#the-tools).**
+  The owner chose them on 14 Nov 2026.
+- **Every event change that emails guests is its own `…_with_guests` tool, with the `send` effect.**
+  The owner chose this on 14 Nov 2026, so the send rules decide each one: a tool's effects are fixed
+  per tool, and the owner made an event with guests a `send`.
+- **The card sentences and approve buttons are those in [the send card](#the-send-card).** The owner
+  chose them on 14 Nov 2026.
 - **`calendar.respond` is a `send`, and the organizer is its reply target.** An agent's call on 13
   Nov 2026: Google emails the organizer, and an invitation arrives in your calendar as a message
   arrives in your mail, so an answer to it needs no more permission than a reply.
@@ -539,9 +535,3 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
   [Drive sharing](https://linear.app/zgeoff/issue/GEO-2648).
 - The Gmail and Calendar polls: [polls](https://linear.app/zgeoff/issue/GEO-1827).
 - PDF and other document text: [document text](https://linear.app/zgeoff/issue/GEO-2649).
-
-## Open questions
-
-- **The tool names, and the words of each card.** The owner settles them in
-  [the Gmail issue](https://linear.app/zgeoff/issue/GEO-1825). Until then the names and the card
-  sentences here hold.

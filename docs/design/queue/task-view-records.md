@@ -213,6 +213,8 @@ type ReadPayloadOutput =
   thread and a sequence.
 - **The cut size is a contract constant.** An agent's call on 13 Nov 2026: it sizes a wire format
   between client and server, and a config key would add a rollback step and serve no setting.
+- **No line on a task's page offers its raw record, the record as the log holds it.** The owner's
+  call on 14 Nov 2026: a record kind with no renderer shows by its kind's name.
 
 ## Builder decides
 
@@ -226,9 +228,3 @@ type ReadPayloadOutput =
 - The worker tool and its records, which [the worker tool](https://linear.app/zgeoff/issue/GEO-1793)
   builds.
 - A cut of a message's text.
-
-## Open questions
-
-- **Does each line on a task's page offer its raw record, the record as the log holds it?** The
-  owner settles it in [the view routes](https://linear.app/zgeoff/issue/GEO-1837). Until then, no
-  line offers the raw record, and a record kind with no renderer shows by its kind's name.

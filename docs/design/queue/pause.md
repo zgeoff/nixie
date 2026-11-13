@@ -573,16 +573,6 @@ type RestorePauseFaultPoint =
 
 ### A rollback
 
-The release before reads this design's changes this way:
-
-| The change                                      | The release before                                                 |
-| ----------------------------------------------- | ------------------------------------------------------------------ |
-| the marker in `holding`                         | refuses to start, as on any marker                                 |
-| the migration                                   | refuses with `SchemaTooNewError` while paused, and starts when not |
-| `nixie_pause`, `pause_exemptions`, `recoveries` | never selects them                                                 |
-| `open_oldest_reader`                            | never selects it                                                   |
-| the 4 record kinds                              | never meets them on a thread: each is on no thread                 |
-
 To roll back while nixie is paused, after a restore or not:
 
 1. When a restore marker exists, start this build once, so the start part `restore_pause` removes

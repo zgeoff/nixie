@@ -72,7 +72,7 @@ function startTestLog(options?: { deploymentKey?: CryptoKey }): Promise<TestLog>
 ### The off config
 
 ```ts
-// server test-utils. The tests of the delete and the rollback check read this one constant.
+// server test-utils. The tests of the delete read this one constant.
 export const builtInMemoryTasksOffConfig = `
 memory_writer:
   enabled: false
@@ -237,14 +237,6 @@ release takes v0.41.0 or later before it takes the delete.
 - Before a rollback to a release with the built-in tasks, the deployment sets
   `builtInMemoryTasksOffConfig` in `config.yaml`. The config edit and the release change are one
   deploy. A later deploy of the delete release removes both sections again.
-
-| The deployment                                                  | What the rollback target does                                                              |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| took the delete, and sets the constant                          | accepts the config, gives both tasks the off step, and parses every record kind in the log |
-| took the delete, a started task wrote memory, sets the constant | reads those versions and proposals, whose origin is `task`                                 |
-| took the delete, and rolls back with neither section            | starts both tasks: the note-taker reads every message since its cursor                     |
-| first installed on the delete, with the constant                | creates neither task                                                                       |
-| first installed on the delete, with neither section             | creates both tasks: the note-taker reads the conversation from its first message           |
 
 ## Decisions
 

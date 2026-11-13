@@ -326,21 +326,10 @@ Each refusal is a tool error before the program starts:
 
 ### A rollback
 
-The release a rollback returns to lacks the code tool. What that release does with each thing this
-design adds:
-
-| Added                                                 | The release before                                                                                                                                   |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| the `code_files` migration                            | runs on the newer schema, because the migration only adds a table, and never reads that table                                                        |
-| attachments of a `tool_result`                        | never reads them; a forget of the record still deletes the key that seals them                                                                       |
-| `tool_called` and `tool_result` records of `code.run` | reads them as it reads any tool record                                                                                                               |
-| `sandbox.created` of kind `code_run`                  | reads it, because the kind `code_run` exists before this design; nixie destroys the sandbox at start                                                 |
-| the `code` image key and the `codeRun` row            | never meets them: each release's nixie image holds its own manifest, and a size is a constant                                                        |
-| a started task with `code.run` on its tool list       | keeps the list, and refuses each call of `code.run` as a tool it does not have                                                                       |
-| a task definition that lists `code.run`               | refuses the whole seed, as [the task definition format](task-definition-format.md#what-a-seed-refuses) sets out, and keeps the seed it last accepted |
-
-When the release before must take new seeds, the operator takes `code.run` out of each task
-definition in the definitions repo before the rollback.
+A release from before this design refuses the whole seed of a task definition that lists `code.run`,
+as [the task definition format](task-definition-format.md#what-a-seed-refuses) sets out. When the
+release before must take new seeds, the operator takes `code.run` out of each task definition in the
+definitions repo before the rollback.
 
 ## Decisions
 
@@ -377,11 +366,11 @@ definition in the definitions repo before the rollback.
 
 ## Out of scope
 
-- A way for the files a code run writes to reach the person nixie works for. The files reach only
-  the model, and the question stays open in
-  [the code tool](https://linear.app/zgeoff/issue/GEO-1841).
-- An image in a message as an input. It waits for a marker ID that lasts, an open question in
-  [the code tool](https://linear.app/zgeoff/issue/GEO-1841).
+- A way for the files a code run writes to reach the person nixie works for. Until
+  [a send-a-file tool](https://linear.app/zgeoff/issue/GEO-2652) exists, a code run's files reach
+  only the model.
+- An image you send as a code run's input, which
+  [its own work item](https://linear.app/zgeoff/issue/GEO-2653) adds after the code tool ships.
 - Network access, a package installer, and an image or size per caller.
 - Coding sessions, which the [coding design](../platform/connectors/coding.md#the-coding-adapter)
   covers.

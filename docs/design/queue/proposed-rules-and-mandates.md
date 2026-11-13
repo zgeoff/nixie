@@ -356,15 +356,8 @@ policy:
 
 ### Rollback
 
-| Added                                                                                         | The release before                                                                                    |
-| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `rules.rule_proposed`, `.mandate_proposed`, `.mandate_started`, `.mandate_ended`              | Skips each record kind it does not know                                                               |
-| Shared rows of the 2 new proposal kinds                                                       | Has no handler for them, so lists none and refuses each answer as `NOT_ALLOWED`                       |
-| The `gap_answers` and `gap_groups` migration                                                  | Starts, because the migration only adds tables, and reads no row of them                              |
-| A mandate's runtime changes in force                                                          | Keeps them in force. Each stops matching at its `expires`, never exports, and waits for the timer     |
-| `policy.proposed_rules` and `policy.mandates` in config                                       | Refuses to start, because the schema is strict. Remove both keys from `config.yaml` before a rollback |
-| The tool `rules.propose_mandate`                                                              | Has no such tool, so the conversation cannot call it                                                  |
-| `rules.editProposedRule`, `rules.proposeMandate`, `rules.listMandates` and `rules.endMandate` | Answers `NOT_FOUND`                                                                                   |
+Before a rollback, remove `policy.proposed_rules` and `policy.mandates` from `config.yaml`, because
+the release before refuses to start on either key.
 
 After a roll forward, the timer's check at start ends every mandate whose `expires` passed while the
 release before ran.

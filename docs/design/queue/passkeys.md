@@ -307,14 +307,6 @@ nixie passkey-code              # a one-time registration code
 
 ### Rollback
 
-| Added                                                                          | The release before                                                                                                           |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| The `passkeys` table and its migration                                         | Never reads it. The migration only adds a table, so the [oldest reader](../../architecture/core/database.md) does not change |
-| `passkey.registered`, `passkey.revoked`, `passkey.used`, `passkey_code.issued` | Skips them                                                                                                                   |
-| The `passkeys.*` procedures                                                    | Answers `NOT_FOUND`                                                                                                          |
-| `passkey` on `answerProposal`, `passkeyChoices`                                | Strips the field, and approves an always-ask or lifting row with one tap                                                     |
-| The host commands                                                              | Has none, and the server refuses the unknown control request                                                                 |
-
 The rollback needs no step, and it removes the passkey check from every high-risk approval until the
 passkey release returns. This is accepted: a rollback is a short, deliberate act from the host.
 Every passkey registered before the rollback works again once the passkey release returns.
@@ -343,18 +335,17 @@ Every passkey registered before the rollback works again once the passkey releas
   later passkey sign-in of a new device needs both, and neither changes after registration.
 - **At most 10 live passkeys.** An agent's call on 13 Nov 2026: a cap bounds what one leaked code or
   one stolen passkey can add, and 10 covers every device of one person.
-- **The first passkey takes a host code.** The interim for the open question on the first passkey.
-- **More than one passkey, each added with a live passkey or a host code.** The interim for the open
-  question on several passkeys.
-- **Recovery is a host code alone, with no remote fallback.** The interim for the open question on
-  recovery.
-- **A revoke takes a passkey check in the client, and leaves waiting approvals as they are.** The
-  interim for the open question on revoking.
-- **The server and the browser use SimpleWebAuthn.** The interim for the open question on the
-  library: `@simplewebauthn/server` and `@simplewebauthn/browser` verify every step of both WebAuthn
+- **The first passkey takes a host code.** The owner's decision on 14 Nov 2026.
+- **Up to 10 passkeys, each added with a live passkey or a host code.** The owner's decision on 14
+  Nov 2026.
+- **Recovery is a host code alone, with no remote fallback.** The owner's decision on 14 Nov 2026.
+- **A revoke in the client takes a live passkey, a revoke through a host command needs none, and a
+  waiting approval stays pending.** The owner's decision on 14 Nov 2026.
+- **The server and the browser use SimpleWebAuthn.** The owner's decision on 14 Nov 2026:
+  `@simplewebauthn/server` and `@simplewebauthn/browser` verify every step of both WebAuthn
   ceremonies, and run on Web Crypto.
-- **The names are `passkeys.*`, `nixie passkeys` and `nixie passkey-code`.** The interim for the
-  open question on names, modelled on `nixie sessions` and `nixie enrol-code`.
+- **The names are `passkeys.*`, `nixie passkeys` and `nixie passkey-code`.** The owner's decision on
+  14 Nov 2026, modelled on `nixie sessions` and `nixie enrol-code`.
 
 ## Builder decides
 
@@ -373,10 +364,3 @@ Every passkey registered before the rollback works again once the passkey releas
 - Approving during a voice call, where the passkey prompt shows over the call screen.
 - A retry of an always-ask action whose outcome is unknown. This design builds `PasskeyCheck`, and
   the [actions work item](https://linear.app/zgeoff/issue/GEO-1810) builds the retry that calls it.
-
-## Open questions
-
-The owner settles 6 questions, kept in [the work item](https://linear.app/zgeoff/issue/GEO-310): how
-the first passkey is registered, whether you may have several, how you recover when every passkey is
-lost, what a revoke takes, the WebAuthn library, and the names. Until then the code follows the
-interims in [Decisions](#decisions).

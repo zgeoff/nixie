@@ -429,7 +429,8 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 - Each ask writes one `policy.action_proposed` in the transaction of the call's `tool_called`
   record.
 - An approval in this work runs nothing: it records the answer and delivers it to the task's inbox.
-  Running an approved action belongs to the approval record design
+  The inbox message reads "Approved `<id>`. nixie runs approved actions in a later release, so this
+  one did not run." Running an approved action belongs to the approval record design
   ([approval record](approval-record.md)) and to
   [actions under policy](https://linear.app/zgeoff/issue/GEO-1810).
 - An action proposal lapses after 72 hours through the existing lapse sweep.
@@ -449,18 +450,6 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 4. Deploy the cutover release. Expect: the server start logs no warning about rules.
 
 ### A rollback to the release before
-
-| What the cutover adds                                | What the release before does                                  |
-| ---------------------------------------------------- | ------------------------------------------------------------- |
-| The decision's new envelope keys                     | Reads the record, and drops each key it does not know         |
-| No old `destinations` or `consent` key on a decision | Reads the record, because its schema marks both keys optional |
-| `erasable.destinations` on `tool_called`             | Reads the record, and never reads that field                  |
-| A `tool_result` of an ask                            | Reads it as queued with no action                             |
-| The `policy.action_*` and `policy.contact_*` kinds   | Skips each record kind it does not know                       |
-| The `known_contacts` migration                       | Starts, because a migration only expands; reads no row of it  |
-| `policy.consent.link_max_age`                        | Refuses to start, because the config schema is strict         |
-| `effects/*.yaml`                                     | Skips the folder, so each override stops applying             |
-| `destinations` in a `task.yaml`                      | Refuses the seed, and keeps the last seed it accepted         |
 
 - Before you start the release before, remove the `policy` section from `config.yaml`.
 - When the release before parses `task.yaml` files at all, also remove `destinations` from each one,
@@ -501,6 +490,9 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 - **An approval runs nothing in this work.** An agent's call on 13 Nov 2026: running an approved
   action without the use-once check and the policy check before each attempt would be wider than the
   designs that own them.
+- **The inbox tells the task that its approved action did not run.** The owner chose the message on
+  14 Nov 2026: "Approved `<id>`. nixie runs approved actions in a later release, so this one did not
+  run."
 - **A deny from a fault records the stage that was running.** An agent's call on 13 Nov 2026: the
   stage stays a number from 1 to 9, and `fault` tells the fault apart.
 
@@ -523,10 +515,3 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 - auto-mode, which the decision point design keeps off, and a taint label for each task run.
 - A second guard in the model's harness. Every model session runs with no built-in tools, and every
   call passes `runToolCall`.
-
-## Open questions
-
-- **What does the task hear when you approve an action that cannot run yet?** The owner settles it,
-  in [the full decision point](https://linear.app/zgeoff/issue/GEO-1803). Until then the inbox
-  message reads "Approved `k3x9m2p7qa`. nixie runs approved actions in a later release, so this one
-  did not run."

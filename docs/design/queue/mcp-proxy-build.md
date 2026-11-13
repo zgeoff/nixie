@@ -198,7 +198,7 @@ type PinState =
 
 ```text
 mcp_tools, a projection, one row per tool a server listing has held
-  tool            text primary key -- '<serverID>.<name>', such as 'notes.search'
+  tool            text primary key -- '<serverID>.<tool>', such as 'github.create_issue'
   server_id       text not null
   pinned_hash     text             -- null until a declaration pins the tool
   latest_hash     text not null    -- the hash of the newest server listing that held the tool
@@ -546,21 +546,15 @@ module owns and that has a second real provider in sight, one that does the work
 
 ### Rollback
 
-| Added                                            | The release before                                                                                          |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| The `mcp` config section                         | Refuses to start, because the schema is strict. Remove the section from `config.yaml` before the rollback   |
-| The migration of the 3 tables                    | Never reads them. The migration only adds tables, so the oldest reader does not change                      |
-| `mcp.*` records off a task thread                | Skips them, because no projection of that release folds them                                                |
-| `mcp.tool_changed` and `mcp.input_*` on a thread | Skips them: they are not inbox kinds there, so no step reads them and none wakes a task                     |
-| `policy.action_rehashed`                         | Skips it. Its registry lacks the proxied tool, so its action runner fails an approved action at the attempt |
-| A proxied tool on a started task's tool list     | Keeps the list, and refuses each call as a tool it does not have                                            |
-| The `mcp_server` kind, at stage 1                | Never meets it, because stage 1 writes none                                                                 |
-| A `sandbox.created` of kind `mcp_server`         | Reads it, because stage 1 adds the kind, and destroys the sandbox at start                                  |
-| `transport.command` and `auth: oauth` in config  | Refuses to start. Remove the entry, or change it, before the rollback                                       |
-| A connection of an `mcp:` connector, at stage 3  | Skips it, because stage 1 makes the connections list and the refresh sweep skip such a connection           |
+- A release from before this design refuses to start on the `mcp` config section, because its schema
+  is strict. Remove the section from `config.yaml` before the rollback.
+- A release from before stage 2 refuses to start on `transport.command`, and one from before stage 3
+  on `auth: oauth`. Remove each such entry, or change it, before the rollback.
 
 ## Decisions
 
+- **A proxied tool's name is `<serverID>.<tool>`, such as `github.create_issue`.** The owner chose
+  this on 14 Nov 2026.
 - **The config holds the facts the deployment asks for, and records hold the facts in use.** An
   agent's call on 13 Nov 2026: nixie reads the config only at start, so the commands write records,
   and a start holds a widening for one approval, as a
@@ -610,9 +604,3 @@ module owns and that has a second real provider in sight, one that does the work
 - Sampling, roots and logging from a server.
 - A declaration in the definitions repo for a proxied tool.
 - A server reached through a sandbox's own egress.
-
-## Open questions
-
-The owner settles the form of a proxied tool's name, kept in
-[the work item](https://linear.app/zgeoff/issue/GEO-1842). Until then, a name is
-`<serverID>.<name>`.

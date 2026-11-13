@@ -418,6 +418,8 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 - The turn raise is capped at `day.turnCap`. nixie's config file is read-only to nixie, so nixie
   never moves that cap. The gateway's caps bound the dollars and the tokens, whatever the server
   sends.
+- "Raise today's limit" offers today's limit plus half, up to the cap. You can change the amount
+  before you confirm.
 - On a day trip, the client shows: "Model spending stopped: the daily limit of $60 was reached at
   16:42. All tasks are paused where they were. Nothing is lost. [Raise today's limit] Resumes on its
   own at midnight." On a month trip, the client shows the month and the date of its reset, with no
@@ -483,26 +485,6 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
 
 ### A rollback
 
-The release before reads this design's changes this way:
-
-| The change                                         | The release before                                               |
-| -------------------------------------------------- | ---------------------------------------------------------------- |
-| the added `models.limits` keys, `spendStop`        | refuses to start: the config schema is strict                    |
-| the `lift` field                                   | refuses the seed; the rules in force stay                        |
-| a manifest at `definitionsFormats.budgets`         | refuses the format, when it reads only the format before         |
-| the migration                                      | never selects the 2 tables                                       |
-| `spend.*` and `budget.*` records                   | never meets them on a thread: each is on no thread               |
-| the cause `spending`                               | refuses with `SchemaTooNewError` while it stands                 |
-| the `/<sandbox>/<route>` base URL and path filters | sends `/<route>` paths, which a `countBySandbox` gateway refuses |
-
-The gateway before reads its changes this way:
-
-| The change             | The gateway before                           |
-| ---------------------- | -------------------------------------------- |
-| the added config keys  | refuses to start, so no model request passes |
-| the store at version 2 | never reads it: step 3 moves the file aside  |
-| the override file      | never reads it                               |
-
 To roll back:
 
 1. Clear the stop on this build. For a day trip, raise the limit or wait for midnight. For a month
@@ -550,6 +532,13 @@ To roll back:
   live in the config, so a budget that counted model use would be a second copy of them.
 - **A paid tool's limits change only in the definitions.** An agent's call on 13 Nov 2026: a raise
   there passes the widening flow, which asks, and a deployment config would raise it without asking.
+- **`search.daily_call_cap` stays beside the search budget, and both apply.** The owner's call on 14
+  Nov 2026: the call cap bounds the number of searches, and the budget bounds the dollars that Kagi
+  charges.
+- **The names are `caps`, `model-gateway raise` and `nixie spend raise`.** The owner's call on 14
+  Nov 2026.
+- **"Raise today's limit" offers today's limit plus half, up to the cap.** The owner's call on 14
+  Nov 2026: you can change the amount before you confirm.
 - **Money in the ledger is integer millionths of a dollar.** An agent's call on 13 Nov 2026: a
   search costs a fraction of a cent, and an integer sum never drifts.
 
@@ -561,7 +550,8 @@ To roll back:
 - How the gateway keeps the reads of the store and the override file cheap.
 - The wording of each refusal, log line and notice, past the stop's notice and the model's "budget
   reached" text.
-- How the client shows the cap and the amount it offers for a raise.
+- How the client shows the cap and the amount it offers for a raise, within the rule in
+  [the raise](#the-raise).
 - The layout of the tests.
 
 ## Out of scope
@@ -571,13 +561,3 @@ To roll back:
 - The search tool and its provider.
 - A raise of a budget from the client. A budget's limit changes in the definitions.
 - The Telegram push.
-
-## Open questions
-
-The owner settles each one in [the budgets work item](https://linear.app/zgeoff/issue/GEO-1811), and
-the interim stands until then:
-
-- **Does `search.daily_call_cap` stay beside the search budget?** Interim: both apply.
-- **The names `caps`, `model-gateway raise` and `nixie spend raise`.** Interim: those names.
-- **What the raise control offers.** Interim: today's limit plus half, up to the cap, and you can
-  change the amount before you confirm.

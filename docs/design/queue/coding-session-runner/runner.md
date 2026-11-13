@@ -281,12 +281,6 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   loop of messages, and your stop. The coding agent's spend and wall time sit in atc, outside
   nixie's [budgets](../../platform/policy/budgets.md) and its model gateway.
 
-### Rollback
-
-The [rollback table](README.md#rollback) of the README says what the release a rollback returns to
-does with `coding.session_bound`, `coding.delivered`, the `coding_sessions` table, the
-`tasks.runner` column and the `coding` config section.
-
 ## Decisions
 
 - **The report repeats the session's final reply, even when an answer to a message carried the same

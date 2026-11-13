@@ -80,20 +80,8 @@ back to the report target as `task_message` records.
 
 ## Rollback
 
-The release a rollback returns to has the runner port and lacks the coding runner. The table says
-what that release does with each record kind, table and key that the coding runner adds:
-
-| What this work adds                         | What that release does                                                                                               |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `task.created` with `runner: 'atc'`         | each step of the task throws, because that release has no runner for the key `atc`, so the task fails after 3 errors |
-| `coding.session_bound`, `coding.delivered`  | skips both record kinds                                                                                              |
-| `trigger.task_input`                        | skips the record kind in its projections; a task it wakes fails as above                                             |
-| the `coding_sessions` table, `tasks.runner` | starts on the migrated schema, and never reads the table or the column                                               |
-| the `coding` config section                 | refuses to start, because every config section is strict                                                             |
-| a rule that names the effect `coding_start` | refuses the rule file                                                                                                |
-| the `coding:atc` row of `trigger_sources`   | never reads it                                                                                                       |
-
-A rollback takes these steps, in order:
+A rollback to a release that has the runner port and lacks the coding runner takes these steps, in
+order:
 
 1. Close each coding task with the `close` control, from the dashboard or the `close`
    [task host command](../../../architecture/deployment/host-commands.md#tasks). The close calls the
@@ -109,6 +97,8 @@ A rollback takes these steps, in order:
 
 - **A coding runner runs no model.** Its step only moves records between the task and the session,
   so it spends no model money and needs no sandbox.
+- **This runner's key is `atc`.** The owner chose it on 14 Nov 2026. The key names the config
+  section `coding.atc` and the variants `task.start/atc` and `task.message/atc`.
 - **The coding runner is generic over `CodingAdapter`, and its key is the adapter's ID.** A later
   adapter, such as a built-in one that runs a session in an [imp](../../../glossary.md), gets its
   own key and its own `task.start` variant.
@@ -137,9 +127,6 @@ A rollback takes these steps, in order:
 
 ## Open questions
 
-- **What is this runner's key?** The owner settles it, in
-  [the atc runner](https://linear.app/zgeoff/issue/GEO-1843). The key also names the config section
-  and the `task.message` variant. Until then, the key is `atc`.
 - **Does each model API accept a `oneOf` under an object root for the `task.start` input?** One
   probe per harness settles it, for `agent-sdk` and `codex`: the conversation's model calls
   `task.start` with both variants in the tool's input schema, and the probe checks that the API

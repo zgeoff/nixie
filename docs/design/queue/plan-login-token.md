@@ -15,7 +15,8 @@ Terms:
 - A **plan route** is a model gateway route whose config holds a plan login.
 - A **plan profile** is a `codex` model profile whose requests go to a plan route.
 - The **login file** is the file in which the gateway keeps a plan route's login.
-- The **operator** is the person who runs commands on the host.
+- The **operator** runs commands on the gateway host. An agent can be the operator. Only the owner
+  approves a device code in ChatGPT.
 - **impd** is the daemon that runs each sandbox as an imp. Its **broker** adds a granted secret to a
   sandbox's requests for one host, and a **grant**'s path filter limits the paths it covers
   ([sandboxes](../../architecture/connectors/sandboxes.md#the-imp-adapter)).
@@ -33,12 +34,12 @@ the base URL of each sandbox are in the budgets design,
 
 ```mermaid
 flowchart LR
-  op[operator] -->|"model-gateway login"| gateway[model gateway]
+  op[operator] -->|"model-gateway chatgpt-login"| gateway[model gateway]
   gateway <-->|"device code, refresh"| auth[auth.openai.com]
   guest[Codex guest] -->|"placeholder"| broker[impd broker]
   broker -->|"route key"| gateway
   gateway -->|"plan access token"| backend[ChatGPT Codex backend]
-  server[nixie server] -->|"GET /logins"| gateway
+  server[nixie server] -->|"GET /chatgpt-logins"| gateway
 ```
 
 ## Contracts
@@ -89,17 +90,17 @@ The access token lives only in the gateway's memory, with the time the gateway g
 ### The host commands
 
 ```bash
-model-gateway login --config <config file> --route codex-plan
+model-gateway chatgpt-login --config <config file> --route codex-plan
 # → Open https://auth.openai.com/codex/device and enter the code ABCD-1234 (expires in 15 minutes).
 #   Signed in: someone@example.com, plan plus. Stored for codex-plan.
-model-gateway logout --config <config file> --route codex-plan
+model-gateway chatgpt-logout --config <config file> --route codex-plan
 # → Removed the login for codex-plan. Sign this device out in ChatGPT's security settings.
 ```
 
 ### The control listener
 
 ```http
-GET /logins
+GET /chatgpt-logins
 Authorization: Bearer <control token>
 
 200 {
@@ -114,12 +115,12 @@ An entry holds no token and no email. A plan route with no login file shows
 ### nixie's config and the guest
 
 ```yaml
-# deployment config, under models.profiles: the codex profile of the Codex harness, with plan_login
+# deployment config, under models.profiles: the codex profile of the Codex harness, with chatgpt_login
 codex-plan:
   harness: codex
   base_url: https://chatgpt.com
   credential: deployment:codex-plan # names the impd secret, as every model profile does
-  plan_login: true # its requests go to the plan route whose ID is this profile's ID
+  chatgpt_login: true # its requests go to the plan route whose ID is this profile's ID
   model: gpt-6-luna
   effort: low
   prices: { … }
@@ -191,12 +192,12 @@ const logins = await readPlanLogins(context);
   CLI's client ID.
 - The gateway writes a rotated refresh token to the login file, through a second file and a rename,
   before it uses the new access token. It writes only while the file's `loginID` is the one it read
-  before the refresh, under a lock on the file that `login` and `logout` take too.
+  before the refresh, under a lock on the file that `chatgpt-login` and `chatgpt-logout` take too.
 - Before it admits each request on a plan route, the gateway reads the login file's `loginID`. When
   that ID differs from the one its access token came from, the gateway drops the token and
   refreshes. When the file is gone, the gateway answers 401.
-- The model listener serves no login path, and the control listener serves `GET /logins` and no
-  other login path.
+- The model listener serves no login path, and the control listener serves `GET /chatgpt-logins` and
+  no other login path.
 
 The status and the reason follow each refresh's answer:
 
@@ -207,7 +208,7 @@ The status and the reason follow each refresh's answer:
 | 3 in a row of a 5xx or no answer within 10 s, in any mix                                        | `failing`     | `service_error` after a 5xx, `no_answer` after no answer, from the third |
 
 - A `failing` login keeps its retries, with backoff, and returns to `active` on the first token.
-- A `needs_login` login stops its refreshes until the next `model-gateway login`.
+- A `needs_login` login stops its refreshes until the next `model-gateway chatgpt-login`.
 - When an answer is lost, or the gateway stops after OpenAI answers and before the rename, OpenAI
   may have spent the stored refresh token. The next refresh then gets a refusal, and the login
   becomes `needs_login`. A test checks that the login file then still holds the earlier refresh
@@ -215,24 +216,25 @@ The status and the reason follow each refresh's answer:
 
 ### The login
 
-- `model-gateway login` runs OpenAI's device code flow, with the endpoints and the client ID of the
-  pinned Codex CLI. It prints the URL, the code and its expiry, and opens no browser.
+- `model-gateway chatgpt-login` runs OpenAI's device code flow, with the endpoints and the client ID
+  of the pinned Codex CLI. The operator runs it on the gateway host. It prints the URL, the code and
+  its expiry, and opens no browser. The owner opens the URL and approves the code in ChatGPT.
 - When the sign-in ends, the command writes the login file with a new `loginID`, replacing any file
   the route has, and prints the email and the plan. It prints no token.
-- `model-gateway logout` removes the login file. OpenAI documents no revocation endpoint for this
-  sign-in, so the command tells the operator to sign the device out in ChatGPT.
+- `model-gateway chatgpt-logout` removes the login file. OpenAI documents no revocation endpoint for
+  this sign-in, so the command tells the operator to sign the device out in ChatGPT.
 - Device code login must be on in the account's ChatGPT security settings. When OpenAI refuses the
   code request, the command prints that this setting is off.
 
 ### nixie
 
 - The server never holds a plan token. At each read of the gateway's `/status`, the server reads
-  `GET /logins`, and puts the route's account ID and plan type in each turn profile it sends on the
-  plan profile.
-- The schema refuses `plan_login: true` when nixie's config has no `spendStop` section, because the
-  server reaches the control listener through that section.
+  `GET /chatgpt-logins`, and puts the route's account ID and plan type in each turn profile it sends
+  on the plan profile.
+- The schema refuses `chatgpt_login: true` when nixie's config has no `spendStop` section, because
+  the server reaches the control listener through that section.
 - When the plan profile's login is not `active`, the runner fails each step on that profile with
-  `model_auth`, and the client shows that the operator must run `model-gateway login`.
+  `model_auth`, and the client shows that the operator must run `model-gateway chatgpt-login`.
 - The Codex guest logs in with `chatgptAuthTokens` before its first `thread/start`, and writes no
   `auth.json`. Its config sets `cli_auth_credentials_store = "ephemeral"`,
   `forced_login_method = "chatgpt"`, and `requires_openai_auth = true` on its model provider.
@@ -252,15 +254,6 @@ The status and the reason follow each refresh's answer:
 
 ### A rollback
 
-| The change                         | The release a rollback returns to                   |
-| ---------------------------------- | --------------------------------------------------- |
-| a route's `login` key              | that gateway refuses to start: its schema is strict |
-| the login file                     | that gateway never reads it                         |
-| `/responses` in the endpoint table | that gateway refuses that path with a 403           |
-| `GET /logins`                      | that nixie never calls it                           |
-| a profile's `plan_login` key       | that nixie refuses to start: its schema is strict   |
-| `chatgptLogin` in the turn profile | that nixie never sends it                           |
-
 To roll back:
 
 1. Remove each plan profile from nixie's config, and each `selectable` entry under `models` that
@@ -273,22 +266,25 @@ To roll back:
 5. Start the nixie release a rollback returns to. Expect: it starts.
 
 Each login file stays on disk, so a release that reads it again keeps the login. Run
-`model-gateway logout` before step 4 to end the login.
+`model-gateway chatgpt-logout` before step 4 to end the login.
 
 ## Decisions
 
-- **The model gateway holds the plan login.** Interim until the owner answers
-  [GEO-2238](https://linear.app/zgeoff/issue/GEO-2238), because
+- **The model gateway holds the plan login.** The owner's call on 13 Nov 2026, which replaces the
+  holder that
   [decision 8](https://linear.app/zgeoff/document/decision-how-nixie-chooses-and-calls-models-beyond-claude-geo-2231-39da60c58643)
-  named nixie's credential store. While the spending stop is set, the server holds no model
-  credential, so a plan login in the server would let nixie's own code reach ChatGPT past the count.
-  The gateway already sits on every plan request.
+  named: the plan login follows the same rule as every other model credential. While the spending
+  stop is set, the server holds no model credential, so a plan login in the server would let nixie's
+  own code reach ChatGPT past the count. The gateway already sits on every plan request.
 - **The gateway sets the access token itself, and impd holds only the route key.** An agent's call
   on 13 Nov 2026: in impd, only a host-wide token can replace a secret's value, and that token
   reaches every imp on the host.
-- **The login runs as a gateway host command, with a device code.** An agent's call on 13 Nov 2026:
-  a device code needs no redirect to the host, so no token passes through the server. A login in a
+- **The login runs as a gateway host command, with a device code.** The owner's call on 13 Nov 2026:
+  an agent runs the command on the gateway host, and the owner only approves the code in ChatGPT. A
+  device code needs no redirect to the host, so no token passes through the server. A login in a
   sandbox would put the refresh token in an imp.
+- **The names are `chatgpt_login`, `model-gateway chatgpt-login`, `model-gateway chatgpt-logout` and
+  `GET /chatgpt-logins`.** The owner's call on 13 Nov 2026.
 - **Codex runs in external token mode, with no `auth.json`.** An agent's call on 13 Nov 2026: in its
   own mode, the CLI sends a refresh with the placeholder refresh token when the access token's `exp`
   is near, or after two 401 answers in a row, and then fails the turn, as the
@@ -316,10 +312,3 @@ Each login file stays on disk, so a release that reads it again keeps the login.
 - A change to imp.
 - A plan login for the conversation role, which a `codex` profile cannot hold.
 - A login from the web client.
-
-## Open questions
-
-The owner settles the open questions in
-[the plan login work item](https://linear.app/zgeoff/issue/GEO-2238): who holds the plan login,
-where the one-time login runs, and the names. This design follows the interim that the work item
-gives for each.
