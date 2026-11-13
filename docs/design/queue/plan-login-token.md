@@ -90,6 +90,7 @@ model_logins             plain table, models module: the credential store's rows
   status_reason          text? unauthorised | service_error | no_answer
   status_since           int
   last_success_at        int?
+  removal_counter        int   0 at creation; each new login and each Forget advances it
   created_at             int
 ```
 
@@ -182,12 +183,18 @@ await appServer.request('account/login/start', {
   opens a browser.
 - `finishLogin` stores the refresh token, the account ID, the plan type and the email, writes
   `model_login.stored`, and pushes the access token, in that order. It prints no token.
-- A login for a profile that already has one replaces the row and its key in one transaction. The
-  old key goes as
+- A login for a profile that already has one replaces the row and its key, and advances
+  `removal_counter`, in one transaction. The old key goes as
   [forgetting a record](../../architecture/core/erasable-fields.md#forgetting-a-record) does.
-- `forgetLogin` deletes the plan secret from impd, which revokes it from every sandbox, then
-  destroys the row's key and writes `model_login.forgotten`. OpenAI documents no revocation endpoint
-  for this sign-in, so the command tells you to sign the device out in ChatGPT.
+- `removal_counter` is the counter of
+  [Disconnect and forget](../platform/connectors/credentials.md#disconnect-and-forget). A refresh
+  and a push read it when they start, and save or send only while it is unchanged, under the lock on
+  the row that a new login and a Forget take. A refresh or a push retry that began before a new
+  login or a Forget therefore saves nothing and pushes nothing.
+- `forgetLogin` advances `removal_counter`, deletes the plan secret from impd with
+  `impd_secrets_token`, which revokes it from every sandbox, then destroys the row's key and writes
+  `model_login.forgotten`. OpenAI documents no revocation endpoint for this sign-in, so the command
+  tells you to sign the device out in ChatGPT.
 - Device code login must be on in the account's ChatGPT security settings. When OpenAI refuses the
   code request, the command says so and names that setting.
 
@@ -202,6 +209,11 @@ await appServer.request('account/login/start', {
   `failing` after 3 in a row.
 - Each refresh pushes. A push that fails retries with backoff while the old access token holds, and
   the login turns `failing` with `service_error` when the old token expires first.
+- A refresh whose answer is lost, or a crash after OpenAI answers and before the commit, leaves a
+  refresh token that OpenAI may have spent. The next refresh then gets `refresh_token_reused` or
+  `invalid_grant`, and the login becomes `needs_consent`, while the access token in the plan secret
+  works until it expires. A crash test checks that outcome, and that the row keeps the old token
+  whole.
 - After a crash between a refresh's commit and its push, the server's start refreshes the login once
   and pushes, because the new access token was only in memory.
 - The login's fetcher reaches only the token endpoint's host. No nixie code sends the access token
@@ -222,8 +234,8 @@ await appServer.request('account/login/start', {
 - The server adds the plan secret on the first push, and from then on only replaces its value. The
   imp adapter checks `system.info().features.secretRebind` first, and refuses the push without it,
   because an older impd takes a changed binding with a plain replace.
-- Only the push and that add use `impd_secrets_token`. The sandbox adapter keeps its scoped
-  `impd_token` for every other call.
+- Only the push, that add and Forget's delete use `impd_secrets_token`. The sandbox adapter keeps
+  its scoped `impd_token` for every other call.
 - With a plan profile in the config, the server refuses to start without `impd_secrets_token`, or
   when `tokens.whoami` shows it is not host-wide `manage`.
 - The grant's path filter is `/<sandbox name>/**`, as for every model grant. Codex's calls to other
