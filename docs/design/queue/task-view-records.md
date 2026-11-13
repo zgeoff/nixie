@@ -160,13 +160,17 @@ type ReadPayloadOutput =
 - The client keeps a loaded payload only in the view's memory, never in local storage. It drops the
   payload when a forget record that names the record arrives, or a `log_reset` arrives, as it drops
   a forgotten message's text.
+- When `records.readPayload` fails for any reason, the control shows the failure with a retry, and
+  the cut value stays in place.
 
 ### A rollback
 
 - This design adds no record kind, no migration and no config key. The worker tool work adds the 3
   worker kinds, and its design says what the release before does with them.
 - The server of the release before strips `clipPayloads` and sends every payload whole with no
-  `clipped`, so a newer client shows each value whole and never calls `records.readPayload`.
+  `clipped`, so a newer client shows each value whole. A page that loaded clipped records before the
+  rollback keeps its cut values, and its load control fails as the on-demand read says, until a
+  reload reads the page whole.
 - A newer server sends `clipped`, `worker` and `toolCall.runID` only as optional fields. A client of
   the release before passes no `clipPayloads`, so it gets whole payloads, and it shows a worker
   record by its kind.

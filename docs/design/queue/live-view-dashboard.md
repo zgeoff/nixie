@@ -142,6 +142,9 @@ group, whatever its state.
 
 - The dashboard reads the list again on `trigger.fired`, beside the kinds that `isTaskListRecord`
   matches, because a fire moves a task's last activity and opens a task run.
+- A pause or a resume of nixie writes its records on no thread, so the live stream never shows them.
+  The dashboard therefore also reads the list again every 60 seconds while the page is visible, and
+  at once when the page becomes visible again.
 - Each read of the list carries the filters in its query key, so a change of filter reads a fresh
   list and follows the stream from its `readAtSequence`, as built.
 
@@ -166,6 +169,10 @@ group, whatever its state.
 - **The fire of a carrying task run is the fire of the task run it carries.** An agent's call on 13
   Nov: a raise or a restart goes on with the same scheduled work, so its row keeps that work's
   scheduled time.
+
+- **The dashboard reads the list again on a timer as well as on the stream.** An agent's call on 13
+  Nov: the pause records reach no thread, and the stream is the only other way the list learns of a
+  change.
 
 ## Builder decides
 
