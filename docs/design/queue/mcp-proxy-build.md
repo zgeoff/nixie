@@ -210,7 +210,7 @@ mcp_tool_forms, a projection, one row per tool form a server listing has held
 - An approved declaration or allow moves the pin to the hash its operation holds, never to a later
   one. A trusted server's change moves the pin to the hash of the server listing that brought it.
 - A stopped tool stays on each tool list in its pinned tool form. The proxy answers each call with
-  an error that names the tool and the wait, such as "notes.search changed and waits for your
+  an error that gives the tool and the wait, such as "notes.search changed and waits for your
   review". A hidden or removed tool never appears on a tool list.
 - The fit check runs on every server listing. A declaration fits when each argument it names is a
   property of the latest input schema. A declaration names no result field.
@@ -493,7 +493,7 @@ const spec: OAuthSpec = {
   the backoff while its latest server listing failed.
 - The proxy never runs a server listing of a `held`, `proposed` or `removed` server. A tool of a
   `held` server stays on each tool list in its pinned tool form, and the proxy answers each call
-  with an error that names the wait for your approval.
+  with an error that says the server waits for your approval.
 - A call reaches the server only when the latest server listing passed and left the tool `exposed`.
 - The input check and the result check read the current pin, never the task run's starting tool
   form.
