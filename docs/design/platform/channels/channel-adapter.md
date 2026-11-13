@@ -52,9 +52,9 @@ channel with one identity row per device.
 
 The push notifier tells you that something waits, and nothing else. Telegram runs through a bot you
 register with BotFather, whose token is a deployment secret; nixie ships no central bot. You pair it
-from a signed-in client, which shows a link `https://t.me/<bot_username>?start=<pairing_code>`. The
-single-use code lapses after 10 min and proves that whoever holds the client also holds the Telegram
-account.
+from a signed-in client or with `nixie channels pair telegram`, either of which shows a link
+`https://t.me/<bot_username>?start=<pairing_code>`. The single-use code lapses after 10 min and
+proves that whoever holds the client also holds the Telegram account.
 
 The adapter reads updates by long polling, so Telegram needs no inbound route. The bot never carries
 the conversation: a text from you gets one fixed reply with a link to the client, and a text from
@@ -69,12 +69,13 @@ servers.
 nixie keeps one live notice, at 2 levels:
 
 - **Quiet:** routine items edit the live notice, with no buzz.
-- **Loud:** always-ask items, unknown outcomes and returning deferred items send a new, buzzing
-  notice, which becomes the live notice.
+- **Loud:** always-ask items, unknown outcomes, returning deferred items and the hard spending stop
+  send a new, buzzing notice, which becomes the live notice.
 
-nixie pushes only when no client has shown the conversation or a task in the last 2 min, and batches
-items within 30 s. Quiet hours hold loud pushes overnight, except unknown outcomes. Presence,
-batching and quiet hours are settings.
+nixie pushes only when no client has shown nixie in the last 2 min, and batches items within 30 s.
+Quiet hours hold loud pushes overnight, except unknown outcomes and the hard spending stop. Presence
+and batching are Telegram settings, and quiet hours are one setting that Defer shares.
+[The push notice](../../queue/push-notice.md) holds the contracts.
 
 ## Room for later channels
 
