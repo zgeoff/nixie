@@ -179,7 +179,7 @@ the mandate ended.
 
 The starter rule set ships as a template in the definitions scaffold that you copy, never as rules
 built into the public repo, because the principle "Behaviour is data" keeps policy out of the system
-tier. It has 9 rules:
+tier. It has 10 rules:
 
 | Rule                        | Outcome | Matches                                               |
 | --------------------------- | ------- | ----------------------------------------------------- |
@@ -192,6 +192,7 @@ tier. It has 9 rules:
 | `ask-permanent-deletes`     | Ask     | Effect `delete`                                       |
 | `ask-exports`               | Ask     | Effect `export`, such as a memory or event log export |
 | `ask-stranger-with-memory`  | Ask     | `task.start/nixie` with `memory: read` and no persona |
+| `ask-coding-sessions`       | Ask     | `task.start/atc`                                      |
 
 The always-ask set and the destination limits hold whatever the starter rules say, so the set is
 permissive inside those bounds. An effect the set does not mention, such as `device`, falls to "no

@@ -376,7 +376,8 @@ to match once the schedule source is built:
 ## Out of scope
 
 - Trigger sources for polls, webhooks and streams, and the match of an event to a definition by
-  filter.
+  filter. [The coding session runner](coding-session-runner/atc.md#the-coding-source) adds a stream
+  source whose events each name a task.
 - Pruning `trigger_keys`.
 - Moving the backup schedule, the lapse sweeps or the definitions poll onto the schedule source.
 - A view of source health.

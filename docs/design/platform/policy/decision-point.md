@@ -65,30 +65,35 @@ holds only the fixed rule. Slice 3 replaces both rules with the full pipeline an
 
 Every tool declares its effects in nixie's tool registry, and rules match on them:
 
-| Effect          | The tool                                                                   |
-| --------------- | -------------------------------------------------------------------------- |
-| `read`          | Reads your data or nixie's own state                                       |
-| `fetch`         | Reads outside content, such as a web page or search results                |
-| `note`          | Writes inside nixie, such as a note, a memory proposal or a message to you |
-| `note`          | Creates, edits or retires a memory item                                    |
-| `write`         | Changes data in your outside service that the service can restore          |
-| `delete`        | Removes data for good, in your outside service or in nixie's own records   |
-| `send`          | Reaches a person or service other than you                                 |
-| `spend`         | Spends money                                                               |
-| `schedule`      | Creates or changes a job                                                   |
-| `code_run`      | Runs code in the caller's sandbox under its recorded grant boundary        |
-| `device`        | Acts on a physical device, such as a light or a lock                       |
-| `policy_widen`  | Adds or loosens an allow rule, removes a deny or ask rule, or adds a lift  |
-| `policy_narrow` | Removes or tightens an allow rule, or adds a deny or ask rule              |
-| `budget_raise`  | Raises a budget                                                            |
-| `budget_lower`  | Lowers a budget                                                            |
-| `export`        | Writes decrypted personal data out of nixie to a place you pick            |
+| Effect          | The tool                                                                     |
+| --------------- | ---------------------------------------------------------------------------- |
+| `read`          | Reads your data or nixie's own state                                         |
+| `fetch`         | Reads outside content, such as a web page or search results                  |
+| `note`          | Writes inside nixie, such as a note, a memory proposal or a message to you   |
+| `note`          | Creates, edits or retires a memory item                                      |
+| `write`         | Changes data in your outside service that the service can restore            |
+| `delete`        | Removes data for good, in your outside service or in nixie's own records     |
+| `send`          | Reaches a person or service other than you                                   |
+| `spend`         | Spends money                                                                 |
+| `schedule`      | Creates or changes a job                                                     |
+| `code_run`      | Runs code in the caller's sandbox under its recorded grant boundary          |
+| `coding_start`  | Starts a coding session outside nixie, which nixie does not see call by call |
+| `device`        | Acts on a physical device, such as a light or a lock                         |
+| `policy_widen`  | Adds or loosens an allow rule, removes a deny or ask rule, or adds a lift    |
+| `policy_narrow` | Removes or tightens an allow rule, or adds a deny or ask rule                |
+| `budget_raise`  | Raises a budget                                                              |
+| `budget_lower`  | Lowers a budget                                                              |
+| `export`        | Writes decrypted personal data out of nixie to a place you pick              |
 
-A tool's effects are fixed per tool and never depend on its arguments. A capability whose effects
-differ by argument splits into tools: moving an email to the trash is a `write`, and purging it is a
-`delete`. **Why:** a rule then reads the same for every call of a tool, and the tool's name tells
-you its risk. Creating a job carries `schedule` plus the effects of every tool on the job's list, so
-your rules decide which jobs nixie schedules on its own.
+A tool's effects are fixed per tool and never depend on its arguments, except through a declared
+discriminator that picks a registered variant, such as `runner` on `task.start`. Each variant has a
+fixed declaration and a rule name of its own, such as `task.start/atc`, as
+[the coding session runner](../../queue/coding-session-runner/runner.md#the-start-and-the-policy)
+sets out. Any other capability whose effects differ by argument splits into tools: moving an email
+to the trash is a `write`, and purging it is a `delete`. **Why:** a rule then reads the same for
+every call of a tool, and the tool's name tells you its risk. Creating a job carries `schedule` plus
+the effects of every tool on the job's list, so your rules decide which jobs nixie schedules on its
+own.
 
 A tool also declares which arguments are destinations, which argument holds the amount for a
 `spend`, which arguments are free-text content, and the source of each field of its result. Effect

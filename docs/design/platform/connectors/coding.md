@@ -39,50 +39,56 @@ that needs outside data gets it through another tool first, because the code imp
 
 A coding session is long-running work on a repo, which needs version control, package registries and
 credentials. nixie defines the interface, and each adapter owns how a session runs: its sandbox,
-credentials, lifecycle and agent harness.
+credentials, lifecycle and agent harness. A coding runner drives one adapter, and its key is the
+adapter's ID.
 
 ```ts
 interface CodingAdapter {
-  id: string; // such as 'atc'
-  start(brief: SessionBrief, key: string): Promise<SessionRef>;
-  status(session: SessionRef): Promise<SessionStatus>;
-  message(session: SessionRef, text: string, key: string): Promise<MessageRef>;
-  results(session: SessionRef): Promise<SessionResult[]>;
-  stop(session: SessionRef): Promise<void>;
-  events(cursor: string | null): AsyncIterable<SessionEvent>; // for the trigger source
-}
-
-interface SessionBrief {
-  repo: { url: string; ref: string };
-  prompt: string;
-  agent?: string;
-  model?: string;
+  id: string; // the runner key, such as 'atc'
+  start(brief: SessionBrief, key: string): Promise<AdapterReply<SessionRef>>;
+  status(session: SessionRef): Promise<AdapterReply<SessionStatus>>;
+  message(
+    session: SessionRef,
+    text: string,
+    key: string,
+  ): Promise<AdapterReply<{ messageRef: string }>>;
+  results(session: SessionRef): Promise<AdapterReply<SessionResult>>; // the last finished turn's final reply
+  stop(session: SessionRef): Promise<AdapterReply<{ stopped: boolean }>>;
+  events(
+    cursor: JSONValue | null,
+    signal: AbortSignal,
+  ): AsyncIterable<{ cursor: JSONValue; events: SessionEvent[] }>;
 }
 ```
 
 A session is a task, so it shows on the dashboard and the conversation routes your messages to it.
-Starting and messaging a session are nixie tools with declared effects that your rules decide, and
-both run as actions on the queue with the action ID as their idempotency key. The adapter's `events`
-feed a trigger source with a cursor, so progress reaches the task's inbox as records.
+Starting a session is the `task.start/<key>` variant, which declares `coding_start`, and a message
+to it is the `task.message/<key>` variant, so your rules decide both. The start and each message run
+as actions on the queue, with the action ID as their idempotency key. The adapter's `events` feed a
+trigger source with a cursor, so progress reaches the task's inbox as records.
+[The coding session runner](../../queue/coding-session-runner/README.md) holds the types, the step
+and the records.
 
 ## The atc adapter
 
-atc runs coding sessions under its own rules, so each atc session is a supervised agent. nixie
-reaches atc as an external server through the [MCP proxy](mcp-proxy.md), over atc's HTTP transport
-with a scoped OAuth grant that the deployment configures.
+atc runs coding sessions under its own rules, so each atc session is a supervised agent. The
+`coding-atc` adapter calls atc's procedures directly, through `@atcx/contract`, over atc's TCP
+listener as a principal that atc's config lists. It never goes through the
+[MCP proxy](mcp-proxy.md), and the model never sees atc's own tools, so your rules decide every
+start and message.
 
-| Adapter call | atc tool              | Notes                                                    |
-| ------------ | --------------------- | -------------------------------------------------------- |
-| `start`      | `atc_session_spawn`   | Takes an idempotency key; a workspace from a git ref     |
-| `message`    | `atc_session_message` | Takes an idempotency key; the reply comes back as events |
-| `status`     | `atc_session_get`     | State, the question it waits on, its last answer         |
-| `results`    | `atc_report_get`      | A report's full text                                     |
-| `stop`       | `atc_session_kill`    | Ends the session                                         |
-| `events`     | `atc_events_read`     | A cursor, and a wait instead of a tight poll             |
+| Adapter call | atc procedure                            | Notes                                               |
+| ------------ | ---------------------------------------- | --------------------------------------------------- |
+| `start`      | `session.spawn`, with `idempotencyKey`   | A git workspace from the repo and ref               |
+| `message`    | `session.message`, with `idempotencyKey` | The answer comes back as events                     |
+| `status`     | `session.get`                            | State, and the question it waits on                 |
+| `results`    | `session.get`                            | `result`: the final reply of the last finished turn |
+| `stop`       | `session.kill`, with `stopOnly`          | Stops the session and keeps atc's record of it      |
+| `events`     | `events.read`                            | A cursor, and a wait instead of a tight poll        |
 
 atc answers a retried spawn or message with the same key with the first answer, and an interrupted
-one with `outcome_unknown`, so both reconcile by idempotency key. The model sees only the adapter's
-tools, never atc's own, so your rules decide every start and message.
+one with `outcome_unknown`, so both reconcile by idempotency key. nixie's principal is granted the
+cloud target only, so every session nixie starts runs there.
 
 ## The built-in adapter
 
