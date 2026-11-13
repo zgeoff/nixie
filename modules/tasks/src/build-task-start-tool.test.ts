@@ -408,12 +408,12 @@ test.each([
       'mcp__nixie__web_fetch.',
   ],
   [
-    'a memory write tool',
-    { memory: 'read', tools: ['memory.remember'] },
-    'a task cannot get memory.remember with any memory setting, so nixie started nothing. ' +
+    'a memory write tool for a task that does not read memory',
+    { tools: ['memory.remember'] },
+    'a task gets memory.remember only with memory set to read, so nixie started nothing. ' +
       'This task can get tasks.list or mcp__nixie__tasks_list, task.message or ' +
       'mcp__nixie__task_message, task.start or mcp__nixie__task_start, web_fetch or ' +
-      'mcp__nixie__web_fetch, memory.recall or mcp__nixie__memory_recall.',
+      'mcp__nixie__web_fetch.',
   ],
   [
     'a turn limit above the max',

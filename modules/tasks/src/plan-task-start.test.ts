@@ -263,12 +263,103 @@ test('it refuses a tool that only the conversation can use, though the starter h
   });
 });
 
-test('it refuses a memory write tool for a task that reads memory', () => {
+function setupTest() {
+  const starter = {
+    tools: [
+      'tasks.list',
+      'task.message',
+      'memory.recall',
+      'memory.pending',
+      'memory.remember',
+      'memory.edit',
+      'moment.edit',
+    ],
+    memory: 'read',
+    persona: 'default',
+  } as const;
+
+  const readOptions = (tools: readonly string[]) => ({
+    model: null,
+    profile: null,
+    persona: starter.persona,
+    memory: starter.memory,
+    tools,
+    report: 'wake' as const,
+    limits: { turns: 25, dollars: 2 },
+  });
+
+  return { starter, readOptions };
+}
+
+test('it gives a task that reads memory each memory write tool that the start names', () => {
+  const ctx = setupTest();
+
   expect(
     planTaskStart(
-      { memory: 'read', tools: ['memory.remember'] },
+      { memory: 'read', tools: ['memory.recall', 'memory.edit'] },
+      ctx.starter,
+      buildMockTaskStartBounds(),
+    ),
+  ).toStrictEqual({
+    status: 'planned',
+    options: ctx.readOptions([
+      'tasks.list',
+      'task.message',
+      'memory.recall',
+      'memory.edit',
+      'memory.pending',
+    ]),
+  });
+});
+
+test('it gives a task that reads memory a moment write tool that the start names', () => {
+  const ctx = setupTest();
+
+  expect(
+    planTaskStart(
+      { memory: 'read', tools: ['moment.edit'] },
+      ctx.starter,
+      buildMockTaskStartBounds(),
+    ),
+  ).toStrictEqual({
+    status: 'planned',
+    options: ctx.readOptions([
+      'tasks.list',
+      'task.message',
+      'moment.edit',
+      'memory.recall',
+      'memory.pending',
+    ]),
+  });
+});
+
+test('it plans a memory write tool that the start names by its SDK name under the nixie name', () => {
+  const ctx = setupTest();
+
+  expect(
+    planTaskStart(
+      { memory: 'read', tools: ['mcp__nixie__memory_edit'] },
+      ctx.starter,
+      buildMockTaskStartBounds(),
+    ),
+  ).toStrictEqual({
+    status: 'planned',
+    options: ctx.readOptions([
+      'tasks.list',
+      'task.message',
+      'memory.edit',
+      'memory.recall',
+      'memory.pending',
+    ]),
+  });
+});
+
+test('it refuses a memory write tool that the starter lacks, though the task reads memory', () => {
+  expect(
+    planTaskStart(
+      { memory: 'read', tools: ['memory.edit'] },
       {
-        tools: ['tasks.list', 'task.message', 'memory.remember'],
+        tools: ['tasks.list', 'task.message', 'memory.recall'],
         memory: 'read',
         persona: 'default',
       },
@@ -277,9 +368,60 @@ test('it refuses a memory write tool for a task that reads memory', () => {
   ).toStrictEqual({
     status: 'refused',
     refusal: {
-      reason: 'memory_write_tools',
-      tools: ['memory.remember'],
+      reason: 'wider_tools',
+      tools: ['memory.edit'],
+      accepted: ['tasks.list', 'task.message', 'memory.recall'],
+    },
+  });
+});
+
+test('it refuses a memory write tool for a task that does not read memory', () => {
+  const ctx = setupTest();
+
+  expect(
+    planTaskStart({ tools: ['memory.edit'] }, ctx.starter, buildMockTaskStartBounds()),
+  ).toStrictEqual({
+    status: 'refused',
+    refusal: {
+      reason: 'memory_tools',
+      tools: ['memory.edit'],
       accepted: ['tasks.list', 'task.message'],
     },
+  });
+});
+
+test('it lists each memory write tool that the starter holds as accepted when the task reads memory', () => {
+  const ctx = setupTest();
+
+  expect(
+    planTaskStart(
+      { memory: 'read', tools: ['web_fetch'] },
+      ctx.starter,
+      buildMockTaskStartBounds(),
+    ),
+  ).toStrictEqual({
+    status: 'refused',
+    refusal: {
+      reason: 'wider_tools',
+      tools: ['web_fetch'],
+      accepted: [
+        'tasks.list',
+        'task.message',
+        'memory.recall',
+        'memory.pending',
+        'memory.remember',
+        'memory.edit',
+        'moment.edit',
+      ],
+    },
+  });
+});
+
+test('it gives a task that reads memory no write tool when the start names none', () => {
+  const ctx = setupTest();
+
+  expect(planTaskStart({ memory: 'read' }, ctx.starter, buildMockTaskStartBounds())).toStrictEqual({
+    status: 'planned',
+    options: ctx.readOptions(['tasks.list', 'task.message', 'memory.recall', 'memory.pending']),
   });
 });
