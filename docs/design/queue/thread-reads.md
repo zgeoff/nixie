@@ -231,7 +231,8 @@ These rows say what the release a rollback returns to does with each thing this 
   again once the step ends.
 - A later step of such a task, on any release, creates a new sandbox and opens its session from the
   log, as [the sandbox life](../../architecture/connectors/sandboxes.md) describes.
-- The log grant's work adds the command. It is a
+- The command ships in the same release as the grant, so every release that can grant
+  `log: conversation` can run it before a rollback. It is a
   [host command](../../architecture/deployment/host-commands.md), and the release a rollback returns
   to never meets it.
 - The newer-log test, in the sessions module, runs the code of the last release on a log written by
@@ -292,3 +293,6 @@ These rows say what the release a rollback returns to does with each thing this 
   settles it in [the log grant](https://linear.app/zgeoff/issue/GEO-2525). The recommendation is
   yes: a moment is memory you chose to keep, as an item that quotes your message is. Until then,
   `moment.read` reads any moment for a caller that has the tool, as the current code does.
+- **What is the name of the command that destroys the granted tasks' sandboxes?** The owner settles
+  it in [the log grant](https://linear.app/zgeoff/issue/GEO-2525). The recommendation, and the name
+  until then, is `nixie task-sandbox-destroy --log-grant`.
