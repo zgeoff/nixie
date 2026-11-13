@@ -177,6 +177,10 @@ drive.change({ file: '1Bx9QvR2…', name: null, text: '# Trip plan\n…' }); // 
   address. It threads the reply with `In-Reply-To`, `References`, the thread ID and the subject.
 - The create, change and cancel tools without guests have no guest argument. A with-guests tool
   needs a guest before or after the change.
+- `drive.change` refuses a file that is shared with anyone, or that sits in a shared drive, with
+  `shared_file`, from a read of the file in its attempt. **Why:** a change to a shared file reaches
+  each person who can read it, which is a `send`, and sharing is out of scope.
+- `drive.create` makes the file in your My Drive root, shared with no one.
 - `drive.create` with `google_doc` imports the text as Markdown into a Google Doc. With `text` it
   makes a plain text file.
 
@@ -269,15 +273,15 @@ const reconcile = { kind: 'check', action: 'mail.find_sent', settleAfter: '5m' }
 The check runs at least 5 minutes after the attempt started, and asks Gmail 2 ways:
 
 1. A search with `rfc822msgid:<the Message-ID>` and `includeSpamTrash`.
-2. A list of the `SENT` label with `includeSpamTrash`, newest first, reading the `Message-ID` and
-   `X-Google-Original-Message-ID` headers of each message, until a message is older than 10 minutes
-   before the attempt started.
+2. A list of the `SENT` label with `includeSpamTrash` and `after:` 10 minutes before the attempt
+   started, read to its last page, with the `Message-ID` and `X-Google-Original-Message-ID` headers
+   of each message. The check never relies on the order of the list, which Gmail does not promise.
 
 | What the check sees                                             | It answers   |
 | --------------------------------------------------------------- | ------------ |
 | Either way finds a message whose header holds the Message-ID    | found        |
 | Both ways finish and find none                                  | not found    |
-| The list passes 200 messages before it reaches the cut-off time | inconclusive |
+| The list holds more than 200 messages                           | inconclusive |
 | Any call fails, or Gmail answers in a way the check cannot read | inconclusive |
 
 - Found makes the action done, with the found message's ID and thread as its result.
@@ -285,6 +289,8 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 - The check reads both headers, because Gmail can replace a `Message-ID` that a client set and keep
   the old one in `X-Google-Original-Message-ID`. The check works whichever Gmail does.
 - A sent mail carries no other header that names nixie or the action.
+- A Sent copy that someone deletes for good before the check reads as not found, and nixie sends the
+  mail again. Gmail keeps no other trace of a sent mail that the check could read.
 
 ### Calendar and Drive reconciliation
 
@@ -311,16 +317,18 @@ const driveCheck = { kind: 'check', action: 'drive.find_change', settleAfter: '5
 | a calendar create  | the calendar holds an event with the action's event ID      | the read by ID answers 404                 |
 | a calendar change  | the event holds the action's marker                         | the event lacks it, with under 10 markers  |
 | a calendar cancel  | the event reads `cancelled`, or 404 or 410                  | the event reads `confirmed` or `tentative` |
-| `calendar.respond` | your attendee entry holds the response                      | it holds another response                  |
+| `calendar.respond` | your attendee entry holds the response                      | never                                      |
 | `drive.create`     | a file holds the marker, found by `appProperties` search    | the search finds none                      |
 | `drive.change`     | the file holds the action's marker                          | the file lacks it, with under 10 markers   |
-| `mail.label`       | each thread holds every label in `add` and none in `remove` | any thread differs                         |
+| `mail.label`       | each thread holds every label in `add` and none in `remove` | never                                      |
 
 - Each write keeps the 10 newest markers of nixie's on the item and deletes the older ones, in the
   same request. A check that finds no marker of its own and 10 newer ones answers inconclusive.
   **Why:** a later action on the same item can run while this one is unknown, and its marker must
   not hide this one.
-- Every other answer, a failed call included, is inconclusive.
+- Every other answer, a failed call included, is inconclusive. A response or a label that differs is
+  inconclusive too: a later change, yours or nixie's, can have replaced it, and a retry would undo
+  that change.
 - A cancel's retry treats a 410 as done.
 
 ### The Drive picker
@@ -329,8 +337,8 @@ const driveCheck = { kind: 'check', action: 'drive.find_change', settleAfter: '5
 in the web client, on the connection's page, with Google Picker:
 
 1. You press "Choose Drive files". The page asks Google's sign-in library for an access token of its
-   own, with `drive.file` alone, the connection's OAuth client ID, and the connection's account as
-   `login_hint`.
+   own, with the scope `drive.file`, `include_granted_scopes: false`, the connection's OAuth client
+   ID, and the connection's account as `login_hint`.
 2. The page opens Google Picker with that token, the client's Picker API key, and the client's Cloud
    project number as the app ID. Google grants each file you pick to the app, for the account that
    picked it.
@@ -351,6 +359,9 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
 
 - The connection's tokens never reach the browser, because they carry `gmail.modify`. The browser's
   own token lives only in the page's memory, and the server never receives it.
+- The page reads the token response's `scope` and drops a token that holds any scope besides
+  `drive.file`, with an error, before the picker sees it. Google's sign-in library defaults
+  `include_granted_scopes` to true, which would add every scope the client was granted before.
 - The page shows each file that `checkPicked` cannot read as "picked under another Google account".
 - Without picker settings, the page hides the button and links the setup step that adds them.
 - Picking a file sends nothing to the model. `drive.search` finds it from then on, and the
@@ -437,6 +448,8 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
   connection's token carries `gmail.modify`, which must never reach page code.
 - **Text is read again from Google for each part, never stored.** An agent's call on 13 Nov 2026: no
   new store means no new forget path.
+- **`drive.change` refuses a shared file.** An agent's call on 13 Nov 2026: the smaller rule until
+  sharing has a design, so a Drive write never reaches another person.
 - **The Calendar tools ask for `calendar.calendarlist.readonly`.** An agent's call on 13 Nov 2026:
   the narrowest scope that lists calendars, kept apart from event access.
 
