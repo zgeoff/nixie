@@ -1,8 +1,9 @@
 # Budgets and the hard spending stop
 
 - **Status:** draft
-- **Work items:** the budgets, model limits and hard stop item, and the search budget item, in the
-  nixie project
+- **Work items:**
+  [budgets, model limits and the hard stop](https://linear.app/zgeoff/issue/GEO-1811),
+  [search on its own budget](https://linear.app/zgeoff/issue/GEO-1813)
 - **Decision records:** [0012](../../decisions/0012-spending-stop.md)
 
 Every model request in production passes the
@@ -378,11 +379,12 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
   removes it from the store.
 - A failed step that the stop explains counts no step error. The task keeps its state and its work,
   and its next claim after the resume runs the step again.
-- While the cause is `spending`, nixie refuses `Resume nixie` and a task's Resume, with a message on
-  how the stop clears. A task's Pause and Stop work as on any day.
+- While the stop stands, nixie refuses `Resume nixie` and a task's Resume, whatever the pause's
+  cause, with a message on how the stop clears. Only a raise, the period's reset, the proxy's answer
+  or an operator's removal of the lost mark ends the stop, so a resume never restarts turns while it
+  stands. A task's Pause and Stop work as on any day.
 - When you pause nixie while the stop stands, the cause becomes `owner`, and the clear leaves nixie
-  paused. When you then resume while the stop still stands, the watcher's next poll pauses nixie
-  again with the cause `spending`. The proxy refuses every request in between.
+  paused for you to resume.
 - The spending pause closes the [reader gate](pause.md#the-reader-gate) at this design's migration
   version, so the release before refuses the database while the spending pause stands.
 
@@ -403,8 +405,9 @@ nixie budgets ledger <id>    # the budget's charges in the period in force, as J
   own at midnight." On a month trip, the client shows the month and the date of its reset, with no
   button. On `unreachable` and the lost mark, the client shows that the host must act, with no
   button.
-- The client reads the notice from `spend.read`. The Telegram push, once built, sends the same
-  notice as well.
+- The client reads the notice from `spend.read`. The
+  [Telegram push](https://linear.app/zgeoff/issue/GEO-1812), once built, sends the same notice as
+  well.
 
 ### Model limits
 
@@ -544,7 +547,8 @@ To roll back:
 
 ## Open questions
 
-The owner settles each one in the budgets work item, and the interim stands until then:
+The owner settles each one in [the budgets work item](https://linear.app/zgeoff/issue/GEO-1811), and
+the interim stands until then:
 
 - **Does `search.daily_call_cap` stay beside the search budget?** Interim: both apply.
 - **The names `caps` and `counting-proxy raise`.** Interim: those names.
