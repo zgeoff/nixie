@@ -17,6 +17,7 @@ export { requireSandboxSpec } from './require-sandbox-spec';
 export { runCommand } from './run-command';
 export type { SandboxKindRule } from './sandbox-kinds';
 export { sandboxKinds } from './sandbox-kinds';
+export { sandboxSizes } from './sandbox-sizes';
 export { SandboxHostError } from './sandbox-host-error';
 export { SandboxSpecRefusedError } from './sandbox-spec-refused-error';
 export { sandboxCreatedCodec } from './sandbox-created-codec';

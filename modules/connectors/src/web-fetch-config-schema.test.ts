@@ -12,7 +12,7 @@ test('it takes every default when the section is empty', () => {
       textBytes: 20_000,
       imageBytes: 5_242_880,
     },
-    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+    sandboxLimits: { vcpus: 1, memoryMiB: 192, diskMiB: 4096 },
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
@@ -33,7 +33,7 @@ test('it takes the limits the file names', () => {
 
   expect(result.data).toStrictEqual({
     limits: { bodyBytes: 1024, timeoutMs: 5000, redirects: 0, textBytes: 512, imageBytes: 2048 },
-    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+    sandboxLimits: { vcpus: 1, memoryMiB: 192, diskMiB: 4096 },
     linkPathChars: 12,
     pageStoreBytes: 4096,
     imageLongEdge: 800,

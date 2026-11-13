@@ -1474,3 +1474,28 @@ test('it places no moment text in a turn whose message matches its title and ref
   expect(sent).not.toInclude(kept.shortID);
   expect(sent).not.toInclude('Bramble shelter hedgehogs');
 });
+
+test('it creates the conversation sandbox at the conversation size', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  ctx.guest.addReplies({ text: 'APPLE' });
+
+  await ctx.conversation.send('Say a fruit.');
+
+  const records = await ctx.readRecords();
+
+  const created = records.filter((record) => record.kind === 'sandbox.created');
+
+  expect(created).toMatchObject([
+    {
+      payload: {
+        spec: { kind: 'conversation', limits: { vcpus: 2, memoryMiB: 512, diskMiB: 4096 } },
+      },
+    },
+  ]);
+});

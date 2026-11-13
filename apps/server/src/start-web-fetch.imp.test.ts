@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { buildSandboxSpec } from '@heynixie/sandbox';
+import { buildSandboxSpec, sandboxSizes } from '@heynixie/sandbox';
 import { buildImpPort, buildImpSandboxAdapter, parseImpConfig } from '@heynixie/sandbox-imp';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { fetchImageArgv, startWebFetch } from './start-web-fetch';
@@ -116,7 +116,7 @@ test.skipIf(!hasImpHost)(
         kind: 'fetch',
         image: process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '',
         owner: 'web_fetch',
-        limits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+        limits: sandboxSizes.fetch,
       }),
     );
 
@@ -152,7 +152,7 @@ test.skipIf(!hasImpHost)(
         kind: 'fetch',
         image: process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '',
         owner: 'web_fetch',
-        limits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+        limits: sandboxSizes.fetch,
       }),
     );
 

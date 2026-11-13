@@ -7,6 +7,7 @@ import type {
 } from '@heynixie/models';
 import { getHarness, resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import type { GuestCommand, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
+import { sandboxSizes } from '@heynixie/sandbox';
 import invariant from 'tiny-invariant';
 import { buildGuestCommand } from './build-guest-command';
 import { getHarnessImage } from './get-harness-image';
@@ -50,7 +51,7 @@ export function makeSystemTaskRunner<Options extends SystemTaskOptions, Task ext
       const task = await spec.start(options, {
         profile,
         image: getHarnessImage(options.images, harness.imageKey),
-        limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
+        limits: sandboxSizes.systemTask,
         command: buildGuestCommand(options.sandboxes, harness.guest, spec.entry),
         defer: (stop) => {
           started.defer(stop);
