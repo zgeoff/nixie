@@ -211,6 +211,16 @@ interface DefinitionVersion {
   package the tasks module depends on reaches the definitions module.
 - The format adds no port and no config key.
 
+### A rollback of the rule format rename
+
+- The release before refuses a rules file that uses `definitions`, because its rule schema knows
+  only `jobs`. Its seed fails with a fault that names the file, and the rules in force stay. With no
+  rules in force, it retries the first seed and never finishes starting.
+- The release before reads the context `task` as a task that nixie starts from chat, so a rule with
+  that context matches no task run of a definition.
+- Before you start the release before, restore each rules file in the old names, `jobs` and `job`.
+- A rule that nixie stored needs no step, because nixie writes it in the old names.
+
 ## Decisions
 
 - **Each task run uses the version pinned when it opened.** A seed's edit reaches the next task run,
@@ -232,7 +242,10 @@ interface DefinitionVersion {
 - **The rule format names a definition `definitions`, and its task runs take the context `task`.**
   The owner chose this on 13 Nov. The field `jobs` becomes `definitions`, the context `job` becomes
   `task`, and `call.job` becomes `call.task`, so one rule covers a task that nixie starts and a
-  definition's task run. The seed still reads the old names, and nixie writes only the new ones.
+  definition's task run. The seed reads both names.
+- **A rule that nixie stores keeps the old names for one release.** An agent's call on 13 Nov: the
+  release before reads only `jobs` and `job` from `rule_versions`, so a stored rule in the new names
+  would stop it starting after a rollback. The release after this one writes the new names.
 
 ## Builder decides
 
