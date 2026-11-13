@@ -115,6 +115,7 @@ interface CodingSessionBound {
   adapter: string; // the runner key
   sessionID: string;
   actionID: string; // the spawn action
+  fromCursor: JSONValue; // from the spawn's result: where the source's catch-up read starts
 }
 // coding.delivered: written by the step that reads a message action's done outcome
 interface CodingDelivered {
@@ -132,6 +133,7 @@ coding_sessions, one appended migration. Key session_key = '<adapter>\n<sessionI
   session_id      text
   state           text    -- SessionState, or 'starting' before the first event
   hop             integer -- the hop of the newest delivery or of the start; every task_input takes it
+  from_cursor     text    -- JSON: the catch-up read's start
   last_event_at   integer -- epoch ms, null before the first event
   updated_sequence integer
 Folded from coding.session_bound, coding.delivered and trigger.task_input of a coding source.
@@ -142,19 +144,19 @@ tasks gains a column: runner text, null when task.created has no runner key.
 
 The step reads the inbox oldest first and takes these actions in one commit:
 
-| Inbox record                                     | The step                                                                                       |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| the task's brief                                 | nothing: the start queued the spawn; the task run stays open                                   |
-| `coding.start` done                              | writes `coding.session_bound`                                                                  |
-| `coding.start` failed or unknown                 | ends the task run with a report that says so, and returns `done` on failed, `wait` on unknown  |
-| a `task_message` or `owner_message` to the task  | queues a `coding.message` action, caused by that record                                        |
-| `coding.message` done                            | writes `coding.delivered`                                                                      |
-| `coding.message` failed or unknown               | replies to the message's sender that the session never got it, or may not have                 |
-| `trigger.task_input`, `answered` or `unanswered` | replies to the delivered message's sender, with `replyTo` that message                         |
-| `trigger.task_input`, `note`                     | sends a `progress` message to the report target, waking it for `blocked` and `decision` only   |
-| `trigger.task_input`, `state` `waiting`          | sends a `progress` message with the question to the report target, which wakes it              |
-| `trigger.task_input`, `state` `idle`             | ends the task run with a report, when no delivery of this task is queued or waits on an answer |
-| `trigger.task_input`, `state` `ended`            | ends the task run with a report when one is open, and returns `done`                           |
+| Inbox record                                     | The step                                                                                                               |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| the task's brief                                 | nothing: the start queued the spawn; the task run stays open                                                           |
+| `coding.start` done                              | writes `coding.session_bound`                                                                                          |
+| `coding.start` failed or unknown                 | ends the task run with a report that says so, and returns `done` on failed, `wait` on unknown                          |
+| a `task_message` or `owner_message` to the task  | queues a `coding.message` action, caused by that record                                                                |
+| `coding.message` done                            | writes `coding.delivered`                                                                                              |
+| `coding.message` failed or unknown               | replies to the message's sender that the session never got it, or may not have                                         |
+| `trigger.task_input`, `answered` or `unanswered` | replies to the sender of the message whose `coding.message` result holds its `messageRef`, with `replyTo` that message |
+| `trigger.task_input`, `note`                     | sends a `progress` message to the report target, waking it for `blocked` and `decision` only                           |
+| `trigger.task_input`, `state` `waiting`          | sends a `progress` message with the question to the report target, which wakes it                                      |
+| `trigger.task_input`, `state` `idle`             | ends the task run with a report, when no delivery of this task is queued or waits on an answer                         |
+| `trigger.task_input`, `state` `ended`            | ends the task run with a report when one is open, and returns `done`                                                   |
 
 ```ts
 // tasks module: the port change that lets a runner with no model end a task run
@@ -168,6 +170,12 @@ interface StepResult {
 }
 ```
 
+- The step finds the message an answer belongs to from the results of the task's `coding.message`
+  actions, through the built `readTaskActions`. When no result matches and one of those actions is
+  still pending, the step stops at that record: it acknowledges every record before it, reads none
+  after it, and sets a timer 5 s out, so it handles the answer once the outcome lands. When every
+  `coding.message` action is final and none matches, the step sends the answer to the report target,
+  marked as matching no message nixie sent.
 - The report's summary is `results(session).text`, cut to 8,000 characters. When the read fails or
   `text` is null, the summary is "The session's turn ended, and nixie could not read its final
   reply."

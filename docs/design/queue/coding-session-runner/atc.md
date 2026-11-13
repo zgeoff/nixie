@@ -28,7 +28,7 @@ flowchart LR
 // coding module. Adapters: coding-atc, and an in-memory fake for tests.
 interface CodingAdapter {
   id: string; // the runner key, such as 'atc'
-  start(brief: SessionBrief, key: string): Promise<AdapterReply<SessionRef>>;
+  start(brief: SessionBrief, key: string): Promise<AdapterReply<StartedSession>>;
   status(session: SessionRef): Promise<AdapterReply<SessionStatus>>;
   message(
     session: SessionRef,
@@ -40,7 +40,13 @@ interface CodingAdapter {
   events(
     cursor: JSONValue | null,
     signal: AbortSignal,
+    session?: SessionRef, // narrows the read to one session, for the catch-up
   ): AsyncIterable<{ cursor: JSONValue; events: SessionEvent[] }>;
+}
+
+interface StartedSession {
+  session: SessionRef;
+  fromCursor: JSONValue; // the trail's position, read just before the spawn
 }
 
 interface SessionBrief {
@@ -133,14 +139,14 @@ when `wake` is true, and the built `buildStepWake` reads its `hop` in place of h
 
 ### The atc adapter
 
-| Adapter call | atc procedure                                          | Notes                                                                       |
-| ------------ | ------------------------------------------------------ | --------------------------------------------------------------------------- |
-| `start`      | `session.spawn`, with `idempotencyKey`                 | a git workspace from `repo`; the configured `target`; `prompt` is the brief |
-| `message`    | `session.message`, with `idempotencyKey`               | `notice: false`; the answer comes back through `events`                     |
-| `status`     | `session.get`                                          | `state` and `pending.message`                                               |
-| `results`    | `session.get`                                          | `result`: the final reply of the last finished turn, at most 16,384 bytes   |
-| `stop`       | `session.kill`, with `stopOnly: true`                  | stops the process and leaves atc's record of the session                    |
-| `events`     | `events.read` with a cursor, `waitMs`, and `limit` 200 | the whole reach, filtered to bound sessions in code                         |
+| Adapter call | atc procedure                                                            | Notes                                                                                                          |
+| ------------ | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `start`      | `events.read` with `limit` 1, then `session.spawn` with `idempotencyKey` | the first read gives `fromCursor`; a git workspace from `repo`; the configured `target`; `prompt` is the brief |
+| `message`    | `session.message`, with `idempotencyKey`                                 | `notice: false`; the answer comes back through `events`                                                        |
+| `status`     | `session.get`                                                            | `state` and `pending.message`                                                                                  |
+| `results`    | `session.get`                                                            | `result`: the final reply of the last finished turn, at most 16,384 bytes                                      |
+| `stop`       | `session.kill`, with `stopOnly: true`                                    | stops the process and leaves atc's record of the session                                                       |
+| `events`     | `events.read` with a cursor, `waitMs`, and `limit` 200                   | the whole reach, filtered to bound sessions in code                                                            |
 
 ```ts
 // coding-atc adapter: the spawn it sends, and nothing else
@@ -216,6 +222,11 @@ atc deploys apart from nixie, so rule 12 of
 
 - The coding source drops each event of a session that no `coding_sessions` row holds, and stores
   nothing of it, because nixie's principal reaches sessions it never started.
+- A session's events can pass the source before its step binds it. So for each bound session whose
+  state is not `ended`, at the source's start and when its row appears, the source reads that
+  session's events from the row's `from_cursor` up to its own cursor, and delivers them with the
+  source's cursor unchanged. Each event keeps its dedupe key, so an event that both reads deliver
+  lands once.
 - The source stores its cursor through `deliver`, so a batch's records and its cursor commit
   together. At its first start it reads without a cursor and keeps only the cursor, so it never
   replays the trail.
