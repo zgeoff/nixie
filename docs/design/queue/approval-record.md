@@ -57,7 +57,13 @@ interface Proposal {
   // lifting: the row creates or widens a lifting rule, as approvals.md's Risk class defines
   actionHash: string; // the kind's current hash of the exact operation
   rule: { hash: string } | null; // the rule Always allow would create; null when not offered
-  cause: PromptCause | MemoryReviewReason | 'rule_widening' | 'skill_write';
+  cause:
+    | PromptCause
+    | MemoryReviewReason
+    | 'rule_widening'
+    | 'skill_write'
+    | 'proposed_rule'
+    | 'mandate';
   taskID: string | null; // null for a proposal no task made, such as a seed's rule widening
   thread: string | null;
   createdAt: Date;
@@ -98,7 +104,8 @@ payloads. The proposals module adds 3 record kinds for the transitions that no k
 and the generation, and the note of a defer sits in the record's erasable fields.
 
 A proposal is withdrawn by the model, which withdraws its own proposal to post a changed one; by a
-stop of the task that made it; or by a seed that holds other widenings.
+stop of the task that made it; by a seed that holds other widenings; or by your edit of a proposed
+rule, which withdraws the row and posts a new one with the edited rule.
 
 ### A kind's handler
 
