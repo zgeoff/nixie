@@ -576,6 +576,10 @@ module owns and that has a second real provider in sight, one that does the work
   egress to fetch a package.
 - **OAuth ships as stage 3.** An agent's call on 13 Nov 2026: the first server takes no token, and
   the smaller build ships first.
+- **Adding or trusting a server is always-ask.** An agent's call on 13 Nov 2026: each one lets a new
+  outside party reach the model, so it takes the stricter
+  [risk class](../platform/policy/approvals.md#risk-class), and the owner approves each with the
+  passkey. A declaration and a changed tool stay routine.
 - **An input request waits 15 minutes.** An agent's call on 13 Nov 2026, as the interim that
   [the input-request spike](https://linear.app/zgeoff/issue/GEO-269) replaces with the window it
   measures.
@@ -599,7 +603,6 @@ module owns and that has a second real provider in sight, one that does the work
 
 ## Open questions
 
-The owner settles 2 questions, kept in [the work item](https://linear.app/zgeoff/issue/GEO-1842):
-the form of a proxied tool's name, and the [risk class](../platform/policy/approvals.md#risk-class)
-of adding and trusting a server. Until then, a name is `<serverID>.<name>`. Adding or trusting a
-server is always-ask, which takes the passkey, while a declaration and a changed tool are routine.
+The owner settles the form of a proxied tool's name, kept in
+[the work item](https://linear.app/zgeoff/issue/GEO-1842). Until then, a name is
+`<serverID>.<name>`.
