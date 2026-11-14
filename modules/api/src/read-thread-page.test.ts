@@ -1,15 +1,18 @@
 import { expect, test } from 'bun:test';
-import type { ActionsTables } from '@heynixie/actions';
 import { withWriteTransaction, writeRecords, writeRecordsInTransaction } from '@heynixie/log';
 import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
+import { seedConversationStep } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { readThreadPage } from './read-thread-page';
+import { buildSeeder } from './test-utils/build-seeder';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 import { writeOwnerMessage } from './write-owner-message';
 
-function setupTest() {
-  return startTestAPI();
+async function setupTest() {
+  const api = await startTestAPI();
+
+  return { ...api, seed: buildSeeder(api) };
 }
 
 test('it reads the page before a sequence, newest last', async () => {
@@ -164,78 +167,40 @@ test('it reaches back again when the reach takes in the result of an earlier cal
 
 test('it shows a failed tool result as cancelled when a stop cancelled its action', async () => {
   const ctx = await setupTest();
+  const step = await seedConversationStep(ctx.context);
+  const failed = await ctx.seed.failedAction({ step: step.claim });
+  const cancelled = await ctx.seed.action({ step: step.claim });
 
-  await createConversationTask(ctx.context);
+  await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'stop' });
 
-  await withWriteTransaction(ctx.writer, async (tx) => {
-    await tx
-      .$extendTables<ActionsTables>()
-      .insertInto('actions')
-      .values([
-        {
-          action_id: 'b3f1c7e2-5a9d-4e61-8c2f-7d0a1e3b5c94',
-          task_id: 'conversation',
-          step_key: 'conversation:1',
-          action_hash: 'sha256:send-1',
-          tool: 'test.send',
-          status: 'pending',
-          attempt_count: 0,
-          attempt_open: 0,
-          next_attempt_at: 0,
-          reason: null,
-          queued_sequence: 1,
-          outcome_sequence: null,
-          cancelled_sequence: 1,
-          updated_sequence: 1,
-        },
-        {
-          action_id: 'e8a2d4f6-1b3c-4d5e-9f70-2a4c6e8b0d13',
-          task_id: 'conversation',
-          step_key: 'conversation:1',
-          action_hash: 'sha256:send-2',
-          tool: 'test.send',
-          status: 'failed',
-          attempt_count: 1,
-          attempt_open: 0,
-          next_attempt_at: 0,
-          reason: 'refused',
-          queued_sequence: 1,
-          outcome_sequence: null,
-          cancelled_sequence: null,
-          updated_sequence: 1,
-        },
-      ])
-      .execute();
-
-    await writeRecordsInTransaction(tx, ctx.context.log, [
-      {
-        kind: 'tool_result',
-        definitions: { snapshotHash: 'sha256:test' },
-        thread: 'conversation',
-        payload: {
-          callID: 'call-1',
-          runID: 'conversation',
-          toolUseID: null,
-          outcome: 'failed',
-          actionID: 'b3f1c7e2-5a9d-4e61-8c2f-7d0a1e3b5c94',
-          sources: {},
-        },
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        outcome: 'failed',
+        actionID: cancelled.action_id,
+        sources: {},
       },
-      {
-        kind: 'tool_result',
-        definitions: { snapshotHash: 'sha256:test' },
-        thread: 'conversation',
-        payload: {
-          callID: 'call-2',
-          runID: 'conversation',
-          toolUseID: null,
-          outcome: 'failed',
-          actionID: 'e8a2d4f6-1b3c-4d5e-9f70-2a4c6e8b0d13',
-          sources: {},
-        },
+    },
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        callID: 'call-2',
+        runID: 'conversation',
+        toolUseID: null,
+        outcome: 'failed',
+        actionID: failed.action_id,
+        sources: {},
       },
-    ]);
-  });
+    },
+  ]);
 
   const page = await readThreadPage(ctx.context, { thread: 'conversation' });
 
@@ -247,57 +212,42 @@ test('it shows a failed tool result as cancelled when a stop cancelled its actio
 
 test('it lists on a stop the actions that stop cancelled, by its sequence', async () => {
   const ctx = await setupTest();
+  const firstStep = await seedConversationStep(ctx.context);
+  const first = await ctx.seed.action({ step: firstStep.claim });
 
-  await createConversationTask(ctx.context);
+  const firstStop = await writeTaskControl(ctx.context, {
+    taskID: 'conversation',
+    control: 'stop',
+  });
 
-  const stop = await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'stop' });
+  invariant(firstStop.status === 'controlled');
 
-  invariant(stop.status === 'controlled');
+  await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'restart' });
 
-  await ctx.writer.db
-    .$extendTables<ActionsTables>()
-    .insertInto('actions')
-    .values([
-      {
-        action_id: 'b3f1c7e2-5a9d-4e61-8c2f-7d0a1e3b5c94',
-        task_id: 'conversation',
-        step_key: 'conversation:1',
-        action_hash: 'sha256:send-1',
-        tool: 'test.send',
-        status: 'pending',
-        attempt_count: 0,
-        attempt_open: 0,
-        next_attempt_at: 0,
-        reason: null,
-        queued_sequence: 1,
-        outcome_sequence: null,
-        cancelled_sequence: stop.sequence,
-        updated_sequence: stop.sequence,
-      },
-      {
-        action_id: 'e8a2d4f6-1b3c-4d5e-9f70-2a4c6e8b0d13',
-        task_id: 'conversation',
-        step_key: 'conversation:1',
-        action_hash: 'sha256:send-2',
-        tool: 'test.archive',
-        status: 'pending',
-        attempt_count: 0,
-        attempt_open: 0,
-        next_attempt_at: 0,
-        reason: null,
-        queued_sequence: 1,
-        outcome_sequence: null,
-        cancelled_sequence: stop.sequence - 1,
-        updated_sequence: stop.sequence,
-      },
-    ])
-    .execute();
+  const secondStep = await seedConversationStep(ctx.context);
+  const second = await ctx.seed.action({ step: secondStep.claim, tool: 'test.archive' });
+
+  const secondStop = await writeTaskControl(ctx.context, {
+    taskID: 'conversation',
+    control: 'stop',
+  });
+
+  invariant(secondStop.status === 'controlled');
 
   const page = await readThreadPage(ctx.context, { thread: 'conversation' });
 
-  expect(page?.records.find((record) => record.kind === 'task.stopped')?.stop).toStrictEqual({
-    cancelledActions: [{ actionID: 'b3f1c7e2-5a9d-4e61-8c2f-7d0a1e3b5c94', tool: 'test.send' }],
-  });
+  const stops = page?.records.filter((record) => record.kind === 'task.stopped');
+
+  expect(stops?.map((record) => ({ sequence: record.sequence, stop: record.stop }))).toStrictEqual([
+    {
+      sequence: firstStop.sequence,
+      stop: { cancelledActions: [{ actionID: first.action_id, tool: 'test.send' }] },
+    },
+    {
+      sequence: secondStop.sequence,
+      stop: { cancelledActions: [{ actionID: second.action_id, tool: 'test.archive' }] },
+    },
+  ]);
 });
 
 test('it names the sender of a task message from a task the conversation started', async () => {

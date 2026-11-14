@@ -1,6 +1,7 @@
 import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { actionsProjection } from '@heynixie/actions';
 import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
@@ -12,8 +13,6 @@ import { createAPIApp } from '../create-api-app';
 import { defaultAPISettings } from '../default-api-settings';
 import { proposalsProjection } from '../proposals-projection';
 
-// The lint cap on imports per file holds this file to ten, so these types come from the app's
-// signature.
 type APIContext = Parameters<typeof createAPIApp>[0];
 
 type ViewMemoryStore = NonNullable<ReturnType<Parameters<typeof createAPIApp>[1]>>;
@@ -76,6 +75,7 @@ async function createTestContext(
       projections: [
         ...logProjections,
         ...tasksProjections,
+        actionsProjection,
         ...apiProjections,
         ...memoryProjections,
         proposalsProjection,

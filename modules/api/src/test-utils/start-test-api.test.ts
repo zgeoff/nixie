@@ -1,9 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
+import { createAllowedAction } from '@heynixie/actions';
 import { clientHeaderName } from '@heynixie/contract';
 import { writeRecords } from '@heynixie/log';
 import { readWriterStatus } from '@heynixie/memory';
-import { readTestTasks } from '@heynixie/tasks/test-utils';
+import { readTestTasks, seedConversationStep } from '@heynixie/tasks/test-utils';
 import { buildTestClient } from './build-test-client';
 import { createDeviceSession } from './create-device-session';
 import { startTestAPI } from './start-test-api';
@@ -134,5 +135,28 @@ test('it stops the server and removes the data directory once the test finishes'
   onTestFinished(() => {
     expect(existsSync(ctx.dataDir)).toBeFalse();
     expect(fetch(`${ctx.url}/rpc/sessions/list`)).rejects.toThrow();
+  });
+});
+
+test('it reads back an action that the actions module created', async () => {
+  const ctx = await startTestAPI();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const step = await seedConversationStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step: step.claim,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const actions = await buildTestClient(ctx.url, laptop.token).tasks.readActions({
+    taskID: 'conversation',
+  });
+
+  expect(actions).toStrictEqual({
+    queued: [{ actionID: queued.actionID, tool: 'test.send' }],
+    started: [],
   });
 });
