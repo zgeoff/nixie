@@ -1,7 +1,7 @@
 // oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
-import { spanSchema } from '../../../libs/contract/src/span-schema.ts';
+import { spanSchema } from '../../../libs/contract/src/span/span-schema.ts';
 // @boundaries-ignore the spike reads the export the retrieval spike reads
 import type { PlainRecord } from '../../memory-retrieval/real-turns/read-plain-export.ts';
 import type { ConsentCall, ConsentCase, ConsentMessage } from './types.ts';

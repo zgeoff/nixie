@@ -1,6 +1,6 @@
+import type { PendingInput } from '../types';
 import { hasSeveralWords } from './has-several-words';
 import { pickSpanSource } from './pick-span-source';
-import type { PendingInput } from './types';
 
 export interface BeforeInputFields {
   readonly inputType: string;

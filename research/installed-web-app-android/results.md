@@ -154,10 +154,10 @@ settles the minting of a deployment's host and what a second tapped link does to
 
 The API sets the session as a host-only `HttpOnly; Secure; SameSite=Lax` cookie with the longest
 lifetime a browser keeps
-([render-session-cookie.ts:4](../../libs/contract/src/render-session-cookie.ts#L4),
-[line 11](../../libs/contract/src/render-session-cookie.ts#L11)). The cookie is Lax so that a launch
-from the app's icon sends it. The server keeps only a hash of each token, and a session lapses after
-30 days without use by default, as the
+([render-session-cookie.ts:4](../../libs/contract/src/contract/render-session-cookie.ts#L4),
+[line 11](../../libs/contract/src/contract/render-session-cookie.ts#L11)). The cookie is Lax so that
+a launch from the app's icon sends it. The server keeps only a hash of each token, and a session
+lapses after 30 days without use by default, as the
 [device sessions](../../docs/design/platform/channels/client.md#device-sessions) design gives.
 
 ### Reading
@@ -185,8 +185,8 @@ EditContext ships on Chrome for Android from 121
 The composer records `inputType`, `data` and the selection on each `beforeinput`
 ([use-pending-input.ts:18](../../apps/web/src/use-pending-input.ts#L18)). The span logic labels a
 single `insertText` or `insertCompositionText` of several words as unknown
-([pick-span-source.ts:27](../../libs/contract/src/pick-span-source.ts#L27)), so a clipboard chip, a
-keyboard's own undo and a dictated phrase fail closed. The
+([pick-span-source.ts:27](../../libs/contract/src/span/pick-span-source.ts#L27)), so a clipboard
+chip, a keyboard's own undo and a dictated phrase fail closed. The
 [paste spans spike](../paste-spans/results.md#android-gboard-in-chrome) ran Gboard in Chrome on a
 phone and showed typing, predictions, autocorrect and swipes land typed.
 

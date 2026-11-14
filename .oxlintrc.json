@@ -35,7 +35,6 @@
           "apps/web",
           "guests/conversation",
           "guests/fetch",
-          "libs/contract",
           "libs/db",
           "libs/testing",
           "libs/wire",

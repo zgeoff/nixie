@@ -1,5 +1,5 @@
+import type { SpanSource } from '../types';
 import { hasSeveralWords } from './has-several-words';
-import type { SpanSource } from './types';
 
 const pastedInputTypes = new Set(['insertFromPaste', 'insertFromPasteAsQuotation']);
 

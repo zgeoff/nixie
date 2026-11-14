@@ -1,4 +1,4 @@
-import type { PendingInput, Span, SpanSource, SpanState } from './types';
+import type { PendingInput, Span, SpanSource, SpanState } from '../types';
 
 export function buildSpanState(
   state: SpanState,

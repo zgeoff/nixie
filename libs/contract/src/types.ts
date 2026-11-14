@@ -3,9 +3,9 @@ import type {
   InferContractRouterInputs,
   InferContractRouterOutputs,
 } from '@orpc/contract';
-import type { contract } from './contract';
-import type { hostContract } from './host-contract';
-import type { imageLimits } from './image-limits';
+import type { contract } from './contract/contract';
+import type { hostContract } from './contract/host-contract';
+import type { imageLimits } from './contract/image-limits';
 
 export type ContractClient = ContractRouterClient<typeof contract>;
 

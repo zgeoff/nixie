@@ -1,7 +1,7 @@
 // oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
-import { spanSchema } from '../../../libs/contract/src/span-schema.ts';
+import { spanSchema } from '../../../libs/contract/src/span/span-schema.ts';
 
 // The failure of an answer that held no output, such as a call the model API refused. Its record
 // keeps the call's cost, so the spend stays right, and a rerun runs the item again.

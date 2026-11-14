@@ -6,7 +6,7 @@ import { buildOpenAPIDocument } from './build-openapi-document';
 // The release compatibility check diffs against openapi.json at the last release tag. Run
 // `bun run --cwd libs/contract openapi` to rewrite the file.
 test('it matches the committed openapi.json', async () => {
-  const committed = await readFile(join(import.meta.dir, '..', 'openapi.json'), 'utf8');
+  const committed = await readFile(join(import.meta.dir, '..', '..', 'openapi.json'), 'utf8');
   const document = await buildOpenAPIDocument();
 
   expect(`${JSON.stringify(document, null, 2)}\n`).toBe(committed);

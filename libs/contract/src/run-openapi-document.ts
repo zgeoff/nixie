@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { buildOpenAPIDocument } from './build-openapi-document';
+import { buildOpenAPIDocument } from './contract/build-openapi-document';
 
 const path = join(import.meta.dir, '..', 'openapi.json');
 

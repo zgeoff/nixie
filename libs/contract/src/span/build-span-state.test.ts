@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
+import { buildSpanStateFromEvents } from '../test-utils/build-span-state-from-events';
+import { gboardPastedEvents } from '../test-utils/gboard-pasted-events';
+import { gboardTypedEvents } from '../test-utils/gboard-typed-events';
+import { gboardVoiceEvents } from '../test-utils/gboard-voice-events';
 import { buildPendingInput } from './build-pending-input';
 import { buildSpanState } from './build-span-state';
-import { buildSpanStateFromEvents } from './test-utils/build-span-state-from-events';
-import { gboardPastedEvents } from './test-utils/gboard-pasted-events';
-import { gboardTypedEvents } from './test-utils/gboard-typed-events';
-import { gboardVoiceEvents } from './test-utils/gboard-voice-events';
 
 test.each([
   ['key by key typing', 'typing', 'The blue kettle is warm'],
