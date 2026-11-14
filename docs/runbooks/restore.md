@@ -23,20 +23,26 @@ deployment repo before step 3.
 
 Replace these placeholders in each command:
 
-| Placeholder           | Stands for                                                              |
-| --------------------- | ----------------------------------------------------------------------- |
-| `<restore_directory>` | an empty folder on a volume that holds only the pair                    |
-| `<restore_volume>`    | that volume: a named volume on Compose, a claim on Kubernetes           |
-| `<backup_service>`    | the Compose service that runs the backup job                            |
-| `<namespace>`         | the Kubernetes namespace of nixie                                       |
-| `<job_name>`          | the name of a backup Job that has not finished                          |
-| `<sops_file>`         | the deployment's sops file; `<age_key_file>` is the recovery key's file |
-| `<task_id>`           | the ID of one task from `nixie recovery`                                |
-| `<snapshot_id>`       | the full ID of a data snapshot, from `nixie-backup snapshots`           |
+| Placeholder        | Stands for                                                                          |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| `<restore_volume>` | a volume that holds only the pair: a named volume on Compose, a claim on Kubernetes |
+| `<backup_service>` | the Compose service that runs the backup job                                        |
+| `<namespace>`      | the Kubernetes namespace of nixie                                                   |
+| `<job_name>`       | the name of a backup Job that has not finished                                      |
+| `<backup_image>`   | the backup image of the release, by its tag and digest                              |
+| `<nixie_image>`    | nixie's image of the release, by its tag and digest                                 |
+| `<config_map>`     | the ConfigMap that holds nixie's `config.yaml`                                      |
+| `<sops_file>`      | the deployment's sops file; `<age_key_file>` is the recovery key's file             |
+| `<task_id>`        | the ID of one task from `nixie recovery`                                            |
+| `<snapshot_id>`    | the full ID of a data snapshot, from `nixie-backup snapshots`                       |
 
 On Compose, set `NIXIE_SECRETS_FILE=<sops_file>` and `NIXIE_AGE_KEY_FILE=<age_key_file>` on each
 `docker compose` command, as the [Compose guide](../guides/compose.md) does. The commands below show
 only the command.
+
+Each pod and container below mounts `<restore_volume>` at `/restore`, and the pair goes in the
+folder `/restore/pair`, which the fetch creates. The fetch refuses a folder that holds any file, and
+a new claim can hold a `lost+found` folder at its root.
 
 ## Restore
 
@@ -73,9 +79,9 @@ Expect: no nixie container or pod, and no backup job container or pod.
 
 ### 2. Fetch the pair
 
-Fetch the newest key snapshot and the data snapshot that belongs with it into an empty folder.
-Create `<restore_volume>` first. It is a separate volume that the fetch container and the restore
-container both mount, so the fetch container never mounts the data volume.
+Fetch the newest key snapshot and the data snapshot that belongs with it. Create `<restore_volume>`
+first. It is a separate volume that the fetch container and the restore container both mount, so the
+fetch container never mounts the data volume.
 
 - Compose: Docker creates the volume owned by root, but the fetch runs as user 10001. The first
   `docker compose run` gives the volume to that user, through the `setup` service, which runs as
@@ -84,15 +90,59 @@ container both mount, so the fetch container never mounts the data volume.
 
   ```bash
   docker volume create <restore_volume>
-  docker compose run --rm --no-deps --entrypoint chown -v <restore_volume>:<restore_directory> setup 10001:10001 <restore_directory>
-  docker compose run --rm --no-deps -v <restore_volume>:<restore_directory> <backup_service> fetch --to <restore_directory>
+  docker compose run --rm --no-deps --entrypoint chown -v <restore_volume>:/restore setup 10001:10001 /restore
+  docker compose run --rm --no-deps -v <restore_volume>:/restore <backup_service> fetch --to /restore/pair
   ```
 
-- Kubernetes: create a claim named `<restore_volume>` of a few gigabytes, and run a one-off pod in
-  the backup image that mounts it at `<restore_directory>` and the `nixie-backup` Secret, and runs
-  `nixie-backup fetch --to <restore_directory>`. The Secret and the optional `nixie-backup-script`
-  ConfigMap keep fixed names, so the pod's YAML names them. The fetch runs as user 10001, so set
-  `securityContext.fsGroup: 10001` on the pod, which gives that user write access to the claim.
+- Kubernetes: create a claim named `<restore_volume>` of a few gigabytes, then run the fetch in a
+  one-off pod of the backup image, with the `nixie-backup` Secret, which the component and a
+  deployment's own backup job both keep under that fixed name. `fsGroup: 10001` gives the fetch's
+  user write access to the claim:
+
+  ```yaml
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: nixie-fetch
+  spec:
+    restartPolicy: Never
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10001
+      runAsGroup: 10001
+      fsGroup: 10001
+    containers:
+      - name: fetch
+        image: <backup_image>
+        args: ['fetch', '--to', '/restore/pair']
+        env:
+          - name: HOME
+            value: /tmp
+        envFrom:
+          - secretRef:
+              name: nixie-backup
+        volumeMounts:
+          - name: restore
+            mountPath: /restore
+          - name: tmp
+            mountPath: /tmp
+    volumes:
+      - name: restore
+        persistentVolumeClaim:
+          claimName: <restore_volume>
+      - name: tmp
+        emptyDir: {}
+  ```
+
+  Apply it, read its log, then delete it, so the restore pod can mount the claim. When the pod ends
+  `Failed`, the wait times out: read the log all the same.
+
+  ```bash
+  kubectl -n <namespace> apply -f nixie-fetch.yaml
+  kubectl -n <namespace> wait --for=jsonpath='{.status.phase}'=Succeeded --timeout=30m pod/nixie-fetch
+  kubectl -n <namespace> logs pod/nixie-fetch
+  kubectl -n <namespace> delete pod/nixie-fetch
+  ```
 
 The fetch exits with one log line:
 
@@ -111,11 +161,13 @@ see it among the others, then fetch again with that ID:
 
 ```bash
 nixie-backup snapshots
-nixie-backup fetch --to <restore_directory> --data-snapshot <snapshot_id>
+nixie-backup fetch --to /restore/pair --data-snapshot <snapshot_id>
 ```
 
-On Compose, run both through `docker compose run --rm --no-deps <backup_service>`, as above.
-`snapshots` prints one line of JSON for each snapshot of both repositories.
+On Compose, run both through
+`docker compose run --rm --no-deps -v <restore_volume>:/restore <backup_service>`, as above. On
+Kubernetes, change the pod's `args`. `snapshots` prints one line of JSON for each snapshot of both
+repositories.
 
 **Warning: a data snapshot named under a key snapshot with no publish number.** The fetch checks
 that snapshot only by its `set-` number.
@@ -131,19 +183,63 @@ after the data snapshot stays unreadable, because the key store never gets a del
 backup is lost.
 
 Run it in a one-off container of nixie's image that mounts the data volume, the configuration and
-`<restore_volume>`. The container holds no backup credential.
+`<restore_volume>`. The container holds no backup credential, and the restore reads only the
+configuration, not the secrets file.
 
 - Compose: run the `setup` service first. It gives nixie's user the data volume and fills the
   secrets volume, and `--no-deps` on the restore container skips it:
 
   ```bash
   docker compose run --rm --no-deps setup
-  docker compose run --rm --no-deps -v <restore_volume>:<restore_directory>:ro nixie restore --from <restore_directory> --yes
+  docker compose run --rm --no-deps -v <restore_volume>:/restore nixie restore --from /restore/pair --yes
   ```
 
-- Kubernetes: run a one-off pod in nixie's image that mounts the claim `data-nixie-0`, the
-  configuration as the StatefulSet does, and `<restore_volume>`, and runs
-  `nixie restore --from <restore_directory> --yes`.
+- Kubernetes: run a one-off pod of nixie's image on the claim `data-nixie-0`. `<config_map>` is
+  `nixie-config` with the reference manifests. The Pulumi component names its ConfigMap itself, so
+  read the name from the StatefulSet:
+
+  ```bash
+  kubectl -n <namespace> get statefulset/nixie -o jsonpath='{.spec.template.spec.volumes}'
+  ```
+
+  ```yaml
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: nixie-restore
+  spec:
+    restartPolicy: Never
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10001
+      runAsGroup: 10001
+      fsGroup: 10001
+    containers:
+      - name: restore
+        image: <nixie_image>
+        args: ['restore', '--from', '/restore/pair', '--yes']
+        volumeMounts:
+          - name: data
+            mountPath: /data
+          - name: config
+            mountPath: /etc/nixie/config.yaml
+            subPath: config.yaml
+            readOnly: true
+          - name: restore
+            mountPath: /restore
+    volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: data-nixie-0
+      - name: config
+        configMap:
+          name: <config_map>
+      - name: restore
+        persistentVolumeClaim:
+          claimName: <restore_volume>
+  ```
+
+  Apply it, wait for it and read its log as for the fetch pod, then delete it.
 
 Expect: exit 0, with the databases restored and the directory they came from.
 
@@ -156,10 +252,11 @@ the backup job is still running. Stop it, then run the restore again.
 
 Start the release that has the pause. Do not start the backup job.
 
-- Compose: leave out `--no-deps`, so that Compose runs `setup` again before nixie starts:
+- Compose: name every service but the backup service, and leave out `--no-deps`, so that Compose
+  runs `setup` again before nixie starts. With the reference recipe:
 
   ```bash
-  docker compose up -d --wait nixie
+  docker compose up -d --wait nixie web proxy
   ```
 
 - Kubernetes:
@@ -180,7 +277,8 @@ Run `nixie recovery` in nixie's container:
 docker compose exec nixie nixie recovery
 ```
 
-On Kubernetes, use `kubectl -n <namespace> exec statefulset/nixie -- nixie recovery`.
+On Kubernetes, use `kubectl -n <namespace> exec nixie-0 -c nixie -- nixie recovery`. Steps 6 and 7
+run their commands in nixie's container the same way.
 
 Expect: JSON with the restore time and the backup time, and each task to check. Each task shows its
 `stateAtBackup`, whether it `wasRunning` a step that had not committed, and the number of its
@@ -251,7 +349,8 @@ either repository. Remove `<restore_volume>` once you have no more use for the f
 ## Restore from a local copy
 
 `nixie backup --to <directory>` writes a pair that you can restore without a fetch. Run steps 1 and
-3 to 9 with that directory as `<restore_directory>`.
+3 to 9, with the volume that holds that directory in place of `<restore_volume>`, and
+`--from <directory>` in place of `--from /restore/pair`.
 
 **Warning: a forgotten item.** The restore takes that directory's own `keys.db`, so a directory
 taken before a forget brings the forgotten item's key back. After a forget that you mean to keep,
