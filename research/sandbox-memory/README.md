@@ -48,8 +48,7 @@ removes the imp.
    - `<conversation_image>` and `<fetch_image>`: the impd names of nixie's 2 guest images.
    - `<output_file>`: any local file for the scenario's output.
 
-   Expect: the output that [scenarios](results.md#scenarios) lists. `turn.ts` scenarios need a
-   pre-bundle image.
+   Expect: the [scenarios](results.md#scenarios) output. `turn.ts` ones need a pre-bundle image.
 
 3. Time 5 creates and wakes of one image at one memory size and vCPU count:
 
