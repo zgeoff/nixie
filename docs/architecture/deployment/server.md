@@ -56,12 +56,13 @@ ends, and the memory checker's, which the deployment owns.
 
 The restore pause runs between the first seed and recovery. When the data directory holds the marker
 of a finished restore, it writes one `recovery.started` record that lists each task to check, pauses
-nixie with the cause `restore`, and then removes the marker. A task is on the list when it was
-running at the backup or owns an action with no outcome. The list reads each task's state and open
-step before recovery moves a running task or writes an `unknown` outcome, so the list shows the
-backup as it was. A start that stops after the pause commits and before the marker goes finds the
-recovery already recorded, writes nothing, and removes the marker. Nothing takes a step on the
-restored data until a resume ([the pause design](../../design/queue/pause.md)).
+nixie with the cause `restore`, writes one `recovery.notice` on the conversation's thread that wakes
+no step, and then removes the marker. A task is on the list when it was running at the backup or
+owns an action with no outcome. The list reads each task's state and open step before recovery moves
+a running task or writes an `unknown` outcome, so the list shows the backup as it was. A start that
+stops after the pause commits and before the marker goes finds the recovery already recorded, writes
+nothing, and removes the marker. Nothing takes a step on the restored data until a resume
+([the pause design](../../design/queue/pause.md)).
 
 The server adds each image in the manifest to impd before any part creates a sandbox, because a step
 that creates a sandbox on an image impd lacks would fail. The server sends no add for an image that
