@@ -83,6 +83,12 @@ holds the task's queued actions, and an action with a started attempt runs on to
 claimed action whose tool has no connector, or whose arguments are gone because their key was
 forgotten, fails without an attempt.
 
+Pausing nixie as a whole bars attempts too. The attempt start checks, in the transaction that would
+record it, whether nixie is paused and the action's task is not on the exemption list. If so, it
+records nothing, resets the lease and calls no provider, so the action stays pending until a resume
+or an exemption lets a claim take it. A paused action does not hide an action with an earlier retry
+time.
+
 The connector's reply picks the outcome:
 
 | Reply                                | Outcome | Wakes the task |
