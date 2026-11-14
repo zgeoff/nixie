@@ -3,15 +3,15 @@ import { writeRecords } from '@heynixie/log';
 import { waitForCondition } from '@heynixie/testing';
 import type { FetchReply } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
-import type { PageView } from './parse-web-fetch-request';
-import { readWebFetchPage } from './read-web-fetch-page';
-import { removeWebFetchThread } from './remove-web-fetch-thread';
+import { startFetchSandbox } from '../fetch/start-fetch-sandbox';
+import { buildMockPageReply } from '../test-utils/build-mock-page-reply';
+import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapter';
+import { makeStubFetcher } from '../test-utils/make-stub-fetcher';
+import { startTestLog } from '../test-utils/start-test-log';
+import type { PageView } from '../utils/parse-web-fetch-request';
+import { readWebFetchPage } from '../web/read-web-fetch-page';
+import { removeWebFetchThread } from '../web/remove-web-fetch-thread';
 import { runPageFetch } from './run-page-fetch';
-import { startFetchSandbox } from './start-fetch-sandbox';
-import { buildMockPageReply } from './test-utils/build-mock-page-reply';
-import { buildStubSandboxAdapter } from './test-utils/build-stub-sandbox-adapter';
-import { makeStubFetcher } from './test-utils/make-stub-fetcher';
-import { startTestLog } from './test-utils/start-test-log';
 
 interface SetupOptions {
   // the sandbox holds its answer to this URL until `release` runs

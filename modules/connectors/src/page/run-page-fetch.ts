@@ -1,10 +1,10 @@
 import type { ToolOutcome } from '@heynixie/tools';
+import { rewriteFetchURL } from '../fetch/rewrite-fetch-url';
+import { writeFetchOutcome } from '../fetch/write-fetch-outcome';
+import type { PageView } from '../utils/parse-web-fetch-request';
+import { readFetchPass } from '../utils/read-fetch-pass';
 import type { PageFetch } from './page-fetch';
-import type { PageView } from './parse-web-fetch-request';
-import { readFetchPass } from './read-fetch-pass';
-import { rewriteFetchURL } from './rewrite-fetch-url';
 import { shouldRetryNamedURL } from './should-retry-named-url';
-import { writeFetchOutcome } from './write-fetch-outcome';
 
 export async function runPageFetch(
   fetching: PageFetch,

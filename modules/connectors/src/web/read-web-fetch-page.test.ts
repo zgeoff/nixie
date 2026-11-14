@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
+import { startTestLog } from '../test-utils/start-test-log';
 import { readWebFetchPage } from './read-web-fetch-page';
-import { startTestLog } from './test-utils/start-test-log';
 import { writeWebFetchPage } from './write-web-fetch-page';
 
 async function setupTest() {

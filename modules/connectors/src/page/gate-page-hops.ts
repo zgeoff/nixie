@@ -1,8 +1,8 @@
 import type { ExecStream } from '@heynixie/sandbox';
 import type { FetchReply } from '@heynixie/wire';
 import { decodeFetchGuestFrame, encodeFetchMessage } from '@heynixie/wire';
-import type { TimeLimit } from './wait-or-time-out';
-import { waitOrTimeOut } from './wait-or-time-out';
+import type { TimeLimit } from '../utils/wait-or-time-out';
+import { waitOrTimeOut } from '../utils/wait-or-time-out';
 
 export interface PageHop {
   // 1 for the first redirect

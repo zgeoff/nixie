@@ -3,10 +3,10 @@ import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { buildTestClock, makeGatedCall, waitForCondition } from '@heynixie/testing';
 import type { FetchRequest } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
-import type { PageHop } from './gate-page-hops';
+import type { PageHop } from '../page/gate-page-hops';
+import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapter';
+import { makeStubFetcher } from '../test-utils/make-stub-fetcher';
 import { startFetchSandbox } from './start-fetch-sandbox';
-import { buildStubSandboxAdapter } from './test-utils/build-stub-sandbox-adapter';
-import { makeStubFetcher } from './test-utils/make-stub-fetcher';
 
 test("it sends the fetcher the URL, the limits and the deployment's ranges, and returns its page", async () => {
   const answer = mock((request: FetchRequest) => ({

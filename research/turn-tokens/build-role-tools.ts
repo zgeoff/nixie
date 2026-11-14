@@ -2,9 +2,9 @@
 // stores. The model reads only each tool's name, description and input schema, and the spike's
 // tool server answers every call from a script, so no store is ever reached.
 // @boundaries-ignore a spike imports the code it measures
-import { buildTimeTool } from '../../modules/connectors/src/build-time-tool';
+import { buildTimeTool } from '../../modules/connectors/src/time/build-time-tool';
 // @boundaries-ignore a spike imports the code it measures
-import { buildWebFetchTool } from '../../modules/connectors/src/build-web-fetch-tool';
+import { buildWebFetchTool } from '../../modules/connectors/src/web/build-web-fetch-tool';
 // @boundaries-ignore a spike imports the code it measures
 import { buildConsolidatorTools } from '../../modules/memory/src/build-consolidator-tools';
 // @boundaries-ignore a spike imports the code it measures

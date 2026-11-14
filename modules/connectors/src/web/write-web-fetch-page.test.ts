@@ -4,9 +4,9 @@ import { modelSessionOpenedCodec } from '@heynixie/models';
 import { buildTestClock } from '@heynixie/testing';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { startTestLog } from '../test-utils/start-test-log';
 import { readLinkTarget } from './read-link-target';
 import { readWebFetchPage } from './read-web-fetch-page';
-import { startTestLog } from './test-utils/start-test-log';
 import { writeWebFetchPage } from './write-web-fetch-page';
 
 async function setupTest() {

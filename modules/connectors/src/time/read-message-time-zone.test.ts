@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { startTestLog } from '../test-utils/start-test-log';
 import { readMessageTimeZone } from './read-message-time-zone';
-import { startTestLog } from './test-utils/start-test-log';
 
 async function setupTest() {
   return { log: await startTestLog() };

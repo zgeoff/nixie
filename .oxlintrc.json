@@ -38,7 +38,6 @@
           "libs/testing",
           "libs/wire",
           "modules/api",
-          "modules/connectors",
           "modules/definitions",
           "modules/log",
           "modules/memory",

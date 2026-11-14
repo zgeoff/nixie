@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
+import { buildNoisePNG } from '../test-utils/build-noise-png';
+import { buildPNGHeader } from '../test-utils/build-png-header';
+import { encodeTestImage } from '../test-utils/encode-test-image';
 import { fitFetchedImage } from './fit-fetched-image';
-import { buildNoisePNG } from './test-utils/build-noise-png';
-import { buildPNGHeader } from './test-utils/build-png-header';
-import { encodeTestImage } from './test-utils/encode-test-image';
 
 test('it encodes a PNG within the long edge again as a PNG of its own size', async () => {
   const bytes = await encodeTestImage({ width: 40, height: 30 }, 'png');

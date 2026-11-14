@@ -1,4 +1,4 @@
-import type { HealthReport } from './types';
+import type { HealthReport } from '../types';
 
 export interface DefaultLabelOptions {
   readonly connectorID: string;

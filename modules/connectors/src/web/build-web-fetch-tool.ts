@@ -2,14 +2,14 @@ import type { Log } from '@heynixie/log';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
-import { getPageSession } from './get-page-session';
-import type { PageFetch } from './page-fetch';
-import type { PageView, WebFetchRequest } from './parse-web-fetch-request';
-import { parseWebFetchRequest } from './parse-web-fetch-request';
-import { pickPageView } from './pick-page-view';
+import type { PageFetch } from '../page/page-fetch';
+import { pickPageView } from '../page/pick-page-view';
+import { runPageFetch } from '../page/run-page-fetch';
+import { getPageSession } from '../utils/get-page-session';
+import type { PageView, WebFetchRequest } from '../utils/parse-web-fetch-request';
+import { parseWebFetchRequest } from '../utils/parse-web-fetch-request';
 import { readLinkTarget } from './read-link-target';
 import { readWebFetchPage } from './read-web-fetch-page';
-import { runPageFetch } from './run-page-fetch';
 import type { PageLimits } from './write-web-fetch-page';
 
 // no required key, since a call names a page by url, link or page, and the run checks the mix

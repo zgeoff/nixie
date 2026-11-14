@@ -4,10 +4,10 @@ import type { ExecStream, Sandbox, SandboxAdapter, SandboxLimits } from '@heynix
 import { buildSandboxSpec } from '@heynixie/sandbox';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
 import { decodeFetchGuestFrame, encodeFetchMessage, getLinkTargetLimit } from '@heynixie/wire';
-import type { HopScan } from './gate-page-hops';
-import { gatePageHops } from './gate-page-hops';
-import type { TimeLimit } from './wait-or-time-out';
-import { waitOrTimeOut } from './wait-or-time-out';
+import type { HopScan } from '../page/gate-page-hops';
+import { gatePageHops } from '../page/gate-page-hops';
+import type { TimeLimit } from '../utils/wait-or-time-out';
+import { waitOrTimeOut } from '../utils/wait-or-time-out';
 
 export interface FetchSandboxOptions {
   readonly adapter: SandboxAdapter;

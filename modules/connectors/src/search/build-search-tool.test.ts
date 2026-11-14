@@ -3,11 +3,11 @@ import { writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import { sql } from 'kysely';
+import { seedWebFetchLinks } from '../test-utils/seed-web-fetch-links';
+import { startTestLog } from '../test-utils/start-test-log';
+import type { SearchReply, SearchRequest } from '../types';
+import { readLinkTarget } from '../web/read-link-target';
 import { buildSearchTool } from './build-search-tool';
-import { readLinkTarget } from './read-link-target';
-import { seedWebFetchLinks } from './test-utils/seed-web-fetch-links';
-import { startTestLog } from './test-utils/start-test-log';
-import type { SearchReply, SearchRequest } from './types';
 
 async function setupTest() {
   return { log: await startTestLog() };

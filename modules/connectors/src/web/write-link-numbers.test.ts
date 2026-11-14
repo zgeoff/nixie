@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { withWriteTransaction } from '@heynixie/log';
 import { sql } from 'kysely';
-import { startTestLog } from './test-utils/start-test-log';
+import { startTestLog } from '../test-utils/start-test-log';
 import type { LinkNumbering } from './write-link-numbers';
 import { writeLinkNumbers } from './write-link-numbers';
 

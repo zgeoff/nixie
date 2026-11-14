@@ -1,4 +1,4 @@
-import type { LinkedText, TagSpan } from './render-linked-text';
+import type { LinkedText, TagSpan } from '../utils/render-linked-text';
 
 export function collectPageParts(linked: LinkedText, limitBytes: number): string[] {
   const text = linked.text;

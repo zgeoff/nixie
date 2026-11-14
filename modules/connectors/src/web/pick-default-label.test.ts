@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import type { Connector } from '../types';
 import { pickDefaultLabel } from './pick-default-label';
-import type { Connector } from './types';
 
 test('it labels a connection with the account name that its connector reports', async () => {
   const connector: Connector = {

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
+import { seedWebFetchLinks } from '../test-utils/seed-web-fetch-links';
+import { startTestLog } from '../test-utils/start-test-log';
 import { readLinkTarget } from './read-link-target';
-import { seedWebFetchLinks } from './test-utils/seed-web-fetch-links';
-import { startTestLog } from './test-utils/start-test-log';
 
 async function setupTest() {
   return { log: await startTestLog() };

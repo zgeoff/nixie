@@ -2,12 +2,12 @@ import { createShortID } from '@heynixie/db';
 import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import { parseLinkMarks } from '@heynixie/wire';
-import { collectPageParts } from './collect-page-parts';
-import type { PageSession } from './get-page-session';
+import { collectPageParts } from '../page/collect-page-parts';
+import type { PageSession } from '../utils/get-page-session';
+import type { LinkedTextLimits } from '../utils/render-linked-text';
+import { renderLinkedText } from '../utils/render-linked-text';
 import { probeSessionEnded } from './probe-session-ended';
 import { removeWebFetchPages } from './remove-web-fetch-pages';
-import type { LinkedTextLimits } from './render-linked-text';
-import { renderLinkedText } from './render-linked-text';
 import type { WebFetchTables } from './web-fetch-tables';
 import { writeLinkNumbers } from './write-link-numbers';
 

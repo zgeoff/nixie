@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
-import type { PageSession } from './get-page-session';
+import type { PageSession } from '../utils/get-page-session';
 import { probeSessionEnded } from './probe-session-ended';
 import { writeLinkNumbers } from './write-link-numbers';
 

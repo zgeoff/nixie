@@ -1,8 +1,8 @@
 import type { Log } from '@heynixie/log';
 import type { ToolImage } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
-import type { PageSession } from './get-page-session';
-import type { PageLimits } from './write-web-fetch-page';
+import type { PageSession } from '../utils/get-page-session';
+import type { PageLimits } from '../web/write-web-fetch-page';
 
 export interface PageFetch {
   readonly log: Pick<Log, 'writer'>;

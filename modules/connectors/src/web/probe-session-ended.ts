@@ -1,7 +1,7 @@
 import type { LogTables } from '@heynixie/log';
 import type { ModelsRecordKind } from '@heynixie/models';
 import type { Transaction } from 'kysely';
-import type { PageSession } from './get-page-session';
+import type { PageSession } from '../utils/get-page-session';
 
 // the models module registers the invalidation's kind with the log, and a forget's cleanup commits
 // it before it removes the thread's links and pages

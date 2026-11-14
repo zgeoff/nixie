@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import { renderLinkedText } from '../utils/render-linked-text';
 import { collectPageParts } from './collect-page-parts';
-import { renderLinkedText } from './render-linked-text';
 
 test('it keeps a text that fits the limit as one part', () => {
   expect(collectPageParts({ text: 'Ferries leave at nine.', tags: [] }, 100)).toStrictEqual([

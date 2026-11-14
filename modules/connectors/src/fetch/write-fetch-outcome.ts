@@ -1,11 +1,11 @@
 import type { ToolOutcome } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
+import type { PageFetch } from '../page/page-fetch';
+import { pickPageView } from '../page/pick-page-view';
+import type { PageView } from '../utils/parse-web-fetch-request';
+import type { PassOutcome } from '../utils/read-fetch-pass';
+import { writeWebFetchPage } from '../web/write-web-fetch-page';
 import { fitFetchedImage } from './fit-fetched-image';
-import type { PageFetch } from './page-fetch';
-import type { PageView } from './parse-web-fetch-request';
-import { pickPageView } from './pick-page-view';
-import type { PassOutcome } from './read-fetch-pass';
-import { writeWebFetchPage } from './write-web-fetch-page';
 
 export function writeFetchOutcome(
   fetching: PageFetch,

@@ -3,9 +3,9 @@ import type { JSONObject, Log } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import { getPageSession } from './get-page-session';
-import type { SearchHit, SearchProvider, SearchRequest } from './types';
-import { writeHitLinks } from './write-hit-links';
+import type { SearchHit, SearchProvider, SearchRequest } from '../types';
+import { getPageSession } from '../utils/get-page-session';
+import { writeHitLinks } from '../web/write-hit-links';
 import { writeSearchCall } from './write-search-call';
 
 const searchInput = {

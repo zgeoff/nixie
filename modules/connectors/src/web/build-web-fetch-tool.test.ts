@@ -6,15 +6,15 @@ import { buildToolRegistry } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
-import { buildSearchTool } from './build-search-tool';
+import { startFetchSandbox } from '../fetch/start-fetch-sandbox';
+import { buildSearchTool } from '../search/build-search-tool';
+import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapter';
+import { encodeTestImage } from '../test-utils/encode-test-image';
+import { makeStubFetcher } from '../test-utils/make-stub-fetcher';
+import { startTestLog } from '../test-utils/start-test-log';
+import type { SearchReply } from '../types';
 import { buildWebFetchTool } from './build-web-fetch-tool';
 import { removeWebFetchThread } from './remove-web-fetch-thread';
-import { startFetchSandbox } from './start-fetch-sandbox';
-import { buildStubSandboxAdapter } from './test-utils/build-stub-sandbox-adapter';
-import { encodeTestImage } from './test-utils/encode-test-image';
-import { makeStubFetcher } from './test-utils/make-stub-fetcher';
-import { startTestLog } from './test-utils/start-test-log';
-import type { SearchReply } from './types';
 
 async function setupTest() {
   return { log: await startTestLog() };

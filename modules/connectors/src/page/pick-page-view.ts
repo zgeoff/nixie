@@ -1,8 +1,8 @@
 import type { ToolOutcome } from '@heynixie/tools';
 import { match } from 'ts-pattern';
+import type { PageView } from '../utils/parse-web-fetch-request';
+import type { StoredPage } from '../web/write-web-fetch-page';
 import { collectPageMatches } from './collect-page-matches';
-import type { PageView } from './parse-web-fetch-request';
-import type { StoredPage } from './write-web-fetch-page';
 
 export function pickPageView(page: StoredPage, view: PageView): ToolOutcome {
   const partCount = formatPartCount(page.parts.length);

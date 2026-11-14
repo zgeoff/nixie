@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { sql } from 'kysely';
+import { seedWebFetchLinks } from '../test-utils/seed-web-fetch-links';
+import { startTestLog } from '../test-utils/start-test-log';
 import { readLinkTarget } from './read-link-target';
 import { removeWebFetchThread } from './remove-web-fetch-thread';
-import { seedWebFetchLinks } from './test-utils/seed-web-fetch-links';
-import { startTestLog } from './test-utils/start-test-log';
 import { writeWebFetchPage } from './write-web-fetch-page';
 
 async function setupTest() {
