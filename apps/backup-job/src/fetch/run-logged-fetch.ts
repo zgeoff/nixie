@@ -2,6 +2,25 @@ import type { Logger } from '@heynixie/logger';
 import type { BackupFetchRequest } from './run-backup-fetch';
 import { runBackupFetch } from './run-backup-fetch';
 
+// A request that cannot be built, such as one with a repository variable missing, is a failed
+// fetch at the step 'config', so it ends in the same one line as every other failure.
+export function runLoggedFetchOf(
+  buildRequest: () => BackupFetchRequest,
+  logger: Logger,
+): Promise<number> {
+  let request: BackupFetchRequest;
+
+  try {
+    request = buildRequest();
+  } catch {
+    logger('backup.fetch_failed', { step: 'config' }, 'error');
+
+    return Promise.resolve(1);
+  }
+
+  return runLoggedFetch(request, logger);
+}
+
 // Returns the exit code, after one line that says how the fetch ended
 export async function runLoggedFetch(request: BackupFetchRequest, logger: Logger): Promise<number> {
   const fetched = await runBackupFetch(request);

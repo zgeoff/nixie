@@ -116,7 +116,7 @@ test('it refuses with no-such-data-snapshot for an ID the data repository lacks,
 
   expect(pickBackupPair([key], [data], 'b'.repeat(8))).toStrictEqual({
     refused: 'no-such-data-snapshot',
-    message: `the data repository holds no data snapshot ${'b'.repeat(8)}`,
+    message: 'the data repository holds no data snapshot with the ID that was named',
   });
 });
 

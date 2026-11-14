@@ -4,7 +4,7 @@ import { makeLogger, startLineLog, toErrorFields } from '@heynixie/logger';
 import { cli, define } from 'gunshi';
 import { localFetchFiles } from './fetch/local-fetch-files';
 import { readSnapshotLines } from './fetch/read-snapshot-lines';
-import { runLoggedFetch } from './fetch/run-logged-fetch';
+import { runLoggedFetchOf } from './fetch/run-logged-fetch';
 import { localJobFiles } from './local-job-files';
 import type { JobConfig } from './parse-job-config';
 import { parseJobConfig } from './parse-job-config';
@@ -65,18 +65,17 @@ const fetchPair = define({
     },
   },
   run: async (ctx) => {
-    const config = parseJobConfig(process.env);
+    process.exitCode = await runLoggedFetchOf(() => {
+      const config = parseJobConfig(process.env);
 
-    process.exitCode = await runLoggedFetch(
-      {
+      return {
         repos: buildRepos(config),
         files: localFetchFiles,
         directory: ctx.values.to,
         dataSnapshotID: ctx.values['data-snapshot'] ?? null,
         now: Date.now,
-      },
-      log,
-    );
+      };
+    }, log);
   },
 });
 

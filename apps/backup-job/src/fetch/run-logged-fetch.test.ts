@@ -6,7 +6,7 @@ import type { LogFields, LogLevel } from '@heynixie/logger';
 import { buildResticClient } from '../restic/build-restic-client';
 import { createStubRestic } from '../test-utils/create-stub-restic';
 import { localFetchFiles } from './local-fetch-files';
-import { runLoggedFetch } from './run-logged-fetch';
+import { runLoggedFetch, runLoggedFetchOf } from './run-logged-fetch';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-logged-fetch-'));
@@ -114,4 +114,20 @@ test('it exits 1 after one backup.fetch_failed line with a step only for a path 
 
   expect(exitCode).toBe(1);
   expect(lines).toStrictEqual([['backup.fetch_failed', { step: 'directory' }, 'error']]);
+});
+
+test('it exits 1 after one backup.fetch_failed line at the config step for a request that cannot be built', async () => {
+  const lines: [string, LogFields | undefined, LogLevel | undefined][] = [];
+
+  const exitCode = await runLoggedFetchOf(
+    () => {
+      throw new Error('NIXIE_BACKUP_DATA_REPOSITORY is not set');
+    },
+    (event, fields, level) => {
+      lines.push([event, fields, level]);
+    },
+  );
+
+  expect(exitCode).toBe(1);
+  expect(lines).toStrictEqual([['backup.fetch_failed', { step: 'config' }, 'error']]);
 });

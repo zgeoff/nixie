@@ -44,7 +44,7 @@ function pickNamedData(
   if (named === undefined) {
     return {
       refused: 'no-such-data-snapshot',
-      message: `the data repository holds no data snapshot ${dataSnapshotID}`,
+      message: 'the data repository holds no data snapshot with the ID that was named',
     };
   }
 
