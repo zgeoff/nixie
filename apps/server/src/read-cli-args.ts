@@ -39,6 +39,9 @@ const CLI_OPTIONS = {
   from: { type: 'string' },
   turns: { type: 'number' },
   dollars: { type: 'number' },
+  for: { type: 'string' },
+  drop: { type: 'boolean' },
+  limit: { type: 'number' },
 } as const;
 
 interface CLIParams {
@@ -72,6 +75,11 @@ const CONTACT_MARK_OPTIONS = {
   destination: { type: 'positional', required: true },
 } as const;
 
+const TURN_INPUT_OPEN_OPTIONS = {
+  ...CLI_OPTIONS,
+  inputID: { type: 'positional', required: true },
+} as const;
+
 const CONTACT_UNMARK_OPTIONS = {
   ...CLI_OPTIONS,
   contactID: { type: 'positional', required: true },
@@ -84,7 +92,8 @@ type ActionOptions =
   | typeof RULE_RESOLVE_OPTIONS
   | typeof PROPOSAL_ID_OPTIONS
   | typeof CONTACT_MARK_OPTIONS
-  | typeof CONTACT_UNMARK_OPTIONS;
+  | typeof CONTACT_UNMARK_OPTIONS
+  | typeof TURN_INPUT_OPEN_OPTIONS;
 
 const ACTION_OPTIONS: Readonly<Record<string, ActionOptions>> = {
   'rules resolve': RULE_RESOLVE_OPTIONS,
@@ -92,6 +101,7 @@ const ACTION_OPTIONS: Readonly<Record<string, ActionOptions>> = {
   'proposals reject': PROPOSAL_ID_OPTIONS,
   'contacts mark-known': CONTACT_MARK_OPTIONS,
   'contacts unmark': CONTACT_UNMARK_OPTIONS,
+  'turn-input open': TURN_INPUT_OPEN_OPTIONS,
 };
 
 interface ActionParams {

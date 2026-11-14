@@ -1,5 +1,6 @@
 import { runPendingRecordForgets } from '@heynixie/api';
 import { makeRetriedStart } from './make-retried-start';
+import { runTurnInputForget } from './run-turn-input-forget';
 import type { ServerPartValues } from './server-part-values';
 import { startChecker } from './start-checker';
 import { startConsolidatorTask } from './start-consolidator-task';
@@ -25,6 +26,8 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
         async (cause) => {
           await conversation.cleanupSessions(cause);
           await tasks.cleanupSessions(cause);
+
+          await runTurnInputForget(parts, cause);
         },
         reader.get('checker').check,
       );
@@ -32,8 +35,9 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
   },
   {
     name: 'session_cleanup',
-    needs: ['conversation_imp', 'nixie_runner', 'memory'],
+    needs: ['server_parts', 'conversation_imp', 'nixie_runner', 'memory'],
     start: (reader) => {
+      const parts = reader.get('server_parts');
       const store = reader.get('memory');
       const conversation = reader.get('conversation_imp');
       const tasks = reader.get('nixie_runner');
@@ -42,6 +46,8 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
         await store.removeMessages([cause.recordSequence]);
         await conversation.cleanupSessions(cause);
         await tasks.cleanupSessions(cause);
+
+        await runTurnInputForget(parts, cause);
       });
     },
   },

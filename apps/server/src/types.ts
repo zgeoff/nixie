@@ -6,6 +6,7 @@ import type { Encoder } from '@heynixie/memory';
 import type { ModelSecrets } from '@heynixie/models';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
+import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { SeedInputs } from './build-seed-inputs';
 import type { StartState } from './build-start-state';
 import type { SandboxAdapterOptions } from './create-sandbox-adapter';
@@ -44,6 +45,7 @@ export interface ServerParts {
   readonly buildPolicy: SeedInputs['buildPolicy'];
   readonly inForce: InForce;
   readonly modelSecrets: ModelSecrets;
+  readonly turnInputs: TurnInputs;
 
   readonly encoder: Encoder | null;
 
@@ -54,6 +56,9 @@ export interface CLIIO {
   readonly log: Logger;
 
   readonly print: (text: string) => void;
+
+  // writes bytes to stdout as they are, with no newline
+  readonly writeBytes?: (bytes: Uint8Array) => void;
 
   readonly waitForSignal: () => Promise<string>;
 
@@ -101,6 +106,11 @@ export interface CLIFlags {
 
   readonly turns?: number;
   readonly dollars?: number;
+
+  readonly for?: string;
+  readonly drop?: boolean;
+  readonly limit?: number;
+  readonly inputID?: string;
 
   readonly taskID?: string;
   readonly ruleID?: string;

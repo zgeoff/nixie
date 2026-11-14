@@ -41,6 +41,8 @@ export interface ConversationOptions {
 
   readonly messaging?: TaskMessaging;
 
+  readonly turnInputs?: ConversationRunnerOptions['turnInputs'];
+
   readonly log: Logger;
 }
 
@@ -73,6 +75,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     ...(options.compaction === undefined ? {} : { compaction: options.compaction }),
     ...(options.defaultZone === undefined ? {} : { defaultZone: options.defaultZone }),
     ...(options.messaging === undefined ? {} : { messaging: options.messaging }),
+    ...(options.turnInputs === undefined ? {} : { turnInputs: options.turnInputs }),
     log: options.log,
   });
 }

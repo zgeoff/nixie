@@ -149,6 +149,7 @@
         "@heynixie/tasks": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/turn-inputs": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "@orpc/client": "catalog:",
         "@zgeoff/std": "catalog:",
@@ -235,6 +236,7 @@
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/model-gateway": "workspace:*",
         "@heynixie/server": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@heynixie/web": "workspace:*",
@@ -432,6 +434,7 @@
         "@heynixie/task-control": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/turn-inputs": "workspace:*",
         "@orpc/server": "catalog:",
         "elysia": "catalog:",
         "kysely": "catalog:",
@@ -763,6 +766,23 @@
         "@faker-js/faker": "catalog:",
         "@heynixie/testing": "workspace:*",
         "@modelcontextprotocol/client": "catalog:",
+      },
+    },
+    "modules/turn-inputs": {
+      "name": "@heynixie/turn-inputs",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/models": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "kysely": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
       },
     },
     "research/cache-lifetime": {
@@ -1310,6 +1330,8 @@
     "@heynixie/testing": ["@heynixie/testing@workspace:libs/testing"],
 
     "@heynixie/tools": ["@heynixie/tools@workspace:modules/tools"],
+
+    "@heynixie/turn-inputs": ["@heynixie/turn-inputs@workspace:modules/turn-inputs"],
 
     "@heynixie/web": ["@heynixie/web@workspace:apps/web"],
 

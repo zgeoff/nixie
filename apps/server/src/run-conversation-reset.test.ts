@@ -18,8 +18,66 @@ async function setupTest() {
     readSessionCleanup: () => null,
   };
 
-  return { ...server, context, log: mock<Logger>() };
+  return {
+    ...server,
+    context,
+    log: mock<Logger>(),
+    removeTurnInputThreads: mock<(threads: readonly string[]) => Promise<void>>(() =>
+      Promise.resolve(),
+    ),
+  };
 }
+
+test('it removes the logged requests of the conversation thread before it records the reset', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const kindsAtRemoval: string[][] = [];
+
+  await runConversationReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    stopWork: () => Promise.resolve(),
+    log: ctx.log,
+    removeTurnInputThreads: async (threads) => {
+      await ctx.removeTurnInputThreads(threads);
+
+      const read = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+      kindsAtRemoval.push(read.map((entry) => entry.record.kind));
+    },
+  });
+
+  expect(ctx.removeTurnInputThreads).toHaveBeenCalledExactlyOnceWith(['conversation']);
+  expect(kindsAtRemoval).toStrictEqual([['definitions_seeded', 'model.session_invalidated']]);
+});
+
+test('it records no reset when a logged request cannot be removed', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const reset = runConversationReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    stopWork: () => Promise.resolve(),
+    log: ctx.log,
+    removeTurnInputThreads: () =>
+      Promise.reject(new Error('1 logged requests could not be removed')),
+  });
+
+  await Promise.allSettled([reset]);
+
+  const read = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(reset).rejects.toThrowWithMessage(Error, '1 logged requests could not be removed');
+
+  expect(read.map((entry) => entry.record.kind)).toStrictEqual([
+    'definitions_seeded',
+    'model.session_invalidated',
+  ]);
+});
 
 test('it shreds every record on the conversation thread, records the reset there, and reports its key backups as pending', async () => {
   const ctx = await setupTest();
@@ -47,6 +105,7 @@ test('it shreds every record on the conversation thread, records the reset there
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
     log: ctx.log,
+    removeTurnInputThreads: ctx.removeTurnInputThreads,
   });
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0 });
@@ -101,6 +160,7 @@ test('it finishes the reset and reports its key backups as unknown when the back
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
     log: ctx.log,
+    removeTurnInputThreads: ctx.removeTurnInputThreads,
   });
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0 });
@@ -144,6 +204,7 @@ test('it never shreds a record on another thread', async () => {
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
     log: ctx.log,
+    removeTurnInputThreads: ctx.removeTurnInputThreads,
   });
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0, thread: 'task-garden' });
@@ -175,6 +236,7 @@ test('it stops the work, then destroys the conversation sandbox and never anothe
     adapter: ctx.sandboxes,
     stopWork,
     log: ctx.log,
+    removeTurnInputThreads: ctx.removeTurnInputThreads,
   });
 
   const after = await ctx.readSandboxIDs();
@@ -209,6 +271,7 @@ test('it removes the links that the web fetch tool numbered on the conversation 
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
     log: ctx.log,
+    removeTurnInputThreads: ctx.removeTurnInputThreads,
   });
 
   const target = await readLinkTarget(ctx.context.log, { sessionKey: 'session-a', number: 1 });
@@ -241,6 +304,7 @@ test('it removes nothing when the conversation sandbox destroy fails', async () 
     },
     stopWork: () => Promise.resolve(),
     log: ctx.log,
+    removeTurnInputThreads: ctx.removeTurnInputThreads,
   });
 
   await Promise.allSettled([reset]);

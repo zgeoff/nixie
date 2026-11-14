@@ -28,6 +28,8 @@ test('it ends the start and stops its work before it resets', async () => {
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -55,6 +57,8 @@ test('it logs the reset and resolves done once the reset finishes', async () => 
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log,
@@ -82,6 +86,8 @@ test('it logs a reset of the conversations and resolves done once it finishes', 
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log,
@@ -107,6 +113,8 @@ test('it refuses a full reset while a reset of the conversations runs', async ()
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -131,6 +139,8 @@ test('it refuses a reset of the conversations while a full reset runs', async ()
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -155,6 +165,8 @@ test('it answers a request that arrives while a reset runs with that reset', asy
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -182,6 +194,8 @@ test('it reports a failed reset as the server failing, and never resolves done',
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -210,6 +224,8 @@ test('it logs a failed reset with the error', async () => {
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log,
@@ -235,6 +251,8 @@ test('it waits for a reset in flight to settle, and never rejects with its failu
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
     closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -262,6 +280,8 @@ test('it closes the API before it stops the work', async () => {
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
     closeAPI,
     readStart: () => Promise.resolve(),
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
@@ -269,4 +289,26 @@ test('it closes the API before it stops the work', async () => {
   }).run();
 
   expect(closeAPI).toHaveBeenCalledBefore(stopRunners);
+});
+
+test('it removes the turn-input bodies after the log reset, and only for a full reset', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const runTurnInputsReset = mock(() => Promise.resolve());
+
+  await buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset,
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  }).run();
+
+  expect(runTurnInputsReset).toHaveBeenCalledOnce();
 });

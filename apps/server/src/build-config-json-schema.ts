@@ -34,6 +34,18 @@ const releaseRules: readonly ReleaseRule[] = [
     keywords: () => ({ pattern: httpURLPattern }),
   },
   {
+    path: [
+      'properties',
+      'turn_input_log',
+      'properties',
+      'sources',
+      'additionalProperties',
+      'properties',
+      'base_url',
+    ],
+    keywords: () => ({ pattern: httpURLPattern }),
+  },
+  {
     path: ['properties', 'imp', 'properties', 'url'],
     keywords: () => ({ pattern: httpURLPattern }),
   },

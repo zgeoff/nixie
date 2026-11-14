@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import type { StepCaptureInput } from './open-step-capture';
 import { startSessionRunner } from './start-session-runner';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { startTestTasks } from './test-utils/start-test-tasks';
@@ -21,8 +22,23 @@ async function setupTest() {
     sandboxes,
     runs: tools.runs,
     steps: tools.steps,
-    startRunner: (config: RunnerConfig) =>
+    startRunner: (config: RunnerConfig, capture?: StepCaptureInput[]) =>
       startSessionRunner({
+        ...(capture === undefined
+          ? {}
+          : {
+              captureRole: 'memory-writer' as const,
+              turnInputs: {
+                openCapture: (input: StepCaptureInput) => {
+                  capture.push(input);
+
+                  return Promise.resolve({
+                    baseURL: `${input.profile.baseURL}/~in.test-tag`,
+                    close: () => Promise.resolve(),
+                  });
+                },
+              },
+            }),
         context: tasks.context,
         profile: {
           profile: resolveRoleProfile(config.models, 'conversation'),
@@ -340,4 +356,31 @@ test('it replaces the worker sandbox when its spec no longer matches', async () 
   ]);
 
   expect(ctx.sandboxes.destroyed).toHaveLength(1);
+});
+
+test('it opens a capture for the memory-writer role and gives the turn its base URL', async () => {
+  const ctx = await setupTest();
+
+  const opened: StepCaptureInput[] = [];
+
+  const runner = await ctx.startRunner(
+    { models: buildMockModelsConfig(), credential: 'not-a-real-key' },
+    opened,
+  );
+
+  await runner.runSession({
+    systemPrompt: 'You write memory.',
+    prompt: 'Read the batch.',
+    signal: new AbortController().signal,
+    stepRunID: 'memory-writer:1@1',
+  });
+
+  expect(opened).toStrictEqual([
+    expect.objectContaining({
+      step: { taskID: 'memory-writer', stepRunID: 'memory-writer:1@1' },
+      role: 'memory-writer',
+    }),
+  ]);
+
+  expect(ctx.sandboxes.turns[0]?.profile.baseURL).toEndWith('/~in.test-tag');
 });

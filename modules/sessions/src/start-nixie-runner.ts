@@ -516,25 +516,25 @@ const taskModelCallLimit = 100;
 
 function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun {
   const options = runner.options;
-  const run = parts.run;
 
   return {
     context: options.context,
-    frame: { kind: 'task', startedBy: run.startedBy, report: run.options.report },
-    profile: run.profile,
-    turnProfile: run.harness.toTurnProfile(run.profile.profile),
+    frame: { kind: 'task', startedBy: parts.run.startedBy, report: parts.run.options.report },
+    profile: parts.run.profile,
+    turnProfile: parts.run.harness.toTurnProfile(parts.run.profile.profile),
     sandbox: parts.sandbox,
     endpoint: parts.endpoint,
-    model: run.model,
-    command: run.command,
+    model: parts.run.model,
+    command: parts.run.command,
     modelCallLimit: taskModelCallLimit,
     onModelCall: parts.budget.onCall,
+    ...(options.turnInputs === undefined ? {} : { turnInputs: options.turnInputs }),
     getDefinitions: () =>
-      run.options.persona === 'default'
+      parts.run.options.persona === 'default'
         ? options.getDefinitions()
         : { ...options.getDefinitions(), persona: '', personaHash: '' },
     status: buildDefaultStatus(),
-    ...(run.options.memory === 'read' ? { memory: options.memory } : {}),
+    ...(parts.run.options.memory === 'read' ? { memory: options.memory } : {}),
     memorySettings: options.memorySettings,
     compaction: options.compaction,
     defaultZone: options.defaultZone,

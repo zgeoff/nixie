@@ -18,6 +18,9 @@ export interface ConversationReset {
 
 export interface ConversationResetOptions extends ServerResetOptions {
   readonly log: Logger;
+
+  // closes the threads' turn-input captures and removes every logged request on them
+  readonly removeTurnInputThreads: (threads: readonly string[]) => Promise<void>;
 }
 
 export async function runConversationReset(
@@ -47,6 +50,8 @@ export async function runConversationReset(
   const shreddedRecords = await removeThreadKeys(log, conversationTaskID);
 
   await removeWebFetchThread(log, conversationTaskID);
+
+  await options.removeTurnInputThreads([conversationTaskID]);
 
   const resetAt = new Date();
 

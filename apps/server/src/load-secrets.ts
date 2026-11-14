@@ -1,4 +1,5 @@
 import type { ModelSecrets } from '@heynixie/models';
+import { collectOwnValues } from './collect-own-values';
 import { secretsSchema } from './secrets-schema';
 
 export interface SecretsOptions {
@@ -17,6 +18,9 @@ export interface Secrets {
   readonly connectorCredentials: Readonly<Record<string, string>>;
 
   readonly settings: Readonly<Record<string, string>>;
+
+  // held in memory for the turn-input log's search, never logged or sent to a guest
+  readonly ownValues: readonly string[];
 }
 
 // The plaintext stays in this process's memory, never on a tmpfs, in an environment variable or in
@@ -59,6 +63,7 @@ export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
     models: { model_credentials: result.data.model_credentials },
     connectorCredentials: result.data.connector_credentials,
     settings: result.data.settings,
+    ownValues: collectOwnValues(result.data),
   };
 }
 

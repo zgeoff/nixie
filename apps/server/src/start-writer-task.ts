@@ -35,6 +35,7 @@ export async function startWriterTask(
     assistantName: parts.config.agent.names[0] ?? null,
     defaultZone: parts.config.time.default_zone,
     messaging: buildTaskMessaging(parts.config),
+    turnInputs: parts.turnInputs,
     onError: (error) => {
       parts.onFailure(error);
     },

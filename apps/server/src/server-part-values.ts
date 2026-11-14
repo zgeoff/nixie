@@ -2,6 +2,7 @@ import type { CleanupRecordSessions } from '@heynixie/api';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { CheckerTask, NixieRunner } from '@heynixie/sessions';
+import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { APIGate } from './build-api-gate';
 import type { ServerResetControl } from './build-server-reset';
 import type { DecisionPointFactory } from './make-server-decisions';
@@ -22,6 +23,7 @@ export interface ServerPartValues {
   readonly tools: Tools;
   readonly api_gate: APIGate;
   readonly http: number;
+  readonly turn_inputs: TurnInputs;
   readonly server_parts: ServerParts;
   readonly reset: ServerResetControl;
   readonly host_commands: void;

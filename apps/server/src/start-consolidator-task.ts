@@ -34,6 +34,7 @@ export async function startConsolidatorTask(
     ownerName: parts.config.owner.name,
     defaultZone: parts.config.time.default_zone,
     messaging: buildTaskMessaging(parts.config),
+    turnInputs: parts.turnInputs,
 
     onError: (error) => {
       parts.log('memory_consolidator.run_failed', toErrorFields(error));

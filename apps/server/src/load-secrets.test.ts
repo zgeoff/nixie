@@ -36,6 +36,7 @@ test('it keeps the deployment key, the impd token and the model credentials', as
     models: { model_credentials: { anthropic: 'model-key' } },
     connectorCredentials: {},
     settings: {},
+    ownValues: [key, 'impd-token', 'model-key'],
   });
 
   expect(deploymentKey.algorithm).toMatchObject({ name: 'AES-KW', length: 256 });

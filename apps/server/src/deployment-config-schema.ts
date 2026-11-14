@@ -11,6 +11,7 @@ import { policyConfigSchema } from '@heynixie/policy';
 import { approvalsConfigSchema, quietHoursSchema } from '@heynixie/proposals';
 import { skillsConfigSchema } from '@heynixie/skills';
 import { tasksConfigSchema } from '@heynixie/tasks';
+import { turnInputLogConfigSchema } from '@heynixie/turn-inputs';
 import { z } from 'zod';
 import { modelSections } from './model-sections';
 import { ownerConfigSchema } from './owner-config-schema';
@@ -37,6 +38,7 @@ export const deploymentConfigSchema = z
     quiet_hours: quietHoursSchema.optional(),
     skills: skillsConfigSchema.default(skillsConfigSchema.parse({})),
     backup: backupConfigSchema.default(backupConfigSchema.parse({})),
+    turn_input_log: turnInputLogConfigSchema.optional(),
   })
   .superRefine((config, issues) => {
     if (config.sandbox.adapter === 'imp' && config.imp === undefined) {

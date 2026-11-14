@@ -3,6 +3,7 @@ import type { APIContext } from '@heynixie/api';
 import { makeHostResponder } from '@heynixie/api';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { PromptsInForce } from '@heynixie/prompts';
+import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { APIGate } from './build-api-gate';
 import type { ConversationReset } from './run-conversation-reset';
 import type { ServerReset } from './run-server-reset';
@@ -22,6 +23,8 @@ export interface HostCommandsOptions {
   readonly runConversationReset: () => Promise<ConversationReset>;
 
   readonly gate: Pick<APIGate, 'runCall'>;
+
+  readonly turnInputs?: Pick<TurnInputs, 'list' | 'open' | 'set'>;
 }
 
 export async function startHostCommands(
@@ -37,6 +40,7 @@ export async function startHostCommands(
     runReset: options.runReset,
     runConversationReset: options.runConversationReset,
     gate: options.gate,
+    ...(options.turnInputs === undefined ? {} : { turnInputs: options.turnInputs }),
   });
 
   const control = await startControlSocket({

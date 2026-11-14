@@ -135,10 +135,19 @@ export interface SpawnedNixie extends BootFiles {
   readonly readSandboxIDs: () => Promise<readonly string[]>;
 }
 
+interface ModelRoute {
+  readonly baseURL: string;
+  readonly config: readonly string[];
+}
+
 export interface SpawnedNixieOptions {
   readonly memoryWriter?: boolean;
 
   readonly extraConfig?: readonly string[];
+
+  // Puts a proxy in front of the model double: it takes the double's URL and gives back the base
+  // URL the profile names and the config lines the proxy needs.
+  readonly routeModel?: (upstreamURL: string) => Promise<ModelRoute>;
 
   readonly logLevel?: LogLevel;
 
@@ -170,10 +179,16 @@ export async function startSpawnedNixie(options: SpawnedNixieOptions = {}): Prom
 
   const doubles = startDoubles(stack);
 
+  const route =
+    options.routeModel === undefined ? null : await options.routeModel(doubles.model.url);
+
   const files = await writeBootFiles(
     directory,
-    doubles.model.url,
-    buildBootExtras(options, doubles),
+    route?.baseURL ?? doubles.model.url,
+    buildBootExtras(
+      { ...options, extraConfig: [...(options.extraConfig ?? []), ...(route?.config ?? [])] },
+      doubles,
+    ),
   );
 
   const reader = startLogReader(files.dataDir, stack);

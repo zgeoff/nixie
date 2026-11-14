@@ -64,6 +64,7 @@ export { buildGuestCommand } from './build-guest-command';
 export { getHarnessImage } from './get-harness-image';
 export type { SystemTaskOptions, SystemTaskRunner } from './make-system-task-runner';
 export { makeSystemTaskRunner } from './make-system-task-runner';
+export { readCleanedTaskIDs } from './read-cleaned-task-ids';
 export type { ToolSessionOptions } from './start-tool-session';
 export { startToolSession } from './start-tool-session';
 export type { CheckerAnswer, CheckerRequest, CheckerVerdict, RunCheck } from './checker-request';

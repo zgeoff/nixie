@@ -124,6 +124,7 @@ async function setupTest() {
         adapter: { id: 'stub', list: () => Promise.resolve([]) },
         stopWork: () => Promise.resolve(),
         log: () => {},
+        removeTurnInputThreads: () => Promise.resolve(),
       }),
     gate: { runCall: (call) => call() },
   });
@@ -141,6 +142,7 @@ async function setupTest() {
         adapter: { id: 'stub', list: () => Promise.resolve([]) },
         stopWork: () => Promise.resolve(),
         log: () => {},
+        removeTurnInputThreads: () => Promise.resolve(),
       }),
     gate: { runCall: (call) => call() },
   });
