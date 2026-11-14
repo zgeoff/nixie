@@ -1870,7 +1870,7 @@ test('it caps each task turn at 100 model calls', async () => {
 
   expect(ctx.guest.turns[0]?.limits).toStrictEqual({
     modelCalls: 100,
-    toolCallWaitMs: null,
+    toolCallWaitMs: 900_000,
   });
 });
 

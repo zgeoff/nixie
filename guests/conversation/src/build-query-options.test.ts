@@ -219,3 +219,34 @@ test('it refuses a guest env with no HOME', () => {
     }),
   ).toThrowWithMessage(Error, /needs HOME/u);
 });
+
+test.each([
+  ['a wait of 900,000 ms', 900_000, { timeout: 900_000 }],
+  ['no wait', null, {}],
+])('it sets the tool server entry for %s', (_case, toolCallWaitMs, timeout) => {
+  const options = buildQueryOptions(
+    buildMockTurnFrame({ profile: { authHeader: 'x-api-key' }, limits: { toolCallWaitMs } }),
+    {
+      env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+      toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp', alwaysLoad: true },
+    },
+  );
+
+  expect(options.mcpServers).toStrictEqual({
+    nixie: { type: 'http', url: 'http://127.0.0.1:8901/mcp', alwaysLoad: true, ...timeout },
+  });
+});
+
+test('it leaves the tool server entry as it is for a summarize frame', () => {
+  const options = buildQueryOptions(
+    buildMockSummarizeFrame({ profile: { authHeader: 'x-api-key' } }),
+    {
+      env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+      toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+    },
+  );
+
+  expect(options.mcpServers).toStrictEqual({
+    nixie: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+  });
+});

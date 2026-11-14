@@ -96,10 +96,11 @@ const turnLimitsSchema = z
 
 ## Open questions
 
-- **Does the Agent SDK's CLI obey a setting for the timeout of one MCP tool call?** A probe in the
-  Agent SDK lane settles it, in
-  [the Agent SDK tool-call wait](https://linear.app/zgeoff/issue/GEO-2539). Until it passes,
-  `agent-sdk` declares null.
+- **Does the Agent SDK's CLI obey a setting for the timeout of one MCP tool call?** Settled: the
+  `timeout` of the MCP server's config in the query options, in milliseconds, which a probe in the
+  Agent SDK lane proves, in
+  [the Agent SDK tool-call wait](https://linear.app/zgeoff/issue/GEO-2539). `agent-sdk` declares
+  900,000.
 - **Does the Codex CLI obey a config key for the timeout of one MCP tool call?** A probe in the test
   imp lane settles it, in [the Codex tool-call wait](https://linear.app/zgeoff/issue/GEO-2541).
   Until it passes, `codex` declares null.

@@ -228,7 +228,9 @@ A conversation turn has no limit. A started task's turn has a fixed limit, becau
 it.
 
 The turn frame also holds the wait for one tool call, which the host copies from the harness record.
-It is null on the `agent-sdk` harness, and no guest reads it yet.
+It is 900,000 (15 minutes) on the `agent-sdk` harness, and the conversation guest sets it as the
+CLI's per-server MCP tool-call timeout of nixie's tool server. When the value is null, the guest
+sets no timeout.
 
 ## System messages
 

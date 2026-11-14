@@ -35,8 +35,8 @@ export const agentSDKHarnessDefinition: HarnessDefinition<'agent-sdk', AgentSDKP
     imageKey: 'conversation',
     toolUseMetaKey: 'claudecode/toolUseId',
 
-    // stays null until the Agent SDK probe passes
-    toolCallWaitMs: null,
+    // the CLI's per-server tool-call timeout, which the tool-call wait probe proves
+    toolCallWaitMs: 900_000,
 
     capabilities: harnessCapabilities['agent-sdk'],
     secretHeader: profile.authHeader,
