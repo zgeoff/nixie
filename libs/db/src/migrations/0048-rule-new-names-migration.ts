@@ -129,7 +129,10 @@ function buildNewNamesForm(
     ...(contexts.success ? { contexts: [...new Set(renamedContexts)].toSorted() } : {}),
   };
 
-  const listed = formKeys.filter((key) => key in renamed).map((key) => [key, renamed[key]]);
+  const listed = formKeys
+    .filter((key) => key in renamed)
+    .map((key): [string, unknown] => [key, renamed[key]]);
+
   const others = Object.entries(renamed).filter(([key]) => !formKeys.includes(key));
 
   return Object.fromEntries([...listed, ...others]);
