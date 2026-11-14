@@ -132,3 +132,45 @@ test('it logs each call with its arguments, and whether a password reached it', 
     `${JSON.stringify({ repository: ctx.repository, args: ['--no-cache', 'init'], hasPassword: true })}\n`,
   );
 });
+
+test('it restores the bytes of a snapshot into a target folder, named for the snapshot file', async () => {
+  const ctx = await setupTest();
+
+  const env = { RESTIC_REPOSITORY: ctx.repository, RESTIC_PASSWORD: 'pass-a' };
+
+  const bytes = new Uint8Array([0x00, 0xff, 0xfe]);
+
+  await Bun.write(join(ctx.directory, 'source.bin'), bytes);
+  await $`${ctx.restic} init`.env(env).quiet();
+
+  const backup =
+    await $`${ctx.restic} backup --json --stdin --stdin-filename keys.db < ${join(ctx.directory, 'source.bin')}`
+      .env(env)
+      .quiet();
+
+  const id = /"snapshot_id":"(?<id>[0-9a-f]{64})"/u.exec(backup.stdout.toString())?.groups?.['id'];
+
+  await $`${ctx.restic} restore ${id ?? ''} --target ${join(ctx.directory, 'out')}`
+    .env(env)
+    .quiet();
+
+  const restored = await Bun.file(join(ctx.directory, 'out', 'keys.db')).bytes();
+
+  expect(restored).toStrictEqual(bytes);
+});
+
+test('it fails a restore of a snapshot that the repository lacks', async () => {
+  const ctx = await setupTest();
+
+  const env = { RESTIC_REPOSITORY: ctx.repository, RESTIC_PASSWORD: 'pass-a' };
+
+  await $`${ctx.restic} init`.env(env).quiet();
+
+  const restore =
+    await $`${ctx.restic} restore ${'c'.repeat(64)} --target ${join(ctx.directory, 'out')}`
+      .env(env)
+      .nothrow()
+      .quiet();
+
+  expect(restore.exitCode).toBe(1);
+});

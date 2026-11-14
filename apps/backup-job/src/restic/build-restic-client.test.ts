@@ -108,3 +108,34 @@ test('it removes nothing when it is given no snapshot', async () => {
 
   expect(called).toBeFalse();
 });
+
+test('it restores a snapshot into a directory byte for byte', async () => {
+  const ctx = await setupTest();
+
+  const bytes = new Uint8Array([0x00, 0xff, 0xfe]);
+
+  await Bun.write(join(ctx.directory, 'nixie.db'), bytes);
+  await ctx.client.createRepository();
+
+  const snapshotID = await ctx.client.writeSnapshot(
+    join(ctx.directory, 'nixie.db'),
+    'nixie.db',
+    [],
+  );
+
+  await ctx.client.restoreSnapshot(snapshotID, join(ctx.directory, 'restored'));
+
+  const restored = await Bun.file(join(ctx.directory, 'restored', 'nixie.db')).bytes();
+
+  expect(restored).toStrictEqual(bytes);
+});
+
+test('it names the step and the repo of a failed restore', async () => {
+  const ctx = await setupTest();
+
+  await ctx.client.createRepository();
+
+  expect(
+    ctx.client.restoreSnapshot('d'.repeat(64), join(ctx.directory, 'restored')),
+  ).rejects.toThrowWithMessage(ResticError, /^restic restore in the key repo exited 1: /u);
+});

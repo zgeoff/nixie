@@ -2,8 +2,20 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { getBackupStagingDir, writeSnapshotSet } from '@heynixie/backup';
 import { createStagedSet, readBackupJobBundle } from '@heynixie/backup-job/test-utils';
+import { startDatabase } from '@heynixie/db';
+import { getDataFilePath, localDataStorage } from '@heynixie/log';
+import { startTestLog } from '@heynixie/log/test-utils';
+import {
+  fetchedPairFile,
+  fetchedPairSchema,
+  parseBackupFile,
+  unfinishedBackupMarker,
+} from '@heynixie/wire';
 import { $ } from 'bun';
+import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 
 // Bun's skipIf takes a boolean and has no in-body skip, so the gate reads the binary at collection;
@@ -86,5 +98,55 @@ test.skipIf(isResticMissing)(
     ]);
 
     expect(Date.parse(keys[0]?.time ?? '')).toBeLessThan(Date.parse(data[0]?.time ?? ''));
+  },
+);
+
+test.skipIf(isResticMissing)(
+  'it gives 2 intact database files for a publish and a fetch through real repositories',
+  async () => {
+    const ctx = await setupTest();
+    const log = await startTestLog();
+
+    await writeSnapshotSet({ writer: log.writer, storage: localDataStorage }, 'scheduled');
+
+    const jobEnv = {
+      ...ctx.jobEnv,
+      NIXIE_BACKUP_STAGING_DIR: getBackupStagingDir(log.dataDir),
+    };
+
+    const target = join(ctx.directory, 'fetched');
+
+    const run = await $`${process.execPath} ${ctx.job} run`.env(jobEnv).nothrow().quiet();
+
+    const fetch = await $`${process.execPath} ${ctx.job} fetch --to ${target}`
+      .env(jobEnv)
+      .nothrow()
+      .quiet();
+
+    const pairText = await Bun.file(join(target, fetchedPairFile)).text();
+
+    const parsed = parseBackupFile(pairText, fetchedPairSchema);
+
+    const hasMarker = await Bun.file(join(target, unfinishedBackupMarker)).exists();
+
+    invariant('value' in parsed, 'the fetch writes a pair file that parses');
+
+    const checks = await Promise.all(
+      (['nixie.db', 'keys.db'] as const).map(async (name) => {
+        const database = startDatabase(getDataFilePath(target, name), { readonly: true });
+
+        onTestFinished(() => database.destroy());
+
+        const result = await sql`pragma integrity_check`.execute(database);
+
+        return z.array(z.object({ integrity_check: z.string() })).parse(result.rows);
+      }),
+    );
+
+    expect(run.exitCode).toBe(0);
+    expect(fetch.exitCode).toBe(0);
+    expect(parsed.value.relation).toBe('same-publish');
+    expect(hasMarker).toBeFalse();
+    expect(checks).toStrictEqual([[{ integrity_check: 'ok' }], [{ integrity_check: 'ok' }]]);
   },
 );

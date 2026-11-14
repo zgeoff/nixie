@@ -90,6 +90,40 @@ arguments, and gives restic only the backend variables that the job's own variab
 refuses one repository for both data and keys, because the key repository's prune would then delete
 the data snapshots.
 
+## Fetching the backup pair
+
+`nixie-backup fetch --to <directory>` copies a backup pair out of the two repositories, so
+`nixie restore` can read it on a new host. It reads the job's own repository and password variables,
+and never the staging folder. It exits 1 for a directory that exists and is not empty, and creates a
+directory that does not exist. Its optional `--data-snapshot <snapshot_id>` names a data snapshot by
+its full ID, which `nixie-backup snapshots` prints.
+
+The fetch:
+
+1. writes the unfinished-backup marker into the directory, before anything else;
+2. lists both repositories and picks the pair: the newest key snapshot, and the data snapshot that
+   goes with it. The [pick's rules](../../design/queue/backup-pair.md#the-pick) give each refusal,
+   and the table that rates a named data snapshot;
+3. restores the key snapshot as `keys.db` and the data snapshot as `nixie.db`, as bytes;
+4. lists the key repository again. When a publish changed the newest key snapshot, it empties the
+   directory but for the marker and picks again, at most 3 times, and a fourth change fails the
+   fetch;
+5. writes `fetched-pair.json`, then removes the marker.
+
+`fetched-pair.json` holds the snapshot ID, publish number, set number and restic time of each copy,
+and the pair's relation: `same-publish`, or `older-data` for a named data snapshot from before the
+key snapshot. The wire library owns its schema. The file holds no checksum, because the restore runs
+SQLite's integrity check on each copy.
+
+On success the fetch exits 0 after one `backup.fetched` line. On any failure it exits 1 after one
+`backup.fetch_failed` line that holds the failed step, and the refusal when the pick refused. A
+failed fetch leaves the marker, so `nixie restore` refuses the directory. The fetch only restores
+the newest key snapshot, because an older one would make a forgotten item readable again.
+
+`nixie-backup snapshots` prints one line of JSON for each snapshot of the data and key repositories:
+the repository, the full snapshot ID, restic's time, and the set, kind and publish number from the
+tags. It prints nothing else.
+
 ## Where the job runs
 
 On Kubernetes, the [Pulumi component](kubernetes.md#the-pulumi-component) runs the job as a CronJob,
