@@ -8,7 +8,7 @@ The fetcher follows redirects inside the fetch sandbox, where nixie's secrets an
 go, so a fetch can reach a URL that nixie never scanned. With the hop gate, the fetcher asks the
 server before it follows each redirect, on the open stream of the fetch, and waits for the server's
 pass. The server decides each hop with a `scanHop` function that
-[the secret refusal](secret-url-refusal.md) supplies.
+[the secret scan](../../architecture/connectors/web-fetch.md#the-secret-scan) supplies.
 
 In this doc, "the server" is the nixie server, and "a host" is the host of a URL. The fetcher is the
 program in the fetch sandbox that sends each request, and the fetch image is the sandbox image that

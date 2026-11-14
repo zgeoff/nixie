@@ -236,8 +236,10 @@ asked before each hop, and the fetch tool never passes it on to the model.
 The server and the fetch image can be of different releases. A fetch image before the hop gate reads
 a redirect limit of 0 and sends no hop frame, so it never follows an unscanned redirect, and the
 server replaces the reason of its failed reply with one that names the older image. A server before
-the hop gate sends no `hopGate`, so the new fetch image follows redirects as that server expects. No
-caller gates a fetch yet: [GEO-2246](https://linear.app/zgeoff/issue/GEO-2246) adds the first.
+the hop gate sends no `hopGate`, so the new fetch image follows redirects as that server expects.
+The web fetch tool gates every `url` and `link` fetch with [the secret scan](#the-secret-scan), so a
+server of this release on a fetch image of an older release fails every page that redirects. Update
+the fetch image with the server. The skill file reader gates none.
 
 Fetches run one at a time, and the next fetch starts only once the last fetch's destroy ends, so no
 fetcher ever runs beside another. nixie returns the reply as soon as the fetcher sends it and
@@ -255,6 +257,78 @@ create or a destroy that fails or passes its time limit does the same, because a
 after the runtime made the sandbox and then fail to remove it. A create that passes its time limit
 makes no further adapter call, and nixie destroys a sandbox that the create still returns as soon as
 it arrives.
+
+## The secret scan
+
+The tool refuses a URL that holds a secret, so a model that copies a token into a URL never sends it
+to a site. [The secret scan](./secret-scan.md) covers the finder and its rules. The scan runs in 2
+places, in each pass of a `url` or `link` call:
+
+- Before the pause read and before any sandbox starts, `refuseFetchURL` scans the sent URL, which is
+  the named URL after any [known-site](#known-sites) rewrite. This is hop 0.
+- Inside the fetch, `makeHopScan` is the `scanHop` that [the fetch sandbox](#the-fetch-sandbox)
+  passes to `gatePageHops`, so it scans the URL of each redirect before the fetcher resolves its
+  host. The second pass numbers its hops from 1 again.
+
+The finder tries the own values first, and then the public rules. nixie never sends an own value or
+a rule to the sandbox, in any form, a hash included, because the sandbox reads hostile pages.
+
+A refusal is a tool error, and the call ends: no sandbox starts for a refusal at hop 0, a refused
+hop stops the fetcher, nothing is stored, and a refused hop never sets off the second pass. The
+model reads one of 2 sentences:
+
+- `the URL holds a secret (rule {rule}), so it was not fetched`, for the sent URL.
+- `{host} redirected to a URL that holds a secret (rule {rule}), so it was not fetched`, for a hop,
+  where `{host}` is the host that sent the redirect. When the finder matches that host name itself,
+  the sentence reads `a site` in its place.
+
+Each refusal also writes one `web_fetch.secret_refused` event to the server log, with the fields
+`rule` and `hop` and no others. Neither the sentence nor the event repeats the URL or the secret,
+and the event holds no host name, because a forget does not reach the server log. The call record
+holds the refused URL as the model wrote it, as every tool's call record holds its input.
+
+The user can type a URL that holds a secret, and the fetch then runs. The exemption decides this,
+and `runPageFetch` builds one per call, which the scan of the sent URL and of each hop in both
+passes share. It gives the same answer for every rule, `nixie-secret` included:
+
+1. At hop 0, it asks whether a typed span of the thread's newest 50 messages holds the whole named
+   URL, the URL before any rewrite. A pasted span never counts, because a paste can hold text
+   someone else wrote, and neither does a message that a forget erased.
+2. At a later hop, it gives the same answer under `secret_typed_url_covers` set to `redirects`, and
+   false under `named_url`.
+
+The exemption reads the messages at most once per call, across both passes, and only after a match,
+so a fetch with no match reads none of the user's messages.
+
+nixie shows no prompt about a refusal, because its target is no approval prompts. A public rule that
+matches an ordinary URL therefore refuses that page on every call, and the log event is how the user
+finds such a rule.
+
+### The config keys
+
+The `web_fetch` section of the deployment config takes 3 keys for the scan:
+
+| Key                          | Values                             | Default                    |
+| ---------------------------- | ---------------------------------- | -------------------------- |
+| `secret_typed_url_covers`    | `named_url` or `redirects`         | `redirects`                |
+| `secret_own_values`          | a list of secrets file entry names | every entry but `settings` |
+| `secret_own_value_min_chars` | a whole number, 1 or more          | 8                          |
+
+- `redirects` lets a typed URL's exemption cover every hop, because a site that redirects a typed
+  URL with its token to its `www` host would fail under `named_url`. The exemption that
+  `runPageFetch` builds is the one place to change when approval rules replace it.
+- An empty `secret_own_values` list matches the public rules alone.
+- A value shorter than `secret_own_value_min_chars` is left out, because a short value matches an
+  ordinary URL by chance, and a site that redirects to a URL with its guess of an own value learns
+  one yes or no per fetch.
+- `modules/connectors` defines the entry names once, and a compile-time check in `apps/server` fails
+  the build when they differ from the keys of the secrets file.
+
+### What the scan leaves out
+
+The scan covers only the sent URL and each hop. It never scans page content or a tool result, and
+the skill file reader's fetches take no scan, because the reader builds each URL from a skill
+source's repository and its commit and tree hashes, so the model never writes a URL into it.
 
 ## The fetcher
 
