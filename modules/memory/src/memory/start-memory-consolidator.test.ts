@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { tasksProjections } from '@heynixie/tasks';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { createConsolidationStaging } from '../consolidation/create-consolidation-staging';
 import { startTestMemory } from '../test-utils/start-test-memory';
@@ -15,7 +16,12 @@ async function setupTest() {
   const log = { ...memory.log, projections: [...memory.log.projections, ...tasksProjections] };
 
   const parts = {
-    context: { log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+    context: {
+      log,
+      clock,
+      definitions: () => ({ snapshotHash: 'sha256:test' }),
+      runSettings: buildTestRunSettings(),
+    },
     store: memory.store,
     staging: createConsolidationStaging(),
     model: {

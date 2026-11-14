@@ -2,6 +2,7 @@ import type { APIContext, APISettings, CleanupRecordSessions } from '@heynixie/a
 import { defaultAPISettings } from '@heynixie/api';
 import { readDefinitionsInForce } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
+import type { RunSettings } from '@heynixie/tasks';
 import type { InForce } from '../types';
 import { buildServerLog } from './build-server-log';
 
@@ -10,11 +11,16 @@ export interface ServerContext {
   readonly inForce: InForce;
 }
 
+export interface ServerContextOptions {
+  readonly runSettings: RunSettings;
+  readonly settings?: APISettings;
+}
+
 export async function createServerContext(
   writer: Writer,
   deploymentKey: CryptoKey,
   readSessionCleanup: () => CleanupRecordSessions | null,
-  settings: APISettings = defaultAPISettings,
+  options: ServerContextOptions,
 ): Promise<ServerContext> {
   const current = { inForce: await readDefinitionsInForce(writer.db) };
 
@@ -32,7 +38,8 @@ export async function createServerContext(
       clock: writer.clock,
 
       definitions: () => ({ snapshotHash: inForce.read()?.snapshotHash ?? '' }),
-      settings,
+      runSettings: options.runSettings,
+      settings: options.settings ?? defaultAPISettings,
       readSessionCleanup,
     },
   };

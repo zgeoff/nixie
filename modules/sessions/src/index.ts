@@ -58,6 +58,7 @@ export type {
 
 export { startSessionRunner } from './session/start-session-runner';
 export { startConversationRunner } from './session/start-conversation-runner';
+export { buildRunSettings } from './task/build-run-settings';
 export type { NixieRunnerOptions } from './task/nixie-runner-options';
 export type { NixieRunner } from './task/start-nixie-runner';
 export { startNixieRunner } from './task/start-nixie-runner';

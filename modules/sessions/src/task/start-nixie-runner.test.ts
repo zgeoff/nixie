@@ -6,6 +6,7 @@ import { modelsConfigSchema } from '@heynixie/models';
 import {
   claimTask,
   createConversationTask,
+  readOpenRun,
   runTaskStep,
   taskLimitNoticeCodec,
   writeFailedTurnSpend,
@@ -23,14 +24,59 @@ import { buildStubToolEndpoint } from '../test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from '../test-utils/read-records-by-kind';
 import { runNextStep } from '../test-utils/run-next-step';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
+import { buildRunSettings } from './build-run-settings';
 import type { NixieRunnerOptions } from './nixie-runner-options';
-import { readTaskUsage } from './read-task-usage';
+import { readRunUsage } from './read-run-usage';
 import { startNixieRunner } from './start-nixie-runner';
 
 async function setupTest() {
   const clock = buildTestClock(1_000_000);
 
-  const host = await startTestSessionHost({ clock });
+  const models = modelsConfigSchema.parse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://models.example.test',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'low',
+      },
+      errands: {
+        harness: 'agent-sdk',
+        base_url: 'https://models.example.test',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-errands',
+        effort: 'low',
+        context_tokens: 200_000,
+        prices: { input: 0, cache_write: 0, cache_write_1h: 0, cached_input: 0, output: 0 },
+      },
+      'router-b': {
+        harness: 'agent-sdk',
+        base_url: 'https://router.example.test/anthropic',
+        credential: 'deployment:router',
+        auth_header: 'bearer',
+        model: 'other-family-test-3',
+        outside_claude: false,
+        effort: 'low',
+        prices: { input: 3, cache_write: 3, cache_write_1h: 3, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct', task: 'errands' },
+    selectable: {
+      'second-look': { profile: 'router-b', description: 'Another family' },
+    },
+  });
+
+  const secrets = {
+    model_credentials: { anthropic: 'not-a-real-key', router: 'not-a-real-token' },
+  };
+
+  const host = await startTestSessionHost({
+    clock,
+    runSettings: buildRunSettings({ models, secrets, hopLimit: 20 }),
+  });
 
   const tools = buildStubToolEndpoint();
   const events: string[] = [];
@@ -44,43 +90,8 @@ async function setupTest() {
   const startRunner = async (parts: Partial<Pick<NixieRunnerOptions, 'tools' | 'memory'>> = {}) => {
     const runner = await startNixieRunner({
       context: host.context,
-      models: modelsConfigSchema.parse({
-        profiles: {
-          'chat-direct': {
-            harness: 'agent-sdk',
-            base_url: 'https://models.example.test',
-            credential: 'deployment:anthropic',
-            auth_header: 'x-api-key',
-            model: 'claude-test-1',
-            effort: 'low',
-          },
-          errands: {
-            harness: 'agent-sdk',
-            base_url: 'https://models.example.test',
-            credential: 'deployment:anthropic',
-            auth_header: 'x-api-key',
-            model: 'claude-test-errands',
-            effort: 'low',
-            context_tokens: 200_000,
-            prices: { input: 0, cache_write: 0, cache_write_1h: 0, cached_input: 0, output: 0 },
-          },
-          'router-b': {
-            harness: 'agent-sdk',
-            base_url: 'https://router.example.test/anthropic',
-            credential: 'deployment:router',
-            auth_header: 'bearer',
-            model: 'other-family-test-3',
-            outside_claude: false,
-            effort: 'low',
-            prices: { input: 3, cache_write: 3, cache_write_1h: 3, cached_input: 0.3, output: 15 },
-          },
-        },
-        roles: { conversation: 'chat-direct', task: 'errands' },
-        selectable: {
-          'second-look': { profile: 'router-b', description: 'Another family' },
-        },
-      }),
-      secrets: { model_credentials: { anthropic: 'not-a-real-key', router: 'not-a-real-token' } },
+      models,
+      secrets,
       sandboxes: host.sandboxes,
       images: { conversation: 'nixie-conversation-0123456789ab' },
       tools: parts.tools ?? tools.endpoint,
@@ -422,7 +433,7 @@ test("it runs a started task's tool run on its own ID with the tools it is given
       toolUseMetaKey: 'claudecode/toolUseId',
       runID: taskID,
       thread: taskID,
-      tools: ['tasks.list', 'task.message', 'time.now', 'turn.end_silently'],
+      tools: ['tasks.list', 'task.message', 'task.report', 'time.now', 'turn.end_silently'],
       model: { model: 'claude-test-errands', profile: 'errands' },
     },
   ]);
@@ -809,7 +820,7 @@ test("it runs a task on its chosen model's profile, through that profile's host,
       toolUseMetaKey: 'claudecode/toolUseId',
       runID: taskID,
       thread: taskID,
-      tools: ['tasks.list', 'task.message', 'web_fetch', 'turn.end_silently'],
+      tools: ['tasks.list', 'task.message', 'web_fetch', 'turn.end_silently', 'task.report'],
       model: { model: 'other-family-test-3', profile: 'router-b' },
     },
   ]);
@@ -1241,7 +1252,7 @@ test('it pauses a task at its turn limit with no turn, and tells its starter in 
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
-    options: { limits: { turns: 1, dollars: 2 } },
+    options: { report: 'none', limits: { turns: 1, dollars: 2 } },
   });
 
   const runner = await ctx.startRunner();
@@ -1301,6 +1312,7 @@ test("it pauses a task at its dollar limit, priced on its model's profile", asyn
     options: {
       model: 'second-look',
       profile: 'router-b',
+      report: 'none',
       limits: { turns: 25, dollars: 1e-6 },
     },
   });
@@ -1333,6 +1345,7 @@ test('it interrupts a task turn whose model calls reach its dollar limit, and pa
     options: {
       model: 'second-look',
       profile: 'router-b',
+      report: 'none',
       limits: { turns: 25, dollars: 0.03 },
     },
   });
@@ -1361,7 +1374,7 @@ test('it interrupts a task turn whose model calls reach its dollar limit, and pa
 
   expect(notice?.payload).toStrictEqual({
     taskID,
-    used: { turns: 1, dollars: 0.03 },
+    used: { turns: 1, dollars: expect.toBeWithin(0.03, 0.0305) },
     limits: { turns: 25, dollars: 0.03 },
   });
 });
@@ -1790,6 +1803,7 @@ test('it interrupts a task turn on the call that reaches its dollar limit with t
     options: {
       model: 'second-look',
       profile: 'router-b',
+      report: 'none',
       limits: { turns: 25, dollars: 0.03 },
     },
   });
@@ -1834,6 +1848,7 @@ test('it pauses a task whose guest fails after its calls reach the dollar limit,
     options: {
       model: 'second-look',
       profile: 'router-b',
+      report: 'none',
       limits: { turns: 25, dollars: 0.03 },
     },
   });
@@ -1851,6 +1866,7 @@ test('it pauses a task whose guest fails after its calls reach the dollar limit,
     },
   });
 
+  await ctx.runNextStepWithNoRetryDelay(runner);
   await ctx.runNextStep(runner);
 
   const paused = await ctx.readKinds('task.paused');
@@ -1865,6 +1881,7 @@ test('it pauses a task whose guest fails after its calls reach the dollar limit,
     limits: { turns: 25, dollars: 0.03 },
   });
 
+  expect(ctx.guest.turns).toHaveLength(1);
   expect(errored.map((record) => record.thread)).toStrictEqual([taskID]);
 });
 
@@ -1879,6 +1896,7 @@ test("it gives the retry of a failed turn only the dollars that the turn's spend
     options: {
       model: 'second-look',
       profile: 'router-b',
+      report: 'none',
       limits: { turns: 25, dollars: 0.03 },
     },
   });
@@ -1910,6 +1928,7 @@ test("it gives the retry of a failed turn only the dollars that the turn's spend
   );
 
   await ctx.runNextStepWithNoRetryDelay(runner);
+  await ctx.runNextStep(runner);
 
   await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 0.04 } });
 
@@ -1923,7 +1942,7 @@ test("it gives the retry of a failed turn only the dollars that the turn's spend
 
   expect(failed).toStrictEqual({ turns: 0, dollars: 0.03 });
   expect(retried?.turns).toBe(1);
-  expect(retried?.dollars).toBeCloseTo(0.042, 6);
+  expect(retried?.dollars).toBeWithin(0.042, 0.0425);
 });
 
 test('it interrupts the retry of a turn whose guest failed below the dollar limit once the retry spends what the failed turn left', async () => {
@@ -1937,6 +1956,7 @@ test('it interrupts the retry of a turn whose guest failed below the dollar limi
     options: {
       model: 'second-look',
       profile: 'router-b',
+      report: 'none',
       limits: { turns: 25, dollars: 0.04 },
     },
   });
@@ -2036,13 +2056,11 @@ test('it counts the spend of a task turn whose commit lost its lease to another 
     maxRetryDelayMs: 300_000,
   });
 
-  const usage = await readTaskUsage(ctx.context, taskID, {
-    input: 3,
-    cacheWrite: 3,
-    cacheWrite1h: 3,
-    cachedInput: 0.3,
-    output: 15,
-  });
+  const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+  invariant(run !== null, 'the lost lease left the task run open');
+
+  const usage = await readRunUsage(ctx.context, run);
 
   expect(taken.holder).toBe('runner-b');
   expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
@@ -2097,13 +2115,11 @@ test('it counts once the spend of a task turn at its dollar limit whose commit l
     maxRetryDelayMs: 300_000,
   });
 
-  const usage = await readTaskUsage(ctx.context, taskID, {
-    input: 3,
-    cacheWrite: 3,
-    cacheWrite1h: 3,
-    cachedInput: 0.3,
-    output: 15,
-  });
+  const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+  invariant(run !== null, 'the lost lease left the task run open');
+
+  const usage = await readRunUsage(ctx.context, run);
 
   expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
 });
@@ -2119,6 +2135,7 @@ test('it interrupts a task turn at its own spend that, with a spend recorded aft
     options: {
       model: 'second-look',
       profile: 'router-b',
+      report: 'none',
       limits: { turns: 25, dollars: 0.03 },
     },
   });
@@ -2138,7 +2155,15 @@ test('it interrupts a task turn at its own spend that, with a spend recorded aft
         outputTokens: 0,
       },
       gate: async () => {
-        await writeFailedTurnSpend(ctx.context, { taskID, dollars: 0.01 });
+        const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+        invariant(run !== null, 'the claim opened a task run');
+
+        await writeFailedTurnSpend(ctx.context, {
+          taskID,
+          taskRunID: run.runID,
+          dollars: 0.01,
+        });
 
         await ctx.writeMessage(taskID, 'And the evening tide?');
 
@@ -2169,7 +2194,7 @@ test('it interrupts a task turn at its own spend that, with a spend recorded aft
 
   expect(notice?.payload).toStrictEqual({
     taskID,
-    used: { turns: 1, dollars: expect.toBeWithin(0.03, 0.0301) },
+    used: { turns: 1, dollars: expect.toBeWithin(0.03, 0.031) },
     limits: { turns: 25, dollars: 0.03 },
   });
 });

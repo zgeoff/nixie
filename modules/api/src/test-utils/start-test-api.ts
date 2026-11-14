@@ -6,6 +6,7 @@ import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
 import { tasksProjections } from '@heynixie/tasks';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
 import { apiProjections } from '../api/api-projections';
@@ -83,6 +84,7 @@ async function createTestContext(
     },
     clock: buildTestClock(1_000_000),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
+    runSettings: buildTestRunSettings(),
     settings,
 
     readSessionCleanup: () => null,

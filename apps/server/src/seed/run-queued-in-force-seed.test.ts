@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkSkillFiles, createPathSource, writeWrittenSkill } from '@heynixie/definitions';
 import { withWriteTransaction } from '@heynixie/log';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { createServerContext } from '../server/create-server-context';
@@ -30,7 +31,9 @@ async function setupTest() {
 
   await mkdir(root);
 
-  const context = await createServerContext(log.writer, log.deploymentKey, () => null);
+  const context = await createServerContext(log.writer, log.deploymentKey, () => null, {
+    runSettings: buildTestRunSettings(),
+  });
 
   return { root, context };
 }

@@ -1,4 +1,5 @@
 import { defaultAPISettings } from '@heynixie/api';
+import { buildRunSettings } from '@heynixie/sessions';
 import { buildSeedInputs } from '../seed/build-seed-inputs';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildServerReset } from '../server/build-server-reset';
@@ -31,17 +32,24 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         options.secrets.deploymentKey,
         () => parts.find('session_cleanup'),
         {
-          ...defaultAPISettings,
-          isMemoryWriterEnabled: options.config.memory_writer.isEnabled,
-          isMemoryConsolidatorEnabled: options.config.memory_consolidation.isEnabled,
-          isBackupEnabled: options.config.backup.isEnabled,
-          taskDirectory: buildTaskMessaging(options.config).directory,
-          approvals: {
-            defaultMinutes: options.config.approvals.defer.default_minutes,
-            eveningAt: options.config.approvals.defer.evening_at,
-            morningAt: options.config.approvals.defer.morning_at,
-            quietHours: options.config.quiet_hours ?? null,
-            defaultZone: options.config.time.default_zone,
+          runSettings: buildRunSettings({
+            models: options.config.models,
+            secrets: options.secrets.models,
+            hopLimit: options.config.tasks.messaging.hopLimit,
+          }),
+          settings: {
+            ...defaultAPISettings,
+            isMemoryWriterEnabled: options.config.memory_writer.isEnabled,
+            isMemoryConsolidatorEnabled: options.config.memory_consolidation.isEnabled,
+            isBackupEnabled: options.config.backup.isEnabled,
+            taskDirectory: buildTaskMessaging(options.config).directory,
+            approvals: {
+              defaultMinutes: options.config.approvals.defer.default_minutes,
+              eveningAt: options.config.approvals.defer.evening_at,
+              morningAt: options.config.approvals.defer.morning_at,
+              quietHours: options.config.quiet_hours ?? null,
+              defaultZone: options.config.time.default_zone,
+            },
           },
         },
       );

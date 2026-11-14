@@ -1,12 +1,8 @@
-import type { StepResult, TaskLimits } from '@heynixie/tasks';
+import type { StepResult } from '@heynixie/tasks';
 
 export interface TaskTurnEndFacts {
-  // the task's counts without the turn's own
-  readonly used: TaskLimits;
-
   readonly isBudgetReached: boolean;
   readonly spentDollars: number;
-  readonly endedTurns: number;
 
   // whether the user asked to pause the task, so the step's commit pauses it
   readonly isPauseRequested: boolean;
@@ -16,17 +12,18 @@ export interface TaskTurnEndFacts {
 }
 
 export interface TaskTurnEndPlan {
-  // the counts the task pauses at, or null when the turn reached no limit
-  readonly reached: TaskLimits | null;
+  // whether the turn reached the dollar limit, which the commit's end of the task run records
+  readonly isLimitReached: boolean;
 
   // the dollars of a step that threw, which commits no turn record, or null when it spent none
   readonly failedDollars: number | null;
 
-  // the dollars of a completed turn that reached a limit, which its limit record counts, or null
-  readonly pausedDollars: number | null;
-
-  // the dollars of a completed turn that reached no limit, which only its commit counts, or null
+  // the dollars of a completed turn, which only its commit counts, or null when it spent none
   readonly commitDollars: number | null;
+
+  // the dollars of a completed turn that reached the limit, which its commit counts beside its
+  // turn record, because the record prices only the calls that finished, or null for any other turn
+  readonly limitDollars: number | null;
 
   readonly isImpReleased: boolean;
 }
@@ -34,21 +31,13 @@ export interface TaskTurnEndPlan {
 // A step with work left runs again soon on the same imp, so only a step whose commit leaves its
 // task waiting or paused sleeps it.
 export function planTaskTurnEnd(facts: TaskTurnEndFacts): TaskTurnEndPlan {
-  const reached = facts.isBudgetReached
-    ? {
-        turns: facts.used.turns + facts.endedTurns,
-        dollars: facts.used.dollars + facts.spentDollars,
-      }
-    : null;
-
   const spentDollars = facts.spentDollars > 0 ? facts.spentDollars : null;
-  const completedDollars = facts.next === null ? null : spentDollars;
 
   return {
-    reached,
+    isLimitReached: facts.isBudgetReached,
     failedDollars: facts.next === null ? spentDollars : null,
-    pausedDollars: reached === null ? null : completedDollars,
-    commitDollars: reached === null ? completedDollars : null,
-    isImpReleased: facts.next === 'wait' || reached !== null || facts.isPauseRequested,
+    commitDollars: facts.next === null ? null : spentDollars,
+    limitDollars: facts.next === null || !facts.isBudgetReached ? null : spentDollars,
+    isImpReleased: facts.next === 'wait' || facts.isBudgetReached || facts.isPauseRequested,
   };
 }

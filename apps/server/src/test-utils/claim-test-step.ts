@@ -11,6 +11,7 @@ export async function claimTestStep(context: TasksContext): Promise<TestStep> {
   }
 
   return {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,

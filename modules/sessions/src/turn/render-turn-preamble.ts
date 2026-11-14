@@ -13,6 +13,9 @@ export interface TurnPreamble {
   readonly thread: string;
   readonly at: string;
 
+  // the blocks of the task run that its first step or a rebuilt session carries
+  readonly runBlocks: string | null;
+
   // the envelope of a brief that sits in no inbox record, which comes last
   readonly brief: string | null;
 }
@@ -38,6 +41,7 @@ export function renderTurnPreamble(
       at,
       renderRetrievedMessages(retrieval.messages, { ...lines, thread: preamble.thread }),
     ),
+    preamble.runBlocks,
     preamble.brief,
   ].filter((block) => block !== null);
 }

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
 import { buildStubDefinitionsRepo } from '@heynixie/definitions/test-utils';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -30,7 +31,9 @@ async function setupTest() {
 
   const root = join(dataDir, 'definitions');
 
-  const context = await createServerContext(log.writer, log.deploymentKey, () => null);
+  const context = await createServerContext(log.writer, log.deploymentKey, () => null, {
+    runSettings: buildTestRunSettings(),
+  });
 
   const parts: SeedParts = {
     context: context.apiContext,

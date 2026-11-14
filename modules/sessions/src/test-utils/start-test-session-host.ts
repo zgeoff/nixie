@@ -10,8 +10,9 @@ import type { SandboxAdapter } from '@heynixie/sandbox';
 import { buildSandboxRecorder, sandboxesProjection } from '@heynixie/sandbox';
 import type { ReceivedFrame, StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildStubGuestSandboxes } from '@heynixie/sandbox/test-utils';
-import type { TasksContext } from '@heynixie/tasks';
+import type { RunSettings, TasksContext } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { readTestToolNames, sendTestToolCall } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
@@ -41,6 +42,7 @@ export interface TestSessionHost {
 export interface TestSessionHostOptions {
   readonly projections?: readonly Projection[];
   readonly clock?: Clock;
+  readonly runSettings?: RunSettings;
 }
 
 export async function startTestSessionHost(
@@ -81,6 +83,7 @@ export async function startTestSessionHost(
     log,
     clock: writer.clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
+    runSettings: options.runSettings ?? buildTestRunSettings(),
   };
 
   const socketDir = join(dataDir, 'tools');

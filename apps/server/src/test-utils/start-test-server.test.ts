@@ -19,6 +19,7 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
     'tasks',
     'timers',
     'task_messages',
+    'task_runs',
     'sandboxes',
     'memory_items',
     'memory_versions',

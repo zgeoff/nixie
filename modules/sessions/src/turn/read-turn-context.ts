@@ -29,6 +29,9 @@ export interface TurnContextQuery {
 
   // the task's own brief, or null for a task with none
   readonly brief: TaskBrief | null;
+
+  // the blocks of the task run, or null when the turn carries none
+  readonly runBlocks: string | null;
   readonly previousCore: readonly MemoryRef[] | null;
 
   readonly isNewSession: boolean;
@@ -103,6 +106,7 @@ export async function readTurnContext(
         retrieval,
         thread: query.taskID,
         at,
+        runBlocks: query.runBlocks,
         brief: pickPreambleBrief(run, query, lines),
       },
       lines,

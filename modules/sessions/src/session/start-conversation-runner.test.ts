@@ -2526,6 +2526,7 @@ test('it keeps the session boundary and runs no turn for a step with nothing unr
   });
 
   const result = await runner.runStep({
+    run: null,
     taskID: 'conversation',
     stepKey: 'conversation:4',
     lease: {

@@ -1,13 +1,14 @@
 import { readRecords } from '@heynixie/log';
-import type { TasksContext } from '@heynixie/tasks';
+import type { TaskRun, TasksContext } from '@heynixie/tasks';
 import { taskFailedTurnSpentCodec } from '@heynixie/tasks';
 
 const pageSize = 500;
 
-// The read covers the whole thread past the sequence because task runs do not exist yet.
+// Only the spend that names this task run counts, because another task run's spend never shortens
+// this one's turn.
 export async function readLateSpend(
   context: Pick<TasksContext, 'log'>,
-  taskID: string,
+  run: TaskRun,
   afterSequence: number,
 ): Promise<number> {
   let dollars = 0;
@@ -18,13 +19,17 @@ export async function readLateSpend(
   while (!isLastPage) {
     const page = await readRecords(context.log, {
       afterSequence: cursor,
-      thread: taskID,
+      thread: run.taskID,
       kinds: [taskFailedTurnSpentCodec.kind],
       limit: pageSize,
     });
 
     for (const entry of page) {
-      dollars += taskFailedTurnSpentCodec.decode(entry.record.payload).dollars;
+      const spent = taskFailedTurnSpentCodec.decode(entry.record.payload);
+
+      if (spent.taskRunID === run.runID) {
+        dollars += spent.dollars;
+      }
     }
 
     cursor = page.at(-1)?.record.sequence ?? cursor;

@@ -11,6 +11,7 @@ export async function createTestStep(context: TasksContext): Promise<TestStep> {
   invariant(claim);
 
   return {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,

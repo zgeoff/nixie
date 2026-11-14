@@ -3,6 +3,7 @@ import { writeRecords } from '@heynixie/log';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import type { StepInput } from '@heynixie/tasks';
 import { claimTask, tasksProjections } from '@heynixie/tasks';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { startMemoryWriter } from '../memory/start-memory-writer';
@@ -20,7 +21,14 @@ async function setupTest(setup: WriterSetup = {}) {
 
   const log = { ...memory.log, projections: [...memory.log.projections, ...tasksProjections] };
   const clock = buildTestClock(1_000_000);
-  const context = { log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
+
+  const context = {
+    log,
+    clock,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    runSettings: buildTestRunSettings(),
+  };
+
   const session = makeGatedCall(() => Promise.reject(new Error('the provider refused the call')));
 
   const writer = {
@@ -61,6 +69,7 @@ async function setupTest(setup: WriterSetup = {}) {
       invariant(claim);
 
       return started.runStep({
+        run: null,
         taskID: claim.lease.workID,
         stepKey: claim.stepKey,
         lease: claim.lease,

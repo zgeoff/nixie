@@ -1,3 +1,4 @@
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import type { MemoryProposal } from '../gate/gate-context';
@@ -28,6 +29,7 @@ export async function createWriterProposal(
     log: memory.log,
     clock: buildTestClock(1_000_000),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
+    runSettings: buildTestRunSettings(),
   };
 
   const lease = await claimWriterLease(context);
@@ -58,6 +60,7 @@ export async function createWriterProposal(
     },
     {
       input: {
+        run: null,
         taskID: 'memory-writer',
         stepKey: 'step-1',
         lease,

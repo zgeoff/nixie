@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { logProjections, startWriter } from '@heynixie/log';
 import { tasksProjections } from '@heynixie/tasks';
-import { readTestTasks } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, readTestTasks } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { createTestStep } from './create-test-step';
@@ -32,6 +32,7 @@ async function setupTest() {
       log: { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] },
       clock: buildTestClock(1_000_000),
       definitions: () => ({ snapshotHash: 'sha256:test' }),
+      runSettings: buildTestRunSettings(),
     },
   };
 }
@@ -44,6 +45,7 @@ test('it returns the first step of a new task that a runner claimed', async () =
   invariant(task);
 
   expect(step).toStrictEqual({
+    run: null,
     taskID: task.id,
     stepKey: `${task.id}:1`,
     lease: {
