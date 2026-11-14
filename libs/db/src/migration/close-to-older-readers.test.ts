@@ -18,11 +18,17 @@ async function setupTest() {
 
   stack.defer(() => rm(directory, { recursive: true, force: true }));
 
+  // An oldest reader below the pause migration's version, so closing the gate shows in the stored
+  // value whatever the build's own oldest reader is.
+  const openReader = 35;
   const db = startDatabase(join(directory, 'nixie.db'));
 
   stack.defer(() => db.destroy());
 
-  await runMigrations(db, { schema: nixieSchema, copyDir: directory });
+  await runMigrations(db, {
+    schema: { ...nixieSchema, oldestReader: openReader },
+    copyDir: directory,
+  });
 
   const readGate = async () => {
     const result = await sql`select oldest_reader, open_oldest_reader
@@ -34,7 +40,7 @@ async function setupTest() {
   const closeGate = (reader: number) =>
     db.transaction().execute((tx) => closeToOlderReaders(tx, reader));
 
-  return { directory, db, readGate, closeGate };
+  return { directory, db, openReader, readGate, closeGate };
 }
 
 test('it saves the open value and raises the stored one', async () => {
@@ -44,7 +50,9 @@ test('it saves the open value and raises the stored one', async () => {
 
   const gate = await ctx.readGate();
 
-  expect(gate).toStrictEqual([{ oldest_reader: pauseMigrationVersion, open_oldest_reader: 35 }]);
+  expect(gate).toStrictEqual([
+    { oldest_reader: pauseMigrationVersion, open_oldest_reader: ctx.openReader },
+  ]);
 });
 
 test('it keeps the first saved value when called twice', async () => {
@@ -55,5 +63,7 @@ test('it keeps the first saved value when called twice', async () => {
 
   const gate = await ctx.readGate();
 
-  expect(gate).toStrictEqual([{ oldest_reader: pauseMigrationVersion, open_oldest_reader: 35 }]);
+  expect(gate).toStrictEqual([
+    { oldest_reader: pauseMigrationVersion, open_oldest_reader: ctx.openReader },
+  ]);
 });

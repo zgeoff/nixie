@@ -53,8 +53,9 @@ async function setupTest() {
   };
 }
 
-test('it is the migration of version 46', () => {
+test('it moves the schema to version 46, which the release before cannot read', () => {
   expect(nixieSchema.migrations.indexOf(retiredRuleIDMigration) + 1).toBe(46);
+  expect(nixieSchema.oldestReader).toBe(46);
 });
 
 test('it rewrites each decision that names the ID to a null rule and keeps its outcome and stage', async () => {

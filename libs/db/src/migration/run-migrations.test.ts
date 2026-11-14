@@ -472,7 +472,10 @@ test('it lets the build before read a database that a failed upgrade left betwee
 test('it refuses a schema older than the pause migration while a pause holds the gate closed', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
+  await runMigrations(ctx.db, {
+    schema: { ...nixieSchema, oldestReader: 35 },
+    copyDir: ctx.directory,
+  });
 
   await ctx.db.transaction().execute((tx) => closeToOlderReaders(tx, pauseMigrationVersion));
 
@@ -492,7 +495,10 @@ test('it refuses a schema older than the pause migration while a pause holds the
 test('it keeps a closed gate closed when a migration runs, and reopens to the migration value', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
+  await runMigrations(ctx.db, {
+    schema: { ...nixieSchema, oldestReader: 35 },
+    copyDir: ctx.directory,
+  });
 
   await ctx.db.transaction().execute((tx) => closeToOlderReaders(tx, pauseMigrationVersion));
 

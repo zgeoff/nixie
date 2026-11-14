@@ -7,8 +7,9 @@ import type { Migration } from '../types';
 
 const retiredRuleID = 'slice1.read-only';
 
-// Each stored row that named the ID loses it. The snapshot hashes stay as they were, because every
-// record and every copy outside the database names its snapshot by hash.
+// Each stored row that named the ID loses it, and the snapshot hashes stay, because records and
+// copies outside the database name a snapshot by hash. No expand step rewrites append-only rows, so
+// the schema's oldest reader rises to this migration.
 export const retiredRuleIDMigration: Migration = {
   name: 'remove the retired read-only rule ID',
   up: async (tx) => {

@@ -30,9 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 44, which the release before can still read', () => {
+test('it moves the schema to version 44', () => {
   expect(nixieSchema.migrations.indexOf(turnInputsMigration) + 1).toBe(44);
-  expect(nixieSchema.oldestReader).toBe(35);
 });
 
 test('it refuses a capture state outside open and closed', async () => {

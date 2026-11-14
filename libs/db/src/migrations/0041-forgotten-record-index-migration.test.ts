@@ -34,9 +34,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 41, which the release before can still read', () => {
+test('it moves the schema to version 41', () => {
   expect(nixieSchema.migrations.indexOf(forgottenRecordIndexMigration) + 1).toBe(41);
-  expect(nixieSchema.oldestReader).toBe(35);
 });
 
 test('it answers a lookup of the records that a forget names from the index', async () => {

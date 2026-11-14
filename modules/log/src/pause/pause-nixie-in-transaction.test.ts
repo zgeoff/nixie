@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readQueryRows } from '@heynixie/db';
+import { nixieSchema, pauseMigrationVersion, readQueryRows } from '@heynixie/db';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { withWriteTransaction } from '../record/with-write-transaction';
@@ -140,7 +140,12 @@ test('it closes the reader gate with the pause', async () => {
     z.object({ oldest_reader: z.number(), open_oldest_reader: z.number().nullable() }),
   );
 
-  expect(gate).toStrictEqual([{ oldest_reader: 45, open_oldest_reader: 35 }]);
+  expect(gate).toStrictEqual([
+    {
+      oldest_reader: Math.max(nixieSchema.oldestReader, pauseMigrationVersion),
+      open_oldest_reader: nixieSchema.oldestReader,
+    },
+  ]);
 });
 
 test('it refuses a restore pause with no recovery ID', async () => {

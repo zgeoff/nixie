@@ -3,7 +3,7 @@ import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Migration } from '@heynixie/db';
-import { reopenToOlderReaders } from '@heynixie/db';
+import { nixieSchema, pauseMigrationVersion, reopenToOlderReaders } from '@heynixie/db';
 import { sql } from 'kysely';
 import { pauseNixieInTransaction } from '../pause/pause-nixie-in-transaction';
 import { runLogReset } from '../record/run-log-reset';
@@ -308,7 +308,9 @@ test('it opens a closed reader gate at the next start after a log reset removed 
     writer.db,
   );
 
-  expect(gate.rows).toStrictEqual([{ oldest_reader: 35, open_oldest_reader: null }]);
+  expect(gate.rows).toStrictEqual([
+    { oldest_reader: nixieSchema.oldestReader, open_oldest_reader: null },
+  ]);
 });
 
 test('it closes the reader gate at the next start while nixie is paused', async () => {
@@ -335,5 +337,10 @@ test('it closes the reader gate at the next start while nixie is paused', async 
     writer.db,
   );
 
-  expect(gate.rows).toStrictEqual([{ oldest_reader: 45, open_oldest_reader: 35 }]);
+  expect(gate.rows).toStrictEqual([
+    {
+      oldest_reader: Math.max(nixieSchema.oldestReader, pauseMigrationVersion),
+      open_oldest_reader: nixieSchema.oldestReader,
+    },
+  ]);
 });
