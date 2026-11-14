@@ -8,7 +8,7 @@ import invariant from 'tiny-invariant';
 import { runPendingRecordForgets } from './run-pending-record-forgets';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
 import { createDeviceSession } from './test-utils/create-device-session';
-import { seedTaskStartCall } from './test-utils/seed-task-start-call';
+import { seedTaskStartCall, seedUnansweredStartCall } from './test-utils/seed-task-start-call';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { CleanupRecordSessions } from './types';
 import { writeOwnerMessage } from './write-owner-message';
@@ -241,4 +241,90 @@ test('it removes the key of each recorded start call of a brief that a rerun of 
   ]);
 
   expect(cleanupSessions).toHaveBeenCalledTimes(3);
+});
+
+test("it removes the key of the starter's start call when the process died before the call's result was recorded", async () => {
+  const ctx = await setupTest();
+
+  const started = await seedUnansweredStartCall(ctx.context, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: recordForgetStartedCodec.kind,
+      definitions: ctx.context.definitions(),
+      thread: started.taskID,
+      payload: recordForgetStartedCodec.encode({ recordSequence: started.briefSequence }),
+    },
+  ]);
+
+  const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
+
+  await runRecordForgetCleanup(
+    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
+    started.briefSequence,
+  );
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    sequences: [started.callSequence, started.briefSequence],
+  });
+
+  const forgotten = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['record.forgotten'],
+  });
+
+  expect(entries.map((entry) => entry.record.erasable.status)).toStrictEqual([
+    'shredded',
+    'shredded',
+  ]);
+
+  expect(cleanupSessions.mock.calls).toStrictEqual([
+    [{ recordSequence: started.briefSequence }],
+    [{ recordSequence: started.callSequence }],
+  ]);
+
+  expect(forgotten).toHaveLength(1);
+});
+
+test('it leaves the unanswered start call of a task with another name readable when it forgets a brief', async () => {
+  const ctx = await setupTest();
+
+  const started = await seedTaskStartCall(ctx.context, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const [other] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: { callID: 'call-3', runID: 'conversation', toolUseID: null, tool: 'task.start' },
+      erasable: { input: { name: 'Moon phases', brief: 'List the moon phases for May.' } },
+    },
+  ]);
+
+  invariant(other);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: recordForgetStartedCodec.kind,
+      definitions: ctx.context.definitions(),
+      thread: started.taskID,
+      payload: recordForgetStartedCodec.encode({ recordSequence: started.briefSequence }),
+    },
+  ]);
+
+  await runRecordForgetCleanup(ctx.context, started.briefSequence);
+
+  const [entry] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    sequences: [other.sequence],
+  });
+
+  expect(entry?.record.erasable.status).toBe('readable');
 });

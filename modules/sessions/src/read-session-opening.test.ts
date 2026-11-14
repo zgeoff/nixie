@@ -438,6 +438,40 @@ test("it pins a started task's brief after the status and before the summary whe
   expect(opening.record.briefSequence).toBe(16_031);
 });
 
+test("it opens a started task's rebuilt session with the status, then the pinned memory, then the pinned brief", async () => {
+  const ctx = await setupTest();
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 't4m2',
+    start: { kind: 'rebuild', reason: 'lost', lostSessionID: 'a-lost-session' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: {
+      origin: 'message',
+      messageID: 'm7k2',
+      from: 'conversation',
+      sequence: 16_031,
+      sentAt: new Date('2026-11-05T17:39:00Z'),
+      body: 'Find 3 quiet cafes near the station.',
+    },
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'UTC', now: new Date('2026-11-05T18:00:00Z') },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+  });
+
+  expect(
+    opening.blocks.map((block) => /^<(?<tag>[a-z-]+)(?: type="(?<type>[a-z-]+)")?/u.exec(block)),
+  ).toMatchObject([
+    { groups: { tag: 'system-message', type: 'status' } },
+    { groups: { tag: 'system-message', type: 'pinned-memory' } },
+    { groups: { tag: 'task-message' } },
+  ]);
+});
+
 test("it leaves a started task's brief out of the opening when the batch holds its record", async () => {
   const ctx = await setupTest();
 

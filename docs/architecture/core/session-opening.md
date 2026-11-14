@@ -107,11 +107,11 @@ time or a count, so the opening record holds them with no free text.
 ## The brief
 
 A started task's opening holds its brief as a `<task-message>` envelope, placed after the status and
-before the summary. The brief shows there when no earlier session read it and the turn's inbox does
-not hold it, and it shows again in every rebuilt session, so the task never loses what it is for. A
-brief the turn's batch already holds renders there only. A task that started on the release before
-the brief became a message has its brief in its creation record, and its first session renders it
-from there.
+before the summary. A started task's opening reads the status before the memory blocks. The brief
+shows there when no earlier session read it and the turn's inbox does not hold it, and it shows
+again in every rebuilt session, so the task never loses what it is for. A brief the turn's batch
+already holds renders there only. A task that started on the release before the brief became a
+message has its brief in its creation record, and its first session renders it from there.
 
 ## The opening record
 

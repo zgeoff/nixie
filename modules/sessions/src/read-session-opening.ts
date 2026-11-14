@@ -100,9 +100,20 @@ export async function readSessionOpening(
 
   const replayed = await readReplayedNote(context, query, recent);
 
+  const memoryBlock = renderOpeningMessage('pinned-memory', at, query.pinnedMemory);
+
+  const statusBlock = renderOpeningMessage(
+    'status',
+    at,
+    status.map((read) => `- ${read.line.text}`).join('\n'),
+  );
+
+  // A started task reads its status first, then its memory, then its brief. The conversation has no
+  // brief and keeps the order of its opening, which puts the pinned memory before the status.
+  const readout = query.brief === null ? [memoryBlock, statusBlock] : [statusBlock, memoryBlock];
+
   const blocks = [
-    renderOpeningMessage('pinned-memory', at, query.pinnedMemory),
-    renderOpeningMessage('status', at, status.map((read) => `- ${read.line.text}`).join('\n')),
+    ...readout,
     brief.pinned === null ? null : renderBriefEnvelope(brief.pinned, query.times, query.messaging),
     renderOpeningMessage('summary', at, summary?.text ?? null),
     renderOpeningMessage('recent-turns', at, renderSessionHistory(recent, query.times, query)),

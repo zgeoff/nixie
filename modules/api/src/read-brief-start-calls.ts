@@ -76,7 +76,6 @@ export async function readBriefStartCalls(
     .select(['sequence', 'parent'])
     .where('kind', '=', 'tool_result')
     .where('thread', '=', starter)
-    .where('sequence', '>', task.created_sequence)
     .where(
       'parent',
       'in',
@@ -84,14 +83,12 @@ export async function readBriefStartCalls(
     )
     .execute();
 
-  if (results.length === 0) {
-    return [];
-  }
-
   const entries = await readRecords(context.log, {
     afterSequence: 0,
-    sequences: results.map((result) => result.sequence),
-    limit: results.length,
+    sequences: results
+      .filter((result) => result.sequence > task.created_sequence)
+      .map((result) => result.sequence),
+    limit: Math.max(results.length, 1),
   });
 
   const started = new Set(
@@ -99,6 +96,30 @@ export async function readBriefStartCalls(
       .filter((entry) => isResultOfTask(entry.record.erasable, thread))
       .map((entry) => entry.record.parent),
   );
+
+  // A crash after the start committed and before its result did leaves a call with no result. Such a
+  // call names the task by its input alone: the same name, and the same brief while the brief is
+  // still readable.
+  const answered = new Set(results.map((result) => result.parent));
+
+  const unanswered = calls.filter((call) => !answered.has(call.sequence));
+
+  const identity = await readStartIdentity(context, {
+    createdSequence: task.created_sequence,
+    brief,
+  });
+
+  const inputs = await readRecords(context.log, {
+    afterSequence: 0,
+    sequences: unanswered.map((call) => call.sequence),
+    limit: Math.max(unanswered.length, 1),
+  });
+
+  for (const entry of inputs) {
+    if (isInputOfTask(entry.record.erasable, identity)) {
+      started.add(entry.record.sequence);
+    }
+  }
 
   const sequences = [...started].filter((sequence) => sequence !== null);
 
@@ -122,4 +143,58 @@ function isResultOfTask(erasable: ErasableFields, taskID: string): boolean {
   }
 
   return startResultSchema.safeParse(erasable.fields['result']).data?.taskID === taskID;
+}
+
+interface StartIdentity {
+  readonly name: string | null;
+  readonly brief: string | null;
+}
+
+interface StartSequences {
+  readonly createdSequence: number;
+  readonly brief: number;
+}
+
+async function readStartIdentity(
+  context: Pick<APIContext, 'log'>,
+  sequences: StartSequences,
+): Promise<StartIdentity> {
+  const entries = await readRecords(context.log, {
+    afterSequence: 0,
+    sequences: [sequences.createdSequence, sequences.brief],
+    limit: 2,
+  });
+
+  const read = (sequence: number, field: string): string | null => {
+    const erasable = entries.find((entry) => entry.record.sequence === sequence)?.record.erasable;
+
+    if (erasable?.status !== 'readable') {
+      return null;
+    }
+
+    const value = erasable.fields[field];
+
+    return typeof value === 'string' ? value : null;
+  };
+
+  return {
+    name: read(sequences.createdSequence, 'name'),
+    brief: read(sequences.brief, 'body'),
+  };
+}
+
+const startInputSchema = z.object({ name: z.string(), brief: z.string() });
+
+function isInputOfTask(erasable: ErasableFields, identity: StartIdentity): boolean {
+  if (erasable.status !== 'readable' || identity.name === null) {
+    return false;
+  }
+
+  const input = startInputSchema.safeParse(erasable.fields['input']).data;
+
+  if (input?.name.trim() !== identity.name) {
+    return false;
+  }
+
+  return identity.brief === null || input.brief === identity.brief;
 }

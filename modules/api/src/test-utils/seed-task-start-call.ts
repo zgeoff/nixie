@@ -78,3 +78,45 @@ export async function seedTaskStartCall(
     briefSequence: message.record.sequence,
   };
 }
+
+interface UnansweredStartCall {
+  readonly taskID: string;
+  readonly callSequence: number;
+  readonly briefSequence: number;
+}
+
+// The start committed and the process died before the call's result did, so the call names no task.
+export async function seedUnansweredStartCall(
+  context: APIContext,
+  start: TaskStartSeed,
+): Promise<UnansweredStartCall> {
+  const step = await seedConversationStep(context);
+
+  const [call] = await writeRecords(context.log, [
+    {
+      kind: 'tool_called',
+      definitions: context.definitions(),
+      thread: 'conversation',
+      payload: { callID: 'call-1', runID: 'conversation', toolUseID: null, tool: 'task.start' },
+      erasable: { input: { name: start.name, brief: start.brief } },
+    },
+  ]);
+
+  invariant(call, 'the log wrote no tool_called record');
+
+  const taskID = await seedStartedTask(context, {
+    starter: step.claim,
+    name: start.name,
+    brief: start.brief,
+  });
+
+  const [message] = await readRecords(context.log, {
+    afterSequence: 0,
+    thread: taskID,
+    kinds: ['task_message'],
+  });
+
+  invariant(message, 'the start left no brief record');
+
+  return { taskID, callSequence: call.sequence, briefSequence: message.record.sequence };
+}
