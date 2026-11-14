@@ -5,12 +5,15 @@ import { buildModelsConfigSchema } from './build-models-config-schema';
 import { buildStubCodexProfileSchema } from './test-utils/build-stub-codex-profile-schema';
 import type { ModelProfile } from './types';
 
-function setupTest() {
+function setupTest(capabilities = harnessCapabilities) {
   return {
-    schema: buildModelsConfigSchema<ModelProfile>([
-      { id: 'agent-sdk', profileSchema: agentSDKProfileSchema },
-      { id: 'codex', profileSchema: buildStubCodexProfileSchema() },
-    ]),
+    schema: buildModelsConfigSchema<ModelProfile>(
+      [
+        { id: 'agent-sdk', profileSchema: agentSDKProfileSchema },
+        { id: 'codex', profileSchema: buildStubCodexProfileSchema() },
+      ],
+      capabilities,
+    ),
   };
 }
 
@@ -180,18 +183,12 @@ test('it accepts a selectable model on a profile whose harness has everything a 
 test.each(['conversation', 'task'] as const)(
   'it refuses the %s role on a profile whose harness lacks images',
   (role) => {
-    const schema = buildModelsConfigSchema<ModelProfile>(
-      [
-        { id: 'agent-sdk', profileSchema: agentSDKProfileSchema },
-        { id: 'codex', profileSchema: buildStubCodexProfileSchema() },
-      ],
-      {
-        ...harnessCapabilities,
-        codex: new Set(harnessCapabilities['agent-sdk']).difference(new Set(['images'])),
-      },
-    );
+    const ctx = setupTest({
+      ...harnessCapabilities,
+      codex: new Set(harnessCapabilities['agent-sdk']).difference(new Set(['images'])),
+    });
 
-    const result = schema.safeParse({
+    const result = ctx.schema.safeParse({
       profiles: {
         'chat-codex': {
           harness: 'codex',

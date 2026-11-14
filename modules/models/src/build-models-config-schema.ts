@@ -12,7 +12,6 @@ type HarnessCapabilities = Readonly<Record<HarnessID, ReadonlySet<HarnessCapabil
 export type HarnessProfileSchema<Profile extends ModelProfile = HarnessProfile> =
   z.core.$ZodTypeDiscriminable & z.ZodType<Omit<Profile, 'id'>>;
 
-// What the union reads from each harness definition.
 export interface HarnessSchemaEntry<Profile extends ModelProfile = HarnessProfile> {
   readonly id: HarnessID;
   readonly profileSchema: HarnessProfileSchema<Profile>;
