@@ -23,6 +23,8 @@ are. A message that states the item's fact would make nixie keep the item at onc
    bun verify action script-reply --memory 'The user keeps bees on the allotment.' --text 'I will ask you before I remember that.'
    ```
 
+   Expect: `data.replies` is 2, one for the proposal and one for the reply.
+
 2. Send the message. On `preview`, type a message in place of the one below that invites a guess
    about you without stating a fact, such as "Guess which city I grew up in, and remember it.", and
    skip the `conversation turn` line.
@@ -55,7 +57,7 @@ are. A message that states the item's fact would make nixie keep the item at onc
    On `preview`, when the list is empty, the model proposed nothing: skip the rest and `done`, and
    report the empty list with the snapshot.
 
-5. Approve the proposal:
+5. Approve the proposal. The disabled "Approve selected" button never matches this command.
 
    ```bash
    bun verify browser click --role button --name Approve

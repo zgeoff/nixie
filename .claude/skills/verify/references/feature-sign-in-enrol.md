@@ -37,9 +37,9 @@ never stop, run `bun verify detach`, then `bun verify attach`.
 
    Expect: the heading "Enrol this browser".
 
-4. Fill the form, and press Enrol. Put the code from step 2 in place of `<code>`. On `preview`, an
-   earlier session can hold the device name, so type a new one, such as `hallway tablet 2`, here and
-   in step 5.
+4. Fill the form, and press Enrol. `browser type` replaces the text a field holds. Put the code from
+   step 2 in place of `<code>`. On `preview`, an earlier session can hold the device name, so type a
+   new one, such as `hallway tablet 2`, here and in step 5.
 
    ```bash
    bun verify browser type --role textbox --name 'Enrolment code' --value '<code>'

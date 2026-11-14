@@ -49,5 +49,6 @@ again at step 1.
 ## End state
 
 - On `local`, `conversation turn` exited 0.
-- The last item pair of the snapshot's "Conversation" list holds the message after "You", then a
-  reply after "nixie": on `local`, "The heron left the pond at dawn.".
+- The snapshot's "Conversation" list ends with the message after "You", then the reply after
+  "nixie": on `local`, "The heron left the pond at dawn.". A group with the turn's details can sit
+  between them.
