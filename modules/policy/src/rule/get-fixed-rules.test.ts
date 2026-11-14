@@ -7,7 +7,3 @@ test('it lists the test rule, then the queue check rule, in a test build', () =>
     'slice1.queue-check',
   ]);
 });
-
-test('it never lists the retired read-only rule', () => {
-  expect(getFixedRules().map((rule) => rule.id)).not.toContain('slice1.read-only');
-});

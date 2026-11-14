@@ -52,7 +52,7 @@ test('it reads the seed in force with its snapshot row and the payload of its re
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n');
 
-  const policy = { rules: [{ id: 'slice1.read-only' }], tools: [] };
+  const policy = { rules: [{ id: 'allow-reads' }], tools: [] };
 
   const seeded = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 

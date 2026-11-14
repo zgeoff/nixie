@@ -78,7 +78,7 @@ test('it has no replay for a record from before the full decision point', async 
     tool: 'mail.send',
     input: {},
     destinations: [],
-    decision: { outcome: 'allow', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
+    decision: { outcome: 'allow', stage: 3, rule: { id: 'allow-reads', revision: 1 } },
     snapshot: 'snapshot-1',
     at: 1,
   });
