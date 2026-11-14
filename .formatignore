@@ -8,6 +8,9 @@ apps/web/src/routeTree.gen.ts
 # written by panda codegen on install
 apps/web/src/styled-system/**
 
+# written by the secret scan lib's rule builder, and the pin check compares its bytes
+libs/secret-scan/src/generated/public-rules.generated.ts
+
 # spikes are throwaway code; only their Markdown is formatted
 research/**
 

@@ -32,6 +32,7 @@ pre-commit:
         - '.claude/hooks/start.ts'
         - 'apps/web/src/routeTree.gen.ts'
         - 'apps/web/src/styled-system/**'
+        - 'libs/secret-scan/src/generated/public-rules.generated.ts'
         - 'research/**'
         - '**/dist/**'
         - 'dist/**'

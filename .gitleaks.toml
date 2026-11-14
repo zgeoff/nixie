@@ -18,3 +18,10 @@ id = "tailnet-host"
 description = "Tailscale MagicDNS host name"
 regex = '''\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.ts\.net\b'''
 keywords = [".ts.net"]
+
+# the generated rule file of the secret scan lib holds the patterns of public secret rules, one of
+# which matches a pattern's own text, and its header holds the pinned commit hash; it holds no secret
+[[allowlists]]
+description = "the generated public rule patterns of the secret scan lib"
+targetRules = ["aws-amazon-bedrock-api-key-short-lived", "sourcegraph-access-token"]
+paths = ['''libs/secret-scan/src/generated/public-rules\.generated\.ts''']

@@ -1,0 +1,21 @@
+{
+  "name": "@heynixie/secret-scan",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --noEmit",
+    "rules:build": "bun src/run-rule-build.ts",
+    "rules:check": "bun src/run-rule-check.ts"
+  },
+  "dependencies": {
+    "re2js": "catalog:",
+    "tiny-invariant": "catalog:",
+    "ts-pattern": "catalog:",
+    "zod": "catalog:"
+  }
+}
