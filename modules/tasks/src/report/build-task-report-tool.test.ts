@@ -89,9 +89,13 @@ test('it refuses a second report request in the task run and gives the first rep
   const second = await started.callReport({ summary: 'Another one.' });
   const requests = await ctx.readRequests();
 
+  const firstReportID = requests[0]?.record.payload['reportID'];
+
+  invariant(typeof firstReportID === 'string');
+
   expect(second).toStrictEqual({
     status: 'error',
-    message: `This run already sent its report as ${String(requests[0]?.record.payload['reportID'])}.`,
+    message: `This run already sent its report as ${firstReportID}.`,
   });
 
   expect(requests).toHaveLength(1);

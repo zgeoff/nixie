@@ -42,7 +42,9 @@ function collectNames(node: unknown, names: Set<string>): void {
     return;
   }
 
-  for (const [key, child] of Object.entries(node)) {
+  const entries: readonly (readonly [string, unknown])[] = Object.entries(node);
+
+  for (const [key, child] of entries) {
     if (key === 'properties' && typeof child === 'object' && child !== null) {
       for (const name of Object.keys(child)) {
         names.add(name);
@@ -61,6 +63,7 @@ function buildAjv(): Ajv2020 {
     allErrors: true,
   });
 
+  // oxlint-disable-next-line typescript/no-unsafe-call -- the server package types addFormats through an interop wrapper that resolves to any
   addFormats(ajv);
 
   return ajv;
