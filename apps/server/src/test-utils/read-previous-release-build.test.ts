@@ -95,7 +95,7 @@ test('it removes the worktree and caches nothing when the build fails', async ()
 
   await ctx.tagFailingRelease();
 
-  await expect(readPreviousReleaseBuild(ctx.location)).rejects.toThrow();
+  expect(readPreviousReleaseBuild(ctx.location)).rejects.toThrow();
 
   const worktreeCount = await ctx.countWorktrees();
   const cached = await ctx.readCachedBuilds();

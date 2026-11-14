@@ -60,7 +60,7 @@ test('it throws with the output when the process neither listens nor exits', () 
   );
 });
 
-test('it throws with the output when the ready answer never comes', async () => {
+test('it throws with the output when the ready answer never comes', () => {
   const ctx = setupTest();
 
   const server = Bun.serve({
@@ -73,12 +73,12 @@ test('it throws with the output when the ready answer never comes', async () => 
 
   ctx.listening.resolve({ port: server.port });
 
-  await expect(readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 })).rejects.toThrow(
+  expect(readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 })).rejects.toThrow(
     /\/health\/ready gave no answer within 50 ms:\nthe output/u,
   );
 });
 
-test('it throws with the output when the ready body stalls', async () => {
+test('it throws with the output when the ready body stalls', () => {
   const ctx = setupTest();
 
   const server = Bun.serve({
@@ -100,7 +100,7 @@ test('it throws with the output when the ready body stalls', async () => {
 
   ctx.listening.resolve({ port: server.port });
 
-  await expect(readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 })).rejects.toThrow(
+  expect(readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 })).rejects.toThrow(
     /\/health\/ready gave no answer within 50 ms:\nthe output/u,
   );
 });
