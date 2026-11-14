@@ -1,8 +1,8 @@
 # The pause, and the restore that starts paused
 
 - **Status:** partly built: the pause tables, the records, the reader gate, the claim check, the
-  resume and letting one task run are built; the marker, the install, the controls and the trigger
-  check remain
+  resume, letting one task run and the backup schedule's hold are built; the marker, the install,
+  the controls and the trigger check remain
 - **Work items:** [the `holding` marker](https://linear.app/zgeoff/issue/GEO-2561),
   [the pause tables, the reader gate and the claim check](https://linear.app/zgeoff/issue/GEO-2566),
   [the install at the next start](https://linear.app/zgeoff/issue/GEO-2564),

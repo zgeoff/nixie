@@ -2,11 +2,12 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
-import { localDataStorage, withWriteTransaction } from '@heynixie/log';
+import { localDataStorage, pauseNixieInTransaction, withWriteTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { backupSetManifestSchema, parseBackupFile, readFileSHA256 } from '@heynixie/wire';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { buildStubFailingStorage } from './test-utils/build-stub-failing-storage';
 import { writeSnapshotSet } from './write-snapshot-set';
 
@@ -19,6 +20,8 @@ async function setupTest() {
 test('it stages copies of both databases with a manifest of their checksums, and writes the marker', async () => {
   const ctx = await setupTest();
   const manifest = await writeSnapshotSet(ctx.context, 'scheduled');
+
+  invariant(manifest, 'a set stages when nixie is not paused after a restore');
 
   const directory = join(ctx.dataDir, 'backup', '000000000001');
 
@@ -87,7 +90,7 @@ test('it numbers a set above the newest set nixie recorded', async () => {
 
   const second = await writeSnapshotSet(ctx.context, 'forget');
 
-  expect(second.sequence).toBe(2);
+  expect(second?.sequence).toBe(2);
 });
 
 test('it numbers a set above a directory in staging that nixie holds no row for', async () => {
@@ -97,7 +100,7 @@ test('it numbers a set above a directory in staging that nixie holds no row for'
 
   const manifest = await writeSnapshotSet(ctx.context, 'scheduled');
 
-  expect(manifest.sequence).toBe(10);
+  expect(manifest?.sequence).toBe(10);
 });
 
 test('it removes the copies and abandons the set when the copy fails before its marker', async () => {
@@ -158,4 +161,25 @@ test('it keeps a set whose marker exists when a later step fails, for the job ma
   expect(failure).toMatchObject({ message: 'the stub fails the fsync of complete' });
   expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'manifest.json', 'complete']);
   expect(rows.rows).toStrictEqual([{ state: 'staging' }]);
+});
+
+test('it stages nothing while nixie is paused after a restore', async () => {
+  const ctx = await setupTest();
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    pauseNixieInTransaction(tx, ctx.log, {
+      cause: 'restore',
+      recoveryID: 'recovery-a',
+      by: null,
+      definitions: { snapshotHash: 'sha256:aa11' },
+    }),
+  );
+
+  const manifest = await writeSnapshotSet(ctx.context, 'scheduled');
+  const rows = await sql`select sequence from backup_sets`.execute(ctx.writer.db);
+  const staged = await readdir(join(ctx.dataDir, 'backup'));
+
+  expect(manifest).toBeNull();
+  expect(rows.rows).toStrictEqual([]);
+  expect(staged).toStrictEqual([]);
 });

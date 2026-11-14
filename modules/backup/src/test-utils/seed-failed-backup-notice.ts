@@ -15,6 +15,8 @@ export async function seedFailedBackupNotice(
 ): Promise<BackupNotice> {
   const staged = await writeSnapshotSet(context, 'scheduled');
 
+  invariant(staged, 'a backup set stages when nixie is not paused after a restore');
+
   await writeTestBackupReceipt(context.writer.dataDir, {
     sequence: staged.sequence,
     status: 'failed',
