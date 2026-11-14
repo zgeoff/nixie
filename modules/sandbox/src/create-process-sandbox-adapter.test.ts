@@ -5,11 +5,13 @@ import { join } from 'node:path';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { createProcessSandboxAdapter } from './create-process-sandbox-adapter';
+import { memoryKillsPath } from './memory-kills-path';
 import { SandboxSpecRefusedError } from './sandbox-spec-refused-error';
 import { buildMockGrantSpec } from './test-utils/build-mock-grant-spec';
 import { buildMockSandboxSpec } from './test-utils/build-mock-sandbox-spec';
 import { setupTestRecorder } from './test-utils/setup-test-recorder';
 import { startStubToolEndpoint } from './test-utils/start-stub-tool-endpoint';
+import { writeMemoryKills } from './test-utils/write-memory-kills';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from './types';
 
 interface SetupConfig {
@@ -658,4 +660,71 @@ test('it accepts a secret and records nothing, because the double injects no gra
   const records = await ctx.readSandboxRecords();
 
   expect(records).toStrictEqual([]);
+});
+
+test('it reads a count of 0 from a test sandbox with no memory kill file', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 0 });
+});
+
+test('it reads the count that writeMemoryKills copied into a test sandbox', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await writeMemoryKills(sandbox, 2);
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 2 });
+});
+
+test('it reads a count from a sandbox that a restarted adapter lists', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await writeMemoryKills(sandbox, 5);
+
+  const [listed] = await ctx.createAdapter().list(sandbox.spec.owner);
+
+  invariant(listed !== undefined);
+
+  expect(listed.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 5 });
+});
+
+test('it fails the read of memory kill content that is not a whole number', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await sandbox.copyIn([{ path: memoryKillsPath, content: new TextEncoder().encode('1.5') }]);
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'failed' });
+});
+
+test('it fails the read of a destroyed test sandbox', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await sandbox.destroy();
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'failed' });
+});
+
+test('it fails the read of an aborted signal without reading', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  expect(sandbox.readMemoryKills(AbortSignal.abort())).resolves.toStrictEqual({ kind: 'failed' });
+});
+
+test('it reads the count of a sleeping test sandbox', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await writeMemoryKills(sandbox, 4);
+
+  invariant(sandbox.suspension.kind === 'memory');
+
+  await sandbox.suspension.sleep();
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 4 });
 });

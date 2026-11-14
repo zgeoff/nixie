@@ -1,7 +1,9 @@
-import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import type { ProcessState } from './build-process-state';
+import { memoryKillsPath } from './memory-kills-path';
 import { mergeExecEnv } from './merge-exec-env';
+import { parseMemoryKillsFile } from './parse-memory-kills-file';
 import { resolveGuestPath } from './resolve-guest-path';
 import { runCommand } from './run-command';
 import type { ProcessIO } from './start-exec-stream';
@@ -10,6 +12,7 @@ import { startProcessGroup } from './start-process-group';
 import type {
   FileSpec,
   GuestHome,
+  MemoryKillRead,
   ReadFilePathsOptions,
   RunSpec,
   Sandbox,
@@ -77,6 +80,7 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
         await ctx.recorder.write({ event: 'woken', sandboxID: ctx.id });
       },
     },
+    readMemoryKills: (signal) => readGuestMemoryKills(ctx.fsRoot, signal),
     destroy: async () => {
       await ctx.remove();
       await ctx.recorder.write({ event: 'destroyed', sandboxID: ctx.id, reason: 'destroyed' });
@@ -190,4 +194,29 @@ async function readFilePathsBelow(directory: string, depth: number): Promise<rea
 
 async function applyGuestMove(fsRoot: string, from: string, to: string): Promise<void> {
   await rename(resolveGuestPath(fsRoot, from), resolveGuestPath(fsRoot, to));
+}
+
+async function readGuestMemoryKills(
+  fsRoot: string,
+  signal: AbortSignal | undefined,
+): Promise<MemoryKillRead> {
+  if (signal?.aborted === true) {
+    return { kind: 'failed' };
+  }
+
+  try {
+    await stat(fsRoot);
+  } catch {
+    return { kind: 'failed' };
+  }
+
+  try {
+    const text = await readFile(resolveGuestPath(fsRoot, memoryKillsPath), 'utf8');
+
+    return parseMemoryKillsFile(text);
+  } catch (error) {
+    const isMissing = error instanceof Error && 'code' in error && error.code === 'ENOENT';
+
+    return isMissing ? { kind: 'count', kills: 0 } : { kind: 'failed' };
+  }
 }
