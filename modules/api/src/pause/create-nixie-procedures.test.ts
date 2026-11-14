@@ -227,12 +227,11 @@ test('#tasks.list leaves a task that its own resume exempted unmarked, and marks
 
   const listed = await ctx.client.tasks.list({});
 
-  expect(listed.tasks.map((task) => [task.taskID, task.isPausedByNixie]).toSorted()).toStrictEqual(
-    [
-      [resumedID, false],
-      [otherID, true],
-    ].toSorted(),
+  const pausedByID = Object.fromEntries(
+    listed.tasks.map((task) => [task.taskID, task.isPausedByNixie]),
   );
+
+  expect(pausedByID).toStrictEqual({ [resumedID]: false, [otherID]: true });
 });
 
 test('#nixie.read gives the cause restore for a restore pause', async () => {
