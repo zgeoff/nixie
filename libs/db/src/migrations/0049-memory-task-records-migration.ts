@@ -3,6 +3,9 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import { rebuildThreads } from '../database/rebuild-threads';
 import { removeRetiredPrompts } from '../database/remove-retired-prompts';
+import { requireNoOrphans } from '../database/require-no-orphans';
+import { requireNoProjectionOrphans } from '../database/require-no-projection-orphans';
+import { toChunks } from '../database/to-chunks';
 import { withTriggersDropped } from '../database/with-triggers-dropped';
 import { readQueryRows } from '../read-query-rows';
 import type { Migration } from '../types';
@@ -23,10 +26,13 @@ export const memoryTaskRecordsMigration: Migration = {
 
       const removed = [...plan.removed, ...(await readForgetRecords(tx, plan.removed))];
 
-      await requireNoOrphans(tx, new Set(removed));
+      const removedSet = new Set(removed);
+
+      await requireNoOrphans(tx, removedSet);
       await writeMovedRecords(tx, plan.moved);
       await removeRecords(tx, removed);
       await removeTaskRows(tx);
+      await requireNoProjectionOrphans(tx, removedSet);
       await rewriteProjectionRows(tx);
       await rewriteProjectionChanges(tx);
       await removeRetiredPrompts(tx);
@@ -357,52 +363,6 @@ async function readForgetRecords(
   }
 
   return found;
-}
-
-function toChunks<Item>(items: readonly Item[]): Item[][] {
-  const chunks: Item[][] = [];
-
-  for (let start = 0; start < items.length; start += 400) {
-    chunks.push(items.slice(start, start + 400));
-  }
-
-  return chunks;
-}
-
-// A kept record may point at a removed record through its parent or through a payload field that
-// holds a sequence (an evidence list, a summary range, a moment quote). Removing the target would
-// leave it dangling, so the migration stops and leaves the data as it was.
-async function requireNoOrphans(
-  tx: Transaction<unknown>,
-  removed: ReadonlySet<number>,
-): Promise<void> {
-  const schema = z.object({ sequence: z.number(), field: z.string() });
-
-  for (const chunk of toChunks([...removed])) {
-    const parents = await readQueryRows(
-      sql`select sequence, 'parent' as field from records where parent in (${sql.join(chunk)})`,
-      tx,
-      schema,
-    );
-
-    const references = await readQueryRows(
-      sql`select records.sequence as sequence, tree.fullkey as field
-        from records, json_tree(records.payload) as tree
-        where tree.type = 'integer'
-          and tree.fullkey like ${'%equence%'}
-          and tree.atom in (${sql.join(chunk)})`,
-      tx,
-      schema,
-    );
-
-    const orphan = [...parents, ...references].find((row) => !removed.has(row.sequence));
-
-    if (orphan !== undefined) {
-      throw new Error(
-        `record ${String(orphan.sequence)} refers to a record of a built-in memory task through ${orphan.field}, which the memory task migration cannot remove`,
-      );
-    }
-  }
 }
 
 async function writeMovedRecords(
