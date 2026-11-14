@@ -24,6 +24,9 @@ Thumbs.db
 .env.*
 !.env.example
 
+# the verify CLI's runs and evidence
+.wringer/
+
 # turbo cache and logs
 .turbo
 

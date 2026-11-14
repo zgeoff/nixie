@@ -19,8 +19,16 @@
     "@heynixie/web": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "@orpc/client": "catalog:",
+    "@wringer/browser": "catalog:",
+    "@wringer/core": "catalog:",
+    "@wringer/db": "catalog:",
+    "@wringer/gunshi": "catalog:",
+    "@wringer/http": "catalog:",
+    "@wringer/stream": "catalog:",
+    "@wringer/terminal": "catalog:",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
+    "ts-pattern": "catalog:",
     "zod": "catalog:"
   }
 }
