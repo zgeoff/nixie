@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { browser } from '@wringer/browser';
 import { WringerError, createWringer, local } from '@wringer/core';
-import type { DriveContext, Wringer } from '@wringer/core';
+import type { Wringer } from '@wringer/core';
 import { db } from '@wringer/db';
 import { http } from '@wringer/http';
 import type { HttpClient } from '@wringer/http';
@@ -41,6 +41,7 @@ const refusalHint =
 // program itself.
 export function createVerifyRegistry(): Wringer {
   const pullRequest = makeCachedRead(readPullRequest);
+  const previewHost = createPreviewHost(process.env, pullRequest);
 
   return createWringer({ name: 'nixie-verify' })
     .use(browser({}))
@@ -86,9 +87,9 @@ export function createVerifyRegistry(): Wringer {
       mode: 'attach',
       access: 'read-write',
       refusalHint,
-      host: createPreviewHost(process.env, pullRequest),
+      host: previewHost,
       endpoints: () => readPreviewEndpoints(pullRequest),
-      revision: () => readServedCommit(createPreviewHost(process.env, pullRequest)),
+      revision: () => readServedCommit(previewHost),
       drivers: {
         browser: () => ({}),
         http: () => ({ healthPath: '/health/ready' }),
@@ -178,7 +179,7 @@ export function createVerifyRegistry(): Wringer {
       timeoutMs: 60_000,
       run: (_input, ctx) =>
         match(ctx.target)
-          .with('preview', () => checkPreviewCommit(ctx))
+          .with('preview', () => checkPreviewCommit(previewHost))
           .otherwise(() => checkHarness(ctx.drivers.http)),
     })
     .feature(
@@ -216,7 +217,9 @@ function makeCachedRead(read: () => Promise<PullRequest>): () => Promise<PullReq
 
 const servedCommitArgv = ['git', '-C', previewCheckout, 'rev-parse', 'HEAD'];
 
-async function readServedCommit(host: ReturnType<typeof createPreviewHost>): Promise<string> {
+type PreviewHost = ReturnType<typeof createPreviewHost>;
+
+async function readServedCommit(host: PreviewHost): Promise<string> {
   const ran = await host.run({ argv: servedCommitArgv, access: 'read-only' });
 
   if (ran.exitCode !== 0) {
@@ -244,11 +247,11 @@ async function postControl<Input extends z.ZodType, Output extends z.ZodType>(
 const previewRefusalHint =
   'Push this commit, open the preview link on the pull request to rebuild the preview, then run `bun verify attach` and `bun verify doctor` again.';
 
-// A verdict on the preview stands for this tree only when the preview runs its commit. The
-// checkout can move on while a container from an older build still serves, as after a failed
-// rebuild, so the doctor also compares the container's files with this tree.
-async function checkPreviewCommit(ctx: Pick<DriveContext, 'exec'>): Promise<{ commit: string }> {
-  const served = await ctx.exec(servedCommitArgv);
+// The checkout can move on while a container from an older build still serves, so the doctor also
+// compares the container's files with this tree. A doctor check's exec refuses every raw command,
+// so the check runs its reads on the preview's host itself.
+async function checkPreviewCommit(host: PreviewHost): Promise<{ commit: string }> {
+  const served = await host.run({ argv: servedCommitArgv, access: 'read-only' });
   const head = await $`git rev-parse HEAD`.quiet().text();
 
   const commitRefusal = pickCommitRefusal(served.stdout, head);
@@ -257,7 +260,7 @@ async function checkPreviewCommit(ctx: Pick<DriveContext, 'exec'>): Promise<{ co
     throw new WringerError('check-failed', { message: commitRefusal, hint: previewRefusalHint });
   }
 
-  const servedBlobs = await ctx.exec(buildServedBlobsArgv());
+  const servedBlobs = await host.run({ argv: buildServedBlobsArgv(), access: 'read-only' });
 
   if (servedBlobs.exitCode !== 0) {
     throw new WringerError('environment', {
