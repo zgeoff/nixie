@@ -299,13 +299,13 @@ function buildMessage(
     outcome,
     actionID: messageOptions.actionID ?? null,
     sources: { message: messageOptions.source ?? 'owner_data' },
-    content: addHidden({ message }, messageOptions.hidden),
+    content: buildHiddenFields({ message }, messageOptions.hidden),
     reply: { kind: 'text', text: message, isError: messageOptions.isError ?? true },
   };
 }
 
 // hidden is stored only when the tool set it to an object with 1 key or more
-function addHidden(fields: JSONObject, hidden: JSONObject | undefined): JSONObject {
+function buildHiddenFields(fields: JSONObject, hidden: JSONObject | undefined): JSONObject {
   return hidden !== undefined && Object.keys(hidden).length > 0 ? { ...fields, hidden } : fields;
 }
 
@@ -420,7 +420,7 @@ function buildTypedResult(
 }
 
 function buildResultFields(typed: DirectResult, result: JSONObject): JSONObject {
-  return addHidden({ result: typed.record ?? result }, typed.hidden);
+  return buildHiddenFields({ result: typed.record ?? result }, typed.hidden);
 }
 
 async function runQueued(allowed: AllowedCall): Promise<Settled> {
