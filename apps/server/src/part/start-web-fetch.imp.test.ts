@@ -7,6 +7,7 @@ import { waitForCondition } from '@heynixie/testing';
 import { buildConnectProbe } from '../test-utils/build-connect-probe';
 import { checkIsolationTargets } from '../test-utils/check-isolation-targets';
 import { isClearIsolationLine } from '../test-utils/is-clear-isolation-line';
+import { timeHopExchange } from '../test-utils/time-hop-exchange';
 import { fetchImageArgv, startWebFetch } from './start-web-fetch';
 
 // These tests need a real impd on a host with /dev/kvm and the fetch image built into it.
@@ -27,11 +28,9 @@ async function setupTest() {
   const testRecorder = await setupTestRecorder();
 
   const asked: string[] = [];
-  const startedAt = { atMs: 0 };
 
-  // Starts the web fetch on the imp host with a finder that records each URL it is asked about and
-  // prints when each scan began, in milliseconds since the call began, so a run shows the time of
-  // each hop's exchange.
+  // Starts the web fetch on the imp host with a finder that records each URL it is asked about, and
+  // an adapter that prints the time of each hop's exchange.
   const startScannedWebFetch = (matchURL: string | null) => {
     const config = parseImpConfig({
       IMP_URL: process.env['NIXIE_IMP_TEST_URL'],
@@ -40,16 +39,18 @@ async function setupTest() {
       IMP_EGRESS_DENY: process.env['NIXIE_IMP_TEST_EGRESS_DENY'],
     });
 
-    const adapter = buildImpSandboxAdapter({
-      port: buildImpPort(config),
-      recorder: testRecorder.recorder,
-      config,
-      toolTarget: () => ({ path: '/nonexistent.sock' }),
-    });
+    const adapter = timeHopExchange(
+      buildImpSandboxAdapter({
+        port: buildImpPort(config),
+        recorder: testRecorder.recorder,
+        config,
+        toolTarget: () => ({ path: '/nonexistent.sock' }),
+      }),
+      console.log,
+    );
 
     const findSecret: SecretFinder = (url) => {
       asked.push(url);
-      console.log(`hop scan of ${url} began at +${String(Date.now() - startedAt.atMs)} ms`);
 
       return url === matchURL ? { rule: 'test-rule' } : null;
     };
@@ -70,10 +71,8 @@ async function setupTest() {
 
     stack.defer(() => webFetch.stop());
 
-    return (url: string) => {
-      startedAt.atMs = Date.now();
-
-      return webFetch.tool.run(
+    return (url: string) =>
+      webFetch.tool.run(
         { callID: 'call-1', tool: 'web_fetch', input: { url }, toolUseID: null },
         {
           run: {
@@ -84,7 +83,6 @@ async function setupTest() {
           },
         },
       );
-    };
   };
 
   return {
