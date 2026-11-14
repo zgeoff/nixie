@@ -118,9 +118,8 @@ ID.
 A memory item exposes a short ID, a 10-character cuid2 such as `k3x9m2p7qa`, and the conversation's
 model reads and names the item by it instead of by its UUID. A UUID costs 36 characters in every
 prompt, tool result and tool call that names the record, and the model gains nothing from the extra
-length. Every kind of record that the model can see follows the same rule when it is added. Two
-views from before the rule show UUIDs: memory proposals, and the memory writer's view of the items
-it reads.
+length. Every kind of record that the model can see follows the same rule when it is added. One view
+from before the rule shows UUIDs: the memory writer's view of the items it reads.
 
 A tool's stored result follows the same rule: it holds the short ID, and the UUID sits under the
 result's `hidden.uuids`, keyed by short ID.
@@ -142,4 +141,6 @@ ID. A row from before short IDs takes one derived from its UUID, and the migrati
 short ID backfills the same derived value, so the fold and the backfill agree. A memory
 consolidation change always takes the ID its UUID gives, because its proposal record keeps the shape
 that the release before reads. That release rejects an unknown key in the record, so a rollback
-could not rebuild its tables from a record that carried the short ID.
+could not rebuild its tables from a record that carried the short ID. A memory proposal takes its ID
+the same way, derived from its UUID on each read with no column, because its `memory.proposed`
+record keeps the shape that release reads.

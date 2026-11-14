@@ -195,16 +195,18 @@ The log holds outside text, such as fetched pages and pastes, so every entry cou
 content to the decision point. A message of the user's reads as a rebuilt session's recent turns
 show it, with each pasted or dropped span in its own block and a marker line for each image, and a
 search matches only the words, never those blocks. A log read never returns an image's bytes, so
-memory learns only what the user wrote. A tool entry shows the call's `result` or its `message`
-alone, so a field the tool records under `hidden` never reaches the model, and `moment.read` prints
-a tool result the same way. A stored result of an earlier release can hold a UUID under `momentID`,
-`itemID`, `changeID`, `momentIDs` or `itemIDs`, so the entry prints that UUID's short ID, read from
-the live row. It leaves the key out when no live row gives one: the item or change has no row, or
-the moment was destroyed. An element of `momentIDs` or `itemIDs` with no short ID leaves the list. A
-word search matches the printed text, so it finds the short ID and never the UUID. A failed row read
-fails the call and never falls back to the UUID. The call's record holds only the event IDs it
-returned, so a forget leaves no readable copy of what the model read, and a forgotten message reads
-with no text and never matches a search.
+memory learns only what the user wrote.
+
+A tool entry shows the call's `result` or its `message` alone, so a field the tool records under
+`hidden` never reaches the model, and `moment.read` prints a tool result the same way. A stored
+result of an earlier release can hold a UUID under `momentID`, `itemID`, `changeID`, `momentIDs` or
+`itemIDs`, so the entry prints that UUID's short ID, read from the live row. A UUID under
+`proposalID` prints the short ID derived from it, with no row read. It leaves the key out when no
+live row gives one: the item or change has no row, or the moment was destroyed. An element of
+`momentIDs` or `itemIDs` with no short ID leaves the list. A word search matches the printed text,
+so it finds the short ID and never the UUID. A failed row read fails the call and never falls back
+to the UUID. The call's record holds only the event IDs it returned, so a forget leaves no readable
+copy of what the model read, and a forgotten message reads with no text and never matches a search.
 
 The model opens one image with the `log.read_image` tool, by the event ID of the user's message that
 holds it and the image's number in that message, which comes from the message's `<dropped-image>`

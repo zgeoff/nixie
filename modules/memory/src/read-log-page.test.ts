@@ -1,4 +1,5 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
+import { buildShortIDFromUUID } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
@@ -7,6 +8,7 @@ import { readLogPage } from './read-log-page';
 import { startTestMemory } from './test-utils';
 import { createConsolidationDiff } from './test-utils/create-consolidation-diff';
 import { createMemoryItem } from './test-utils/create-memory-item';
+import { createProposal } from './test-utils/create-proposal';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
 async function setupTest() {
@@ -876,5 +878,53 @@ test('it prints the short ID of a moment and an item that sit in an object under
         momentID: { itemID: itemShortID },
       },
     }),
+  ]);
+});
+
+test('it prints the derived short ID of a proposal for a stored UUID, while its row exists and after it is gone', async () => {
+  const ctx = await setupTest();
+  const proposal = await createProposal(ctx.memory.store, { text: 'Keeps a brass compass' });
+
+  const goneUUID = '0b4e7a3c-52d1-4f08-9a6e-3c1d8f27b5a9';
+
+  const texts = await ctx.readToolEntries([
+    { result: { proposals: [{ proposalID: proposal.proposalID, change: 'new' }] } },
+    { result: { proposals: [{ proposalID: goneUUID, change: 'new' }] } },
+  ]);
+
+  expect(texts).toStrictEqual([
+    JSON.stringify({
+      result: {
+        proposals: [{ proposalID: buildShortIDFromUUID(proposal.proposalID), change: 'new' }],
+      },
+    }),
+    JSON.stringify({
+      result: { proposals: [{ proposalID: buildShortIDFromUUID(goneUUID), change: 'new' }] },
+    }),
+  ]);
+});
+
+test('it prints the short ID of an uppercase stored proposal UUID that memory.pending shows', async () => {
+  const ctx = await setupTest();
+  const proposal = await createProposal(ctx.memory.store, { text: 'Keeps a brass compass' });
+
+  const texts = await ctx.readToolEntries([
+    { result: { proposalID: proposal.proposalID.toUpperCase() } },
+  ]);
+
+  expect(texts).toStrictEqual([
+    JSON.stringify({ result: { proposalID: buildShortIDFromUUID(proposal.proposalID) } }),
+  ]);
+});
+
+test('it leaves a proposalID that is no UUID as stored', async () => {
+  const ctx = await setupTest();
+
+  const texts = await ctx.readToolEntries([
+    { result: { proposals: [{ proposalID: 'dxsae7uygo' }, { proposalID: null }] } },
+  ]);
+
+  expect(texts).toStrictEqual([
+    JSON.stringify({ result: { proposals: [{ proposalID: 'dxsae7uygo' }, { proposalID: null }] } }),
   ]);
 });

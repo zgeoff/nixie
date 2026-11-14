@@ -1,4 +1,5 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
+import { buildShortIDFromUUID } from '@heynixie/db';
 import { readRecords } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildTestClock } from '@heynixie/testing';
@@ -69,7 +70,7 @@ test('it lists a pending proposal from the conversation and one from the note-ta
   expect(result.structuredContent).toStrictEqual({
     proposals: [
       {
-        proposalID: own.proposalID,
+        proposalID: buildShortIDFromUUID(own.proposalID),
         change: 'new',
         text: 'Waters the ferns on Sundays',
         notedBy: ['you noted it'],
@@ -78,7 +79,7 @@ test('it lists a pending proposal from the conversation and one from the note-ta
         age: '2 days',
       },
       {
-        proposalID: noted.proposalID,
+        proposalID: buildShortIDFromUUID(noted.proposalID),
         change: 'new',
         text: 'The owner keeps bees.',
         notedBy: ['the note-taker noted it'],
@@ -122,7 +123,7 @@ test('it leaves out a proposal the owner approved and one the owner rejected', a
   expect(result.structuredContent).toStrictEqual({
     proposals: [
       {
-        proposalID: waiting.proposalID,
+        proposalID: buildShortIDFromUUID(waiting.proposalID),
         change: 'new',
         text: 'Owns a red kayak',
         notedBy: ['you noted it'],
@@ -195,7 +196,7 @@ test('it names the item that a pending edit changes by its short ID, and the ver
   expect(result.structuredContent).toStrictEqual({
     proposals: [
       {
-        proposalID: proposal.proposalID,
+        proposalID: buildShortIDFromUUID(proposal.proposalID),
         change: 'edit',
         itemID: shortIDs.get(item.itemID),
         version: 1,
@@ -355,9 +356,67 @@ test('it records only the proposal IDs, never the proposed text', async () => {
   expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
     erasable: {
       status: 'readable',
-      fields: { result: { proposals: [{ proposalID: proposal.proposalID }] } },
+      fields: {
+        result: { proposals: [{ proposalID: buildShortIDFromUUID(proposal.proposalID) }] },
+      },
     },
   });
 
   expect(JSON.stringify(entries)).not.toInclude('tin robots');
+
+  expect(
+    JSON.stringify(entries.find((entry) => entry.record.kind === 'tool_result')?.record.erasable),
+  ).not.toInclude(`"proposalID":"${proposal.proposalID}"`);
+});
+
+test('it maps the short ID of each proposal to its UUID under hidden, outside the result the model reads', async () => {
+  const ctx = await setupTest();
+  const proposal = await createProposal(ctx.memory.store, { text: 'Keeps a brass compass' });
+
+  const result = await runToolCall(
+    { tool: 'memory.pending', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.pending'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+  expect(JSON.stringify(result.structuredContent)).not.toInclude(proposal.proposalID);
+
+  expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
+    erasable: {
+      status: 'readable',
+      fields: {
+        hidden: {
+          uuids: { [buildShortIDFromUUID(proposal.proposalID)]: proposal.proposalID },
+        },
+      },
+    },
+  });
+});
+
+test('it stores no hidden field when no proposal waits', async () => {
+  const ctx = await setupTest();
+
+  await runToolCall(
+    { tool: 'memory.pending', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.pending'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+  const stored = entries.find((entry) => entry.record.kind === 'tool_result')?.record;
+
+  expect(JSON.stringify(stored)).not.toInclude('hidden');
 });

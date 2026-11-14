@@ -1,3 +1,4 @@
+import { buildShortIDFromUUID } from '@heynixie/db';
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/sessions';
@@ -50,8 +51,8 @@ export function buildProposalAnswerKind(
 
       const proposal =
         detail.origin === 'conversation'
-          ? `your memory proposal ${detail.proposalID}`
-          : `a memory proposal from ${proposerWords[detail.origin]} ${detail.proposalID}`;
+          ? `your memory proposal ${buildShortIDFromUUID(detail.proposalID)}`
+          : `a memory proposal from ${proposerWords[detail.origin]} ${buildShortIDFromUUID(detail.proposalID)}`;
 
       const line =
         detail.answer === 'edited'

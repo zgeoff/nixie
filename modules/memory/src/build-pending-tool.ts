@@ -1,8 +1,10 @@
 import type { Clock } from '@heynixie/clock';
 import { formatAge } from '@heynixie/clock';
+import { buildShortIDFromUUID } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { match } from 'ts-pattern';
+import { buildHiddenUUIDs } from './build-hidden-uuids';
 import type { MemoryProposal, MemoryProposals } from './gate-context';
 import type { ItemIDStore, ProposalOrigin } from './types';
 
@@ -95,7 +97,17 @@ export function buildPendingTool(
             toPendingJSON(proposal, shortIDs.get(proposal.itemID) ?? proposal.itemID, now),
           ),
         },
-        record: { proposals: proposals.map((proposal) => ({ proposalID: proposal.proposalID })) },
+        record: {
+          proposals: proposals.map((proposal) => ({
+            proposalID: buildShortIDFromUUID(proposal.proposalID),
+          })),
+        },
+        ...buildHiddenUUIDs(
+          proposals.map((proposal) => [
+            buildShortIDFromUUID(proposal.proposalID),
+            proposal.proposalID,
+          ]),
+        ),
       };
     },
   };
@@ -103,7 +115,7 @@ export function buildPendingTool(
 
 function toPendingJSON(proposal: MemoryProposal, shortID: string, now: number): JSONObject {
   return {
-    proposalID: proposal.proposalID,
+    proposalID: buildShortIDFromUUID(proposal.proposalID),
     change: pickChange(proposal),
     ...(proposal.targetVersion === null
       ? {}

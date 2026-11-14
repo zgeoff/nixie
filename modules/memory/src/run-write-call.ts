@@ -1,4 +1,6 @@
+import { buildShortIDFromUUID } from '@heynixie/db';
 import type { ToolOutcome } from '@heynixie/tools';
+import { buildHiddenUUIDs } from './build-hidden-uuids';
 import type { ModelWriteStore, WriteOutcome } from './gate-context';
 import { ImageSourceError } from './image-source-error';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
@@ -20,9 +22,16 @@ export async function runWriteCall(
     const outcome = await call();
 
     if (outcome.status === 'proposed') {
+      const shortID = buildShortIDFromUUID(outcome.proposalID);
+
       return {
         status: 'ok',
-        result: { ...outcome, reason: memory.renderReviewReason(outcome.reason) },
+        result: {
+          ...outcome,
+          proposalID: shortID,
+          reason: memory.renderReviewReason(outcome.reason),
+        },
+        ...buildHiddenUUIDs([[shortID, outcome.proposalID]]),
       };
     }
 
