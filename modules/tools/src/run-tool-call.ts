@@ -166,7 +166,6 @@ function makeCallRecorder(
             }),
             erasable: {
               input,
-              ...(decided === null || recordInput === undefined ? {} : { args: call.input }),
               ...(destinations.length === 0
                 ? {}
                 : {
@@ -343,7 +342,7 @@ function runDecidedCall(decided: DecidedCall): Promise<Settled> {
 }
 
 function buildAskMessage(shortID: string | null): Settled {
-  invariant(shortID, 'an ask wrote an action proposal');
+  invariant(shortID !== null && shortID !== '', 'an ask wrote an action proposal');
 
   return buildMessage(
     'queued',

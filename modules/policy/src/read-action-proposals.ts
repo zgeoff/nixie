@@ -1,5 +1,6 @@
-import type { LogTables } from '@heynixie/log';
+import type { JSONValue, LogTables } from '@heynixie/log';
 import type { Kysely } from 'kysely';
+import { z } from 'zod';
 import { actionAnsweredCodec } from './action-answered-codec';
 import { actionLapsedCodec } from './action-lapsed-codec';
 import { actionProposedCodec } from './action-proposed-codec';
@@ -44,7 +45,7 @@ export async function readActionProposals(
   const outcomes = new Map(closing.map((row) => readOutcome(row.kind, row.payload)));
 
   return proposed.map((row) => {
-    const payload = actionProposedCodec.decode(JSON.parse(row.payload));
+    const payload = actionProposedCodec.decode(parsePayload(row.payload));
 
     return {
       sequence: row.sequence,
@@ -63,10 +64,14 @@ export async function readActionProposals(
 
 function readOutcome(kind: string, payload: string): readonly [string, ActionProposalOutcome] {
   if (kind === actionLapsedCodec.kind) {
-    return [actionLapsedCodec.decode(JSON.parse(payload)).proposalID, 'lapsed'];
+    return [actionLapsedCodec.decode(parsePayload(payload)).proposalID, 'lapsed'];
   }
 
-  const answered = actionAnsweredCodec.decode(JSON.parse(payload));
+  const answered = actionAnsweredCodec.decode(parsePayload(payload));
 
   return [answered.proposalID, answered.answer];
+}
+
+function parsePayload(payload: string): Readonly<Record<string, JSONValue>> {
+  return z.record(z.string(), z.json()).parse(JSON.parse(payload));
 }

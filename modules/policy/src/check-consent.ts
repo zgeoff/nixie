@@ -73,7 +73,10 @@ export const consentCheckerTimeoutMs = 15_000;
 async function askChecker(options: ConsentOptions, input: string): Promise<CheckerResult> {
   const timeoutMs = options.timeoutMs ?? consentCheckerTimeoutMs;
   const timer = Promise.withResolvers<'unreachable'>();
-  const handle = setTimeout(() => timer.resolve('unreachable'), timeoutMs);
+
+  const handle = setTimeout(() => {
+    timer.resolve('unreachable');
+  }, timeoutMs);
 
   try {
     const answered = await Promise.race([

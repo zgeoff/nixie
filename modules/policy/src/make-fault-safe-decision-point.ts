@@ -18,7 +18,10 @@ export function makeFaultSafeDecisionPoint(
   return async (call) => {
     const progress: StageProgress = { stage: 1 };
     const deadline = Promise.withResolvers<'timed_out'>();
-    const timer = setTimeout(() => deadline.resolve('timed_out'), deadlineMs);
+
+    const timer = setTimeout(() => {
+      deadline.resolve('timed_out');
+    }, deadlineMs);
 
     try {
       return await Promise.race([

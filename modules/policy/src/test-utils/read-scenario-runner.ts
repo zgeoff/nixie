@@ -84,9 +84,9 @@ export function readScenarioRunner(options: ScenarioOptions = {}) {
       snapshot: 'snapshot-1',
     });
 
-    const cause = 'cause' in result.decision ? ` (${String(result.decision.cause)})` : '';
+    const cause = 'cause' in result.decision ? ` (${result.decision.cause})` : '';
 
-    return `${step.tool}: ${result.decision.outcome} at stage ${String(result.decision.stage)}${cause}`;
+    return `${step.tool}: ${result.decision.outcome} at stage ${result.decision.stage}${cause}`;
   };
 
   return {

@@ -66,6 +66,6 @@ test('it unmarks a known contact by its ID, and refuses an ID that no contact ha
   expect({
     unmarked: unmarked.exitCode,
     unknown: unknown.exitCode,
-    listed: JSON.parse(listed.stdout),
+    listed: z.json().parse(JSON.parse(listed.stdout)),
   }).toStrictEqual({ unmarked: 0, unknown: 1, listed: [] });
 });
