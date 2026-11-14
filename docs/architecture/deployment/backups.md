@@ -131,7 +131,8 @@ the newest key snapshot, because an older one would make a forgotten item readab
 the staging folder and writes `restore-note.json` there, which holds the restore time and the key
 snapshot ID of the pair, or none for a directory that `backup --to` wrote. The next publish reads
 and removes the note, so it knows which key snapshot the restore came from.
-[Backup and restore](host-commands.md#backup-and-restore) describes the restore.
+[Backup and restore](host-commands.md#backup-and-restore) describes the restore, and the
+[restore runbook](../../runbooks/restore.md) gives the steps.
 
 `nixie-backup snapshots` prints one line of JSON for each snapshot of the data and key repositories:
 the repository, the full snapshot ID, restic's time, and the set, kind and publish number from the
