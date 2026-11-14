@@ -47,7 +47,9 @@ export const turnInputsMigration: Migration = {
       taken_at integer not null,
       state text not null check (state in ('writing', 'stored', 'missing', 'removed')),
       removed_cause text check (
-        removed_cause in ('retention_days', 'retention_bytes', 'forget', 'dropped', 'restore')
+        removed_cause in (
+          'retention_days', 'retention_bytes', 'forget', 'dropped', 'restore', 'reset'
+        )
       ),
       unique (capture_id, writer, counter)
     ) strict`.execute(tx);

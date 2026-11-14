@@ -9,6 +9,7 @@ import type { OpenTurnInputResult } from './reading/open-turn-input';
 import { openTurnInput } from './reading/open-turn-input';
 import type { ForgetScope } from './removal/pick-forgotten-inputs';
 import { removeForgottenInputs } from './removal/remove-forgotten-inputs';
+import { removeThreadInputs } from './removal/remove-thread-inputs';
 import { runStartRepair } from './removal/run-start-repair';
 import { runTurnInputSweep } from './removal/run-turn-input-sweep';
 import { runTurnInputsReset } from './removal/run-turn-inputs-reset';
@@ -31,6 +32,9 @@ export interface TurnInputs {
 
   // removes the requests a forget covers, and throws when one could not be removed
   readonly removeForgotten: (scope: ForgetScope) => Promise<void>;
+
+  // closes the threads' captures and removes every request on them, and throws when one failed
+  readonly removeThreads: (threads: readonly string[]) => Promise<void>;
   readonly list: (limit: number) => Promise<TurnInputList>;
   readonly open: (inputID: string) => Promise<OpenTurnInputResult>;
   readonly set: (request: SetInputLogRequest) => Promise<SetInputLogResult>;
@@ -59,6 +63,7 @@ export function createTurnInputs(options: TurnInputsOptions): TurnInputs {
     openCapture: (input) => openCapture(ctx, input),
     closeCaptures: (closeOptions) => closeCaptures(ctx, closeOptions),
     removeForgotten: (scope) => removeForgottenInputs(ctx, scope),
+    removeThreads: (threads) => removeThreadInputs(ctx, threads),
     list: (limit) => listTurnInputs(ctx, limit),
     open: (inputID) => openTurnInput(ctx, inputID),
     set: (request) => setInputLog(ctx, request),

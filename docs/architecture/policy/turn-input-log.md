@@ -92,8 +92,9 @@ request is covered when its thread is covered, or when its intake sequence is at
 forget's floor: the sequence of the forgotten record, or the first record of the forgotten item or
 moment. The boundary is inclusive, so a request taken in at the floor goes. When nixie cannot find a
 floor, every request goes. A failed shred fails the forget, and the start sequence runs it again. A
-full reset removes every body after the log's own reset. A reset of the conversations shreds the
-conversation thread's records and leaves the request bodies to retention.
+full reset removes every body after the log's own reset. A reset of the conversations closes the
+conversation thread's open captures and removes every request on that thread, in the same order as
+any removal, before it writes its `log_reset` record. A failed removal fails the reset.
 
 ## Reading
 

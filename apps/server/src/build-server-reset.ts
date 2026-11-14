@@ -22,6 +22,9 @@ export interface ServerResetControlOptions extends Omit<ServerResetOptions, 'sto
   // removes the request bodies that the turn-input log holds, after the log's own reset
   readonly runTurnInputsReset: () => Promise<void>;
 
+  // removes the request bodies of the threads that a reset of the conversations covers
+  readonly removeTurnInputThreads: (threads: readonly string[]) => Promise<void>;
+
   readonly closeAPI: () => Promise<void>;
 
   readonly readStart: () => Promise<void>;

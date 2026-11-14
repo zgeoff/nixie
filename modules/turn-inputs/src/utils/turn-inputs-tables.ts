@@ -19,7 +19,8 @@ export type InputRemovedCause =
   | 'retention_bytes'
   | 'forget'
   | 'dropped'
-  | 'restore';
+  | 'restore'
+  | 'reset';
 
 export type InputState = 'writing' | 'stored' | 'missing' | 'removed';
 

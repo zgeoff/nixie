@@ -23,6 +23,6 @@ export const loggedInputSchema = z.object({
   takenAt: z.date(),
   state: z.enum(['writing', 'stored', 'missing', 'removed']),
   removedCause: z
-    .enum(['retention_days', 'retention_bytes', 'forget', 'dropped', 'restore'])
+    .enum(['retention_days', 'retention_bytes', 'forget', 'dropped', 'restore', 'reset'])
     .nullable(),
 });
