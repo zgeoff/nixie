@@ -84,7 +84,12 @@ interface StubScript {
   charactersPerToken: number | null;
 }
 
-export function startStubModel(): StubModel {
+export interface StubModelOptions {
+  // a path that every request starts with, which the stub removes before it matches a request
+  readonly pathPrefix?: string;
+}
+
+export function startStubModel(options: StubModelOptions = {}): StubModel {
   const requests: StubModelRequest[] = [];
   const script: StubScript = { replies: [], charactersPerToken: null };
 
@@ -93,7 +98,7 @@ export function startStubModel(): StubModel {
 
     requests.push(recorded);
 
-    return renderResponse(recorded, script);
+    return renderResponse(recorded, script, options.pathPrefix ?? '');
   };
 
   const server = Bun.serve({
@@ -127,12 +132,22 @@ async function readRequest(request: Request): Promise<StubModelRequest> {
   };
 }
 
-function renderResponse(request: StubModelRequest, script: StubScript): Response {
-  if (request.path === '/v1/messages/count_tokens') {
+function renderResponse(
+  request: StubModelRequest,
+  script: StubScript,
+  pathPrefix: string,
+): Response {
+  if (!request.path.startsWith(pathPrefix)) {
+    return new Response('not found', { status: 404 });
+  }
+
+  const path = request.path.slice(pathPrefix.length);
+
+  if (path === '/v1/messages/count_tokens') {
     return Response.json({ input_tokens: buildTokenCount(request, script.charactersPerToken) });
   }
 
-  if (request.path !== '/v1/messages' || request.body === null) {
+  if (path !== '/v1/messages' || request.body === null) {
     return new Response('not found', { status: 404 });
   }
 
