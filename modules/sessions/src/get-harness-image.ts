@@ -1,8 +1,9 @@
+import type { SandboxImageKey } from '@heynixie/sandbox';
 import invariant from 'tiny-invariant';
 
 export function getHarnessImage(
-  images: Readonly<Record<string, string>>,
-  imageKey: string,
+  images: Readonly<Partial<Record<SandboxImageKey, string>>>,
+  imageKey: SandboxImageKey,
 ): string {
   const image = images[imageKey];
 

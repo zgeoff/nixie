@@ -1,4 +1,4 @@
-import type { GrantSpec, SecretSpec } from '@heynixie/sandbox';
+import type { GrantSpec, SandboxImageKey, SecretSpec } from '@heynixie/sandbox';
 import type {
   HarnessCapability,
   HarnessID,
@@ -39,7 +39,7 @@ export interface Harness {
   readonly guest: HarnessGuest;
 
   // the key of the guest's image in the sandbox manifest
-  readonly imageKey: string;
+  readonly imageKey: SandboxImageKey;
 
   // the MCP _meta key under which the guest sends the model's tool-use ID on each tool call
   readonly toolUseMetaKey: string | null;

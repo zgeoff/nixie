@@ -21,6 +21,7 @@ export { getCLIContextWindow } from './get-cli-context-window';
 export type { AgentSDKProfile } from './agent-sdk-harness-definition';
 export { bindHarness, harnesses } from './bind-harness';
 export type { Harness, HarnessEntry, HarnessGuest, HarnessSession } from './harness';
+export { modelRoles } from './model-roles';
 export { resolveRoleProfile } from './resolve-role-profile';
 export { roleNeeds } from './role-needs';
 

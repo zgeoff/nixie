@@ -6,7 +6,12 @@ import type {
   ResolvedProfile,
 } from '@heynixie/models';
 import { bindHarness, resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
-import type { GuestCommand, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
+import type {
+  GuestCommand,
+  SandboxAdapter,
+  SandboxImageKey,
+  SandboxLimits,
+} from '@heynixie/sandbox';
 import invariant from 'tiny-invariant';
 import { buildGuestCommand } from './build-guest-command';
 import { getHarnessImage } from './get-harness-image';
@@ -18,7 +23,7 @@ export interface SystemTaskOptions {
   readonly sandboxes: SandboxAdapter;
 
   // each harness's image, under the key its record names
-  readonly images: Readonly<Record<string, string>>;
+  readonly images: Readonly<Partial<Record<SandboxImageKey, string>>>;
 
   // the turn-input log, for the steps of this runner
   readonly turnInputs?: StepCapturePort;
