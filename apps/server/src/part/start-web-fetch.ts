@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
-import type { WebFetchConfig } from '@heynixie/connectors';
+import type { IsOwnerTyped, WebFetchConfig } from '@heynixie/connectors';
 import {
   buildWebFetchTool,
   makeFetchBackoff,
@@ -10,8 +10,10 @@ import {
 } from '@heynixie/connectors';
 import { defaultSizeLimits } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { isTestSandbox } from '@heynixie/sandbox';
+import type { SecretFinder } from '@heynixie/secret-scan';
 import type { ReadPage } from '@heynixie/skills';
 import type { ToolDefinition } from '@heynixie/tools';
 
@@ -29,6 +31,14 @@ export interface WebFetchOptions {
 
   // the clock of the host pauses; the system clock when absent
   readonly clock?: Clock;
+
+  // refuses a URL or a redirect hop of the tool's fetches that holds a secret; the skill file
+  // reader's fetches take no scan
+  readonly findSecret: SecretFinder;
+  readonly isOwnerTyped: IsOwnerTyped;
+
+  // the server log
+  readonly logger: Logger;
 }
 
 export interface WebFetch {
@@ -103,6 +113,10 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
       backoff,
       backoffWaitMs: config.backoff.backoffWaitMs,
       clock,
+      findSecret: options.findSecret,
+      isOwnerTyped: options.isOwnerTyped,
+      logger: options.logger,
+      secretTypedURLCovers: config.secretTypedURLCovers,
     }),
     readSkillPage: skillSandbox.readPage,
     clearPauses: backoff.clear,

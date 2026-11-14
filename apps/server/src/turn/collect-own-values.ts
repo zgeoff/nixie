@@ -1,9 +1,9 @@
+import type { SecretsEntryName } from '@heynixie/connectors';
+import { webFetchDefaults } from '@heynixie/connectors';
 import type { z } from 'zod';
 import type { secretsSchema } from '../utils/secrets-schema';
 
 type SecretsFile = z.infer<typeof secretsSchema>;
-
-type SecretsEntryName = keyof SecretsFile;
 
 export interface OwnValueSettings {
   readonly entries: readonly SecretsEntryName[];
@@ -11,14 +11,8 @@ export interface OwnValueSettings {
 }
 
 const defaultSettings: OwnValueSettings = {
-  entries: [
-    'deployment_key',
-    'impd_token',
-    'definitions_export_token',
-    'model_credentials',
-    'connector_credentials',
-  ],
-  minChars: 8,
+  entries: webFetchDefaults.secretOwnValues,
+  minChars: webFetchDefaults.secretOwnValueMinChars,
 };
 
 // Reads each string of the listed entries and the values of a map entry, never its keys. A value

@@ -1,12 +1,15 @@
 import type { Clock } from '@heynixie/clock';
 import type { Log } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
+import type { SecretFinder } from '@heynixie/secret-scan';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
-import type { FetchReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
 import type { FetchBackoff } from '../fetch/make-fetch-backoff';
+import type { FetchSandbox } from '../fetch/start-fetch-sandbox';
 import type { PageFetch } from '../page/page-fetch';
 import { pickPageView } from '../page/pick-page-view';
 import { runPageFetch } from '../page/run-page-fetch';
+import type { IsOwnerTyped } from '../page/secret-scan';
 import { getPageSession } from '../utils/get-page-session';
 import type { PageView, WebFetchRequest } from '../utils/parse-web-fetch-request';
 import { parseWebFetchRequest } from '../utils/parse-web-fetch-request';
@@ -109,10 +112,22 @@ export interface WebFetchToolOptions {
   // the longest pause a call waits out itself; a longer one ends the call, or takes the fallback
   readonly backoffWaitMs: number;
   readonly clock: Clock;
+
+  // the scan that refuses a URL or a redirect hop that holds a secret
+  readonly findSecret: SecretFinder;
+
+  // whether a typed span of the run's thread holds a URL, which a refusal asks only after a match
+  readonly isOwnerTyped: IsOwnerTyped;
+
+  // the server log
+  readonly logger: Logger;
+
+  // whether the exemption of a typed URL covers its redirects
+  readonly secretTypedURLCovers: 'named_url' | 'redirects';
 }
 
 export function buildWebFetchTool(
-  readPage: (url: string) => Promise<FetchReply>,
+  readPage: FetchSandbox['readPage'],
   options: WebFetchToolOptions,
 ): ToolDefinition {
   const log = options.log;
@@ -172,6 +187,13 @@ export function buildWebFetchTool(
         {
           log,
           readPage,
+          secretScan: {
+            findSecret: options.findSecret,
+            isOwnerTyped: options.isOwnerTyped,
+            run: context.run,
+            logger: options.logger,
+            typedURLCovers: options.secretTypedURLCovers,
+          },
           session: getPageSession(context.run),
           limits,
           imageLongEdge: options.imageLongEdge,

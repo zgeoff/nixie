@@ -183,6 +183,8 @@ export type {
   WriterUsage,
 } from './writer/writer-model';
 
+export type { IsOwnerTyped } from './typed/make-owner-typed-check';
+export { makeOwnerTypedCheck } from './typed/make-owner-typed-check';
 export { getTypedQuote } from './typed/get-typed-quote';
 export { readOwnerMessagesBySequence } from './owner/read-owner-messages-by-sequence';
 export type { UntypedTokenQuery } from './gate/check-untyped-token';

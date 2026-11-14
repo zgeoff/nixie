@@ -1,5 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
+import type { ownerImageMediaTypes } from '@heynixie/tasks';
+import { ownerMessageCodec } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import type { MessageSpan } from '../gate/gate-context';
 
@@ -9,7 +11,7 @@ export interface OwnerMessageRecord {
 
   readonly spans: readonly MessageSpan[];
 
-  readonly images?: readonly string[];
+  readonly images?: readonly (typeof ownerImageMediaTypes)[number][];
 
   readonly timeZone?: string;
 }
@@ -24,13 +26,14 @@ export async function writeOwnerMessageRecord(
       definitions: { snapshotHash: 'sha256:test' },
       thread: message.thread,
       contentSource: 'owner',
-      payload: {
+      payload: ownerMessageCodec.encode({
+        identityID: 'identity-test',
         spans: 'as_sent',
         ...(message.images === undefined || message.images.length === 0
           ? {}
           : { images: message.images.map((mediaType) => ({ mediaType })) }),
         ...(message.timeZone === undefined ? {} : { timeZone: message.timeZone }),
-      },
+      }),
       erasable: {
         text: message.text,
         spans: message.spans.map((span) => ({

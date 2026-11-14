@@ -2,9 +2,12 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { buildSandboxSpec } from '@heynixie/sandbox';
 import { buildImpPort, buildImpSandboxAdapter, parseImpConfig } from '@heynixie/sandbox-imp';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
+import type { SecretFinder } from '@heynixie/secret-scan';
+import { waitForCondition } from '@heynixie/testing';
 import { buildConnectProbe } from '../test-utils/build-connect-probe';
 import { checkIsolationTargets } from '../test-utils/check-isolation-targets';
 import { isClearIsolationLine } from '../test-utils/is-clear-isolation-line';
+import { timeHopExchange } from '../test-utils/time-hop-exchange';
 import { fetchImageArgv, startWebFetch } from './start-web-fetch';
 
 // These tests need a real impd on a host with /dev/kvm and the fetch image built into it.
@@ -24,7 +27,67 @@ async function setupTest() {
 
   const testRecorder = await setupTestRecorder();
 
+  const asked: string[] = [];
+
+  // Starts the web fetch on the imp host with a finder that records each URL it is asked about, and
+  // an adapter that prints the time of each hop's exchange.
+  const startScannedWebFetch = (matchURL: string | null) => {
+    const config = parseImpConfig({
+      IMP_URL: process.env['NIXIE_IMP_TEST_URL'],
+      IMP_TOKEN: process.env['NIXIE_IMP_TEST_TOKEN'],
+      IMP_HOST_ADDRESSES: process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'],
+      IMP_EGRESS_DENY: process.env['NIXIE_IMP_TEST_EGRESS_DENY'],
+    });
+
+    const adapter = timeHopExchange(
+      buildImpSandboxAdapter({
+        port: buildImpPort(config),
+        recorder: testRecorder.recorder,
+        config,
+        toolTarget: () => ({ path: '/nonexistent.sock' }),
+      }),
+      console.log,
+    );
+
+    const findSecret: SecretFinder = (url) => {
+      asked.push(url);
+
+      return url === matchURL ? { rule: 'test-rule' } : null;
+    };
+
+    const webFetch = startWebFetch({
+      adapter,
+      image: process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '',
+      argv: fetchImageArgv,
+      deniedRanges: [
+        ...(config.publicEgress?.hostAddresses ?? []),
+        ...(config.publicEgress?.egressDeny ?? []),
+      ],
+      log: testRecorder.log,
+      findSecret,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => {},
+    });
+
+    stack.defer(() => webFetch.stop());
+
+    return (url: string) =>
+      webFetch.tool.run(
+        { callID: 'call-1', tool: 'web_fetch', input: { url }, toolUseID: null },
+        {
+          run: {
+            runID: 'run-1',
+            thread: 'conversation',
+            tools: ['web_fetch'],
+            model: { model: 'model-a', profile: 'chat-direct' },
+          },
+        },
+      );
+  };
+
   return {
+    asked,
+    startScannedWebFetch,
     dataDir: testRecorder.log.writer.dataDir,
     log: testRecorder.log,
     recorder: testRecorder.recorder,
@@ -60,6 +123,9 @@ test.skipIf(!hasImpHost)(
         ...(config.publicEgress?.egressDeny ?? []),
       ],
       log: ctx.log,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => {},
     });
 
     ctx.stack.defer(() => webFetch.stop());
@@ -187,5 +253,46 @@ test.skipIf(!hasImpHost)(
     );
 
     expect(lines).toSatisfyAll(isClearIsolationLine);
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it passes the hop of a redirect through the real hop exchange and returns the page it ends at',
+  async () => {
+    const ctx = await setupTest();
+
+    const runFetch = ctx.startScannedWebFetch(null);
+
+    const outcome = await runFetch('https://wikipedia.org/');
+
+    expect(outcome).toMatchObject({
+      status: 'ok',
+      result: { url: 'https://www.wikipedia.org/', status: 200 },
+    });
+
+    expect(ctx.asked).toStrictEqual(['https://wikipedia.org/', 'https://www.wikipedia.org/']);
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it refuses the hop of a redirect that holds a secret, and destroys the sandbox',
+  async () => {
+    const ctx = await setupTest();
+
+    const runFetch = ctx.startScannedWebFetch('https://www.wikipedia.org/');
+
+    const outcome = await runFetch('https://wikipedia.org/');
+
+    expect(outcome).toStrictEqual({
+      status: 'error',
+      message:
+        'wikipedia.org redirected to a URL that holds a secret (rule test-rule), so it was not fetched',
+    });
+
+    await waitForCondition(async () => {
+      const left = await ctx.recorder.list('process', 'web_fetch');
+
+      return left.length === 0;
+    });
   },
 );

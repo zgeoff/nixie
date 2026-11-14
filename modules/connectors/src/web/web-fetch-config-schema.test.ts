@@ -17,6 +17,15 @@ test('it takes every default when the section is empty', () => {
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
     backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
+    secretTypedURLCovers: 'redirects',
+    secretOwnValues: [
+      'deployment_key',
+      'impd_token',
+      'definitions_export_token',
+      'model_credentials',
+      'connector_credentials',
+    ],
+    secretOwnValueMinChars: 8,
   });
 });
 
@@ -39,6 +48,15 @@ test('it takes the limits the file names', () => {
     pageStoreBytes: 4096,
     imageLongEdge: 800,
     backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
+    secretTypedURLCovers: 'redirects',
+    secretOwnValues: [
+      'deployment_key',
+      'impd_token',
+      'definitions_export_token',
+      'model_credentials',
+      'connector_credentials',
+    ],
+    secretOwnValueMinChars: 8,
   });
 });
 
@@ -108,3 +126,41 @@ test.each(['backoff_ms', 'backoff_cap_ms', 'backoff_wait_ms'])(
     expect(result.error?.issues).toPartiallyContain({ path: [key] });
   },
 );
+
+test('it takes the secret scan keys the file names', () => {
+  const result = webFetchConfigSchema.safeParse({
+    secret_typed_url_covers: 'named_url',
+    secret_own_values: ['settings', 'impd_token'],
+    secret_own_value_min_chars: 12,
+  });
+
+  expect(result.data).toMatchObject({
+    secretTypedURLCovers: 'named_url',
+    secretOwnValues: ['settings', 'impd_token'],
+    secretOwnValueMinChars: 12,
+  });
+});
+
+test('it accepts an empty list of own value entries', () => {
+  const result = webFetchConfigSchema.safeParse({ secret_own_values: [] });
+
+  expect(result.data?.secretOwnValues).toStrictEqual([]);
+});
+
+test('it refuses an entry name that the secrets file lacks', () => {
+  const result = webFetchConfigSchema.safeParse({ secret_own_values: ['api_token'] });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['secret_own_values', 0] });
+});
+
+test('it refuses a minimum own value length of zero', () => {
+  const result = webFetchConfigSchema.safeParse({ secret_own_value_min_chars: 0 });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['secret_own_value_min_chars'] });
+});
+
+test('it refuses a typed URL cover that is neither named_url nor redirects', () => {
+  const result = webFetchConfigSchema.safeParse({ secret_typed_url_covers: 'everything' });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['secret_typed_url_covers'] });
+});

@@ -43,3 +43,15 @@ test('it reads the entries a caller lists', () => {
     'Longname Ownername',
   ]);
 });
+
+test('it leaves out a value shorter than the minimum a caller gives', () => {
+  const ctx = setupTest();
+
+  expect(
+    collectOwnValues(ctx.secrets, { entries: ['model_credentials'], minChars: 17 }),
+  ).toStrictEqual(['model-credential-1']);
+
+  expect(
+    collectOwnValues(ctx.secrets, { entries: ['model_credentials'], minChars: 4 }),
+  ).toStrictEqual(['model-credential-1', 'tiny']);
+});

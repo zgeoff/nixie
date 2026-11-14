@@ -1,9 +1,12 @@
 import { expect, mock, test } from 'bun:test';
 import type { ExecStream, StreamExit } from '@heynixie/sandbox';
+import { makeSecretFinder } from '@heynixie/secret-scan';
+import { buildKey } from '@heynixie/secret-scan/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { encodeFetchMessage } from '@heynixie/wire';
 import type { HopScan, HopVerdict, PageHop } from './gate-page-hops';
 import { gatePageHops } from './gate-page-hops';
+import { makeHopScan } from './make-hop-scan';
 
 function setupTest(exitCode = 0) {
   const clock = buildTestClock(0);
@@ -342,4 +345,31 @@ test('it keeps the reason of a failed reply that is not gated when the fetch all
   const reply = await gated;
 
   expect(reply).toStrictEqual({ kind: 'failed', reason: 'the page failed', isGated: false });
+});
+
+test.each([
+  ['a key of a public rule', () => `https://next.test/?id=ghp_${buildKey('alphanumeric', 36)}`],
+  ['an own value', () => `https://next.test/?id=${buildKey('alphanumeric', 20, 9)}`],
+])('it refuses a hop that holds %s, and sends no hop-pass frame', async (_name, buildURL) => {
+  const ctx = setupTest();
+
+  const scanHop = makeHopScan({
+    findSecret: makeSecretFinder([buildKey('alphanumeric', 20, 9)]),
+    isExempt: () => Promise.resolve(false),
+    logger: () => {},
+  });
+
+  const gated = gatePageHops(ctx.stream, ctx.gate(scanHop));
+
+  ctx.pushHop(buildURL());
+
+  const reply = await gated;
+
+  expect(reply).toStrictEqual({
+    kind: 'refused',
+    reason: expect.stringContaining('start.test redirected to a URL that holds a secret (rule '),
+    isGated: true,
+  });
+
+  expect(ctx.sent).toStrictEqual([]);
 });

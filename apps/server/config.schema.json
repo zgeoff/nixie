@@ -589,6 +589,41 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "secret_typed_url_covers": {
+          "default": "redirects",
+          "type": "string",
+          "enum": [
+            "named_url",
+            "redirects"
+          ]
+        },
+        "secret_own_values": {
+          "default": [
+            "deployment_key",
+            "impd_token",
+            "definitions_export_token",
+            "model_credentials",
+            "connector_credentials"
+          ],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "deployment_key",
+              "impd_token",
+              "definitions_export_token",
+              "model_credentials",
+              "connector_credentials",
+              "settings"
+            ]
+          }
+        },
+        "secret_own_value_min_chars": {
+          "default": 8,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "additionalProperties": false

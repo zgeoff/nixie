@@ -35,3 +35,6 @@ export { searchConfigSchema } from './search/search-config-schema';
 export { webFetchConfigSchema } from './web/web-fetch-config-schema';
 export type { WebFetchConfig } from './web/web-fetch-defaults';
 export { webFetchDefaults } from './web/web-fetch-defaults';
+export type { SecretsEntryName } from './web/secrets-entry-names';
+export { secretsEntryNames } from './web/secrets-entry-names';
+export type { IsOwnerTyped } from './page/secret-scan';

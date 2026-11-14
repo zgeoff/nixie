@@ -183,7 +183,7 @@ The other packages each hold one piece the modules and apps share:
 - `libs/db` is nixie's Kysely dialect for `bun:sqlite` off the main thread, the migration runner and
   the schema version from [the database](core/database.md#migrations), tagged `server-only`.
 - `libs/secret-scan` scans a URL for a key or a token, with the pinned public rules and nixie's own
-  values, tagged `server-only`.
+  values, tagged `server-only`. [The secret scan](connectors/secret-scan.md) covers its rules.
 - `libs/wire` holds the message formats that cross a sandbox boundary.
 - `libs/clock` is the one clock that every time and every wait reads. A test build replaces it with
   a clock the test steps.

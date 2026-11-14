@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { secretsEntryNames } from './secrets-entry-names';
 import type { WebFetchConfig } from './web-fetch-defaults';
 import { webFetchDefaults } from './web-fetch-defaults';
 
@@ -18,6 +19,13 @@ export const webFetchConfigSchema = z
     backoff_ms: millisecondsSchema.default(webFetchDefaults.backoff.backoffMs),
     backoff_cap_ms: millisecondsSchema.default(webFetchDefaults.backoff.backoffCapMs),
     backoff_wait_ms: millisecondsSchema.default(webFetchDefaults.backoff.backoffWaitMs),
+    secret_typed_url_covers: z
+      .enum(['named_url', 'redirects'])
+      .default(webFetchDefaults.secretTypedURLCovers),
+    secret_own_values: z
+      .array(z.enum(secretsEntryNames))
+      .default([...webFetchDefaults.secretOwnValues]),
+    secret_own_value_min_chars: countSchema.default(webFetchDefaults.secretOwnValueMinChars),
   })
   .transform((config): WebFetchConfig => ({
     limits: {
@@ -36,4 +44,7 @@ export const webFetchConfigSchema = z
       backoffCapMs: config.backoff_cap_ms,
       backoffWaitMs: config.backoff_wait_ms,
     },
+    secretTypedURLCovers: config.secret_typed_url_covers,
+    secretOwnValues: config.secret_own_values,
+    secretOwnValueMinChars: config.secret_own_value_min_chars,
   }));
