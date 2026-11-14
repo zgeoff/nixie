@@ -41,7 +41,9 @@ test('it goes on after a run throws', async () => {
     clock,
     intervalMs: 1000,
     run: () => Promise.reject(new Error('a fault')),
-    onError: (error) => errors.push(error),
+    onError: (error) => {
+      errors.push(error);
+    },
   });
 
   await waitForCondition(() => clock.countSleepers() === 1);

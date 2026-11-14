@@ -85,16 +85,17 @@ export async function startTestTurnInputs(options: TestTurnInputsOptions = {}) {
   const gatewayURL = `http://127.0.0.1:${String(gateway.port)}`;
   const lines: RecordedLine[] = [];
 
-  const config = options.noConfig
-    ? null
-    : turnInputLogConfigSchema.parse({
-        close_wait: '500ms',
-        sources: {
-          // oxlint-disable-next-line zgeoff/no-abbreviated-names -- the key of the deployment's config
-          gateway: { base_url: gatewayURL, dir: spoolDir },
-        },
-        ...options.config,
-      });
+  const config =
+    options.noConfig === true
+      ? null
+      : turnInputLogConfigSchema.parse({
+          close_wait: '500ms',
+          sources: {
+            // oxlint-disable-next-line zgeoff/no-abbreviated-names -- the key of the deployment's config
+            gateway: { base_url: gatewayURL, dir: spoolDir },
+          },
+          ...options.config,
+        });
 
   const turnInputsOptions: TurnInputsOptions = {
     log: test.log,
