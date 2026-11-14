@@ -1,0 +1,132 @@
+// oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
+import { readOwnerImage, readRecordForgetPreview } from '@heynixie/memory';
+import { writeOwnerMessage } from '../kept/write-owner-message';
+import { requireCaller } from '../memory/require-caller';
+import { readOwnerImages } from '../owner/read-owner-images';
+import type { APIContext } from '../types';
+import { apiImplementer } from '../utils/api-implementer';
+import { probeForgettableRecord } from '../utils/probe-forgettable-record';
+import { readThreadPage } from './read-thread-page';
+import { writeConversationRetry } from './write-conversation-retry';
+import { writeRecordForget } from './write-record-forget';
+
+export function createConversationProcedures(context: APIContext) {
+  return {
+    read: apiImplementer.conversation.read.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const page = await readThreadPage(context, options.input);
+
+      if (page === null) {
+        throw options.errors.THREAD_NOT_FOUND();
+      }
+
+      return { ...page, records: [...page.records] };
+    }),
+
+    send: createSendProcedure(context),
+
+    readImage: createReadImageProcedure(context),
+
+    previewForget: apiImplementer.conversation.previewForget.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      if (!(await probeForgettableRecord(context.log.writer.db, options.input))) {
+        throw options.errors.RECORD_NOT_FOUND();
+      }
+
+      const preview = await readRecordForgetPreview(context.log, options.input);
+
+      return { momentCount: preview.momentCount, memoryItems: [...preview.memoryItems] };
+    }),
+
+    forget: apiImplementer.conversation.forget.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      const result = await writeRecordForget(context, caller, options.input);
+
+      if (result.status !== 'forgotten') {
+        throw {
+          not_found: options.errors.RECORD_NOT_FOUND,
+          reused: options.errors.CLIENT_ACTION_ID_REUSED,
+          unauthorized: options.errors.UNAUTHORIZED,
+        }[result.status]();
+      }
+
+      return { forgottenAt: new Date(result.forgottenAt) };
+    }),
+
+    retry: apiImplementer.conversation.retry.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      const result = await writeConversationRetry(context, caller, options.input);
+
+      if (result.status !== 'retried') {
+        throw {
+          nothing_to_retry: options.errors.NOTHING_TO_RETRY,
+          reused: options.errors.CLIENT_ACTION_ID_REUSED,
+          unauthorized: options.errors.UNAUTHORIZED,
+        }[result.status]();
+      }
+
+      return { retriedAt: new Date(result.retriedAt) };
+    }),
+  };
+}
+
+function createSendProcedure(context: APIContext) {
+  return apiImplementer.conversation.send.handler(async (options) => {
+    const caller = await requireCaller(
+      context,
+      options.context.sessionToken,
+      options.errors.UNAUTHORIZED,
+    );
+
+    const images = await readOwnerImages(options.input.images ?? []);
+
+    if (images.status === 'refused') {
+      throw options.errors.IMAGE_REFUSED({
+        data: { position: images.position, reason: images.reason },
+      });
+    }
+
+    const result = await writeOwnerMessage(context, caller, {
+      ...options.input,
+      images: images.images,
+    });
+
+    if (result.status !== 'written') {
+      throw {
+        thread_not_found: options.errors.THREAD_NOT_FOUND,
+        reused: options.errors.CLIENT_ACTION_ID_REUSED,
+        unauthorized: options.errors.UNAUTHORIZED,
+      }[result.status]();
+    }
+
+    return { duplicate: result.duplicate, sequence: result.sequence };
+  });
+}
+
+function createReadImageProcedure(context: APIContext) {
+  return apiImplementer.conversation.readImage.handler(async (options) => {
+    await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    const image = await readOwnerImage(context.log, options.input);
+
+    if (image === null) {
+      throw options.errors.IMAGE_NOT_FOUND();
+    }
+
+    return new File([image.bytes], `image-${options.input.position + 1}`, {
+      type: image.mediaType,
+    });
+  });
+}

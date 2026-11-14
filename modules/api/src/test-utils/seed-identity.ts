@@ -1,8 +1,8 @@
 import invariant from 'tiny-invariant';
-import { claimEnrolmentCode } from '../claim-enrolment-code';
-import { createEnrolmentCode } from '../create-enrolment-code';
+import { claimEnrolmentCode } from '../enrolment/claim-enrolment-code';
+import { createEnrolmentCode } from '../enrolment/create-enrolment-code';
+import { verifySessionToken } from '../session/verify-session-token';
 import type { APIContext, Identity } from '../types';
-import { verifySessionToken } from '../verify-session-token';
 
 export interface IdentitySeed {
   readonly deviceName: string;

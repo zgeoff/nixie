@@ -75,13 +75,14 @@ nixie sends no push of any kind. The Telegram notifier in
 [client design](../../docs/design/platform/channels/client.md#deep-links) carries only a link.
 
 An approval passes the server's check through the session alone. The API refuses any call without
-the `x-nixie-client` header ([create-api-app.ts:25](../../modules/api/src/create-api-app.ts#L25)),
-then `memory.approveProposals` resolves the caller from the session and checks the proposal ID and
-action hash of each answer
-([create-memory-proposal-procedures.ts:28](../../modules/api/src/create-memory-proposal-procedures.ts#L28),
-[line 141](../../modules/api/src/create-memory-proposal-procedures.ts#L141)). A service worker can
-send that header and the cookie, so a notification's Approve button passes the same check as the
-card, if the push carries the proposal ID and the action hash.
+the `x-nixie-client` header
+([create-api-app.ts:25](../../modules/api/src/api/create-api-app.ts#L25)), then
+`memory.approveProposals` resolves the caller from the session and checks the proposal ID and action
+hash of each answer
+([create-memory-proposal-procedures.ts:28](../../modules/api/src/memory/create-memory-proposal-procedures.ts#L28),
+[line 141](../../modules/api/src/memory/create-memory-proposal-procedures.ts#L141)). A service
+worker can send that header and the cookie, so a notification's Approve button passes the same check
+as the card, if the push carries the proposal ID and the action hash.
 
 [Approvals in the client](../../docs/design/platform/channels/approvals.md) gives an always-ask
 approval a passkey check. WebAuthn runs in a page, so the button for an always-ask item opens its

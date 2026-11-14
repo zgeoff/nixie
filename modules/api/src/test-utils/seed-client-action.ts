@@ -1,10 +1,10 @@
 import { withWriteTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { buildInputHash } from '../build-input-hash';
-import type { ClientAction } from '../read-client-action';
-import { readClientAction } from '../read-client-action';
 import type { APIContext } from '../types';
-import { writeClientAction } from '../write-client-action';
+import { buildInputHash } from '../utils/build-input-hash';
+import type { ClientAction } from '../utils/read-client-action';
+import { readClientAction } from '../utils/read-client-action';
+import { writeClientAction } from '../utils/write-client-action';
 
 export interface ClientActionSeed {
   readonly clientActionID: string;
