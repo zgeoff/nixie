@@ -80,8 +80,6 @@ These are places where the code departs from a rule today. Do not copy them into
 - `isTestSandbox` in the sandbox module checks `adapter.id === 'process'`, and the sessions module's
   `buildGuestCommand` calls it (rule 9). The server's web fetch start also calls it, inside the
   composition root.
-- The models config schema's 2 harness messages write `agent-sdk` (rules 9 and 10), until
-  [the harness list in the config error](https://linear.app/zgeoff/issue/GEO-2579) lands.
 - The wire lib lists `harnessIDs` and `harnessCapabilityLists`, `codex` included, and the models
   module's `harnesses` list has one definition, with no test across them (rule 10).
 - Two harness unions are assembled by hand: the wire lib's turn profile schema in `host-frame.ts`

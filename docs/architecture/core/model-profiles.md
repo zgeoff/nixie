@@ -47,8 +47,8 @@ count of turns and an amount of dollars. The schema refuses a default above its 
 
 A harness is the model loop that runs a profile's turns inside a sandbox, such as the Agent SDK.
 Each profile names its harness under the required `harness` key, which has no default. The schema
-refuses a profile with no `harness` key, and its error names the profile and the fix,
-`harness: agent-sdk`.
+refuses a profile with no `harness` key, or with a harness that has no definition. Its error names
+the profile and lists each harness that has a definition, such as `harness: agent-sdk`.
 
 The models module holds one definition for each harness that nixie runs, in a file of its own.
 `bindHarness` turns a profile into a harness record, and host code reads the record for everything
