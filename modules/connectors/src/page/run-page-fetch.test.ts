@@ -13,10 +13,14 @@ import type { PageView } from '../utils/parse-web-fetch-request';
 import { readWebFetchPage } from '../web/read-web-fetch-page';
 import { removeWebFetchThread } from '../web/remove-web-fetch-thread';
 import { runPageFetch } from './run-page-fetch';
+import type { SecretScanSetup } from './secret-scan';
 
 interface SetupOptions {
   // the sandbox holds its answer to this URL until `release` runs
   readonly holdURL?: string;
+
+  // replaces the scan that finds nothing
+  readonly secretScan?: Partial<SecretScanSetup>;
 }
 
 async function setupTest(answer: (url: string) => FetchReply, options: SetupOptions = {}) {
@@ -73,6 +77,19 @@ async function setupTest(answer: (url: string) => FetchReply, options: SetupOpti
         {
           log,
           readPage: fetchSandbox.readPage,
+          secretScan: {
+            findSecret: () => null,
+            isOwnerTyped: () => Promise.resolve(false),
+            run: {
+              runID: 'run-1',
+              thread: 'conversation',
+              tools: [],
+              model: { model: 'model-a', profile: 'chat-direct' },
+            },
+            logger: () => null,
+            typedURLCovers: 'redirects',
+            ...options.secretScan,
+          },
           session,
           limits: { textBytes: 20_000, linkPathChars: 24, storeBytes: 20_971_520 },
           imageLongEdge: 1568,
@@ -211,7 +228,7 @@ test('it sets off no fallback for a failed reply on the rewritten URL, and retur
   const ctx = await setupTest(() => ({
     kind: 'failed',
     reason: 'the page timed out',
-    isGated: false,
+    isGated: true,
   }));
 
   const outcome = await ctx.runFetch('https://pypi.org/project/reefkit/');
@@ -426,7 +443,7 @@ test('it passes a URL that does not parse to the fetch, and returns its refusal'
   const ctx = await setupTest(() => ({
     kind: 'refused',
     reason: 'the URL is not valid',
-    isGated: false,
+    isGated: true,
   }));
 
   const outcome = await ctx.runFetch('not a url');
@@ -517,4 +534,68 @@ test('it waits out a short pause of a same-host rewrite before the second pass',
   const outcome = await running;
 
   expect(outcome).toMatchObject({ status: 'ok', result: { text: 'Reefkit home' } });
+});
+
+test('it reads the owner messages once across both passes of a call, after the first match', async () => {
+  const typedChecks: string[] = [];
+
+  const ctx = await setupTest(
+    (url) =>
+      url === 'https://www.npmjs.com/package/tidepool-marked'
+        ? buildMockPageReply(url, { text: 'The package page' })
+        : buildMockPageReply(url, { status: 404, text: 'Not found' }),
+    {
+      secretScan: {
+        findSecret: (url) => (url.includes('marked') ? { rule: 'test-rule' } : null),
+        isOwnerTyped: (_run, url) => {
+          typedChecks.push(url);
+
+          return Promise.resolve(true);
+        },
+      },
+    },
+  );
+
+  const outcome = await ctx.runFetch('https://www.npmjs.com/package/tidepool-marked');
+
+  expect(ctx.requestedURLs).toStrictEqual([
+    'https://registry.npmjs.org/tidepool-marked/latest',
+    'https://www.npmjs.com/package/tidepool-marked',
+  ]);
+
+  expect(typedChecks).toStrictEqual(['https://www.npmjs.com/package/tidepool-marked']);
+  expect(outcome).toMatchObject({ status: 'ok', result: { status: 200 } });
+});
+
+test('it reads no owner message for a fetch that matches no rule', async () => {
+  const typedChecks: string[] = [];
+
+  const ctx = await setupTest((url) => buildMockPageReply(url), {
+    secretScan: {
+      isOwnerTyped: (_run, url) => {
+        typedChecks.push(url);
+
+        return Promise.resolve(true);
+      },
+    },
+  });
+
+  await ctx.runFetch('https://example.com/docs');
+
+  expect(typedChecks).toStrictEqual([]);
+});
+
+test('it ends the call at the URL scan when the sent URL holds a secret, with no sandbox started', async () => {
+  const ctx = await setupTest((url) => buildMockPageReply(url), {
+    secretScan: { findSecret: () => ({ rule: 'test-rule' }) },
+  });
+
+  const outcome = await ctx.runFetch('https://example.com/docs');
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'the URL holds a secret (rule test-rule), so it was not fetched',
+  });
+
+  expect(ctx.adapter.created).toHaveLength(0);
 });

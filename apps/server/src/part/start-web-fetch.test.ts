@@ -40,6 +40,9 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox, 
     argv: [process.execPath, join(import.meta.dir, '../../../../guests/fetch/src/main.ts')],
     deniedRanges: [],
     log: ctx.log,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
   });
 
   ctx.stack.defer(() => webFetch.stop());
@@ -88,6 +91,9 @@ test("it reads a skill's page through its own fetch sandbox, which refuses a pri
     argv: [process.execPath, join(import.meta.dir, '../../../../guests/fetch/src/main.ts')],
     deniedRanges: [],
     log: ctx.log,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
   });
 
   ctx.stack.defer(() => webFetch.stop());
@@ -127,6 +133,9 @@ test("it returns a skill file past the web fetch's text limit whole", async () =
     argv: [process.execPath, join(import.meta.dir, '../test-utils/run-stub-fetcher.ts')],
     deniedRanges: [],
     log: ctx.log,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
   });
 
   ctx.stack.defer(() => webFetch.stop());
@@ -153,6 +162,9 @@ test("it stores a page past the web fetch's text limit whole, in parts of that l
     argv: [process.execPath, join(import.meta.dir, '../test-utils/run-stub-fetcher.ts')],
     deniedRanges: [],
     log: ctx.log,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
   });
 
   ctx.stack.defer(() => webFetch.stop());
@@ -221,6 +233,9 @@ test('it keeps the whole text of a page whose text decodes to 3 times its body b
     argv: [process.execPath, join(import.meta.dir, '../test-utils/run-stub-fetcher.ts')],
     deniedRanges: [],
     log: ctx.log,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
     config: {
       limits: {
         bodyBytes: 1000,
@@ -234,6 +249,9 @@ test('it keeps the whole text of a page whose text decodes to 3 times its body b
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
       backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
+      secretTypedURLCovers: 'redirects',
+      secretOwnValues: [],
+      secretOwnValueMinChars: 8,
     },
   });
 

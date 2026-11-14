@@ -558,6 +558,10 @@ test('it clears every web fetch pause on a forget, so the next fetch of a paused
     imageLongEdge: 1568,
     backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock,
   });
 

@@ -48,6 +48,8 @@ async function setupTest() {
         config,
         images: pickNeededImages(images, listImageNeeds(config, declarations)),
         cleanup,
+        log: () => null,
+        secrets: { collectOwnValues: () => [] },
       },
       adapter: sandboxes.adapter,
       log: testRecorder.log,

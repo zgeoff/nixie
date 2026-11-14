@@ -35,7 +35,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
       makeStubFetcher((request) => ({
         kind: 'page',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: request.url,
         status: 200,
         contentType: 'text/html',
@@ -62,6 +62,10 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -100,7 +104,7 @@ test("it writes each link in the page's text as an ID the session numbers from 1
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
-    isGated: false,
+    isGated: true,
     url: 'https://bakery.test/news',
     status: 200,
     contentType: 'text/html',
@@ -118,6 +122,10 @@ test("it writes each link in the page's text as an ID the session numbers from 1
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -162,7 +170,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
     'https://bakery.test/news': {
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -174,7 +182,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
     'https://bakery.test/about': {
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://bakery.test/about',
       status: 200,
       contentType: 'text/html',
@@ -187,7 +195,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
 
   const tool = buildWebFetchTool(
     (url) =>
-      Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page', isGated: false }),
+      Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page', isGated: true }),
     {
       log: ctx.log,
       textBytes: 20_000,
@@ -196,6 +204,10 @@ test('it gives a URL one ID across the pages of one session', async () => {
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -250,7 +262,7 @@ test('it shows the host and path, with no query string, only for a link that lea
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
-    isGated: false,
+    isGated: true,
     url: 'https://www.ferries.test/timetable',
     status: 200,
     contentType: 'text/html',
@@ -272,6 +284,10 @@ test('it shows the host and path, with no query string, only for a link that lea
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -316,7 +332,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     'https://bakery.test/news': {
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -328,7 +344,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     'https://bakery.test/bread': {
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://bakery.test/breads/sourdough',
       status: 200,
       contentType: 'text/html',
@@ -341,7 +357,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
 
   const readPage = mock((url: string) =>
     Promise.resolve(
-      pages[url] ?? { kind: 'failed' as const, reason: 'no such page', isGated: false },
+      pages[url] ?? { kind: 'failed' as const, reason: 'no such page', isGated: true },
     ),
   );
 
@@ -353,6 +369,10 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -379,7 +399,9 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     { run },
   );
 
-  expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread');
+  expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread', {
+    scanHop: expect.any(Function),
+  });
 
   expect(outcome).toStrictEqual({
     status: 'ok',
@@ -428,7 +450,7 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url,
       status: 200,
       contentType: 'text/html',
@@ -447,6 +469,10 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -468,7 +494,9 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
     { run },
   );
 
-  expect(readPage).toHaveBeenCalledExactlyOnceWith('https://bakery.test/breads/sourdough');
+  expect(readPage).toHaveBeenCalledExactlyOnceWith('https://bakery.test/breads/sourdough', {
+    scanHop: expect.any(Function),
+  });
 });
 
 test.each([
@@ -485,7 +513,7 @@ test.each([
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -504,6 +532,10 @@ test.each([
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -530,7 +562,9 @@ test.each([
     { run },
   );
 
-  expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread');
+  expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread', {
+    scanHop: expect.any(Function),
+  });
 });
 
 test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as that link', async () => {
@@ -540,7 +574,7 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -559,6 +593,10 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -592,7 +630,9 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
     { run },
   );
 
-  expect(readPage).toHaveBeenLastCalledWith('https://[2001:db8::1]/breads');
+  expect(readPage).toHaveBeenLastCalledWith('https://[2001:db8::1]/breads', {
+    scanHop: expect.any(Function),
+  });
 });
 
 test('it refuses the ID of a link an earlier session numbered, and fetches nothing', async () => {
@@ -602,7 +642,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -621,6 +661,10 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -671,7 +715,7 @@ test('it refuses a page whose session a forget ended while it was fetched, and s
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
-    isGated: false,
+    isGated: true,
     url: 'https://bakery.test/news',
     status: 200,
     contentType: 'text/html',
@@ -692,6 +736,10 @@ test('it refuses a page whose session a forget ended while it was fetched, and s
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -747,7 +795,7 @@ test("it numbers a new session's links from 1 again", async () => {
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
-    isGated: false,
+    isGated: true,
     url: 'https://bakery.test/news',
     status: 200,
     contentType: 'text/html',
@@ -765,13 +813,17 @@ test("it numbers a new session's links from 1 again", async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
   const otherReply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
-    isGated: false,
+    isGated: true,
     url: 'https://bakery.test/about',
     status: 200,
     contentType: 'text/html',
@@ -789,6 +841,10 @@ test("it numbers a new session's links from 1 again", async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   }).run(
     {
@@ -849,7 +905,7 @@ test('it keys the links of a call under the run token by the run', async () => {
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -868,6 +924,10 @@ test('it keys the links of a call under the run token by the run', async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -893,7 +953,9 @@ test('it keys the links of a call under the run token by the run', async () => {
     { run },
   );
 
-  expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread');
+  expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread', {
+    scanHop: expect.any(Function),
+  });
 });
 
 test.each([
@@ -914,6 +976,10 @@ test.each([
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -951,6 +1017,10 @@ test('it refuses a link that does not read as a link ID', async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -995,7 +1065,7 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
-    isGated: false,
+    isGated: true,
     url: 'https://almanac.test/harbours',
     status: 200,
     contentType: 'text/html',
@@ -1013,6 +1083,10 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1060,7 +1134,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
       makeStubFetcher((request) => ({
         kind: 'page',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: request.url,
         status: 403,
         contentType: 'text/html',
@@ -1088,6 +1162,10 @@ test('it returns the reason the bot protection blocked a page in a result the sc
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     }),
   ]).findTool('web_fetch');
@@ -1129,7 +1207,7 @@ test('it returns a page result that the registry checks against the output schem
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
-    isGated: false,
+    isGated: true,
     url: 'https://site.test/',
     status: 200,
     contentType: 'text/html',
@@ -1148,6 +1226,10 @@ test('it returns a page result that the registry checks against the output schem
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     }),
   ]).findTool('web_fetch');
@@ -1191,6 +1273,10 @@ test.each([
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     }),
   ]).findTool('web_fetch');
@@ -1206,7 +1292,7 @@ test('it returns a binary page with no text', async () => {
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
-    isGated: false,
+    isGated: true,
     url: 'https://example.com/a.png',
     status: 200,
     contentType: 'image/png',
@@ -1224,6 +1310,10 @@ test('it returns a binary page with no text', async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1267,7 +1357,7 @@ test.each([
   const ctx = await setupTest();
 
   const fetchSandbox = startFetchSandbox({
-    adapter: buildStubSandboxAdapter(makeStubFetcher(() => ({ kind, reason, isGated: false }))),
+    adapter: buildStubSandboxAdapter(makeStubFetcher(() => ({ kind, reason, isGated: true }))),
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
     limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
@@ -1285,6 +1375,10 @@ test.each([
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1314,6 +1408,10 @@ test('it declares only the fetch effect and no destination, so it runs direct', 
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1339,6 +1437,10 @@ test('it marks every result field as outside content', async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1368,6 +1470,10 @@ test('it endorses only the status code, the part numbers and the truncated mark'
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1414,6 +1520,10 @@ test('it is a tool the registry accepts', async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1427,7 +1537,7 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
     makeStubFetcher((request) => ({
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -1457,6 +1567,10 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1523,7 +1637,7 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
-    isGated: false,
+    isGated: true,
     url: 'https://harbour.test/piers',
     status: 200,
     contentType: 'text/html',
@@ -1541,6 +1655,10 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1618,7 +1736,7 @@ test('it fetches the page again for a url with a part, and returns that part', a
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/plain',
@@ -1637,6 +1755,10 @@ test('it fetches the page again for a url with a part, and returns that part', a
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1684,7 +1806,7 @@ test('it refuses a part past the end of a page, and names its count of parts', a
       Promise.resolve({
         kind: 'page',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: 'https://harbour.test/ferries',
         status: 200,
         contentType: 'text/plain',
@@ -1701,6 +1823,10 @@ test('it refuses a part past the end of a page, and names its count of parts', a
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -1745,7 +1871,7 @@ test('it returns the part that holds the first match of find, with every match, 
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/plain',
@@ -1764,6 +1890,10 @@ test('it returns the part that holds the first match of find, with every match, 
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1824,7 +1954,7 @@ test('it says a find with no match found none, with the count of parts', async (
       Promise.resolve({
         kind: 'page',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: 'https://harbour.test/piers',
         status: 200,
         contentType: 'text/plain',
@@ -1841,6 +1971,10 @@ test('it says a find with no match found none, with the count of parts', async (
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -1891,6 +2025,10 @@ test('it refuses a page ID no session stored, and fetches nothing', async () => 
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -1930,7 +2068,7 @@ test('it refuses the page ID of an earlier session, and never returns another pa
       Promise.resolve({
         kind: 'page',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: 'https://harbour.test/ferries',
         status: 200,
         contentType: 'text/plain',
@@ -1947,6 +2085,10 @@ test('it refuses the page ID of an earlier session, and never returns another pa
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -2001,7 +2143,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
     'https://harbour.test/a': {
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://harbour.test/a',
       status: 200,
       contentType: 'text/plain',
@@ -2013,7 +2155,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
     'https://harbour.test/b': {
       kind: 'page',
       retryAfterMs: null,
-      isGated: false,
+      isGated: true,
       url: 'https://harbour.test/b',
       status: 200,
       contentType: 'text/plain',
@@ -2026,7 +2168,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
 
   const tool = buildWebFetchTool(
     (url) =>
-      Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page', isGated: false }),
+      Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page', isGated: true }),
     {
       log: ctx.log,
       textBytes: 20_000,
@@ -2035,6 +2177,10 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -2117,6 +2263,10 @@ test('it refuses a page ID given as a link, and names the kind it expected', asy
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -2159,6 +2309,10 @@ test.each([
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     });
 
@@ -2191,6 +2345,10 @@ test('it refuses a link ID given as a page, and names the kind it expected', asy
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -2221,7 +2379,7 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
       Promise.resolve({
         kind: 'page',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: 'https://harbour.test/ferries',
         status: 200,
         contentType: 'text/plain',
@@ -2238,6 +2396,10 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -2291,7 +2453,7 @@ test('it returns a PNG under the image limit as image content with its media typ
       makeStubFetcher((request) => ({
         kind: 'image',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: request.url,
         status: 200,
         contentType: 'image/png',
@@ -2315,6 +2477,10 @@ test('it returns a PNG under the image limit as image content with its media typ
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
@@ -2362,7 +2528,7 @@ test('it returns a result with no image, marked truncated, for an image the fetc
       Promise.resolve({
         kind: 'page',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: 'https://tide-charts.test/coast.png',
         status: 200,
         contentType: 'image/png',
@@ -2379,6 +2545,10 @@ test('it returns a result with no image, marked truncated, for an image the fetc
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -2426,7 +2596,7 @@ test('it returns an image past the long edge downscaled to fit it', async () => 
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: 'https://tide-charts.test/estuary.png',
         status: 200,
         contentType: 'image/png',
@@ -2440,6 +2610,10 @@ test('it returns an image past the long edge downscaled to fit it', async () => 
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -2492,7 +2666,7 @@ test('it counts the image it returns against the session image budget', async ()
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: 'https://tide-charts.test/harbour.png',
         status: 200,
         contentType: 'image/png',
@@ -2506,6 +2680,10 @@ test('it counts the image it returns against the session image budget', async ()
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -2542,7 +2720,7 @@ test('it returns an error, with no image, once the session holds as many images 
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: 'https://tide-charts.test/harbour.png',
         status: 200,
         contentType: 'image/png',
@@ -2556,6 +2734,10 @@ test('it returns an error, with no image, once the session holds as many images 
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -2595,7 +2777,7 @@ test('it returns an error, with no image, for an image fetched under the run tok
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: 'https://tide-charts.test/harbour.png',
         status: 200,
         contentType: 'image/png',
@@ -2609,6 +2791,10 @@ test('it returns an error, with no image, for an image fetched under the run tok
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -2646,7 +2832,7 @@ test('it returns an error for an image body that is no image the model can see',
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
-        isGated: false,
+        isGated: true,
         url: 'https://tide-charts.test/missing.png',
         status: 404,
         contentType: 'image/png',
@@ -2660,6 +2846,10 @@ test('it returns an error for an image body that is no image the model can see',
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      findSecret: () => null,
+      isOwnerTyped: () => Promise.resolve(false),
+      logger: () => null,
+      secretTypedURLCovers: 'redirects',
       clock: ctx.clock,
     },
   );
@@ -2704,7 +2894,7 @@ test('it fetches the rewritten URL for a link ID whose target a rule matches', a
           ? {
               kind: 'page',
               retryAfterMs: null,
-              isGated: false,
+              isGated: true,
               url: request.url,
               status: 200,
               contentType: 'text/html',
@@ -2716,7 +2906,7 @@ test('it fetches the rewritten URL for a link ID whose target a rule matches', a
           : {
               kind: 'page',
               retryAfterMs: null,
-              isGated: false,
+              isGated: true,
               url: request.url,
               status: 200,
               contentType: 'application/json',
@@ -2744,6 +2934,10 @@ test('it fetches the rewritten URL for a link ID whose target a rule matches', a
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => null,
+    secretTypedURLCovers: 'redirects',
     clock: ctx.clock,
   });
 
