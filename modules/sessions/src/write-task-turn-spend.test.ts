@@ -57,8 +57,8 @@ test('it refuses the limit pause of a completed turn whose lease is lost, and co
     (error: unknown) => error,
   );
 
-  const used = await ctx.readUsage(taskID);
+  const usage = await ctx.readUsage(taskID);
 
   expect(refusal).toBeInstanceOf(LeaseLostError);
-  expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
+  expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
 });

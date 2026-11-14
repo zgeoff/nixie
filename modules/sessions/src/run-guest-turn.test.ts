@@ -281,6 +281,8 @@ test('it hands each model call to the caller before it reads the next frame, so 
     onCall: (usage) => {
       events.push(`call ${usage.uncachedInputTokens}`);
       interrupt.abort();
+
+      return Promise.resolve();
     },
   });
 

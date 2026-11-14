@@ -53,6 +53,7 @@ import { isGuestPurged } from './pick-cleaned-task-ids';
 import { planTaskStep } from './plan-task-step';
 import { planTaskTurnEnd } from './plan-task-turn-end';
 import { readCleanedTaskIDs } from './read-cleaned-task-ids';
+import { readLateSpend } from './read-late-spend';
 import { readTaskUsage } from './read-task-usage';
 import { runConversationStep } from './run-conversation-step';
 import { runGuestPurge } from './run-guest-purge';
@@ -388,12 +389,12 @@ async function runGuardedStep(
   const context = runner.options.context;
 
   const run = await readStartedRun(runner, input.taskID);
-  const used = await readTaskUsage(context, input.taskID, run.profile.profile.prices);
+  const usage = await readTaskUsage(context, input.taskID, run.profile.profile.prices);
 
   const held = runner.imps.get(input.taskID);
 
   const plan = planTaskStep({
-    used,
+    used: usage.used,
     limits: run.limits,
     isImpAwake: held?.getSnapshot().matches('awake') === true,
   });
@@ -403,7 +404,7 @@ async function runGuardedStep(
       lease: input.lease,
       stepKey: input.stepKey,
       startedBy: run.startedBy,
-      used,
+      used: usage.used,
       limits: run.limits,
     });
 
@@ -420,7 +421,7 @@ async function runGuardedStep(
     };
   }
 
-  return runTaskTurn(runner, input, { run, invalidated, used });
+  return runTaskTurn(runner, input, { run, invalidated, ...usage });
 }
 
 async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
@@ -435,6 +436,7 @@ interface TaskTurnParts {
   readonly run: StartedRun;
   readonly invalidated: AbortSignal;
   readonly used: TaskLimits;
+  readonly throughSequence: number;
 }
 
 async function runTaskTurn(
@@ -450,8 +452,13 @@ async function runTaskTurn(
   const held = await acquired.promise;
 
   const run = parts.run;
-  const used = parts.used;
-  const budget = createCallBudget(run.profile.profile.prices, run.limits.dollars - used.dollars);
+  const context = runner.options.context;
+
+  const budget = createCallBudget(
+    run.profile.profile.prices,
+    run.limits.dollars - parts.used.dollars,
+    () => readLateSpend(context, input.taskID, parts.throughSequence),
+  );
 
   const ended = await runConversationStep(buildTaskRun(runner, { ...parts, ...held, budget }), {
     ...input,
@@ -461,18 +468,15 @@ async function runTaskTurn(
     (error: unknown) => ({ result: null, error }),
   );
 
-  const isPauseRequested = await probePauseRequested(
-    runner.options.context.log.writer.db,
-    input.taskID,
-  );
+  const isPauseRequested = await probePauseRequested(context.log.writer.db, input.taskID);
 
   // A step that lost the lease can record its spend during this turn, so a pause counts afresh.
-  const usedAtEnd = budget.signal.aborted
-    ? await readTaskUsage(runner.options.context, input.taskID, run.profile.profile.prices)
-    : used;
+  const usageAtEnd = budget.signal.aborted
+    ? await readTaskUsage(context, input.taskID, run.profile.profile.prices)
+    : parts;
 
   const plan = planTaskTurnEnd({
-    used: usedAtEnd,
+    used: usageAtEnd.used,
     isBudgetReached: budget.signal.aborted,
     spentDollars: budget.getSpentDollars(),
     endedTurns: ended.result === null ? 0 : countEndedTurns(ended.result.records),
@@ -485,7 +489,7 @@ async function runTaskTurn(
   }
 
   await writeTaskTurnSpend(
-    { ...runner.options.context, logger: runner.options.log },
+    { ...context, logger: runner.options.log },
     { lease: input.lease, stepKey: input.stepKey, startedBy: run.startedBy, limits: run.limits },
     plan,
   );

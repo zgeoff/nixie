@@ -155,7 +155,7 @@ export interface ConversationRun {
 
   // the most model API calls one turn makes; a turn with no limit runs until the model ends it
   readonly modelCallLimit?: number;
-  readonly onModelCall?: (usage: ModelCallUsage) => void;
+  readonly onModelCall?: (usage: ModelCallUsage) => Promise<void>;
 
   readonly getDefinitions: () => SessionDefinitions;
 
