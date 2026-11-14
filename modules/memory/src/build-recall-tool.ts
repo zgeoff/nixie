@@ -21,13 +21,17 @@ import type {
   RecalledVersion,
 } from './types';
 
+// Long enough for a UUID. The result echoes each ID twice at the most, so 100 of them still fit the
+// page limit.
+const itemIDMaxLength = 64;
+
 const recallInput = {
   type: 'object',
   properties: {
     query: { type: 'string', description: 'words to search for in memory items' },
     itemIDs: {
       type: 'array',
-      items: { type: 'string' },
+      items: { type: 'string', maxLength: itemIDMaxLength },
       maxItems: 100,
       description: 'the IDs of the items to read',
     },
@@ -206,7 +210,7 @@ type RecallDependencies = Pick<StartedMemoryStore, 'recall'> &
 
 const recallArguments = z.object({
   query: z.string().optional(),
-  itemIDs: z.array(z.string()).optional(),
+  itemIDs: z.array(z.string().max(itemIDMaxLength)).optional(),
   includeRetired: z.boolean().optional(),
   includeHistory: z.boolean().optional(),
   after: z.string().optional(),

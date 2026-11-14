@@ -377,3 +377,23 @@ test('it returns an empty items list with its search and no other key when nothi
 
   expect(keys).toStrictEqual(['items', 'searched']);
 });
+
+test('it refuses an item ID longer than 64 characters before it can fill the page', async () => {
+  const ctx = await setupTest();
+
+  const longID = 'z'.repeat(21_000);
+
+  expect(ctx.tool.parseInput({ itemIDs: [longID] }).isValid).toBe(false);
+});
+
+test('it fits the page limit when 100 unknown IDs of the longest length are named', async () => {
+  const ctx = await setupTest();
+
+  const itemIDs = Array.from({ length: 100 }, (_, index) => `${index}`.padEnd(64, 'z'));
+
+  expect(ctx.tool.parseInput({ itemIDs }).isValid).toBe(true);
+
+  const page = await ctx.readPage({ itemIDs });
+
+  expect(page.bytes).toBeLessThanOrEqual(recallPageLimitBytes);
+});

@@ -117,13 +117,13 @@ delivered it in a step whose turn ended, before the turn's last result. A step t
 stopped ran on a session that its retry starts again from the last boundary, and a recall after the
 last result reached a part of the session that the next turn never resumes. When the user interrupts
 a turn, a recall that finishes after the interrupt never gives the model its result, so the turn
-counts only the recalls recorded before the interrupt. The turn's record keeps the newest recall it
-saw at that result for this reason. A first session, and a session rebuilt after an invalidation,
-holds what its step delivered. A turn that finds its session lost reads its context again without
-the exclusion, and the new session counts what that turn retrieved and what its opening recalled,
-because the step's first recall served the lost session. An edit makes a new version, which the
-session has not seen, so an edited item matches again. A recall that the model calls itself excludes
-nothing.
+counts only the recalls whose tool result came before the interrupt. The turn's record keeps the
+newest recall it saw at that result for this reason. A first session, and a session rebuilt after an
+invalidation, holds what its step delivered. A turn that finds its session lost reads its context
+again without the exclusion, and the new session counts what that turn retrieved and what its
+opening recalled, because the step's first recall served the lost session. An edit makes a new
+version, which the session has not seen, so an edited item matches again. A recall that the model
+calls itself excludes nothing.
 
 The retrieved block puts the user's items and the shared items each under a heading of its own, so
 the model reads a deal or a nickname as something between it and the user and never as a fact about
