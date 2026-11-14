@@ -1,5 +1,5 @@
+import type { SandboxSpec } from '../types';
 import { SandboxSpecRefusedError } from './sandbox-spec-refused-error';
-import type { SandboxSpec } from './types';
 
 export function requireSandboxSpec(spec: SandboxSpec): void {
   requireExitRule(spec);

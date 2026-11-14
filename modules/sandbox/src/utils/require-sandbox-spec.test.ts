@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
+import { buildMockGrantSpec } from '../test-utils/build-mock-grant-spec';
+import { buildMockSandboxSpec } from '../test-utils/build-mock-sandbox-spec';
 import { requireSandboxSpec } from './require-sandbox-spec';
 import { SandboxSpecRefusedError } from './sandbox-spec-refused-error';
-import { buildMockGrantSpec } from './test-utils/build-mock-grant-spec';
-import { buildMockSandboxSpec } from './test-utils/build-mock-sandbox-spec';
 
 test('it accepts a model loop with a grant and no egress', () => {
   const spec = buildMockSandboxSpec({

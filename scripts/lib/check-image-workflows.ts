@@ -1,7 +1,7 @@
 import {
   sandboxImageKeys,
   sandboxImageRecords,
-} from '../../modules/sandbox/src/sandbox-image-keys.ts';
+} from '../../modules/sandbox/src/sandbox/sandbox-image-keys.ts';
 
 // Lists each way that the release and Images workflows differ from the image keys and records: a
 // key with no release job or no Images build step, a job or step that builds another image, and a

@@ -1,4 +1,4 @@
-import { sandboxImageKeys } from '../../modules/sandbox/src/sandbox-image-keys.ts';
+import { sandboxImageKeys } from '../../modules/sandbox/src/sandbox/sandbox-image-keys.ts';
 
 // The sandbox manifest that the nixie image carries: each image key with its ref,
 // <repository>@sha256:<digest>, in key order. A key with no ref and a ref with no key are faults of

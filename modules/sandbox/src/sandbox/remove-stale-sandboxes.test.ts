@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
+import { buildMockSandboxSpec } from '../test-utils/build-mock-sandbox-spec';
+import { buildStubRecordedAdapter } from '../test-utils/build-stub-recorded-adapter';
+import { setupTestRecorder } from '../test-utils/setup-test-recorder';
 import { removeStaleSandboxes } from './remove-stale-sandboxes';
-import { buildMockSandboxSpec } from './test-utils/build-mock-sandbox-spec';
-import { buildStubRecordedAdapter } from './test-utils/build-stub-recorded-adapter';
-import { setupTestRecorder } from './test-utils/setup-test-recorder';
 
 async function setupTest() {
   const recorder = await setupTestRecorder();

@@ -1,8 +1,8 @@
 import { waitForSettled } from '@heynixie/async';
 import { encodeFrame, makeFrameDecoder } from '@heynixie/wire';
+import type { ExecExit, ExecStream, StreamExit } from '../types';
 import { execOutputLimitBytes } from './exec-output-limit-bytes';
 import { readStreamOutput } from './read-stream-output';
-import type { ExecExit, ExecStream, StreamExit } from './types';
 
 export interface ProcessIO {
   readonly stdout: ReadableStream<Uint8Array>;

@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import type { SandboxTables } from './types';
+import type { SandboxTables } from '../types';
 
 export async function readSandboxOwners(
   log: Pick<Log, 'writer'>,

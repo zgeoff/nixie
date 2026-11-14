@@ -1,14 +1,8 @@
 import { mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
-import type { ProcessState } from './build-process-state';
-import { memoryKillsPath } from './memory-kills-path';
-import { mergeExecEnv } from './merge-exec-env';
-import { parseMemoryKillsFile } from './parse-memory-kills-file';
-import { resolveGuestPath } from './resolve-guest-path';
-import { runCommand } from './run-command';
-import type { ProcessIO } from './start-exec-stream';
-import { startExecStream } from './start-exec-stream';
-import { startProcessGroup } from './start-process-group';
+import { runCommand } from '../exec/run-command';
+import type { ProcessIO } from '../exec/start-exec-stream';
+import { startExecStream } from '../exec/start-exec-stream';
 import type {
   FileSpec,
   GuestHome,
@@ -19,7 +13,13 @@ import type {
   SandboxRecorder,
   SandboxSpec,
   ToolTargetResolver,
-} from './types';
+} from '../types';
+import type { ProcessState } from './build-process-state';
+import { memoryKillsPath } from './memory-kills-path';
+import { mergeExecEnv } from './merge-exec-env';
+import { parseMemoryKillsFile } from './parse-memory-kills-file';
+import { resolveGuestPath } from './resolve-guest-path';
+import { startProcessGroup } from './start-process-group';
 
 export interface ProcessSandboxContext {
   readonly recorder: SandboxRecorder;

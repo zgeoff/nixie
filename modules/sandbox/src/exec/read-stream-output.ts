@@ -1,4 +1,4 @@
-import type { CollectedOutput } from './types';
+import type { CollectedOutput } from '../types';
 
 // The read drains the stream past limitBytes, because a runtime can stall a command whose output
 // nobody reads.

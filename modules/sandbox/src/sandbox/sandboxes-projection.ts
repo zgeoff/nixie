@@ -1,11 +1,11 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import type { SandboxTables } from '../types';
 import { sandboxCreatedCodec } from './sandbox-created-codec';
 import { sandboxDestroyedCodec } from './sandbox-destroyed-codec';
 import { sandboxGrantedCodec } from './sandbox-granted-codec';
 import { sandboxSleptCodec } from './sandbox-slept-codec';
 import { sandboxWokenCodec } from './sandbox-woken-codec';
-import type { SandboxTables } from './types';
 
 export const sandboxesProjection: Projection = {
   table: 'sandboxes',

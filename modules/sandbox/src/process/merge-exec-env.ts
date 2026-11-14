@@ -1,4 +1,4 @@
-import type { SandboxSpec } from './types';
+import type { SandboxSpec } from '../types';
 
 const loopback = ['127.0.0.1', 'localhost'];
 

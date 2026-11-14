@@ -1,35 +1,35 @@
-export type { SandboxRecorderOptions } from './build-sandbox-recorder';
-export { buildSandboxRecorder } from './build-sandbox-recorder';
-export type { SandboxSpecInput } from './build-sandbox-spec';
-export { buildSandboxSpec } from './build-sandbox-spec';
-export type { ProcessSandboxOptions } from './create-process-sandbox-adapter';
-export { createProcessSandboxAdapter } from './create-process-sandbox-adapter';
-export { readStreamOutput } from './read-stream-output';
-export { createSandboxID } from './create-sandbox-id';
-export { execOutputLimitBytes } from './exec-output-limit-bytes';
-export { findKeptSandbox } from './find-kept-sandbox';
-export { isTestSandbox } from './is-test-sandbox';
-export { mergeExecEnv } from './merge-exec-env';
-export type { StaleSandboxesOptions } from './remove-stale-sandboxes';
-export { readSandboxOwners } from './read-sandbox-owners';
-export { removeStaleSandboxes } from './remove-stale-sandboxes';
-export type { SandboxImageKey, SandboxImageRecord } from './sandbox-image-keys';
-export { sandboxImageKeys, sandboxImageRecords } from './sandbox-image-keys';
-export { requireSandboxSpec } from './require-sandbox-spec';
-export { runCommand } from './run-command';
-export type { SandboxKindRule } from './sandbox-kinds';
-export { sandboxKinds } from './sandbox-kinds';
-export { SandboxHostError } from './sandbox-host-error';
-export { SandboxSpecRefusedError } from './sandbox-spec-refused-error';
-export { sandboxCreatedCodec } from './sandbox-created-codec';
-export { sandboxDestroyedCodec } from './sandbox-destroyed-codec';
-export { sandboxGrantedCodec } from './sandbox-granted-codec';
-export { sandboxSleptCodec } from './sandbox-slept-codec';
-export { sandboxWokenCodec } from './sandbox-woken-codec';
-export { sandboxesProjection } from './sandboxes-projection';
-export type { ProcessIO } from './start-exec-stream';
-export { startExecStream } from './start-exec-stream';
-export { stopGraceMs } from './stop-grace-ms';
+export type { SandboxRecorderOptions } from './sandbox/build-sandbox-recorder';
+export { buildSandboxRecorder } from './sandbox/build-sandbox-recorder';
+export type { SandboxSpecInput } from './sandbox/build-sandbox-spec';
+export { buildSandboxSpec } from './sandbox/build-sandbox-spec';
+export type { ProcessSandboxOptions } from './process/create-process-sandbox-adapter';
+export { createProcessSandboxAdapter } from './process/create-process-sandbox-adapter';
+export { readStreamOutput } from './exec/read-stream-output';
+export { createSandboxID } from './sandbox/create-sandbox-id';
+export { execOutputLimitBytes } from './exec/exec-output-limit-bytes';
+export { findKeptSandbox } from './sandbox/find-kept-sandbox';
+export { isTestSandbox } from './sandbox/is-test-sandbox';
+export { mergeExecEnv } from './process/merge-exec-env';
+export type { StaleSandboxesOptions } from './sandbox/remove-stale-sandboxes';
+export { readSandboxOwners } from './sandbox/read-sandbox-owners';
+export { removeStaleSandboxes } from './sandbox/remove-stale-sandboxes';
+export type { SandboxImageKey, SandboxImageRecord } from './sandbox/sandbox-image-keys';
+export { sandboxImageKeys, sandboxImageRecords } from './sandbox/sandbox-image-keys';
+export { requireSandboxSpec } from './utils/require-sandbox-spec';
+export { runCommand } from './exec/run-command';
+export type { SandboxKindRule } from './sandbox/sandbox-kinds';
+export { sandboxKinds } from './sandbox/sandbox-kinds';
+export { SandboxHostError } from './sandbox/sandbox-host-error';
+export { SandboxSpecRefusedError } from './utils/sandbox-spec-refused-error';
+export { sandboxCreatedCodec } from './sandbox/sandbox-created-codec';
+export { sandboxDestroyedCodec } from './sandbox/sandbox-destroyed-codec';
+export { sandboxGrantedCodec } from './sandbox/sandbox-granted-codec';
+export { sandboxSleptCodec } from './sandbox/sandbox-slept-codec';
+export { sandboxWokenCodec } from './sandbox/sandbox-woken-codec';
+export { sandboxesProjection } from './sandbox/sandboxes-projection';
+export type { ProcessIO } from './exec/start-exec-stream';
+export { startExecStream } from './exec/start-exec-stream';
+export { stopGraceMs } from './process/stop-grace-ms';
 
 export type {
   CollectedOutput,
@@ -65,4 +65,4 @@ export type {
   ToolTargetResolver,
 } from './types';
 
-export type { SandboxRecordKind } from './sandbox-record-kind';
+export type { SandboxRecordKind } from './sandbox/sandbox-record-kind';

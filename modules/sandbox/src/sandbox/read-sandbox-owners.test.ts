@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
+import { buildMockSandboxSpec } from '../test-utils/build-mock-sandbox-spec';
+import { setupTestRecorder } from '../test-utils/setup-test-recorder';
 import { readSandboxOwners } from './read-sandbox-owners';
-import { buildMockSandboxSpec } from './test-utils/build-mock-sandbox-spec';
-import { setupTestRecorder } from './test-utils/setup-test-recorder';
 
 function setupTest() {
   return setupTestRecorder();

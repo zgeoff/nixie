@@ -1,5 +1,5 @@
+import type { GrantSpec, SandboxKind, SandboxLimits, SandboxSpec } from '../types';
 import { sandboxKinds } from './sandbox-kinds';
-import type { GrantSpec, SandboxKind, SandboxLimits, SandboxSpec } from './types';
 
 export interface SandboxSpecInput {
   readonly kind: SandboxKind;

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
+import { buildMockSandbox } from '../test-utils/build-mock-sandbox';
+import { buildMockSandboxSpec } from '../test-utils/build-mock-sandbox-spec';
 import { findKeptSandbox } from './find-kept-sandbox';
-import { buildMockSandbox } from './test-utils/build-mock-sandbox';
-import { buildMockSandboxSpec } from './test-utils/build-mock-sandbox-spec';
 
 test('it keeps the sandbox whose spec matches', () => {
   const spec = buildMockSandboxSpec();

@@ -1,5 +1,6 @@
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
+import type { SandboxEvent, SandboxRecorder, SandboxRow, SandboxTables } from '../types';
 import { sandboxCreatedCodec } from './sandbox-created-codec';
 import { sandboxDestroyedCodec } from './sandbox-destroyed-codec';
 import { sandboxGrantedCodec } from './sandbox-granted-codec';
@@ -8,7 +9,6 @@ import { sandboxSleptCodec } from './sandbox-slept-codec';
 import { sandboxSpecSchema } from './sandbox-spec-schema';
 import { sandboxWokenCodec } from './sandbox-woken-codec';
 import { sandboxesProjection } from './sandboxes-projection';
-import type { SandboxEvent, SandboxRecorder, SandboxRow, SandboxTables } from './types';
 
 export interface SandboxRecorderOptions {
   readonly log: Log;

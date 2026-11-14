@@ -1,4 +1,4 @@
-import type { SandboxKind } from './types';
+import type { SandboxKind } from '../types';
 
 export interface SandboxKindRule {
   readonly egress: 'none' | 'public' | 'allow';

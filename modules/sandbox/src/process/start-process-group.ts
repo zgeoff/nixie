@@ -1,6 +1,6 @@
+import type { ProcessIO } from '../exec/start-exec-stream';
+import type { ExecExit } from '../types';
 import { sendGroupSignal } from './send-group-signal';
-import type { ProcessIO } from './start-exec-stream';
-import type { ExecExit } from './types';
 
 export interface ProcessGroupOptions {
   readonly argv: readonly string[];

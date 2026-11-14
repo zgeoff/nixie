@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { FrameTooLargeError, encodeFrame } from '@heynixie/wire';
+import { buildStubProcessIO } from '../test-utils/build-stub-process-io';
 import { startExecStream } from './start-exec-stream';
-import { buildStubProcessIO } from './test-utils/build-stub-process-io';
 
 test('it reads each framed message, whatever the transport splits', async () => {
   const encoder = new TextEncoder();

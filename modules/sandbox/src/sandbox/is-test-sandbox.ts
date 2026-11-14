@@ -1,4 +1,4 @@
-import type { SandboxAdapter } from './types';
+import type { SandboxAdapter } from '../types';
 
 // The release bundle defines NIXIE_TEST_BUILD as false, so the bundler drops every branch that this
 // check guards.

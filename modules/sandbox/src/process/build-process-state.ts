@@ -1,7 +1,7 @@
+import type { ToolTarget } from '../types';
 import type { ProcessGroup } from './start-process-group';
 import type { ToolRelay } from './start-tool-relay';
 import { startToolRelay } from './start-tool-relay';
-import type { ToolTarget } from './types';
 
 export interface ProcessState {
   readonly track: (group: ProcessGroup) => void;

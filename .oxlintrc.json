@@ -44,7 +44,6 @@
           "modules/memory",
           "modules/policy",
           "modules/prompts",
-          "modules/sandbox",
           "modules/sessions",
           "modules/skills",
           "modules/tasks"

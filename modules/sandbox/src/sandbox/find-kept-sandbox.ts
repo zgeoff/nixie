@@ -1,4 +1,4 @@
-import type { Sandbox, SandboxSpec } from './types';
+import type { Sandbox, SandboxSpec } from '../types';
 
 export function findKeptSandbox(
   existing: readonly Sandbox[],

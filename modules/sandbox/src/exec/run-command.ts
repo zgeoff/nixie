@@ -1,7 +1,7 @@
+import type { ExecResult } from '../types';
 import { execOutputLimitBytes } from './exec-output-limit-bytes';
 import { readStreamOutput } from './read-stream-output';
 import type { ProcessIO } from './start-exec-stream';
-import type { ExecResult } from './types';
 
 export async function runCommand(
   io: ProcessIO,

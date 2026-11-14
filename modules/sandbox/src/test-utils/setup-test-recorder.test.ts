@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { exists } from 'node:fs/promises';
 import { writeRecords } from '@heynixie/log';
-import { sandboxesProjection } from '../sandboxes-projection';
+import { sandboxesProjection } from '../sandbox/sandboxes-projection';
 import { setupTestRecorder } from './setup-test-recorder';
 
 test('it gives the log the sandboxes projection', async () => {

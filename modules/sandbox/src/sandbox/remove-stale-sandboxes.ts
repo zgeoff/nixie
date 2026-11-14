@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
+import type { Sandbox } from '../types';
 import { readSandboxOwners } from './read-sandbox-owners';
-import type { Sandbox } from './types';
 
 export interface StaleSandboxesOptions {
   readonly log: Log;
