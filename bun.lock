@@ -299,6 +299,7 @@
       "name": "@heynixie/integration",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/actions": "workspace:*",
         "@heynixie/api": "workspace:*",
         "@heynixie/backup": "workspace:*",
         "@heynixie/connectors": "workspace:*",
@@ -310,6 +311,7 @@
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/policy": "workspace:*",
+        "@heynixie/prompts": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/sandbox-imp": "workspace:*",
         "@heynixie/secret-scan": "workspace:*",
@@ -317,6 +319,7 @@
         "@heynixie/tasks": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/turn-inputs": "workspace:*",
         "@impz/testing": "catalog:",
         "@orpc/client": "catalog:",
         "kysely": "catalog:",

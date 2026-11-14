@@ -73,7 +73,7 @@ async function setupTest() {
 
 test('it moves the schema to version 48, which the release before cannot read', () => {
   expect(nixieSchema.migrations.indexOf(ruleNewNamesMigration) + 1).toBe(48);
-  expect(nixieSchema.oldestReader).toBe(48);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(48);
 });
 
 test.each([

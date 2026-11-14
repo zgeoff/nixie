@@ -49,7 +49,7 @@ test('it keeps each task of a database it upgrades, with a step hop of 0', async
 
   await sql`insert into tasks (task_id, is_conversation, state, read_cursor, last_inbox_sequence,
     committed_steps, step_errors, claimable_at, created_sequence, updated_sequence)
-    values ('memory-writer', 0, 'waiting', 1, 1, 4, 0, 0, 1, 1)`.execute(ctx.db);
+    values ('notes-indexer', 0, 'waiting', 1, 1, 4, 0, 0, 1, 1)`.execute(ctx.db);
 
   await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
 
@@ -59,7 +59,7 @@ test('it keeps each task of a database it upgrades, with a step hop of 0', async
 
   expect(rows.rows).toStrictEqual([
     {
-      task_id: 'memory-writer',
+      task_id: 'notes-indexer',
       is_conversation: 0,
       state: 'waiting',
       read_cursor: 1,
@@ -84,7 +84,7 @@ test('it refuses a task message of a kind the tool does not send', async () => {
 
   const refused = await sql`insert into task_messages (message_id, from_task, to_task, kind,
     reply_to, wait_state, sent_sequence)
-    values ('k3vq8m2xpa', 'memory-writer', 'conversation', 'shout', null, 'none', 1)`
+    values ('k3vq8m2xpa', 'notes-indexer', 'conversation', 'shout', null, 'none', 1)`
     .execute(ctx.db)
     .then(
       () => null,
