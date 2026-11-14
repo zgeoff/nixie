@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecordKeys, readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
-import { removeTestRecordKey } from '@heynixie/log/test-utils';
+import { readTestRecordRows, removeTestRecordKey } from '@heynixie/log/test-utils';
 import { writeImageOfferRecord } from '@heynixie/memory/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -372,3 +372,53 @@ test('it leaves an unanswered start call with the same name and another brief re
 
   expect(entry?.record.erasable.status).toBe('readable');
 });
+
+test.each([
+  ['the conversation', 'conversation'],
+  ['a started task', 'task-9f3k2m7q1x'],
+])(
+  'it deletes the key of a tool result on %s, cleans its sequence from the sessions, and commits record.forgotten',
+  async (_label, thread) => {
+    const ctx = await setupTest();
+
+    const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
+
+    const [result] = await writeRecords(ctx.context.log, [
+      {
+        kind: 'tool_result',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread,
+        erasable: { page: 'The locker code is 2291.' },
+      },
+    ]);
+
+    invariant(result);
+
+    const rows = await readTestRecordRows(ctx.context.log.writer);
+
+    const keyID = rows.find((row) => row.sequence === result.sequence)?.key_id;
+
+    invariant(keyID);
+
+    await ctx.startForget({ thread, sequence: result.sequence });
+
+    await runRecordForgetCleanup(
+      { ...ctx.context, readSessionCleanup: () => cleanupSessions },
+      result.sequence,
+    );
+
+    const keys = await readRecordKeys(ctx.context.log, [keyID]);
+
+    const forgotten = await readRecords(ctx.context.log, {
+      afterSequence: 0,
+      kinds: ['record.forgotten'],
+    });
+
+    expect(keys.has(keyID)).toBe(false);
+    expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ recordSequence: result.sequence });
+
+    expect(forgotten.map((entry) => [entry.record.thread, entry.record.payload])).toStrictEqual([
+      [thread, { recordSequence: result.sequence }],
+    ]);
+  },
+);
