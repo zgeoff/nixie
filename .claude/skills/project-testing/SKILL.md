@@ -62,7 +62,8 @@ metadata:
     web fetch guest's suites pass one from
     [`buildStubResolver`](../../../guests/fetch/src/test-utils/build-stub-resolver.ts).
 
-  Point a test's unmatched requests at a loopback host, unless the code under test takes a resolver.
+  Serve a test's outside requests from a loopback server, unless the code under test takes a
+  resolver.
 
 ## Test commands
 
@@ -82,19 +83,20 @@ whose script runs `bun test` itself.
 | `*.model-api.test.ts`                                                                              | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | no                |
 | every other `*.test.ts`: the unit tests                                                            | `bun run test`                                | in `pr.yml`       |
 
-- Run the unit tests through `bun run test`. It first runs `bun run models`, which fetches the
-  memory encoder's model files, `bun run test:bundles`, which builds nixie's test bundle and its
-  release bundle, and `bun run test:templates`, which builds the migrated-data template. To test one
-  file, run those 3 commands once, then `bun test <path>` from the repo root. Without
-  `bun run models`, a bare `bun test` skips the memory encoder's suites. Without
-  `bun run test:bundles`, a test builds a missing bundle itself and runs past its limit. Run
-  `bun run test:bundles` again after you change a server package, as the Test utils fact defines
-  one.
+- Run the unit tests through `bun run test`. Before `bun test <path>` on one unit test file, run
+  from the repo root the 3 commands that `bun run test` runs first:
+  - Run `bun run models` to fetch the memory encoder's model files. Without them, a bare `bun test`
+    skips the encoder's suites.
+  - Run `bun run test:bundles` to build nixie's test and release bundles, and again after you change
+    a server package: the server app, a module, an adapter or a lib. A test that finds no bundle
+    builds one and runs past its limit.
+  - Run `bun run test:templates` to build the migrated-data template, and again after a change under
+    `libs/db/src/` or `modules/log/src/`, as
+    [the in-process harness](./references/nixie-harnesses.md#the-in-process-harness) describes.
 - To test one file of a lane, pass the file's path to the lane's command, such as
   `bun run test:agent-sdk <path>`. rig runs only the lane's own files among the paths you pass.
-  Never test a lane's file with a bare `bun test`. A bare `bun test` gives the file the unit limit,
-  and skips the start hook that rig runs before the bundle and restic lanes to make the builds their
-  tests read.
+  Never test a lane's file with a bare `bun test`. It gives the file the unit limit, and skips the
+  start hook that rig runs before the bundle and restic lanes to build what their tests read.
 - To test one e2e file, run the commands of the `test:e2e` script up to its `bun test`. Then run
   that `bun test` with the file's path in place of `e2e/`. `bun run test:e2e` passes a path you add
   only to its last command.
@@ -111,10 +113,11 @@ whose script runs `bun test` itself.
   model host through the broker. Test every other case of the imp adapter in the unit tests, on
   `startTestImpd` from `@impz/testing`. It runs impd's own API on stand-ins for the VMs and the
   host, so the test does not need `/dev/kvm`.
-- Set `NIXIE_SDK_CONTRACT=1` when you test the model API files. Without it, every model API test
-  skips, and the command passes with no test run.
-- Set no time limit in a test. rig gives each test its lane's limit, and a raised limit only hides a
-  slow test. The `zgeoff/max-test-timeout` lint rule fails a limit above the lane's.
+- Set `NIXIE_SDK_CONTRACT=1` for the model API tests, or every one skips and its command passes with
+  no test run.
+- Set no time limit in a test, except a model API test. rig gives each test its lane's limit, and a
+  raised limit only hides a slow test. The `zgeoff/max-test-timeout` lint rule fails a limit above
+  the lane's.
 - Give a model API test a limit of its own, because a live model's time varies by test. Measure the
   test's time in an imp, with the steps in the
   [SDK contract suite runbook](../../../docs/runbooks/sdk-contract-suite.md). Then pass about twice
@@ -148,8 +151,7 @@ whose script runs `bun test` itself.
 
 ## Where a harness lives
 
-- Search [`libs/testing/src/`](../../../libs/testing/src/) before you write a harness. Move a
-  harness there from its package's `src/test-utils/` once a second server package needs it.
+- Search [`libs/testing/src/`](../../../libs/testing/src/) before you write a harness.
 - Import the harness that spawns nixie in an `e2e/` suite from
   [`@heynixie/server/test-utils`](../../../apps/server/src/test-utils/index.ts), and the helpers
   that an `e2e/` suite shares with the browser suites from

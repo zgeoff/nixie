@@ -23,11 +23,17 @@ in place of the sandbox adapter. A turn starts no guest process and no Agent SDK
   the stub guest received.
 - Never make the stub imitate the SDK's request to the model. A copy of the SDK's logic drifts from
   the SDK, and no test catches the drift.
-- Write no migration step: the harness starts on migrated data. It copies each data directory from a
-  template that [`writeMigratedData`](../../../../apps/server/src/test-utils/write-migrated-data.ts)
-  migrates, which `bun run test:templates` builds before the unit run. To test the migration itself,
-  open an empty data directory with
-  [`startWriter`](../../../../modules/log/src/writer/start-writer.ts).
+- Run no migration in the test. Each harness start copies its data directory from the migrated-data
+  template: a data directory with every migration run.
+  - `bun run test` builds the template with `bun run test:templates` before the unit tests start.
+    Before you run one file with `bun test <path>`, run `bun run test:templates` yourself.
+  - After any change under `libs/db/src/` or `modules/log/src/`, run `bun run test:templates` again.
+    The template's name holds a hash of those folders, so the first start after such a change finds
+    no template, builds one itself, and can run past the unit lane's 5 s limit.
+  - [`writeMigratedData`](../../../../apps/server/src/test-utils/write-migrated-data.ts) holds the
+    template's inputs, and builds the template on a start that finds none.
+- To test a migration, leave the harness out. Open an empty data directory of your own with
+  [`startWriter`](../../../../modules/log/src/writer/start-writer.ts), which runs every migration.
 
 ## A crash suite on the spawned harness
 
