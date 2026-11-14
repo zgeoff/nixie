@@ -1,17 +1,18 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import { buildStubSandboxes, setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { buildCleanup } from './build-cleanup';
 import { listImageNeeds } from './list-image-needs';
 import { loadDeploymentConfig } from './load-deployment-config';
 import { loadSandboxManifest } from './load-sandbox-manifest';
 import { pickNeededImages } from './pick-needed-images';
 import { serverPartDeclarations } from './server-part-declarations';
 import type { ServerPartValues } from './server-part-values';
-import { buildStubPartReader } from './test-utils/build-stub-part-reader';
+import { startWebFetchPart } from './start-web-fetch-part';
 import { createTestClient } from './test-utils/create-test-client';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 import { writeBootFiles } from './test-utils/write-boot-files';
@@ -32,25 +33,25 @@ async function setupTest() {
   invariant(webFetch !== undefined, 'the tool parts hold a web_fetch part');
 
   const sandboxes = buildStubSandboxes();
+  const cleanup = buildCleanup();
 
-  const startWebFetch = (declarations: readonly AnyPartDeclaration<ServerPartValues>[]) => {
-    const needs = listImageNeeds(config, declarations);
+  // onTestFinished runs its callbacks first in, first out, so the web fetch stops while the
+  // recorder's writer still runs.
+  onTestFinished(() => cleanup.stop());
 
-    const options = {
-      sandbox: { adapter: 'test' },
-      config,
-      images: pickNeededImages(images, needs),
-      cleanup: { defer: mock() },
-    };
+  const testRecorder = await setupTestRecorder();
 
-    return webFetch.start(
-      buildStubPartReader<ServerPartValues>({
-        inputs: { options },
-        context: { apiContext: { log: {} } },
-        sandbox_adapter: sandboxes.adapter,
-      }),
-    );
-  };
+  const startWebFetch = (declarations: readonly AnyPartDeclaration<ServerPartValues>[]) =>
+    startWebFetchPart({
+      options: {
+        sandbox: { adapter: 'test' },
+        config,
+        images: pickNeededImages(images, listImageNeeds(config, declarations)),
+        cleanup,
+      },
+      adapter: sandboxes.adapter,
+      log: testRecorder.log,
+    });
 
   return {
     sandboxes,
@@ -79,7 +80,7 @@ test('it fails to start the web fetch part when its declaration names no image',
   const others = serverPartDeclarations.filter((declaration) => declaration.name !== 'web_fetch');
   const withoutImages = [...others, ctx.webFetchWithoutImages];
 
-  expect(ctx.startWebFetch(withoutImages)).rejects.toThrow(
+  await expect(ctx.startWebFetch(withoutImages)).rejects.toThrow(
     'the sandbox manifest holds no fetch image',
   );
 });
