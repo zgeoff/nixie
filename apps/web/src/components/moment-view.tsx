@@ -80,7 +80,7 @@ function MomentDetails(props: MomentDetailsProps): ReactNode {
       <MomentNote moment={moment} />
       <MomentReflections moment={moment} />
       <MomentLinks moment={moment} />
-      <MomentSpan momentID={moment.momentID} />
+      <MomentSpan momentID={moment.momentID} thread={moment.thread} />
       <MomentEdges moment={moment} />
       <MomentDestroyControl
         momentID={moment.momentID}

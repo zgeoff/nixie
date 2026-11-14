@@ -1,6 +1,9 @@
 import { expect, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, getResponse, http } from 'msw';
+import { handlers } from '../mocks/handlers';
+import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { toLogRecord } from '../mocks/to-log-record';
 import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
@@ -95,7 +98,10 @@ test('it shows the message as removed as soon as your forget succeeds', async ()
   const rendered = render(<RecordItem record={toLogRecord(stored)} />);
 
   await user.click(rendered.getByRole('button', { name: 'Forget' }));
-  await user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+
+  const target = await rendered.findByRole('button', { name: 'Forget for good' });
+
+  await user.click(target);
 
   await waitFor(() => {
     expect(rendered.getByRole('listitem').textContent).toBe('nixie — removed');
@@ -120,4 +126,64 @@ test('it shows a message that fails to decrypt as nothing', () => {
   );
 
   expect(rendered.queryByRole('listitem')).toBeNull();
+});
+
+test('it shows what the forget removes, and only then its confirm', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const stored = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'The shed code is 4417.' },
+  });
+
+  await store.moments.create({ firstSequence: stored.sequence, lastSequence: stored.sequence });
+
+  const gate = Promise.withResolvers<void>();
+
+  server.use(
+    http.post('*/rpc/conversation/previewForget', async (call) => {
+      await gate.promise;
+
+      return getResponse(handlers, call.request);
+    }),
+  );
+
+  const rendered = render(<RecordItem record={toLogRecord(stored)} />);
+
+  await user.click(rendered.getByRole('button', { name: 'Forget' }));
+
+  const before = rendered.queryByRole('button', { name: 'Forget for good' });
+
+  gate.resolve();
+
+  await rendered.findByText('It is part of 1 moment. Each keeps its place and loses this text.');
+
+  expect(before).toBeNull();
+  expect(rendered.getByRole('button', { name: 'Forget for good' })).toBeEnabled();
+});
+
+test('it shows an error and no confirm when the preview of a forget fails', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const stored = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'The shed code is 4417.' },
+  });
+
+  server.use(
+    http.post('*/rpc/conversation/previewForget', () =>
+      HttpResponse.json({ code: 'INTERNAL_SERVER_ERROR' }, { status: 500 }),
+    ),
+  );
+
+  const rendered = render(<RecordItem record={toLogRecord(stored)} />);
+
+  await user.click(rendered.getByRole('button', { name: 'Forget' }));
+  await rendered.findByRole('alert');
+
+  expect(rendered.queryByRole('button', { name: 'Forget for good' })).toBeNull();
 });

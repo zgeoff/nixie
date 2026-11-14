@@ -1,11 +1,14 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { forgettableKinds } from '@heynixie/contract';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { css } from '../styled-system/css';
 import type { MomentSpanRecord } from '../types';
 import { useNixieClient } from '../use-nixie-client';
+import { ForgetControl } from './forget-control';
 
 export interface MomentSpanProps {
   readonly momentID: string;
+  readonly thread: string;
 }
 
 const section = css({ marginBlock: '4' });
@@ -37,7 +40,7 @@ export function MomentSpan(props: MomentSpanProps): ReactNode {
           {span.data.pages
             .flatMap((page) => page.records)
             .map((record) => (
-              <SpanRecord key={record.sequence} record={record} />
+              <SpanRecord key={record.sequence} record={record} thread={props.thread} />
             ))}
         </ol>
       )}
@@ -58,13 +61,17 @@ export function MomentSpan(props: MomentSpanProps): ReactNode {
 
 interface SpanRecordProps {
   readonly record: MomentSpanRecord;
+  readonly thread: string;
 }
 
+const forgettable: readonly string[] = forgettableKinds;
 const quiet = css({ color: 'textMuted', fontSize: 'sm' });
 const gap = css({ borderStyle: 'dashed', borderWidth: '1px', color: 'textMuted', padding: '2' });
 const speakers: Readonly<Record<string, string>> = { owner_message: 'You', 'model.reply': 'nixie' };
 
 function SpanRecord(props: SpanRecordProps): ReactNode {
+  const nixie = useNixieClient();
+  const queryClient = useQueryClient();
   const record = props.record;
   const label = `Record ${String(record.sequence)}`;
 
@@ -95,6 +102,21 @@ function SpanRecord(props: SpanRecordProps): ReactNode {
           {speaker} · record {record.sequence}
         </p>
         <p className={css({ whiteSpace: 'pre-wrap' })}>{record.text}</p>
+        {forgettable.includes(record.kind) ? (
+          <ForgetControl
+            hasText
+            kind={record.kind}
+            label="Remove this record"
+            onForgotten={() => {
+              void queryClient.invalidateQueries({
+                queryKey: nixie.queryUtils.memory.readMomentSpan.key(),
+              });
+            }}
+            onOpenChange={() => {}}
+            sequence={record.sequence}
+            thread={props.thread}
+          />
+        ) : null}
       </li>
     );
   }

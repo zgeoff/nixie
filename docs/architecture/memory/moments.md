@@ -153,6 +153,19 @@ apart from any other gap: a removed record reads "this part is removed. Its text
 any other gap reads "this part is gone. It was forgotten". The span read of the API carries the same
 removal mark.
 
+The moment view offers "Remove this record" on each message and reply of the span, and the thread
+view offers "Forget" on the same records. Both open the same confirmation, which first reads
+`conversation.previewForget`. The preview counts the moments whose span holds the record, leaving
+out a moment that is destroying or destroyed, and lists the memory items whose evidence quotes it,
+each with its current text. A pending proposal for a new item counts as an item, with the proposal's
+text, and an item whose text does not decrypt stays off the list. The confirmation offers the forget
+only after the preview loads. When a memory item is listed, it says that the memories stay but lose
+their edit history, their quotes of the record and any suggested changes the user has not answered.
+When the preview fails, the client shows an error in place of the confirmation and hides the control
+on that record until the page reloads. The preview reads the log and its plain evidence columns, so
+it works while memory starts. The kinds the control covers come from `forgettableKinds` in the
+contract package, which the forget of the API checks too.
+
 The user renames a moment, moves its edges, writes or rewrites its note, removes a reflection, and
 links or unlinks a memory item by its short ID. Each edit is a
 [checked action](../channels/api.md#checked-actions) bound to the version its draft started from. An
