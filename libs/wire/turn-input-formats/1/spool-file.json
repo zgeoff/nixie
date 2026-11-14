@@ -1,0 +1,16 @@
+{
+  "keySeed": "nixie turn-input fixture key 1",
+  "sealed": "AAABU3sidmVyc2lvbiI6MSwiY2FwdHVyZUlEIjoiM2Y5YzJhNTQtN2IxZS00ZDY4LTlhMGYtNWUyYzgxYjZkN2EzIiwid3JpdGVyIjoiYTFiMmMzZDRlNWY2MDcxOCIsImNvdW50ZXIiOjMsInJlY2VpdmVkQXQiOjE3OTg3NjE2MDAwMDAsInJvdXRlIjoiaGFyYm91ciIsImFwaSI6ImFudGhyb3BpYy1tZXNzYWdlcyIsImVuZHBvaW50IjoibWVzc2FnZXMiLCJieXRlcyI6MTA2LCJlcGhlbWVyYWxLZXkiOiJCQ3hxcmVEQ1lSTkljWThpdG9CczZaMGIydG5SVkRDTXREMU9OQ3UxQ2piTFJxRlI5dW5YZWlLNEN6R0hkdDRDcjBJb2dLNkdmbmp5aklMV3Y1d2NOTHMiLCJpdiI6IkNkWmp3TVZEUmYzSFJidm0ifYAZUxs74JmwX0+UPYk5zM6JbzxP6GMOIge0PHUy/9lKOdosji/ciZj0/PNA9TKT7diUiDOoUWOSHS6bjr4pRoStVLFTOqE7DJk6KG02GPeWtyfncsY71luHNQjq2+q03ypPeKzRrBYaR+NTFLZA5dk+wDV3AXdrvAlG",
+  "expected": {
+    "version": 1,
+    "captureID": "3f9c2a54-7b1e-4d68-9a0f-5e2c81b6d7a3",
+    "writer": "a1b2c3d4e5f60718",
+    "counter": 3,
+    "receivedAt": 1798761600000,
+    "route": "harbour",
+    "api": "anthropic-messages",
+    "endpoint": "messages",
+    "bytes": 106
+  },
+  "body": "{\"model\":\"model-small\",\"max_tokens\":64,\"messages\":[{\"role\":\"user\",\"content\":\"Name three harbour birds.\"}]}"
+}
