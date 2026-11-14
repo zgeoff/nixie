@@ -1,6 +1,6 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import { createShortID } from '../create-short-id';
+import { createShortID } from '../migration/create-short-id';
 
 export interface MemoryItemRowSeed {
   readonly itemID: string;

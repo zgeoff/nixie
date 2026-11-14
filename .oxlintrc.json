@@ -34,7 +34,6 @@
           "apps/server",
           "apps/web",
           "guests/conversation",
-          "libs/db",
           "libs/testing",
           "libs/wire",
           "modules/api",

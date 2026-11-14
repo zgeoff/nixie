@@ -3,10 +3,10 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Kysely, sql } from 'kysely';
-import { buildSqliteWorkerDialect } from '../build-sqlite-worker-dialect';
-import { nixieSchema } from '../nixie-schema';
-import { pauseMigrationVersion } from '../pause-migration-version';
-import { runMigrations } from '../run-migrations';
+import { pauseMigrationVersion } from '../migration/pause-migration-version';
+import { runMigrations } from '../migration/run-migrations';
+import { nixieSchema } from '../schema/nixie-schema';
+import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
 import { pauseMigration } from './0045-pause-migration';
 

@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Kysely, sql } from 'kysely';
 import { z } from 'zod';
-import { buildSqliteWorkerDialect } from '../build-sqlite-worker-dialect';
-import { nixieSchema } from '../nixie-schema';
-import { runMigrations } from '../run-migrations';
+import { runMigrations } from '../migration/run-migrations';
+import { nixieSchema } from '../schema/nixie-schema';
+import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
 import { proposalsMigration } from './0043-proposals-migration';
 

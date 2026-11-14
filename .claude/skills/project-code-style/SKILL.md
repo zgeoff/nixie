@@ -16,8 +16,8 @@ metadata:
 - Keep the name of a method that a library calls by that name, such as `executeQuery`, which Kysely
   calls on a database connection. [code-style](../code-style/SKILL.md) bans names that start with
   `execute`, but a renamed method never gets called.
-  [`executeQuery`](../../../libs/db/src/build-sqlite-worker-dialect.ts) in the SQLite worker dialect
-  keeps its name for this reason.
+  [`executeQuery`](../../../libs/db/src/sqlite/build-sqlite-worker-dialect.ts) in the SQLite worker
+  dialect keeps its name for this reason.
 
 ## The function-verb lint rule
 
