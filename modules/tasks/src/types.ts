@@ -180,6 +180,8 @@ export type FaultPointID =
   | 'recovery.step.3'
   | 'recovery.step.4'
   | 'recovery.step.5'
+  | 'recovery.pause.committed'
+  | 'recovery.pause.marker_cleared'
   | 'sigterm.grace'
   | 'memory.recall.ranked'
   | 'memory.recall.checked'

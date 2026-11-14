@@ -156,12 +156,12 @@ backups. The restore writes a marker in the state `replacing` into the data dire
 first database moves. After the restore note is written, it writes the pending restore's ID, its
 time and the backup's newest record time to a second file and renames that file over the marker,
 which puts the marker in the state `holding` and leaves a marker in place at every instant. A server
-refuses to start on `replacing`, and starts on `holding` only through the install at the next start
-([GEO-2564](https://linear.app/zgeoff/issue/GEO-2564)). Until the install lands, a restored server
-refuses to start. The backup command refuses `replacing` and copies the pair on `holding`. A lock
-file in the data directory keeps a backup and a restore apart, because the writer lock cannot:
-backups share the lock, and a restore holds it alone, so neither copies a pair that the other is
-replacing.
+refuses to start on `replacing`. On `holding`, the server's next start pauses nixie, records the
+tasks to check, and removes the marker ([the start sequence](./server.md#the-start-sequence)). Every
+other process refuses to start on `holding`. The backup command refuses `replacing` and copies the
+pair on `holding`. A lock file in the data directory keeps a backup and a restore apart, because the
+writer lock cannot: backups share the lock, and a restore holds it alone, so neither copies a pair
+that the other is replacing.
 
 ## Memory
 

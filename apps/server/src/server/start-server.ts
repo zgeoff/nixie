@@ -95,6 +95,7 @@ interface LoggedWriterOptions {
 async function startLoggedWriter(dataDir: string, options: LoggedWriterOptions): Promise<Writer> {
   const writer = await startWriter({
     dataDir,
+    installsRestorePause: true,
     ...(options.clock === undefined ? {} : { clock: options.clock }),
   });
 
