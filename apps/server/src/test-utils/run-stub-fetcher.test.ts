@@ -27,6 +27,7 @@ test('it answers a page whose text holds the bytes the URL names', async () => {
   expect(replies).toStrictEqual([
     {
       kind: 'page',
+      retryAfterMs: null,
       url: 'https://pages.test/files/12',
       status: 200,
       contentType: 'text/plain; charset=utf-8',
@@ -56,6 +57,7 @@ test('it answers a PNG of the size the URL names', async () => {
 
   expect(reply).toStrictEqual({
     kind: 'image',
+    retryAfterMs: null,
     url: 'https://charts.test/images/40x30.png',
     status: 200,
     contentType: 'image/png',
@@ -90,6 +92,7 @@ test("it answers no image, marked truncated, past the request's image limit, as 
   expect(replies).toStrictEqual([
     {
       kind: 'page',
+      retryAfterMs: null,
       url: 'https://charts.test/images/40x30.png',
       status: 200,
       contentType: 'image/png',

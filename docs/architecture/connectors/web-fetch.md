@@ -133,6 +133,12 @@ only over that process's stdin and stdout, one frame each way, each frame holdin
 in the format `libs/wire` defines. The request carries the URL, the fetch limits and the ranges the
 deployment lists as internal; nothing else nixie holds reaches the sandbox.
 
+A page or image reply also carries `retryAfterMs`, the wait in milliseconds that the site's headers
+ask for. The fetcher takes it from `Retry-After` on a 429, 503 or 403 reply, and from
+`x-ratelimit-reset` on any reply whose `x-ratelimit-remaining` is `0`. When both headers give a
+wait, the longer one wins. The field is null when neither header gives one. A reply from a fetcher
+built before the field reads as null, so the server and the fetch image update in either order.
+
 Fetches run one at a time, and the next fetch starts only once the last fetch's destroy ends, so no
 fetcher ever runs beside another. nixie returns the reply as soon as the fetcher sends it and
 destroys the sandbox after, which keeps the destroy off the reply's path.

@@ -13,6 +13,7 @@ test('it returns the reply given from every web fetch', async () => {
 
   const tools = buildTestConversationTools({
     kind: 'page',
+    retryAfterMs: null,
     url: 'https://bread-notes.test/rye',
     status: 200,
     contentType: 'text/plain',

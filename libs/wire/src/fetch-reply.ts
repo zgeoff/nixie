@@ -13,6 +13,9 @@ export type FetchReply =
       readonly isTruncated: boolean;
 
       readonly blocked: string | null;
+
+      // the wait in ms that the reply's headers ask for, null when they ask for none
+      readonly retryAfterMs: number | null;
     }
   | {
       readonly kind: 'image';
@@ -23,6 +26,9 @@ export type FetchReply =
 
       // the whole body, as the site sent it, within the image limit
       readonly base64: string;
+
+      // the wait in ms that the reply's headers ask for, null when they ask for none
+      readonly retryAfterMs: number | null;
     }
   | { readonly kind: 'refused'; readonly reason: string }
   | { readonly kind: 'failed'; readonly reason: string };

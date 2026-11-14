@@ -5,6 +5,7 @@ import { buildReadableText } from './build-readable-text';
 import { buildTextWithinLimit } from './build-text-within-limit';
 import { decodeContent } from './decode-content';
 import { findBotChallenge } from './find-bot-challenge';
+import { findRetryAfterMs } from './find-retry-after-ms';
 import { readLimitedBody } from './read-limited-body';
 
 export async function readResponsePage(
@@ -14,11 +15,16 @@ export async function readResponsePage(
 ): Promise<FetchReply> {
   const contentType = response.headers['content-type'] ?? null;
   const status = response.statusCode ?? 0;
+  const retryAfterMs = findRetryAfterMs(status, response.headers, Date.now());
   const kind = pickBodyKind(contentType);
 
   try {
     if (kind === 'image') {
-      return await readImage({ url: url.href, status, contentType }, response, limits);
+      return await readImage(
+        { url: url.href, status, contentType, retryAfterMs },
+        response,
+        limits,
+      );
     }
 
     return {
@@ -26,6 +32,7 @@ export async function readResponsePage(
       url: url.href,
       status,
       contentType,
+      retryAfterMs,
       ...(await readContent(url, response, kind, limits)),
     };
   } finally {
@@ -68,6 +75,7 @@ interface ResponseHead {
   readonly url: string;
   readonly status: number;
   readonly contentType: string | null;
+  readonly retryAfterMs: number | null;
 }
 
 // An image the site's bot protection sent, or one past the image limit, returns as a page with no

@@ -11,9 +11,10 @@ test('it writes the message as one line of JSON', () => {
     links: [],
     isTruncated: false,
     blocked: null,
+    retryAfterMs: null,
   });
 
   expect(new TextDecoder().decode(bytes)).toBe(
-    String.raw`{"kind":"page","url":"https://example.com/","status":200,"contentType":"text/plain","text":"a\nb","links":[],"isTruncated":false,"blocked":null}`,
+    String.raw`{"kind":"page","url":"https://example.com/","status":200,"contentType":"text/plain","text":"a\nb","links":[],"isTruncated":false,"blocked":null,"retryAfterMs":null}`,
   );
 });
