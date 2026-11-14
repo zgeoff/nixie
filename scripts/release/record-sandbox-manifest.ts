@@ -1,11 +1,15 @@
 import { appendFileSync } from 'node:fs';
-import { $ } from 'bun';
+import { sandboxImageKeys } from '../../modules/sandbox/src/sandbox-image-keys.ts';
+import { buildSandboxManifest } from '../lib/build-sandbox-manifest.ts';
+import { collectKeyOutputs } from '../lib/collect-key-outputs.ts';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 import { writeStepValues } from '../lib/write-step-values.ts';
 
-// No commit holds the manifest, so the job hands it to the nixie image build as an output.
-async function runCLI(): Promise<void> {
+// No commit holds the manifest, so the job hands it to the nixie image build as an output. The
+// job's needs hold one entry per image job, named by the image key, and each gives its ref as an
+// output.
+function runCLI(): void {
   const command = parseStepCommand('record-sandbox-manifest.ts', [], process.argv.slice(2));
 
   if (!command.isValid) {
@@ -16,18 +20,14 @@ async function runCLI(): Promise<void> {
     return;
   }
 
-  const conversation = getStepEnv(process.env, 'CONVERSATION');
-  const fetchImage = getStepEnv(process.env, 'FETCH');
-
-  const manifest =
-    await $`bash .github/scripts/build-sandbox-manifest.sh ${conversation} ${fetchImage}`.text();
-
-  const json = manifest.trim();
+  const json = buildSandboxManifest(
+    collectKeyOutputs(getStepEnv(process.env, 'NEEDS'), sandboxImageKeys, 'ref'),
+  );
 
   writeStepValues(getStepEnv(process.env, 'GITHUB_OUTPUT'), { json });
   appendFileSync(getStepEnv(process.env, 'GITHUB_STEP_SUMMARY'), `${json}\n`);
 }
 
 if (import.meta.main) {
-  await runCLI();
+  runCLI();
 }

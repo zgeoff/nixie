@@ -2,6 +2,7 @@ import { appendFileSync } from 'node:fs';
 import { $ } from 'bun';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
+import { readSandboxManifest } from '../lib/read-sandbox-manifest.ts';
 
 // The second tag run is the release's re-run: it finds every tag in place and changes nothing.
 async function runCLI(): Promise<void> {
@@ -18,9 +19,10 @@ async function runCLI(): Promise<void> {
   const summaryPath = getStepEnv(process.env, 'GITHUB_STEP_SUMMARY');
 
   // the sandbox images first and nixie last, as the release tags them
-  const refs = ['CONVERSATION', 'FETCH', 'BACKUP', 'WEB', 'NIXIE'].map((name) =>
-    getStepEnv(process.env, name),
-  );
+  const refs = [
+    ...Object.values(readSandboxManifest('apps/server/sandbox-manifest.json')),
+    ...['BACKUP', 'WEB', 'NIXIE'].map((name) => getStepEnv(process.env, name)),
+  ];
 
   await $`bash .github/scripts/tag-images.sh 0.0.0-rehearsal ${refs}`;
   await $`bash .github/scripts/tag-images.sh 0.0.0-rehearsal ${refs}`;

@@ -28,7 +28,7 @@ function setupTest() {
   };
 }
 
-test('it passes when nixie prints the manifest refs, each under its kind name', async () => {
+test('it passes when nixie prints the manifest refs, each under its key name', async () => {
   const ctx = setupTest();
 
   writeFileSync(
@@ -129,7 +129,7 @@ test('it fails when nixie prints an image without its name', async () => {
   expect(result.stderr.toString()).toInclude('"conversation"');
 });
 
-test('it fails when a sandbox image name does not follow its kind', async () => {
+test('it fails when a sandbox image name does not follow its key', async () => {
   const ctx = setupTest();
 
   writeFileSync(
@@ -162,6 +162,6 @@ test('it fails when a sandbox image name does not follow its kind', async () => 
   expect(result.exitCode).toBe(1);
 
   expect(result.stdout.toString()).toEndWith(
-    '::error::nixie names a sandbox image other than nixie-<kind>-<12 hex digits>: nixie-fetch-0123456789ab\n',
+    '::error::nixie names a sandbox image other than nixie-<key>-<12 hex digits>: nixie-fetch-0123456789ab\n',
   );
 });

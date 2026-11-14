@@ -194,8 +194,7 @@ jobs:
       - name: Build the sandbox manifest
         id: manifest
         env:
-          CONVERSATION: ${{ needs.conversation.outputs.ref }}
-          FETCH: ${{ needs.fetch.outputs.ref }}
+          NEEDS: ${{ toJSON(needs) }}
         run: bun run --silent ci:release:record-sandbox-manifest
 
   nixie:
@@ -235,7 +234,7 @@ jobs:
 
   notes:
     name: Write the release notes
-    needs: [resolve, conversation, fetch, backup, nixie, web]
+    needs: [resolve, sandbox-manifest, backup, nixie, web]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -270,8 +269,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.resolve.outputs.tag }}
           SHA: ${{ needs.resolve.outputs.sha }}
-          CONVERSATION: ${{ needs.conversation.outputs.ref }}
-          FETCH: ${{ needs.fetch.outputs.ref }}
+          SANDBOX_MANIFEST: ${{ needs.sandbox-manifest.outputs.json }}
           BACKUP: ${{ needs.backup.outputs.ref }}
           NIXIE: ${{ needs.nixie.outputs.ref }}
           WEB: ${{ needs.web.outputs.ref }}
@@ -279,7 +277,7 @@ jobs:
 
   check-pulls:
     name: Pull the release sandbox images with no credentials
-    needs: [notes, conversation, fetch]
+    needs: [notes, sandbox-manifest]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -295,13 +293,14 @@ jobs:
 
       - name: Pull each sandbox image with no credentials
         env:
-          CONVERSATION: ${{ needs.conversation.outputs.ref }}
-          FETCH: ${{ needs.fetch.outputs.ref }}
-        run: .github/scripts/check-public-pulls.sh "$CONVERSATION" "$FETCH"
+          SANDBOX_MANIFEST: ${{ needs.sandbox-manifest.outputs.json }}
+        run: |
+          mapfile -t refs < <(jq -r '.[]' <<< "$SANDBOX_MANIFEST")
+          .github/scripts/check-public-pulls.sh "${refs[@]}"
 
   tag:
     name: Tag the release images
-    needs: [resolve, check-pulls, conversation, fetch, backup, nixie, web]
+    needs: [resolve, check-pulls, sandbox-manifest, backup, nixie, web]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -328,18 +327,18 @@ jobs:
       - name: Tag every image with the version
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
-          CONVERSATION: ${{ needs.conversation.outputs.ref }}
-          FETCH: ${{ needs.fetch.outputs.ref }}
+          SANDBOX_MANIFEST: ${{ needs.sandbox-manifest.outputs.json }}
           BACKUP: ${{ needs.backup.outputs.ref }}
           NIXIE: ${{ needs.nixie.outputs.ref }}
           WEB: ${{ needs.web.outputs.ref }}
         run: |
-          .github/scripts/tag-images.sh "$VERSION" "$CONVERSATION" "$FETCH" "$BACKUP" "$WEB" "$NIXIE"
+          mapfile -t refs < <(jq -r '.[]' <<< "$SANDBOX_MANIFEST")
+          .github/scripts/tag-images.sh "$VERSION" "${refs[@]}" "$BACKUP" "$WEB" "$NIXIE"
 
   # last, so a reader that finds release.json finds every image under its version tag
   assets:
     name: Publish the release assets
-    needs: [resolve, notes, tag, conversation, fetch, backup, nixie, web]
+    needs: [resolve, notes, tag, sandbox-manifest, backup, nixie, web]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -376,8 +375,7 @@ jobs:
           TAG: ${{ needs.resolve.outputs.tag }}
           VERSION: ${{ needs.resolve.outputs.version }}
           SHA: ${{ needs.resolve.outputs.sha }}
-          CONVERSATION: ${{ needs.conversation.outputs.ref }}
-          FETCH: ${{ needs.fetch.outputs.ref }}
+          SANDBOX_MANIFEST: ${{ needs.sandbox-manifest.outputs.json }}
           BACKUP: ${{ needs.backup.outputs.ref }}
           NIXIE: ${{ needs.nixie.outputs.ref }}
           WEB: ${{ needs.web.outputs.ref }}
