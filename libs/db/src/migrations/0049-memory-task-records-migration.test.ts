@@ -16,6 +16,7 @@ interface RecordRow {
   readonly thread?: string;
   readonly stepKey?: string;
   readonly parent?: number;
+  readonly decision?: unknown;
   readonly payload: unknown;
 }
 
@@ -38,9 +39,12 @@ async function setupTest() {
   return {
     db,
     writeRecord: async (record: RecordRow) => {
-      await sql`insert into records (recorded_at, kind, thread, step_key, parent, snapshot_hash, payload)
+      await sql`insert into records (recorded_at, kind, thread, step_key, parent, decision,
+          snapshot_hash, payload)
         values (1, ${record.kind}, ${record.thread ?? null}, ${record.stepKey ?? null},
-          ${record.parent ?? null}, 'snapshot', ${JSON.stringify(record.payload)})`.execute(db);
+          ${record.parent ?? null},
+          ${record.decision === undefined ? null : JSON.stringify(record.decision)}, 'snapshot',
+          ${JSON.stringify(record.payload)})`.execute(db);
     },
     runMigration: () => db.transaction().execute((tx) => memoryTaskRecordsMigration.up(tx)),
     readRecords: () =>
@@ -296,4 +300,137 @@ test('it keeps a record that only mentions a task ID as free text', async () => 
   const records = await ctx.readRecords();
 
   expect(records).toMatchObject([{ kind: 'prompts.override_proposed' }]);
+});
+
+test('it refuses a kept turn whose retrieved messages hold a record it would remove', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({
+    kind: 'memory.notice',
+    thread: 'conversation',
+    payload: { notice: 'batch' },
+  });
+
+  await ctx.writeRecord({
+    kind: 'model.turn_ended',
+    thread: 'conversation',
+    payload: { turns: 1, inputTokens: 1, retrievedMessages: [1] },
+  });
+
+  const run = ctx.runMigration();
+
+  await run.catch(() => {});
+
+  const records = await ctx.readRecords();
+
+  expect(run).rejects.toThrow(/record 2 .*through \$\.retrievedMessages\[0\]/u);
+  expect(records).toHaveLength(2);
+});
+
+test('it refuses a kept record whose decision names a record it would remove', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({
+    kind: 'memory.notice',
+    thread: 'conversation',
+    payload: { notice: 'batch' },
+  });
+
+  await ctx.writeRecord({
+    kind: 'tool_called',
+    thread: 'conversation',
+    decision: { outcome: 'allow', inputs: { onBehalfOf: [1] } },
+    payload: {},
+  });
+
+  const run = ctx.runMigration();
+
+  await run.catch(() => {});
+
+  const records = await ctx.readRecords();
+
+  expect(run).rejects.toThrow(/record 2 .*through \$\.inputs\.onBehalfOf\[0\]/u);
+  expect(records).toHaveLength(2);
+});
+
+test('it refuses a kept projection row whose evidence column holds a record it would remove', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({
+    kind: 'memory.notice',
+    thread: 'conversation',
+    payload: { notice: 'batch' },
+  });
+
+  await sql`create table example_rows (row_key text primary key, evidence text)`.execute(ctx.db);
+
+  await sql`insert into example_rows (row_key, evidence)
+    values ('row-1', ${JSON.stringify({ recordSequence: 1, start: 0, end: 4 })})`.execute(ctx.db);
+
+  const run = ctx.runMigration();
+
+  await run.catch(() => {});
+
+  const records = await ctx.readRecords();
+
+  expect(run).rejects.toThrow(/row of example_rows .*through evidence\$\.recordSequence/u);
+  expect(records).toHaveLength(1);
+});
+
+test('it refuses a kept projection change whose row holds evidence as text that names a record it would remove', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({
+    kind: 'memory.notice',
+    thread: 'conversation',
+    payload: { notice: 'batch' },
+  });
+
+  await ctx.writeRecord({ kind: 'owner_message', thread: 'conversation', payload: {} });
+
+  const row = { evidence: JSON.stringify({ recordSequence: 1, start: 0, end: 4 }) };
+
+  await sql`insert into projection_changes (sequence, projection, row_key, row)
+    values (2, 'example_rows', 'row-1', ${JSON.stringify(row)})`.execute(ctx.db);
+
+  const run = ctx.runMigration();
+
+  await run.catch(() => {});
+
+  const records = await ctx.readRecords();
+
+  expect(run).rejects.toThrow(
+    /change of example_rows at record 2 .*through \$\.evidence\.recordSequence/u,
+  );
+
+  expect(records).toHaveLength(2);
+});
+
+test('it removes the records when only counts, versions and offsets equal a removed sequence', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({
+    kind: 'memory.notice',
+    thread: 'conversation',
+    payload: { notice: 'batch' },
+  });
+
+  await ctx.writeRecord({
+    kind: 'model.turn_ended',
+    thread: 'conversation',
+    payload: { turns: 1, inputTokens: 1, retrievedMessages: [3] },
+  });
+
+  await ctx.writeRecord({ kind: 'owner_message', thread: 'conversation', payload: {} });
+
+  const row = { version: 1, evidence: JSON.stringify({ recordSequence: 3, start: 1, end: 1 }) };
+
+  await sql`insert into projection_changes (sequence, projection, row_key, row)
+    values (2, 'example_rows', 'row-1', ${JSON.stringify(row)})`.execute(ctx.db);
+
+  await ctx.runMigration();
+
+  const records = await ctx.readRecords();
+
+  expect(records).toMatchObject([{ kind: 'model.turn_ended' }, { kind: 'owner_message' }]);
 });
