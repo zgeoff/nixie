@@ -29,6 +29,9 @@ the latest.
 | 8. Consent     | You asked for the call in typed words, and the checker agrees | Allow   |
 | 9. No rule     | Always, because nothing else decided                          | Ask     |
 
+A call that declares `memory_write` skips the checker of stage 8 and the ask of stage 9: it gets the
+outcome `gate` at stage 8, as [memory writes](#memory-writes) says.
+
 The caller's tool list is the run's own: the job's list for a job run, and the subset its caller
 passed for a worker. A tool that the registry knows but the run was not given is therefore denied,
 even though the model can name it.
@@ -36,6 +39,29 @@ even though the model can name it.
 A rule's effects are the tool's declared effects, so the same tool gets the same answer under the
 same rules unless a rule also names argument checks, a context or a source of content. When several
 rules of one outcome match, the first by rule ID decides, and the decision names the others.
+
+## Memory writes
+
+A call to a tool that declares `memory_write` never reaches the consent check at stage 8 or the "no
+rule" ask at stage 9. When no rule decided it at stages 3 to 7, stage 8 gives the outcome `gate`,
+with no rule and no cause. The memory gate then decides the write. The log stores `gate` as it
+stores any outcome, so the record shows that no rule decided the write.
+
+Before the decision, the tool sets the call's sources and arguments, because the model's words and
+the step's own sources would misstate them:
+
+- The sources come from the quote that the content gate finds: `owner` for a quote in text you typed
+  in the thread's recent messages, outside any pasted span, and for a
+  [memory writer](../memory/writer.md) write whose quote lies in the one message it cites. A write
+  with no quote, a quote in a pasted span, a photo, a self-note or a quote the gate cannot place
+  takes `outside`. A write from a task run adds `task`. A memory write never takes `own_data`.
+- `memory.edit` and `memory.retire` take `subject` from the item when the call leaves it out, so a
+  rule reads `subject` on all 3 tools.
+
+The tool runner passes the decision to the tool as a verdict: the allow rules that matched with
+their checks, the ask rule, or `gate`. The tool trusts a rule verdict only when the declaration that
+the decision point read holds `memory_write`. A snapshot declaration from before the release that
+changed it still says `note`, and a call decided from it runs every check of the memory gate.
 
 ## Destinations
 

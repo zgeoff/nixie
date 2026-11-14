@@ -1563,3 +1563,46 @@ test('it writes an action proposal for an ask rule on note when the snapshot dec
     'tool_result',
   ]);
 });
+
+test('it gates a memory write when the snapshot declaration keeps note beside memory_write until the owner approves its removal', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+      }),
+    ],
+    snapshotTools: new Map([
+      [
+        'memory.remember',
+        {
+          effects: ['memory_write', 'note'],
+          destinations: [],
+          amount: null,
+          content: [],
+          results: {},
+        },
+      ],
+    ]),
+  });
+
+  await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(contexts.map((context) => context.verdict)).toStrictEqual([{ kind: 'gate' }]);
+});

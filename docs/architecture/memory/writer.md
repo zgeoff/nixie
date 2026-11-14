@@ -150,6 +150,20 @@ notice. An edit or a retirement whose item moved on or was forgotten since the s
 the gate before any check runs, and so does a retirement of a retired item. The batch then runs
 again at once against the item as it stands.
 
+The writer's remember, edit and retire tools declare `memory_write`, so
+[the rules](./writes.md#rules-on-memory-writes) decide each call before it stages. A deny rule
+refuses the call and stages nothing. Each staged write keeps the decision of its call, and the batch
+gate honours it:
+
+- Under an ask rule, the write becomes a proposal with the review reason `ask_rule`.
+- Under an allow rule, the gate runs the token check against the typed words of the one message the
+  write cites, and skips the quote check and the checker. A write that passes applies with no
+  evidence quote, and its checks name the rule. A retirement applies at once.
+- With no rule, the gate runs every check above.
+
+The sources of a staged write are `owner` when its quote lies in typed words of the message it
+cites, and `outside` otherwise. The memory writer never adds `task`.
+
 A proposal for a new item seals its text under a key the gate creates before the transaction. When
 the proposal never publishes, because its batch split, ran again or failed, the writer removes that
 key, so a key in the key store always seals a record or a published proposal.

@@ -356,14 +356,9 @@ so it declares `memory_write` too. These calls declare the `note` effect:
 - a skill write or reload;
 - `task.message` and `task.start`.
 
-`memory_write` ships in 2 stages, one release apart, because a release refuses to parse a rule that
-names an effect it does not know:
-
-1. The rule format, the rules core and the effect table accept `memory_write`. No tool declares it.
-   A deny or an ask rule on `memory_write` applies to the `note` effect as well, so a restriction on
-   memory writes holds on a stage 1 release after a rollback from stage 2. An allow rule on
-   `memory_write` matches nothing at stage 1.
-2. The 3 memory tools declare `memory_write`, and the gate asks the rules first.
+`memory_write` ships in one release: the rule format accepts it, the 3 memory tools declare it, and
+the gate asks the rules first. A deny or an ask rule on `memory_write` matches only a call that
+declares it, and never a call that declares `note`.
 
 [The content gate](../../architecture/memory/writes.md#the-content-gate) backs a write with a quote:
 words from one of your messages that the write's text rests on. Before the decision point runs, the
@@ -441,8 +436,9 @@ the memory checker.
 - **A self-note declares `memory_write`.** The owner's call on 14 Nov 2026: a tool's effects never
   depend on its arguments, and `memory.remember` writes self-notes. No starter rule matches
   `memory_write`, so a self-note always waits for your review.
-- **`memory_write` ships in 2 stages.** An agent's call on 13 Nov 2026: every rule that names the
-  effect then parses on the release a rollback lands on, so no rollback takes a step for it.
+- **`memory_write` ships in one release.** The owner's call on 15 Nov 2026: the staging existed only
+  for a rollback to the release before, and the owner dropped it. An ask rule on `memory_write` then
+  never catches a pin, a rating, a comment or `task.start`.
 - **A reopened action gets a new row, and the approved row stays closed.** An agent's call on 13 Nov
   2026: a row keeps its risk class for life and moves to `approved` once, and the passkey check
   reads the row's risk class, so only a new `always_ask` row makes that approval take the passkey.

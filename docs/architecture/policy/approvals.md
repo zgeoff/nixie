@@ -54,6 +54,20 @@ the evening and morning times that clients offer.
 
 ## memory_write
 
-`memory_write` is an effect name. A deny or ask rule that lists it also stops a call that declares
-`note`, so a rule can hold every memory write. An allow rule that lists it covers no call, so a
-memory write stays asked until a rule allows its `note`.
+`memory_write` is an effect name. `memory.remember`, `memory.edit` and `memory.retire` declare it,
+in the conversation, a task run and the memory writer alike. Every other memory tool declares
+`note`, so a rule on `memory_write` never reaches a pin, an unpin, a rating or a comment.
+
+A rule on `memory_write` matches as a rule on any other effect does:
+
+- A deny rule denies the write, and the model reads the rule's sentence.
+- An ask rule makes the write a memory proposal with the review reason `ask_rule`. The call writes
+  no action proposal, because the memory proposal is the user's review.
+- An allow rule lets the memory gate run the token check alone.
+
+[The decision point](./decision-point.md#memory-writes) gives a write that no rule decides the
+outcome `gate`, and the memory gate then runs every check. With the starter rules, no rule matches
+`memory_write`, so every memory write runs every check.
+
+[Memory writes](../memory/writes.md#rules-on-memory-writes) describes what the gate does under each
+answer.
