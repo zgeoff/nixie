@@ -176,6 +176,8 @@ async function runCapturedSession(
     signal: session.signal,
     onCall: () => {
       captured.calls.count += 1;
+
+      return Promise.resolve();
     },
   });
 

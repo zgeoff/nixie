@@ -31,9 +31,10 @@ export async function runConversationStep(
   const captured: ConversationRun = {
     ...conversation,
     turnProfile: { ...conversation.turnProfile, baseURL: capture.baseURL },
-    onModelCall: (usage) => {
+    onModelCall: async (usage) => {
       calls.count += 1;
-      conversation.onModelCall?.(usage);
+
+      await conversation.onModelCall?.(usage);
     },
   };
 
