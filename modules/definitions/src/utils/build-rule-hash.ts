@@ -1,8 +1,8 @@
 import type { RuleForm } from '@heynixie/policy';
-import { toStoredRuleForm } from '@heynixie/policy';
+import { toRuleForm } from '@heynixie/policy';
 import { buildSHA256 } from './build-sha256';
 import { toCanonicalJSON } from './to-canonical-json';
 
 export function buildRuleHash(rule: RuleForm): string {
-  return buildSHA256(toCanonicalJSON(toStoredRuleForm(rule)));
+  return buildSHA256(toCanonicalJSON(toRuleForm(rule)));
 }

@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import type { RuleForm } from '../types';
-import { ruleFieldNames } from './rule-body-schema';
+import { ruleFieldNames } from './rules-file-body-schema';
 import { rulesFileSchema } from './rules-file-schema';
 import { toRuleForm } from './to-rule-form';
 

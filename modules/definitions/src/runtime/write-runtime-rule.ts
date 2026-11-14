@@ -1,5 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { renderRule, toStoredRuleForm } from '@heynixie/policy';
+import { renderRule, toRuleForm } from '@heynixie/policy';
 import type { ProposalContext } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import type { DefinitionsTables } from '../types';
@@ -61,7 +61,7 @@ export async function writeRuntimeRuleInTransaction(
       .insertInto('rule_versions')
       .values({
         rule_hash: write.stored.hash,
-        rule: JSON.stringify(toStoredRuleForm(write.stored.rule)),
+        rule: JSON.stringify(toRuleForm(write.stored.rule)),
       })
       .onConflict((conflict) => conflict.doNothing())
       .execute();

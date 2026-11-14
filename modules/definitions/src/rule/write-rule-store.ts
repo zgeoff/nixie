@@ -1,4 +1,4 @@
-import { toStoredRuleForm } from '@heynixie/policy';
+import { toRuleForm } from '@heynixie/policy';
 import type { Transaction } from 'kysely';
 import { writeRuntimeRuleState } from '../runtime/write-runtime-rule-state';
 import type { DefinitionRule, DefinitionsTables, RuleInForce, StoredRule } from '../types';
@@ -74,7 +74,7 @@ async function writeRuleVersions(
     .values(
       [...unique.values()].map((rule) => ({
         rule_hash: rule.hash,
-        rule: JSON.stringify(toStoredRuleForm(rule.rule)),
+        rule: JSON.stringify(toRuleForm(rule.rule)),
       })),
     )
     .onConflict((conflict) => conflict.doNothing())

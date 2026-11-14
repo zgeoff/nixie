@@ -42,9 +42,7 @@ export function replayDecision(
   return decide({
     tool: record.tool,
     toolList: inputs.toolList,
-
-    // a record from before the rename may hold the context job, which now means task
-    context: inputs.context === 'job' ? 'task' : inputs.context,
+    context: inputs.context,
     definitionID: inputs.definitionID,
     args: record.input,
     destinations: record.destinations,

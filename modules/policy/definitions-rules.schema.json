@@ -82,16 +82,6 @@
           "minLength": 1
         }
       },
-      "jobs": {
-        "deprecated": true,
-        "description": "The old name of definitions",
-        "minItems": 1,
-        "type": "array",
-        "items": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
       "checks": {
         "minItems": 1,
         "type": "array",
@@ -221,6 +211,16 @@
       "note": {
         "type": "string",
         "minLength": 1
+      },
+      "jobs": {
+        "deprecated": true,
+        "description": "The old name of definitions",
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "required": [
