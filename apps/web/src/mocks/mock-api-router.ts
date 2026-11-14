@@ -3,11 +3,13 @@ import { renderSessionCookie } from '@heynixie/contract';
 import { withEventMeta } from '@orpc/server';
 import { match } from 'ts-pattern';
 import type { ReadonlyDeep } from '../types';
+import { isForgettableKind } from './is-forgettable-kind';
 import { mockActionProposalProcedures } from './mock-action-proposal-procedures';
 import { mockImplementer } from './mock-implementer';
 import { mockMemoryRouter } from './mock-memory-router';
 import { mockRuleProcedures } from './mock-rule-procedures';
 import { readMockBackupNotice } from './read-mock-backup-notice';
+import { readMockRecordForgetPreview } from './read-mock-record-forget-preview';
 import { readMockTaskActions } from './read-mock-task-actions';
 import { readMockTaskList } from './read-mock-task-list';
 import { requireMockSession } from './require-mock-session';
@@ -115,6 +117,25 @@ export const mockAPIRouter = os.router({
       return new File([Uint8Array.fromBase64(image.data)], `image-${options.input.position + 1}`, {
         type: image.mediaType,
       });
+    }),
+
+    previewForget: os.conversation.previewForget.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const target = store.records.findFirst((query) =>
+        query.where(
+          (record) =>
+            record.sequence === options.input.sequence &&
+            record.thread === options.input.thread &&
+            isForgettableKind(record.kind),
+        ),
+      );
+
+      if (target === undefined) {
+        throw options.errors.RECORD_NOT_FOUND();
+      }
+
+      return readMockRecordForgetPreview(options.input.thread, options.input.sequence);
     }),
 
     forget: os.conversation.forget.handler(async (options) => {

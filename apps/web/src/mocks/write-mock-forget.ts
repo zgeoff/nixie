@@ -1,3 +1,4 @@
+import { isForgettableKind } from './is-forgettable-kind';
 import { store } from './store';
 
 interface ForgetInput {
@@ -27,7 +28,7 @@ export async function writeMockForget(input: ForgetInput): Promise<ForgetResult>
       (record) =>
         record.sequence === input.sequence &&
         record.thread === input.thread &&
-        (record.kind === 'owner_message' || record.kind === 'model.reply'),
+        isForgettableKind(record.kind),
     ),
   );
 

@@ -1,6 +1,7 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import { readOwnerImage } from '@heynixie/memory';
+import { readOwnerImage, readRecordForgetPreview } from '@heynixie/memory';
 import { apiImplementer } from './api-implementer';
+import { probeForgettableRecord } from './probe-forgettable-record';
 import { readOwnerImages } from './read-owner-images';
 import { readThreadPage } from './read-thread-page';
 import { requireCaller } from './require-caller';
@@ -26,6 +27,18 @@ export function createConversationProcedures(context: APIContext) {
     send: createSendProcedure(context),
 
     readImage: createReadImageProcedure(context),
+
+    previewForget: apiImplementer.conversation.previewForget.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      if (!(await probeForgettableRecord(context.log.writer.db, options.input))) {
+        throw options.errors.RECORD_NOT_FOUND();
+      }
+
+      const preview = await readRecordForgetPreview(context.log, options.input);
+
+      return { momentCount: preview.momentCount, memoryItems: [...preview.memoryItems] };
+    }),
 
     forget: apiImplementer.conversation.forget.handler(async (options) => {
       const caller = await requireCaller(

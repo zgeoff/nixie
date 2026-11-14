@@ -34,3 +34,5 @@ export type { TestMemoryItem } from './read-test-memory-items';
 export { readTestMemoryItems } from './read-test-memory-items';
 export type { ModelReplyRecord } from './write-model-reply-record';
 export { writeModelReplyRecord } from './write-model-reply-record';
+export type { QuotedProposal, QuotedProposalRequest } from './create-quoted-proposal';
+export { createQuotedProposal } from './create-quoted-proposal';

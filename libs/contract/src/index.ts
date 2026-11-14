@@ -3,6 +3,7 @@ export { buildPendingInput } from './build-pending-input';
 export { buildQueryUtils } from './build-query-utils';
 export { buildSpanState } from './build-span-state';
 export { clientHeaderName } from './client-header-name';
+export { forgettableKinds } from './forgettable-kinds';
 export { contract } from './contract';
 export { hostContract } from './host-contract';
 export { imageLimits } from './image-limits';
