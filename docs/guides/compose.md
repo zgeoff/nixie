@@ -45,8 +45,9 @@ secret reaches the container's configuration or its disk.
 The origin listens on `127.0.0.1:8080`. `NIXIE_BIND` and `NIXIE_PORT` set the address and the port.
 Put HTTPS for your host name in front of the origin, on loopback or your private network only.
 
-An upgrade changes the tag and the digest of the nixie and web images together, to the pair a
-release's notes list. A rollback reverts that change.
+An upgrade changes the tag and the digest of 3 images together: nixie, web, and the backup image
+when the deployment runs one, as a release's notes list them. A rollback reverts that change. The
+[upgrade runbook](../runbooks/upgrades.md) gives the steps.
 
 ## How CI checks it
 

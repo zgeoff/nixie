@@ -171,6 +171,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
 
 - [Releasing](runbooks/releasing.md) — the release App, cutting a release, making a sandbox image
   public, checking an attestation and repairing a failed release
+- [Upgrade and roll back](runbooks/upgrades.md) — move the nixie, web and backup pins in one pull
+  request, deploy in order, and revert
 - [Run a preview](runbooks/preview.md) — a throwaway nixie for one pull request, signing in, and its
   model calls
 - [Check a turn on a preview through the API](runbooks/preview-api-check.md) — enrol a device, send

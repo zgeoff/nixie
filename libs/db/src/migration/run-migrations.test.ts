@@ -7,6 +7,7 @@ import { sql } from 'kysely';
 import { startDatabase } from '../database/start-database';
 import { nixieSchema } from '../schema/nixie-schema';
 import { SchemaTooNewError } from '../schema/schema-too-new-error';
+import { buildGrowingSchema } from '../test-utils/build-growing-schema';
 import type { BuildSchema, Migration } from '../types';
 import { closeToOlderReaders } from './close-to-older-readers';
 import { pauseMigrationVersion } from './pause-migration-version';
@@ -542,4 +543,86 @@ test('it keeps a closed gate closed when a migration runs, and reopens to the mi
 
   expect(reopened.rows).toStrictEqual([{ oldest_reader: 40, open_oldest_reader: null }]);
   expect(olderRelease.to).toBe(nixieSchema.migrations.length + 1);
+});
+
+test('it keeps the newest 3 copies of the database and removes the older ones', async () => {
+  const ctx = await setupTest();
+
+  for (const count of [1, 2, 3, 4, 5]) {
+    await runMigrations(ctx.db, { schema: buildGrowingSchema(count), copyDir: ctx.directory });
+  }
+
+  const names = await readdir(ctx.directory);
+
+  expect(names.toSorted()).toStrictEqual([
+    'nixie-schema-2.db',
+    'nixie-schema-3.db',
+    'nixie-schema-4.db',
+    'nixie.db',
+    'nixie.db-shm',
+    'nixie.db-wal',
+  ]);
+});
+
+test('it sorts copy versions as numbers, so it prunes a copy of 8 before one of 10', async () => {
+  const ctx = await setupTest();
+
+  await runMigrations(ctx.db, { schema: buildGrowingSchema(1), copyDir: ctx.directory });
+
+  for (const version of [8, 9, 10]) {
+    await writeFile(join(ctx.directory, `nixie-schema-${version}.db`), 'older');
+  }
+
+  await runMigrations(ctx.db, { schema: buildGrowingSchema(2), copyDir: ctx.directory });
+
+  const names = await readdir(ctx.directory);
+
+  const copies = names.filter((name) => name.startsWith('nixie-schema-'));
+
+  expect(copies.toSorted()).toStrictEqual([
+    'nixie-schema-1.db',
+    'nixie-schema-10.db',
+    'nixie-schema-9.db',
+  ]);
+});
+
+test('it keeps the copy just taken when copies of a higher version sit beside it', async () => {
+  const ctx = await setupTest();
+
+  await runMigrations(ctx.db, { schema: buildGrowingSchema(1), copyDir: ctx.directory });
+
+  for (const version of [7, 8, 9]) {
+    await writeFile(join(ctx.directory, `nixie-schema-${version}.db`), 'newer');
+  }
+
+  const report = await runMigrations(ctx.db, {
+    schema: buildGrowingSchema(2),
+    copyDir: ctx.directory,
+  });
+
+  const names = await readdir(ctx.directory);
+
+  const copies = names.filter((name) => name.startsWith('nixie-schema-'));
+
+  expect(report.copyPath).toBe(join(ctx.directory, 'nixie-schema-1.db'));
+
+  expect(copies.toSorted()).toStrictEqual([
+    'nixie-schema-1.db',
+    'nixie-schema-8.db',
+    'nixie-schema-9.db',
+  ]);
+});
+
+test('it removes a stale partial copy on a start that takes a copy', async () => {
+  const ctx = await setupTest();
+
+  await runMigrations(ctx.db, { schema: buildGrowingSchema(1), copyDir: ctx.directory });
+  await writeFile(join(ctx.directory, 'nixie-schema-5.db.partial'), 'half');
+  await runMigrations(ctx.db, { schema: buildGrowingSchema(2), copyDir: ctx.directory });
+
+  const names = await readdir(ctx.directory);
+
+  const copies = names.filter((name) => name.startsWith('nixie-schema-'));
+
+  expect(copies).toStrictEqual(['nixie-schema-1.db']);
 });

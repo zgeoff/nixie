@@ -89,6 +89,11 @@ atomic, so the copy reaches the disk under a temporary name before it takes its 
 interrupted copy never sits under the final name. The copy holds only `nixie.db`, so a key deleted
 after it was taken never comes back from it.
 
+Each start that takes a copy keeps the newest 3 copies and removes the rest, a stale temporary copy
+included. The copy just written always stays. A restore of older data can leave copies of a higher
+schema version beside it, and without this rule they would push out the one copy that matches the
+data.
+
 Every migration expands the schema: a new table, a column with a default, or an index. A removal or
 a rename waits until the release before no longer needs the old shape. The schema version therefore
 carries its oldest reader, the oldest schema version whose build can still read and write the

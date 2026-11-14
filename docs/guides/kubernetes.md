@@ -17,6 +17,8 @@ cluster. [Kubernetes](../architecture/deployment/kubernetes.md) explains the sha
    example out, so applying the folder never replaces a real Secret.
 5. Apply the folder as a kustomization with your cluster's client.
 
+To move to a new release, or back, follow the [upgrade runbook](../runbooks/upgrades.md).
+
 ## Check them
 
 To validate every resource against the Kubernetes schemas, render the folder with kustomize and run
