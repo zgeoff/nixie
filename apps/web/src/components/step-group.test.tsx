@@ -1,6 +1,9 @@
 import { expect, test } from 'bun:test';
-import { within } from '@testing-library/react';
+import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http, passthrough } from 'msw';
+import { z } from 'zod';
+import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
 import { buildMockStepActivity } from '../test-utils/build-mock-step-activity';
@@ -503,7 +506,7 @@ test('it shows the key backup state after the forget of a tool result, in place 
   );
 });
 
-test('it keeps the open forget confirmation when the record turns removed before the forget finishes', async () => {
+test('it keeps the forget confirmation and retries with the same action ID when the record turns removed before the forget fails', async () => {
   const user = userEvent.setup();
 
   await createDeviceSession();
@@ -515,6 +518,27 @@ test('it keeps the open forget confirmation when the record turns removed before
   });
 
   const result = { kind: 'tool_result', sequence: stored.sequence, thread: 'conversation' };
+  const sent: unknown[] = [];
+  const gate = Promise.withResolvers<void>();
+  let isFirst = true;
+
+  server.use(
+    http.post('*/rpc/conversation/forget', async (call) => {
+      const body: unknown = await call.request.clone().json();
+
+      sent.push(body);
+
+      if (!isFirst) {
+        return passthrough();
+      }
+
+      isFirst = false;
+
+      await gate.promise;
+
+      return HttpResponse.json({ code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
+    }),
+  );
 
   const rendered = render(
     <StepGroup
@@ -537,7 +561,14 @@ test('it keeps the open forget confirmation when the record turns removed before
   await user.click(rendered.getByText(/^conversation · /u));
   await user.click(rendered.getByText('Tools 1'));
   await user.click(rendered.getByRole('button', { name: 'Forget this result' }));
-  await rendered.findByRole('button', { name: 'Forget for good' });
+
+  const confirm = await rendered.findByRole('button', { name: 'Forget for good' });
+
+  await user.click(confirm);
+
+  await waitFor(() => {
+    expect(sent).toHaveLength(1);
+  });
 
   rendered.rerender(
     <StepGroup
@@ -550,5 +581,22 @@ test('it keeps the open forget confirmation when the record turns removed before
 
   expect(rendered.getByRole('heading', { name: 'web_fetch — removed' })).toBeVisible();
   expect(rendered.getByRole('group', { name: 'Forget this tool result' })).toBeVisible();
-  expect(rendered.getByRole('button', { name: 'Forget for good' })).toBeVisible();
+
+  gate.resolve();
+
+  const alert = await rendered.findByRole('alert');
+
+  expect(alert).toHaveTextContent('The forget did not finish. Try again.');
+
+  await user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+
+  await waitFor(() => {
+    expect(sent).toHaveLength(2);
+  });
+
+  const forgetBody = z.object({ json: z.object({ clientActionID: z.string() }) });
+  const bodies = z.array(forgetBody).parse(sent);
+  const ids = bodies.map((body) => body.json.clientActionID);
+
+  expect(ids[0]).toBe(ids[1]);
 });
