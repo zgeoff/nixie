@@ -1,7 +1,7 @@
 // oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
-import { buildCheckOptions } from '../../../guests/conversation/src/build-check-options.ts';
+import { buildCheckOptions } from '../../../guests/conversation/src/check/build-check-options.ts';
 // @boundaries-ignore a spike imports the code it measures
 import type { CheckRequest } from '../../../libs/wire/src/check-request-schema.ts';
 import { queryLimits } from './types.ts';

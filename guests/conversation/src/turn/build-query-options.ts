@@ -1,11 +1,11 @@
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import type { HostFrame } from '@heynixie/wire';
 import { toolOutputLimitTokens } from '@heynixie/wire';
-import { buildToolServerEntry } from './build-tool-server-entry';
-import { getConfigDir } from './get-config-dir';
-import { getHome } from './get-home';
-import { getWorkDir } from './get-work-dir';
-import { toolServerName } from './tool-server-name';
+import { buildToolServerEntry } from '../utils/build-tool-server-entry';
+import { getConfigDir } from '../utils/get-config-dir';
+import { getHome } from '../utils/get-home';
+import { getWorkDir } from '../utils/get-work-dir';
+import { toolServerName } from '../utils/tool-server-name';
 
 export type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 

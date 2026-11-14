@@ -1,6 +1,6 @@
 import { Server, createMcpHandler } from '@modelcontextprotocol/server';
 import type { Server as BunServer } from 'bun';
-import { buildToolServerEntry } from '../build-tool-server-entry';
+import { buildToolServerEntry } from '../utils/build-tool-server-entry';
 import { buildProbeOptions } from './build-probe-options';
 import type { ContractRun } from './run-contract-query';
 import { runContractQuery } from './run-contract-query';

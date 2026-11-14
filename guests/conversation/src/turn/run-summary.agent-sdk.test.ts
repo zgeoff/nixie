@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os';
 import type { GuestFrame } from '@heynixie/wire';
 import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
+import { createStubToolServer } from '../test-utils/create-stub-tool-server';
+import { startStubModel } from '../test-utils/start-stub-model';
 import { runSummary } from './run-summary';
 import { runTurn } from './run-turn';
-import { createStubToolServer } from './test-utils/create-stub-tool-server';
-import { startStubModel } from './test-utils/start-stub-model';
 
 async function setupTest() {
   const home = await mkdtemp(`${tmpdir()}/nixie-summary-`);

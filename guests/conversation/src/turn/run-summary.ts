@@ -2,9 +2,9 @@ import { mkdir } from 'node:fs/promises';
 import type { SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, SessionPoint } from '@heynixie/wire';
+import type { TurnDependencies } from '../types';
 import type { SummarizeFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
-import type { TurnDependencies } from './types';
 
 export type SummaryDependencies = Pick<TurnDependencies, 'env' | 'emit' | 'runQuery'>;
 

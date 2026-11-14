@@ -5,11 +5,11 @@ import { basename, join } from 'node:path';
 import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
+import { buildQueryRecorder } from '../test-utils/build-query-recorder';
+import { createStubToolServer } from '../test-utils/create-stub-tool-server';
+import { startStubChangingToolServer } from '../test-utils/start-stub-changing-tool-server';
+import { startStubModel } from '../test-utils/start-stub-model';
 import { runTurn } from './run-turn';
-import { buildQueryRecorder } from './test-utils/build-query-recorder';
-import { createStubToolServer } from './test-utils/create-stub-tool-server';
-import { startStubChangingToolServer } from './test-utils/start-stub-changing-tool-server';
-import { startStubModel } from './test-utils/start-stub-model';
 
 async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'nixie-conversation-'));

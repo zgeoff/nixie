@@ -4,13 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { McpServerConfig, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+import { buildStubContractEnv } from '../test-utils/build-stub-contract-env';
+import { createStubToolServer } from '../test-utils/create-stub-tool-server';
+import { readProcessesInDirectory } from '../test-utils/read-processes-in-directory';
+import { startRefusingProxy } from '../test-utils/start-refusing-proxy';
+import { startStubHTTPToolServer } from '../test-utils/start-stub-http-tool-server';
+import { startStubModel } from '../test-utils/start-stub-model';
 import { checkToolServer } from './check-tool-server';
-import { buildStubContractEnv } from './test-utils/build-stub-contract-env';
-import { createStubToolServer } from './test-utils/create-stub-tool-server';
-import { readProcessesInDirectory } from './test-utils/read-processes-in-directory';
-import { startRefusingProxy } from './test-utils/start-refusing-proxy';
-import { startStubHTTPToolServer } from './test-utils/start-stub-http-tool-server';
-import { startStubModel } from './test-utils/start-stub-model';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();

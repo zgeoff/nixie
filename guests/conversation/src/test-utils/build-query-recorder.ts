@@ -1,6 +1,6 @@
 import type { Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import { commandLifecycleSchema } from '../command-lifecycle-schema';
+import { commandLifecycleSchema } from '../turn/command-lifecycle-schema';
 
 export interface QueryRecorder {
   readonly runQuery: typeof query;

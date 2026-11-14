@@ -3,8 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkReplySchema, decodeTurnFrame, encodeFrame, makeFrameDecoder } from '@heynixie/wire';
+import { startStubModel } from '../test-utils/start-stub-model';
 import { runCheckGuest } from './run-check-guest';
-import { startStubModel } from './test-utils/start-stub-model';
 
 async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'nixie-check-'));

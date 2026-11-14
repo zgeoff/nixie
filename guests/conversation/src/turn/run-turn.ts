@@ -2,6 +2,8 @@ import type { SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sd
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, ReportedUsage, SessionPoint } from '@heynixie/wire';
 import { foldAnthropicUsageEvent, parseAnthropicCallUsage } from '@heynixie/wire';
+import type { TurnDependencies } from '../types';
+import { toolServerName } from '../utils/tool-server-name';
 import { buildModelFailure } from './build-model-failure';
 import type { TurnFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
@@ -14,8 +16,6 @@ import { pickTurnOutcome } from './pick-turn-outcome';
 import type { TurnInputState } from './read-turn-input';
 import { readTurnInput } from './read-turn-input';
 import { setupTurnDisk } from './setup-turn-disk';
-import { toolServerName } from './tool-server-name';
-import type { TurnDependencies } from './types';
 
 interface TurnState extends TurnInputState {
   boundary: SessionPoint | null;

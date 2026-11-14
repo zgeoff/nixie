@@ -13,9 +13,9 @@ import type { LogRecord } from '../../modules/log/src/index';
 // @boundaries-ignore a spike imports the code it measures
 import type { GuestFrame, InboxMessage } from '../../libs/wire/src/index';
 // @boundaries-ignore a spike imports the code it measures
-import { runCheckQuery } from '../../guests/conversation/src/run-check-query';
+import { runCheckQuery } from '../../guests/conversation/src/check/run-check-query';
 // @boundaries-ignore a spike imports the code it measures
-import { runTurn } from '../../guests/conversation/src/run-turn';
+import { runTurn } from '../../guests/conversation/src/turn/run-turn';
 // @boundaries-ignore a spike imports the code it measures
 import { renderConsolidatorPrompt } from '../../modules/memory/src/render-consolidator-prompt';
 // @boundaries-ignore a spike imports the code it measures

@@ -17,7 +17,7 @@ import { renderSystemMessage } from '../../libs/wire/src/index';
 // @boundaries-ignore the memory module's record kinds, which the memory tools' types need
 import '../../modules/memory/src/memory-record-kind';
 // @boundaries-ignore a spike imports the code it measures
-import { runTurn } from '../../guests/conversation/src/run-turn';
+import { runTurn } from '../../guests/conversation/src/turn/run-turn';
 // @boundaries-ignore a spike imports the code it measures
 import { renderPrompt } from '../../modules/prompts/src/prompt/render-prompt';
 // @boundaries-ignore a spike imports the code it measures

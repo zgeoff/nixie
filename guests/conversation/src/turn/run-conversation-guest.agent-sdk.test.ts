@@ -12,10 +12,10 @@ import {
   makeFrameDecoder,
 } from '@heynixie/wire';
 import { buildMockMessageFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
+import { createStubToolServer } from '../test-utils/create-stub-tool-server';
+import { startStubHTTPToolServer } from '../test-utils/start-stub-http-tool-server';
+import { startStubModel } from '../test-utils/start-stub-model';
 import { runConversationGuest } from './run-conversation-guest';
-import { createStubToolServer } from './test-utils/create-stub-tool-server';
-import { startStubHTTPToolServer } from './test-utils/start-stub-http-tool-server';
-import { startStubModel } from './test-utils/start-stub-model';
 
 async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'nixie-guest-'));

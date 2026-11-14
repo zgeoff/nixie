@@ -1,6 +1,6 @@
 import { access, rm } from 'node:fs/promises';
-import { getConfigDir } from './get-config-dir';
-import { getWorkDir } from './get-work-dir';
+import { getConfigDir } from '../utils/get-config-dir';
+import { getWorkDir } from '../utils/get-work-dir';
 
 // The SDK keeps forgotten text in every fork and before every compaction boundary, so a forget
 // removes the whole session state, never a single file.

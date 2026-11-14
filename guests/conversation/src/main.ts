@@ -1,4 +1,4 @@
-import { runConversationGuest } from './run-conversation-guest';
+import { runConversationGuest } from './turn/run-conversation-guest';
 
 const writer = Bun.stdout.writer();
 
