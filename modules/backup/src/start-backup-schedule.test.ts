@@ -6,9 +6,11 @@ import {
   pauseNixieInTransaction,
   resumeNixieInTransaction,
   withWriteTransaction,
+  writeRecordsInTransaction,
 } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import type { BackupPass } from './run-backup-pass';
 import { startBackupSchedule } from './start-backup-schedule';
@@ -22,7 +24,12 @@ async function setupTest() {
   const onAbandoned = mock<(sequences: readonly number[]) => void>();
   const definitions = { snapshotHash: 'sha256:aa11' };
 
-  return { ...log, definitions, onPass, onError, onAbandoned };
+  const writeForgottenRecord = (tx: Transaction<unknown>) =>
+    writeRecordsInTransaction(tx, log.log, [
+      { kind: 'memory.forgotten', definitions, payload: { itemID: 'item-a' } },
+    ]);
+
+  return { ...log, definitions, onPass, onError, onAbandoned, writeForgottenRecord };
 }
 
 test('it stages a scheduled set at start when nixie holds none', async () => {
@@ -59,11 +66,7 @@ test('it stages a forget set as soon as a forgotten record commits, beside a set
   onTestFinished(() => schedule.stop());
 
   await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
-
-  await withWriteTransaction(ctx.writer, async (tx) => {
-    await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-      values (1, 1798761600000, 'memory.forgotten', 'snapshot-a', '{}')`.execute(tx);
-  });
+  await withWriteTransaction(ctx.writer, (tx) => ctx.writeForgottenRecord(tx));
 
   await waitForCondition(() =>
     ctx.onPass.mock.calls.some((call) => call[0].staged?.kind === 'forget'),
@@ -529,8 +532,7 @@ test('it stages no forget set while a restore pause holds, and stages one after 
       definitions: ctx.definitions,
     });
 
-    await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-      values (1000, 1798761600000, 'memory.forgotten', 'snapshot-a', '{}')`.execute(tx);
+    await ctx.writeForgottenRecord(tx);
   });
 
   await waitForCondition(() => ctx.onPass.mock.calls.length === 2);
@@ -551,4 +553,36 @@ test('it stages no forget set while a restore pause holds, and stages one after 
     { kind: 'scheduled', state: 'staged' },
     { kind: 'forget', state: 'staged' },
   ]);
+});
+
+test('it stages no set at start when a forget is due under a restore pause', async () => {
+  const ctx = await setupTest();
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await ctx.writeForgottenRecord(tx);
+
+    await pauseNixieInTransaction(tx, ctx.log, {
+      cause: 'restore',
+      recoveryID: 'recovery-a',
+      by: null,
+      definitions: ctx.definitions,
+    });
+  });
+
+  const schedule = startBackupSchedule({
+    context: { writer: ctx.writer, storage: localDataStorage },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
+
+  const sets = await sql`select sequence from backup_sets`.execute(ctx.writer.db);
+
+  expect(ctx.onPass.mock.calls[0]?.[0].staged).toBeNull();
+  expect(sets.rows).toStrictEqual([]);
 });
