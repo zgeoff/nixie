@@ -25,9 +25,9 @@ are. A message that states the item's fact would make nixie keep the item at onc
 
    Expect: `data.replies` is 2, one for the proposal and one for the reply.
 
-2. Send the message. On `preview`, type a message in place of the one below that invites a guess
-   about you without stating a fact, such as "Guess which city I grew up in, and remember it.", and
-   skip the `conversation turn` line.
+2. Send the message. On `preview`, type a message that asks nixie to guess a fact about you and
+   remember it, such as "Guess which city I grew up in, and remember it.", and skip the
+   `conversation turn` line. When the real model proposes nothing, step 4 ends the journey.
 
    ```bash
    bun verify browser goto /
