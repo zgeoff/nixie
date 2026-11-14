@@ -118,7 +118,6 @@ export function buildStubGuestSandboxes(options: StubGuestSandboxesOptions): Stu
   return {
     adapter: {
       id: adapterID,
-      boundary: 'process',
       create: (spec) => createSandbox(state, spec),
       read: async (id) => {
         const row = await options.recorder.readRow(adapterID, id);

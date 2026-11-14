@@ -34,7 +34,7 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
     'proposals',
   ]);
 
-  expect(server.sandboxes).toMatchObject({ id: 'process', boundary: 'process' });
+  expect(server.sandboxes).toMatchObject({ id: 'process' });
 
   expect(server.endpoint.getToolTarget({ id: 's-1', owner: 'conversation' })).toMatchObject({
     path: expect.toStartWith(server.socketDir),

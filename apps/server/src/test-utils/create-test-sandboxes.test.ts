@@ -18,7 +18,7 @@ async function setupTest() {
 test('it builds the process double', async () => {
   const ctx = await setupTest();
 
-  expect(ctx.sandboxes).toMatchObject({ id: 'process', boundary: 'process' });
+  expect(ctx.sandboxes).toMatchObject({ id: 'process' });
 });
 
 test('it lists every sandbox the owner held at the retire as retired, and a later one as kept', async () => {
