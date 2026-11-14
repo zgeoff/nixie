@@ -18,3 +18,6 @@ export { writeSeedMessages } from './write-seed-messages';
 
 // A bundle of the package entry would hold the test-build ID list this check searches for.
 export { writeReleaseBundle } from '../write-release-bundle';
+export { formatReleaseStartOutcome } from './format-release-start-outcome';
+export { readPreviousReleaseBuild } from './read-previous-release-build';
+export { readReleaseStartOutcome } from './read-release-start-outcome';

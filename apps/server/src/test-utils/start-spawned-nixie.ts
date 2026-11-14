@@ -77,6 +77,10 @@ interface SpawnedNixieHarness {
 
   readonly start: (faultPoints?: readonly FaultPointArm[]) => SpawnedNixieProcess;
 
+  // Starts another release entry on the same config, data directory and doubles. It never waits
+  // for ready, which a release does not reach without an impd.
+  readonly startRelease: (entry: string) => SpawnedNixieProcess;
+
   readonly advance: (durationMs: number, options?: AdvanceOptions) => Promise<void>;
 }
 
@@ -224,6 +228,7 @@ export async function startSpawnedNixie(options: SpawnedNixieOptions = {}): Prom
 
       return withStarterApproval(started, files.configPath);
     },
+    startRelease: (entry) => startRelease({ ...launch, entry }, stack),
     advance: crashHarness.advance,
   };
 

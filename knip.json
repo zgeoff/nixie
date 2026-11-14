@@ -28,6 +28,7 @@
       "entry": [
         "src/main.ts",
         "src/run-release-build.ts",
+        "src/test-utils/write-previous-release-build.ts",
         "src/test-utils/run-stub-*.ts",
         "src/run-config-schema-check.ts",
         "src/run-release-manifest.ts",

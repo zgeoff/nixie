@@ -32,11 +32,12 @@ through `bun test` with a limit of 15 s per test. It then runs the bundle lane t
 
 ## Builds
 
-| Build                   | Build command                   | Read it in a test with                                       |
-| ----------------------- | ------------------------------- | ------------------------------------------------------------ |
-| nixie's test bundle     | `bun run test:bundles`          | `startSpawnedNixie` from `@heynixie/server/test-utils`       |
-| the web build           | `bun run test:web-build`        | `readWebBuild` from `@heynixie/web/test-utils`               |
-| the backup job's bundle | `bun run test:backup-job-build` | `readBackupJobBundle` from `@heynixie/backup-job/test-utils` |
+| Build                   | Build command                         | Read it in a test with                                        |
+| ----------------------- | ------------------------------------- | ------------------------------------------------------------- |
+| nixie's test bundle     | `bun run test:bundles`                | `startSpawnedNixie` from `@heynixie/server/test-utils`        |
+| the previous release    | `bun run test:previous-release-build` | `readPreviousReleaseBuild` from `@heynixie/server/test-utils` |
+| the web build           | `bun run test:web-build`              | `readWebBuild` from `@heynixie/web/test-utils`                |
+| the backup job's bundle | `bun run test:backup-job-build`       | `readBackupJobBundle` from `@heynixie/backup-job/test-utils`  |
 
 `bun run test:bundles`, with an `s`, builds nixie's test bundle. `bun run test:bundle` runs the
 bundle lane. A file needs each build whose helper it imports.
@@ -52,6 +53,11 @@ bundle lane. A file needs each build whose helper it imports.
   release bundle is the one nixie ships, with the test-only code left out. The `release` path is the
   bundle's entry file. The suite writes its own release bundle, as
   [`write-release-bundle.test.ts`](../../../../e2e/write-release-bundle.test.ts) does.
+- Start the previous release's server on a data directory the build under check wrote with
+  `nixie.harness.startRelease(entry)`, where `entry` is the path that `readPreviousReleaseBuild`
+  returns. The previous release is the newest `v*` tag that `HEAD` holds apart from one on `HEAD`
+  itself. The build makes a git worktree of that tag outside the repo and removes it afterwards. It
+  runs in the lane's build step, never in a test, so a slow build cannot fail a test.
 
 ## Journeys
 
