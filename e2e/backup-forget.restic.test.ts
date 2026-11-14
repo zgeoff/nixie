@@ -5,13 +5,7 @@ import { join } from 'node:path';
 import { getBackupStagingDir, writeSnapshotSet } from '@heynixie/backup';
 import { readBackupJobBundle } from '@heynixie/backup-job/test-utils';
 import { startDatabase } from '@heynixie/db';
-import {
-  createRecordKey,
-  getDataFilePath,
-  localDataStorage,
-  removeRecordKey,
-  withWriteTransaction,
-} from '@heynixie/log';
+import { createRecordKey, getDataFilePath, localDataStorage, removeRecordKey } from '@heynixie/log';
 import { readTestRecordKeyRows, startTestLog } from '@heynixie/log/test-utils';
 import {
   backupReceiptSchema,
@@ -23,6 +17,7 @@ import { $ } from 'bun';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { buildSeeder } from './src/test-utils/build-seeder';
 
 // Bun's skipIf takes a boolean and has no in-body skip, so the gate reads the binary at collection;
 // CI's image job always names one, so there a missing binary fails the run instead
@@ -50,7 +45,7 @@ async function setupTest() {
     NIXIE_BACKUP_KEY_PASSWORD: keyEnv.RESTIC_PASSWORD,
   };
 
-  return { ...log, restic, job, repos, dataEnv, keyEnv, jobEnv };
+  return { ...log, restic, job, repos, dataEnv, keyEnv, jobEnv, seed: buildSeeder(log) };
 }
 
 test.skipIf(isResticMissing)(
@@ -77,14 +72,12 @@ test.skipIf(isResticMissing)(
       new TextEncoder().encode('Prefers window seats'),
     );
 
-    const payload = JSON.stringify({
-      forgotten: Buffer.from(forgottenText).toString('base64'),
-      neighbour: Buffer.from(neighbourText).toString('base64'),
-    });
-
-    await withWriteTransaction(ctx.writer, async (tx) => {
-      await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-        values (1, 1798761600000, 'memory.version_added', 'snapshot-a', ${payload})`.execute(tx);
+    const added = await ctx.seed.record({
+      kind: 'memory.version_added',
+      payload: {
+        forgotten: Buffer.from(forgottenText).toString('base64'),
+        neighbour: Buffer.from(neighbourText).toString('base64'),
+      },
     });
 
     const liveKeyRows = await readTestRecordKeyRows(ctx.writer);
@@ -99,10 +92,7 @@ test.skipIf(isResticMissing)(
 
     await removeRecordKey(ctx.log, forgotten.keyID);
 
-    await withWriteTransaction(ctx.writer, async (tx) => {
-      await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-        values (2, 1798761660000, 'memory.forgotten', 'snapshot-a', '{}')`.execute(tx);
-    });
+    await ctx.seed.record({ kind: 'memory.forgotten', payload: {} });
 
     await writeSnapshotSet(context, 'forget');
 
@@ -156,7 +146,10 @@ test.skipIf(isResticMissing)(
 
         onTestFinished(() => restoredLog.destroy());
 
-        const rows = await sql`select payload from records where sequence = 1`.execute(restoredLog);
+        const rows =
+          await sql`select payload from records where sequence = ${added.sequence}`.execute(
+            restoredLog,
+          );
 
         return z.array(z.object({ payload: z.string() })).parse(rows.rows)[0]?.payload;
       }),
@@ -220,7 +213,12 @@ test.skipIf(isResticMissing)(
     ]);
 
     expect(restoredKeyRows.map((row) => row.key_id)).toStrictEqual([neighbour.keyID]);
-    expect(restoredPayloads).toStrictEqual([payload, payload]);
+
+    expect(restoredPayloads).toStrictEqual([
+      JSON.stringify(added.payload),
+      JSON.stringify(added.payload),
+    ]);
+
     expect(new TextDecoder().decode(neighbourPlain)).toBe('Prefers window seats');
     expect(blobs.length).toBeGreaterThan(0);
     expect(blobs).toSatisfyAll((blob: Buffer) => !blob.includes(Buffer.from(forgottenRow.wrapped)));

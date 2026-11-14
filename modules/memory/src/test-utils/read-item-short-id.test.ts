@@ -1,46 +1,35 @@
 import { expect, test } from 'bun:test';
-import type { MemoryTables } from '../types';
+import { buildTestClock } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
+import { buildMemorySeeder } from './build-memory-seeder';
 import { readItemShortID } from './read-item-short-id';
 import { startTestMemory } from './start-test-memory';
 
 async function setupTest() {
-  const memory = await startTestMemory();
+  const clock = buildTestClock(Date.parse('2026-11-02T09:00:00Z'));
 
-  return { memory, db: memory.writer.db.$extendTables<MemoryTables>() };
+  const memory = await startTestMemory({ gate: { clock } });
+
+  return { memory, seed: buildMemorySeeder({ store: memory.store, log: memory.log, clock }) };
 }
 
 test('it reads the short ID the items table holds for an item', async () => {
   const ctx = await setupTest();
+  const item = await ctx.seed.item();
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
 
-  const item = await ctx.memory.store.remember({
-    text: 'Lives on Elm Street',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
+  const [recalledItem] = recalled.items;
 
-  await ctx.db
-    .updateTable('memory_items')
-    .set({ short_id: 'k3x9m2p7qa' })
-    .where('item_id', '=', item.itemID)
-    .execute();
+  invariant(recalledItem, 'the item recalls');
 
   const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
-  expect(shortID).toBe('k3x9m2p7qa');
+  expect(shortID).toBe(recalledItem.shortID);
 });
 
 test('it fails for an item that holds no short ID', async () => {
   const ctx = await setupTest();
-
-  const item = await ctx.memory.store.remember({
-    text: 'Lives on Elm Street',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  await ctx.db
-    .updateTable('memory_items')
-    .set({ short_id: null })
-    .where('item_id', '=', item.itemID)
-    .execute();
+  const item = await ctx.seed.itemWithoutShortID();
 
   const read = readItemShortID(ctx.memory.log, item.itemID);
 

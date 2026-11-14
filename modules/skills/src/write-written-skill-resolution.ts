@@ -38,5 +38,5 @@ export async function writeWrittenSkillResolution(
     ]);
   });
 
-  await context.seedWrittenSkills();
+  await context.runInForceSeed();
 }

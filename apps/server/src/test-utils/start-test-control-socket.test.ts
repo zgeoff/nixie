@@ -2,9 +2,9 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDeviceSession } from '@heynixie/api/test-utils';
 import { startTestMemory } from '@heynixie/memory/test-utils';
 import { buildHostClient } from '../build-host-client';
+import { buildSeeder } from './build-seeder';
 import { startTestControlSocket } from './start-test-control-socket';
 
 async function setupTest() {
@@ -66,7 +66,7 @@ test('it answers a reset with the reset it is given', async () => {
 test('it returns the API behind the socket, whose sessions the socket lists', async () => {
   const ctx = await setupTest();
   const api = await startTestControlSocket({ path: ctx.path });
-  const session = await createDeviceSession(api.context, 'Kitchen tablet');
+  const session = await buildSeeder(api).identity({ deviceName: 'Kitchen tablet' });
   const sessions = await buildHostClient(ctx.path).sessions.list();
 
   expect(sessions).toPartiallyContain({ sessionID: session.sessionID });

@@ -8,13 +8,16 @@ import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { backupSetManifestSchema, parseBackupFile, readFileSHA256 } from '@heynixie/wire';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { buildSeeder } from './test-utils/build-seeder';
 import { buildStubFailingStorage } from './test-utils/build-stub-failing-storage';
 import { writeSnapshotSet } from './write-snapshot-set';
 
 async function setupTest() {
   const log = await startTestLog();
 
-  return { ...log, context: { writer: log.writer, storage: localDataStorage } };
+  const context = { writer: log.writer, storage: localDataStorage };
+
+  return { ...log, context, seed: buildSeeder({ log: log.log, context }) };
 }
 
 test('it stages copies of both databases with a manifest of their checksums, and writes the marker', async () => {
@@ -47,11 +50,7 @@ test('it stages copies of both databases with a manifest of their checksums, and
 
 test('it records the staged set with the log head its copy holds', async () => {
   const ctx = await setupTest();
-
-  await withWriteTransaction(ctx.writer, async (tx) => {
-    await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-      values (7, 1798761600000, 'memory.forgotten', 'snapshot-a', '{}')`.execute(tx);
-  });
+  const forgotten = await ctx.seed.record({ kind: 'memory.forgotten', payload: {} });
 
   await writeSnapshotSet(ctx.context, 'forget');
 
@@ -59,16 +58,14 @@ test('it records the staged set with the log head its copy holds', async () => {
     ctx.writer.db,
   );
 
-  expect(rows.rows).toStrictEqual([{ sequence: 1, kind: 'forget', state: 'staged', log_head: 7 }]);
+  expect(rows.rows).toStrictEqual([
+    { sequence: 1, kind: 'forget', state: 'staged', log_head: forgotten.sequence },
+  ]);
 });
 
 test('it copies a database that holds the rows committed before the set', async () => {
   const ctx = await setupTest();
-
-  await withWriteTransaction(ctx.writer, async (tx) => {
-    await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-      values (3, 1798761600000, 'task.created', 'snapshot-a', '{}')`.execute(tx);
-  });
+  const created = await ctx.seed.record({ kind: 'task.created', payload: {} });
 
   await writeSnapshotSet(ctx.context, 'scheduled');
 
@@ -80,7 +77,7 @@ test('it copies a database that holds the rows committed before the set', async 
 
   const rows = await sql`select sequence, kind from records`.execute(copy);
 
-  expect(rows.rows).toStrictEqual([{ sequence: 3, kind: 'task.created' }]);
+  expect(rows.rows).toStrictEqual([{ sequence: created.sequence, kind: 'task.created' }]);
 });
 
 test('it numbers a set above the newest set nixie recorded', async () => {

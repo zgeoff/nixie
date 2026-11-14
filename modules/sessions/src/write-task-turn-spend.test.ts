@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { LeaseLostError, claimTask } from '@heynixie/tasks';
-import { seedConversationStep, seedStartedTask } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { readTaskUsage } from './read-task-usage';
+import { buildSeeder } from './test-utils/build-seeder';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTaskTurnSpend } from './write-task-turn-spend';
 
@@ -11,6 +11,7 @@ async function setupTest() {
 
   return {
     ...tasks,
+    seed: buildSeeder(tasks),
     claimStartedTask: async (taskID: string) => {
       const claim = await claimTask(tasks.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
 
@@ -31,9 +32,9 @@ async function setupTest() {
 
 test('it refuses the limit pause of a completed turn whose lease is lost, and counts its spend', async () => {
   const ctx = await setupTest();
-  const starter = await seedConversationStep(ctx.context);
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await ctx.seed.task({
     starter: starter.claim,
     name: 'Harbour charts',
     brief: 'Find the depth at the north mooring.',

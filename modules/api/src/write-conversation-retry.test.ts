@@ -1,113 +1,65 @@
 import { expect, test } from 'bun:test';
-import { readRecords, withWriteTransaction } from '@heynixie/log';
-import { claimTask, createConversationTask, runTaskStep, writeInboxRecords } from '@heynixie/tasks';
-import invariant from 'tiny-invariant';
-import { buildInputHash } from './build-input-hash';
-import { createDeviceSession } from './test-utils/create-device-session';
+import { readRecords } from '@heynixie/log';
+import { createConversationTask } from '@heynixie/tasks';
+import { buildSeeder } from './test-utils/build-seeder';
 import { startTestAPI } from './test-utils/start-test-api';
-import type { APITables } from './types';
-import { writeClientAction } from './write-client-action';
 import { writeConversationRetry } from './write-conversation-retry';
 
 async function setupTest() {
   const api = await startTestAPI();
 
-  const seedFailedTurn = async () => {
-    await createConversationTask(api.context);
-
-    await writeInboxRecords(api.context, [
-      {
-        kind: 'owner_message',
-        definitions: api.context.definitions(),
-        thread: 'conversation',
-        erasable: { text: 'Is the library open late?' },
-      },
-    ]);
-
-    const failed = await claimTask(api.context, { holder: 'step-runner', leaseMs: 60_000 });
-
-    invariant(failed);
-
-    await runTaskStep(api.context, failed, {
-      runStep: () => Promise.reject(new Error('the provider is overloaded')),
-      leaseMs: 60_000,
-      logger: () => {},
-      maxStepErrors: 3,
-      retryDelayMs: 30_000,
-      maxRetryDelayMs: 300_000,
-    });
-  };
-
-  const seedClientAction = (clientActionID: string, procedure: string, identityID: string) =>
-    withWriteTransaction(api.writer, (tx) =>
-      writeClientAction(tx, {
-        clientActionID,
-        procedure,
-        identityID,
-        inputHash: buildInputHash({}),
-        result: { retriedAt: api.clock.now() },
-        recordedAt: api.clock.now(),
-      }),
-    );
+  const seed = buildSeeder(api);
 
   return {
     ...api,
     readRevivals: () => readRecords(api.context.log, { afterSequence: 0, kinds: ['task.revived'] }),
     seed: {
+      ...seed,
       revokedCaller: async () => {
-        await seedFailedTurn();
+        await seed.failedConversationTurn();
 
-        const laptop = await createDeviceSession(api.context, 'laptop');
-
-        await withWriteTransaction(api.writer, (tx) =>
-          tx
-            .$extendTables<APITables>()
-            .updateTable('identities')
-            .set({ revoked_at: api.clock.now() })
-            .where('identity_id', '=', laptop.caller.identityID)
-            .execute(),
-        );
+        const laptop = await seed.revokedIdentity({ deviceName: 'laptop' });
 
         return laptop.caller;
       },
       actionIDOfAnotherProcedure: async () => {
-        await seedFailedTurn();
+        await seed.failedConversationTurn();
 
-        const laptop = await createDeviceSession(api.context, 'laptop');
+        const laptop = await seed.identity({ deviceName: 'laptop' });
 
-        await seedClientAction(
-          '6d1f3b5a-7c9e-4a2b-8d0f-2e4a6c8b0d13',
-          'conversation.forget',
-          laptop.caller.identityID,
-        );
+        await seed.clientAction({
+          clientActionID: '6d1f3b5a-7c9e-4a2b-8d0f-2e4a6c8b0d13',
+          procedure: 'conversation.forget',
+          identityID: laptop.caller.identityID,
+        });
 
         return laptop.caller;
       },
       actionIDOfAnotherIdentity: async () => {
-        await seedFailedTurn();
+        await seed.failedConversationTurn();
 
-        const phone = await createDeviceSession(api.context, 'phone');
-        const laptop = await createDeviceSession(api.context, 'laptop');
+        const phone = await seed.identity({ deviceName: 'phone' });
+        const laptop = await seed.identity({ deviceName: 'laptop' });
 
-        await seedClientAction(
-          '6d1f3b5a-7c9e-4a2b-8d0f-2e4a6c8b0d13',
-          'conversation.retry',
-          phone.caller.identityID,
-        );
+        await seed.clientAction({
+          clientActionID: '6d1f3b5a-7c9e-4a2b-8d0f-2e4a6c8b0d13',
+          procedure: 'conversation.retry',
+          identityID: phone.caller.identityID,
+        });
 
         return laptop.caller;
       },
       nothingFailed: async () => {
         await createConversationTask(api.context);
 
-        const laptop = await createDeviceSession(api.context, 'laptop');
+        const laptop = await seed.identity({ deviceName: 'laptop' });
 
         return laptop.caller;
       },
       failedTurn: async () => {
-        await seedFailedTurn();
+        await seed.failedConversationTurn();
 
-        const laptop = await createDeviceSession(api.context, 'laptop');
+        const laptop = await seed.identity({ deviceName: 'laptop' });
 
         return laptop.caller;
       },

@@ -12,10 +12,7 @@ export interface StartedTaskSeed {
   readonly hopLimit?: number;
 }
 
-export async function seedStartedTask(
-  context: TasksContext,
-  seed: StartedTaskSeed,
-): Promise<string> {
+export async function seedTask(context: TasksContext, seed: StartedTaskSeed): Promise<string> {
   const outcome = await writeTaskStart(context, {
     from: seed.starter.lease.workID,
     name: seed.name,

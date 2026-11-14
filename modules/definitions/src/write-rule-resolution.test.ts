@@ -41,7 +41,7 @@ async function setupTest() {
   return {
     root,
     log,
-    seed: () =>
+    runSeed: () =>
       runSeed({
         log,
         source: createPathSource({ directory: root }),
@@ -67,7 +67,7 @@ test('it keeps a runtime change in force when the repo changes its rule, and lis
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const change = await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -81,7 +81,7 @@ test('it keeps a runtime change in force when the repo changes its rule, and lis
     'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
   );
 
-  const result = await ctx.seed();
+  const result = await ctx.runSeed();
   const rules = await readRulesInForce(ctx.log.writer.db);
   const conflicts = await readRuleConflicts(ctx.log.writer.db);
 
@@ -116,7 +116,7 @@ test("it keeps the runtime change in force and clears the conflict when you keep
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const change = await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -130,7 +130,7 @@ test("it keeps the runtime change in force and clears the conflict when you keep
     'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuleResolution(ctx.context, { ruleID: 'ask-mail', keep: 'nixie' });
 
@@ -155,7 +155,7 @@ test("it puts the repo's version in force and retires the runtime change when yo
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -169,7 +169,7 @@ test("it puts the repo's version in force and retires the runtime change when yo
     'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuleResolution(ctx.context, { ruleID: 'ask-mail', keep: 'repo' });
 
@@ -196,7 +196,7 @@ test.each(['nixie', 'repo'] as const)(
       'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
     );
 
-    await ctx.seed();
+    await ctx.runSeed();
 
     const change = await writeRuntimeRule(ctx.context, {
       ruleID: 'ask-mail',
@@ -210,7 +210,7 @@ test.each(['nixie', 'repo'] as const)(
       'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
     );
 
-    await ctx.seed();
+    await ctx.runSeed();
 
     await writeRuleResolution(ctx.context, { ruleID: 'ask-mail', keep });
 
@@ -241,7 +241,7 @@ test('it refuses to resolve a rule with no conflict', async () => {
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const resolution = await writeRuleResolution(ctx.context, { ruleID: 'ask-mail', keep: 'nixie' });
 

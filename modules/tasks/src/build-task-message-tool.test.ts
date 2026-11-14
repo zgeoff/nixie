@@ -9,7 +9,7 @@ import { createConversationTask } from './create-conversation-task';
 import { createSystemTask } from './create-system-task';
 import { createTestConversationClaim } from './test-utils/create-test-conversation-claim';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 
@@ -421,7 +421,7 @@ test.each([
     const ctx = await setupTest();
     const starter = await seedConversationStep(ctx.context);
 
-    const taskID = await seedStartedTask(ctx.context, {
+    const taskID = await seedTask(ctx.context, {
       starter: starter.claim,
       name: 'Tide tables',
       brief: 'Find the high tides for Saturday.',
@@ -466,7 +466,7 @@ test('it sends no report to the starter of a task started with no report', async
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',

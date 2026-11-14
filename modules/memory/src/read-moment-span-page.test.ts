@@ -2,8 +2,7 @@
 import { expect, test } from 'bun:test';
 import { removeSummaryKeys } from '@heynixie/compaction';
 import { readRecordAttachments, writeRecords } from '@heynixie/log';
-import { removeTestRecordKey } from '@heynixie/log/test-utils';
-import { sql } from 'kysely';
+import { buildLogSeeder, removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { readMomentSpanPage } from './read-moment-span-page';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -33,7 +32,7 @@ async function setupTest() {
     return entry;
   };
 
-  return { memory, readOnlyEntry };
+  return { memory, readOnlyEntry, seed: buildLogSeeder(memory) };
 }
 
 test('it cuts a record larger than the page until the entry, escaped as the reader gets it, fits the cap', async () => {
@@ -345,24 +344,7 @@ test('it lists no image of an owner message that was forgotten', async () => {
 
 test('it lists the images of a readable owner message whose attachments are unreadable', async () => {
   const ctx = await setupTest();
-
-  const [message] = await writeRecords(ctx.memory.log, [
-    {
-      kind: 'owner_message',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      contentSource: 'owner',
-      payload: { images: [{ mediaType: 'image/png' }] },
-      erasable: { text: 'one shelf photo', spans: [] },
-      attachments: [new TextEncoder().encode('shelf-photo')],
-    },
-  ]);
-
-  invariant(message);
-
-  await sql`drop trigger record_attachments_refuse_update;
-    update record_attachments set sealed = randomblob(64)`.execute(ctx.memory.writer.db);
-
+  const message = await ctx.seed.unreadableAttachmentRecord({ kind: 'owner_message' });
   const attachments = await readRecordAttachments(ctx.memory.log, [message.sequence]);
   const entry = await ctx.readOnlyEntry(message.sequence, ctx.memory.deploymentKey);
 

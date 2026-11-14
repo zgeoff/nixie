@@ -9,7 +9,7 @@ import { buildStartedDirectory } from './test-utils/build-started-directory';
 import { makeStubStep } from './test-utils/make-stub-step';
 import { runTaskSteps } from './test-utils/run-task-steps';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTestTaskMessage } from './test-utils/write-test-task-message';
 import type { TasksTables } from './types';
@@ -978,7 +978,7 @@ test('it sends a reply to the brief of the sender to its starter, with no wait o
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -1096,7 +1096,7 @@ test('it refuses a reply that names the sender own task ID once the sender has a
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',

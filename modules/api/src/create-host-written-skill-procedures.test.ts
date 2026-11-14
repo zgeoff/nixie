@@ -51,7 +51,7 @@ async function setupTest() {
     log,
     clock,
     definitions: () => ({ snapshotHash: 'snapshot-a' }),
-    seedWrittenSkills: runWrittenSeed,
+    runInForceSeed: runWrittenSeed,
   });
 
   const client = createRouterClient(procedures);

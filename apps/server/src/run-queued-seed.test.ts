@@ -50,10 +50,10 @@ test('it starts a second seed over the same parts only after the first returns',
     log: () => {},
   };
 
-  const seed = () =>
+  const runPartsSeed = () =>
     runSeed({ log: parts.context.log, source: parts.source, buildPolicy: parts.buildPolicy });
 
-  const seeds = [runQueuedSeed(parts, seed), runQueuedSeed(parts, seed)];
+  const seeds = [runQueuedSeed(parts, runPartsSeed), runQueuedSeed(parts, runPartsSeed)];
 
   stub.release();
 
@@ -147,11 +147,11 @@ test('it writes the safety line once while the same definitions stay in force', 
     log,
   };
 
-  const seed = () =>
+  const runPartsSeed = () =>
     runSeed({ log: parts.context.log, source: parts.source, buildPolicy: parts.buildPolicy });
 
-  await runQueuedSeed(parts, seed);
-  await runQueuedSeed(parts, seed);
+  await runQueuedSeed(parts, runPartsSeed);
+  await runQueuedSeed(parts, runPartsSeed);
 
   expect(log.mock.calls.filter(([event]) => event === 'prompts.safety_missing')).toStrictEqual([
     ['prompts.safety_missing', { session: 'omitted' }],
@@ -205,11 +205,11 @@ test('it runs the next seed over the same parts after one fails, and gives the f
     log: logger.log,
   };
 
-  const seed = () =>
+  const runPartsSeed = () =>
     runSeed({ log: parts.context.log, source: parts.source, buildPolicy: parts.buildPolicy });
 
-  const failed = runQueuedSeed(parts, seed);
-  const next = runQueuedSeed(parts, seed);
+  const failed = runQueuedSeed(parts, runPartsSeed);
+  const next = runQueuedSeed(parts, runPartsSeed);
 
   expect(failed).rejects.toThrow('the logger refused');
   expect(next).resolves.toMatchObject({ status: 'unchanged' });

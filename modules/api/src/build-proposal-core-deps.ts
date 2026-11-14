@@ -69,7 +69,7 @@ export function buildProposalCoreDeps(
       log: context.log,
       clock: context.clock,
       definitions: context.definitions,
-      seedWrittenSkills: async () => {
+      runInForceSeed: async () => {
         await parts.runInForceSeed();
       },
     }),

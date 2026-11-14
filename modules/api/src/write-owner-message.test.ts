@@ -4,6 +4,7 @@ import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import { readTestTasks } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
+import { buildSeeder } from './test-utils/build-seeder';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { APITables } from './types';
@@ -18,7 +19,7 @@ async function setupTest() {
     }
   >();
 
-  return { ...api, db };
+  return { ...api, db, seed: buildSeeder(api) };
 }
 
 test('it writes your message into the conversation inbox', async () => {
@@ -150,15 +151,9 @@ test('it refuses a message to a thread no task has', async () => {
 test('it refuses a message to a task that is done', async () => {
   const ctx = await setupTest();
 
-  await createConversationTask(ctx.context);
+  await ctx.seed.doneConversationTask();
 
   const laptop = await createDeviceSession(ctx.context, 'laptop');
-
-  await ctx.db
-    .$extendTables<{ tasks: { state: string } }>()
-    .updateTable('tasks')
-    .set({ state: 'done' })
-    .execute();
 
   const result = await writeOwnerMessage(ctx.context, laptop.caller, {
     clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',

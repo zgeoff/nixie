@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test';
 import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { claimTask, createConversationTask, createTask, writeStepCommit } from '@heynixie/tasks';
-import { seedConversationStep } from '@heynixie/tasks/test-utils';
 import { isDefinedError, safe } from '@orpc/client';
 import invariant from 'tiny-invariant';
 import { createEnrolmentCode } from './create-enrolment-code';
@@ -915,7 +914,7 @@ test('#records.follow streams a forgotten message as removed', async () => {
 
 test('#records.follow streams a failed tool result as cancelled when a stop cancelled its action', async () => {
   const ctx = await setupTest();
-  const step = await seedConversationStep(ctx.context);
+  const step = await ctx.seed.conversationStep();
   const action = await ctx.seed.action({ step: step.claim });
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
@@ -1077,7 +1076,7 @@ test('#records.follow resumes a task thread mid-step with exactly the records it
 
 test('#records.follow streams a stop with the actions it cancelled', async () => {
   const ctx = await setupTest();
-  const step = await seedConversationStep(ctx.context);
+  const step = await ctx.seed.conversationStep();
   const action = await ctx.seed.action({ step: step.claim });
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 

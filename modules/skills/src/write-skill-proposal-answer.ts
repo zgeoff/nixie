@@ -33,7 +33,7 @@ export async function writeSkillProposalAnswer(
   });
 
   if (result.approvalID !== null) {
-    await context.seedWrittenSkills();
+    await context.runInForceSeed();
   }
 
   return result;

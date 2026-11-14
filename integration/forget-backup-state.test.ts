@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { APIContext } from '@heynixie/api';
 import { apiProjections, createAPIApp, defaultAPISettings, makeHostResponder } from '@heynixie/api';
-import { buildTestClient, createDeviceSession } from '@heynixie/api/test-utils';
+import { buildTestClient } from '@heynixie/api/test-utils';
 import type { BackupPass } from '@heynixie/backup';
 import { getBackupStagingDir, startBackupSchedule } from '@heynixie/backup';
 import { writeTestBackupReceipt } from '@heynixie/backup/test-utils';
@@ -17,13 +17,13 @@ import {
   memoryProjections,
   startMemoryStore,
 } from '@heynixie/memory';
-import { createMemoryItem } from '@heynixie/memory/test-utils';
 import { runConversationReset } from '@heynixie/server';
 import { tasksProjections } from '@heynixie/tasks';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import invariant from 'tiny-invariant';
+import { buildSeeder } from './test-utils/build-seeder';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -154,6 +154,7 @@ async function setupTest() {
     dataDir,
     clock,
     memory,
+    seed: buildSeeder({ context, memory: { store: memory, log: context.log, clock } }),
     onPass,
     onError,
     context,
@@ -184,11 +185,11 @@ async function setupTest() {
 
 test('it keeps a forget pending while only a set staged before its delete has published', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 
@@ -229,11 +230,11 @@ test('it keeps a forget pending while only a set staged before its delete has pu
 
 test('it completes a forget once the receipt of the set staged after its delete arrives', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 
@@ -275,11 +276,11 @@ test('it completes a forget once the receipt of the set staged after its delete 
 
 test('it reports a failed prune with its reason, and keeps the forget open', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 
@@ -325,11 +326,11 @@ test('it reports a failed prune with its reason, and keeps the forget open', asy
 
 test('it completes a forget after a failed prune once the next scheduled set publishes', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 
@@ -397,11 +398,11 @@ test('it completes a forget after a failed prune once the next scheduled set pub
 
 test('it keeps a forget pending while a staging error holds back its set', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   await writeFile(getBackupStagingDir(ctx.dataDir), 'a file where staging belongs');
 
@@ -432,11 +433,11 @@ test('it keeps a forget pending while a staging error holds back its set', async
 
 test('it completes a forget whose set a staging error held back, once a later pass stages it', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   await writeFile(getBackupStagingDir(ctx.dataDir), 'a file where staging belongs');
 
@@ -483,11 +484,11 @@ test('it completes a forget whose set a staging error held back, once a later pa
 
 test('it keeps a forget pending past the backup interval while its set has no receipt', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 
@@ -524,11 +525,11 @@ test('it keeps a forget pending past the backup interval while its set has no re
 
 test('it completes a forget after a restart from the receipt the job wrote while nixie was down', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   const first = ctx.startSchedule();
 
@@ -572,11 +573,11 @@ test('it completes a forget after a restart from the receipt the job wrote while
 
 test('it reports a client forget as pending on its key backups', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   const forgotten = await client.memory.forget({
     clientActionID: crypto.randomUUID(),
@@ -589,7 +590,7 @@ test('it reports a client forget as pending on its key backups', async () => {
 
 test('it reports a host forget as pending on its key backups, as a client forget', async () => {
   const ctx = await setupTest();
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
   const forgotten = await ctx.host.memory.items.forget({ itemID: item.itemID, version: 1 });
 
   expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'pending' } });
@@ -597,7 +598,7 @@ test('it reports a host forget as pending on its key backups, as a client forget
 
 test('it reports a reset of the memories as pending on its key backups, as a forget', async () => {
   const ctx = await setupTest();
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
   const reset = await ctx.host.memory.items.forgetAll();
 
   expect(reset).toStrictEqual({ itemIDs: [item.itemID], backup: { state: 'pending' } });
@@ -617,11 +618,11 @@ test('it reports a reset of the conversations as pending on its key backups, as 
 
 test('it reports a client forget as off on its key backups when backups are off', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildOffClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   const forgotten = await client.memory.forget({
     clientActionID: crypto.randomUUID(),
@@ -634,7 +635,7 @@ test('it reports a client forget as off on its key backups when backups are off'
 
 test('it reports a host forget as off on its key backups when backups are off, as a client forget', async () => {
   const ctx = await setupTest();
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
   const forgotten = await ctx.offHost.memory.items.forget({ itemID: item.itemID, version: 1 });
 
   expect(forgotten).toStrictEqual({ itemID: item.itemID, backup: { state: 'off' } });
@@ -642,7 +643,7 @@ test('it reports a host forget as off on its key backups when backups are off, a
 
 test('it reports a reset of the memories as off on its key backups when backups are off, as a forget', async () => {
   const ctx = await setupTest();
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
   const reset = await ctx.offHost.memory.items.forgetAll();
 
   expect(reset).toStrictEqual({ itemIDs: [item.itemID], backup: { state: 'off' } });
@@ -662,11 +663,11 @@ test('it reports a reset of the conversations as off on its key backups when bac
 
 test('it completes a reset of the memories with the receipt of the set staged after it, as a forget', async () => {
   const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
 
   const client = ctx.buildClient(laptop.token);
 
-  const item = await createMemoryItem(ctx.memory, { text: 'Keeps a spare key under the mat' });
+  const item = await ctx.seed.item({ text: 'Keeps a spare key under the mat' });
 
   ctx.startSchedule();
 

@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
 import { withWriteTransaction, writeRecords, writeRecordsInTransaction } from '@heynixie/log';
 import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
-import { seedConversationStep } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { readThreadPage } from './read-thread-page';
 import { buildSeeder } from './test-utils/build-seeder';
@@ -167,7 +166,7 @@ test('it reaches back again when the reach takes in the result of an earlier cal
 
 test('it shows a failed tool result as cancelled when a stop cancelled its action', async () => {
   const ctx = await setupTest();
-  const step = await seedConversationStep(ctx.context);
+  const step = await ctx.seed.conversationStep();
   const failed = await ctx.seed.failedAction({ step: step.claim });
   const cancelled = await ctx.seed.action({ step: step.claim });
 
@@ -212,7 +211,7 @@ test('it shows a failed tool result as cancelled when a stop cancelled its actio
 
 test('it lists on a stop the actions that stop cancelled, by its sequence', async () => {
   const ctx = await setupTest();
-  const firstStep = await seedConversationStep(ctx.context);
+  const firstStep = await ctx.seed.conversationStep();
   const first = await ctx.seed.action({ step: firstStep.claim });
 
   const firstStop = await writeTaskControl(ctx.context, {
@@ -224,7 +223,7 @@ test('it lists on a stop the actions that stop cancelled, by its sequence', asyn
 
   await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'restart' });
 
-  const secondStep = await seedConversationStep(ctx.context);
+  const secondStep = await ctx.seed.conversationStep();
   const second = await ctx.seed.action({ step: secondStep.claim, tool: 'test.archive' });
 
   const secondStop = await writeTaskControl(ctx.context, {

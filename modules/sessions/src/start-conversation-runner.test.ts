@@ -1,6 +1,5 @@
 import { expect, mock, test } from 'bun:test';
 import { readLinkTarget } from '@heynixie/connectors';
-import { seedWebFetchLinks } from '@heynixie/connectors/test-utils';
 import { withWriteTransaction } from '@heynixie/log';
 import { resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
@@ -18,6 +17,7 @@ import type { InboxMessage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
+import { buildSeeder } from './test-utils/build-seeder';
 import { buildStubLiveTurnScript } from './test-utils/build-stub-live-turn-script';
 import { buildStubSessionScript } from './test-utils/build-stub-session-script';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
@@ -67,6 +67,7 @@ async function setupTest() {
 
   return {
     ...tasks,
+    seed: buildSeeder(tasks),
     sandboxes,
     runs: tools.runs,
     steps: tools.steps,
@@ -490,13 +491,13 @@ test("it removes the thread's web fetch links on a forget", async () => {
     toolNames: ['notes_read'],
   });
 
-  await seedWebFetchLinks(ctx.context.log, {
+  await ctx.seed.webFetchLinks({
     sessionKey: 'session-a',
     thread: 'conversation',
     urls: ['https://pier.test/a'],
   });
 
-  await seedWebFetchLinks(ctx.context.log, {
+  await ctx.seed.webFetchLinks({
     sessionKey: 'session-c',
     thread: 'task-tides',
     urls: ['https://pier.test/c'],
@@ -925,13 +926,8 @@ test("it passes a held task message that lands during a turn into that turn, fra
   };
 
   await createConversationTask(ctx.context);
-  await createSystemTask(ctx.context, 'memory-writer');
 
-  await ctx.db
-    .updateTable('tasks')
-    .set({ step_hop: 3 })
-    .where('task_id', '=', 'memory-writer')
-    .execute();
+  await ctx.seed.systemTaskAtHop({ taskID: 'memory-writer', hop: 3 });
 
   await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
@@ -1053,14 +1049,10 @@ test('it tells the conversation which messages arrived past the hop limit when t
   };
 
   await createConversationTask(ctx.context);
-  await createSystemTask(ctx.context, 'memory-writer');
-  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
-  await ctx.db
-    .updateTable('tasks')
-    .set({ step_hop: 2 })
-    .where('task_id', '=', 'memory-writer')
-    .execute();
+  await ctx.seed.systemTaskAtHop({ taskID: 'memory-writer', hop: 2 });
+
+  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),

@@ -148,18 +148,22 @@ test('it removes every key of the old log from the key store', async () => {
 test('it keeps the rows of a kept table', async () => {
   const ctx = await setupTest();
 
-  await sql`insert into personas (persona_version, instructions)
-    values ('persona-1', 'be brief')`.execute(ctx.writer.db);
+  await sql`create table kept_notes (note_id text primary key, text text not null)
+    strict`.execute(ctx.writer.db);
+
+  await sql`insert into kept_notes (note_id, text) values ('note-1', 'be brief')`.execute(
+    ctx.writer.db,
+  );
 
   await runLogReset(ctx.log, {
-    keptTables: ['personas'],
+    keptTables: ['kept_notes'],
     readKept: () => Promise.resolve(null),
     writeFirstRecords: () => Promise.resolve(),
   });
 
-  const personas = await sql`select persona_version from personas`.execute(ctx.writer.db);
+  const notes = await sql`select note_id from kept_notes`.execute(ctx.writer.db);
 
-  expect(personas.rows).toStrictEqual([{ persona_version: 'persona-1' }]);
+  expect(notes.rows).toStrictEqual([{ note_id: 'note-1' }]);
 });
 
 test('it lets a kept row point at an old record until the first records point it at a new one', async () => {
@@ -169,27 +173,28 @@ test('it lets a kept row point at an old record until the first records point it
     { kind: 'session.enrolled', definitions: { snapshotHash: 'sha256:aa11' } },
   ]);
 
-  await sql`insert into identities (identity_id, channel, external_id, label, paired_at,
-      last_seen_at, paired_sequence)
-    values ('kept-session', 'client', 'kept-session', 'tablet', 1, 1,
-      ${enrolled?.sequence})`.execute(ctx.writer.db);
+  await sql`create table kept_sessions (session_id text primary key,
+    paired_sequence integer not null references records (sequence)) strict`.execute(ctx.writer.db);
+
+  await sql`insert into kept_sessions (session_id, paired_sequence)
+    values ('kept-session', ${enrolled?.sequence})`.execute(ctx.writer.db);
 
   await runLogReset(ctx.log, {
-    keptTables: ['identities'],
+    keptTables: ['kept_sessions'],
     readKept: () => Promise.resolve(null),
     writeFirstRecords: async (tx) => {
       const [kept] = await writeRecordsInTransaction(tx, ctx.log, [
         { kind: 'session_kept', definitions: { snapshotHash: 'sha256:aa11' } },
       ]);
 
-      await sql`update identities set paired_sequence = ${kept?.sequence}`.execute(tx);
+      await sql`update kept_sessions set paired_sequence = ${kept?.sequence}`.execute(tx);
     },
   });
 
-  const identities = await sql`select identity_id, paired_sequence
-    from identities`.execute(ctx.writer.db);
+  const sessions = await sql`select session_id, paired_sequence
+    from kept_sessions`.execute(ctx.writer.db);
 
-  expect(identities.rows).toStrictEqual([{ identity_id: 'kept-session', paired_sequence: 2 }]);
+  expect(sessions.rows).toStrictEqual([{ session_id: 'kept-session', paired_sequence: 2 }]);
 });
 
 test('it removes the copies taken before a migration', async () => {

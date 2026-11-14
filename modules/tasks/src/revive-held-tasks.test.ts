@@ -4,7 +4,7 @@ import { claimTask } from './claim-task';
 import { readInbox } from './read-inbox';
 import { reviveHeldTasks } from './revive-held-tasks';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 import { writeInboxRecords } from './write-inbox-records';
@@ -72,7 +72,7 @@ test('it makes a held task with unread messages ready', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find tides.',
@@ -91,7 +91,7 @@ test('it lets a claim loop claim a revived task, which then runs', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find tides.',
@@ -112,7 +112,7 @@ test('it makes a held task that never opened a session ready, though it has no m
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find tides.',
@@ -130,7 +130,7 @@ test('it leaves a started task that waits on its session with every message read
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find tides.',
@@ -153,7 +153,7 @@ test('it leaves a paused held task paused', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find tides.',
@@ -175,7 +175,7 @@ test('it leaves the waiting conversation alone', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  await seedStartedTask(ctx.context, {
+  await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find tides.',
@@ -198,7 +198,7 @@ test('it revives nothing on a second run', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find tides.',

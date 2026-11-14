@@ -5,7 +5,7 @@ import { createConversationTask } from './create-conversation-task';
 import { createSystemTask } from './create-system-task';
 import { readTaskList } from './read-task-list';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTestTaskMessage } from './test-utils/write-test-task-message';
 import { writeStepCommit } from './write-step-commit';
@@ -121,7 +121,7 @@ test('it lists each task with the model it started on and the kind of the last m
     hopLimit: 20,
   };
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Second look',
     brief: 'Find the weak points in the plan.',

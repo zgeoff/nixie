@@ -56,7 +56,7 @@ async function setupTest() {
       log,
       clock: buildTestClock(0),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      seedWrittenSkills: async () => {
+      runInForceSeed: async () => {
         await runInForceSeed({ log, buildPolicy: () => policy });
       },
     },
@@ -242,7 +242,7 @@ test('it refuses a second approval over the same base as stale before the first 
     },
   ]);
 
-  const unseeded = { ...ctx.context, seedWrittenSkills: () => Promise.resolve() };
+  const unseeded = { ...ctx.context, runInForceSeed: () => Promise.resolve() };
 
   await writeSkillProposalAnswer(unseeded, {
     answer: 'approve',

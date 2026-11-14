@@ -5,13 +5,12 @@ import { z } from 'zod';
 import { runCLI } from './run-cli';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
-import { seedRuleConflict } from './test-utils/seed-rule-conflict';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
   const nixie = await startInProcessNixie({
     hasStarterRules: false,
-    seedData: async (files) => {
+    beforeStart: async (files) => {
       const definitions = join(dirname(files.configPath), 'definitions');
 
       await writeFile(join(definitions, 'nixie.yaml'), 'format: 3\n');
@@ -113,7 +112,7 @@ test.each([
 ])('it resolves a conflict with --keep %s and puts that version in force', async (keep, rules) => {
   const nixie = await startInProcessNixie({
     hasStarterRules: false,
-    seedData: (files) => seedRuleConflict(files),
+    beforeStart: (_files, seed) => seed.ruleConflict(),
   });
 
   await nixie.waitForLogEvent('ready');

@@ -50,7 +50,7 @@ async function setupTest() {
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       runInForceSeed: () => runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) }),
     },
-    seed: () =>
+    runSeed: () =>
       runSeed({
         log,
         source: createPathSource({ directory: root }),
@@ -71,7 +71,7 @@ test('it puts two runtime changes into one pull request on the rules branch', as
     '# Mail rules\nask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -119,7 +119,7 @@ test('it lists each change in the pull request body with who made it and why', a
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'deny-shell',
@@ -143,7 +143,7 @@ test('it leaves a mandate rule out of the pull request', async () => {
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'deny-shell',
@@ -187,7 +187,7 @@ test('it leaves the removal of a rule your definitions lack out of the pull requ
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'allow-invites',
@@ -233,7 +233,7 @@ test('it rebuilds the rolling pull request when its changes return to a set an e
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -283,7 +283,7 @@ test('it rebuilds the rolling pull request when the repo moves a changed rule to
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -301,7 +301,7 @@ test('it rebuilds the rolling pull request when the repo moves a changed rule to
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
   await ctx.runExports();
 
   const files = ctx.repo.readPullRequests().map((request) => request.change.files);
@@ -322,7 +322,7 @@ test('it rebuilds the rolling pull request when the repo moves a changed rule aw
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -340,7 +340,7 @@ test('it rebuilds the rolling pull request when the repo moves a changed rule aw
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
   await ctx.runExports();
 
   await rm(join(ctx.root, 'rules', 'messages.yaml'));
@@ -350,7 +350,7 @@ test('it rebuilds the rolling pull request when the repo moves a changed rule aw
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
   await ctx.runExports();
 
   const files = ctx.repo.readPullRequests().map((request) => request.change.files);
@@ -371,7 +371,7 @@ test("it rebuilds the rolling pull request on the repo's newer version when you 
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -387,7 +387,7 @@ test("it rebuilds the rolling pull request on the repo's newer version when you 
     'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n  note: Mail stays off.\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuleResolution(ctx.context, { ruleID: 'ask-mail', keep: 'nixie' });
 
@@ -425,7 +425,7 @@ test("it closes the rolling pull request when you keep the repo's version of its
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -441,7 +441,7 @@ test("it closes the rolling pull request when you keep the repo's version of its
     'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuleResolution(ctx.context, { ruleID: 'ask-mail', keep: 'repo' });
 
@@ -458,7 +458,7 @@ test('it leaves a merged pull request merged once the seed adopts its changes', 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'deny-shell',
@@ -469,7 +469,7 @@ test('it leaves a merged pull request merged once the seed adopts its changes', 
 
   await ctx.runExports();
   await ctx.repo.mergePullRequest(1);
-  await ctx.seed();
+  await ctx.runSeed();
 
   const result = await ctx.runExports();
 
@@ -491,7 +491,7 @@ test('it opens no pull request that would write a rule into a prompt part under 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await writeFile(join(ctx.root, 'rules', 'nixie.yaml'), 'Write short notes.\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'deny-shell',
@@ -517,7 +517,7 @@ test('it opens no pull request on a repo whose format applies no rule file', asy
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'deny-shell',

@@ -49,7 +49,7 @@ async function setupTest() {
       log,
       clock: buildTestClock(0),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      seedWrittenSkills: async () => {
+      runInForceSeed: async () => {
         await runInForceSeed({ log, buildPolicy: () => policy });
       },
     },
@@ -183,10 +183,10 @@ test("it keeps nixie's version in force over a definitions change and closes the
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By hour.\n`);
   await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
 
-  const seedWrittenSkills = mock(() => Promise.resolve());
+  const writtenSeed = mock(() => Promise.resolve());
 
   await writeWrittenSkillResolution(
-    { ...ctx.context, seedWrittenSkills },
+    { ...ctx.context, runInForceSeed: writtenSeed },
     { approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', keep: 'nixie' },
   );
 
@@ -194,7 +194,7 @@ test("it keeps nixie's version in force over a definitions change and closes the
 
   expect(written).toMatchObject([{ skillHash: skill.skillHash }]);
   expect(written[0]?.base).toStrictEqual(written[0]?.definitions);
-  expect(seedWrittenSkills).toHaveBeenCalledOnce();
+  expect(writtenSeed).toHaveBeenCalledOnce();
 });
 
 test('it refuses a choice for a skill nixie wrote that left force', async () => {

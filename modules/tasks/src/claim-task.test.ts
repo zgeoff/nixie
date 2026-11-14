@@ -13,7 +13,7 @@ import { createTask } from './create-task';
 import { runDueTimers } from './run-due-timers';
 import { createTestClaim } from './test-utils/create-test-claim';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 import { writeInboxRecords } from './write-inbox-records';
@@ -181,7 +181,7 @@ test('it claims only a started task for the started tasks', async () => {
 
   await createTask(ctx.context, 'tidy the inbox');
 
-  const startedID = await seedStartedTask(ctx.context, {
+  const startedID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -216,7 +216,7 @@ test('it never claims a started task for the unstarted tasks', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  await seedStartedTask(ctx.context, {
+  await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -243,7 +243,7 @@ test.each<[string, Pick<ClaimTaskOptions, 'tasks'>]>([
 
     await createTask(ctx.context, 'tidy the inbox');
 
-    await seedStartedTask(ctx.context, {
+    await seedTask(ctx.context, {
       starter: starter.claim,
       name: 'Tide tables',
       brief: 'Find the high tides for Saturday.',

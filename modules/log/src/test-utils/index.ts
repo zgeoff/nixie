@@ -1,3 +1,5 @@
+export { buildLogSeeder } from './build-log-seeder';
+export type { LogSeederDeps } from './log-seeder-deps';
 export type { LogRecordOverrides } from './build-mock-log-record';
 export { buildMockLogRecord } from './build-mock-log-record';
 export type { RecordedCommits } from './build-recorded-commits';

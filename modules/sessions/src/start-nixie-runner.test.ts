@@ -1,6 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readLinkTarget } from '@heynixie/connectors';
-import { seedWebFetchLinks } from '@heynixie/connectors/test-utils';
 import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
 import {
@@ -14,17 +13,13 @@ import {
   writeTaskControl,
   writeTaskLimitRaise,
 } from '@heynixie/tasks';
-import type { ConversationStep, StartedTaskSeed } from '@heynixie/tasks/test-utils';
-import {
-  seedConversationStep,
-  seedStartedTask,
-  writeTestTaskMessage,
-} from '@heynixie/tasks/test-utils';
+import { writeTestTaskMessage } from '@heynixie/tasks/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { readTaskUsage } from './read-task-usage';
 import type { NixieRunnerOptions } from './start-nixie-runner';
 import { startNixieRunner } from './start-nixie-runner';
+import { buildSeeder } from './test-utils/build-seeder';
 import { buildStubMemory } from './test-utils/build-stub-memory';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
@@ -123,14 +118,7 @@ async function setupTest() {
     steps: tools.steps,
     events,
     startRunner,
-    seedConversationStep: () => seedConversationStep(host.context),
-    seedTask: (starter: ConversationStep, options: StartedTaskSeed['options'] = {}) =>
-      seedStartedTask(host.context, {
-        starter: starter.claim,
-        name: 'Tide tables',
-        brief: 'Find the high tides for Saturday.',
-        options,
-      }),
+    seed: buildSeeder(host),
     writeMessage: (taskID: string, text: string) =>
       writeInboxRecords(host.context, [
         {
@@ -225,8 +213,14 @@ test.each([
   'it ends a task turn that $name alone woke with no reply and no task message, and records the turn end as silent',
   async (row) => {
     const ctx = await setupTest();
-    const starter = await ctx.seedConversationStep();
-    const taskID = await ctx.seedTask(starter);
+    const starter = await ctx.seed.conversationStep();
+
+    const taskID = await ctx.seed.task({
+      starter: starter.claim,
+      name: 'Tide tables',
+      brief: 'Find the high tides for Saturday.',
+    });
+
     const runner = await ctx.startRunner();
 
     await ctx.runNextStep(runner);
@@ -304,8 +298,14 @@ test.each([
 
 test('it refuses to end a task turn that holds a message from you silently, and records its reply', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -351,8 +351,14 @@ test('it refuses to end a task turn that holds a message from you silently, and 
 
 test("it keeps a task's plain text on its own thread, with no message to its starter and no channel", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   ctx.guest.addReplies({ text: 'The morning tide is at 06:10.' });
@@ -371,8 +377,14 @@ test("it keeps a task's plain text on its own thread, with no message to its sta
 
 test("it runs a started task's first step in a worker imp that the task owns", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -394,8 +406,14 @@ test("it runs a started task's first step in a worker imp that the task owns", a
 
 test("it runs a started task's tool run on its own ID with the tools it is given, the silent end and the task role's model", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -413,8 +431,14 @@ test("it runs a started task's tool run on its own ID with the tools it is given
 
 test("it opens a started task's first session under the task prompt, with its brief as the first message in the envelope and no start note, persona or memory", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -437,8 +461,14 @@ test("it opens a started task's first session under the task prompt, with its br
 
 test('it gives a task started with the persona and no memory no memory block, and a message that waits behind its brief the next turn, with no new wake', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'none' });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'none' },
+  });
 
   await ctx.writeMessage(taskID, 'Only the morning tide, please.');
 
@@ -460,8 +490,14 @@ test('it gives a task started with the persona and no memory no memory block, an
 
 test("it rebuilds a started task's session once, with its brief in the new session, when the newest opening carries no brief mark", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -482,8 +518,14 @@ test("it rebuilds a started task's session once, with its brief in the new sessi
 
 test('it sleeps the imp of a step that waits, and wakes the same imp for the next message', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -502,8 +544,14 @@ test('it sleeps the imp of a step that waits, and wakes the same imp for the nex
 
 test('it resumes the same session for the next message', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -521,9 +569,13 @@ test("it starts a task's tool run again on the step after a start that failed", 
 
   const failing = buildStubToolEndpoint({ failedStarts: 1 });
 
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter);
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
 
   const runner = await ctx.startRunner({ tools: failing.endpoint });
 
@@ -535,8 +587,14 @@ test("it starts a task's tool run again on the step after a start that failed", 
 
 test('it destroys the imp of an idle task when the task closes, with no further step', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -554,9 +612,13 @@ test('it destroys the imp of an idle task when the task closes, with no further 
 
 test("it compacts a started task's session under the task prompt, with its name and no persona", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter);
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
 
   const runner = await ctx.startRunner();
 
@@ -576,8 +638,14 @@ test("it compacts a started task's session under the task prompt, with its name 
 
 test('it commits a step whose imp fails to sleep, with no step error', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   ctx.guest.failSleep(taskID, 'the snapshot would not write');
@@ -593,10 +661,15 @@ test('it commits a step whose imp fails to sleep, with no step error', async () 
 
 test('it destroys the imps of closed tasks, and on a later pass the one whose destroy failed', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const stuck = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
 
-  const other = await seedStartedTask(ctx.context, {
+  const stuck = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const other = await ctx.seed.task({
     starter: starter.claim,
     name: 'Ferry times',
     brief: 'Find the last ferry on Sunday.',
@@ -634,8 +707,14 @@ test('it destroys the imps of closed tasks, and on a later pass the one whose de
 
 test('it rebuilds the session of a task whose imp is gone with the messages the task sent', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -687,12 +766,17 @@ test('it rebuilds the session of a task whose imp is gone with the messages the 
 
 test("it runs a task on its chosen model's profile, through that profile's host, with its own tool list", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    tools: ['tasks.list', 'task.message', 'web_fetch'],
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      tools: ['tasks.list', 'task.message', 'web_fetch'],
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -733,9 +817,14 @@ test("it runs a task on its chosen model's profile, through that profile's host,
 
 test('it gives a stranger no persona text and no memory item', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter, { model: 'second-look', profile: 'router-b', persona: 'none' });
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { model: 'second-look', profile: 'router-b', persona: 'none' },
+  });
 
   const memory = buildStubMemory({
     pinned: [
@@ -773,9 +862,14 @@ test('it gives a stranger no persona text and no memory item', async () => {
 
 test('it gives another me the persona and the pinned memory', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
 
   const memory = buildStubMemory({
     pinned: [
@@ -809,9 +903,14 @@ test('it gives another me the persona and the pinned memory', async () => {
 
 test("it searches memory for the brief of a task that reads memory, on the task's first turn", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
 
   const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
 
@@ -826,8 +925,14 @@ test("it searches memory for the brief of a task that reads memory, on the task'
 
 test('it searches memory for the body of a task message to a task that reads memory', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
 
   const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
 
@@ -844,8 +949,15 @@ test('it searches memory for the body of a task message to a task that reads mem
 
 test('it purges and invalidates the session of a task that reads memory on a forget, so its next turn opens a new one', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -864,8 +976,15 @@ test('it purges and invalidates the session of a task that reads memory on a for
 
 test("it shreds the summary and removes the web fetch links of a task that reads memory on a forget, and keeps another thread's links", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
   const runner = await ctx.startRunner();
 
   ctx.guest.setContextSize(165_000);
@@ -873,13 +992,13 @@ test("it shreds the summary and removes the web fetch links of a task that reads
   await ctx.runNextStep(runner);
   await ctx.runNextStep(runner);
 
-  await seedWebFetchLinks(ctx.context.log, {
+  await ctx.seed.webFetchLinks({
     sessionKey: 'session-tides',
     thread: taskID,
     urls: ['https://harbour.test/tides'],
   });
 
-  await seedWebFetchLinks(ctx.context.log, {
+  await ctx.seed.webFetchLinks({
     sessionKey: 'session-ferry',
     thread: 'conversation',
     urls: ['https://harbour.test/ferry'],
@@ -909,9 +1028,14 @@ test("it shreds the summary and removes the web fetch links of a task that reads
 
 test('it runs the brief of a task that reads memory when a forget comes before its first session', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
 
   const runner = await ctx.startRunner();
 
@@ -926,9 +1050,14 @@ test('it runs the brief of a task that reads memory when a forget comes before i
 
 test('it purges the guest of a task that reads memory when a forget aborts its first turn', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter, { persona: 'default', memory: 'read' });
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
 
   const runner = await ctx.startRunner();
 
@@ -953,9 +1082,14 @@ test('it purges the guest of a task that reads memory when a forget aborts its f
 
 test('it leaves the session of a task that reads no memory as it is on a forget', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter, { memory: 'none' });
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { memory: 'none' },
+  });
 
   const runner = await ctx.startRunner();
 
@@ -970,8 +1104,15 @@ test('it leaves the session of a task that reads no memory as it is on a forget'
 
 test('it purges and invalidates the session of a task that reads no memory when a forgotten record is on its thread', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter, { memory: 'none' });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { memory: 'none' },
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -1005,8 +1146,15 @@ test('it purges and invalidates the session of a task that reads no memory when 
 
 test('it leaves a closed task with no sandbox and no invalidation when a forgotten record is on its thread', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter, { memory: 'none' });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { memory: 'none' },
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -1032,8 +1180,15 @@ test('it leaves a closed task with no sandbox and no invalidation when a forgott
 
 test('it pauses a task at its turn limit with no turn, and tells its starter in a limit notice', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter, { limits: { turns: 1, dollars: 2 } });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { limits: { turns: 1, dollars: 2 } },
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);
@@ -1058,9 +1213,14 @@ test('it pauses a task at its turn limit with no turn, and tells its starter in 
 
 test('it sleeps the awake imp of a task that pauses at its limit after a turn with work left', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter, { limits: { turns: 1, dollars: 2 } });
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { limits: { turns: 1, dollars: 2 } },
+  });
 
   const runner = await ctx.startRunner();
 
@@ -1077,12 +1237,17 @@ test('it sleeps the awake imp of a task that pauses at its limit after a turn wi
 
 test("it pauses a task at its dollar limit, priced on its model's profile", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 1e-6 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 1e-6 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1104,12 +1269,17 @@ test("it pauses a task at its dollar limit, priced on its model's profile", asyn
 
 test('it interrupts a task turn whose model calls reach its dollar limit, and pauses the task with the limit it reached', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 0.03 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1143,12 +1313,17 @@ test('it interrupts a task turn whose model calls reach its dollar limit, and pa
 
 test('it resumes the work of a task turn that its dollar limit cut short once the limit is raised, with no new message', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 0.03 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1185,8 +1360,14 @@ test('it resumes the work of a task turn that its dollar limit cut short once th
 
 test('it continues the work of a task turn that the user interrupted and paused once the user resumes it, with no new message', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   ctx.guest.addKindReplies('worker', {
@@ -1220,8 +1401,14 @@ test('it continues the work of a task turn that the user interrupted and paused 
 
 test('it runs on at once the work of a task turn that the user interrupted with no pause', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   ctx.guest.addKindReplies('worker', {
@@ -1251,8 +1438,14 @@ test('it runs on at once the work of a task turn that the user interrupted with 
 
 test('it keeps awake the imp of a task whose turn the user interrupted with no pause', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   ctx.guest.addKindReplies('worker', {
@@ -1276,8 +1469,14 @@ test('it keeps awake the imp of a task whose turn the user interrupted with no p
 
 test('it sleeps the imp of a task whose turn the user interrupted and paused', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   ctx.guest.addKindReplies('worker', {
@@ -1302,8 +1501,14 @@ test('it sleeps the imp of a task whose turn the user interrupted and paused', a
 
 test('it starts the next turn of an interrupted task from a message that arrived before the resume, with no continue note', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   ctx.guest.addKindReplies('worker', {
@@ -1341,9 +1546,13 @@ test('it starts the next turn of an interrupted task from a message that arrived
 
 test('it leaves waiting after its compaction a task whose turn ended before end_turn with no interrupt', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter);
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
 
   const runner = await ctx.startRunner();
 
@@ -1358,8 +1567,14 @@ test('it leaves waiting after its compaction a task whose turn ended before end_
 
 test('it continues the cut work of a task whose interrupted turn passed the compaction threshold, in the session after the summary', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   ctx.guest.setContextSize(165_000);
@@ -1397,8 +1612,14 @@ test('it continues the cut work of a task whose interrupted turn passed the comp
 
 test('it keeps the cut work of a task whose continuing turn passed the context window, and continues it after the summary', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter);
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const runner = await ctx.startRunner();
 
   ctx.guest.addKindReplies(
@@ -1462,12 +1683,17 @@ test('it leaves the conversation waiting after the user interrupts its turn, wit
 
 test('it leaves waiting after a raise a task whose turn finished its work at its dollar limit', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 0.03 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1500,12 +1726,17 @@ test('it leaves waiting after a raise a task whose turn finished its work at its
 
 test('it interrupts a task turn on the call that reaches its dollar limit with the spend of its earlier turns', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 0.03 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1539,12 +1770,17 @@ test('it interrupts a task turn on the call that reaches its dollar limit with t
 
 test('it pauses a task whose guest fails after its calls reach the dollar limit, so no retry spends again', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 0.03 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1579,12 +1815,17 @@ test('it pauses a task whose guest fails after its calls reach the dollar limit,
 
 test("it gives the retry of a failed turn only the dollars that the turn's spend and a raise leave", async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 0.03 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1632,12 +1873,17 @@ test("it gives the retry of a failed turn only the dollars that the turn's spend
 
 test('it interrupts the retry of a turn whose guest failed below the dollar limit once the retry spends what the failed turn left', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 0.04 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.04 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1680,12 +1926,17 @@ test('it interrupts the retry of a turn whose guest failed below the dollar limi
 
 test('it counts the spend of a task turn whose commit lost its lease to another runner', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 1 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 1 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1744,12 +1995,17 @@ test('it counts the spend of a task turn whose commit lost its lease to another 
 
 test('it counts once the spend of a task turn at its dollar limit whose commit lost its lease after its pause', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 0.03 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1799,12 +2055,17 @@ test('it counts once the spend of a task turn at its dollar limit whose commit l
 
 test('it interrupts a task turn at its own spend that, with a spend recorded after the turn started, reaches the dollar limit', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 0.03 },
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1860,9 +2121,13 @@ test('it interrupts a task turn at its own spend that, with a spend recorded aft
 
 test('it caps each task turn at 100 model calls', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter);
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
 
   const runner = await ctx.startRunner();
 
@@ -1876,12 +2141,17 @@ test('it caps each task turn at 100 model calls', async () => {
 
 test('it sleeps the imp of a task whose turn reached its dollar limit with work left', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
+  const starter = await ctx.seed.conversationStep();
 
-  await ctx.seedTask(starter, {
-    model: 'second-look',
-    profile: 'router-b',
-    limits: { turns: 25, dollars: 0.03 },
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
   });
 
   const runner = await ctx.startRunner();
@@ -1908,8 +2178,15 @@ test('it sleeps the imp of a task whose turn reached its dollar limit with work 
 
 test('it runs the next turn of a task paused at its turn limit once the limit is raised', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seedConversationStep();
-  const taskID = await ctx.seedTask(starter, { limits: { turns: 1, dollars: 2 } });
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { limits: { turns: 1, dollars: 2 } },
+  });
+
   const runner = await ctx.startRunner();
 
   await ctx.runNextStep(runner);

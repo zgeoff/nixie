@@ -3,7 +3,7 @@ import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeFailedTurnSpend } from './write-failed-turn-spend';
 import { writeTaskControl } from './write-task-control';
@@ -38,7 +38,7 @@ test("it writes the failed turn's dollars on the task's thread", async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Harbour charts',
     brief: 'Find the depth at the north mooring.',
@@ -55,7 +55,7 @@ test('it writes the spend of a step that lost its lease to a stop', async () => 
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Harbour charts',
     brief: 'Find the depth at the north mooring.',

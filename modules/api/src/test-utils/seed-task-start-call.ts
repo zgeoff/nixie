@@ -1,5 +1,5 @@
 import { readRecords, writeRecords } from '@heynixie/log';
-import { seedConversationStep, seedStartedTask } from '@heynixie/tasks/test-utils';
+import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import type { APIContext } from '../types';
 
@@ -25,7 +25,7 @@ export async function seedTaskStartCall(
   context: APIContext,
   start: TaskStartSeed,
 ): Promise<TaskStartCall> {
-  const step = await seedConversationStep(context);
+  const step = await buildTaskSeeder({ context }).conversationStep();
 
   const [call] = await writeRecords(context.log, [
     {
@@ -39,7 +39,7 @@ export async function seedTaskStartCall(
 
   invariant(call, 'the log wrote no tool_called record');
 
-  const taskID = await seedStartedTask(context, {
+  const taskID = await buildTaskSeeder({ context }).task({
     starter: step.claim,
     name: start.name,
     brief: start.brief,
@@ -90,7 +90,7 @@ export async function seedUnansweredStartCall(
   context: APIContext,
   start: TaskStartSeed,
 ): Promise<UnansweredStartCall> {
-  const step = await seedConversationStep(context);
+  const step = await buildTaskSeeder({ context }).conversationStep();
 
   const [call] = await writeRecords(context.log, [
     {
@@ -104,7 +104,7 @@ export async function seedUnansweredStartCall(
 
   invariant(call, 'the log wrote no tool_called record');
 
-  const taskID = await seedStartedTask(context, {
+  const taskID = await buildTaskSeeder({ context }).task({
     starter: step.claim,
     name: start.name,
     brief: start.brief,

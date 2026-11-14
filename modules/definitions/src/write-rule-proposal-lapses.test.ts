@@ -40,7 +40,7 @@ async function setupTest() {
     root,
     log,
     time,
-    seed: () =>
+    runSeed: () =>
       runSeed({
         log,
         source: createPathSource({ directory: root }),
@@ -61,7 +61,7 @@ test('it lapses a rule change proposal left unanswered past its lapse time', asy
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   ctx.time.now += proposalLapseMs;
 
@@ -85,7 +85,7 @@ test('it leaves a rule change proposal within its lapse time pending', async () 
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   ctx.time.now += proposalLapseMs - 1;
 
@@ -105,14 +105,14 @@ test('it leaves a withdrawn rule change proposal withdrawn', async () => {
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeFile(
     join(ctx.root, 'rules', 'web.yaml'),
     'allow-web:\n  outcome: allow\n  tools: [web.*]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   ctx.time.now += proposalLapseMs;
 

@@ -4,7 +4,7 @@ import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
 import { LeaseLostError } from './lease-lost-error';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 import { writeStepCommit } from './write-step-commit';
@@ -39,7 +39,7 @@ test('it pauses a task at its limit once its step commits, and a plain resume le
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -73,7 +73,7 @@ test('it leaves a task whose step kept the work that the limit cut ready to run 
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -101,7 +101,7 @@ test("it writes a limit notice into the starter's inbox that names the task and 
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -144,7 +144,7 @@ test('it writes no notice to a starter that has finished, and still holds the ta
   const ctx = await setupTest();
   const conversation = await seedConversationStep(ctx.context);
 
-  const parent = await seedStartedTask(ctx.context, {
+  const parent = await seedTask(ctx.context, {
     starter: conversation.claim,
     name: 'Garden plan',
     brief: 'Plan the beds.',
@@ -152,7 +152,7 @@ test('it writes no notice to a starter that has finished, and still holds the ta
 
   const parentClaim = await ctx.claimStartedTask(parent);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: parentClaim,
     name: 'Seed list',
     brief: 'List the seeds.',
@@ -186,7 +186,7 @@ test('it refuses a step that lost its lease, and writes nothing', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',

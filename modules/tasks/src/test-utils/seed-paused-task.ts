@@ -3,16 +3,16 @@ import { claimTask } from '../claim-task';
 import type { StartedClaim, TaskLimits, TasksContext } from '../types';
 import { writeStepCommit } from '../write-step-commit';
 import { writeTaskLimitPause } from '../write-task-limit-pause';
-import { seedStartedTask } from './seed-started-task';
+import { seedTask } from './seed-task';
 
-export interface HeldTaskSeed {
+export interface PausedTaskSeed {
   readonly starter: StartedClaim;
   readonly limits: TaskLimits;
 }
 
 // A started task whose step met its limit, committed and paused.
-export async function seedHeldTask(context: TasksContext, seed: HeldTaskSeed): Promise<string> {
-  const taskID = await seedStartedTask(context, {
+export async function seedPausedTask(context: TasksContext, seed: PausedTaskSeed): Promise<string> {
+  const taskID = await seedTask(context, {
     starter: seed.starter,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',

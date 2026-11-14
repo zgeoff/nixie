@@ -21,25 +21,11 @@
     "zgeoff/function-verb": [
       "error",
       {
-        "exemptNames": [
-          "executeQuery",
-          // the seeder work deletes each name as it moves that seed
-          "seed",
-          "seedClientAction",
-          "seedConversationStep",
-          "seedData",
-          "seedFailedStep",
-          "seedFailedTurn",
-          "seedSessionBoundary",
-          "seedStartedTask",
-          "seedTask",
-          "seedWrittenSkills"
-        ]
+        "exemptNames": ["executeQuery"]
       }
     ],
-    // the seeder work turns both seed rules on once every seeder exists
-    "zgeoff/seed-only": "off",
-    "zgeoff/test-beside-seed": "off",
+    "zgeoff/seed-only": "error",
+    "zgeoff/test-beside-seed": "error",
     // the list holds the packages not yet folded and shrinks as each is folded
     "zgeoff/feature-folders": [
       "error",

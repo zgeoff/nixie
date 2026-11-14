@@ -9,7 +9,7 @@ import { readTaskSetup } from './read-task-setup';
 import { buildMockTaskStartBounds } from './test-utils/build-mock-task-start-bounds';
 import { createTestConversationClaim } from './test-utils/create-test-conversation-claim';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 
@@ -590,7 +590,7 @@ test('it starts nothing that reads memory for a started task that does not', asy
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -648,7 +648,7 @@ test('it starts nothing with the persona for a started task that runs with none'
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',

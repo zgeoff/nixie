@@ -202,6 +202,18 @@ run the conversation guest in the sandbox double too, which the sessions module'
 beside a log outside the server. An eval run that calls a real model is a script a contributor runs
 by hand, and its suite checks only the committed report.
 
+### Test seeders
+
+A test outside a module seeds that module's records through the module, so a schema change breaks
+only the module and its tests. The actions, tasks, memory, connectors, backup, prompts and log
+modules publish a seeder from their `test-utils` export, and the API module publishes the identity
+seeder. The db lib keeps row seeds for its own storage tests, because it sits below every module.
+The API module, the sessions module, the server app, `integration/` and `e2e/` each have a
+`buildSeeder`, and a test of those reaches the seeds through `ctx.seed`. The lint rules
+`zgeoff/seed-only` and `zgeoff/test-beside-seed` run as errors. The
+[seeding reference](../../.claude/skills/testing/references/seeding.md) holds the rules for writing
+a seed.
+
 ### Test builds
 
 The fault points, the controllable clock, the test rule, the test connector and the sandbox double

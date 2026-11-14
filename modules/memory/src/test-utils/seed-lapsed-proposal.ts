@@ -1,0 +1,18 @@
+import { defaultGateLimits } from '../default-gate-limits';
+import type { MemoryProposal } from '../gate-context';
+import type { ProposalRequest } from './create-proposal';
+import type { MemorySeederDeps } from './memory-seeder-deps';
+import { seedProposal } from './seed-proposal';
+
+export async function seedLapsedProposal(
+  deps: MemorySeederDeps,
+  input: Partial<ProposalRequest> = {},
+): Promise<MemoryProposal> {
+  const proposal = await seedProposal(deps, input);
+
+  deps.clock.advance(defaultGateLimits.proposalLapseMs);
+
+  await deps.store.proposals.lapse();
+
+  return proposal;
+}

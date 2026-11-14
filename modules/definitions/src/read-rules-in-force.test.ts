@@ -37,7 +37,7 @@ async function setupTest() {
   return {
     root,
     log,
-    seed: () =>
+    runSeed: () =>
       runSeed({
         log,
         source: createPathSource({ directory: root }),
@@ -64,7 +64,7 @@ test('it reads when a rule last decided a call', async () => {
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRecords(ctx.log, [
     {

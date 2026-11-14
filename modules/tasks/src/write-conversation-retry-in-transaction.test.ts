@@ -4,6 +4,7 @@ import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { StepFailedError } from './step-failed-error';
 import { createTestConversationClaim } from './test-utils/create-test-conversation-claim';
+import { seedFailedConversationTurn } from './test-utils/seed-failed-conversation-turn';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 import { writeConversationRetryInTransaction } from './write-conversation-retry-in-transaction';
@@ -13,17 +14,6 @@ import { writeTaskControl } from './write-task-control';
 
 async function setupTest() {
   const tasks = await startTestTasks();
-
-  const seedFailedStep = async () => {
-    const failed = await createTestConversationClaim(tasks.context, 'what is on today?');
-
-    await writeStepError(tasks.context, failed, {
-      error: new Error('the provider is overloaded'),
-      maxStepErrors: 3,
-      retryDelayMs: 30_000,
-      maxRetryDelayMs: 300_000,
-    });
-  };
 
   return {
     ...tasks,
@@ -43,7 +33,7 @@ async function setupTest() {
         });
       },
       rerunningStep: async () => {
-        await seedFailedStep();
+        await seedFailedConversationTurn(tasks.context);
 
         tasks.clock.advance(30_000);
 
@@ -53,11 +43,11 @@ async function setupTest() {
         await createConversationTask(tasks.context);
       },
       pausedAfterFailure: async () => {
-        await seedFailedStep();
+        await seedFailedConversationTurn(tasks.context);
         await writeTaskControl(tasks.context, { taskID: 'conversation', control: 'pause' });
       },
       stoppedAfterFailure: async () => {
-        await seedFailedStep();
+        await seedFailedConversationTurn(tasks.context);
         await writeTaskControl(tasks.context, { taskID: 'conversation', control: 'stop' });
       },
     },

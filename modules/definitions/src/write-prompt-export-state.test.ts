@@ -3,6 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
+import { buildPromptSeeder } from '@heynixie/prompts/test-utils';
+import { buildTestClock } from '@heynixie/testing';
 import { sql } from 'kysely';
 import { writePromptExportState } from './write-prompt-export-state';
 
@@ -19,25 +21,31 @@ async function setupTest() {
 
   stack.defer(() => writer.stop());
 
-  return { writer };
+  const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
+    'wrapKey',
+    'unwrapKey',
+  ]);
+
+  const deps = {
+    log: { writer, deploymentKey, projections: [] },
+    clock: buildTestClock(1000),
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+  };
+
+  return { writer, seed: buildPromptSeeder(deps) };
 }
 
 test('it marks an export in flight, then opens it with its pull request and drops the mark', async () => {
   const ctx = await setupTest();
-
-  await sql`insert into prompt_approvals (approval_id, proposal_id, prompt_id, thread, entry,
-    files, state, approved_at, updated_at)
-    values ('approval-a', 'k3x9m2p7qa', 'compaction', null, '{}', '[]', 'current', 1, 1)`.execute(
-    ctx.writer.db,
-  );
+  const approval = await ctx.seed.promptApproval();
 
   await withWriteTransaction(ctx.writer, (tx) =>
-    writePromptExportState(tx, { approvalID: 'approval-a', to: 'exporting', at: 2 }),
+    writePromptExportState(tx, { approvalID: approval.approvalID, to: 'exporting', at: 2 }),
   );
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writePromptExportState(tx, {
-      approvalID: 'approval-a',
+      approvalID: approval.approvalID,
       to: 'opened',
       baseHash: null,
       pullRequest: { number: 7, url: 'https://definitions.test/pull/7' },
@@ -50,7 +58,7 @@ test('it marks an export in flight, then opens it with its pull request and drop
 
   expect(exports.rows).toStrictEqual([
     {
-      approval_id: 'approval-a',
+      approval_id: approval.approvalID,
       state: 'opened',
       pull_request_number: 7,
       pull_request_url: 'https://definitions.test/pull/7',
@@ -63,22 +71,17 @@ test('it marks an export in flight, then opens it with its pull request and drop
 
 test('it closes an opened export', async () => {
   const ctx = await setupTest();
-
-  await sql`insert into prompt_approvals (approval_id, proposal_id, prompt_id, thread, entry,
-    files, state, approved_at, updated_at)
-    values ('approval-a', 'k3x9m2p7qa', 'compaction', null, '{}', '[]', 'superseded', 1, 1)`.execute(
-    ctx.writer.db,
-  );
+  const approval = await ctx.seed.supersededPromptApproval();
 
   await sql`insert into prompt_exports (approval_id, state, pull_request_number,
     pull_request_url, updated_at)
-    values ('approval-a', 'opened', 7, 'https://definitions.test/pull/7', 2)`.execute(
+    values (${approval.approvalID}, 'opened', 7, 'https://definitions.test/pull/7', 2)`.execute(
     ctx.writer.db,
   );
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writePromptExportState(tx, {
-      approvalID: 'approval-a',
+      approvalID: approval.approvalID,
       to: 'closed',
       pullRequest: null,
       at: 3,
@@ -92,16 +95,11 @@ test('it closes an opened export', async () => {
 
 test('it records the pull request that a close found, for an export that never recorded one', async () => {
   const ctx = await setupTest();
-
-  await sql`insert into prompt_approvals (approval_id, proposal_id, prompt_id, thread, entry,
-    files, state, approved_at, updated_at)
-    values ('approval-a', 'k3x9m2p7qa', 'compaction', null, '{}', '[]', 'superseded', 1, 1)`.execute(
-    ctx.writer.db,
-  );
+  const approval = await ctx.seed.supersededPromptApproval();
 
   await withWriteTransaction(ctx.writer, (tx) =>
     writePromptExportState(tx, {
-      approvalID: 'approval-a',
+      approvalID: approval.approvalID,
       to: 'closed',
       pullRequest: { number: 9, url: 'https://definitions.test/pull/9' },
       at: 3,
@@ -112,7 +110,7 @@ test('it records the pull request that a close found, for an export that never r
 
   expect(exports.rows).toStrictEqual([
     {
-      approval_id: 'approval-a',
+      approval_id: approval.approvalID,
       state: 'closed',
       pull_request_number: 9,
       pull_request_url: 'https://definitions.test/pull/9',
@@ -123,22 +121,17 @@ test('it records the pull request that a close found, for an export that never r
 
 test('it refuses to open a closed export', async () => {
   const ctx = await setupTest();
-
-  await sql`insert into prompt_approvals (approval_id, proposal_id, prompt_id, thread, entry,
-    files, state, approved_at, updated_at)
-    values ('approval-a', 'k3x9m2p7qa', 'compaction', null, '{}', '[]', 'superseded', 1, 1)`.execute(
-    ctx.writer.db,
-  );
+  const approval = await ctx.seed.supersededPromptApproval();
 
   await sql`insert into prompt_exports (approval_id, state, pull_request_number,
     pull_request_url, updated_at)
-    values ('approval-a', 'closed', 7, 'https://definitions.test/pull/7', 2)`.execute(
+    values (${approval.approvalID}, 'closed', 7, 'https://definitions.test/pull/7', 2)`.execute(
     ctx.writer.db,
   );
 
   const refused = await withWriteTransaction(ctx.writer, (tx) =>
     writePromptExportState(tx, {
-      approvalID: 'approval-a',
+      approvalID: approval.approvalID,
       to: 'opened',
       baseHash: null,
       pullRequest: { number: 8, url: 'https://definitions.test/pull/8' },
@@ -150,6 +143,8 @@ test('it refuses to open a closed export', async () => {
   );
 
   expect(refused).toStrictEqual(
-    new Error('the export of prompt approval approval-a is closed, so it cannot become opened'),
+    new Error(
+      `the export of prompt approval ${approval.approvalID} is closed, so it cannot become opened`,
+    ),
   );
 });

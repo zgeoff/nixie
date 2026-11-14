@@ -10,6 +10,7 @@ import { removeTableRows } from './remove-table-rows';
 import { runMigrations } from './run-migrations';
 import { startDatabase } from './start-database';
 import { syncPauseGate } from './sync-pause-gate';
+import { buildSeeder } from './test-utils/build-seeder';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -36,21 +37,14 @@ async function setupTest() {
   const closeGate = (reader: number) =>
     db.transaction().execute((tx) => closeToOlderReaders(tx, reader));
 
-  const insertPause = async () => {
-    await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-      values (1, 1, 'nixie.paused', 'h', '{}')`.execute(db);
-
-    await sql`insert into nixie_pause (id, cause, paused_sequence)
-      values (1, 'owner', 1)`.execute(db);
-  };
-
-  return { directory, db, readGate, closeGate, insertPause };
+  return { directory, db, readGate, closeGate, seed: buildSeeder(db) };
 }
 
 test('it reopens a closed gate when a log reset has emptied the pause', async () => {
   const ctx = await setupTest();
 
-  await ctx.insertPause();
+  await ctx.seed.record({ kind: 'nixie.paused' });
+  await ctx.seed.nixiePause();
   await ctx.closeGate(pauseMigrationVersion);
   await ctx.db.transaction().execute((tx) => removeTableRows(tx, ['schema_version', 'records']));
 
@@ -64,7 +58,8 @@ test('it reopens a closed gate when a log reset has emptied the pause', async ()
 test('it closes an open gate while nixie is paused', async () => {
   const ctx = await setupTest();
 
-  await ctx.insertPause();
+  await ctx.seed.record({ kind: 'nixie.paused' });
+  await ctx.seed.nixiePause();
 
   await syncPauseGate(ctx.db);
 

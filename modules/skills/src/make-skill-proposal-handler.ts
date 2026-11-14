@@ -128,7 +128,7 @@ async function writeAnswer(
     return {
       status: 'done',
       result: { proposalID: decided.proposalID, state: isDeclined ? 'declined' : 'approved' },
-      ...(isDeclined ? {} : { afterCommit: () => context.seedWrittenSkills() }),
+      ...(isDeclined ? {} : { afterCommit: () => context.runInForceSeed() }),
     };
   } catch (error) {
     if (error instanceof SkillProposalCheckError) {

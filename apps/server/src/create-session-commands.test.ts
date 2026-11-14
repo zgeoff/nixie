@@ -2,11 +2,11 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDeviceSession } from '@heynixie/api/test-utils';
 import invariant from 'tiny-invariant';
 import { createSessionCommands } from './create-session-commands';
 import { readCLIArgs } from './read-cli-args';
 import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
+import { buildSeeder } from './test-utils/build-seeder';
 import { startTestControlSocket } from './test-utils/start-test-control-socket';
 
 async function setupTest() {
@@ -56,7 +56,7 @@ test('it prints the enrolment code that the host transport it is given answers w
 test('it lists the device sessions over the host transport it is given', async () => {
   const ctx = await setupTest();
   const api = await startTestControlSocket({ path: ctx.socketPath });
-  const session = await createDeviceSession(api.context, 'Kitchen tablet');
+  const session = await buildSeeder(api).identity({ deviceName: 'Kitchen tablet' });
 
   const host = buildRecordingHostTransport(ctx.socketPath);
 
@@ -94,7 +94,7 @@ test('it lists the device sessions over the host transport it is given', async (
 test('it labels a device session over the host transport it is given', async () => {
   const ctx = await setupTest();
   const api = await startTestControlSocket({ path: ctx.socketPath });
-  const session = await createDeviceSession(api.context, 'Kitchen tablet');
+  const session = await buildSeeder(api).identity({ deviceName: 'Kitchen tablet' });
 
   const host = buildRecordingHostTransport(ctx.socketPath);
 

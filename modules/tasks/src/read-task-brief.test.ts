@@ -4,18 +4,15 @@ import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { createTask } from './create-task';
 import { readTaskBrief } from './read-task-brief';
 import { readTaskBriefs } from './read-task-briefs';
-import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { buildTaskSeeder } from './test-utils/build-task-seeder';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
   const tasks = await startTestTasks();
-  const starter = await seedConversationStep(tasks.context);
 
   return {
     ...tasks,
-    seedTask: (name: string, brief: string) =>
-      seedStartedTask(tasks.context, { starter: starter.claim, name, brief }),
+    seed: buildTaskSeeder(tasks),
     readBriefRecord: async () => {
       const [entry] = await readRecords(tasks.context.log, {
         afterSequence: 0,
@@ -41,7 +38,14 @@ async function setupTest() {
 
 test('it reads the brief of a started task from its brief record', async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask('Tide tables', 'Find the high tides for Saturday.');
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const record = await ctx.readBriefRecord();
   const brief = await readTaskBrief(ctx.context, taskID);
 
@@ -57,7 +61,14 @@ test('it reads the brief of a started task from its brief record', async () => {
 
 test('it reads the body of a brief as null once a forget removes its key', async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask('Tide tables', 'Find the high tides for Saturday.');
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const record = await ctx.readBriefRecord();
 
   await removeTestRecordKey(ctx.context.log, record?.sequence ?? 0);
@@ -112,7 +123,14 @@ test('it reads no brief for the conversation, and none for a task that no task s
 
 test('it reads no brief that a later record wrote than the one asked about', async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask('Tide tables', 'Find the high tides for Saturday.');
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
   const record = await ctx.readBriefRecord();
   const atBrief = await readTaskBrief(ctx.context, taskID, record?.sequence);
   const afterBrief = await readTaskBrief(ctx.context, taskID, (record?.sequence ?? 0) + 1);
@@ -123,8 +141,20 @@ test('it reads no brief that a later record wrote than the one asked about', asy
 
 test('it reads the briefs of several tasks at once, leaving out a task with none', async () => {
   const ctx = await setupTest();
-  const first = await ctx.seedTask('Tide tables', 'Find the high tides for Saturday.');
-  const second = await ctx.seedTask('Moon phases', 'List the moon phases for May.');
+  const starter = await ctx.seed.conversationStep();
+
+  const first = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const second = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Moon phases',
+    brief: 'List the moon phases for May.',
+  });
+
   const briefs = await readTaskBriefs(ctx.context, [first, second, 'conversation']);
 
   expect([...briefs.keys()]).toIncludeSameMembers([first, second]);

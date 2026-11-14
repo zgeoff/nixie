@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { writeFailedTurnSpend } from '@heynixie/tasks';
-import { seedConversationStep, seedStartedTask } from '@heynixie/tasks/test-utils';
 import { readLateSpend } from './read-late-spend';
 import { readTaskUsage } from './read-task-usage';
+import { buildSeeder } from './test-utils/build-seeder';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
@@ -10,15 +10,7 @@ async function setupTest() {
 
   return {
     tasks,
-    seedTask: async (name: string) => {
-      const starter = await seedConversationStep(tasks.context);
-
-      return seedStartedTask(tasks.context, {
-        starter: starter.claim,
-        name,
-        brief: 'Find the high tides for Saturday.',
-      });
-    },
+    seed: buildSeeder(tasks),
     readThroughSequence: async (taskID: string) => {
       const usage = await readTaskUsage(tasks.context, taskID, null);
 
@@ -29,7 +21,13 @@ async function setupTest() {
 
 test('it sums only the spend records on the thread of the task past the sequence', async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask('Tide tables');
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
 
   await writeFailedTurnSpend(ctx.tasks.context, { taskID, dollars: 0.04 });
 
@@ -46,7 +44,13 @@ test('it sums only the spend records on the thread of the task past the sequence
 
 test('it reads no spend when none was recorded past the sequence', async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.seedTask('Tide tables');
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
 
   await writeFailedTurnSpend(ctx.tasks.context, { taskID, dollars: 0.04 });
 

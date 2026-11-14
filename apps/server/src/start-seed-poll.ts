@@ -19,7 +19,7 @@ interface SeedPollOptions {
 export async function startSeedPoll(parts: SeedPollParts, options: SeedPollOptions): Promise<void> {
   const poll = startDefinitionsPoll({
     probe: parts.source.probe,
-    seed: async () => {
+    runSeed: async () => {
       const seeded = await runDefinitionsSeed(parts);
 
       return seeded.status !== 'refused';

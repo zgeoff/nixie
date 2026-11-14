@@ -15,7 +15,7 @@ test('it probes nothing before the interval passes', () => {
 
   const poll = startDefinitionsPoll({
     probe,
-    seed: () => Promise.resolve(true),
+    runSeed: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 60_000,
     retryDelayMs: 1000,
@@ -33,11 +33,11 @@ test('it probes nothing before the interval passes', () => {
 
 test('it seeds on the first probe token once the interval passes', async () => {
   const ctx = setupTest();
-  const seed = mock(() => Promise.resolve(true));
+  const runSeed = mock(() => Promise.resolve(true));
 
   const poll = startDefinitionsPoll({
     probe: () => Promise.resolve('rev-1'),
-    seed,
+    runSeed,
     clock: ctx.clock,
     intervalMs: 60_000,
     retryDelayMs: 1000,
@@ -52,16 +52,16 @@ test('it seeds on the first probe token once the interval passes', async () => {
 
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
-  expect(seed).toHaveBeenCalledOnce();
+  expect(runSeed).toHaveBeenCalledOnce();
 });
 
 test('it skips the seed for a probe token it seeded already', async () => {
   const ctx = setupTest();
-  const seed = mock(() => Promise.resolve(true));
+  const runSeed = mock(() => Promise.resolve(true));
 
   const poll = startDefinitionsPoll({
     probe: () => Promise.resolve('rev-1'),
-    seed,
+    runSeed,
     clock: ctx.clock,
     intervalMs: 60_000,
     retryDelayMs: 1000,
@@ -80,16 +80,16 @@ test('it skips the seed for a probe token it seeded already', async () => {
 
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
-  expect(seed).toHaveBeenCalledOnce();
+  expect(runSeed).toHaveBeenCalledOnce();
 });
 
 test('it seeds a probe token it seeded already while a seed outside the poll is refused', async () => {
   const ctx = setupTest();
-  const seed = mock(() => Promise.resolve(true));
+  const runSeed = mock(() => Promise.resolve(true));
 
   const poll = startDefinitionsPoll({
     probe: () => Promise.resolve('rev-1'),
-    seed,
+    runSeed,
     isRefused: () => true,
     clock: ctx.clock,
     intervalMs: 60_000,
@@ -107,18 +107,18 @@ test('it seeds a probe token it seeded already while a seed outside the poll is 
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => seed.mock.calls.length === 2);
+  await waitForCondition(() => runSeed.mock.calls.length === 2);
 
-  expect(seed).toHaveBeenCalledTimes(2);
+  expect(runSeed).toHaveBeenCalledTimes(2);
 });
 
 test('it seeds a probe token it seeded already while the database holds a change not in force', async () => {
   const ctx = setupTest();
-  const seed = mock(() => Promise.resolve(true));
+  const runSeed = mock(() => Promise.resolve(true));
 
   const poll = startDefinitionsPoll({
     probe: () => Promise.resolve('rev-1'),
-    seed,
+    runSeed,
     probeSeedDue: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 60_000,
@@ -136,18 +136,18 @@ test('it seeds a probe token it seeded already while the database holds a change
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => seed.mock.calls.length === 2);
+  await waitForCondition(() => runSeed.mock.calls.length === 2);
 
-  expect(seed).toHaveBeenCalledTimes(2);
+  expect(runSeed).toHaveBeenCalledTimes(2);
 });
 
 test('it seeds again on a new probe token', async () => {
   const ctx = setupTest();
-  const seed = mock(() => Promise.resolve(true));
+  const runSeed = mock(() => Promise.resolve(true));
 
   const poll = startDefinitionsPoll({
     probe: mock(() => Promise.resolve('rev-2')).mockResolvedValueOnce('rev-1'),
-    seed,
+    runSeed,
     clock: ctx.clock,
     intervalMs: 60_000,
     retryDelayMs: 1000,
@@ -166,7 +166,7 @@ test('it seeds again on a new probe token', async () => {
 
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
-  expect(seed).toHaveBeenCalledTimes(2);
+  expect(runSeed).toHaveBeenCalledTimes(2);
 });
 
 test('it reports every probe, one whose token it seeded already included', async () => {
@@ -175,7 +175,7 @@ test('it reports every probe, one whose token it seeded already included', async
 
   const poll = startDefinitionsPoll({
     probe: () => Promise.resolve('rev-1'),
-    seed: () => Promise.resolve(true),
+    runSeed: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 60_000,
     retryDelayMs: 1000,
@@ -203,7 +203,7 @@ test('it reports no probe for a probe that throws', async () => {
 
   const poll = startDefinitionsPoll({
     probe: () => Promise.reject(new Error('the definitions directory is gone')),
-    seed: () => Promise.resolve(true),
+    runSeed: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 60_000,
     retryDelayMs: 1000,
@@ -227,7 +227,7 @@ test('it reports a probe that throws and keeps polling', async () => {
 
   const poll = startDefinitionsPoll({
     probe: () => Promise.reject(new Error('the definitions directory is gone')),
-    seed: () => Promise.resolve(true),
+    runSeed: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 60_000,
     retryDelayMs: 1000,
@@ -258,7 +258,7 @@ test('it probes nothing before the retry delay passes when the seed at start was
 
   const poll = startDefinitionsPoll({
     probe,
-    seed: () => Promise.resolve(true),
+    runSeed: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 300_000,
     retryDelayMs: 1000,
@@ -276,11 +276,11 @@ test('it probes nothing before the retry delay passes when the seed at start was
 
 test('it seeds once the retry delay passes when the seed at start was refused', async () => {
   const ctx = setupTest();
-  const seed = mock(() => Promise.resolve(true));
+  const runSeed = mock(() => Promise.resolve(true));
 
   const poll = startDefinitionsPoll({
     probe: () => Promise.resolve('rev-1'),
-    seed,
+    runSeed,
     clock: ctx.clock,
     intervalMs: 300_000,
     retryDelayMs: 1000,
@@ -295,18 +295,18 @@ test('it seeds once the retry delay passes when the seed at start was refused', 
 
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
-  expect(seed).toHaveBeenCalledOnce();
+  expect(runSeed).toHaveBeenCalledOnce();
 });
 
 test('it seeds a checkout that lands after a failed probe, 2 s after that probe', async () => {
   const ctx = setupTest();
-  const seed = mock(() => Promise.resolve(true));
+  const runSeed = mock(() => Promise.resolve(true));
 
   const poll = startDefinitionsPoll({
     probe: mock(() => Promise.resolve('rev-1')).mockRejectedValueOnce(
       new Error('the definitions directory is missing'),
     ),
-    seed,
+    runSeed,
     clock: ctx.clock,
     intervalMs: 300_000,
     retryDelayMs: 1000,
@@ -325,7 +325,7 @@ test('it seeds a checkout that lands after a failed probe, 2 s after that probe'
 
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
-  expect(seed).toHaveBeenCalledOnce();
+  expect(runSeed).toHaveBeenCalledOnce();
 });
 
 test('it waits 4 s before the probe after 2 failed probes', async () => {
@@ -334,7 +334,7 @@ test('it waits 4 s before the probe after 2 failed probes', async () => {
 
   const poll = startDefinitionsPoll({
     probe,
-    seed: () => Promise.resolve(true),
+    runSeed: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 300_000,
     retryDelayMs: 1000,
@@ -364,7 +364,7 @@ test('it waits no longer than the interval between failed probes', async () => {
 
   const poll = startDefinitionsPoll({
     probe,
-    seed: () => Promise.resolve(true),
+    runSeed: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 1500,
     retryDelayMs: 1000,
@@ -388,11 +388,11 @@ test('it waits no longer than the interval between failed probes', async () => {
 
 test('it seeds the same probe token again after the retry delay when a seed is refused', async () => {
   const ctx = setupTest();
-  const seed = mock(() => Promise.resolve(true)).mockResolvedValueOnce(false);
+  const runSeed = mock(() => Promise.resolve(true)).mockResolvedValueOnce(false);
 
   const poll = startDefinitionsPoll({
     probe: () => Promise.resolve('rev-1'),
-    seed,
+    runSeed,
     clock: ctx.clock,
     intervalMs: 60_000,
     retryDelayMs: 1000,
@@ -411,13 +411,13 @@ test('it seeds the same probe token again after the retry delay when a seed is r
 
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
-  expect(seed).toHaveBeenCalledTimes(2);
+  expect(runSeed).toHaveBeenCalledTimes(2);
 });
 
 test('it seeds the last good probe token again when the source returns to it after a refused seed', async () => {
   const ctx = setupTest();
 
-  const seed = mock(() => Promise.resolve(true))
+  const runSeed = mock(() => Promise.resolve(true))
     .mockResolvedValueOnce(true)
     .mockResolvedValueOnce(false);
 
@@ -425,7 +425,7 @@ test('it seeds the last good probe token again when the source returns to it aft
     probe: mock(() => Promise.resolve('rev-1'))
       .mockResolvedValueOnce('rev-1')
       .mockResolvedValueOnce('rev-2'),
-    seed,
+    runSeed,
     clock: ctx.clock,
     intervalMs: 60_000,
     retryDelayMs: 1000,
@@ -446,7 +446,7 @@ test('it seeds the last good probe token again when the source returns to it aft
 
   ctx.clock.advance(1000);
 
-  await expect(waitForCondition(() => seed.mock.calls.length === 3)).toResolve();
+  await expect(waitForCondition(() => runSeed.mock.calls.length === 3)).toResolve();
 });
 
 test('it probes after an interval shorter than the retry delay when the seed at start was refused', async () => {
@@ -455,7 +455,7 @@ test('it probes after an interval shorter than the retry delay when the seed at 
 
   const poll = startDefinitionsPoll({
     probe,
-    seed: () => Promise.resolve(true),
+    runSeed: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 100,
     retryDelayMs: 1000,
@@ -477,7 +477,7 @@ test('it probes again after an interval shorter than the retry delay when a prob
 
   const poll = startDefinitionsPoll({
     probe,
-    seed: () => Promise.resolve(true),
+    runSeed: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 100,
     retryDelayMs: 1000,
@@ -503,7 +503,7 @@ test('it waits the interval again once a retried seed applies', async () => {
 
   const poll = startDefinitionsPoll({
     probe,
-    seed: () => Promise.resolve(true),
+    runSeed: () => Promise.resolve(true),
     clock: ctx.clock,
     intervalMs: 60_000,
     retryDelayMs: 1000,
