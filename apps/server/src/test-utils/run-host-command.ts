@@ -22,6 +22,9 @@ export async function runHostCommand(
     print: (text) => {
       printed.push(`${text}\n`);
     },
+    writeBytes: (bytes) => {
+      printed.push(new TextDecoder().decode(bytes));
+    },
     waitForSignal: () => new Promise(() => {}),
   });
 

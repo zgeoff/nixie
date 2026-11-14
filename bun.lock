@@ -236,6 +236,7 @@
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/model-gateway": "workspace:*",
         "@heynixie/server": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@heynixie/web": "workspace:*",
