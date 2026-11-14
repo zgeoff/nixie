@@ -37,12 +37,14 @@ const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.r
 
 export interface RecordLookups {
   readonly cancelledActionIDs: ReadonlySet<string>;
+  readonly removedSequences: ReadonlySet<number>;
   readonly stopCancelledActions: ReadonlyMap<number, readonly ListedAction[]>;
   readonly taskDirectory: readonly TaskProfile[];
 }
 
 const noLookups: RecordLookups = {
   cancelledActionIDs: new Set(),
+  removedSequences: new Set(),
   stopCancelledActions: new Map(),
   taskDirectory: [],
 };
@@ -71,6 +73,7 @@ export function toContractRecord(
   return {
     ...toSessionFields(record),
     ...toForget(record),
+    ...toRemoval(record, lookups),
     ...(exchangeNotice === undefined ? {} : { exchangeNotice }),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
@@ -435,4 +438,11 @@ function toForget(record: LogRecord): Pick<ContractRecord, 'forget'> {
   const sequence = codec?.tryDecodePartial(record.payload)?.recordSequence;
 
   return sequence === undefined ? {} : { forget: { sequence } };
+}
+
+function toRemoval(record: LogRecord, lookups: RecordLookups): Pick<ContractRecord, 'isRemoved'> {
+  const isRemoved =
+    record.erasable.status === 'shredded' && lookups.removedSequences.has(record.sequence);
+
+  return isRemoved ? { isRemoved: true } : {};
 }

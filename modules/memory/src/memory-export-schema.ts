@@ -57,6 +57,7 @@ const spanRecordSchema = z.strictObject({
   decision: z.enum(['allow', 'ask', 'deny']).nullable(),
   text: z.string().nullable(),
   isGap: z.boolean(),
+  isRemoved: z.boolean().exactOptional(),
 });
 
 const readableMomentSchema = z.strictObject({
@@ -83,13 +84,23 @@ const destroyedMomentSchema = z.strictObject({
   destroyedAt: z.iso.datetime().nullable(),
 });
 
+const firstReadableVersion = 5;
+
 // A version 5 file predates the sensitive mark, so its items read as not sensitive.
 const sensitiveMarkVersion = 6;
+
+// A file before version 7 predates the removal mark, so its span records read as not removed.
+const removalMarkVersion = 7;
 
 export const memoryExportSchema = z
   .strictObject({
     header: z.strictObject({
-      schemaVersion: z.literal([sensitiveMarkVersion - 1, memoryExportSchemaVersion]),
+      schemaVersion: z.literal([
+        firstReadableVersion,
+        sensitiveMarkVersion,
+        removalMarkVersion,
+        memoryExportSchemaVersion,
+      ]),
       exportedAt: z.iso.datetime(),
       snapshotHash: z.string(),
     }),
@@ -98,6 +109,7 @@ export const memoryExportSchema = z
   })
   .superRefine((file, ctx) => {
     const isMarkRequired = file.header.schemaVersion >= sensitiveMarkVersion;
+    const isRemovalRequired = file.header.schemaVersion >= removalMarkVersion;
 
     for (const [index, item] of file.items.entries()) {
       if ('versions' in item && 'isSensitive' in item !== isMarkRequired) {
@@ -108,11 +120,38 @@ export const memoryExportSchema = z
         });
       }
     }
+
+    for (const [momentIndex, moment] of file.moments.entries()) {
+      if (!('records' in moment)) {
+        continue;
+      }
+
+      for (const [index, record] of moment.records.entries()) {
+        if ('isRemoved' in record !== isRemovalRequired) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `schema version ${file.header.schemaVersion} span records ${isRemovalRequired ? 'need' : 'have no'} a removal mark`,
+            path: ['moments', momentIndex, 'records', index, 'isRemoved'],
+          });
+        }
+      }
+    }
   })
   .transform((file) => ({
     ...file,
     items: file.items.map((item) =>
       'versions' in item ? { ...item, isSensitive: item.isSensitive ?? false } : item,
+    ),
+    moments: file.moments.map((moment) =>
+      'records' in moment
+        ? {
+            ...moment,
+            records: moment.records.map((record) => ({
+              ...record,
+              isRemoved: record.isRemoved ?? false,
+            })),
+          }
+        : moment,
     ),
   }));
 

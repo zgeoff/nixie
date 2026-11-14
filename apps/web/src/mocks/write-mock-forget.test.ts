@@ -15,9 +15,11 @@ test('it drops the text of your message and adds the record that names it', asyn
   });
 
   const forgotten = store.records.findFirst((query) => query.where({ kind: 'record.forgotten' }));
+  const removed = store.records.findFirst((query) => query.where({ sequence: message.sequence }));
 
   expect(result).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeValidDate() });
   expect(forgotten?.forget).toStrictEqual({ sequence: message.sequence });
+  expect(removed?.isRemoved).toBeTrue();
 });
 
 test('it answers a retry with the first time and adds no second record', async () => {

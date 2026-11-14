@@ -105,6 +105,8 @@ const recordSchema = z.object({
 
   context: contextSchema.optional(),
 
+  isRemoved: z.literal(true).optional(),
+
   isSilentTurn: z.literal(true).optional(),
 
   kind: z.string(),

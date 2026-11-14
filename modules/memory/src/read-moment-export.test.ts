@@ -114,6 +114,7 @@ test("it reads a moment's span with each record's text and source", async () => 
       decision: null,
       text: expect.toInclude('plant the garlic in October'),
       isGap: false,
+      isRemoved: false,
     },
   ]);
 });
@@ -171,6 +172,7 @@ test("it exports a tool call and its result with each record's payload and polic
       decision: 'allow',
       text: JSON.stringify({ input: { url: 'https://example.test/garlic' } }),
       isGap: false,
+      isRemoved: false,
     },
     {
       sequence: result.sequence,
@@ -188,6 +190,7 @@ test("it exports a tool call and its result with each record's payload and polic
       decision: null,
       text: JSON.stringify({ result: { title: 'Growing garlic' } }),
       isGap: false,
+      isRemoved: false,
     },
   ]);
 });

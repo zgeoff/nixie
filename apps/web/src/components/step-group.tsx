@@ -67,6 +67,15 @@ interface ToolCallDetailProps {
 }
 
 function ToolCallDetail(props: ToolCallDetailProps): ReactNode {
+  if (props.call.isRemoved === true) {
+    return (
+      <section aria-label={props.call.tool}>
+        <h3 className={css({ fontWeight: 'semibold' })}>{props.call.tool} — removed</h3>
+        <p>Result{props.call.outcome === undefined ? ' (waiting)' : ` (${props.call.outcome})`}</p>
+      </section>
+    );
+  }
+
   return (
     <section aria-label={props.call.tool}>
       <h3 className={css({ fontWeight: 'semibold' })}>{props.call.tool}</h3>

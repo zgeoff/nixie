@@ -2,14 +2,61 @@ import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { memoryExportSchema } from './memory-export-schema';
 
-test('it accepts the version 6 export file the fixture holds, a sensitive item, a self-note, a lapse and moments included', async () => {
+test('it accepts the version 7 export file the fixture holds, a removed record and another gap included', async () => {
   const fixture: unknown = await Bun.file(
-    join(import.meta.dir, 'fixtures', 'memory-export-v6.json'),
+    join(import.meta.dir, 'fixtures', 'memory-export-v7.json'),
   ).json();
 
   const parsed: unknown = memoryExportSchema.safeParse(fixture).data;
 
   expect(parsed).toStrictEqual(fixture);
+});
+
+test('it reads a span record of the version 6 file the fixture holds as not removed', async () => {
+  const fixture: unknown = await Bun.file(
+    join(import.meta.dir, 'fixtures', 'memory-export-v6.json'),
+  ).json();
+
+  const file = memoryExportSchema.parse(fixture);
+
+  const marks = file.moments.flatMap((moment) =>
+    'records' in moment ? moment.records.map((record) => record.isRemoved) : [],
+  );
+
+  expect(marks).toStrictEqual([false, false, false, false]);
+});
+
+test('it rejects a version 6 span record that carries a removal mark', async () => {
+  const text = await Bun.file(join(import.meta.dir, 'fixtures', 'memory-export-v6.json')).text();
+
+  const fixture: unknown = JSON.parse(
+    text.replace('"isGap": false', '"isGap": false, "isRemoved": false'),
+  );
+
+  const result = memoryExportSchema.safeParse(fixture);
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['moments', 0, 'records', 0, 'isRemoved'],
+  });
+});
+
+test('it rejects a version 7 span record with no removal mark', async () => {
+  const text = await Bun.file(join(import.meta.dir, 'fixtures', 'memory-export-v7.json')).text();
+
+  const fixture: unknown = JSON.parse(text.replace(/,\s*"isRemoved": false/u, ''));
+  const result = memoryExportSchema.safeParse(fixture);
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['moments', 0, 'records', 0, 'isRemoved'],
+  });
+});
+
+test('it accepts the version 6 file the fixture holds', async () => {
+  const fixture: unknown = await Bun.file(
+    join(import.meta.dir, 'fixtures', 'memory-export-v6.json'),
+  ).json();
+
+  expect(memoryExportSchema.safeParse(fixture).success).toBeTrue();
 });
 
 test('it reads an item of a version 5 file, which predates the sensitive mark, as not sensitive', () => {

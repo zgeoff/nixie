@@ -254,7 +254,7 @@ test("it heads the file with the export time, the schema version and the definit
 
   expect(JSON.parse(text)).toStrictEqual({
     header: {
-      schemaVersion: 6,
+      schemaVersion: 7,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },
@@ -407,6 +407,7 @@ test('it exports a moment with its title, note, reflections and links and its sp
           decision: null,
           text: 'the allotment plot is number 14',
           isGap: false,
+          isRemoved: false,
         },
         {
           sequence: reply.sequence,
@@ -417,6 +418,7 @@ test('it exports a moment with its title, note, reflections and links and its sp
           decision: null,
           text: 'Plot 14 it is, next to the tap.',
           isGap: false,
+          isRemoved: false,
         },
       ],
     },

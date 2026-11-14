@@ -82,7 +82,7 @@ test('it offers no forget for a message of a kind the API cannot forget', () => 
   expect(rendered.queryByRole('button')).toBeNull();
 });
 
-test('it takes the message out of the view as soon as your forget succeeds', async () => {
+test('it shows the message as removed as soon as your forget succeeds', async () => {
   const user = userEvent.setup();
 
   await createDeviceSession();
@@ -98,6 +98,26 @@ test('it takes the message out of the view as soon as your forget succeeds', asy
   await user.click(rendered.getByRole('button', { name: 'Forget for good' }));
 
   await waitFor(() => {
-    expect(rendered.container).toBeEmptyDOMElement();
+    expect(rendered.getByRole('listitem').textContent).toBe('nixie — removed');
   });
+});
+
+test.each([
+  ['owner_message' as const, 'You — removed'],
+  ['model.reply' as const, 'nixie — removed'],
+])('it shows a removed %s as removed, with no text and no forget control', (kind, line) => {
+  const rendered = render(
+    <RecordItem record={buildMockLogRecord({ isRemoved: true, kind, sequence: 12 })} />,
+  );
+
+  expect(rendered.getByRole('listitem')).toHaveTextContent(line);
+  expect(rendered.getByRole('listitem').textContent).toBe(line);
+});
+
+test('it shows a message that fails to decrypt as nothing', () => {
+  const rendered = render(
+    <RecordItem record={buildMockLogRecord({ kind: 'owner_message', sequence: 13 })} />,
+  );
+
+  expect(rendered.queryByRole('listitem')).toBeNull();
 });

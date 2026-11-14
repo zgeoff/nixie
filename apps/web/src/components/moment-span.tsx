@@ -68,6 +68,15 @@ function SpanRecord(props: SpanRecordProps): ReactNode {
   const record = props.record;
   const label = `Record ${String(record.sequence)}`;
 
+  if (record.isRemoved) {
+    return (
+      <li aria-label={label} className={gap}>
+        Record {record.sequence}: this part is removed. Its text was deleted, and the moment keeps
+        its place.
+      </li>
+    );
+  }
+
   if (record.isGap) {
     return (
       <li aria-label={label} className={gap}>

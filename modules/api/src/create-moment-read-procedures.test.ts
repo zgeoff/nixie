@@ -493,6 +493,7 @@ test("#memory.readMomentSpan reads the span's records in order, with a forgotten
     records: [
       {
         isGap: true,
+        isRemoved: true,
         kind: 'owner_message',
         recordedAt: expect.any(Date),
         sequence: message.sequence,
@@ -501,6 +502,7 @@ test("#memory.readMomentSpan reads the span's records in order, with a forgotten
       },
       {
         isGap: false,
+        isRemoved: false,
         kind: 'model.reply',
         recordedAt: expect.any(Date),
         sequence: reply.sequence,

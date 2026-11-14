@@ -7,6 +7,7 @@ import {
   taskStoppedCodec,
 } from '@heynixie/tasks';
 import { toolResultCodec } from '@heynixie/tools';
+import { readRemovedRecordSequences } from './read-removed-record-sequences';
 import type { RecordLookups } from './to-contract-record';
 import type { APIContext } from './types';
 
@@ -42,6 +43,7 @@ export async function readRecordLookups(
 
   return {
     cancelledActionIDs: await readCancelledActionIDs(context, failedActionIDs),
+    removedSequences: await readRemovedRecordSequences(context, records),
     stopCancelledActions: await readStopCancelledActions(context, stopSequences),
     taskDirectory: named.directory,
   };

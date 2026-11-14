@@ -3,12 +3,13 @@ import { toolCalledCodec } from '@heynixie/tools';
 
 const textKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
 
-export function toMomentSpanRecord(record: LogRecord) {
+export function toMomentSpanRecord(record: LogRecord, removed: ReadonlySet<number>) {
   const erasable = record.erasable;
   const text = erasable.status === 'readable' ? erasable.fields['text'] : undefined;
 
   return {
     isGap: erasable.status === 'shredded' || erasable.status === 'unreadable',
+    isRemoved: erasable.status === 'shredded' && removed.has(record.sequence),
     kind: record.kind,
     recordedAt: record.recordedAt,
     sequence: record.sequence,

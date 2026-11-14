@@ -6,6 +6,9 @@ export interface ToolActivity {
   readonly content?: Readonly<Record<string, unknown>>;
   readonly input?: Readonly<Record<string, unknown>>;
 
+  // the call's record or its result's record was removed, so the call keeps no input or content
+  readonly isRemoved?: true;
+
   readonly outcome?: string;
   readonly tool: string;
 }
@@ -286,6 +289,7 @@ function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
       calls.set(toolCall.callID, {
         ...earlier,
         callID: toolCall.callID,
+        ...(record.isRemoved === true ? { isRemoved: true } : {}),
         tool: toolCall.tool ?? earlier?.tool ?? 'tool',
         ...(toolCall.input === undefined ? {} : { input: toolCall.input }),
         ...(toolCall.outcome === undefined ? {} : { outcome: toolCall.outcome }),

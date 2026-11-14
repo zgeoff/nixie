@@ -642,3 +642,32 @@ test('it keeps the latest rating of a memory, and none for another recall of the
     },
   ]);
 });
+
+test('it marks a tool call removed when its result record is removed', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  const called = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 2,
+    toolCall: { callID: 'call-1', tool: 'web_fetch' },
+  });
+
+  const result = buildMockLogRecord({
+    isRemoved: true,
+    kind: 'tool_result',
+    sequence: 3,
+    toolCall: { callID: 'call-1', outcome: 'result' },
+  });
+
+  const calls = buildActivity([started, called, result]).flatMap((item) =>
+    item.kind === 'step' ? item.calls : [],
+  );
+
+  expect(calls).toStrictEqual([
+    { callID: 'call-1', isRemoved: true, outcome: 'result', tool: 'web_fetch' },
+  ]);
+});

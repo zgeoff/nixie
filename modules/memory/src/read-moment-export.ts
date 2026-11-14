@@ -101,6 +101,7 @@ async function readReadableMoment(
       decision: entry.decision,
       text: entry.text,
       isGap: entry.isGap,
+      isRemoved: entry.isRemoved,
     })),
   };
 }

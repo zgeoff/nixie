@@ -58,6 +58,7 @@ async function writeForgottenRecord(target: ForgetTarget, input: ForgetInput): P
   await store.records.update(target, {
     data(draft) {
       delete draft.message;
+      draft.isRemoved = true;
     },
   });
 

@@ -684,7 +684,7 @@ test('#conversation.forget forgets a message, which the thread then shows with n
   expect(result).toStrictEqual({ forgottenAt: expect.toBeValidDate() });
 
   expect(page.records.filter((record) => record.sequence >= sent.sequence)).toMatchObject([
-    { kind: 'owner_message', sequence: sent.sequence },
+    { kind: 'owner_message', sequence: sent.sequence, isRemoved: true },
     { kind: 'record.forget_started', forget: { sequence: sent.sequence } },
   ]);
 
@@ -877,6 +877,39 @@ test('#records.follow streams the records of the thread after the sequence asked
   const seen = await readEvents(connection, 3);
 
   expect(seen.map((event) => event.record.message?.text)).toStrictEqual([undefined, 'one', 'two']);
+});
+
+test('#records.follow streams a forgotten message as removed', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const sent = await laptopClient.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f61',
+    thread: 'conversation',
+    text: 'The shed code is 5521.',
+    spans: [],
+  });
+
+  await laptopClient.conversation.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a86',
+    sequence: sent.sequence,
+    thread: 'conversation',
+  });
+
+  const connection = await laptopClient.records.follow({
+    afterSequence: sent.sequence - 1,
+    thread: 'conversation',
+  });
+
+  const [message] = await readEvents(connection, 1);
+
+  expect(message?.record.isRemoved).toBeTrue();
+  expect(message?.record.message).toBeUndefined();
 });
 
 test('#records.follow streams a failed tool result as cancelled when a stop cancelled its action', async () => {
