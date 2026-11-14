@@ -1,9 +1,9 @@
 import type { TaskControl } from '@heynixie/task-control';
-import { isControlAllowed } from '@heynixie/task-control';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { formatStopPreview } from '../conversation/format-stop-preview';
+import { collectOfferedControls } from '../pause/collect-offered-controls';
 import { css } from '../styled-system/css';
 import { runTaskControl } from '../task/run-task-control';
 import type { ListedTask } from '../task/use-live-task-list';
@@ -46,6 +46,7 @@ export function TaskControls(props: TaskControlsProps): ReactNode {
 
   const refreshList = (): void => {
     void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.tasks.key() });
+    void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.nixie.key() });
   };
 
   const sent = useMutation({
@@ -69,13 +70,7 @@ export function TaskControls(props: TaskControlsProps): ReactNode {
     sent.mutate(next);
   };
 
-  const offered = task.controls.filter((control) =>
-    isControlAllowed(control, {
-      isConversation: task.taskID === 'conversation',
-      isPauseRequested: task.isPauseRequested,
-      state: task.state,
-    }),
-  );
+  const offered = collectOfferedControls(task);
 
   return (
     <div aria-label={`Controls for ${task.name}`} className={controls} role="group">

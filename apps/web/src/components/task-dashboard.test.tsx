@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { pauseStore } from '../mocks/pause-store';
 import { store } from '../mocks/store';
 import { buildStubTimer } from '../test-utils/build-stub-timer';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -262,4 +263,27 @@ test('it reads the list again when a message of yours arrives on the live stream
   await waitFor(() => {
     expect(row).toHaveTextContent('Ready');
   });
+});
+
+test('it offers Pause nixie on the dashboard, and shows each task paused once nixie pauses', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.tasks.create({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' });
+
+  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+
+  const pauseButton = await rendered.findByRole('button', { name: 'Pause nixie' });
+
+  await ctx.user.click(pauseButton);
+
+  const row = await rendered.findByRole('listitem', { name: 'Garden plan' });
+
+  await waitFor(() => {
+    expect(row).toHaveTextContent('Paused by nixie');
+  });
+
+  expect(pauseStore.pauses.all()).toHaveLength(1);
+  expect(rendered.queryByRole('button', { name: 'Pause nixie' })).toBeNull();
 });

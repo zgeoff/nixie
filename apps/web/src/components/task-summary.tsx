@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 import { useIsHydrated } from '../conversation/use-is-hydrated';
+import { isTaskShownPaused } from '../pause/is-task-shown-paused';
 import { css } from '../styled-system/css';
 import { buildTaskHref } from '../task/build-task-href';
 import { formatTaskName } from '../task/format-task-name';
@@ -46,7 +47,9 @@ export function TaskSummary(props: TaskSummaryProps): ReactNode {
         ) : (
           <span className={title}>{task.name}</span>
         )}
-        <span className={facts}>{formatTaskState(task.state)}</span>
+        <span className={facts}>
+          {isTaskShownPaused(task) ? 'Paused by nixie' : formatTaskState(task.state)}
+        </span>
         {isHydrated ? (
           <span className={facts}>
             Last activity {task.lastActivityAt.toLocaleString(undefined, timeFormat)}
