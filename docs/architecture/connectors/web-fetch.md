@@ -23,27 +23,55 @@ The tool declares only the fetch effect and no destination, so the decision poin
 allow rule on that effect, such as the starter rule `allow-reads`, and it runs direct, inside the
 turn. Its result holds the final URL after redirects, the status code, the content type, the page
 ID, the part number and the count of parts, the text of one part, the truncated mark and the blocked
-reason. A fetched image reaches the model as image content beside the result, as
-[web fetch images](./web-fetch-images.md) describes.
+reason, and `isCached`, which is true when the result is a stored copy. A fetched image reaches the
+model as image content beside the result, as [web fetch images](./web-fetch-images.md) describes.
 
 Every field of the result and every image is outside content, because the page and every redirect
 along the way came from someone other than the user. The result schema marks the status code, the
-part number, the count of parts and the truncated mark as endorsed types, because a number and a
-boolean cannot carry the page's words, while a URL can carry text in its path. A refused or failed
-fetch returns an error with its reason, which the model reads. When a site's bot protection answers
-in place of the page, the result is a page with its status and a blocked reason, so the model can
-tell the user why the fetch has no content instead of retrying.
+part number, the count of parts, the truncated mark and `isCached` as endorsed types, because a
+number and a boolean cannot carry the page's words, while a URL can carry text in its path. A
+refused or failed fetch returns an error with its reason, which the model reads. When a site's bot
+protection answers in place of the page, the result is a page with its status and a blocked reason,
+so the model can tell the user why the fetch has no content instead of retrying.
 
 A call names a page in one of these ways, and the tool refuses any other mix of keys:
 
-| Call                                      | Fetches | Returns                                       |
-| ----------------------------------------- | ------- | --------------------------------------------- |
-| `url`, with an optional `part` or `find`  | yes     | the part named or found, else part 1          |
-| `link`, with an optional `part` or `find` | yes     | the same, for the page the link goes to       |
-| `page`, with `part` or `find`             | no      | the part named or found, from the stored copy |
+| Call                                      | Fetches                                                                   | Returns                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------- |
+| `url`, with an optional `part` or `find`  | unless the session stored the page inside `cache_ms`, or yes with `fresh` | the part named or found, else part 1          |
+| `link`, with an optional `part` or `find` | the same as `url`                                                         | the same, for the page the link goes to       |
+| `page`, with `part` or `find`             | no                                                                        | the part named or found, from the stored copy |
 
-A call never gives both `part` and `find`. [Pages and parts](#pages-and-parts) covers the page ID,
-`part` and `find`.
+A `url` or `link` call takes an optional `fresh`, a boolean that is false when absent. A `page` call
+with a `fresh` key, `false` included, is a tool error, because a `page` call never fetches. A call
+never gives both `part` and `find`. [Pages and parts](#pages-and-parts) covers the page ID, `part`
+and `find`.
+
+## The steps of a call
+
+A `url` or `link` call runs these 9 steps in `runPageFetch`, in this order:
+
+| Step | Name     | What nixie does                                                                |
+| ---- | -------- | ------------------------------------------------------------------------------ |
+| 1    | Parse    | parses the call, and reads the link's target: the named URL                    |
+| 2    | Rewrite  | calls `rewriteFetchURL` on the named URL: the sent URL                         |
+| 3    | Scan     | refuses a sent URL that holds a secret                                         |
+| 4    | Cache    | returns the session's stored copy of the sent URL, unless the call has `fresh` |
+| 5    | Pause    | reads the pause of the sent URL's host                                         |
+| 6    | Fetch    | calls `readPage` on the sent URL, which starts one sandbox                     |
+| 7    | Set      | sets a pause from the reply                                                    |
+| 8    | Fallback | runs the second pass                                                           |
+| 9    | Store    | writes the page and its links in one transaction                               |
+
+The named URL is the URL in the call's `url`, or the URL that its link ID stands for. The sent URL
+is the URL that nixie sends to the fetcher: the rewritten URL when a [rule](#known-sites) matches
+the named URL, and the named URL otherwise. The first pass is steps 3 to 7 on the sent URL of
+step 2. The second pass is step 8: steps 3, 5, 6 and 7 once more, with the named URL as the sent
+URL. It never runs step 4. A `page` call runs none of the steps.
+
+Step 9 stores a row only for a page with text, never for an image. A stop of the server in steps 1
+to 8 ends with a call record and no result record, and the sandbox module removes the fetch's
+sandbox. Step 9 is one transaction, so a stop there stores the page whole or not at all.
 
 ## Known sites
 
@@ -127,6 +155,43 @@ rate-limit reply. A forget that ends a session clears every pause before the ses
 finishes, because a host name can show what a forgotten conversation read. This covers the
 conversation's cleanup, each task's cleanup and the reset of the conversations. The reader of a
 skill's files takes no pause.
+
+## The page cache
+
+The cache is the session's page store, with no table of its own. Step 4 of the first pass returns
+the stored copy of the sent URL when the session holds one that is fresh enough, so the call starts
+no sandbox and writes nothing. The result is the page's stored view with `isCached` true, and every
+other result has it false.
+
+A stored page answers when all of these hold:
+
+- It belongs to the call's session, and no forget has removed it.
+- Its `fetch_url`, the sent URL of the pass that stored it, or its `url`, the URL the fetch ended
+  at, equals the sent URL of the call. Both sides are compared as the URL parser prints them, with
+  the fragment dropped. A sent URL that does not parse never hits, and a page stored before the
+  `fetch_url` column existed hits only by its `url`.
+- Its status is 200 to 299, and it has no blocked reason.
+- It was stored less than `cache_ms` before now, by the log writer's clock, which wrote the time.
+
+When several pages answer, the newest one is the result. After a second pass, the stored page's
+`fetch_url` is the named URL, so the next call for the page that the rewritten URL named misses.
+
+These rules hold for the step:
+
+- Step 3 runs before step 4, so the scan refuses a URL that holds a secret even when a page for it
+  is stored.
+- Step 4 runs before step 5, so a stored page of a paused host still answers.
+- The second pass never reads the cache.
+- Two calls for one URL that run together both fetch, and each stores its page.
+- The store limit and the forget apply to every stored page as before, so a page that left the store
+  no longer answers.
+- A `fresh` call skips step 4, and its page replaces the stored copy as the newest.
+
+The `web_fetch` section of the deployment config holds the key, a whole number of 0 or more:
+
+| Key        | Default | Sets                                                                     |
+| ---------- | ------- | ------------------------------------------------------------------------ |
+| `cache_ms` | 300000  | how long a stored page answers a url or link call; 0 turns the cache off |
 
 ## Link IDs
 
