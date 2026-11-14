@@ -13,10 +13,17 @@ export interface ProxyLimits {
   readonly tokens: number | null;
 }
 
+export interface CaptureConfig {
+  readonly spool: string;
+  readonly maxBytes: number;
+  readonly maxPending: number;
+}
+
 export interface ProxyConfig {
   readonly listen: { readonly hostname: string; readonly port: number };
   readonly store: string;
   readonly limits: ProxyLimits;
+  readonly capture: CaptureConfig | null;
   readonly routes: Readonly<Record<string, ProxyRoute>>;
 }
 

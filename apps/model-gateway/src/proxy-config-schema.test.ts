@@ -55,6 +55,7 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
     listen: { hostname: '0.0.0.0', port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
     limits: { dollars: 5, tokens: null },
+    capture: null,
     routes: {
       preview: {
         api: 'anthropic-messages',
@@ -145,4 +146,119 @@ test('it rejects a route ID that is not a lowercase slug', () => {
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['routes', 'Preview/A'] });
+});
+
+test('it reads a capture key with its defaults for the byte and pending limits', () => {
+  const result = proxyConfigSchema.safeParse({
+    listen: { port: 18_090 },
+    store: '/var/lib/model-gateway/counter.json',
+    limits: { dollars: 5 },
+    capture: { spool: '/var/lib/nixie/spool' },
+    routes: {
+      preview: {
+        upstream: 'https://models.example.com',
+        model: 'model-small',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 },
+      },
+    },
+  });
+
+  expect(result.data?.capture).toStrictEqual({
+    spool: '/var/lib/nixie/spool',
+    maxBytes: 536_870_912,
+    maxPending: 16,
+  });
+});
+
+test('it reads a capture key with its own byte and pending limits', () => {
+  const result = proxyConfigSchema.safeParse({
+    listen: { port: 18_090 },
+    store: '/var/lib/model-gateway/counter.json',
+    limits: { dollars: 5 },
+    capture: { spool: '/var/lib/nixie/spool', max_bytes: 1000, max_pending: 2 },
+    routes: {
+      preview: {
+        upstream: 'https://models.example.com',
+        model: 'model-small',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 },
+      },
+    },
+  });
+
+  expect(result.data?.capture).toStrictEqual({
+    spool: '/var/lib/nixie/spool',
+    maxBytes: 1000,
+    maxPending: 2,
+  });
+});
+
+test('it reads a config with no capture key as a capture of null', () => {
+  expect(
+    proxyConfigSchema.safeParse({
+      listen: { port: 18_090 },
+      store: '/var/lib/model-gateway/counter.json',
+      limits: { dollars: 5 },
+      routes: {
+        preview: {
+          upstream: 'https://models.example.com',
+          model: 'model-small',
+          prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 },
+        },
+      },
+    }).data?.capture,
+  ).toBeNull();
+});
+
+test('it rejects a relative capture spool', () => {
+  const result = proxyConfigSchema.safeParse({
+    listen: { port: 18_090 },
+    store: '/var/lib/model-gateway/counter.json',
+    limits: { dollars: 5 },
+    capture: { spool: 'relative/spool' },
+    routes: {
+      preview: {
+        upstream: 'https://models.example.com',
+        model: 'model-small',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 },
+      },
+    },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['capture', 'spool'] });
+});
+
+test('it rejects a max_pending of 0', () => {
+  const result = proxyConfigSchema.safeParse({
+    listen: { port: 18_090 },
+    store: '/var/lib/model-gateway/counter.json',
+    limits: { dollars: 5 },
+    capture: { spool: '/var/lib/nixie/spool', max_pending: 0 },
+    routes: {
+      preview: {
+        upstream: 'https://models.example.com',
+        model: 'model-small',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 },
+      },
+    },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['capture', 'max_pending'] });
+});
+
+test('it rejects a capture key it does not know', () => {
+  expect(
+    proxyConfigSchema.safeParse({
+      listen: { port: 18_090 },
+      store: '/var/lib/model-gateway/counter.json',
+      limits: { dollars: 5 },
+      capture: { spool: '/var/lib/nixie/spool', extra: 1 },
+      routes: {
+        preview: {
+          upstream: 'https://models.example.com',
+          model: 'model-small',
+          prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 },
+        },
+      },
+    }).success,
+  ).toBeFalse();
 });
