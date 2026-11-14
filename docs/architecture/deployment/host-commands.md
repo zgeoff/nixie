@@ -29,6 +29,9 @@ log line, so a deployment's check reads the report and not the log.
 | `nixie reset --keep-sessions …`      | the sequence the reset removed up to, and the device sessions it kept                       | the server finished the reset        |
 | `nixie reset --only memories …`      | the number of memory items it forgot, and the key backup state                              | every forget finished                |
 | `nixie reset --only conversations …` | the number of records it shredded, the sequence it shredded up to, and the key backup state | the server finished the reset        |
+| `nixie pause`                        | the pause state as JSON, with the cause `owner`                                             | the server paused nixie              |
+| `nixie resume`                       | the pause state as JSON, which is null once nixie runs                                      | the server answered                  |
+| `nixie recovery`                     | the last restore and each task it left to check, as JSON, or null before any restore        | the server answered                  |
 | `nixie sessions`                     | the live device sessions, as JSON                                                           | the server answered                  |
 | `nixie backup --to <directory>`      | each database it copied, then the directory and the number of copies                        | both copies match                    |
 | `nixie restore --from … --yes`       | the databases it restored and the directory they came from                                  | both databases were replaced         |
@@ -213,6 +216,13 @@ task that the user stopped after the pause stays stopped, and `task-restart` run
 raised limit. The command takes the task ID and `--turns`, `--dollars` or both, such as
 `nixie task-raise k3x9m2p7qa --turns 40`, and prints the task's state and its new limits. It fails,
 and changes nothing, for a task that no limit holds and for a value that raises nothing.
+
+## Pausing nixie
+
+`nixie pause` and `nixie resume` pause and resume all of nixie, as the
+[API](../channels/api.md#pausing-nixie) does, and write `host` as the actor. A pause replaces a
+restore pause, and a resume ends either, so the command after a restore is `nixie recovery` to read
+the tasks to check, then `nixie resume`.
 
 ## Turn inputs
 

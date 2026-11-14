@@ -2,7 +2,7 @@
 
 - **Status:** partly built: the pause tables, the records, the reader gate, the claim check, the
   resume, letting one task run, the backup schedule's hold, the marker, the install at the next
-  start and the restore notice are built; the controls and the trigger check remain
+  start, the restore notice, the controls and the recovery read are built; the trigger check remains
 - **Work items:** [the `holding` marker](https://linear.app/zgeoff/issue/GEO-2561),
   [the pause tables, the reader gate and the claim check](https://linear.app/zgeoff/issue/GEO-2566),
   [the install at the next start](https://linear.app/zgeoff/issue/GEO-2564),
@@ -448,6 +448,20 @@ type RestorePauseFaultPoint =
   call on 13 Nov, which the owner accepted: the platform's
   [backup and restore](../platform/deployment/backup-and-restore.md#restoring-on-a-new-host) gives
   the restore no exception, and a resume after the start covers a test host.
+- **The API has a signed-in read of the pause state, `nixie/read`.** An agent's call on 15 Nov: the
+  banner shows on every signed-in page, and the pause records sit on no thread, so the record stream
+  carries none. The client polls the read every 15 seconds and when the window gains focus, and
+  reads the task list again when the state changes.
+- **`isPausedByNixie` is the claim check's answer for that task, on each listed task.** An agent's
+  call on 15 Nov: `state` stays the task's own state, so a client of the release before reads the
+  same states as now.
+- **The web client shows a task as paused, and offers its Resume, only while the task is ready,
+  running, waiting or paused.** An agent's call on 15 Nov: a done, stopped, failed or closed task
+  shows its own state. The shared table of allowed controls stays as it is, because the server's
+  plan reads it.
+- **The banner lists the tasks to check only when the pause's cause is `restore`.** An agent's call
+  on 15 Nov: the latest recovery is then the one that paused nixie, and `recovery/read` stays
+  readable after the resume.
 
 ## Builder decides
 
