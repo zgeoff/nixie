@@ -43,17 +43,13 @@ removes the imp.
      <conversation_image> 512 2 conversation.sh > <output_file> 2>&1
    ```
 
-   - `<model_key_secret>`: the impd secret that holds the model API key. `probe.sh` grants it to the
-     test imp alone. Every scenario on the conversation image except `idle.sh` needs it.
+   - `<model_key_secret>`: the impd secret that holds the model API key, granted to the test imp
+     alone. Every scenario on the conversation image except `idle.sh` needs it.
    - `<conversation_image>` and `<fetch_image>`: the impd names of nixie's 2 guest images.
    - `<output_file>`: any local file for the scenario's output.
 
-   Expect: the output that [scenarios](results.md#scenarios) lists, with each scenario's arguments.
-
-   The conversation image holds the guest's 2 bundles and the CLI, and no `node_modules`. Only
-   `check.sh` and `idle.sh` run on it. The scenarios built on `turn.ts` (`conversation.sh`,
-   `concurrent.sh` and the forms in `runtime.sh`) import the SDK, so they need an image built before
-   the guest ran from a bundle.
+   Expect: the output that [scenarios](results.md#scenarios) lists. The bundled image has no
+   `node_modules`, so `turn.ts` scenarios need an older one.
 
 3. Time 5 creates and wakes of one image at one memory size and vCPU count:
 
