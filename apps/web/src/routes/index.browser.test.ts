@@ -324,9 +324,17 @@ test('it shows a card from its records when the model reply claims the action is
 
   expect(page).toInclude('I sent the tide table to harbour@example.org.');
 
+  await ctx.view.evaluate(
+    "(() => { window.debugButton = document.querySelector('[aria-label=\"Routine proposal\"] button[name=approve]'); window.debugClicks = 0; window.debugButton.addEventListener('click', () => { window.debugClicks += 1; }); window.debugReactKeys = Object.keys(window.debugButton).filter((key) => key.startsWith('__react')).join(','); return 1; })()",
+  );
+
   await ctx.view.click('[aria-label="Routine proposal"] button[name=approve]');
 
-  console.log('DEBUG-T clicked', Date.now() - debugT0);
+  const debugState: unknown = await ctx.view.evaluate(
+    'JSON.stringify({ connected: window.debugButton.isConnected, disabled: window.debugButton.disabled, clicks: window.debugClicks, react: window.debugReactKeys, cards: document.querySelectorAll(\'[aria-label="Routine proposal"]\').length, same: window.debugButton === document.querySelector(\'[aria-label="Routine proposal"] button[name=approve]\') })',
+  );
+
+  console.log('DEBUG-T clicked', Date.now() - debugT0, String(debugState));
 
   await waitFor(
     async () => {
