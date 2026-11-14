@@ -82,10 +82,11 @@ test('it gives each selectable model a priced profile of its own at the URL it n
     baseURL: 'http://127.0.0.1:4050',
     credential: 'deployment:scripted',
     authHeader: 'bearer',
-    model: 'second-look-test-model',
+    model: 'claude-second-look-test-model',
     effort: 'low',
     contextTokens: null,
     cacheTTL: '5m',
+    outsideClaude: null,
     providerPin: null,
     prices: { input: 1, cacheWrite: 1, cacheWrite1h: 1, cachedInput: 0.1, output: 4 },
   });

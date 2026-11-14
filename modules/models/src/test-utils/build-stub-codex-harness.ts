@@ -14,6 +14,7 @@ export function buildStubCodexHarness(overrides: Partial<Harness> = {}): Harness
     toolCallWaitMs: null,
     capabilities: harnessCapabilities.codex,
     secretHeader: 'bearer',
+    rewritesRequests: false,
     toTurnProfile: () => ({
       harness: 'agent-sdk',
       model: 'stub-model-1',
@@ -22,6 +23,7 @@ export function buildStubCodexHarness(overrides: Partial<Harness> = {}): Harness
       authHeader: 'bearer',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
     }),
     contextWindow: null,
     session: null,

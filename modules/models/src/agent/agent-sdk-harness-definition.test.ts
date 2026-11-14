@@ -73,7 +73,42 @@ test('#toTurnProfile gives the guest the profile with no credential reference an
     authHeader: 'bearer',
     contextTokens: 400_000,
     cacheTTL: '1h',
+    requestRewrite: null,
   });
+});
+
+test.each(['kept', 'one-off'] as const)(
+  '#toTurnProfile for a %s session carries the provider pin of a profile outside Claude',
+  (use) => {
+    const harness = bindHarness(
+      buildMockModelProfile({ outsideClaude: true, providerPin: 'z-ai' }),
+    );
+
+    expect(harness.toTurnProfile(use).requestRewrite).toStrictEqual({ providerPin: 'z-ai' });
+  },
+);
+
+test('#toTurnProfile carries a null pin for a profile outside Claude with no pin', () => {
+  const harness = bindHarness(buildMockModelProfile({ outsideClaude: true, providerPin: null }));
+
+  expect(harness.toTurnProfile('kept').requestRewrite).toStrictEqual({ providerPin: null });
+});
+
+test.each([false, null] as const)(
+  '#toTurnProfile carries no rewrite when the profile marks outsideClaude %p',
+  (outsideClaude) => {
+    const harness = bindHarness(buildMockModelProfile({ outsideClaude }));
+
+    expect(harness.toTurnProfile('kept').requestRewrite).toBeNull();
+  },
+);
+
+test.each([
+  [true, true],
+  [false, false],
+  [null, false],
+] as const)('it sets rewritesRequests for outsideClaude %p to %p', (outsideClaude, expected) => {
+  expect(bindHarness(buildMockModelProfile({ outsideClaude })).rewritesRequests).toBe(expected);
 });
 
 test('#toTurnProfile sets the 5-minute cache for a one-off session', () => {

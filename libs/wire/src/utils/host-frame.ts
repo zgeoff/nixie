@@ -34,6 +34,10 @@ const agentSDKTurnProfileSchema = z
     contextTokens: z.int().positive().nullable(),
 
     cacheTTL: z.enum(['5m', '1h']),
+
+    // non-null for a model outside Claude: the guest rewrites each request, and a provider pin makes
+    // it carry a provider order
+    requestRewrite: z.object({ providerPin: z.string().nullable() }).nullable().default(null),
   })
   .readonly();
 

@@ -160,7 +160,7 @@ function buildConfigLines(
       `      base_url: ${url}`,
       '      credential: deployment:scripted',
       '      auth_header: bearer',
-      `      model: ${name}-test-model`,
+      `      model: claude-${name}-test-model`,
       '      effort: low',
       '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
     ]),

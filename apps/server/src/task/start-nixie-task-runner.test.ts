@@ -292,12 +292,13 @@ test('it runs a stranger that the conversation starts on another model, and its 
 
   expect(taskTurn.frame.profile).toStrictEqual({
     harness: 'agent-sdk',
-    model: 'second-look-test-model',
+    model: 'claude-second-look-test-model',
     baseURL: 'http://127.0.0.1:4060',
     authHeader: 'bearer',
     effort: 'low',
     contextTokens: null,
     cacheTTL: '5m',
+    requestRewrite: null,
   });
 
   expect(taskTurn.frame.systemPrompt).not.toInclude('You are nixie.');

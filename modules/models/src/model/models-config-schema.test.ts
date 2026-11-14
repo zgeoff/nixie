@@ -29,6 +29,7 @@ test('it reads a direct profile with its context tokens, cache lifetime and pric
         authHeader: 'x-api-key',
         model: 'claude-sonnet-5-5',
         effort: 'medium',
+        outsideClaude: null,
         providerPin: null,
         contextTokens: 400_000,
         cacheTTL: '1h',
@@ -53,11 +54,25 @@ test('it reads an aggregator profile with its provider pin and the role map into
         auth_header: 'bearer',
         model: 'glm-5.3',
         effort: 'low',
+        outside_claude: true,
         provider_pin: 'z-ai',
         prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 4 },
       },
+      checker: {
+        harness: 'agent-sdk',
+        base_url: 'https://gateway.example/anthropic',
+        credential: 'deployment:gateway',
+        auth_header: 'bearer',
+        model: 'claude-test-1',
+        effort: 'low',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 4 },
+      },
     },
-    roles: { conversation: 'background-aggregator', 'memory-writer': 'background-aggregator' },
+    roles: {
+      conversation: 'background-aggregator',
+      checker: 'checker',
+      'memory-writer': 'background-aggregator',
+    },
   });
 
   expect(result.data).toStrictEqual({
@@ -70,13 +85,32 @@ test('it reads an aggregator profile with its provider pin and the role map into
         authHeader: 'bearer',
         model: 'glm-5.3',
         effort: 'low',
+        outsideClaude: true,
         providerPin: 'z-ai',
         contextTokens: null,
         cacheTTL: '5m',
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 4 },
       },
+      checker: {
+        id: 'checker',
+        harness: 'agent-sdk',
+        baseURL: 'https://gateway.example/anthropic',
+        credential: 'deployment:gateway',
+        authHeader: 'bearer',
+        model: 'claude-test-1',
+        effort: 'low',
+        outsideClaude: null,
+        providerPin: null,
+        contextTokens: null,
+        cacheTTL: '5m',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 4 },
+      },
     },
-    roles: { conversation: 'background-aggregator', 'memory-writer': 'background-aggregator' },
+    roles: {
+      conversation: 'background-aggregator',
+      checker: 'checker',
+      'memory-writer': 'background-aggregator',
+    },
     selectable: [],
     limits: {
       taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
@@ -303,6 +337,7 @@ test('it reads the selectable models and the task run limits into their typed sh
         credential: 'deployment:router',
         auth_header: 'bearer',
         model: 'other-family-test-3',
+        outside_claude: false,
         effort: 'low',
         prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 },
       },
@@ -461,4 +496,106 @@ test('it refuses a profile on a harness that has no record', () => {
         'the profile chat-direct names the harness codex, which nixie does not run; use harness: agent-sdk',
     }),
   ]);
+});
+
+test('it refuses a profile with no outside_claude and a model ID without claude', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      router: {
+        harness: 'agent-sdk',
+        base_url: 'https://gateway.example/anthropic',
+        credential: 'deployment:gateway',
+        auth_header: 'bearer',
+        model: 'glm-5.3',
+        effort: 'low',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 4 },
+      },
+    },
+    roles: { conversation: 'router' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['profiles', 'router', 'outside_claude'],
+    message:
+      'the model glm-5.3 names no Claude model, so the profile must state outside_claude: true or false',
+  });
+});
+
+test.each([true, false])(
+  'it loads a model ID without claude when the profile states outside_claude: %p',
+  (outsideClaude) => {
+    const result = modelsConfigSchema.safeParse({
+      profiles: {
+        router: {
+          harness: 'agent-sdk',
+          base_url: 'https://gateway.example/anthropic',
+          credential: 'deployment:gateway',
+          auth_header: 'bearer',
+          model: 'glm-5.3',
+          outside_claude: outsideClaude,
+          effort: 'low',
+          prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 4 },
+        },
+        checker: {
+          harness: 'agent-sdk',
+          base_url: 'https://api.anthropic.com',
+          credential: 'deployment:anthropic',
+          auth_header: 'x-api-key',
+          model: 'claude-test-1',
+          effort: 'low',
+          prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+        },
+      },
+      roles: { conversation: 'router', checker: 'checker' },
+    });
+
+    expect(result.data?.profiles['router']).toMatchObject({ outsideClaude });
+  },
+);
+
+test('it loads a Claude model ID with no outside_claude and reads the mark as null', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      chat: {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-sonnet-5-5',
+        effort: 'low',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat' },
+  });
+
+  expect(result.data?.profiles['chat']).toMatchObject({ outsideClaude: null });
+});
+
+test.each([
+  ['no outside_claude', undefined],
+  ['outside_claude: false', false],
+])('it refuses a provider pin on a profile with %s', (_label, outsideClaude) => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      chat: {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-sonnet-5-5',
+        effort: 'low',
+        provider_pin: 'z-ai',
+        ...(outsideClaude === undefined ? {} : { outside_claude: outsideClaude }),
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['profiles', 'chat', 'provider_pin'],
+    message:
+      'a provider pin changes the request body, which nixie does only for a profile outside Claude',
+  });
 });

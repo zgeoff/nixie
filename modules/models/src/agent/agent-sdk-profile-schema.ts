@@ -18,6 +18,7 @@ export const agentSDKProfileSchema = z
     auth_header: z.enum(['bearer', 'x-api-key']),
     model: z.string().min(1),
     effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
+    outside_claude: z.boolean().optional(),
     provider_pin: z.string().min(1).optional(),
     context_tokens: contextTokensSchema.optional(),
     cache_ttl: z.enum(['5m', '1h']).optional(),
@@ -28,6 +29,23 @@ export const agentSDKProfileSchema = z
   // assumes for the model.
   .superRefine((profile, issues) => {
     const window = getCLIContextWindow(profile.model);
+
+    if (profile.outside_claude === undefined && !profile.model.includes('claude')) {
+      issues.addIssue({
+        code: 'custom',
+        path: ['outside_claude'],
+        message: `the model ${profile.model} names no Claude model, so the profile must state outside_claude: true or false`,
+      });
+    }
+
+    if (profile.provider_pin !== undefined && profile.outside_claude !== true) {
+      issues.addIssue({
+        code: 'custom',
+        path: ['provider_pin'],
+        message:
+          'a provider pin changes the request body, which nixie does only for a profile outside Claude',
+      });
+    }
 
     if (profile.context_tokens !== undefined && profile.context_tokens > window) {
       issues.addIssue({
@@ -44,6 +62,7 @@ export const agentSDKProfileSchema = z
     authHeader: input.auth_header,
     model: input.model,
     effort: input.effort,
+    outsideClaude: input.outside_claude ?? null,
     providerPin: input.provider_pin ?? null,
     contextTokens: input.context_tokens ?? null,
 

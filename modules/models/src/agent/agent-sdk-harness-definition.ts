@@ -15,6 +15,10 @@ export interface AgentSDKProfile extends ModelProfile {
   readonly contextTokens: number | null;
   readonly cacheTTL: '5m' | '1h';
   readonly providerPin: string | null;
+
+  // true: a model outside Claude, and the guest rewrites its requests. false: nixie takes the model
+  // as it is. null: the profile states nothing, which the load rules allow only for a Claude model.
+  readonly outsideClaude: boolean | null;
 }
 
 export const agentSDKHarnessDefinition: HarnessDefinition<'agent-sdk', AgentSDKProfile> = {
@@ -41,6 +45,7 @@ export const agentSDKHarnessDefinition: HarnessDefinition<'agent-sdk', AgentSDKP
     capabilities: harnessCapabilities['agent-sdk'],
     secretHeader: profile.authHeader,
     contextWindow: profile.contextTokens ?? getCLIContextWindow(profile.model),
+    rewritesRequests: profile.outsideClaude === true,
     toTurnProfile: (use) => ({
       harness: 'agent-sdk',
       model: profile.model,
@@ -49,6 +54,7 @@ export const agentSDKHarnessDefinition: HarnessDefinition<'agent-sdk', AgentSDKP
       authHeader: profile.authHeader,
       contextTokens: profile.contextTokens,
       cacheTTL: use === 'one-off' ? '5m' : profile.cacheTTL,
+      requestRewrite: profile.outsideClaude === true ? { providerPin: profile.providerPin } : null,
     }),
   }),
   session: {

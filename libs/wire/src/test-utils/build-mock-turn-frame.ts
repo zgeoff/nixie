@@ -23,6 +23,7 @@ export function buildMockTurnFrame(overrides: TurnFrameOverrides = {}): TurnFram
       authHeader: 'x-api-key',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
       ...overrides.profile,
     },
     tools: {

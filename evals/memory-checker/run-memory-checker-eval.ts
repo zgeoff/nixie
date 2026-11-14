@@ -96,6 +96,7 @@ async function runCall(call: PlannedCall, guestHome: string): Promise<CheckerCal
             authHeader: 'x-api-key',
             contextTokens: null,
             cacheTTL: '5m',
+            requestRewrite: null,
           },
           systemPrompt: request.prompt,
           input: request.input,

@@ -15,6 +15,7 @@ test('it builds a default summarize frame', () => {
       authHeader: 'x-api-key',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
     },
     resume: {
       harness: 'agent-sdk',
@@ -49,6 +50,7 @@ test('it applies overrides on top of the defaults', () => {
       authHeader: 'bearer',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
     },
     resume: {
       harness: 'agent-sdk',

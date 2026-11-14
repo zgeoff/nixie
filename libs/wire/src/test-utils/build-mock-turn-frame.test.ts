@@ -15,6 +15,7 @@ test('it builds a default turn frame', () => {
       authHeader: 'x-api-key',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
     },
     tools: { url: expect.toStartWith('https://'), token: expect.toBeString() },
     resume: null,
@@ -49,6 +50,7 @@ test('it applies overrides on top of the defaults', () => {
       authHeader: 'bearer',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
     },
     tools: { url: expect.toStartWith('https://'), token: 'run-token' },
     resume: {

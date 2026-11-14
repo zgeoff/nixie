@@ -133,6 +133,9 @@
                       "max"
                     ]
                   },
+                  "outside_claude": {
+                    "type": "boolean"
+                  },
                   "provider_pin": {
                     "type": "string",
                     "minLength": 1
