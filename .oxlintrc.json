@@ -89,7 +89,8 @@
             "evals/memory-writer/run-memory-writer-eval.ts"
           ],
           "imp-client": ["adapters/sandbox-imp/**"],
-          "db": ["libs/db/**"]
+          "db": ["libs/db/**"],
+          "onnx-runtime": ["adapters/encoder-onnx/**"]
         },
         "modules": [
           {
@@ -109,6 +110,12 @@
             "modules": ["bun:sqlite"],
             "allow": ["db"],
             "reason": "only libs/db opens SQLite; use @heynixie/db"
+          },
+          {
+            "name": "onnx-runtime",
+            "modules": ["onnxruntime-node", "@huggingface/tokenizers"],
+            "allow": ["onnx-runtime"],
+            "reason": "only adapters/encoder-onnx imports the ONNX runtime and its tokenizer"
           }
         ],
         "unresolved": [

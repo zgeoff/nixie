@@ -78,8 +78,6 @@ These are places where the code departs from a rule today. Do not copy them into
 
 - `RunCheck` in the sessions module and `HarnessDescriptor` in the models module live in their
   provider's module (rule 1).
-- The ONNX runtime and `@huggingface/tokenizers` have no import zone (rule 5), until
-  [the ONNX import zone](https://linear.app/zgeoff/issue/GEO-2574) lands.
 - `isTestSandbox` in the sandbox module checks `adapter.id === 'process'`, and the sessions module's
   `buildGuestCommand` calls it (rule 9). The server's web fetch start also calls it, inside the
   composition root.
