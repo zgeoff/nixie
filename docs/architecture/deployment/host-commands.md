@@ -25,7 +25,7 @@ log line, so a deployment's check reads the report and not the log.
 | `nixie health`                       | the readiness report of the running server, as JSON                                         | every part is ready                  |
 | `nixie health --live`                | the liveness report, as JSON                                                                | the process and the database are up  |
 | `nixie enrol-code`                   | an enrolment code on its first line, then until when it works                               | the server issued a code             |
-| `nixie sandbox-manifest`             | each sandbox kind with its image's ref and the name nixie gives it                          | the server would accept the manifest |
+| `nixie sandbox-manifest`             | each image key with its image's ref and the name nixie gives it                             | the server would accept the manifest |
 | `nixie reset --keep-sessions …`      | the sequence the reset removed up to, and the device sessions it kept                       | the server finished the reset        |
 | `nixie reset --only memories …`      | the number of memory items it forgot, and the key backup state                              | every forget finished                |
 | `nixie reset --only conversations …` | the number of records it shredded, the sequence it shredded up to, and the key backup state | the server finished the reset        |
@@ -53,7 +53,10 @@ the server removes a stale socket file first, because the writer lock proves tha
 runs. Four commands are the exceptions:
 
 - The health command reads the server's health endpoint on the address the configuration names.
-- The sandbox-manifest command reads the manifest in the image.
+- The sandbox-manifest command reads the manifest in the image. It prints every image and reads no
+  configuration. With `--needed`, it reads the configuration that `--config` names, as the health
+  command does, and prints only the images that the server adds. It then exits 1 and prints the
+  server's refusal when the manifest lacks one of them. `--manifest` names another manifest file.
 - The backup command reads both databases through read-only connections, which never write.
 - The restore command takes the writer lock itself, so it runs only while no server does.
 
