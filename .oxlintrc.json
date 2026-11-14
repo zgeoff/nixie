@@ -43,7 +43,6 @@
           "modules/log",
           "modules/memory",
           "modules/policy",
-          "modules/prompts",
           "modules/sessions",
           "modules/skills",
           "modules/tasks"

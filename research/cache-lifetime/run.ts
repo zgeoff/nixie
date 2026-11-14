@@ -19,7 +19,7 @@ import '../../modules/memory/src/memory-record-kind';
 // @boundaries-ignore a spike imports the code it measures
 import { runTurn } from '../../guests/conversation/src/run-turn';
 // @boundaries-ignore a spike imports the code it measures
-import { renderPrompt } from '../../modules/prompts/src/render-prompt';
+import { renderPrompt } from '../../modules/prompts/src/prompt/render-prompt';
 // @boundaries-ignore a spike imports the code it measures
 import { formatMessageTime } from '../../modules/sessions/src/format-message-time';
 // @boundaries-ignore a spike imports the code it measures

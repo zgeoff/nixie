@@ -43,7 +43,7 @@ import { buildVersionStatus } from '../../apps/server/src/build-version-status';
 // @boundaries-ignore a spike imports the code it measures
 import { renderRetrievedItems } from '../../modules/sessions/src/render-retrieved-items';
 // @boundaries-ignore a spike imports the code it measures
-import { renderPrompt } from '../../modules/prompts/src/render-prompt';
+import { renderPrompt } from '../../modules/prompts/src/prompt/render-prompt';
 // @boundaries-ignore a spike imports the code it measures
 import { buildCheckerEvalInput, loadCheckerCorpus } from '../../modules/memory/src/evals';
 import type { ToolSet } from './build-role-tools';
