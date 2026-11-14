@@ -154,13 +154,13 @@ closes an open value without scrolling back to find the control.
 Each message carries a forget control, which first asks and forgets only on the confirm. A
 confirmation keeps one client action ID, so a confirm that fails and goes again forgets once. A
 forget that fails after its start record dropped the text keeps its control and its error, so the
-user can confirm again and finish the cleanup. Any other message with no text leaves the view, with
-no placeholder, whether a forget or a
-[reset of the conversation](../core/event-log.md#resetting-the-conversation) shredded it. The view
-drops a message's text when a forget record that names it arrives, and shows the message as removed
-on every device, such as "nixie — removed", with no text and no forget control. A read shows the
-same line for a record the server marks removed. A tool call whose record is removed shows its name
-with "removed" and its result line, without its input or content.
+user can confirm again and finish the cleanup. A message whose text is gone for another reason, such
+as a [reset of the conversation](../core/event-log.md#resetting-the-conversation) or a key that
+fails to decrypt, leaves the view with no placeholder. The view drops a message's text when a forget
+record that names it arrives, and shows the message as removed on every device, such as "nixie —
+removed", with no text and no forget control. A read shows the same line for a record the server
+marks removed. A tool call whose record is removed shows its name with "removed" and its result
+line, without its input or content.
 
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
 web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol

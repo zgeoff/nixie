@@ -514,6 +514,65 @@ test("#memory.readMomentSpan reads the span's records in order, with a forgotten
   });
 });
 
+// The moment span page lives in the memory module, which cannot import the API's forget, so the
+// case that seeds a removal through the real forget reads the page here.
+test('#moments.read reads a record that conversation.forget removed as a gap that is removed', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const [message, reply] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the spare key sits under the green flowerpot' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Noted, the flowerpot by the door.' },
+    },
+  ]);
+
+  invariant(message && reply);
+
+  const kept = await ctx.memory.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: reply.sequence,
+    title: 'The spare key',
+  });
+
+  invariant(kept.status === 'written');
+
+  await buildTestClient(ctx.url, laptop.token).conversation.forget({
+    clientActionID: '7d2f9b14-3c6a-4e85-b1d0-5a8e2c7f4b39',
+    thread: 'conversation',
+    sequence: message.sequence,
+  });
+
+  const read = await ctx.memory.moments.read({
+    momentID: kept.momentID,
+    after: null,
+    tokenCap: 6000,
+    records: 'all',
+  });
+
+  const entries = read?.records.map((entry) => [
+    entry.sequence,
+    entry.text,
+    entry.isGap,
+    entry.isRemoved,
+  ]);
+
+  expect(entries).toStrictEqual([
+    [message.sequence, null, true, true],
+    [reply.sequence, 'Noted, the flowerpot by the door.', false, false],
+  ]);
+});
+
 test('#memory.readMomentSpan reads a long span a page at a time', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');

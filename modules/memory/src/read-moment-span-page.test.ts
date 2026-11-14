@@ -1,10 +1,8 @@
 import { expect, test } from 'bun:test';
 import { removeSummaryKeys } from '@heynixie/compaction';
-import { removeRecordKey, writeRecords } from '@heynixie/log';
-import type { LogTables } from '@heynixie/log';
+import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { readMomentSpanPage } from './read-moment-span-page';
-import { recordForgetStartedCodec } from './record-forget-started-codec';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -30,29 +28,7 @@ async function setupTest() {
     return entry;
   };
 
-  const forgetRecord = async (sequence: number) => {
-    await writeRecords(memory.log, [
-      {
-        kind: recordForgetStartedCodec.kind,
-        definitions: { snapshotHash: 'sha256:test' },
-        thread: 'conversation',
-        payload: recordForgetStartedCodec.encode({ recordSequence: sequence }),
-      },
-    ]);
-
-    const row = await memory.writer.db
-      .$extendTables<LogTables>()
-      .selectFrom('records')
-      .select('key_id')
-      .where('sequence', '=', sequence)
-      .executeTakeFirstOrThrow();
-
-    invariant(row.key_id !== null);
-
-    await removeRecordKey(memory.log, row.key_id);
-  };
-
-  return { memory, readOnlyEntry, forgetRecord };
+  return { memory, readOnlyEntry };
 }
 
 test('it cuts a record larger than the page until the entry, escaped as the reader gets it, fits the cap', async () => {
@@ -158,27 +134,6 @@ test('it gives each record its payload and its policy decision beside its text',
       isCut: false,
     },
   ]);
-});
-
-test('it reads a forgotten record as a gap that is removed', async () => {
-  const ctx = await setupTest();
-
-  const [reply] = await writeRecords(ctx.memory.log, [
-    {
-      kind: 'model.reply',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      erasable: { text: 'The green kettle is in the attic' },
-    },
-  ]);
-
-  invariant(reply);
-
-  await ctx.forgetRecord(reply.sequence);
-
-  const entry = await ctx.readOnlyEntry(reply.sequence, ctx.memory.deploymentKey);
-
-  expect([entry.text, entry.isGap, entry.isRemoved]).toStrictEqual([null, true, true]);
 });
 
 test('it reads a record whose key fails to decrypt as a gap that is not removed', async () => {
