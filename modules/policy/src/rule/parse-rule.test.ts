@@ -15,12 +15,20 @@ test('it refuses a stored rule without an ID', () => {
   expect(() => parseRule({ outcome: 'allow' })).toThrow();
 });
 
-test('it reads a rule that nixie stored in the old names', () => {
+test('it refuses a stored rule in the old names', () => {
+  expect(() => parseRule({ id: 'ask-triage', outcome: 'ask', jobs: ['inbox-triage'] })).toThrow();
+});
+
+test('it refuses a stored rule with the old context job', () => {
+  expect(() => parseRule({ id: 'ask-triage', outcome: 'ask', contexts: ['job'] })).toThrow();
+});
+
+test('it reads a stored rule in the new names', () => {
   const rule = parseRule({
     id: 'ask-triage',
     outcome: 'ask',
-    contexts: ['job', 'task'],
-    jobs: ['inbox-triage'],
+    contexts: ['task'],
+    definitions: ['inbox-triage'],
   });
 
   expect(rule).toStrictEqual({

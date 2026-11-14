@@ -64,7 +64,7 @@ export interface ConsentCheck {
 // What a replay needs beyond the call's input and destinations.
 export interface DecisionInputs {
   readonly toolList: readonly string[];
-  readonly context: 'conversation' | 'task' | 'job' | 'coding';
+  readonly context: 'conversation' | 'task' | 'coding';
   readonly definitionID: string | null;
   readonly sources: readonly ('owner' | 'own_data' | 'task' | 'outside')[];
   readonly turnMessageSequence: number | null;

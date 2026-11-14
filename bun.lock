@@ -317,6 +317,7 @@
         "@orpc/client": "catalog:",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "zod": "catalog:",
       },
     },
     "libs/async": {

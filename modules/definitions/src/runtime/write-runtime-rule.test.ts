@@ -250,7 +250,7 @@ test('it proposes again without a widening that a runtime change put in force', 
   ]);
 });
 
-test('it stores a runtime rule in the old names that the release before reads', async () => {
+test('it stores a runtime rule in the new names definitions and task', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
@@ -269,7 +269,7 @@ test('it stores a runtime rule in the old names that the release before reads', 
 
   expect(versions.rows).toStrictEqual([
     {
-      rule: '{"id":"ask-triage","outcome":"ask","contexts":["job"],"jobs":["inbox-triage"]}',
+      rule: '{"id":"ask-triage","outcome":"ask","contexts":["task"],"definitions":["inbox-triage"]}',
     },
   ]);
 });

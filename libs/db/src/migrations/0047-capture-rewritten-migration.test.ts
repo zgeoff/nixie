@@ -30,9 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 47, which the release before can still read', () => {
+test('it moves the schema to version 47', () => {
   expect(nixieSchema.migrations.indexOf(captureRewrittenMigration) + 1).toBe(47);
-  expect(nixieSchema.oldestReader).toBe(46);
 });
 
 test('it marks a capture written without the column as not rewritten', async () => {

@@ -60,7 +60,7 @@ export { pickRuleChange } from './rule/pick-rule-change';
 export type { RuleVerdict } from './rule/pick-rule-outcome';
 export { pickRuleOutcome } from './rule/pick-rule-outcome';
 export { renderRule } from './rule/render-rule';
-export { toRuleForm, toStoredRuleForm } from './rule/to-rule-form';
+export { toRuleForm } from './rule/to-rule-form';
 export type { ReplayOptions, ReplayRecord } from './rule/replay-decision';
 export { replayDecision } from './rule/replay-decision';
 export { toStoredDecision } from './rule/to-stored-decision';

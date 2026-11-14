@@ -25,6 +25,7 @@
     "@impz/testing": "catalog:",
     "@orpc/client": "catalog:",
     "kysely": "catalog:",
-    "tiny-invariant": "catalog:"
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
   }
 }

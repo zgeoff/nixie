@@ -1435,7 +1435,7 @@ test('it applies a rule edit that narrows and records it in the seed record', as
   });
 });
 
-test('it stores a rule in the old names and keeps the hash the release before gave it', async () => {
+test('it stores a rule in the new names definitions and task', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
@@ -1462,70 +1462,13 @@ test('it stores a rule in the old names and keeps the hash the release before ga
         toCanonicalJSON({
           id: 'ask-triage',
           outcome: 'ask',
-          contexts: ['job'],
-          jobs: ['inbox-triage'],
+          contexts: ['task'],
+          definitions: ['inbox-triage'],
         }),
       ),
-      rule: '{"id":"ask-triage","outcome":"ask","contexts":["job"],"jobs":["inbox-triage"]}',
+      rule: '{"id":"ask-triage","outcome":"ask","contexts":["task"],"definitions":["inbox-triage"]}',
     },
   ]);
-});
-
-test('it records no new revision for a rules file in the old names whose rows the release before wrote', async () => {
-  const ctx = await setupTest();
-
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'rules'));
-
-  await writeFile(
-    join(ctx.root, 'rules', 'triage.yaml'),
-    'ask-triage:\n  outcome: ask\n  contexts: [job]\n  jobs: [inbox-triage]\n',
-  );
-
-  const oldForm = {
-    id: 'ask-triage',
-    outcome: 'ask',
-    contexts: ['job'],
-    jobs: ['inbox-triage'],
-  };
-
-  const oldHash = buildSHA256(toCanonicalJSON(oldForm));
-
-  await withWriteTransaction(ctx.writer, async (tx) => {
-    await sql`insert into rule_versions (rule_hash, rule) values (${oldHash}, ${JSON.stringify(oldForm)})`.execute(
-      tx,
-    );
-
-    await sql`insert into rules (rule_id, revision, rule_hash, origin, created_at, updated_at)
-      values ('ask-triage', 1, ${oldHash}, 'definitions', 1, 1)`.execute(tx);
-
-    await sql`insert into rule_revisions (rule_id, revision, rule_hash, created_at)
-      values ('ask-triage', 1, ${oldHash}, 1)`.execute(tx);
-
-    await sql`insert into definition_rules (rule_id, rule_hash, path)
-      values ('ask-triage', ${oldHash}, 'rules/triage.yaml')`.execute(tx);
-
-    await sql`insert into seeded_rules (rule_id, rule_hash)
-      values ('ask-triage', ${oldHash})`.execute(tx);
-  });
-
-  const result = await runSeed({
-    log: ctx.log,
-    source: ctx.source,
-    buildPolicy: () => ({ rules: [], tools: [] }),
-  });
-
-  invariant(result.status === 'seeded');
-
-  expect(result.record.payload['rules']).toStrictEqual({
-    revisions: [],
-    applied: [],
-    held: [],
-    adopted: [],
-    conflicts: [],
-    proposalID: null,
-  });
 });
 
 test('it puts a rule edit that narrows in force', async () => {
