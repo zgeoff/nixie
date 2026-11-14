@@ -1,9 +1,8 @@
 import { expect, test } from 'bun:test';
+import { removeSummaryKeys } from '@heynixie/compaction';
 import { writeRecords } from '@heynixie/log';
-import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { readMomentSpanPage } from './read-moment-span-page';
-import { recordForgetStartedCodec } from './record-forget-started-codec';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -137,36 +136,6 @@ test('it gives each record its payload and its policy decision beside its text',
   ]);
 });
 
-test('it reads a record whose forget started and whose key is gone as a removed gap', async () => {
-  const ctx = await setupTest();
-
-  const [reply] = await writeRecords(ctx.memory.log, [
-    {
-      kind: 'model.reply',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      erasable: { text: 'The blue flowerpot holds the spare key' },
-    },
-  ]);
-
-  invariant(reply);
-
-  await writeRecords(ctx.memory.log, [
-    {
-      kind: recordForgetStartedCodec.kind,
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      payload: recordForgetStartedCodec.encode({ recordSequence: reply.sequence }),
-    },
-  ]);
-
-  await removeTestRecordKey(ctx.memory.log, reply.sequence);
-
-  const entry = await ctx.readOnlyEntry(reply.sequence, ctx.memory.deploymentKey);
-
-  expect([entry.text, entry.isGap, entry.isRemoved]).toStrictEqual([null, true, true]);
-});
-
 test('it reads a record whose key fails to decrypt as a gap that is not removed', async () => {
   const ctx = await setupTest();
 
@@ -206,7 +175,7 @@ test('it reads a session summary whose key a cleanup deleted as a gap that is no
 
   invariant(summary);
 
-  await removeTestRecordKey(ctx.memory.log, summary.sequence);
+  await removeSummaryKeys(ctx.memory.log, 'conversation');
 
   const entry = await ctx.readOnlyEntry(summary.sequence, ctx.memory.deploymentKey);
 

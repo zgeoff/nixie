@@ -19,6 +19,7 @@ const namedKinds: ReadonlySet<string> = new Set([
 export async function readRecordLookups(
   context: Pick<APIContext, 'log' | 'settings'>,
   records: readonly LogRecord[],
+  known: { readonly removedSequences?: ReadonlySet<number> } = {},
 ): Promise<RecordLookups> {
   const failedActionIDs = records.flatMap((record) => {
     const result =
@@ -41,9 +42,14 @@ export async function readRecordLookups(
     ? await readTaskDirectory(context, messaging)
     : messaging;
 
+  const removedSequences =
+    known.removedSequences === undefined
+      ? await readRemovedRecordSequences(context, records)
+      : known.removedSequences;
+
   return {
     cancelledActionIDs: await readCancelledActionIDs(context, failedActionIDs),
-    removedSequences: await readRemovedRecordSequences(context, records),
+    removedSequences,
     stopCancelledActions: await readStopCancelledActions(context, stopSequences),
     taskDirectory: named.directory,
   };

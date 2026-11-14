@@ -1,5 +1,6 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import { subscribeToRecords } from '@heynixie/log';
+import { readAllRemovedSequences } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
 import { readHeadSequence } from './read-head-sequence';
 import { readRecordLookups } from './read-record-lookups';
@@ -29,6 +30,10 @@ export async function* subscribeToThreadRecords(
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
 
+  // one read of every removed sequence serves a replay of many removed records; a shredded record
+  // the read missed, because its forget started after the read, reads it again
+  let removedSequences: ReadonlySet<number> | null = null;
+
   for await (const entry of entries) {
     const record = entry.record;
 
@@ -43,7 +48,16 @@ export async function* subscribeToThreadRecords(
       record.thread !== null && (options.thread === undefined || record.thread === options.thread);
 
     if (isShown) {
-      const lookups = await readRecordLookups(context, [record]);
+      if (
+        record.erasable.status === 'shredded' &&
+        (removedSequences === null || !removedSequences.has(record.sequence))
+      ) {
+        removedSequences = await readAllRemovedSequences(context.log.writer.db);
+      }
+
+      const known = removedSequences === null ? {} : { removedSequences };
+
+      const lookups = await readRecordLookups(context, [record], known);
 
       const visible = toContractRecord(record, lookups);
 
