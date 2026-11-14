@@ -48,7 +48,7 @@ async function setupTest() {
         config,
         images: pickNeededImages(images, listImageNeeds(config, declarations)),
         cleanup,
-        log: () => null,
+        log: () => {},
         secrets: { collectOwnValues: () => [] },
       },
       adapter: sandboxes.adapter,

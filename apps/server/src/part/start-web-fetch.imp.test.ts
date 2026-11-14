@@ -66,7 +66,7 @@ async function setupTest() {
       log: testRecorder.log,
       findSecret,
       isOwnerTyped: () => Promise.resolve(false),
-      logger: () => null,
+      logger: () => {},
     });
 
     stack.defer(() => webFetch.stop());
@@ -125,7 +125,7 @@ test.skipIf(!hasImpHost)(
       log: ctx.log,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
-      logger: () => null,
+      logger: () => {},
     });
 
     ctx.stack.defer(() => webFetch.stop());

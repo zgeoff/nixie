@@ -42,7 +42,7 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox, 
     log: ctx.log,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
-    logger: () => null,
+    logger: () => {},
   });
 
   ctx.stack.defer(() => webFetch.stop());
@@ -93,7 +93,7 @@ test("it reads a skill's page through its own fetch sandbox, which refuses a pri
     log: ctx.log,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
-    logger: () => null,
+    logger: () => {},
   });
 
   ctx.stack.defer(() => webFetch.stop());
@@ -135,7 +135,7 @@ test("it returns a skill file past the web fetch's text limit whole", async () =
     log: ctx.log,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
-    logger: () => null,
+    logger: () => {},
   });
 
   ctx.stack.defer(() => webFetch.stop());
@@ -164,7 +164,7 @@ test("it stores a page past the web fetch's text limit whole, in parts of that l
     log: ctx.log,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
-    logger: () => null,
+    logger: () => {},
   });
 
   ctx.stack.defer(() => webFetch.stop());
@@ -235,7 +235,7 @@ test('it keeps the whole text of a page whose text decodes to 3 times its body b
     log: ctx.log,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
-    logger: () => null,
+    logger: () => {},
     config: {
       limits: {
         bodyBytes: 1000,

@@ -38,7 +38,7 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
             backoffWaitMs: webFetchDefaults.backoff.backoffWaitMs,
             findSecret: () => null,
             isOwnerTyped: () => Promise.resolve(false),
-            logger: () => null,
+            logger: () => {},
             secretTypedURLCovers: 'redirects',
             clock: context.clock,
           }),

@@ -560,7 +560,7 @@ test('it clears every web fetch pause on a forget, so the next fetch of a paused
     backoffWaitMs: 5000,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
-    logger: () => null,
+    logger: () => {},
     secretTypedURLCovers: 'redirects',
     clock,
   });

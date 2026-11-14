@@ -86,7 +86,7 @@ async function setupTest(answer: (url: string) => FetchReply, options: SetupOpti
               tools: [],
               model: { model: 'model-a', profile: 'chat-direct' },
             },
-            logger: () => null,
+            logger: () => {},
             typedURLCovers: 'redirects',
             ...options.secretScan,
           },

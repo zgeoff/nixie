@@ -356,7 +356,7 @@ test.each([
   const scanHop = makeHopScan({
     findSecret: makeSecretFinder([buildKey('alphanumeric', 20, 9)]),
     isExempt: () => Promise.resolve(false),
-    logger: () => null,
+    logger: () => {},
   });
 
   const gated = gatePageHops(ctx.stream, ctx.gate(scanHop));
