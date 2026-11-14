@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { SandboxSpecRefusedError } from '@heynixie/sandbox';
+import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { encodeFrame } from '@heynixie/wire';
 import { buildStubSandboxAdapter } from './build-stub-sandbox-adapter';
 
@@ -380,4 +381,68 @@ test('it ends the messages with none when the guest exits partway through a fram
   const first = await stream.messages[Symbol.asyncIterator]().next();
 
   expect(first.done).toBeTrue();
+});
+
+test('it keeps the files that a sandbox copies in, and gives them back on copy out', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
+  const sandbox = await adapter.create(
+    buildMockSandboxSpec({ kind: 'code_run', toolRoute: false }),
+  );
+
+  const content = new TextEncoder().encode('data');
+
+  await sandbox.copyIn([{ path: '/work/a.txt', content }]);
+
+  const copied = await sandbox.copyOut(['/work/a.txt']);
+
+  expect(copied).toStrictEqual([{ path: '/work/a.txt', content }]);
+});
+
+test('it refuses a copy out of a file the sandbox does not hold', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
+  const sandbox = await adapter.create(
+    buildMockSandboxSpec({ kind: 'code_run', toolRoute: false }),
+  );
+
+  await expect(sandbox.copyOut(['/work/missing.txt'])).toReject();
+});
+
+test('it records each exec and answers it with the exec it was given', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
+    exec: () =>
+      Promise.resolve({
+        code: 0,
+        signal: null,
+        stdout: { bytes: new Uint8Array(), totalBytes: 0, isCut: false },
+        stderr: { bytes: new Uint8Array(), totalBytes: 0, isCut: false },
+        durationMs: 5,
+      }),
+  });
+
+  const sandbox = await adapter.create(
+    buildMockSandboxSpec({ kind: 'code_run', toolRoute: false }),
+  );
+
+  await sandbox.exec({ argv: ['echo', 'hi'] });
+
+  expect(adapter.execs).toStrictEqual([
+    { sandboxID: sandbox.id, command: { argv: ['echo', 'hi'] } },
+  ]);
+});
+
+test('it refuses an exec and a copy in of a destroyed sandbox', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
+    exec: () => Promise.reject(new Error('unreachable')),
+  });
+
+  const sandbox = await adapter.create(
+    buildMockSandboxSpec({ kind: 'code_run', toolRoute: false }),
+  );
+
+  await sandbox.destroy();
+
+  await expect(sandbox.exec({ argv: ['echo'] })).toReject();
+  await expect(sandbox.copyIn([])).toReject();
 });
