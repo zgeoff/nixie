@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { captureRewrittenMigration } from './0046-capture-rewritten-migration';
+import { captureRewrittenMigration } from './0047-capture-rewritten-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -30,9 +30,9 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 46, which the release before can still read', () => {
-  expect(nixieSchema.migrations.indexOf(captureRewrittenMigration) + 1).toBe(46);
-  expect(nixieSchema.oldestReader).toBe(35);
+test('it moves the schema to version 47, which the release before can still read', () => {
+  expect(nixieSchema.migrations.indexOf(captureRewrittenMigration) + 1).toBe(47);
+  expect(nixieSchema.oldestReader).toBe(46);
 });
 
 test('it marks a capture written without the column as not rewritten', async () => {
