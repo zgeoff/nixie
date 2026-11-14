@@ -1374,7 +1374,7 @@ test('it interrupts a task turn whose model calls reach its dollar limit, and pa
 
   expect(notice?.payload).toStrictEqual({
     taskID,
-    used: { turns: 1, dollars: expect.toBeWithin(0.03, 0.0305) },
+    used: { turns: 1, dollars: 0.03 },
     limits: { turns: 25, dollars: 0.03 },
   });
 });
@@ -2194,7 +2194,7 @@ test('it interrupts a task turn at its own spend that, with a spend recorded aft
 
   expect(notice?.payload).toStrictEqual({
     taskID,
-    used: { turns: 1, dollars: expect.toBeWithin(0.03, 0.031) },
+    used: { turns: 1, dollars: expect.toBeWithin(0.03, 0.0301) },
     limits: { turns: 25, dollars: 0.03 },
   });
 });
