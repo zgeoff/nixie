@@ -189,16 +189,21 @@ test('it reads a session summary whose key a cleanup deleted as a gap that is no
 test.each([
   {
     reader: 'model' as const,
-    texts: ['{"result":{"hits":[]}}', '{"result":{"hits":[]}}'],
+    texts: [
+      '{"result":{"hits":[]}}',
+      '{"result":{"hits":[]}}',
+      '{"message":"the session ended while the search ran, so it returns no hits"}',
+    ],
   },
   {
     reader: 'owner' as const,
     texts: [
       '{"result":{"hits":[]},"hidden":{"costUSD":0.012}}',
       '{"result":{"hits":[],"costUSD":0.012}}',
+      '{"message":"the session ended while the search ran, so it returns no hits","hidden":{"costUSD":0.012}}',
     ],
   },
-])('it prints a search result for the $reader as $texts', async (row) => {
+])('it prints a search result and a refused search for the $reader as $texts', async (row) => {
   const ctx = await setupTest();
 
   const written = await writeRecords(ctx.memory.log, [
@@ -218,27 +223,6 @@ test.each([
       payload: { outcome: 'result', sources: { hits: 'untrusted' } },
       erasable: { result: { hits: [], costUSD: 0.012 } },
     },
-  ]);
-
-  invariant(written[0] && written[1]);
-
-  const page = await readMomentSpanPage(ctx.memory.log, {
-    thread: 'conversation',
-    firstSequence: written[0].sequence,
-    lastSequence: written[1].sequence,
-    after: null,
-    tokenCap: 6000,
-    records: 'all',
-    reader: row.reader,
-  });
-
-  expect(page.entries.map((entry) => entry.text)).toStrictEqual([...row.texts]);
-});
-
-test('it prints a refused search for the owner and the model as its message alone', async () => {
-  const ctx = await setupTest();
-
-  const written = await writeRecords(ctx.memory.log, [
     {
       kind: 'tool_result',
       definitions: { snapshotHash: 'sha256:test' },
@@ -252,28 +236,17 @@ test('it prints a refused search for the owner and the model as its message alon
     },
   ]);
 
-  invariant(written[0]);
+  invariant(written[0] && written[2]);
 
-  const readers = ['model', 'owner'] as const;
+  const page = await readMomentSpanPage(ctx.memory.log, {
+    thread: 'conversation',
+    firstSequence: written[0].sequence,
+    lastSequence: written[2].sequence,
+    after: null,
+    tokenCap: 6000,
+    records: 'all',
+    reader: row.reader,
+  });
 
-  const pages = await Promise.all(
-    readers.map((reader) =>
-      readMomentSpanPage(ctx.memory.log, {
-        thread: 'conversation',
-        firstSequence: written[0]?.sequence ?? 0,
-        lastSequence: written[0]?.sequence ?? 0,
-        after: null,
-        tokenCap: 6000,
-        records: 'all',
-        reader,
-      }),
-    ),
-  );
-
-  expect(pages.map((page) => page.entries.map((entry) => entry.text))).toStrictEqual([
-    ['{"message":"the session ended while the search ran, so it returns no hits"}'],
-    [
-      '{"message":"the session ended while the search ran, so it returns no hits","hidden":{"costUSD":0.012}}',
-    ],
-  ]);
+  expect(page.entries.map((entry) => entry.text)).toStrictEqual([...row.texts]);
 });
