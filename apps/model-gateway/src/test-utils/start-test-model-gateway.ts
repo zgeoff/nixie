@@ -2,7 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startModelGateway } from '../start-model-gateway';
+import { startModelGateway } from '../proxy/start-model-gateway';
 
 export interface TestModelGateway {
   // the gateway's origin, which a deployment's turn_input_log source names

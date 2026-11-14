@@ -1,6 +1,6 @@
 import { rename } from 'node:fs/promises';
 import { z } from 'zod';
-import type { CounterStore, SpendTotals, StoredCount } from './types';
+import type { CounterStore, SpendTotals, StoredCount } from '../types';
 
 export async function createCounterStore(path: string): Promise<CounterStore> {
   const exists = await Bun.file(path).exists();

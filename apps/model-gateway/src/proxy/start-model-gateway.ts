@@ -1,7 +1,7 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import { createCaptureSpool } from './create-capture-spool';
-import { createCounterStore } from './create-counter-store';
+import { createCaptureSpool } from '../usage/create-capture-spool';
+import { createCounterStore } from '../usage/create-counter-store';
 import { makeProxyHandler } from './make-proxy-handler';
 import { proxyConfigSchema } from './proxy-config-schema';
 

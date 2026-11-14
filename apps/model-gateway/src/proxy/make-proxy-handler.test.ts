@@ -7,9 +7,9 @@ import { startScriptedModel, waitForCondition } from '@heynixie/testing';
 import type { ModelAPI } from '@heynixie/wire';
 import { encodeCaptureTag, formatSpoolFileName, openSpoolFile } from '@heynixie/wire';
 import { createSpoolRecipient } from '@heynixie/wire/test-utils';
-import type { CaptureSpool } from './create-capture-spool';
-import { createCaptureSpool } from './create-capture-spool';
-import { createCounterStore } from './create-counter-store';
+import type { CaptureSpool } from '../usage/create-capture-spool';
+import { createCaptureSpool } from '../usage/create-capture-spool';
+import { createCounterStore } from '../usage/create-counter-store';
 import { makeProxyHandler } from './make-proxy-handler';
 
 interface HandlerOptions {

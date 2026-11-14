@@ -9,13 +9,13 @@ import {
   parseJSONOrNull,
 } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
-import { buildCallTokens } from './build-call-tokens';
-import { buildCountedStream } from './build-counted-stream';
-import type { CaptureSpool } from './create-capture-spool';
+import type { CounterStore, ProxyLimits, ProxyRoute, SpendTotals, StoredCount } from '../types';
+import { buildCallTokens } from '../usage/build-call-tokens';
+import { buildCountedStream } from '../usage/build-counted-stream';
+import type { CaptureSpool } from '../usage/create-capture-spool';
+import { usageDialects } from '../usage/usage-dialects';
+import { isRecord } from '../utils/is-record';
 import { findProxyEndpoint } from './find-proxy-endpoint';
-import { isRecord } from './is-record';
-import type { CounterStore, ProxyLimits, ProxyRoute, SpendTotals, StoredCount } from './types';
-import { usageDialects } from './usage-dialects';
 
 export interface ProxyHandlerDeps {
   readonly routes: Readonly<Record<string, ProxyRoute>>;

@@ -4,8 +4,8 @@ import { join, resolve } from 'node:path';
 import type { Logger } from '@heynixie/logger';
 import type { CaptureTag, ModelAPI, SpoolHeader, SpoolMiss } from '@heynixie/wire';
 import { formatSpoolFileName, parseSpoolFileName, sealSpoolBody } from '@heynixie/wire';
-import { isRecord } from './is-record';
-import type { CaptureConfig } from './types';
+import type { CaptureConfig } from '../types';
+import { isRecord } from '../utils/is-record';
 
 interface CaptureRequest {
   readonly tag: CaptureTag;

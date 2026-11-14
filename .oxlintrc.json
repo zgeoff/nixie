@@ -31,7 +31,6 @@
       "error",
       {
         "pending": [
-          "apps/model-gateway",
           "apps/server",
           "apps/web",
           "guests/conversation",

@@ -2,7 +2,7 @@ import { isAbsolute } from 'node:path';
 import { modelPricesSchema } from '@heynixie/models';
 import { modelAPIs } from '@heynixie/wire';
 import { z } from 'zod';
-import type { ProxyConfig } from './types';
+import type { ProxyConfig } from '../types';
 
 const routeIDSchema = z.string().regex(/^[a-z0-9][a-z0-9-]*$/u, 'a route ID is a lowercase slug');
 
