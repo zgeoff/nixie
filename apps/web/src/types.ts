@@ -35,6 +35,8 @@ export interface OutboxMessage {
 
 export type MemoryItem = ContractOutputs['memory']['listItems']['items'][number];
 
+export type ForgetBackup = ReadonlyDeep<ContractOutputs['conversation']['forget']['backup']>;
+
 export type ForgetPreview = ReadonlyDeep<ContractOutputs['memory']['previewForget']>;
 
 export type RetiredForgetItem = ReadonlyDeep<

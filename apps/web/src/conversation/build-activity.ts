@@ -10,6 +10,10 @@ export interface ToolActivity {
   readonly isRemoved?: true;
 
   readonly outcome?: string;
+
+  // the record that holds the call's result, which a forget removes
+  readonly result?: { readonly kind: string; readonly sequence: number; readonly thread: string };
+
   readonly tool: string;
 }
 
@@ -294,6 +298,9 @@ function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
         ...(toolCall.input === undefined ? {} : { input: toolCall.input }),
         ...(toolCall.outcome === undefined ? {} : { outcome: toolCall.outcome }),
         ...(toolCall.content === undefined ? {} : { content: toolCall.content }),
+        ...(record.kind === 'tool_result'
+          ? { result: { kind: record.kind, sequence: record.sequence, thread: record.thread } }
+          : {}),
       });
     }
   }

@@ -1,11 +1,13 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { readOwnerImage, readRecordForgetPreview } from '@heynixie/memory';
+import { readForgetBackupState } from '../forget/read-forget-backup-state';
 import { writeOwnerMessage } from '../kept/write-owner-message';
 import { requireCaller } from '../memory/require-caller';
 import { readOwnerImages } from '../owner/read-owner-images';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { probeForgettableRecord } from '../utils/probe-forgettable-record';
+import { readRecordForgetProgress } from './read-record-forget-progress';
 import { readThreadPage } from './read-thread-page';
 import { writeConversationRetry } from './write-conversation-retry';
 import { writeRecordForget } from './write-record-forget';
@@ -51,13 +53,19 @@ export function createConversationProcedures(context: APIContext) {
 
       if (result.status !== 'forgotten') {
         throw {
+          action_not_finished: options.errors.ACTION_NOT_FINISHED,
           not_found: options.errors.RECORD_NOT_FOUND,
           reused: options.errors.CLIENT_ACTION_ID_REUSED,
           unauthorized: options.errors.UNAUTHORIZED,
         }[result.status]();
       }
 
-      return { forgottenAt: new Date(result.forgottenAt) };
+      const progress = await readRecordForgetProgress(context, options.input.sequence);
+
+      return {
+        forgottenAt: new Date(result.forgottenAt),
+        backup: await readForgetBackupState(context, progress),
+      };
     }),
 
     retry: apiImplementer.conversation.retry.handler(async (options) => {

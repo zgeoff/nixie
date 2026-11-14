@@ -95,12 +95,17 @@ test('it refuses an image read without its position', () => {
   expect(result?.error?.issues).toPartiallyContain({ path: ['position'] });
 });
 
-test('it declares a missing device session, a reused action ID and an unknown record for a forget', () => {
+test('it declares a missing device session, a reused action ID, an unknown record and an unfinished action for a forget', () => {
   expect(contract.conversation.forget['~orpc'].errorMap).toContainAllKeys([
     'UNAUTHORIZED',
     'CLIENT_ACTION_ID_REUSED',
     'RECORD_NOT_FOUND',
+    'ACTION_NOT_FINISHED',
   ]);
+});
+
+test('it answers a queued action that has not run with 409 on a forget', () => {
+  expect(contract.conversation.forget['~orpc'].errorMap.ACTION_NOT_FINISHED?.status).toBe(409);
 });
 
 test('it answers an unknown record with 404 on a forget', () => {

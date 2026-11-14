@@ -24,7 +24,17 @@ export type TasksRecordKind =
   | 'owner_message'
   | 'action.outcome';
 
+type TasksErasableRecordKind =
+  | 'action.outcome'
+  | 'owner_message'
+  | 'task.created'
+  | 'task.step_errored'
+  | 'task_message';
+
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry
   interface RecordKinds extends Record<TasksRecordKind, true> {}
+
+  // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry
+  interface ErasableRecordKinds extends Record<TasksErasableRecordKind, true> {}
 }

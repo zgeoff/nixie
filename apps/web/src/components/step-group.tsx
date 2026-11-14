@@ -1,9 +1,14 @@
+import { forgettableKinds } from '@heynixie/contract';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import type { StepActivity, ToolActivity } from '../conversation/build-activity';
 import { formatStepSummary } from '../conversation/format-step-summary';
 import { css } from '../styled-system/css';
+import type { ForgetBackup } from '../types';
 import { ClippedText } from './clipped-text';
 import { CompactionMarker } from './compaction-marker';
+import { ForgetBackupLine } from './forget-backup-line';
+import { ForgetControl } from './forget-control';
 import { StepContext } from './step-context';
 import { StepMemories } from './step-memories';
 import { StepSection } from './step-section';
@@ -66,27 +71,66 @@ interface ToolCallDetailProps {
   readonly call: ToolActivity;
 }
 
-function ToolCallDetail(props: ToolCallDetailProps): ReactNode {
-  if (props.call.isRemoved === true) {
-    return (
-      <section aria-label={props.call.tool}>
-        <h3 className={css({ fontWeight: 'semibold' })}>{props.call.tool} — removed</h3>
-        <p>Result{props.call.outcome === undefined ? ' (waiting)' : ` (${props.call.outcome})`}</p>
-      </section>
-    );
-  }
+const forgettable: readonly string[] = forgettableKinds;
 
+function ToolCallDetail(props: ToolCallDetailProps): ReactNode {
+  const [isForgetOpen, setForgetOpen] = useState(false);
+  const [backup, setBackup] = useState<ForgetBackup | null>(null);
+  const call = props.call;
+  const result = call.result;
+  const isRemoved = call.isRemoved === true || backup !== null;
+
+  // Only a result on the conversation thread has a control: a task's records are not the owner's to
+  // forget. A forget that has not finished keeps its control, so the owner can try again.
+  const hasControl =
+    result !== undefined &&
+    forgettable.includes(result.kind) &&
+    result.thread === 'conversation' &&
+    (!isRemoved || isForgetOpen);
+
+  const backupLine = backup === null ? null : <ForgetBackupLine backup={backup} />;
+
+  // The control sits at the same position whether or not the call is removed, so a record that
+  // turns removed while its confirmation is open keeps the control mounted and its action ID.
   return (
-    <section aria-label={props.call.tool}>
-      <h3 className={css({ fontWeight: 'semibold' })}>{props.call.tool}</h3>
-      <p>Input</p>
-      <ClippedText text={formatJSON(props.call.input)} />
-      <p>Result{props.call.outcome === undefined ? ' (waiting)' : ` (${props.call.outcome})`}</p>
-      <ClippedText text={formatJSON(props.call.content)} />
+    <section aria-label={call.tool}>
+      <h3 className={css({ fontWeight: 'semibold' })}>
+        {isRemoved ? `${call.tool} — removed` : call.tool}
+      </h3>
+      {isRemoved ? null : <p>Input</p>}
+      {isRemoved ? null : <ClippedText text={formatJSON(call.input)} />}
+      <p>Result{call.outcome === undefined ? ' (waiting)' : ` (${call.outcome})`}</p>
+      {isRemoved ? null : <ClippedText text={formatJSON(call.content)} />}
+      {hasControl ? renderControl(call, setForgetOpen, setBackup) : null}
+      {backupLine}
     </section>
   );
 }
 
 function formatJSON(value: unknown): string {
   return value === undefined ? 'none' : JSON.stringify(value, null, 2);
+}
+
+function renderControl(
+  call: ToolActivity,
+  onOpenChange: (isOpen: boolean) => void,
+  onBackup: (backup: ForgetBackup) => void,
+): ReactNode {
+  const result = call.result;
+
+  if (result === undefined) {
+    return null;
+  }
+
+  return (
+    <ForgetControl
+      hasText={call.isRemoved !== true && call.content !== undefined}
+      kind={result.kind}
+      label="Forget this result"
+      onForgotten={onBackup}
+      onOpenChange={onOpenChange}
+      sequence={result.sequence}
+      thread={result.thread}
+    />
+  );
 }

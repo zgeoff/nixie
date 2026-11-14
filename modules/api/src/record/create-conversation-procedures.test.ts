@@ -9,9 +9,11 @@ import {
 } from '@heynixie/memory';
 import { claimTask, createConversationTask, runTaskStep } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import { buildSeeder } from '../test-utils/build-seeder';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
+import { defaultAPISettings } from '../utils/default-api-settings';
 
 async function setupTest() {
   const api = await startTestAPI();
@@ -328,4 +330,59 @@ test('#conversation.previewForget refuses a record of a kind that cannot be forg
   await refused.catch(() => {});
 
   expect(refused).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+});
+
+test('#conversation.forget answers with the backup as off when backups are off', async () => {
+  const api = await startTestAPI({ ...defaultAPISettings, isBackupEnabled: false });
+
+  await createConversationTask(api.context);
+
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  const [result] = await writeRecords(api.context.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { page: 'The locker code is 2291.' },
+    },
+  ]);
+
+  invariant(result);
+
+  const forgotten = await client.conversation.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: result.sequence,
+  });
+
+  expect(forgotten).toStrictEqual({
+    forgottenAt: expect.toBeValidDate(),
+    backup: { state: 'off' },
+  });
+});
+
+test('#conversation.forget refuses a queued action that has not run with ACTION_NOT_FINISHED', async () => {
+  const api = await startTestAPI();
+
+  const seed = buildSeeder(api);
+
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  const step = await seed.conversationStep();
+  const action = await seed.action({ step: step.claim });
+
+  const refused = client.conversation.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: action.queued_sequence,
+  });
+
+  await refused.catch(() => {});
+
+  expect(refused).rejects.toMatchObject({ code: 'ACTION_NOT_FINISHED' });
 });

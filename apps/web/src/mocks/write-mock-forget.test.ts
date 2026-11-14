@@ -141,8 +141,8 @@ test('it finds no record when a new ID names a forgotten record on another threa
   expect(result).toStrictEqual({ status: 'not_found' });
 });
 
-test('it finds no record to forget at a sequence that holds no message or reply', async () => {
-  const call = await store.records.create({ kind: 'tool_called' });
+test('it finds no record to forget at a sequence that holds no text of its own', async () => {
+  const call = await store.records.create({ kind: 'model.turn_ended' });
 
   const result = await writeMockForget({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
@@ -151,4 +151,31 @@ test('it finds no record to forget at a sequence that holds no message or reply'
   });
 
   expect(result).toStrictEqual({ status: 'not_found' });
+});
+
+test('it drops the input and the content of a tool record it forgets, and keeps its name and outcome', async () => {
+  const result = await store.records.create({
+    kind: 'tool_result',
+    toolCall: {
+      callID: 'call-1',
+      content: { page: 'The locker code is 2291.' },
+      input: { url: 'https://lockers.test/' },
+      outcome: 'result',
+      tool: 'web_fetch',
+    },
+  });
+
+  await writeMockForget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    sequence: result.sequence,
+    thread: 'conversation',
+  });
+
+  const removed = store.records.findFirst((query) => query.where({ sequence: result.sequence }));
+
+  expect(removed?.toolCall).toStrictEqual({
+    callID: 'call-1',
+    outcome: 'result',
+    tool: 'web_fetch',
+  });
 });

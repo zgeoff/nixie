@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readLinkTarget } from '@heynixie/connectors';
+import type { Definitions, RecordInput } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
 import {
@@ -182,32 +183,34 @@ async function setupTest() {
 test.each([
   {
     name: 'a task report',
-    kind: 'task_message',
-    buildPayload: (taskID: string) => ({
-      messageID: 'q8v3m1x7ka',
-      from: 'conversation',
-      to: taskID,
-      kind: 'report',
-      replyTo: null,
-      onBehalfOf: [],
-      hop: 1,
-      hopLimit: 20,
-      wake: true,
-      woke: true,
-      source: 'task:conversation',
+    buildRecord: (taskID: string, definitions: Definitions): RecordInput => ({
+      kind: 'task_message',
+      definitions,
+      thread: taskID,
+      payload: {
+        messageID: 'q8v3m1x7ka',
+        from: 'conversation',
+        to: taskID,
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:conversation',
+      },
+      erasable: { body: 'The ferry runs at 09:25.' },
     }),
-    erasable: { body: 'The ferry runs at 09:25.' },
   },
   {
     name: 'a timer',
-    kind: 'timer.fired',
-    buildPayload: (taskID: string) => ({
-      timerID: 'tide-check',
-      taskID,
-      dueAt: 1000,
-      firedAt: 1000,
+    buildRecord: (taskID: string, definitions: Definitions): RecordInput => ({
+      kind: 'timer.fired',
+      definitions,
+      thread: taskID,
+      payload: { timerID: 'tide-check', taskID, dueAt: 1000, firedAt: 1000 },
     }),
-    erasable: {},
   },
 ])(
   'it ends a task turn that $name alone woke with no reply and no task message, and records the turn end as silent',
@@ -238,15 +241,7 @@ test.each([
       },
     });
 
-    await writeInboxRecords(ctx.context, [
-      {
-        kind: row.kind,
-        definitions: ctx.context.definitions(),
-        thread: taskID,
-        payload: row.buildPayload(taskID),
-        erasable: row.erasable,
-      },
-    ]);
+    await writeInboxRecords(ctx.context, [row.buildRecord(taskID, ctx.context.definitions())]);
 
     await ctx.runNextStep(runner);
 

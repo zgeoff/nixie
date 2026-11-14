@@ -33,6 +33,14 @@ rebuilt after a forget therefore gives the same rows as before, and nothing outs
 fields keeps a copy of the text. The database holds no full-text index over erasable fields for the
 same reason: an index would keep the plaintext after its key is gone.
 
+## Declaring erasable kinds
+
+A record kind that carries erasable fields adds itself to `ErasableRecordKinds` in the module that
+owns the kind, beside its entry in `RecordKinds`. The log's `RecordInput` takes `erasable` only for
+a kind in that interface, so a write of erasable fields under any other kind fails the type check. A
+kind that gains erasable fields also joins the forgettable kinds, or one of the 2 groups that a
+record forget leaves out, as [forgetting a record](../channels/api.md#forgetting-a-record) says.
+
 ## The key store
 
 The key store is `keys.db`, beside `nixie.db` in the data directory. A database backup then holds

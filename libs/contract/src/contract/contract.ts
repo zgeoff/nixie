@@ -2,6 +2,7 @@ import { eventIterator, oc } from '@orpc/contract';
 import { z } from 'zod';
 import { spanSchema } from '../span/span-schema';
 import { approvalContract } from './approval-contract';
+import { forgetBackupSchema } from './forget-backup-schema';
 import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
@@ -285,7 +286,8 @@ export const contract = {
     previewForget: signedIn
       .errors({
         RECORD_NOT_FOUND: {
-          message: 'No message or reply on this thread has this sequence',
+          message:
+            'No record on this thread with its own text that a forget removes has this sequence',
           status: 404,
         },
       })
@@ -295,8 +297,13 @@ export const contract = {
     forget: checkedAction
       .errors({
         RECORD_NOT_FOUND: {
-          message: 'No message or reply on this thread has this sequence',
+          message:
+            'No record on this thread with its own text that a forget removes has this sequence',
           status: 404,
+        },
+        ACTION_NOT_FINISHED: {
+          message: 'The queued action has not run yet. Cancel it, or wait for it to run.',
+          status: 409,
         },
       })
       .input(
@@ -306,7 +313,7 @@ export const contract = {
           thread: threadSchema,
         }),
       )
-      .output(z.object({ forgottenAt: z.date() })),
+      .output(z.object({ forgottenAt: z.date(), backup: forgetBackupSchema })),
   },
   tasks: {
     list: signedIn.output(

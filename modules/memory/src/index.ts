@@ -198,6 +198,8 @@ export { renderCheckerInput } from './checker/render-checker-input';
 export type { ShownItem, SpeakerNames, WriterPromptInput } from './writer/render-writer-prompt';
 export { renderWriterPrompt } from './writer/render-writer-prompt';
 export type { MemoryRecordKind } from './record/memory-record-kind';
+export { memoryItemErasableKinds } from './record/memory-item-erasable-kinds';
+export { momentErasableKinds } from './record/moment-erasable-kinds';
 export { memoryRatedCodec } from './memory/memory-rated-codec';
 export { momentKeptCodec } from './moment/codec/moment-kept-codec';
 export { recordForgetStartedCodec } from './record/record-forget-started-codec';

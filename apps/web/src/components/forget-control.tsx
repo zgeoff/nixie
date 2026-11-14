@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
+import type { ForgetBackup } from '../types';
 import { useNixieClient } from '../utils/use-nixie-client';
 
 export interface ForgetControlProps {
@@ -12,9 +13,14 @@ export interface ForgetControlProps {
   readonly label: string;
 
   readonly hasText: boolean;
-  readonly onForgotten: () => void;
+  readonly onForgotten: (backup: ForgetBackup) => void;
   readonly onOpenChange: (isOpen: boolean) => void;
 }
+
+const nouns: Readonly<Record<string, string>> = {
+  owner_message: 'message',
+  tool_result: 'tool result',
+};
 
 const control = css({ color: 'textMuted', display: 'block', fontSize: 'sm', marginTop: '1' });
 
@@ -25,7 +31,7 @@ export function ForgetControl(props: ForgetControlProps): ReactNode {
 
   const forget = useMutation(
     nixie.queryUtils.conversation.forget.mutationOptions({
-      onSuccess: (_result, input) => {
+      onSuccess: (result, input) => {
         setActionID(null);
 
         props.onOpenChange(false);
@@ -36,12 +42,12 @@ export function ForgetControl(props: ForgetControlProps): ReactNode {
           }),
         });
 
-        props.onForgotten();
+        props.onForgotten(result.backup);
       },
     }),
   );
 
-  const noun = props.kind === 'owner_message' ? 'message' : 'reply';
+  const noun = nouns[props.kind] ?? 'reply';
 
   if (actionID === null && !props.hasText) {
     return null;

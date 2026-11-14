@@ -6,6 +6,7 @@ import { probeLiveIdentity } from '../utils/probe-live-identity';
 import type { ClientAction } from '../utils/read-client-action';
 import { readClientAction } from '../utils/read-client-action';
 import { writeClientAction } from '../utils/write-client-action';
+import { probeUnfinishedQueuedAction } from './probe-unfinished-queued-action';
 import { readBriefStartCalls } from './read-brief-start-calls';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
 
@@ -17,6 +18,7 @@ interface RecordForgetInput {
 
 type RecordForgetResult =
   | { readonly status: 'forgotten'; readonly forgottenAt: number }
+  | { readonly status: 'action_not_finished' }
   | { readonly status: 'not_found' }
   | { readonly status: 'reused' }
   | { readonly status: 'unauthorized' };
@@ -41,6 +43,12 @@ export async function writeRecordForget(
 
     if (settled !== null) {
       return settled;
+    }
+
+    const isActionUnfinished = await probeUnfinishedQueuedAction(tx, input);
+
+    if (isActionUnfinished) {
+      return { status: 'action_not_finished' } as const;
     }
 
     const forgottenAt = await writeForgetStart(tx, context, input, startCalls);

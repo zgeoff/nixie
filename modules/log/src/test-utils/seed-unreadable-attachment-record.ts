@@ -1,12 +1,12 @@
 import { sql } from 'kysely';
 import { withWriteTransaction } from '../record/with-write-transaction';
-import type { LogRecord, RecordInput } from '../types';
+import type { ErasableRecordKind, LogRecord, RecordInput } from '../types';
 import type { LogSeederDeps } from './log-seeder-deps';
 import { seedRecord } from './seed-record';
 
 export async function seedUnreadableAttachmentRecord(
   deps: LogSeederDeps,
-  input: Pick<RecordInput, 'kind'> & Partial<RecordInput>,
+  input: { readonly kind: ErasableRecordKind } & Partial<Omit<RecordInput, 'kind' | 'erasable'>>,
 ): Promise<LogRecord> {
   const record = await seedRecord(deps, {
     thread: 'conversation',

@@ -152,7 +152,7 @@ export const mockAPIRouter = os.router({
         }[result.status]();
       }
 
-      return { forgottenAt: result.forgottenAt };
+      return { forgottenAt: result.forgottenAt, backup: { state: 'off' } };
     }),
 
     retry: os.conversation.retry.handler(async (options) => {

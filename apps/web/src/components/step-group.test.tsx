@@ -1,6 +1,9 @@
 import { expect, test } from 'bun:test';
-import { within } from '@testing-library/react';
+import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http, passthrough } from 'msw';
+import { z } from 'zod';
+import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
 import { buildMockStepActivity } from '../test-utils/build-mock-step-activity';
@@ -410,4 +413,190 @@ test('it shows a tool record that fails to decrypt with its name, no input and n
   const call = rendered.getByRole('region', { name: 'web_fetch' });
 
   expect(call.textContent).toBe('web_fetchInputnoneResult (waiting)none');
+});
+
+test('it shows the forget control under the result of a conversation tool call, and none under the result of a task', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { status: 200 } },
+            input: { url: 'https://example.com/' },
+            outcome: 'result',
+            result: { kind: 'tool_result', sequence: 5, thread: 'conversation' },
+            tool: 'web_fetch',
+          },
+          {
+            callID: 'b',
+            content: { result: { status: 200 } },
+            input: { url: 'https://example.org/' },
+            outcome: 'result',
+            result: { kind: 'tool_result', sequence: 9, thread: 'task-4k7m2x9q1a' },
+            tool: 'web_search',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · /u));
+  await user.click(rendered.getByText('Tools 2'));
+
+  const conversationCall = within(rendered.getByRole('region', { name: 'web_fetch' }));
+  const taskCall = within(rendered.getByRole('region', { name: 'web_search' }));
+
+  expect(conversationCall.getByRole('button', { name: 'Forget this result' })).toBeVisible();
+  expect(taskCall.queryByRole('button')).toBeNull();
+});
+
+test('it shows the key backup state after the forget of a tool result, in place of its text', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const stored = await store.records.create({
+    kind: 'tool_result',
+    thread: 'conversation',
+    toolCall: { callID: 'a', content: { result: { status: 200 } }, outcome: 'result' },
+  });
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { status: 200 } },
+            input: { url: 'https://example.com/' },
+            outcome: 'result',
+            result: { kind: 'tool_result', sequence: stored.sequence, thread: 'conversation' },
+            tool: 'web_fetch',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · /u));
+  await user.click(rendered.getByText('Tools 1'));
+  await user.click(rendered.getByRole('button', { name: 'Forget this result' }));
+
+  const confirm = await rendered.findByRole('button', { name: 'Forget for good' });
+
+  await user.click(confirm);
+
+  const line = await rendered.findByText(/^Key backups: off\./u);
+
+  const call = rendered.getByRole('region', { name: 'web_fetch' });
+
+  expect(line).toHaveTextContent(
+    'Key backups: off. nixie stages no backup, so a backup copied before the forget still holds the record.',
+  );
+
+  expect(call.textContent).toBe(
+    'web_fetch — removedResult (result)Key backups: off. nixie stages no backup, so a backup copied before the forget still holds the record.',
+  );
+});
+
+test('it keeps the forget confirmation and retries with the same action ID when the record turns removed before the forget fails', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const stored = await store.records.create({
+    kind: 'tool_result',
+    thread: 'conversation',
+    toolCall: { callID: 'a', content: { result: { status: 200 } }, outcome: 'result' },
+  });
+
+  const result = { kind: 'tool_result', sequence: stored.sequence, thread: 'conversation' };
+  const sent: unknown[] = [];
+  const gate = Promise.withResolvers<void>();
+  let isFirst = true;
+
+  server.use(
+    http.post('*/rpc/conversation/forget', async (call) => {
+      const body: unknown = await call.request.clone().json();
+
+      sent.push(body);
+
+      if (!isFirst) {
+        return passthrough();
+      }
+
+      isFirst = false;
+
+      await gate.promise;
+
+      return HttpResponse.json({ code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
+    }),
+  );
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { status: 200 } },
+            input: { url: 'https://example.com/' },
+            outcome: 'result',
+            result,
+            tool: 'web_fetch',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · /u));
+  await user.click(rendered.getByText('Tools 1'));
+  await user.click(rendered.getByRole('button', { name: 'Forget this result' }));
+
+  const confirm = await rendered.findByRole('button', { name: 'Forget for good' });
+
+  await user.click(confirm);
+
+  await waitFor(() => {
+    expect(sent).toHaveLength(1);
+  });
+
+  rendered.rerender(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [{ callID: 'a', isRemoved: true, outcome: 'result', result, tool: 'web_fetch' }],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  expect(rendered.getByRole('heading', { name: 'web_fetch — removed' })).toBeVisible();
+  expect(rendered.getByRole('group', { name: 'Forget this tool result' })).toBeVisible();
+
+  gate.resolve();
+
+  const alert = await rendered.findByRole('alert');
+
+  expect(alert).toHaveTextContent('The forget did not finish. Try again.');
+
+  await user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+
+  await waitFor(() => {
+    expect(sent).toHaveLength(2);
+  });
+
+  const forgetBody = z.object({ json: z.object({ clientActionID: z.string() }) });
+  const bodies = z.array(forgetBody).parse(sent);
+  const ids = bodies.map((body) => body.json.clientActionID);
+
+  expect(ids[0]).toBe(ids[1]);
 });

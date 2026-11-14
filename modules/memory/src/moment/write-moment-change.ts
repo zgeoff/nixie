@@ -1,4 +1,4 @@
-import type { JSONObject } from '@heynixie/log';
+import type { Definitions, JSONObject, RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -14,12 +14,18 @@ import type {
 import type { MomentRow } from './read-moment-row';
 import { readMomentRow } from './read-moment-row';
 
-export interface PlannedMomentRecord {
-  readonly kind: 'moment_edited' | 'moment_linked' | 'moment_retired';
-  readonly payload: JSONObject;
-  readonly erasable?: JSONObject;
-  readonly reflectionID?: string;
-}
+export type PlannedMomentRecord =
+  | {
+      readonly kind: 'moment_edited';
+      readonly payload: JSONObject;
+      readonly erasable?: JSONObject;
+      readonly reflectionID?: string;
+    }
+  | {
+      readonly kind: 'moment_linked' | 'moment_retired';
+      readonly payload: JSONObject;
+      readonly reflectionID?: string;
+    };
 
 export interface MomentChangeState {
   readonly row: MomentRow;
@@ -66,13 +72,7 @@ export async function writeMomentChange(
       const caller = request.caller;
 
       const [record] = await writeRecordsInTransaction(tx, context.log, [
-        {
-          kind: planned.kind,
-          definitions: context.definitions(),
-          ...(caller.kind === 'model' ? { thread: caller.thread } : {}),
-          payload: planned.payload,
-          ...(planned.erasable === undefined ? {} : { erasable: planned.erasable }),
-        },
+        buildMomentChangeInput(planned, context.definitions(), caller),
       ]);
 
       invariant(record, 'the log wrote no record for the moment change');
@@ -97,6 +97,26 @@ export async function writeMomentChange(
   return written instanceof MomentChangeRefusedError
     ? { status: 'refused', reason: written.reason }
     : written;
+}
+
+function buildMomentChangeInput(
+  planned: PlannedMomentRecord,
+  definitions: Definitions,
+  caller: MomentCaller,
+): RecordInput {
+  const envelope = {
+    definitions,
+    ...(caller.kind === 'model' ? { thread: caller.thread } : {}),
+    payload: planned.payload,
+  };
+
+  return planned.kind === 'moment_edited'
+    ? {
+        kind: planned.kind,
+        ...envelope,
+        ...(planned.erasable === undefined ? {} : { erasable: planned.erasable }),
+      }
+    : { kind: planned.kind, ...envelope };
 }
 
 // A refusal throws inside the transaction, so a client action written by the hook rolls back with it.

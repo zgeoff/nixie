@@ -528,7 +528,10 @@ test('it never shows the text of a message you sent and then forgot', async () =
     expect(rendered.queryByRole('group', { name: 'Forget this message' })).toBeNull();
   });
 
-  expect(rendered.getByText('You').parentElement?.textContent).toBe('You — removed');
+  expect(rendered.getByText('You').parentElement?.textContent).toBe(
+    'You — removedKey backups: off. nixie stages no backup, so a backup copied before the forget still holds the record.',
+  );
+
   expect(rendered.queryByText('The gate code is 2290.')).toBeNull();
   expect(rendered.queryByRole('status')).toBeNull();
 });

@@ -1,4 +1,4 @@
-import type { RecordCodec, RecordKind } from '@heynixie/log';
+import type { ErasableRecordKind, RecordCodec, RecordKind } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { canMoveProposal } from './can-move-proposal';
@@ -12,7 +12,7 @@ export interface ProposalLapseSource {
   readonly lapseMs?: number;
 
   readonly lapsedCodec: Pick<
-    RecordCodec<RecordKind, { readonly proposalID: string }>,
+    RecordCodec<Exclude<RecordKind, ErasableRecordKind>, { readonly proposalID: string }>,
     'kind' | 'encode'
   >;
 }

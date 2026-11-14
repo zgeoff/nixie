@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { claimAction, runActionAttempt } from '@heynixie/actions';
 import {
   readRecordAttachments,
   readRecords,
@@ -6,9 +7,11 @@ import {
   writeRecords,
 } from '@heynixie/log';
 import { readTestRecordAttachmentRows } from '@heynixie/log/test-utils';
+import { momentKeptCodec } from '@heynixie/memory';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { writeOwnerMessage } from '../kept/write-owner-message';
+import { buildSeeder } from '../test-utils/build-seeder';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { seedTaskStartCall } from '../test-utils/seed-task-start-call';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -22,6 +25,7 @@ async function setupTest() {
 
   return {
     ...api,
+    seed: buildSeeder(api),
     readRecordsAfter: async (sequence: number) => {
       const entries = await readRecords(api.context.log, { afterSequence: sequence - 1 });
 
@@ -396,28 +400,132 @@ test('it refuses a sequence that names a message on another thread', async () =>
   expect(message?.erasable.status).toBe('readable');
 });
 
-test('it refuses a sequence that names a record other than a message or a reply', async () => {
+test.each<[string, 'model.turn_ended' | 'sandbox.slept']>([
+  ['a turn end', 'model.turn_ended'],
+  ['a sandbox sleep', 'sandbox.slept'],
+])('it refuses a sequence that names %s, which holds no text of its own', async (_label, kind) => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
-  const [call] = await writeRecords(ctx.context.log, [
+  const [record] = await writeRecords(ctx.context.log, [
+    { kind, definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
+  ]);
+
+  invariant(record);
+
+  const result = await writeRecordForget(ctx.context, laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: record.sequence,
+  });
+
+  expect(result).toStrictEqual({ status: 'not_found' });
+});
+
+test("it forgets a tool result inside a moment's span, and refuses the moment's own record and a memory item's own record", async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const [call, result] = await writeRecords(ctx.context.log, [
     {
       kind: 'tool_called',
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       erasable: { input: { url: 'https://lockers.test/' } },
     },
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { page: 'The locker code is 2291.' },
+    },
   ]);
 
-  invariant(call);
+  invariant(call && result);
 
-  const result = await writeRecordForget(ctx.context, laptop.caller, {
+  const [moment, flag] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'moment_kept',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: momentKeptCodec.encode({
+        momentID: crypto.randomUUID(),
+        shortID: 'm4k9x2q7ab',
+        thread: 'conversation',
+        firstSequence: call.sequence,
+        lastSequence: result.sequence,
+        keptBy: 'model',
+        keptThread: 'conversation',
+        model: 'test-model',
+      }),
+      erasable: { title: 'The locker code' },
+    },
+    {
+      kind: 'memory.self_note_flagged',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { sourceSequence: result.sequence },
+      erasable: { text: 'The owner keeps a spare key in the shed.' },
+    },
+  ]);
+
+  invariant(moment && flag);
+
+  const forget = (sequence: number, clientActionID: string) =>
+    writeRecordForget(ctx.context, laptop.caller, {
+      clientActionID,
+      thread: 'conversation',
+      sequence,
+    });
+
+  const forgotten = await forget(result.sequence, '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85');
+  const refusedMoment = await forget(moment.sequence, '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a86');
+  const refusedItem = await forget(flag.sequence, '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a87');
+  const records = await ctx.readRecordsAfter(call.sequence);
+
+  expect(forgotten).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
+  expect(refusedMoment).toStrictEqual({ status: 'not_found' });
+  expect(refusedItem).toStrictEqual({ status: 'not_found' });
+
+  expect(records.map((record) => [record.sequence, record.erasable.status])).toStrictEqual([
+    [call.sequence, 'readable'],
+    [result.sequence, 'shredded'],
+    [moment.sequence, 'readable'],
+    [flag.sequence, 'readable'],
+    [expect.any(Number), 'none'],
+  ]);
+});
+
+test('it refuses the forget of a queued action that has not run, and accepts the same forget once it ran', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const step = await ctx.seed.conversationStep();
+  const action = await ctx.seed.action({ step: step.claim });
+
+  const input = {
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     thread: 'conversation',
-    sequence: call.sequence,
+    sequence: action.queued_sequence,
+  };
+
+  const refused = await writeRecordForget(ctx.context, laptop.caller, input);
+  const recordsAfterRefusal = await ctx.readRecordsAfter(action.queued_sequence + 1);
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(lease);
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([
+      [action.tool, { run: () => Promise.resolve({ kind: 'success', result: {} }) }],
+    ]),
+    leaseMs: 60_000,
   });
 
-  expect(result).toStrictEqual({ status: 'not_found' });
+  const accepted = await writeRecordForget(ctx.context, laptop.caller, input);
+
+  expect(refused).toStrictEqual({ status: 'action_not_finished' });
+  expect(recordsAfterRefusal.map((record) => record.kind)).not.toContain('record.forget_started');
+  expect(accepted).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
 });
 
 test('it refuses a forget from a session revoked after the call resolved it', async () => {

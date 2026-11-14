@@ -22,3 +22,4 @@ GEO-1795: POST /tasks/list added the new `paused` enum value to the `tasks/items
 GEO-1795: POST /tasks/list added the new `stopped` enum value to the `tasks/items/state` response property for the response status `200`
 GEO-1795: POST /tasks/list added the new `closed` enum value to the `tasks/items/state` response property for the response status `200`
 GEO-2092: POST /conversation/move api path removed without deprecation
+GEO-2553: POST /conversation/forget added `subschema #2` to the response body `oneOf` list for the response status `409`

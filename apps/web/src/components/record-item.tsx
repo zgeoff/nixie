@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import type { LiveRecord } from '../conversation/use-live-records';
 import { css } from '../styled-system/css';
+import type { ForgetBackup } from '../types';
+import { ForgetBackupLine } from './forget-backup-line';
 import { ForgetControl } from './forget-control';
 import { MessageImages } from './message-images';
 import { ReplyText } from './reply-text';
@@ -18,6 +20,7 @@ const message = css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' });
 export function RecordItem(props: RecordItemProps): ReactNode {
   const [isForgotten, setForgotten] = useState(false);
   const [isForgetOpen, setForgetOpen] = useState(false);
+  const [backup, setBackup] = useState<ForgetBackup | null>(null);
   const isRemoved = isForgotten || props.record.isRemoved === true;
   const text = isRemoved ? undefined : props.record.message?.text;
   const isYours = props.record.kind === 'owner_message';
@@ -48,14 +51,16 @@ export function RecordItem(props: RecordItemProps): ReactNode {
           hasText={text !== undefined}
           kind={props.record.kind}
           label="Forget"
-          onForgotten={() => {
+          onForgotten={(forgottenBackup) => {
             setForgotten(true);
+            setBackup(forgottenBackup);
           }}
           onOpenChange={setForgetOpen}
           sequence={props.record.sequence}
           thread={props.record.thread}
         />
       ) : null}
+      {backup === null ? null : <ForgetBackupLine backup={backup} />}
     </li>
   );
 }

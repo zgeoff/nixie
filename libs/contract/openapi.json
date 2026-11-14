@@ -2142,7 +2142,7 @@
                         },
                         "message": {
                           "type": "string",
-                          "default": "No message or reply on this thread has this sequence"
+                          "default": "No record on this thread with its own text that a forget removes has this sequence"
                         },
                         "data": {}
                       },
@@ -2231,10 +2231,74 @@
                       "type": "string",
                       "format": "date-time",
                       "x-native-type": "date"
+                    },
+                    "backup": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "off"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "pending"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "failed"
+                            },
+                            "failure": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "failure"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "complete"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "const": "unknown"
+                            }
+                          },
+                          "required": [
+                            "state"
+                          ]
+                        }
+                      ]
                     }
                   },
                   "required": [
-                    "forgottenAt"
+                    "forgottenAt",
+                    "backup"
                   ]
                 }
               }
@@ -2320,7 +2384,7 @@
                         },
                         "message": {
                           "type": "string",
-                          "default": "No message or reply on this thread has this sequence"
+                          "default": "No record on this thread with its own text that a forget removes has this sequence"
                         },
                         "data": {}
                       },
@@ -2381,6 +2445,31 @@
                         "message": {
                           "type": "string",
                           "default": "The client action ID belongs to a different action"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "ACTION_NOT_FINISHED"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The queued action has not run yet. Cancel it, or wait for it to run."
                         },
                         "data": {}
                       },
