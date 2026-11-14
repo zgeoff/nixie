@@ -14,6 +14,7 @@ export { runOverflowProbe } from './run-overflow-probe';
 export { runPinnedCoreProbe } from './run-pinned-core-probe';
 export { runPrecompactProbe } from './run-precompact-probe';
 export { runResumeAtProbe } from './run-resume-at-probe';
+export { runSystemBlocksProbe } from './run-system-blocks-probe';
 
 export {
   runToolCallWaitProbe,
