@@ -2545,37 +2545,50 @@ test('it returns an error for an image body that is no image the model can see',
 test('it fetches the rewritten URL for a link ID whose target a rule matches', async () => {
   const ctx = await setupTest();
 
-  const readPage = mock((url: string) => {
-    if (url === 'https://bakery.test/news') {
-      return Promise.resolve<FetchReply>({
-        kind: 'page',
-        retryAfterMs: null,
-        isGated: false,
-        url,
-        status: 200,
-        contentType: 'text/html',
-        text: 'The package \u{E000}0\u{E001}.',
-        links: ['https://pypi.org/project/reefkit/'],
-        isTruncated: false,
-        blocked: null,
-      });
-    }
+  const requestedURLs: string[] = [];
 
-    return Promise.resolve<FetchReply>({
-      kind: 'page',
-      retryAfterMs: null,
-      isGated: false,
-      url,
-      status: 200,
-      contentType: 'application/json',
-      text: '{"name":"reefkit"}',
-      links: [],
-      isTruncated: false,
-      blocked: null,
-    });
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(
+      makeStubFetcher((request) => {
+        requestedURLs.push(request.url);
+
+        return request.url === 'https://bakery.test/news'
+          ? {
+              kind: 'page',
+              retryAfterMs: null,
+              isGated: false,
+              url: request.url,
+              status: 200,
+              contentType: 'text/html',
+              text: 'The package \u{E000}0\u{E001}.',
+              links: ['https://pypi.org/project/reefkit/'],
+              isTruncated: false,
+              blocked: null,
+            }
+          : {
+              kind: 'page',
+              retryAfterMs: null,
+              isGated: false,
+              url: request.url,
+              status: 200,
+              contentType: 'application/json',
+              text: '{"name":"reefkit"}',
+              links: [],
+              isTruncated: false,
+              blocked: null,
+            };
+      }),
+    ),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
 
-  const tool = buildWebFetchTool(readPage, {
+  onTestFinished(() => fetchSandbox.stop());
+
+  const tool = buildWebFetchTool(fetchSandbox.readPage, {
     log: ctx.log,
     textBytes: 20_000,
     linkPathChars: 24,
@@ -2606,7 +2619,7 @@ test('it fetches the rewritten URL for a link ID whose target a rule matches', a
     { run },
   );
 
-  expect(readPage).toHaveBeenLastCalledWith('https://pypi.org/pypi/reefkit/json');
+  expect(requestedURLs.at(-1)).toBe('https://pypi.org/pypi/reefkit/json');
 
   expect(outcome).toMatchObject({
     status: 'ok',

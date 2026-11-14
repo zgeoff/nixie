@@ -9,7 +9,7 @@ export interface ReadableText {
 }
 
 export function buildReadableText(html: string, pageURL: URL): ReadableText {
-  const reading = buildReadingState(pageURL);
+  const reading = buildReadingState(pageURL, findBaseURL(html, pageURL));
 
   buildPageRewriter(reading).transform(html);
 
@@ -50,7 +50,7 @@ interface ReadingState {
 
   // the URL that links resolve against: the href of the first base element that has one, else the
   // page URL
-  readonly base: { hasHref: boolean; url: URL };
+  readonly baseURL: URL;
   readonly title: string[];
   readonly regions: Record<Region, TextPart[]>;
   readonly depth: Record<NonNullable<ElementRule['counts']>, number>;
@@ -58,16 +58,44 @@ interface ReadingState {
   readonly openLinks: PageLink[];
 }
 
-function buildReadingState(pageURL: URL): ReadingState {
+function buildReadingState(pageURL: URL, baseURL: URL): ReadingState {
   return {
     pageURL,
-    base: { hasHref: false, url: pageURL },
+    baseURL,
     title: [],
     regions: { article: [], main: [], page: [] },
     depth: { hidden: 0, furniture: 0, article: 0, main: 0, banner: 0 },
     links: [],
     openLinks: [],
   };
+}
+
+// A link before the base element resolves against it too, so the base is read before the page is.
+function findBaseURL(html: string, pageURL: URL): URL {
+  const found: { hasHref: boolean; url: URL } = { hasHref: false, url: pageURL };
+
+  new HTMLRewriter()
+    .on('base[href]', {
+      element: (element) => {
+        if (found.hasHref) {
+          return;
+        }
+
+        found.hasHref = true;
+
+        const base = URL.parse(
+          decodeHTMLAttribute((element.getAttribute('href') ?? '').trim()),
+          pageURL.href,
+        );
+
+        if (base !== null && (base.protocol === 'https:' || base.protocol === 'http:')) {
+          found.url = base;
+        }
+      },
+    })
+    .transform(html);
+
+  return found.url;
 }
 
 const blockSelector = [
@@ -93,11 +121,6 @@ function buildPageRewriter(reading: ReadingState): HTMLRewriter {
     .on('title', {
       text: (text) => {
         reading.title.push(text.text);
-      },
-    })
-    .on('base[href]', {
-      element: (element) => {
-        collectBase(reading, element);
       },
     })
     .on('br', {
@@ -135,23 +158,6 @@ function buildPageRewriter(reading: ReadingState): HTMLRewriter {
   return rewriter;
 }
 
-function collectBase(reading: ReadingState, element: HTMLRewriterTypes.Element): void {
-  if (reading.base.hasHref) {
-    return;
-  }
-
-  reading.base.hasHref = true;
-
-  const base = URL.parse(
-    decodeHTMLAttribute((element.getAttribute('href') ?? '').trim()),
-    reading.pageURL.href,
-  );
-
-  if (base !== null && (base.protocol === 'https:' || base.protocol === 'http:')) {
-    reading.base.url = base;
-  }
-}
-
 function collectPart(reading: ReadingState, part: TextPart): void {
   for (const region of getOpenRegions(reading)) {
     reading.regions[region].push(part);
@@ -175,7 +181,7 @@ function getOpenRegions(reading: ReadingState): Region[] {
 function collectLink(reading: ReadingState, element: HTMLRewriterTypes.Element): void {
   const target = findLinkTarget(
     element.getAttribute('href') ?? '',
-    reading.base.url,
+    reading.baseURL,
     reading.pageURL,
   );
 

@@ -18,6 +18,11 @@ test.each([
     'https://api.github.com/repos/acme-labs/tidal-notes/contents/src/lib?ref=release',
   ],
   [
+    'a GitHub tree page whose ref holds & and +',
+    'https://github.com/acme-labs/tidal-notes/tree/main&draft+2/src',
+    'https://api.github.com/repos/acme-labs/tidal-notes/contents/src?ref=main%26draft%2B2',
+  ],
+  [
     'an npm package',
     'https://www.npmjs.com/package/tidepool',
     'https://registry.npmjs.org/tidepool/latest',

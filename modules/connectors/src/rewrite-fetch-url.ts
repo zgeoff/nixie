@@ -104,7 +104,13 @@ function rewriteGitHubTree(url: URL): string | null {
 
   const [owner, repo, , ref, ...path] = segments;
 
-  return `https://api.github.com/repos/${owner}/${repo}/contents/${path.join('/')}?ref=${ref}`;
+  return `https://api.github.com/repos/${owner}/${repo}/contents/${path.join('/')}?ref=${encodeRefValue(ref)}`;
+}
+
+// A held segment keeps its own escapes, so only the characters that end or split a query value
+// are encoded here.
+function encodeRefValue(ref: string | undefined): string {
+  return (ref ?? '').replaceAll('&', '%26').replaceAll('+', '%2B');
 }
 
 function rewriteNPMPackage(url: URL): string | null {

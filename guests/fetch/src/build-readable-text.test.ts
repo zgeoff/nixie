@@ -369,3 +369,11 @@ test('it resolves links against the page URL when the base href is no http URL',
     links: ['https://wiki.test/a/next'],
   });
 });
+
+test('it resolves a link that comes before the base element against the base href', () => {
+  const html = '<main><a href="next">next</a></main><base href="https://wiki.test/wiki/">';
+
+  expect(
+    buildReadableText(html, new URL('https://wiki.test/api/page/Tide/html')).links,
+  ).toStrictEqual(['https://wiki.test/wiki/next']);
+});
