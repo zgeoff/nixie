@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { withWriteTransaction, writeDatabasePair } from '@heynixie/log';
+import { readPause, withWriteTransaction, writeDatabasePair } from '@heynixie/log';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { BackupSetKind, BackupSetManifest } from '@heynixie/wire';
 import {
@@ -17,13 +17,17 @@ import { writeBackupSetState } from './write-backup-set-state';
 export async function writeSnapshotSet(
   context: BackupContext,
   kind: BackupSetKind,
-): Promise<BackupSetManifest> {
+): Promise<BackupSetManifest | null> {
   const files = context.storage.files;
   const stagingDir = getBackupStagingDir(context.writer.dataDir);
 
   await files.createDirectories(stagingDir);
 
   const started = await createSetRow(context, kind, stagingDir);
+
+  if (started === null) {
+    return null;
+  }
 
   const directory = getBackupSetDir(stagingDir, started.sequence);
 
@@ -68,18 +72,25 @@ interface StartedSet {
 }
 
 // A restore can bring back a database whose newest set is older than a directory still in staging,
-// so the sequence also passes every set name there.
+// so the sequence also passes every set name there. While nixie is paused after a restore it stages
+// nothing, because the first publish would replace the key snapshot the restore came from.
 async function createSetRow(
   context: BackupContext,
   kind: BackupSetKind,
   stagingDir: string,
-): Promise<StartedSet> {
+): Promise<StartedSet | null> {
   const staged = await readBackupSets(context.storage.files, stagingDir);
 
   const newestStaged = staged.at(-1)?.sequence ?? 0;
   const stagedAt = context.writer.clock.now();
 
   return withWriteTransaction(context.writer, async (tx) => {
+    const pause = await readPause(tx);
+
+    if (pause?.cause === 'restore') {
+      return null;
+    }
+
     const db = tx.$extendTables<BackupTables>();
 
     const head = await db
