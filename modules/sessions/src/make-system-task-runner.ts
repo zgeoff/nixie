@@ -10,6 +10,7 @@ import type { GuestCommand, SandboxAdapter, SandboxLimits } from '@heynixie/sand
 import invariant from 'tiny-invariant';
 import { buildGuestCommand } from './build-guest-command';
 import { getHarnessImage } from './get-harness-image';
+import type { StepCapturePort } from './open-step-capture';
 
 export interface SystemTaskOptions {
   readonly models: ModelsConfig;
@@ -18,9 +19,13 @@ export interface SystemTaskOptions {
 
   // each harness's image, under the key its record names
   readonly images: Readonly<Record<string, string>>;
+
+  // the turn-input log, for the steps of this runner
+  readonly turnInputs?: StepCapturePort;
 }
 
 export interface SystemTaskSession {
+  readonly role: ModelRole;
   readonly profile: ResolvedProfile;
   readonly image: string;
   readonly limits: SandboxLimits;
@@ -48,6 +53,7 @@ export function makeSystemTaskRunner<Options extends SystemTaskOptions, Task ext
       const harness = getHarness(profile.profile.harness);
 
       const task = await spec.start(options, {
+        role: spec.role,
         profile,
         image: getHarnessImage(options.images, harness.imageKey),
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },

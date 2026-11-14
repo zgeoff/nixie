@@ -1,11 +1,13 @@
 import { deriveModelSecret, getHarness } from '@heynixie/models';
-import type { ResolvedProfile } from '@heynixie/models';
+import type { ModelRole, ResolvedProfile } from '@heynixie/models';
 import type { GuestCommand, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { createWorkerSandbox } from './create-worker-sandbox';
 import { isContextOverflow } from './is-context-overflow';
+import type { StepCapturePort } from './open-step-capture';
+import { openStepCapture } from './open-step-capture';
 import { runGuestTurn } from './run-guest-turn';
 
 export interface SessionRunnerOptions {
@@ -20,6 +22,10 @@ export interface SessionRunnerOptions {
   readonly image: string;
   readonly limits: SandboxLimits;
   readonly command: GuestCommand;
+
+  // the turn-input log, and the role its roles list names this runner by
+  readonly turnInputs?: StepCapturePort;
+  readonly captureRole?: ModelRole;
 }
 
 export interface SessionInput {
@@ -112,6 +118,40 @@ async function runStepSession(
   tools: SessionTools,
 ): Promise<SessionUsage> {
   const profile = run.profile.profile;
+  const port = run.captureRole === undefined ? undefined : run.turnInputs;
+
+  const capture = await openStepCapture(port, {
+    step: { taskID: run.taskID, stepRunID: session.stepRunID },
+    profile,
+    role: run.captureRole ?? 'memory-writer',
+  });
+
+  const calls = { count: 0 };
+
+  try {
+    return await runCapturedSession(run, session, {
+      tools,
+      baseURL: capture.baseURL,
+      calls,
+    });
+  } finally {
+    await capture.close({ callFrames: calls.count });
+  }
+}
+
+interface CapturedSession {
+  readonly tools: SessionTools;
+  readonly baseURL: string;
+  readonly calls: { count: number };
+}
+
+async function runCapturedSession(
+  run: SessionRun,
+  session: SessionInput,
+  captured: CapturedSession,
+): Promise<SessionUsage> {
+  const profile = run.profile.profile;
+  const tools = captured.tools;
 
   const turn = await runGuestTurn({
     sandbox: run.sandbox,
@@ -124,6 +164,7 @@ async function runStepSession(
         // Each run starts a fresh session, so a 1-hour cache entry costs more to write and is never
         // read again.
         cacheTTL: '5m',
+        baseURL: captured.baseURL,
       },
       tools,
       resume: null,
@@ -133,6 +174,9 @@ async function runStepSession(
     },
     messages: [],
     signal: session.signal,
+    onCall: () => {
+      captured.calls.count += 1;
+    },
   });
 
   if (turn.failure !== null || turn.ended.length === 0) {

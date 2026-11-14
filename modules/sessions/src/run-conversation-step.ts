@@ -1,10 +1,11 @@
 import { modelTurnEndedCodec } from '@heynixie/models';
 import type { StepInput, StepResult } from '@heynixie/tasks';
-import { readTaskDirectory } from '@heynixie/tasks';
+import { buildStepRunID, readTaskDirectory } from '@heynixie/tasks';
 import { canSessionTake } from './can-session-take';
 import { isSessionLive } from './is-session-live';
 import { isStepTurnCut } from './is-step-turn-cut';
 import { isTaskWorkCut } from './is-task-work-cut';
+import { openStepCapture } from './open-step-capture';
 import { parseSessionBoundary } from './parse-session-boundary';
 import { pickSessionPosition } from './pick-session-position';
 import type { SessionMarks } from './read-session-marks';
@@ -13,10 +14,37 @@ import { runCompactionStep } from './run-compaction-step';
 import { runInboxStep } from './run-inbox-step';
 import type { ConversationRun, SessionFrame, SessionStep } from './types';
 
-export function runConversationStep(
+// One capture covers the whole step: a threshold compaction, the turn, an overflow compaction and a
+// rebuilt turn all share it. The step closes it with the count of model calls it made.
+export async function runConversationStep(
   conversation: ConversationRun,
   input: StepInput,
 ): Promise<StepResult> {
+  const capture = await openStepCapture(conversation.turnInputs, {
+    step: { taskID: input.taskID, stepRunID: buildStepRunID(input) },
+    profile: conversation.profile.profile,
+    role: conversation.frame.kind === 'task' ? 'task' : 'conversation',
+  });
+
+  const calls = { count: 0 };
+
+  const captured: ConversationRun = {
+    ...conversation,
+    turnProfile: { ...conversation.turnProfile, baseURL: capture.baseURL },
+    onModelCall: (usage) => {
+      calls.count += 1;
+      conversation.onModelCall?.(usage);
+    },
+  };
+
+  try {
+    return await runSessionTurn(captured, input);
+  } finally {
+    await capture.close({ callFrames: calls.count });
+  }
+}
+
+function runSessionTurn(conversation: ConversationRun, input: StepInput): Promise<StepResult> {
   return conversation.session.withTurn(async (invalidated) => {
     const signal = AbortSignal.any([input.signal, invalidated]);
     const definitions = conversation.getDefinitions();

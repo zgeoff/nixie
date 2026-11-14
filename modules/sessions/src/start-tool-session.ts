@@ -4,6 +4,7 @@ import type { TasksContext } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import type { SystemTaskSession } from './make-system-task-runner';
+import type { StepCapturePort } from './open-step-capture';
 import type { SessionRunner } from './start-session-runner';
 import { startSessionRunner } from './start-session-runner';
 
@@ -12,6 +13,8 @@ export interface ToolSessionOptions {
   readonly sandboxes: SandboxAdapter;
 
   readonly socketDir: string;
+
+  readonly turnInputs?: StepCapturePort;
 
   readonly queue: ActionQueue;
 
@@ -54,6 +57,8 @@ export async function startToolSession(
     image: session.image,
     limits: session.limits,
     command: session.command,
+    captureRole: session.role,
+    ...(options.turnInputs === undefined ? {} : { turnInputs: options.turnInputs }),
   });
 
   session.defer(() => runner.stop());

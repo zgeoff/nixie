@@ -12,6 +12,7 @@ import type {
 import type { PromptsInForce } from '@heynixie/prompts';
 import type { QuietHours } from '@heynixie/proposals';
 import type { TaskProfile, TasksContext } from '@heynixie/tasks';
+import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 
 export interface APISettings {
@@ -59,8 +60,13 @@ export interface APIContext extends TasksContext {
   readonly readSessionCleanup: () => CleanupRecordSessions | null;
 }
 
+export type HostTurnInputs = Pick<TurnInputs, 'list' | 'open' | 'set'>;
+
 export interface HostRouterOptions {
   readonly context: APIContext;
+
+  // the turn-input log; with none, its procedures answer NOT_CONFIGURED
+  readonly turnInputs?: HostTurnInputs;
 
   readonly readMemory: ReadHostMemory;
 

@@ -529,6 +529,7 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     command: run.command,
     modelCallLimit: taskModelCallLimit,
     onModelCall: parts.budget.onCall,
+    ...(options.turnInputs === undefined ? {} : { turnInputs: options.turnInputs }),
     getDefinitions: () =>
       run.options.persona === 'default'
         ? options.getDefinitions()

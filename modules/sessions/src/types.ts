@@ -9,6 +9,7 @@ import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
 import type { ModelCallUsage, SessionPoint, TurnProfile } from '@heynixie/wire';
 import type { StatusRegistry } from './build-status-registry';
 import type { SessionGuard } from './make-session-guard';
+import type { StepCapturePort } from './open-step-capture';
 import type { SessionMarks } from './read-session-marks';
 
 export interface MemoryRef {
@@ -156,6 +157,9 @@ export interface ConversationRun {
   // the most model API calls one turn makes; a turn with no limit runs until the model ends it
   readonly modelCallLimit?: number;
   readonly onModelCall?: (usage: ModelCallUsage) => Promise<void>;
+
+  // the turn-input log: each step of the run opens a capture and closes it at its end
+  readonly turnInputs?: StepCapturePort;
 
   readonly getDefinitions: () => SessionDefinitions;
 

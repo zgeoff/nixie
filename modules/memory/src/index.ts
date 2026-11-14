@@ -50,6 +50,8 @@ export type { MemoryExportRequest } from './read-memory-export';
 export { MemoryItemNotFoundError } from './memory-item-not-found-error';
 export { MemoryStateError } from './memory-state-error';
 export { memoryWriterTaskID } from './memory-writer-task-id';
+export type { ForgetFloorCause } from './read-forget-floor';
+export { readForgetFloor } from './read-forget-floor';
 export type { AnswerQuoteSource, ProposalAnswerEvent } from './build-proposal-answer-kind';
 export { buildProposalAnswerKind } from './build-proposal-answer-kind';
 export { buildCatchUpKind } from './build-catch-up-kind';

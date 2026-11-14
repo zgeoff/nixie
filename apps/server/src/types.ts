@@ -55,6 +55,9 @@ export interface CLIIO {
 
   readonly print: (text: string) => void;
 
+  // writes bytes to stdout as they are, with no newline
+  readonly writeBytes?: (bytes: Uint8Array) => void;
+
   readonly waitForSignal: () => Promise<string>;
 
   readonly createSandboxAdapter?: (options: SandboxAdapterOptions) => SandboxAdapter;
@@ -101,6 +104,11 @@ export interface CLIFlags {
 
   readonly turns?: number;
   readonly dollars?: number;
+
+  readonly for?: string;
+  readonly drop?: boolean;
+  readonly limit?: number;
+  readonly inputID?: string;
 
   readonly taskID?: string;
   readonly ruleID?: string;

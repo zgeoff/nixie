@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { actionProposalSchema } from './action-proposal-schema';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { knownContactSchema } from './known-contact-schema';
+import { turnInputsContract } from './turn-inputs-contract';
 
 const versionRefSchema = z.object({ itemID: z.string(), version: z.int().positive() });
 
@@ -537,6 +538,7 @@ export const hostContract = {
       .input(z.strictObject({ contactID: z.string().min(1) }))
       .output(z.object({ contactID: z.string() })),
   },
+  turnInputs: turnInputsContract,
   prompts: {
     proposals: {
       list: prompts.output(z.array(pendingPromptProposalSchema)),

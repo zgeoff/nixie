@@ -13,6 +13,7 @@ import { createSessionCommands } from './create-session-commands';
 import { createSkillCommands } from './create-skill-commands';
 import { createSubjectCommands } from './create-subject-commands';
 import { createTaskCommands } from './create-task-commands';
+import { createTurnInputCommands } from './create-turn-input-commands';
 import { readCLIArgs } from './read-cli-args';
 import type { ParsedCLIArgs } from './read-cli-args';
 import { resolveSocketPath } from './resolve-socket-path';
@@ -37,6 +38,7 @@ const commands = new Map<string, Command>([
   ...createPromptCommands(host),
   ...createRuleCommands(host),
   ...createContactCommands(host),
+  ...createTurnInputCommands(host),
   ...buildBackupCommands(),
 ]);
 

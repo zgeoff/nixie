@@ -2,8 +2,10 @@ import { expect, test } from 'bun:test';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockModelProfile } from '@heynixie/models/test-utils';
+import type { StubGuestScript } from '@heynixie/sandbox/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
+import type { StepCaptureInput, StepCapturePort } from './open-step-capture';
 import { startConversationRunner } from './start-conversation-runner';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { buildStubTurnScript } from './test-utils/build-stub-turn-script';
@@ -17,18 +19,61 @@ async function setupTest() {
 
   const sandboxes = buildStubSandboxes();
   const tools = buildStubToolEndpoint();
+  const profile = buildMockModelProfile();
+  const opened: StepCaptureInput[] = [];
+  const closed: number[] = [];
+
+  const port: StepCapturePort = {
+    openCapture: (input) => {
+      opened.push(input);
+
+      return Promise.resolve({
+        baseURL: `${input.profile.baseURL}/~in.test-tag`,
+        close: (step) => {
+          closed.push(step.callFrames);
+
+          return Promise.resolve();
+        },
+      });
+    },
+  };
+
+  const callUsage = {
+    uncachedInputTokens: 1,
+    cacheReadTokens: 0,
+    cacheWrite5mTokens: 0,
+    cacheWrite1hTokens: 0,
+    outputTokens: 1,
+  };
+
+  const callingScript: StubGuestScript = async (turn, guest) => {
+    const frames = await buildStubTurnScript(() => ({ reply: 'ok' }))(turn, guest);
+
+    return [
+      ...frames.slice(0, 1),
+      { type: 'call' as const, usage: callUsage },
+      { type: 'call' as const, usage: callUsage },
+      ...frames.slice(1),
+    ];
+  };
 
   return {
     ...tasks,
     sandboxes,
+    callingScript,
+    profile,
+    opened,
+    closed,
+    port,
     startRunner: (
       summaryTokens = 2000,
       loadOrPinSkillCatalog: (taskID: string) => Promise<string | null> = () =>
         Promise.resolve(null),
+      turnInputs?: StepCapturePort,
     ) =>
       startConversationRunner({
         context: tasks.context,
-        profile: { profile: buildMockModelProfile(), credential: 'not-a-real-key' },
+        profile: { profile, credential: 'not-a-real-key' },
         sandboxes: sandboxes.adapter,
         tools: tools.endpoint,
         toolNames: ['notes_read'],
@@ -56,6 +101,7 @@ async function setupTest() {
         compaction: { summaryTokens },
         loadOrPinSkillCatalog,
         log: () => {},
+        ...(turnInputs === undefined ? {} : { turnInputs }),
       }),
     runNextStep: (runner: Runner) => runNextStep(tasks.context, runner.runStep),
     sendMessage: async (runner: Runner, text: string) => {
@@ -699,4 +745,60 @@ test('it erases a summary that committed after a forget cleanup before it opens 
 
   expect(summaries).toMatchObject([{ erasable: { status: 'shredded' } }]);
   expect(ctx.sandboxes.turns.at(-1)?.input.at(0)?.text).not.toInclude('the shed code');
+});
+
+test('it opens one capture for a conversation step and gives the turn the capture base URL', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner(2000, undefined, ctx.port);
+
+  ctx.sandboxes.setGuestScript(ctx.callingScript);
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+
+  const turn = ctx.sandboxes.turns.at(-1);
+
+  expect(ctx.opened).toStrictEqual([
+    expect.objectContaining({
+      step: { taskID: 'conversation', stepRunID: expect.stringMatching(/@\d+$/u) },
+      role: 'conversation',
+      profile: expect.objectContaining({ id: ctx.profile.id, baseURL: ctx.profile.baseURL }),
+    }),
+  ]);
+
+  expect(turn?.profile.baseURL).toBe(`${ctx.profile.baseURL}/~in.test-tag`);
+});
+
+test('it closes the capture at the step end with the count of call frames', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner(2000, undefined, ctx.port);
+
+  ctx.sandboxes.setGuestScript(ctx.callingScript);
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+
+  expect(ctx.closed).toStrictEqual([2]);
+});
+
+test('it runs the step on the profile base URL when the log fails to open a capture', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner(2000, undefined, {
+    openCapture: () => Promise.reject(new Error('a fault in the log')),
+  });
+
+  ctx.sandboxes.setGuestScript(ctx.callingScript);
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+
+  const turn = ctx.sandboxes.turns.at(-1);
+
+  expect(turn?.profile.baseURL).toBe(ctx.profile.baseURL);
 });

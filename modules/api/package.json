@@ -28,6 +28,7 @@
     "@heynixie/task-control": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
+    "@heynixie/turn-inputs": "workspace:*",
     "@orpc/server": "catalog:",
     "elysia": "catalog:",
     "kysely": "catalog:",

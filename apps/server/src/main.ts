@@ -28,6 +28,9 @@ const exitCode = await runCLI(process.argv.slice(2), {
   print: (text) => {
     process.stdout.write(`${text}\n`);
   },
+  writeBytes: (bytes) => {
+    process.stdout.write(bytes);
+  },
   waitForSignal: () => received.promise,
   ...(harness === null ? {} : { harness }),
 });

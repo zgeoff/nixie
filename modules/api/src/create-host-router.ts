@@ -11,6 +11,7 @@ import { createHostSessionProcedures } from './create-host-session-procedures';
 import { createHostSkillProposalProcedures } from './create-host-skill-proposal-procedures';
 import { createHostSubjectsProcedure } from './create-host-subjects-procedure';
 import { createHostTaskProcedures } from './create-host-task-procedures';
+import { createHostTurnInputProcedures } from './create-host-turn-input-procedures';
 import { createHostWrittenSkillProcedures } from './create-host-written-skill-procedures';
 import { hostImplementer } from './host-implementer';
 import type { HostRouterOptions } from './types';
@@ -62,6 +63,9 @@ export function createHostRouter(options: HostRouterOptions) {
       .router(
         createHostContactProcedures({ ...options.context, runInForceSeed: options.runInForceSeed }),
       ),
+    turnInputs: hostImplementer.turnInputs
+      .use(gated)
+      .router(createHostTurnInputProcedures(options.turnInputs)),
     prompts: hostImplementer.prompts.use(gated).router({
       proposals: createHostPromptProposalProcedures(promptContext),
     }),

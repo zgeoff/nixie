@@ -6,6 +6,7 @@ import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import { buildDefaultStatus } from './build-default-status';
 import { makeSessionGuard } from './make-session-guard';
+import type { StepCapturePort } from './open-step-capture';
 import { runConversationStep } from './run-conversation-step';
 import { runSessionCleanup } from './run-session-cleanup';
 import { sessionImageBudget } from './session-image-budget';
@@ -47,6 +48,8 @@ export interface ConversationRunnerOptions {
   readonly messaging?: TaskMessaging;
 
   readonly imageBudget?: ImageTally;
+
+  readonly turnInputs?: StepCapturePort;
 
   readonly log: ConversationSandboxSpec['log'];
 }

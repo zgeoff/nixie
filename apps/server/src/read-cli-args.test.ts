@@ -688,3 +688,25 @@ test.each([
 
   expect(parsed).toStrictEqual({ kind: 'invalid-flags', message });
 });
+
+test.each([
+  [['turn-input', 'on', '--for', '30m'], 'turn-input on', { for: '30m' }],
+  [['turn-input', 'off', '--drop'], 'turn-input off', { drop: true }],
+  [['turn-input', 'list', '--limit', '5'], 'turn-input list', { limit: 5 }],
+  [['turn-input', 'open', 'input-1'], 'turn-input open', { inputID: 'input-1' }],
+])('it reads %j as the %s command', async (argv, command, flags) => {
+  const parsed = await readCLIArgs(argv, [
+    'turn-input on',
+    'turn-input off',
+    'turn-input list',
+    'turn-input open',
+  ]);
+
+  expect(parsed).toMatchObject({ kind: 'command', command, flags });
+});
+
+test('it refuses turn-input open with no input ID', async () => {
+  const parsed = await readCLIArgs(['turn-input', 'open'], ['turn-input open']);
+
+  expect(parsed.kind).toBe('invalid-flags');
+});
