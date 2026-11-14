@@ -81,6 +81,7 @@ function setupTest(config: WatchConfig = {}) {
         rootDir,
         toolTarget: () => ({ path: join(rootDir, 'tools.sock') }),
         hostEnv: {},
+        killGraceMs: 300,
       }),
     );
 
@@ -92,7 +93,7 @@ function setupTest(config: WatchConfig = {}) {
       return sandbox;
     };
 
-    return { createSandbox };
+    return { createSandbox, rootDir };
   };
 
   // A sandbox whose spawn hands out programs that end when the test says, and whose read answers
@@ -240,20 +241,31 @@ test('it logs one memory kill line for a turn that ends after the count rose, an
   ]);
 });
 
-test('it logs no line for a stop that kills the program, and keeps the exit and the stop value', async () => {
+test("it logs no line for a stop's hard kill, and keeps the exit and the stop value", async () => {
   const ctx = setupTest();
 
   const sandboxes = await ctx.startProcessAdapter();
   const sandbox = await sandboxes.createSandbox(buildMockSandboxSpec());
-  const stream = await sandbox.spawn({ argv: ['sleep', '60'], maxMessageBytes: 1024 });
+
+  // the program ignores SIGTERM, so the stop ends it with SIGKILL after the grace period
+  const stream = await sandbox.spawn({
+    argv: ['sh', '-c', 'trap "" TERM; echo ready > ready.txt; while :; do sleep 1; done'],
+    maxMessageBytes: 1024,
+  });
+
+  await waitForCondition(() =>
+    Bun.file(join(sandboxes.rootDir, sandbox.id, 'fs', 'ready.txt')).exists(),
+  );
+
   const stopped = await stream.stop();
   const exit = await stream.exit;
 
+  // the destroy waits for the read the end started, so every line is in by then
   await sandbox.destroy();
 
   expect(ctx.collectLines('sandbox.memory_kill')).toStrictEqual([]);
   expect(stopped).toBe(exit);
-  expect({ code: exit.code, signal: exit.signal }).toStrictEqual({ code: null, signal: 'SIGTERM' });
+  expect({ code: exit.code, signal: exit.signal }).toStrictEqual({ code: null, signal: 'SIGKILL' });
 });
 
 test('it logs the watch line once at info, and keeps the id of the adapter it wraps', () => {
