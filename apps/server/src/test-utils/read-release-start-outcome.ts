@@ -29,7 +29,7 @@ type FirstEvent =
 
 // A release started on a data directory either logs http.listening, which follows the database
 // open and its migrations, or exits before it. A start that does neither within the wait throws
-// with the process output.
+// with the process output, and so does a health answer that takes longer than the wait.
 export async function readReleaseStartOutcome(
   nixie: ReleaseProcess,
   options: ReadReleaseStartOutcomeOptions,
@@ -56,7 +56,17 @@ export async function readReleaseStartOutcome(
     return { outcome: 'refused', exit: first.exit, output: nixie.readOutput() };
   }
 
-  const ready = await fetch(`http://127.0.0.1:${String(first.port)}/health/ready`);
+  try {
+    // the signal covers the body as well as the headers
+    const ready = await fetch(`http://127.0.0.1:${String(first.port)}/health/ready`, {
+      signal: AbortSignal.timeout(options.timeoutMs),
+    });
 
-  return { outcome: 'started', readyStatus: ready.status, readyBody: await ready.text() };
+    return { outcome: 'started', readyStatus: ready.status, readyBody: await ready.text() };
+  } catch (error) {
+    throw new Error(
+      `the release listened but /health/ready gave no answer within ${String(options.timeoutMs)} ms:\n${nixie.readOutput()}`,
+      { cause: error },
+    );
+  }
 }

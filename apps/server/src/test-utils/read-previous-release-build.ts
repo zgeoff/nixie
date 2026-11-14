@@ -20,22 +20,37 @@ export interface PreviousReleaseBuild {
   readonly times: PreviousReleaseTimes | null;
 }
 
-const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
+const sourceRoot = join(import.meta.dir, '..', '..', '..', '..');
+
+interface PreviousReleaseBuildLocation {
+  // the git repository whose tags and objects the build reads
+  readonly repoRoot: string;
+
+  // the folder that holds the cached builds
+  readonly parentDir: string;
+}
+
+const defaultLocation: PreviousReleaseBuildLocation = {
+  repoRoot: sourceRoot,
+  parentDir: join(sourceRoot, 'node_modules', '.cache', 'nixie-test-bundles'),
+};
 
 // A tag never changes, so the tag keys the build. The hash input is this file, so a change to the
 // build steps builds again.
-export async function readPreviousReleaseBuild(): Promise<PreviousReleaseBuild> {
-  const tag = await readPreviousReleaseTag(repoRoot);
+export async function readPreviousReleaseBuild(
+  location: PreviousReleaseBuildLocation = defaultLocation,
+): Promise<PreviousReleaseBuild> {
+  const tag = await readPreviousReleaseTag(location.repoRoot);
 
   const state: { times: PreviousReleaseTimes | null } = { times: null };
 
   const directory = await createRunTemplate({
     name: `nixie-previous-release-${tag}`,
-    root: repoRoot,
-    parentDir: join(repoRoot, 'node_modules', '.cache', 'nixie-test-bundles'),
+    root: sourceRoot,
+    parentDir: location.parentDir,
     inputs: ['apps/server/src/test-utils/read-previous-release-build.ts'],
     write: async (building) => {
-      state.times = await writeBuildOfTag(tag, join(building, 'out'));
+      state.times = await writeBuildOfTag(location.repoRoot, tag, join(building, 'out'));
     },
   });
 
@@ -50,7 +65,11 @@ const timesSchema = z.object({
 
 // The worktree sits outside the repo, and the build removes it and its registration whether the
 // build passes or not.
-async function writeBuildOfTag(tag: string, outdir: string): Promise<PreviousReleaseTimes> {
+async function writeBuildOfTag(
+  repoRoot: string,
+  tag: string,
+  outdir: string,
+): Promise<PreviousReleaseTimes> {
   const parent = await mkdtemp(join(tmpdir(), 'nixie-previous-release-'));
 
   const worktree = join(parent, 'tree');

@@ -59,3 +59,48 @@ test('it throws with the output when the process neither listens nor exits', () 
     /within 50 ms:\nthe output/u,
   );
 });
+
+test('it throws with the output when the ready answer never comes', async () => {
+  const ctx = setupTest();
+
+  const server = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    routes: { '/health/ready': () => new Promise<Response>(() => {}) },
+  });
+
+  onTestFinished(() => server.stop(true));
+
+  ctx.listening.resolve({ port: server.port });
+
+  await expect(readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 })).rejects.toThrow(
+    /\/health\/ready gave no answer within 50 ms:\nthe output/u,
+  );
+});
+
+test('it throws with the output when the ready body stalls', async () => {
+  const ctx = setupTest();
+
+  const server = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    routes: {
+      '/health/ready': () =>
+        new Response(
+          new ReadableStream({
+            start: (controller) => {
+              controller.enqueue(new TextEncoder().encode('{"status":'));
+            },
+          }),
+        ),
+    },
+  });
+
+  onTestFinished(() => server.stop(true));
+
+  ctx.listening.resolve({ port: server.port });
+
+  await expect(readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 })).rejects.toThrow(
+    /\/health\/ready gave no answer within 50 ms:\nthe output/u,
+  );
+});
