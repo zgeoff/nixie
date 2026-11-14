@@ -98,7 +98,7 @@ async function setupTest() {
         return null;
       }
 
-      const code: string = refusal.code;
+      const code: unknown = refusal.code;
       const data: unknown = refusal.data;
 
       return { code, data };
