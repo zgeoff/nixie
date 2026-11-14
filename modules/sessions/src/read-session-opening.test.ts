@@ -653,7 +653,13 @@ test('it gives the same opening for two rebuilds from one log, with the clock, t
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
-      erasable: { text: 'Did the parcel come?' },
+      erasable: {
+        text: 'Did the parcel come? ref 42',
+        spans: [
+          { start: 0, end: 21, source: 'typed' },
+          { start: 21, end: 27, source: 'pasted' },
+        ],
+      },
     },
     {
       kind: 'model.reply',
@@ -684,6 +690,11 @@ test('it gives the same opening for two rebuilds from one log, with the clock, t
 
   expect(second).toStrictEqual(first);
   expect(first.blocks.at(1)).toInclude('id="6e6978690001"');
+
+  expect(first.blocks.at(2)).toInclude(
+    '<pasted id="6e6978690001">ref 42</pasted id="6e6978690001">',
+  );
+
   expect(first.record).toMatchObject({ kind: 'rebuild', reason: null, lostSessionID: null });
 
   expect(first.blocks.at(1)).toInclude(

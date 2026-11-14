@@ -119,12 +119,14 @@ export async function readSessionOpening(
 
   const blocks = [
     ...readout,
-    brief.pinned === null ? null : renderBriefEnvelope(brief.pinned, query.times, query.messaging),
+    brief.pinned === null
+      ? null
+      : renderBriefEnvelope(brief.pinned, query.times, query.messaging, mint),
     renderOpeningMessage('summary', at, summary?.text ?? null, mint),
     renderOpeningMessage(
       'recent-turns',
       at,
-      renderSessionHistory(recent, query.times, query),
+      renderSessionHistory(recent, query.times, query, mint),
       mint,
     ),
     replayed?.text ?? null,
