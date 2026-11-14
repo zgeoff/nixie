@@ -43,7 +43,7 @@ export { pickRuleChange } from './pick-rule-change';
 export type { RuleVerdict } from './pick-rule-outcome';
 export { pickRuleOutcome } from './pick-rule-outcome';
 export { renderRule } from './render-rule';
-export { toRuleForm } from './to-rule-form';
+export { toRuleForm, toStoredRuleForm } from './to-rule-form';
 export type { ReplayOptions, ReplayRecord } from './replay-decision';
 export { replayDecision } from './replay-decision';
 export { toStoredDecision } from './to-stored-decision';

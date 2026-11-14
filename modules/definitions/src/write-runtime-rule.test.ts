@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter } from '@heynixie/log';
+import { sql } from 'kysely';
 import { createPathSource } from './create-path-source';
 import { readRuleProposals } from './read-rule-proposals';
 import { readRulesInForce } from './read-rules-in-force';
@@ -246,5 +247,29 @@ test('it proposes again without a widening that a runtime change put in force', 
   ).toStrictEqual([
     ['withdrawn', ['allow-web', 'ask-mail']],
     [null, ['allow-web']],
+  ]);
+});
+
+test('it stores a runtime rule in the old names that the release before reads', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await ctx.seed();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'ask-triage',
+    rule: { outcome: 'ask', contexts: ['task'], definitions: ['inbox-triage'] },
+    changedBy: 'owner',
+    reason: 'Ask before triage sends.',
+  });
+
+  const versions = await sql`select rule from rule_versions`.execute(ctx.log.writer.db);
+
+  expect(versions.rows).toStrictEqual([
+    {
+      rule: '{"id":"ask-triage","outcome":"ask","contexts":["job","task"],"jobs":["inbox-triage"]}',
+    },
   ]);
 });

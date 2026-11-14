@@ -55,16 +55,36 @@
         "minItems": 1,
         "type": "array",
         "items": {
-          "type": "string",
-          "enum": [
-            "conversation",
-            "task",
-            "job",
-            "coding"
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "conversation",
+                "task",
+                "coding"
+              ]
+            },
+            {
+              "type": "string",
+              "const": "job",
+              "deprecated": true,
+              "description": "The old name of the context task"
+            }
           ]
         }
       },
+      "definitions": {
+        "description": "Task definition IDs; the rule matches a task run of one of them",
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
       "jobs": {
+        "deprecated": true,
+        "description": "The old name of definitions",
         "minItems": 1,
         "type": "array",
         "items": {

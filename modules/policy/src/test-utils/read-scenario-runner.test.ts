@@ -53,8 +53,8 @@ test('it triages an inbox as a job run and asks only for the injected forward', 
   const ctx = readScenarioRunner();
 
   const triage = {
-    context: 'job',
-    job: 'inbox-triage',
+    context: 'task',
+    task: 'inbox-triage',
     sources: ['own_data', 'outside'],
     replyTarget: 'sender@example.org',
     toolList: [
@@ -143,7 +143,7 @@ test('it asks about a tool no rule covers on every call, because "always allow" 
   const lines = await ctx.runAll([
     { tool: 'home.lights', args: { room: 'study' }, context: 'task' },
     { tool: 'home.lights', args: { room: 'study' }, context: 'task' },
-    { tool: 'home.lights', args: { room: 'study' }, context: 'job', job: 'evening' },
+    { tool: 'home.lights', args: { room: 'study' }, context: 'task', task: 'evening' },
   ]);
 
   expect(lines).toStrictEqual(
@@ -184,7 +184,7 @@ test('it allows a tool no rule covers when the owner asked for it in typed words
 
 test('it allows a morning report job its reads and its note to the owner', async () => {
   const ctx = readScenarioRunner();
-  const job = { context: 'job', job: 'morning-report' } as const;
+  const job = { context: 'task', task: 'morning-report' } as const;
 
   const lines = await ctx.runAll([
     { tool: 'calendar.list', ...job },

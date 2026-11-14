@@ -122,7 +122,7 @@ const ruleFieldOrder = [
   'tools',
   'effects',
   'contexts',
-  'jobs',
+  'definitions',
   'checks',
   'destinations',
   'sources',

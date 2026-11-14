@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { effectNames } from './effect-names';
-import { ruleContexts } from './rule-contexts';
+import { legacyRuleContext, ruleContexts } from './rule-contexts';
 import { ruleIDPattern } from './rule-id-pattern';
 import { ruleSources } from './rule-sources';
 
@@ -26,6 +26,15 @@ const checkSchema = z.discriminatedUnion('op', [
   z.strictObject({ arg: argumentPathSchema, op: z.literal('matches'), value: patternSchema }),
 ]);
 
+const contextSchema = z.union([
+  z.enum(ruleContexts),
+  z
+    .literal(legacyRuleContext)
+    .meta({ deprecated: true, description: 'The old name of the context task' }),
+]);
+
+const definitionIDsSchema = z.array(z.string().min(1)).min(1);
+
 export const ruleBodySchema = z
   .strictObject({
     outcome: z.enum(['allow', 'ask', 'deny']),
@@ -35,8 +44,13 @@ export const ruleBodySchema = z
       .optional()
       .describe('Tool names, such as mail.send, or a tool variant, such as task.start/atc'),
     effects: z.array(z.enum(effectNames)).min(1).optional(),
-    contexts: z.array(z.enum(ruleContexts)).min(1).optional(),
-    jobs: z.array(z.string().min(1)).min(1).optional(),
+    contexts: z.array(contextSchema).min(1).optional(),
+    definitions: definitionIDsSchema
+      .optional()
+      .describe('Task definition IDs; the rule matches a task run of one of them'),
+    jobs: definitionIDsSchema
+      .optional()
+      .meta({ deprecated: true, description: 'The old name of definitions' }),
     checks: z.array(checkSchema).min(1).optional(),
     destinations: z.array(patternSchema).min(1).optional(),
     sources: z.array(z.enum(ruleSources)).min(1).optional(),
@@ -49,4 +63,24 @@ export const ruleBodySchema = z
     message: 'a mandate rule needs expires',
     path: ['expires'],
   })
-  .meta({ dependentRequired: { mandate: ['expires'] } });
+  .refine((rule) => rule.jobs === undefined || rule.definitions === undefined, {
+    message: 'a rule holds definitions or its old name jobs, never both',
+    path: ['definitions'],
+  })
+  .meta({ dependentRequired: { mandate: ['expires'] } })
+  .transform((rule) => {
+    const { jobs, definitions, contexts, ...rest } = rule;
+    const names = definitions ?? jobs;
+
+    return {
+      ...rest,
+      ...(contexts === undefined
+        ? {}
+        : { contexts: [...new Set(contexts.map((context) => toContext(context)))] }),
+      ...(names === undefined ? {} : { definitions: names }),
+    };
+  });
+
+function toContext(context: z.output<typeof contextSchema>): (typeof ruleContexts)[number] {
+  return context === legacyRuleContext ? 'task' : context;
+}

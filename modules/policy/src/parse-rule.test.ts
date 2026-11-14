@@ -14,3 +14,19 @@ test('it refuses a stored rule with a field the format lacks', () => {
 test('it refuses a stored rule without an ID', () => {
   expect(() => parseRule({ outcome: 'allow' })).toThrow();
 });
+
+test('it reads a rule that nixie stored in the old names', () => {
+  const rule = parseRule({
+    id: 'ask-triage',
+    outcome: 'ask',
+    contexts: ['job', 'task'],
+    jobs: ['inbox-triage'],
+  });
+
+  expect(rule).toStrictEqual({
+    id: 'ask-triage',
+    outcome: 'ask',
+    contexts: ['task'],
+    definitions: ['inbox-triage'],
+  });
+});

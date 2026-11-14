@@ -20,9 +20,11 @@ export function renderRule(rule: Rule): string {
   const conditions = [
     ...(rule.effects === undefined ? [] : [renderEffects(rule.effects, isAllow)]),
     ...(rule.contexts === undefined ? [] : [renderContexts(rule.contexts)]),
-    ...(rule.jobs === undefined
+    ...(rule.definitions === undefined
       ? []
-      : [`it runs in the job ${joinOr(rule.jobs.map((job) => renderCode(job)))}`]),
+      : [
+          `it runs as a task of the definition ${joinOr(rule.definitions.map((definition) => renderCode(definition)))}`,
+        ]),
     ...(rule.checks ?? []).map((check) => renderCheck(check)),
     ...(rule.destinations === undefined ? [] : [renderDestinations(rule.destinations, isAllow)]),
     ...(rule.sources === undefined ? [] : [renderSources(rule.sources, isAllow)]),
@@ -68,7 +70,6 @@ function renderEffects(effects: readonly string[], isAllow: boolean): string {
 const contextNames: Readonly<Record<RuleContext, string>> = {
   conversation: 'a conversation',
   task: 'a task',
-  job: 'a job',
   coding: 'a coding session',
 };
 

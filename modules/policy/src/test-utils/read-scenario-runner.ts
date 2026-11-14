@@ -7,13 +7,15 @@ import { readStarterRules } from './read-starter-rules';
 export interface ScenarioStep {
   readonly tool: string;
   readonly args?: Readonly<Record<string, unknown>>;
-  readonly context: 'conversation' | 'task' | 'job';
-  readonly job?: string;
+  readonly context: 'conversation' | 'task';
+
+  // the definition ID of a task run
+  readonly task?: string;
 
   // the text the owner typed in the message that started the turn
   readonly typed?: string;
 
-  // the reply target of the call, which a job's reply may use
+  // the reply target of the call, which a task run's reply may use
   readonly replyTarget?: string;
   readonly toolList?: readonly string[];
   readonly sources?: readonly RuleSource[];
@@ -73,8 +75,8 @@ export function readScenarioRunner(options: ScenarioOptions = {}) {
     const result = await decide({
       tool: step.tool,
       toolList: step.toolList ?? [step.tool],
-      context: step.context === 'job' ? 'job' : step.context,
-      definitionID: step.job ?? null,
+      context: step.context,
+      definitionID: step.task ?? null,
       args: step.typed === undefined ? args : { ...args, typed: step.typed },
       destinations,
       sources: step.sources ?? (step.typed === undefined ? ['own_data'] : ['owner']),

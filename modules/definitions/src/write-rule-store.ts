@@ -1,3 +1,4 @@
+import { toStoredRuleForm } from '@heynixie/policy';
 import type { Transaction } from 'kysely';
 import type { RuleRevisions } from './build-rule-revisions';
 import type { RuleSeedPlan } from './build-rule-seed-plan';
@@ -73,7 +74,7 @@ async function writeRuleVersions(
     .values(
       [...unique.values()].map((rule) => ({
         rule_hash: rule.hash,
-        rule: JSON.stringify(rule.rule),
+        rule: JSON.stringify(toStoredRuleForm(rule.rule)),
       })),
     )
     .onConflict((conflict) => conflict.doNothing())

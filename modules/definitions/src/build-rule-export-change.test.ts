@@ -187,3 +187,33 @@ test('it adds a new rule at the end of the rules file nixie writes to', () => {
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\ndeny-shell:\n  outcome: "deny"\n  tools: ["shell.run"]\n  note: "No shell."\n',
   );
 });
+
+test('it writes a rule with the new names definitions and task', () => {
+  const change = buildRuleExportChange({
+    changes: [
+      {
+        changeID: 'change-1',
+        ruleID: 'ask-triage',
+        rule: {
+          hash: 'h-triage',
+          rule: {
+            id: 'ask-triage',
+            outcome: 'ask',
+            contexts: ['task'],
+            definitions: ['inbox-triage'],
+          },
+        },
+        base: null,
+        beneath: null,
+        changedBy: 'owner',
+        reason: 'Ask before triage sends.',
+        changedAt: 1,
+      },
+    ],
+    files: new Map([['rules/triage.yaml', 'ask-triage:\n  outcome: ask\n']]),
+  });
+
+  expect(change.files.get('rules/triage.yaml')).toBe(
+    'ask-triage:\n  outcome: "ask"\n  contexts: ["task"]\n  definitions: ["inbox-triage"]\n',
+  );
+});

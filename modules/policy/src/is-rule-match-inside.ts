@@ -11,7 +11,7 @@ export function isRuleMatchInside(inner: Rule, outer: Rule): boolean {
     isPatternListInside(inner.tools, outer.tools, isToolPatternInside) &&
     isSetInside(inner.effects, outer.effects) &&
     isSetInside(inner.contexts, outer.contexts) &&
-    isSetInside(inner.jobs, outer.jobs) &&
+    isSetInside(inner.definitions, outer.definitions) &&
     isSetInside(inner.sources, outer.sources) &&
     isPatternListInside(inner.destinations, outer.destinations, isPatternInside) &&
     (outer.checks ?? []).every((weak) =>
