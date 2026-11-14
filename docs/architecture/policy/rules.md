@@ -181,6 +181,21 @@ fails and opens no pull request, because those formats apply no rule file. An ex
 a prompt part under `rules/`, such as a `rules/nixie.yaml` that the `prompts:` map names, fails the
 same way.
 
+## Narrowing a rule from the client
+
+Two device calls change a rule in force, and each one only narrows:
+
+- `rules.removeRule` removes an allow rule. The widening check refuses the removal of an ask or a
+  deny rule, because that widens.
+- `rules.editRule` replaces the destinations of an allow rule. The check refuses an edit that adds a
+  destination, and the call refuses an empty list.
+
+Both calls name the revision the client showed, and refuse with the current revision when it has
+moved. Both run as checked actions with a client action ID, write a runtime change in one
+transaction, and run the seed of the definitions in force after it commits. The client uses them to
+undo an Always allow and to drop destinations from the rule it added. `rules.readRule` reads a rule
+in force with its sentence, outcome, destinations and revision.
+
 ## Commands and the proposals screen
 
 The host commands read and answer the rule store, and each prints JSON:
@@ -194,7 +209,7 @@ The host commands read and answer the rule store, and each prints JSON:
 | `nixie proposals approve <id>`                | Puts the proposal's widenings in force                             |
 | `nixie proposals reject <id> --reason <why>`  | Leaves the seeded versions in force, with your reason              |
 
-The proposals screen in the web client lists the same pending proposals under the memory proposals,
-each change as the sentence before and after it, and answers them through the device API. A
+The approvals page in the web client lists the same pending proposals among every other kind, each
+change as the sentence before and after it, and answers them through `approvals.answerProposal`. A
 rejection there needs a reason too. An hourly sweep records the lapse of each proposal left past the
 shared proposal lapse time.

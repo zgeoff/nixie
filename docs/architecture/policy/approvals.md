@@ -16,6 +16,33 @@ holds that fold equal to the live one.
 
 A closed row never reopens. A row is pending, deferred, approved, declined, lapsed or withdrawn.
 
+The row names the identity that answered it in `answered_by`, set when the kind's answer record
+folds in. An approve, an always allow and a decline set it, and a defer does not, because a deferred
+row is still open. A lapse and a withdrawal set none. A migration backfills the column from the same
+records, and a test holds the backfill equal to the fold.
+
+## Listing and reading
+
+`approvals.listItems` returns each open row that has a body, with the choices the host offers, in
+these groups and this order:
+
+1. Always-ask: `lifting` rows first, then `always_ask` rows.
+2. Routine, sorted by task, with each task's oldest row first.
+3. Memory.
+4. Deferred. A deferred row sits only here, whatever its risk class.
+
+Every group but routine lists its oldest row first. The call leaves out a closed row, a row past its
+lapse and a row whose body is gone. A row whose kind has no handler, such as after a rollback of
+that kind, stays out of the list and refuses every answer as not allowed.
+
+`approvals.readProposals` takes up to 100 proposal IDs, full or short, and returns each row in any
+state with its body, its task, the device name of the identity that answered it and whether the
+caller answered it. A card reads its own row there after it closes, when the list no longer holds
+it. The call leaves out a row it cannot show.
+
+Each body carries an approve label, such as `Run mail.send to harbour@example.org`, which names what
+Approve does.
+
 ## The answer
 
 An answer names the proposal, the action hash the client showed, and one choice: approve, always

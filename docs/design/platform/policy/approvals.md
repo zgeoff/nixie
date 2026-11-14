@@ -16,23 +16,23 @@ approval digest and push.
 A proposal is a row in the proposals projection of the [event log](../core/event-log.md), and each
 change to it is a record. It holds:
 
-| Field             | Holds                                                                                            |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| ID                | The operation ID, which an action keeps as its queue ID and idempotency key                      |
-| Kind              | Action, memory write or internal change                                                          |
-| Action            | The canonical operation: tool, arguments, targets, destinations, effects                         |
-| Deadline          | An optional real deadline that the host validates                                                |
-| Execution profile | For code: the placement, image, egress and grants that the host resolved                         |
-| Action hash       | SHA-256 over the canonical operation                                                             |
-| Sentence          | The operation rendered from the tool's template                                                  |
-| Risk class        | Routine, always-ask or lifting                                                                   |
-| Cause             | The prompt cause, or the memory gate's review reason                                             |
-| Deciding rule     | The rule ID and revision, or none                                                                |
-| Proposed rule     | For a gap or "always allow", the rule as data and a sentence                                     |
-| Task              | The task that proposed it, with its delegation chain                                             |
-| Proposer          | You, or nixie from a task                                                                        |
-| Created, lapse    | When it was created, and when it lapses                                                          |
-| State             | One of the states that [the approval record](../../queue/approval-record.md#the-shared-row) sets |
+| Field             | Holds                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| ID                | The operation ID, which an action keeps as its queue ID and idempotency key                                 |
+| Kind              | Action, memory write or internal change                                                                     |
+| Action            | The canonical operation: tool, arguments, targets, destinations, effects                                    |
+| Deadline          | An optional real deadline that the host validates                                                           |
+| Execution profile | For code: the placement, image, egress and grants that the host resolved                                    |
+| Action hash       | SHA-256 over the canonical operation                                                                        |
+| Sentence          | The operation rendered from the tool's template                                                             |
+| Risk class        | Routine, always-ask or lifting                                                                              |
+| Cause             | The prompt cause, or the memory gate's review reason                                                        |
+| Deciding rule     | The rule ID and revision, or none                                                                           |
+| Proposed rule     | For a gap or "always allow", the rule as data and a sentence                                                |
+| Task              | The task that proposed it, with its delegation chain                                                        |
+| Proposer          | You, or nixie from a task                                                                                   |
+| Created, lapse    | When it was created, and when it lapses                                                                     |
+| State             | One of the states that [the approval record](../../../architecture/policy/approvals.md#the-shared-row) sets |
 
 The registered operation fixes the proposal's kind, and neither model output nor a client request
 changes it. Every kind shares the operation hash, the identity check, the lapse, rejection and
@@ -151,8 +151,9 @@ in the [decision point](decision-point.md#consent), and gets an ordinary decisio
 
 The approval digest lists everything that waits for your answer, each item bound to its own action
 hash. Policy owns what it holds and its order; the client lays it out.
-[Listing](../../queue/approval-record.md#listing) in the approval record sets its groups and their
-order: unknown outcomes first, then always-ask and lifting items, then routine items by task.
+[Listing](../../../architecture/policy/approvals.md#listing-and-reading) in the approval record sets
+its groups and their order: unknown outcomes first, then always-ask and lifting items, then routine
+items by task.
 
 **Why:** an unknown outcome may be a fault that changes how you answer the rest, and the riskiest
 items come before the routine ones you can sweep.

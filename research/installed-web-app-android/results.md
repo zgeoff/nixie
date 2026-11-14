@@ -79,10 +79,10 @@ the `x-nixie-client` header
 ([create-api-app.ts:25](../../modules/api/src/api/create-api-app.ts#L25)), then
 `memory.approveProposals` resolves the caller from the session and checks the proposal ID and action
 hash of each answer
-([create-memory-proposal-procedures.ts:28](../../modules/api/src/memory/create-memory-proposal-procedures.ts#L28),
-[line 141](../../modules/api/src/memory/create-memory-proposal-procedures.ts#L141)). A service
-worker can send that header and the cookie, so a notification's Approve button passes the same check
-as the card, if the push carries the proposal ID and the action hash.
+([create-memory-proposal-procedures.ts:28](https://github.com/zgeoff/nixie/blob/c24e024e182bd2f79e4cc1e141b27be83f3105b5/modules/api/src/memory/create-memory-proposal-procedures.ts#L28),
+[line 141](https://github.com/zgeoff/nixie/blob/c24e024e182bd2f79e4cc1e141b27be83f3105b5/modules/api/src/memory/create-memory-proposal-procedures.ts#L141)).
+A service worker can send that header and the cookie, so a notification's Approve button passes the
+same check as the card, if the push carries the proposal ID and the action hash.
 
 [Approvals in the client](../../docs/design/platform/channels/approvals.md) gives an always-ask
 approval a passkey check. WebAuthn runs in a page, so the button for an always-ask item opens its

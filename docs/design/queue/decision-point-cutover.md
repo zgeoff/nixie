@@ -25,8 +25,9 @@ call. The pipeline's meaning stays in the decision point design and the
 [rules design](../platform/policy/rules.md). This doc holds what the cutover adds to make the
 pipeline run, and the order of the cutover in production.
 
-Two designs build on this one. The approval record design ([approval record](approval-record.md))
-later folds the action proposal into one record for every kind of proposal, and the budgets design
+Two designs build on this one. The approval record design
+([approval record](../../architecture/policy/approvals.md)) later folds the action proposal into one
+record for every kind of proposal, and the budgets design
 ([budgets and hard stop](budgets-and-hard-stop.md)) adds lifts to stage 4. Other terms are in the
 [glossary](../../glossary.md).
 
@@ -337,10 +338,10 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 
 - Memory writes declare `note`, and the approval record design moves them to `memory_write`. While
   they declare `note`, a deny or an ask rule on `memory_write` applies to `note` too, as
-  [memory writes on rules](approval-record.md#memory-writes-on-rules) sets, and comes before the
-  starter rule `allow-notes`. Otherwise `allow-notes` allows them at stage 7, and each memory tool's
-  own gate decides whether the write applies or becomes a memory proposal, as it does in the code
-  today.
+  [memory writes on rules](../../architecture/memory/writes.md#rules-on-memory-writes) sets, and
+  comes before the starter rule `allow-notes`. Otherwise `allow-notes` allows them at stage 7, and
+  each memory tool's own gate decides whether the write applies or becomes a memory proposal, as it
+  does in the code today.
 - While memory writes declare `note`, a `note` call that no rule allows reaches stages 8 and 9 like
   any other call. The decision point design's rule that such a call never reaches them applies to
   `memory_write`.
@@ -434,7 +435,7 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 - An approval in this work runs nothing: it records the answer and delivers it to the task's inbox.
   The inbox message reads "Approved `<id>`. nixie runs approved actions in a later release, so this
   one did not run." Running an approved action belongs to the approval record design
-  ([approval record](approval-record.md)) and to
+  ([approval record](../../architecture/policy/approvals.md)) and to
   [actions under policy](https://linear.app/zgeoff/issue/GEO-1810).
 - An action proposal lapses after 72 hours through the existing lapse sweep.
 - The proposals screen lists each pending action proposal beside the rule change proposals, with the
@@ -507,7 +508,7 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 ## Out of scope
 
 - Cards, Defer, "always allow" and the digest: the approval record design
-  ([approval record](approval-record.md)).
+  ([approval record](../../architecture/policy/approvals.md)).
 - Running an approved action, and the policy check before each attempt:
   [actions under policy](https://linear.app/zgeoff/issue/GEO-1810).
 - Lifts at stage 4: the budgets design ([budgets and hard stop](budgets-and-hard-stop.md)).
