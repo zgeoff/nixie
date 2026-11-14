@@ -66,15 +66,21 @@ export async function publishBackupSet(
 
   const failures: string[] = [];
 
-  const dataSnapshotID = await writeDataSnapshot(repos.data, config.retention, set, [
-    `set-${String(set.sequence)}`,
-    `kind-${verified.manifest.kind}`,
-    `publish-${String(counted.publish)}`,
-  ]).catch((error: unknown) => {
-    failures.push(requireResticFailure(error));
-
-    return null;
+  const dataTags = formatSnapshotTags({
+    set: set.sequence,
+    kind: verified.manifest.kind,
+    publish: counted.publish,
+    legacySet: null,
+    provenFrom: null,
   });
+
+  const dataSnapshotID = await writeDataSnapshot(repos.data, config.retention, set, dataTags).catch(
+    (error: unknown) => {
+      failures.push(requireResticFailure(error));
+
+      return null;
+    },
+  );
 
   const keys = await removeOtherKeySnapshots(repos.keys, keySnapshotID, failures);
 
