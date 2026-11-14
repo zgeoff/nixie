@@ -17,6 +17,6 @@ export function buildSpendRecord(
     kind: taskFailedTurnSpentCodec.kind,
     definitions: context.definitions(),
     thread: spend.taskID,
-    payload: taskFailedTurnSpentCodec.encode(spend),
+    payload: taskFailedTurnSpentCodec.encode({ ...spend, besideTurnRecord: true }),
   };
 }

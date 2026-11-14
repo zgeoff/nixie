@@ -1,7 +1,12 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { modelSessionSummarizedCodec, modelTurnEndedCodec } from '@heynixie/models';
-import { claimTask, readOpenRun, writeFailedTurnSpend } from '@heynixie/tasks';
+import {
+  claimTask,
+  readOpenRun,
+  taskFailedTurnSpentCodec,
+  writeFailedTurnSpend,
+} from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestTasks } from '../test-utils/start-test-tasks';
@@ -129,4 +134,28 @@ test("it leaves out the spend that another task run's turn recorded", async () =
   const dollars = await ctx.readDollars();
 
   expect(dollars).toBe(0);
+});
+
+test('it counts a limit-ending turn once, though its commit holds the turn record and the budget tally', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTurn({ input: 1_000_000 });
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: taskFailedTurnSpentCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: ctx.run.taskID,
+      payload: taskFailedTurnSpentCodec.encode({
+        taskID: ctx.run.taskID,
+        taskRunID: ctx.run.runID,
+        dollars: 3,
+        besideTurnRecord: true,
+      }),
+    },
+  ]);
+
+  const dollars = await ctx.readDollars();
+
+  expect(dollars).toBeCloseTo(3, 10);
 });

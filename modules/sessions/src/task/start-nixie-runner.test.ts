@@ -1942,7 +1942,7 @@ test("it gives the retry of a failed turn only the dollars that the turn's spend
 
   expect(failed).toStrictEqual({ turns: 0, dollars: 0.03 });
   expect(retried?.turns).toBe(1);
-  expect(retried?.dollars).toBeWithin(0.042, 0.0425);
+  expect(retried?.dollars).toBeCloseTo(0.042, 10);
 });
 
 test('it interrupts the retry of a turn whose guest failed below the dollar limit once the retry spends what the failed turn left', async () => {

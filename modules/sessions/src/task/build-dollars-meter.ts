@@ -8,9 +8,9 @@ import { readRunRecords, readTaskSetup, taskFailedTurnSpentCodec } from '@heynix
 // task role's.
 export type ReadRunPrices = (profile: string | null) => ModelPrices | null;
 
-// A turn and the summary of a session count by their tokens, and a turn that left no turn record,
-// such as one whose guest failed, counts through its failed turn's spend. Only the records of the
-// task run count, so another task run's spend never reaches this one.
+// A turn and the summary of a session count by their tokens, and a turn with no turn record counts
+// through its failed turn's spend. A tally committed beside a turn record counts only what exceeds
+// that record. Another task run's spend never reaches this one.
 export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
   return {
     name: 'dollars',
@@ -25,7 +25,25 @@ export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
         taskFailedTurnSpentCodec.kind,
       ]);
 
-      return records.reduce((total, record) => total + buildRecordDollars(record, prices), 0);
+      let total = 0;
+      let lastTurn = 0;
+
+      for (const record of records) {
+        const dollars = buildRecordDollars(record, prices);
+
+        if (record.kind === modelTurnEndedCodec.kind) {
+          total += lastTurn;
+          lastTurn = dollars;
+        } else if (isTallyBesideTurn(record)) {
+          lastTurn = Math.max(lastTurn, dollars);
+        } else {
+          total += dollars;
+        }
+      }
+
+      total += lastTurn;
+
+      return total;
     },
     render: (limit) => `$${limit.toFixed(2)}`,
   };
@@ -71,5 +89,12 @@ function buildTokensCost(tokens: CallTokens, prices: ModelPrices | null): number
       outputTokens: tokens.outputTokens ?? 0,
     },
     prices,
+  );
+}
+
+function isTallyBesideTurn(record: LogRecord): boolean {
+  return (
+    record.kind === taskFailedTurnSpentCodec.kind &&
+    taskFailedTurnSpentCodec.decode(record.payload).besideTurnRecord === true
   );
 }

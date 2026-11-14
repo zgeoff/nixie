@@ -7,5 +7,8 @@ export const taskFailedTurnSpentCodec = defineRecordCodec(
     taskID: z.string(),
     dollars: z.number(),
     taskRunID: z.string().exactOptional(),
+
+    // set when a commit carries the tally beside the turn's own record, which the tally replaces
+    besideTurnRecord: z.literal(true).exactOptional(),
   }),
 );
