@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { readRecords, withWriteTransaction } from '@heynixie/log';
-import { createConversationTask } from '@heynixie/tasks';
+import { pauseNixieInTransaction, readRecords, withWriteTransaction } from '@heynixie/log';
+import { createConversationTask, createTask } from '@heynixie/tasks';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { APITables } from './types';
@@ -93,4 +93,47 @@ test('it pauses a task for a live identity', async () => {
     isPauseRequested: false,
     controlledAt: api.clock.now(),
   });
+});
+
+test('it exempts a ready task with its resume while nixie is paused, and returns the stored result on a retry', async () => {
+  const api = await startTestAPI();
+  const taskID = await createTask(api.context, 'tidy the inbox');
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  await withWriteTransaction(api.writer, (tx) =>
+    pauseNixieInTransaction(tx, api.context.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: laptop.caller.identityID,
+      definitions: api.context.definitions(),
+    }),
+  );
+
+  const input = {
+    clientActionID: '4b2d6f8a-1c3e-4a5b-9d7f-0e2c4a6b8d1f',
+    taskID,
+    control: 'resume',
+  } as const;
+
+  const first = await writeCheckedTaskControl(api.context, laptop.caller, input);
+  const retried = await writeCheckedTaskControl(api.context, laptop.caller, input);
+
+  const exempted = await readRecords(api.context.log, {
+    afterSequence: 0,
+    kinds: ['nixie.task_exempted'],
+  });
+
+  expect(first).toStrictEqual({
+    status: 'controlled',
+    taskID,
+    state: 'ready',
+    isPauseRequested: false,
+    controlledAt: api.clock.now(),
+  });
+
+  expect(retried).toStrictEqual(first);
+
+  expect(exempted.map((read) => read.record.payload)).toStrictEqual([
+    { taskID, by: laptop.caller.identityID },
+  ]);
 });

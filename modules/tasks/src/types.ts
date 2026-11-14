@@ -267,6 +267,7 @@ interface PauseTable {
 
 interface PauseExemptionTable {
   readonly task_id: string;
+  readonly exempt_sequence: number;
 }
 
 export type TaskRow = TaskTable;

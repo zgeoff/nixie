@@ -1,6 +1,10 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { TaskControl, TaskControlRefusal, TaskState } from '@heynixie/tasks';
-import { taskStateSchema, writeTaskControlInTransaction } from '@heynixie/tasks';
+import {
+  taskStateSchema,
+  writeTaskControlInTransaction,
+  writeTaskResumeInTransaction,
+} from '@heynixie/tasks';
 import { z } from 'zod';
 import { buildInputHash } from './build-input-hash';
 import { probeLiveIdentity } from './probe-live-identity';
@@ -54,10 +58,16 @@ export function writeCheckedTaskControl(
       return settled;
     }
 
-    const outcome = await writeTaskControlInTransaction(tx, context, {
-      taskID: input.taskID,
-      control: input.control,
-    });
+    const outcome =
+      input.control === 'resume'
+        ? await writeTaskResumeInTransaction(tx, context, {
+            taskID: input.taskID,
+            by: caller.identityID,
+          })
+        : await writeTaskControlInTransaction(tx, context, {
+            taskID: input.taskID,
+            control: input.control,
+          });
 
     if (outcome.status === 'refused') {
       return outcome;

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { pauseNixieInTransaction, readRecords, withWriteTransaction } from '@heynixie/log';
 import { createConversationTask, createTask } from '@heynixie/tasks';
 import { seedConversationStep, seedHeldTask } from '@heynixie/tasks/test-utils';
 import { createRouterClient } from '@orpc/server';
@@ -168,4 +169,28 @@ test('#raise refuses a task that does not exist', async () => {
   );
 
   expect(refused).toMatchObject({ code: 'TASK_NOT_FOUND', status: 404 });
+});
+
+test('#resume exempts a ready task while nixie is paused, by the host', async () => {
+  const ctx = await setupTest();
+  const taskID = await createTask(ctx.context, 'sort the receipts');
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    pauseNixieInTransaction(tx, ctx.context.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: 'host',
+      definitions: ctx.context.definitions(),
+    }),
+  );
+
+  const resumed = await ctx.client.resume({ taskID });
+
+  const exempted = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['nixie.task_exempted'],
+  });
+
+  expect(resumed).toStrictEqual({ taskID, state: 'ready', isPauseRequested: false });
+  expect(exempted.map((read) => read.record.payload)).toStrictEqual([{ taskID, by: 'host' }]);
 });

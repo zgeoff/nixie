@@ -101,7 +101,8 @@ close of the conversation gets `CONVERSATION_NEVER_CLOSES`, and a task that does
 `TASK_NOT_FOUND`. A refusal keeps no result under its action ID, so a retry of the same action runs
 the control again against the state the task holds then. An action read lists a task's queued
 actions, which a stop cancels, apart from its started ones, which run on to their outcome, so a
-client shows what a stop does before the user confirms it.
+client shows what a stop does before the user confirms it. While nixie is paused, the resume control
+also exempts the task, so the task runs while the rest stay paused.
 
 ## Sending a message
 

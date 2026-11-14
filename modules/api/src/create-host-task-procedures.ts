@@ -1,6 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import type { TaskControl } from '@heynixie/tasks';
-import { writeTaskControl, writeTaskLimitRaise } from '@heynixie/tasks';
+import { writeTaskControl, writeTaskLimitRaise, writeTaskResume } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import { hostImplementer } from './host-implementer';
 import type { APIContext } from './types';
@@ -10,7 +10,11 @@ export function createHostTaskProcedures(context: APIContext) {
 
   return {
     pause: tasks.pause.handler((options) => runHostControl(context, 'pause', options)),
-    resume: tasks.resume.handler((options) => runHostControl(context, 'resume', options)),
+    resume: tasks.resume.handler(async (options) => {
+      const outcome = await writeTaskResume(context, { taskID: options.input.taskID, by: 'host' });
+
+      return toHostControlled(options.input.taskID, outcome, options.errors);
+    }),
     stop: tasks.stop.handler((options) => runHostControl(context, 'stop', options)),
     restart: tasks.restart.handler((options) => runHostControl(context, 'restart', options)),
     interrupt: tasks.interrupt.handler((options) => runHostControl(context, 'interrupt', options)),
