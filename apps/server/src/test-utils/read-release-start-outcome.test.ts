@@ -34,6 +34,7 @@ test('it records a start with the ready status and body', async () => {
     outcome: 'started',
     readyStatus: 200,
     readyBody: '{"status":"degraded"}',
+    output: 'the output',
   });
 });
 
@@ -52,15 +53,20 @@ test('it records a refusal when the process exits before it listens', async () =
   });
 });
 
-test('it throws with the output when the process neither listens nor exits', () => {
+test('it records a timeout with the output when the process neither listens nor exits', async () => {
   const ctx = setupTest();
 
-  expect(readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 })).rejects.toThrow(
-    /within 50 ms:\nthe output/u,
-  );
+  const result = await readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 });
+
+  expect(result).toStrictEqual({
+    outcome: 'timeout',
+    stage: 'listening',
+    timeoutMs: 50,
+    output: 'the output',
+  });
 });
 
-test('it throws with the output when the ready answer never comes', () => {
+test('it records a timeout with the output when the ready answer never comes', async () => {
   const ctx = setupTest();
 
   const server = Bun.serve({
@@ -73,12 +79,17 @@ test('it throws with the output when the ready answer never comes', () => {
 
   ctx.listening.resolve({ port: server.port });
 
-  expect(readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 })).rejects.toThrow(
-    /\/health\/ready gave no answer within 50 ms:\nthe output/u,
-  );
+  const result = await readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 });
+
+  expect(result).toStrictEqual({
+    outcome: 'timeout',
+    stage: 'ready',
+    timeoutMs: 50,
+    output: 'the output',
+  });
 });
 
-test('it throws with the output when the ready body stalls', () => {
+test('it records a timeout with the output when the ready body stalls', async () => {
   const ctx = setupTest();
 
   const server = Bun.serve({
@@ -100,7 +111,12 @@ test('it throws with the output when the ready body stalls', () => {
 
   ctx.listening.resolve({ port: server.port });
 
-  expect(readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 })).rejects.toThrow(
-    /\/health\/ready gave no answer within 50 ms:\nthe output/u,
-  );
+  const result = await readReleaseStartOutcome(ctx.nixie, { timeoutMs: 50 });
+
+  expect(result).toStrictEqual({
+    outcome: 'timeout',
+    stage: 'ready',
+    timeoutMs: 50,
+    output: 'the output',
+  });
 });

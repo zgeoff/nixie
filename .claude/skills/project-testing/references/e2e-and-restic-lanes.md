@@ -54,19 +54,19 @@ bundle lane. A file needs each build whose function in the last column it import
   release bundle is the one nixie ships, with the test-only code left out. The `release` path is the
   bundle's entry file. The suite writes its own release bundle, as
   [`write-release-bundle.test.ts`](../../../../e2e/write-release-bundle.test.ts) does.
-- To check that the previous release starts on data the checked-out code wrote, write a test in the
-  root `e2e/` folder, as [`previous-release.test.ts`](../../../../e2e/previous-release.test.ts)
-  does. The previous release is the newest `v*` tag reachable from `HEAD`, other than a tag on
-  `HEAD` itself. With no such tag, `readPreviousReleaseBuild` throws.
-  1. Pass the `entry` that `await readTestBundle(false)` returns, the checkout's release bundle, to
-     `startSpawnedNixie` as its `release` path. It writes the config and returns `nixie` without
-     starting a process.
-  2. Start the checkout with `nixie.harness.start()`, and wait for its `http.listening` log event.
-     The database is open by then.
-  3. Send the process SIGTERM. Expect: it exits with code 0.
-  4. Start the previous release on the same config and data directory with
-     `nixie.harness.startRelease(entry)`. `entry` is the path that `readPreviousReleaseBuild`
-     returns. Expect: its `http.listening` event, or an exit before it.
+- To check that the previous release starts on data the checked-out code wrote, call
+  `runRollbackCheck` from
+  [`run-rollback-check.ts`](../../../../e2e/src/test-utils/run-rollback-check.ts), as
+  [`rollback-check.test.ts`](../../../../e2e/rollback-check.test.ts) does. The previous release is
+  the newest `v*` tag reachable from `HEAD`, other than a tag on `HEAD` itself. With no such tag,
+  `readPreviousReleaseBuild` throws. The check starts the checkout's release bundle, waits for
+  `http.listening` and a `database` part that is ready, and stops it with SIGTERM. It then starts
+  the previous release on the same config and data directory, and returns a verdict:
+  - `pass`: the previous release logs `http.listening` and reports its `database` part ready.
+  - `declared`: the previous release refuses with the schema message that names this build's raised
+    `oldestReader`.
+  - `fail`: any other exit, a timeout, or a `database` part that is not ready. The result holds the
+    release's output.
 - Make the previous release's bundle before such a test with `bun run test:previous-release-build`.
   The build lives in
   [`read-previous-release-build.ts`](../../../../apps/server/src/test-utils/read-previous-release-build.ts).
