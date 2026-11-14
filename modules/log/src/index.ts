@@ -54,6 +54,7 @@ export type {
   DestinationPermission,
   Definitions,
   EnvelopeRecord,
+  RecordRow,
   ErasableFields,
   JSONObject,
   JSONValue,
@@ -79,3 +80,4 @@ export { withWriteTransaction } from './with-write-transaction';
 export { writeRecords } from './write-records';
 export { writeRecordsInTransaction } from './write-records-in-transaction';
 export { WriterLockHeldError } from './writer-lock-held-error';
+export { buildEnvelopeRecord } from './build-envelope-record';

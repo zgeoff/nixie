@@ -1,3 +1,4 @@
+import { proposalsProjection } from '@heynixie/api';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
@@ -22,6 +23,7 @@ export async function startTestLog(dataDir: string): Promise<Log & { readonly wr
       sandboxesProjection,
       ...memoryProjections,
       knownContactsProjection,
+      proposalsProjection,
     ],
   };
 }

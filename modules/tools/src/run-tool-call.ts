@@ -200,6 +200,7 @@ function makeCallRecorder(
           cause,
           input: call.input,
           destinations,
+          content: registered.definition.declaration.content,
         });
 
         await writeRecordsInTransaction(tx, options.log, [proposal.record]);

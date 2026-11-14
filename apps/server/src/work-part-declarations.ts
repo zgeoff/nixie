@@ -1,20 +1,19 @@
-import { createFirstEnrolmentCode } from '@heynixie/api';
-import { startRuleLapseSweep } from '@heynixie/definitions';
+import { buildProposalCoreDeps, createFirstEnrolmentCode } from '@heynixie/api';
 import { toErrorFields } from '@heynixie/logger';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
-import { startActionLapseSweep } from '@heynixie/policy';
 import { startPromptLapseSweep } from '@heynixie/prompts';
-import { startSkillLapseSweep } from '@heynixie/skills';
 import type { RunStep } from '@heynixie/tasks';
 import { conversationTaskID, createConversationTask, reviveHeldTasks } from '@heynixie/tasks';
 import { makeRetriedStart } from './make-retried-start';
 import { registerHarnessOperations } from './register-harness-operations';
 import { runDefinitionsSeed } from './run-definitions-seed';
+import { runInForceSeedAndWake } from './run-in-force-seed-and-wake';
 import { runTestTaskStep } from './run-test-task-step';
 import { runUnknownTaskStep } from './run-unknown-task-step';
 import type { ServerPartValues } from './server-part-values';
 import { startDefinitionsExports } from './start-definitions-exports';
 import { startNixieTaskRunner } from './start-nixie-task-runner';
+import { startProposalSweeps } from './start-proposal-sweeps';
 import { startRunners } from './start-runners';
 import { startSeedPoll } from './start-seed-poll';
 import { startServerBackups } from './start-server-backups';
@@ -108,22 +107,6 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }),
   },
   {
-    name: 'skill_lapse_sweep',
-    needs: ['server_parts', 'start_record'],
-    start: async (reader) => {
-      const parts = reader.get('server_parts');
-
-      const sweep = startSkillLapseSweep({
-        context: parts.context,
-        onError: (error) => {
-          parts.log('skills.lapse_failed', toErrorFields(error));
-        },
-      });
-
-      await parts.cleanup.defer(() => sweep.stop());
-    },
-  },
-  {
     name: 'prompt_lapse_sweep',
     needs: ['server_parts', 'start_record'],
     start: async (reader) => {
@@ -141,37 +124,25 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     },
   },
   {
-    name: 'rule_lapse_sweep',
-    needs: ['server_parts', 'start_record'],
+    name: 'proposal_sweeps',
+    needs: ['server_parts', 'start_record', 'context'],
+    uses: ['memory', 'definitions_exports'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
 
-      const sweep = startRuleLapseSweep({
-        context: parts.context,
+      const sweeps = startProposalSweeps({
+        deps: buildProposalCoreDeps(reader.get('context').apiContext, {
+          readMemory: () => reader.find('memory'),
+          runInForceSeed: () =>
+            runInForceSeedAndWake(reader.find('server_parts'), reader.find('definitions_exports')),
+        }),
         clock: parts.context.clock,
         onError: (error) => {
-          parts.log('rules.lapse_failed', toErrorFields(error));
+          parts.log('proposals.sweep_failed', toErrorFields(error));
         },
       });
 
-      await parts.cleanup.defer(() => sweep.stop());
-    },
-  },
-  {
-    name: 'action_lapse_sweep',
-    needs: ['server_parts', 'start_record'],
-    start: async (reader) => {
-      const parts = reader.get('server_parts');
-
-      const sweep = startActionLapseSweep({
-        context: parts.context,
-        clock: parts.context.clock,
-        onError: (error) => {
-          parts.log('policy.action_lapse_failed', toErrorFields(error));
-        },
-      });
-
-      await parts.cleanup.defer(() => sweep.stop());
+      await parts.cleanup.defer(() => sweeps.stop());
     },
   },
   {

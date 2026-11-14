@@ -111,7 +111,7 @@ const proposalSourceSchema = z.object({
   thread: z.string().nullable(),
 });
 
-const memoryProposalSchema = z.object({
+export const memoryProposalSchema = z.object({
   actionHash: z.string(),
   createdAt: z.date(),
   evidence: evidenceSchema.nullable(),

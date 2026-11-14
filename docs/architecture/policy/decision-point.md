@@ -77,8 +77,9 @@ the model reads "Waiting for approval as `<shortID>`". The model keeps working. 
 `nixie proposals approve <shortID>` and `nixie proposals reject <shortID>`, or the page for actions,
 answer it. The answer lands in the inbox of the task that asked. Approving runs nothing yet: the
 model reads that the action did not run. A proposal lapses after a fixed time without an answer.
-`contacts.mark_known` is a tool that declares `policy_widen`, so it always asks, and until approved
-actions run only the CLI marks a contact.
+[Approvals](approvals.md) describes the row and the answer path. `contacts.mark_known` is a tool
+that declares `policy_widen`, so it always asks, and until approved actions run only the CLI marks a
+contact.
 
 ## Faults
 

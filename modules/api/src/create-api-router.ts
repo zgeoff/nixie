@@ -1,4 +1,5 @@
 import { apiImplementer } from './api-implementer';
+import { createApprovalProcedures } from './create-approval-procedures';
 import { createBackupProcedures } from './create-backup-procedures';
 import { createConversationProcedures } from './create-conversation-procedures';
 import { createEnrolProcedure } from './create-enrol-procedure';
@@ -17,6 +18,7 @@ export function createAPIRouter(
   runInForceSeed: () => Promise<void>,
 ) {
   return apiImplementer.router({
+    approvals: createApprovalProcedures(context, { readMemory, runInForceSeed }),
     backups: createBackupProcedures(context),
     conversation: createConversationProcedures(context),
     memory: {

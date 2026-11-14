@@ -13,6 +13,7 @@
   "dependencies": {
     "@heynixie/actions": "workspace:*",
     "@heynixie/backup": "workspace:*",
+    "@heynixie/connectors": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/definitions": "workspace:*",
@@ -21,6 +22,7 @@
     "@heynixie/models": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/prompts": "workspace:*",
+    "@heynixie/proposals": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/skills": "workspace:*",
     "@heynixie/task-control": "workspace:*",

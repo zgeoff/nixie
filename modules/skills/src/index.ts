@@ -19,7 +19,6 @@ export { skillsPinnedCodec } from './skills-pinned-codec';
 export type { SkillsRecordKind } from './skills-record-kind';
 export { skillsReloadedCodec } from './skills-reloaded-codec';
 export { skillsWriteProposedCodec } from './skills-write-proposed-codec';
-export { startSkillLapseSweep } from './start-skill-lapse-sweep';
 
 export type {
   PendingSkillProposal,
@@ -32,3 +31,6 @@ export type {
 export { writeSkillProposalAnswer } from './write-skill-proposal-answer';
 export type { WrittenSkillResolution } from './write-written-skill-resolution';
 export { writeWrittenSkillResolution } from './write-written-skill-resolution';
+export { makeSkillProposalHandler } from './make-skill-proposal-handler';
+export { mapSkillProposalRecord } from './map-skill-proposal-record';
+export { skillsWriteApprovedCodec } from './skills-write-approved-codec';

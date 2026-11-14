@@ -42,10 +42,8 @@ export interface ServerPartValues {
   readonly nixie_runner: NixieRunner;
   readonly runners: void;
   readonly seed_poll: void;
-  readonly skill_lapse_sweep: void;
+  readonly proposal_sweeps: void;
   readonly prompt_lapse_sweep: void;
-  readonly rule_lapse_sweep: void;
-  readonly action_lapse_sweep: void;
   readonly backups: void;
 
   readonly definitions_exports: DefinitionsExportSweep | null;

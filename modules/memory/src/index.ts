@@ -195,3 +195,11 @@ export { recordForgottenCodec } from './record-forgotten-codec';
 export { readPurgeSet } from './read-purge-set';
 export type { RecordForgetPreview, RecordForgetTarget } from './read-record-forget-preview';
 export { readRecordForgetPreview } from './read-record-forget-preview';
+
+export type {
+  MemoryAnswerPort,
+  MemoryProposalHandlerOptions,
+} from './make-memory-proposal-handler';
+
+export { makeMemoryProposalHandler } from './make-memory-proposal-handler';
+export { mapMemoryProposalRecord } from './map-memory-proposal-record';

@@ -70,7 +70,7 @@ export function createMemoryProposalProcedures(context: APIContext, readMemory: 
   };
 }
 
-function toContractProposal(proposal: ViewProposal) {
+export function toContractProposal(proposal: ViewProposal) {
   const evidence = proposal.evidence;
 
   return {

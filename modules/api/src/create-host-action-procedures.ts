@@ -1,10 +1,9 @@
 import type { PendingActionProposal } from '@heynixie/policy';
-import { readPendingActionProposals } from '@heynixie/policy';
-import { buildActionProposalSentence } from './build-action-proposal-sentence';
+import { buildActionProposalSentence, readPendingActionProposals } from '@heynixie/policy';
 import { hostImplementer } from './host-implementer';
+import { runActionProposalAnswer } from './run-action-proposal-answer';
 import type { APIContext } from './types';
 import type { ActionProposalAnswer } from './write-action-proposal-answer';
-import { writeActionProposalAnswer } from './write-action-proposal-answer';
 
 export function createHostActionProcedures(context: APIContext) {
   const proposals = hostImplementer.actions.proposals;
@@ -64,7 +63,7 @@ async function runAnswer(
   answer: ActionProposalAnswer,
   options: AnswerOptions,
 ): Promise<{ readonly proposalID: string }> {
-  const result = await writeActionProposalAnswer(context, answer);
+  const result = await runActionProposalAnswer(context, answer);
 
   if (result.status === 'refused') {
     throw options.errors[result.code]({ message: result.reason });

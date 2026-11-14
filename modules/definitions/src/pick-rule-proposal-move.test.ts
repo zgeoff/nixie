@@ -8,7 +8,7 @@ interface RefusalCase {
   readonly label: string;
   readonly proposalID: string;
   readonly outcome: RuleProposalOutcome | null;
-  readonly proposedAt: number;
+  readonly lapseAt: number;
   readonly seeded: readonly [string, string][];
   readonly code: RuleProposalRefusal;
 }
@@ -18,7 +18,7 @@ test.each<RefusalCase>([
     label: 'an unknown proposal',
     proposalID: 'p-other',
     outcome: null,
-    proposedAt: 0,
+    lapseAt: 1000,
     seeded: [],
     code: 'NOT_FOUND',
   },
@@ -26,7 +26,7 @@ test.each<RefusalCase>([
     label: 'a withdrawn proposal',
     proposalID: 'p-web',
     outcome: 'withdrawn',
-    proposedAt: 0,
+    lapseAt: 1000,
     seeded: [],
     code: 'PROPOSAL_CLOSED',
   },
@@ -34,7 +34,7 @@ test.each<RefusalCase>([
     label: 'a rejected proposal',
     proposalID: 'p-web',
     outcome: 'rejected',
-    proposedAt: 0,
+    lapseAt: 1000,
     seeded: [],
     code: 'PROPOSAL_CLOSED',
   },
@@ -42,7 +42,7 @@ test.each<RefusalCase>([
     label: 'a proposal past its lapse time',
     proposalID: 'p-web',
     outcome: null,
-    proposedAt: -15 * 24 * 60 * 60 * 1000,
+    lapseAt: 0,
     seeded: [],
     code: 'PROPOSAL_CLOSED',
   },
@@ -61,7 +61,9 @@ test.each<RefusalCase>([
   );
 
   const move = pickRuleProposalMove({
-    proposals: [{ proposal, proposedAt: refusal.proposedAt, outcome: refusal.outcome }],
+    proposals: [
+      { proposal, proposedAt: -1000, lapseAt: refusal.lapseAt, outcome: refusal.outcome },
+    ],
     answer: { answer: 'approve', proposalID: refusal.proposalID },
     seeded: new Map(refusal.seeded),
     now: 0,
@@ -89,10 +91,41 @@ test('it approves a pending proposal while the seeded rules hold its versions fr
   );
 
   const move = pickRuleProposalMove({
-    proposals: [{ proposal, proposedAt: 0, outcome: null }],
+    proposals: [{ proposal, proposedAt: 0, lapseAt: 1000, outcome: null }],
     answer: { answer: 'approve', proposalID: 'p-web' },
     seeded: new Map(),
     now: 0,
+  });
+
+  expect(move).toStrictEqual({ status: 'approved', proposal });
+});
+
+test('it approves a proposal a defer kept open past its first lapse time', () => {
+  const proposal = buildRuleProposal(
+    'p-web',
+    [
+      {
+        ruleID: 'allow-web',
+        before: null,
+        after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
+        change: 'widening',
+      },
+    ],
+    [],
+  );
+
+  const move = pickRuleProposalMove({
+    proposals: [
+      {
+        proposal,
+        proposedAt: Date.UTC(2026, 0, 1),
+        lapseAt: Date.UTC(2026, 0, 21),
+        outcome: null,
+      },
+    ],
+    answer: { answer: 'approve', proposalID: 'p-web' },
+    seeded: new Map(),
+    now: Date.UTC(2026, 0, 16),
   });
 
   expect(move).toStrictEqual({ status: 'approved', proposal });
@@ -113,7 +146,7 @@ test('it rejects a pending proposal with your reason', () => {
   );
 
   const move = pickRuleProposalMove({
-    proposals: [{ proposal, proposedAt: 0, outcome: null }],
+    proposals: [{ proposal, proposedAt: 0, lapseAt: 1000, outcome: null }],
     answer: { answer: 'reject', proposalID: 'p-web', reason: 'Not this week.' },
     seeded: new Map([['allow-web', 'h-web-read']]),
     now: 0,

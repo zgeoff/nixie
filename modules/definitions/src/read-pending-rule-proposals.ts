@@ -1,4 +1,3 @@
-import { proposalLapseMs } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import type { RuleProposal } from './build-rule-proposal';
 import { readRuleProposals } from './read-rule-proposals';
@@ -15,11 +14,9 @@ export async function readPendingRuleProposals(
 ): Promise<readonly PendingRuleProposal[]> {
   const proposals = await readRuleProposals(db);
 
-  return proposals.flatMap((entry) => {
-    const lapseAt = entry.proposedAt + proposalLapseMs;
-
-    return entry.outcome === null && lapseAt > now
-      ? [{ proposal: entry.proposal, proposedAt: entry.proposedAt, lapseAt }]
-      : [];
-  });
+  return proposals.flatMap((entry) =>
+    entry.outcome === null && entry.lapseAt > now
+      ? [{ proposal: entry.proposal, proposedAt: entry.proposedAt, lapseAt: entry.lapseAt }]
+      : [],
+  );
 }
