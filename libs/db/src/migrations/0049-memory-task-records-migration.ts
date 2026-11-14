@@ -1,6 +1,8 @@
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import { z } from 'zod';
+import { rebuildThreads } from '../database/rebuild-threads';
+import { removeRetiredPrompts } from '../database/remove-retired-prompts';
 import { withTriggersDropped } from '../database/with-triggers-dropped';
 import { readQueryRows } from '../read-query-rows';
 import type { Migration } from '../types';
@@ -27,7 +29,7 @@ export const memoryTaskRecordsMigration: Migration = {
       await removeTaskRows(tx);
       await rewriteProjectionRows(tx);
       await rewriteProjectionChanges(tx);
-      await removeStoredPrompts(tx);
+      await removeRetiredPrompts(tx);
 
       if (removed.length > 0 || plan.moved.length > 0) {
         await rebuildThreads(tx);
@@ -214,14 +216,24 @@ function isRemoved(
   );
 }
 
+// The payload fields that name the task or thread that a record belongs to. A string that equals a
+// task ID elsewhere, such as the free text of a prompt proposal, names nothing.
+const taskFieldNames = new Set(['thread', 'taskID', 'task_id', 'owner', 'from', 'to']);
+
 function isTaskNamed(value: unknown): boolean {
-  if (typeof value === 'string') {
-    return taskIDs.includes(value);
+  if (Array.isArray(value)) {
+    return value.some((item) => isTaskNamed(item));
   }
 
-  return typeof value === 'object' && value !== null
-    ? Object.values(value).some((item) => isTaskNamed(item))
-    : false;
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  return Object.entries(value).some(([key, item]) =>
+    typeof item === 'string'
+      ? taskFieldNames.has(key) && taskIDs.includes(item)
+      : isTaskNamed(item),
+  );
 }
 
 const conversation = 'conversation';
@@ -357,22 +369,37 @@ function toChunks<Item>(items: readonly Item[]): Item[][] {
   return chunks;
 }
 
+// A kept record may point at a removed record through its parent or through a payload field that
+// holds a sequence (an evidence list, a summary range, a moment quote). Removing the target would
+// leave it dangling, so the migration stops and leaves the data as it was.
 async function requireNoOrphans(
   tx: Transaction<unknown>,
   removed: ReadonlySet<number>,
 ): Promise<void> {
+  const schema = z.object({ sequence: z.number(), field: z.string() });
+
   for (const chunk of toChunks([...removed])) {
-    const rows = await readQueryRows(
-      sql`select sequence from records where parent in (${sql.join(chunk)})`,
+    const parents = await readQueryRows(
+      sql`select sequence, 'parent' as field from records where parent in (${sql.join(chunk)})`,
       tx,
-      z.object({ sequence: z.number() }),
+      schema,
     );
 
-    const orphan = rows.find((row) => !removed.has(row.sequence));
+    const references = await readQueryRows(
+      sql`select records.sequence as sequence, tree.fullkey as field
+        from records, json_tree(records.payload) as tree
+        where tree.type = 'integer'
+          and tree.fullkey like ${'%equence%'}
+          and tree.atom in (${sql.join(chunk)})`,
+      tx,
+      schema,
+    );
+
+    const orphan = [...parents, ...references].find((row) => !removed.has(row.sequence));
 
     if (orphan !== undefined) {
       throw new Error(
-        `record ${String(orphan.sequence)} names a record of a built-in memory task as its parent, which the memory task migration cannot remove`,
+        `record ${String(orphan.sequence)} refers to a record of a built-in memory task through ${orphan.field}, which the memory task migration cannot remove`,
       );
     }
   }
@@ -520,75 +547,4 @@ async function rewriteProjectionChanges(tx: Transaction<unknown>): Promise<void>
           and row_key = ${change.row_key}`.execute(tx);
     }
   }
-}
-
-async function removeStoredPrompts(tx: Transaction<unknown>): Promise<void> {
-  const ids = sql.join(retiredPromptIDs);
-  const approvals = sql`(select approval_id from prompt_approvals where prompt_id in (${ids}))`;
-
-  await sql`delete from prompt_export_attempts where approval_id in ${approvals}`.execute(tx);
-  await sql`delete from prompt_exports where approval_id in ${approvals}`.execute(tx);
-
-  await sql`delete from proposals where proposal_id in
-    (select proposal_id from prompt_approvals where prompt_id in (${ids}))`.execute(tx);
-
-  await sql`delete from prompt_approvals where prompt_id in (${ids})`.execute(tx);
-
-  const rows = await readQueryRows(
-    sql`select snapshot_hash, form from definition_snapshots
-      where form like ${'%"writer"%'} or form like ${'%"consolidator"%'}`,
-    tx,
-    z.object({ snapshot_hash: z.string(), form: z.string() }),
-  );
-
-  for (const row of rows) {
-    const form = recordSchema.safeParse(JSON.parse(row.form));
-    const prompts = recordSchema.safeParse(form.data?.['prompts']);
-
-    if (!form.success || !prompts.success) {
-      continue;
-    }
-
-    await sql`update definition_snapshots
-      set form = ${JSON.stringify({
-        ...form.data,
-        prompts: Object.fromEntries(
-          Object.entries(prompts.data).filter(([promptID]) => !retiredPromptIDs.includes(promptID)),
-        ),
-      })}
-      where snapshot_hash = ${row.snapshot_hash}`.execute(tx);
-  }
-}
-
-// A record that leaves a thread or joins it shifts the counts of every later record on it.
-async function rebuildThreads(tx: Transaction<unknown>): Promise<void> {
-  await sql`delete from threads`.execute(tx);
-  await sql`delete from projection_changes where projection = 'threads'`.execute(tx);
-
-  await sql`insert into projection_changes (sequence, projection, row_key, row)
-    select sequence, 'threads', thread, json_object(
-      'thread', thread,
-      'first_sequence', first_sequence,
-      'last_sequence', sequence,
-      'record_count', record_count,
-      'last_recorded_at', recorded_at
-    )
-    from (
-      select sequence, thread, recorded_at,
-        first_value(sequence) over w as first_sequence,
-        row_number() over w as record_count
-      from records
-      where thread is not null
-      window w as (partition by thread order by sequence)
-    )`.execute(tx);
-
-  await sql`insert into threads
-      (thread, first_sequence, last_sequence, record_count, last_recorded_at)
-    select thread, min(sequence), max(sequence), count(*),
-      (select last.recorded_at from records as last
-        where last.sequence = (select max(sequence) from records as newest
-          where newest.thread = grouped.thread))
-    from records as grouped
-    where thread is not null
-    group by thread`.execute(tx);
 }

@@ -198,7 +198,7 @@ test('it refuses a kept record whose parent it would remove', async () => {
 
   await run.catch(() => {});
 
-  expect(run).rejects.toThrow(/as its parent/u);
+  expect(run).rejects.toThrow(/through parent/u);
 });
 
 test('it changes no row when it runs on a database that holds no trace of either task', async () => {
@@ -210,4 +210,41 @@ test('it changes no row when it runs on a database that holds no trace of either
   const records = await ctx.readRecords();
 
   expect(records).toMatchObject([{ kind: 'owner_message' }]);
+});
+
+test('it refuses a kept record whose payload points at a record it would remove', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({ kind: 'memory.batch_planned', thread: 'memory-writer', payload: {} });
+
+  await ctx.writeRecord({
+    kind: 'memory.version_added',
+    thread: 'conversation',
+    payload: { itemID: 'item-1', evidenceSequences: [1] },
+  });
+
+  const run = ctx.runMigration();
+
+  await run.catch(() => {});
+
+  const records = await ctx.readRecords();
+
+  expect(run).rejects.toThrow(/through \$\.evidenceSequences\[0\]/u);
+  expect(records).toHaveLength(2);
+});
+
+test('it keeps a record that only mentions a task ID as free text', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({
+    kind: 'prompts.override_proposed',
+    thread: 'conversation',
+    payload: { proposalID: 'p1', promptID: 'persona', reason: 'memory-writer' },
+  });
+
+  await ctx.runMigration();
+
+  const records = await ctx.readRecords();
+
+  expect(records).toMatchObject([{ kind: 'prompts.override_proposed' }]);
 });
