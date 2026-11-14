@@ -164,7 +164,10 @@ its only trace.
   proposal rows and every projection change that held a rewritten value, and recomputes each thread.
   A rebuild of the projections afterwards gives the rows it left.
 - It stops, and changes nothing, when a message from either task reaches another task, or when a
-  kept record names a deleted record as its parent.
+  kept record or projection row points at a deleted record: as its parent, or through a field that
+  holds that record's sequence.
+- It never stops for a read cursor, a through mark or a held-from mark that sits on a deleted
+  record. Every reader compares such a mark with a sequence, so the mark stays valid.
 - The keys of the deleted erasable records stay in the key store, which a migration cannot reach. An
   unused key with no record is the state that a failed write already leaves.
 - A second run changes no row.
