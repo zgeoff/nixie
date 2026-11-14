@@ -324,9 +324,12 @@ test('it rejects a readable item with no kind', () => {
   expect(result.error?.issues).toPartiallyContain({ path: ['items', 0] });
 });
 
-test.each([6, 7])(
+test.each([
+  [6, 4],
+  [7, 5],
+])(
   'it reads the span records of a version %i file with no images',
-  async (version) => {
+  async (version, recordCount) => {
     const fixture: unknown = await Bun.file(
       join(import.meta.dir, 'fixtures', `memory-export-v${version}.json`),
     ).json();
@@ -337,7 +340,7 @@ test.each([6, 7])(
       'records' in moment ? moment.records.map((record) => record.images) : [],
     );
 
-    expect(lists).toStrictEqual(lists.map(() => []));
+    expect(lists).toStrictEqual(Array.from({ length: recordCount }, () => []));
   },
 );
 
@@ -382,9 +385,11 @@ test('it reads the span records of a version 5 file with no images', () => {
     ],
   });
 
-  const records = file.moments.flatMap((moment) => ('records' in moment ? moment.records : []));
+  const lists = file.moments.flatMap((moment) =>
+    'records' in moment ? moment.records.map((record) => record.images) : [],
+  );
 
-  expect(records.map((record) => record.images)).toStrictEqual(records.map(() => []));
+  expect(lists).toStrictEqual([[]]);
 });
 
 test('it rejects a version 7 span record that carries an image list', async () => {
