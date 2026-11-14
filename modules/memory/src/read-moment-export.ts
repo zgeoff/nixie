@@ -103,6 +103,7 @@ async function readReadableMoment(
       text: entry.text,
       isGap: entry.isGap,
       isRemoved: entry.isRemoved,
+      images: [...entry.images],
     })),
   };
 }

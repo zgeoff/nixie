@@ -132,6 +132,7 @@ test('it reads a kept moment with its span', async () => {
             text: 'the allotment plot is number 14',
             isGap: false,
             isRemoved: false,
+            images: [],
           },
         ],
       },
@@ -144,7 +145,7 @@ test('it heads the file with schema version 6, the export time and the mock snap
 
   expect(JSON.parse(chunks.join(''))).toStrictEqual({
     header: {
-      schemaVersion: 7,
+      schemaVersion: 8,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:mock',
     },

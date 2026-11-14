@@ -115,6 +115,7 @@ test("it reads a moment's span with each record's text and source", async () => 
       text: expect.toInclude('plant the garlic in October'),
       isGap: false,
       isRemoved: false,
+      images: [],
     },
   ]);
 });
@@ -173,6 +174,7 @@ test("it exports a tool call and its result with each record's payload and polic
       text: JSON.stringify({ input: { url: 'https://example.test/garlic' } }),
       isGap: false,
       isRemoved: false,
+      images: [],
     },
     {
       sequence: result.sequence,
@@ -191,6 +193,7 @@ test("it exports a tool call and its result with each record's payload and polic
       text: JSON.stringify({ result: { title: 'Growing garlic' } }),
       isGap: false,
       isRemoved: false,
+      images: [],
     },
   ]);
 });

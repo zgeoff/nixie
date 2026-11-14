@@ -25,8 +25,10 @@ version's checks only make sense against the definitions that ran them. A change
 the schema version, so a file from an older release holds the version of the shape it was written
 in. The schema reads every version from 5 up. A file from before the sensitive mark reads with every
 item not sensitive, and a file from before version 7, which adds the removal mark, reads with every
-span record not removed. A file refuses a field that its version predates, and refuses a missing
-field that its version requires.
+span record not removed, and a file from before version 8, which adds the `images` list of each span
+record, reads with every span record holding no images. The list holds a pointer to each image of an
+owner message, an `n` and a media type, and never the image's bytes. A file refuses a field that its
+version predates, and refuses a missing field that its version requires.
 
 A version whose key or ciphertext fails exports with no text and no quote, as the memory view shows
 it unreadable. An item a forget began exports as a forgotten one even before the forget's cleanup

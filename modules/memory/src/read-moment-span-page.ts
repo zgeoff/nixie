@@ -8,6 +8,8 @@ import type {
 } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { renderOwnerText } from '@heynixie/sessions';
+import type { OwnerImageMediaType } from '@heynixie/tasks';
+import { ownerMessageCodec } from '@heynixie/tasks';
 import { conversationKinds } from './conversation-kinds';
 import { countBatchTokens } from './count-batch-tokens';
 import { formatToolEntry } from './format-tool-entry';
@@ -31,6 +33,13 @@ export interface MomentSpanQuery extends MomentSpan {
   readonly reader: 'model' | 'owner';
 }
 
+export interface MomentSpanImage {
+  // the image's place in its message, counted from 1
+  // oxlint-disable-next-line id-length -- the pointer's field is n, as the number input of log.read_image names it
+  readonly n: number;
+  readonly mediaType: OwnerImageMediaType;
+}
+
 export interface MomentSpanEntry {
   readonly sequence: number;
   readonly kind: RecordKind;
@@ -43,6 +52,9 @@ export interface MomentSpanEntry {
   readonly payload: JSONObject | null;
   readonly decision: 'allow' | 'ask' | 'deny' | null;
   readonly text: string | null;
+
+  // a pointer to each image of a readable owner message, read from its payload alone
+  readonly images: readonly MomentSpanImage[];
 
   // the record's text is gone, so the moment shows a gap
   readonly isGap: boolean;
@@ -149,6 +161,7 @@ function buildSpanEntry(
     payload: Object.keys(record.payload).length === 0 ? null : record.payload,
     decision: record.decision?.outcome ?? null,
     text: erasable.status === 'readable' ? renderRecordText(record, erasable.fields, render) : null,
+    images: erasable.status === 'readable' ? collectSpanImages(record) : [],
     isGap,
     isRemoved: erasable.status === 'shredded' && removed.has(record.sequence),
     isCut: false,
@@ -171,6 +184,17 @@ function renderRecordText(
   const text = fields['text'];
 
   return record.kind === 'model.reply' && typeof text === 'string' ? text : JSON.stringify(fields);
+}
+
+function collectSpanImages(record: LogRecord): MomentSpanImage[] {
+  if (record.kind !== 'owner_message') {
+    return [];
+  }
+
+  const images = ownerMessageCodec.tryDecodePartial(record.payload)?.images ?? [];
+
+  // oxlint-disable-next-line id-length -- the pointer's field is n, as the number input of log.read_image names it
+  return images.map((image, index) => ({ n: index + 1, mediaType: image.mediaType }));
 }
 
 // The reader's form of an entry adds an event ID, a written-out time and a separator, which the

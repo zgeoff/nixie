@@ -336,3 +336,45 @@ test('it answers a request with the first reply whose condition its body meets',
   expect(plain).toMatchObject({ content: [{ type: 'text', text: 'for anyone' }] });
   expect(helper).toMatchObject({ content: [{ type: 'text', text: 'for the helper' }] });
 });
+
+test('it builds a tool call input from the request the reply answers, streamed or whole', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies(
+    {
+      toolUse: {
+        name: 'mcp__nixie__note_read',
+        input: (body) => ({ name: `after-${String(body.messages?.length)}-messages` }),
+      },
+    },
+    {
+      toolUse: {
+        name: 'mcp__nixie__note_read',
+        input: (body) => ({ name: `after-${String(body.messages?.length)}-messages` }),
+      },
+    },
+  );
+
+  const sendRequest = async (stream: boolean) => {
+    const response = await fetch(`${ctx.model.url}/v1/messages`, {
+      method: 'POST',
+      body: JSON.stringify({
+        model: 'model-a',
+        stream,
+        messages: [
+          { role: 'user', content: 'a' },
+          { role: 'assistant', content: 'b' },
+          { role: 'user', content: 'c' },
+        ],
+      }),
+    });
+
+    return response.text();
+  };
+
+  const whole = await sendRequest(false);
+  const streamed = await sendRequest(true);
+
+  expect(whole).toInclude('"input":{"name":"after-3-messages"}');
+  expect(streamed).toInclude(String.raw`{\"name\":\"after-3-messages\"}`);
+});

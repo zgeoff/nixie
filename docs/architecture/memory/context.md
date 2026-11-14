@@ -207,11 +207,13 @@ returned, so a forget leaves no readable copy of what the model read, and a forg
 with no text and never matches a search.
 
 The model opens one image with the `log.read_image` tool, by the event ID of the user's message that
-holds it and the image's number in that message. The tool returns the image to the model as image
-input beside its media type, through the [tool calls](../connectors/tool-calls.md) path that keeps
-the bytes out of the result record. It reads only the calling run's thread, and it refuses with
-"image unavailable" once the user forgot the message, or when the record is not one of the user's
-messages or holds no image of that number. The image counts against the session's
+holds it and the image's number in that message, which comes from the message's `<dropped-image>`
+marker in `log.read`, or from the `images` of a record that
+[`moment.read`](./moments.md#reading-moments-back) returns. The tool returns the image to the model
+as image input beside its media type, through the [tool calls](../connectors/tool-calls.md) path
+that keeps the bytes out of the result record. It reads only the calling run's thread, and it
+refuses with "image unavailable" once the user forgot the message, or when the record is not one of
+the user's messages or holds no image of that number. The image counts against the session's
 [image caps](../core/conversation-turns.md#inbox-records-as-messages), and the tool refuses an image
 that would pass either cap.
 

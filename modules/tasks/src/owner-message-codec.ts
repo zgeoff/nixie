@@ -2,7 +2,11 @@ import { imageLimits } from '@heynixie/contract';
 import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
 
-const imageSchema = z.object({ mediaType: z.enum(imageLimits.mediaTypes) });
+export const ownerImageMediaTypes = imageLimits.mediaTypes;
+
+export type OwnerImageMediaType = (typeof ownerImageMediaTypes)[number];
+
+const imageSchema = z.object({ mediaType: z.enum(ownerImageMediaTypes) });
 
 export const ownerMessageCodec = defineRecordCodec(
   'owner_message',

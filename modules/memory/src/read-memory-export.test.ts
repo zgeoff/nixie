@@ -1,3 +1,4 @@
+/* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
@@ -5,6 +6,7 @@ import invariant from 'tiny-invariant';
 import { memoryExportSchema } from './memory-export-schema';
 import type { TestMemoryOptions } from './test-utils/start-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
 async function setupTest(config: TestMemoryOptions = {}) {
   onTestFinished(() => {
@@ -254,7 +256,7 @@ test("it heads the file with the export time, the schema version and the definit
 
   expect(JSON.parse(text)).toStrictEqual({
     header: {
-      schemaVersion: 7,
+      schemaVersion: 8,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },
@@ -408,6 +410,7 @@ test('it exports a moment with its title, note, reflections and links and its sp
           text: 'the allotment plot is number 14',
           isGap: false,
           isRemoved: false,
+          images: [],
         },
         {
           sequence: reply.sequence,
@@ -419,6 +422,7 @@ test('it exports a moment with its title, note, reflections and links and its sp
           text: 'Plot 14 it is, next to the tap.',
           isGap: false,
           isRemoved: false,
+          images: [],
         },
       ],
     },
@@ -455,5 +459,39 @@ test('it exports a destroyed moment as its ID and the time its destroy completed
 
   expect(memoryExportSchema.safeParse(JSON.parse(text)).data?.moments).toStrictEqual([
     { momentID: kept.momentID, destroyedAt: expect.toBeString() },
+  ]);
+});
+
+test("it exports a pointer to each photo of an owner message in a moment's span", async () => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'two photos of the shelf',
+    spans: [],
+    images: ['image/png', 'image/jpeg'],
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'chat-model-2' },
+    thread: 'conversation',
+    firstSequence: message,
+    lastSequence: message,
+    title: 'The shelf photos',
+  });
+
+  invariant(kept.status === 'written');
+
+  const text = await ctx.readExportText(Date.parse('2026-10-14T08:00:00.000Z'));
+
+  const [moment] = memoryExportSchema.safeParse(JSON.parse(text)).data?.moments ?? [];
+
+  invariant(moment && 'records' in moment);
+
+  expect(moment.records.map((record) => record.images)).toStrictEqual([
+    [
+      { n: 1, mediaType: 'image/png' },
+      { n: 2, mediaType: 'image/jpeg' },
+    ],
   ]);
 });

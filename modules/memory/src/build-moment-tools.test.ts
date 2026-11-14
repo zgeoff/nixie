@@ -1,3 +1,4 @@
+/* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
@@ -6,7 +7,9 @@ import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildMemoryTools } from './build-memory-tools';
+import { buildMomentReadTool } from './build-moment-read-tool';
 import type { MomentTables } from './moment-context';
+import { buildMockToolContext } from './test-utils/build-mock-tool-context';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
@@ -1301,5 +1304,93 @@ test('it stores no hidden field when moment.find matches no moment', async () =>
   expect(stored?.record.erasable).toStrictEqual({
     status: 'readable',
     fields: { result: { moments: [], next: null } },
+  });
+});
+
+test('#moment.read lists a pointer to each image of an owner message, and leaves the key out of a record with none', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'two photos of the shed door',
+    spans: [],
+    images: ['image/png', 'image/webp'],
+  });
+
+  const plain = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'no photo with this one',
+    spans: [],
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: photo,
+    lastSequence: plain,
+    title: 'The shed door photos',
+  });
+
+  invariant(kept.status === 'written');
+
+  const result = await runToolCall(
+    { tool: 'moment.read', input: { momentID: kept.shortID }, toolUseID: 'toolu_1' },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const recordShape = z.record(z.string(), z.unknown());
+  const shape = z.object({ records: z.array(recordShape) });
+  const records = shape.parse(result.structuredContent).records;
+
+  expect(records.map((record) => record['images'])).toStrictEqual([
+    [
+      { n: 1, mediaType: 'image/png' },
+      { n: 2, mediaType: 'image/webp' },
+    ],
+    undefined,
+  ]);
+
+  expect(records[1]).not.toContainKey('images');
+});
+
+test('#moment.read keeps the images out of the record it stores', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'a photo of the shed door',
+    spans: [],
+    images: ['image/png'],
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: photo,
+    lastSequence: photo,
+    title: 'The shed door photo',
+  });
+
+  invariant(kept.status === 'written');
+
+  const outcome = await buildMomentReadTool(ctx.memory.store.moments).run(
+    {
+      callID: 'call-1',
+      tool: 'moment.read',
+      input: { momentID: kept.shortID },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.record).toStrictEqual({
+    momentID: kept.shortID,
+    version: 1,
+    reflectionIDs: [],
+    eventIDs: [String(photo)],
+    next: null,
   });
 });
