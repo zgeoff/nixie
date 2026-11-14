@@ -1,6 +1,6 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { readRecordAttachments } from '@heynixie/log';
-import { ownerMessageCodec } from '@heynixie/tasks';
+import { isInboxRecord, ownerMessageCodec } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
 import type { TaskMessageView } from '../task/render-task-message';
 import type { ImageTally, MessageTimeOptions } from '../types';
@@ -25,6 +25,11 @@ export async function readInboxMessages(
   let spent: ImageTally = { bytes: 0, count: 0 };
 
   for (const record of records) {
+    // A kind that no module registers is passed over, as the live inbox does.
+    if (!isInboxRecord(record)) {
+      continue;
+    }
+
     const message = await readInboxMessage(log, record, read);
 
     const images = countImages(message);

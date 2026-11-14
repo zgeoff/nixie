@@ -6,6 +6,7 @@ export interface TestTask {
   readonly state: TaskState;
   readonly readCursor: number;
   readonly lastInboxSequence: number;
+  readonly claimableAt: number;
   readonly createdSequence: number;
 }
 
@@ -13,7 +14,14 @@ export async function readTestTasks(writer: Pick<Writer, 'db'>): Promise<readonl
   const rows = await writer.db
     .$extendTables<TasksTables>()
     .selectFrom('tasks')
-    .select(['task_id', 'state', 'read_cursor', 'last_inbox_sequence', 'created_sequence'])
+    .select([
+      'task_id',
+      'state',
+      'read_cursor',
+      'last_inbox_sequence',
+      'claimable_at',
+      'created_sequence',
+    ])
     .orderBy('created_sequence')
     .execute();
 
@@ -22,6 +30,7 @@ export async function readTestTasks(writer: Pick<Writer, 'db'>): Promise<readonl
     state: row.state,
     readCursor: row.read_cursor,
     lastInboxSequence: row.last_inbox_sequence,
+    claimableAt: row.claimable_at,
     createdSequence: row.created_sequence,
   }));
 }

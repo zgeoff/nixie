@@ -170,7 +170,7 @@ test('it reads the first record whatever its images, so a large message still re
   expect(messages).toHaveLength(1);
 });
 
-test('it reads a record of a kind no module registers without throwing, and keeps the records around it', async () => {
+test('it passes over a record of a kind no module registers and keeps the records around it', async () => {
   const ctx = await setupTest();
 
   const records = await writeRecords(ctx.log, [
@@ -203,7 +203,6 @@ test('it reads a record of a kind no module registers without throwing, and keep
 
   expect(messages.map((message) => message.text)).toStrictEqual([
     expect.stringContaining('Before.'),
-    expect.stringContaining('harbour.unknown_kind'),
     expect.stringContaining('After.'),
   ]);
 });

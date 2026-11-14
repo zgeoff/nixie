@@ -9,11 +9,12 @@ import {
   resumeNixieInTransaction,
   withWriteTransaction,
 } from '@heynixie/log';
-import { writeStepCommit } from '../step/write-step-commit';
+import { claimTask } from '../task/projection/claim-task';
 import { readTestTasks } from '../test-utils/read-test-tasks';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
 import { seedDoneConversationTask } from '../test-utils/seed-done-conversation-task';
 import { seedDoneTask } from '../test-utils/seed-done-task';
+import { seedFailedConversationTurn } from '../test-utils/seed-failed-conversation-turn';
 import { seedRunningTask } from '../test-utils/seed-running-task';
 import { seedStoppedTask } from '../test-utils/seed-stopped-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
@@ -238,24 +239,28 @@ test('it writes the notice in the same transaction, in the record after the paus
   ).toStrictEqual([0, 1, 2]);
 });
 
-test('it leaves the conversation waiting, with its inbox cursor unmoved, when the notice lands', async () => {
+test('it leaves the conversation retry deadline unmoved, so no runner claims it for the notice', async () => {
   const ctx = await setupTest();
-  const step = await seedConversationStep(ctx.context);
 
-  await writeStepCommit(ctx.context, step.claim, {
-    next: 'wait',
-    records: [],
-    acknowledged: [step.messageSequence],
-  });
+  await seedFailedConversationTurn(ctx.context);
 
   const [before] = await readTestTasks(ctx.writer);
 
   await ctx.install([]);
 
-  const [after] = await readTestTasks(ctx.writer);
+  await withWriteTransaction(ctx.writer, (tx) =>
+    resumeNixieInTransaction(tx, ctx.context.log, {
+      by: 'test',
+      definitions: ctx.context.definitions(),
+    }),
+  );
 
-  expect(before?.state).toBe('waiting');
+  const [after] = await readTestTasks(ctx.writer);
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(before?.claimableAt).toBeGreaterThan(0);
   expect(after).toStrictEqual(before);
+  expect(claim).toBeNull();
 });
 
 test('it writes no second notice for a recovery that is already installed', async () => {
