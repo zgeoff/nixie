@@ -1,3 +1,4 @@
+import { waitForSettled } from '@heynixie/async';
 import type { RuleEditOutcome, RuleEditRequest } from '@heynixie/definitions';
 import { writeRuleEdit } from '@heynixie/definitions';
 import { withWriteTransaction } from '@heynixie/log';
@@ -15,7 +16,7 @@ export interface RuleChange {
 }
 
 export type RuleChangeRun =
-  | { readonly status: 'done' }
+  | { readonly status: 'done'; readonly revision: number | null }
   | { readonly status: 'unauthorized' }
   | { readonly status: 'reused' }
   | {
@@ -23,13 +24,32 @@ export type RuleChangeRun =
       readonly outcome: Exclude<RuleEditOutcome, { status: 'written' | 'unchanged' }>;
     };
 
-// A checked action: a retry of a change that committed settles as done, and an ID under another
-// change or caller is reused. The in-force seed runs after the change commits.
-export async function runRuleChange(
-  context: APIContext & { readonly runInForceSeed: () => Promise<unknown> },
+type RuleChangeContext = APIContext & { readonly runInForceSeed: () => Promise<unknown> };
+
+const pendingChanges = new WeakMap<object, Promise<void>>();
+
+// The in-force seed moves a rule's revision after its change commits, so changes run one at a time,
+// each through its seed, and a later change checks the revision the earlier one left.
+export function runRuleChange(
+  context: RuleChangeContext,
   caller: Identity,
   change: RuleChange,
 ): Promise<RuleChangeRun> {
+  const queued = waitThenRunChange(pendingChanges.get(context.log.writer), context, caller, change);
+
+  pendingChanges.set(context.log.writer, waitForSettled(queued));
+
+  return queued;
+}
+
+async function waitThenRunChange(
+  previous: Promise<void> | undefined,
+  context: RuleChangeContext,
+  caller: Identity,
+  change: RuleChange,
+): Promise<RuleChangeRun> {
+  await previous;
+
   const inputHash = buildInputHash({
     ruleID: change.ruleID,
     ...(change.request.action === 'edit' ? { destinations: [...change.request.destinations] } : {}),
@@ -49,7 +69,9 @@ export async function runRuleChange(
         earlier.identityID === caller.identityID &&
         earlier.inputHash === inputHash;
 
-      return isSame ? { status: 'done' } : { status: 'reused' };
+      return isSame
+        ? { status: 'done', revision: readStoredRevision(earlier.result) }
+        : { status: 'reused' };
     }
 
     const outcome = await writeRuleEdit(tx, context, {
@@ -61,16 +83,18 @@ export async function runRuleChange(
       return { status: 'refused', outcome };
     }
 
+    const revision = pickEditedRevision(change.request, outcome);
+
     await writeClientAction(tx, {
       clientActionID: change.clientActionID,
       procedure: change.procedure,
       identityID: caller.identityID,
       inputHash,
-      result: { ruleID: change.ruleID },
+      result: revision === null ? { ruleID: change.ruleID } : { ruleID: change.ruleID, revision },
       recordedAt: context.clock.now(),
     });
 
-    return { status: 'done' };
+    return { status: 'done', revision };
   });
 
   if (run.status === 'done') {
@@ -78,4 +102,23 @@ export async function runRuleChange(
   }
 
   return run;
+}
+
+function readStoredRevision(result: Readonly<Record<string, unknown>>): number | null {
+  const revision = result['revision'];
+
+  return typeof revision === 'number' ? revision : null;
+}
+
+// The seed moves a rule to the next revision when an edit changed it, and leaves it when the edit
+// changed nothing. A removal leaves no revision.
+function pickEditedRevision(
+  request: RuleEditRequest,
+  outcome: Extract<RuleEditOutcome, { status: 'written' | 'unchanged' }>,
+): number | null {
+  if (request.action === 'remove') {
+    return null;
+  }
+
+  return outcome.status === 'written' ? request.revision + 1 : request.revision;
 }

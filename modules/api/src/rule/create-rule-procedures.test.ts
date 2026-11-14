@@ -61,12 +61,31 @@ async function setupTest() {
 
   await runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) });
 
+  let seedGate = Promise.resolve();
+  const seedStarted = Promise.withResolvers<void>();
+
   const procedures = createRuleProcedures({
     ...api.context,
-    runInForceSeed: () => runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) }),
+    runInForceSeed: async () => {
+      seedStarted.resolve();
+
+      await seedGate;
+
+      return runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) });
+    },
   });
 
   return {
+    // Holds every seed that a rule change starts, until the returned function runs.
+    holdSeeds: () => {
+      const gate = Promise.withResolvers<void>();
+
+      seedGate = gate.promise;
+
+      return gate.resolve;
+    },
+    waitForSeedStart: () => seedStarted.promise,
+
     // An error that the procedure throws in process holds the whole call's context, so a matcher
     // that walks it never ends. This keeps only what the contract shows.
     readRefusal: async (call: Promise<unknown>) => {
@@ -282,4 +301,63 @@ test('#removeRule refuses a client action ID that another change already used', 
     code: 'CLIENT_ACTION_ID_REUSED',
     data: undefined,
   });
+});
+
+test('#editRule waits for an earlier removal to finish its seed, so the removal stays', async () => {
+  const ctx = await setupTest();
+
+  const releaseSeeds = ctx.holdSeeds();
+
+  const removal = ctx.client.removeRule({
+    ruleID: 'allow-mail',
+    revision: 1,
+    clientActionID: crypto.randomUUID(),
+  });
+
+  await ctx.waitForSeedStart();
+
+  const edit = ctx.client.editRule({
+    ruleID: 'allow-mail',
+    revision: 1,
+    destinations: ['harbour@example.org'],
+    clientActionID: crypto.randomUUID(),
+  });
+
+  // An edit that runs too early has no event to wait on: it finishes while the seed is held.
+  // oxlint-disable-next-line zgeoff/no-test-sleep -- the wait is for an event that must not happen
+  await Bun.sleep(100);
+
+  releaseSeeds();
+
+  const [removed, editRefusal] = await Promise.all([removal, ctx.readRefusal(edit)]);
+  const readRefusal = await ctx.readRefusal(ctx.client.readRule({ ruleID: 'allow-mail' }));
+
+  expect({ removed, editRefusal, readRefusal }).toStrictEqual({
+    removed: { ruleID: 'allow-mail' },
+    editRefusal: { code: 'NOT_FOUND', data: undefined },
+    readRefusal: { code: 'NOT_FOUND', data: undefined },
+  });
+});
+
+test('#editRule settles a retry after the rule was removed with the revision it first returned', async () => {
+  const ctx = await setupTest();
+
+  const call = {
+    ruleID: 'allow-mail',
+    revision: 1,
+    destinations: ['harbour@example.org'],
+    clientActionID: crypto.randomUUID(),
+  };
+
+  await ctx.client.editRule(call);
+
+  await ctx.client.removeRule({
+    ruleID: 'allow-mail',
+    revision: 2,
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const retried = await ctx.client.editRule(call);
+
+  expect(retried).toStrictEqual({ ruleID: 'allow-mail', revision: 2 });
 });

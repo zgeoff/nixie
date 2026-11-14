@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useNixieClient } from '../utils/use-nixie-client';
 import type { DeferSettings } from './build-defer-times';
+import { collectProposalIDBatches } from './collect-proposal-id-batches';
 import type { SeenApproval } from './merge-seen-approvals';
 import { applyApprovalReads, mergeSeenApprovals } from './merge-seen-approvals';
 
@@ -42,11 +43,18 @@ export function useApprovalDigest(): ApprovalDigestState {
     .filter((entry) => !listedIDs.has(entry.proposalID))
     .map((entry) => entry.proposalID);
 
-  const read = useQuery({
-    ...nixie.queryUtils.approvals.readProposals.queryOptions({
-      input: { proposalIDs: departedIDs },
+  const read = useQueries({
+    combine: (results) => ({
+      proposals: results.flatMap((result) => result.data?.proposals ?? []),
+      refetch: () => {
+        for (const result of results) {
+          void result.refetch();
+        }
+      },
     }),
-    enabled: departedIDs.length > 0,
+    queries: collectProposalIDBatches(departedIDs).map((proposalIDs) =>
+      nixie.queryUtils.approvals.readProposals.queryOptions({ input: { proposalIDs } }),
+    ),
   });
 
   const refetchList = listed.refetch;
@@ -56,7 +64,7 @@ export function useApprovalDigest(): ApprovalDigestState {
     const refresh = (): void => {
       if (document.visibilityState === 'visible') {
         void refetchList();
-        void refetchRead();
+        refetchRead();
       }
     };
 
@@ -69,7 +77,7 @@ export function useApprovalDigest(): ApprovalDigestState {
     };
   }, [refetchList, refetchRead]);
 
-  const entries = applyApprovalReads(merged, read.data?.proposals ?? []);
+  const entries = applyApprovalReads(merged, read.proposals);
 
   return {
     status: pickStatus(listed),
@@ -77,10 +85,7 @@ export function useApprovalDigest(): ApprovalDigestState {
     defer: listed.data?.defer ?? null,
     refresh: () => {
       void refetchList();
-
-      if (departedIDs.length > 0) {
-        void refetchRead();
-      }
+      refetchRead();
     },
   };
 }

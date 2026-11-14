@@ -76,12 +76,9 @@ export function createRuleProcedures(context: RuleProcedureContext) {
       const run = await runRuleChange(context, caller, change);
 
       toChangeError(run, options.errors);
+      invariant(run.status === 'done' && run.revision !== null, 'an edit records its revision');
 
-      const current = await readCurrentRule(context.log.writer.db, ruleID);
-
-      invariant(current, 'an edited rule is in force');
-
-      return { ruleID, revision: current.revision };
+      return { ruleID, revision: run.revision };
     }),
   };
 }
