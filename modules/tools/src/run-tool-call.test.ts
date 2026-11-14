@@ -1783,7 +1783,7 @@ test('it runs the other tools of the next step of a task run whose cap denied a 
     ctx.options,
   );
 
-  await runToolCall(
+  const denied = await runToolCall(
     { tool: 'moment.edit', input: { query: 'a' }, toolUseID: 'toolu_2' },
     { ...base, runID: 'run-1' },
     ctx.options,
@@ -1794,6 +1794,11 @@ test('it runs the other tools of the next step of a task run whose cap denied a 
     { ...base, runID: 'run-2' },
     ctx.options,
   );
+
+  expect(denied).toStrictEqual({
+    content: [{ type: 'text', text: 'This run has used its 1 calls to moment.edit.' }],
+    isError: true,
+  });
 
   expect(next).toStrictEqual({ content: [], structuredContent: { text: 'a note' } });
 });

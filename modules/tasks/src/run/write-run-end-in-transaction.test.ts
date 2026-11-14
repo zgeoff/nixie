@@ -263,12 +263,12 @@ test('it opens a task run that carries the limit-ended one, with the raised tota
 });
 
 test.each([
-  ['wake', 'wake', 1],
-  ['next_turn', 'next_turn', 1],
-  ['none', 'kept', 0],
+  ['wake', 'wake', 1, { wake: true, woke: true }],
+  ['next_turn', 'next_turn', 1, { wake: false, woke: false }],
+  ['none', 'kept', 0, { wake: false, woke: false }],
 ] as const)(
   'it delivers a report under the mode %s as %s',
-  async (mode, delivery, messageCount) => {
+  async (mode, delivery, messageCount, wakes) => {
     const ctx = await setupTest();
     const taskID = await ctx.startTask({ report: mode });
     const claim = await ctx.claim(taskID);
@@ -283,11 +283,13 @@ test.each([
     const [ended] = await ctx.readEnded(taskID);
     const messages = await ctx.readKinds('task_message');
 
+    const reports = messages.filter((message) => message.payload['kind'] === 'report');
+
     expect(ended?.ended?.record.delivery).toBe(delivery);
 
-    expect(messages.filter((message) => message.payload['kind'] === 'report')).toHaveLength(
-      messageCount,
-    );
+    expect(
+      reports.map((report) => ({ wake: report.payload['wake'], woke: report.payload['woke'] })),
+    ).toStrictEqual(Array.from({ length: messageCount }, () => wakes));
   },
 );
 
@@ -316,22 +318,21 @@ test('it writes the summary nixie made and the missing fields when a task with a
   const [ended] = await ctx.readKinds('task.run_ended');
   const reports = await ctx.readKinds('task_message');
 
-  expect(ended?.erasable).toStrictEqual({
-    status: 'readable',
-    fields: {
-      body: [
-        'report:',
-        '  summary: The run stopped at its 1 turns limit before it wrote a summary.',
-        '  missing:',
-        '    - highTide',
-        '    - lowTide',
-      ].join('\n'),
-    },
-  });
+  const body = [
+    'report:',
+    '  summary: The run stopped at its 1 turns limit before it wrote a summary.',
+    '  missing:',
+    '    - highTide',
+    '    - lowTide',
+  ].join('\n');
+
+  expect(ended?.erasable).toStrictEqual({ status: 'readable', fields: { body } });
 
   expect(
-    reports.filter((report) => report.payload['kind'] === 'report').map((report) => report.thread),
-  ).toStrictEqual(['conversation']);
+    reports
+      .filter((report) => report.payload['kind'] === 'report')
+      .map((report) => ({ thread: report.thread, erasable: report.erasable })),
+  ).toStrictEqual([{ thread: 'conversation', erasable: { status: 'readable', fields: { body } } }]);
 });
 
 test('it delivers a report to a starter that already sent its own report, with a wake', async () => {
