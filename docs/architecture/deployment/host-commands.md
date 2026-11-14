@@ -130,20 +130,28 @@ removes it once the pair is in place. The restore command refuses a directory th
 or lacks either database, so it never takes a pair from a backup that stopped part way.
 
 The restore command, `restore --from <directory> --yes`, replaces both databases with the copies in
-a directory the backup command wrote. It takes the writer lock first, so it refuses while a server
-runs and no server starts until it ends. It runs SQLite's integrity check on each copy, refuses a
-copy that lacks its database's own tables, because an empty file passes that check, and stages both
-in the data directory before it replaces either, so a failed check, a full volume or an I/O error
-stops it before it changes a database. It then removes each database's write-ahead log files, which
-belong to the database it replaced. It refuses to run without `--yes`, because the data written
-since the backup is lost.
+a directory that the backup command or `nixie-backup fetch` wrote. It takes the writer lock first,
+so it refuses while a server runs and no server starts until it ends. It runs SQLite's integrity
+check on each copy, refuses a copy that lacks its database's own tables, because an empty file
+passes that check, and stages both in the data directory before it replaces either, so a failed
+check, a full volume or an I/O error stops it before it changes a database. It then removes each
+database's write-ahead log files, which belong to the database it replaced.
+
+The restore also reads `fetched-pair.json` from the directory, and refuses one that does not parse
+before it replaces anything. A directory without the file is one that the backup command wrote, and
+has no pair. After the databases move, the restore empties the backup staging folder of every set
+folder, under the backup job's staging lock, and writes the restore note. A set staged from the
+replaced database must never publish. When a backup job pass holds the lock, the restore fails with
+its marker in place, and the operator stops the backup job and runs the restore again. A rerun
+writes the same note. The restore refuses to run without `--yes`, because the data written since the
+backup is lost.
 
 The two databases move one at a time, so a restore that stops between them leaves a pair from two
 backups. The restore writes a marker into the data directory before the first database moves and
-removes it after the last, and a server refuses to start while the marker is there, until a restore
-runs to the end. The backup command refuses the marker too. A lock file in the data directory keeps
-a backup and a restore apart, because the writer lock cannot: backups share the lock, and a restore
-holds it alone, so neither copies a pair that the other is replacing.
+removes it after the restore note is written, and a server refuses to start while the marker is
+there, until a restore runs to the end. The backup command refuses the marker too. A lock file in
+the data directory keeps a backup and a restore apart, because the writer lock cannot: backups share
+the lock, and a restore holds it alone, so neither copies a pair that the other is replacing.
 
 ## Memory
 

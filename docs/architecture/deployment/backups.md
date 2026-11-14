@@ -96,7 +96,8 @@ the data snapshots.
 `nixie restore` can read it on a new host. It reads the job's own repository and password variables,
 and never the staging folder. It exits 1 for a directory that exists and is not empty, and creates a
 directory that does not exist. Its optional `--data-snapshot <snapshot_id>` names a data snapshot by
-its full ID, which `nixie-backup snapshots` prints.
+its full ID, which `nixie-backup snapshots` prints. A data snapshot named under a key snapshot with
+no publish number is checked only by its `set-` number.
 
 The fetch:
 
@@ -119,6 +120,12 @@ On success the fetch exits 0 after one `backup.fetched` line. On any failure it 
 `backup.fetch_failed` line that holds the failed step, and the refusal when the pick refused. A
 failed fetch leaves the marker, so `nixie restore` refuses the directory. The fetch only restores
 the newest key snapshot, because an older one would make a forgotten item readable again.
+
+`nixie restore --from <directory>` reads `fetched-pair.json` and returns the pair. It then empties
+the staging folder and writes `restore-note.json` there, which holds the restore time and the key
+snapshot ID of the pair, or none for a directory that `backup --to` wrote. The next publish reads
+and removes the note, so it knows which key snapshot the restore came from.
+[Backup and restore](host-commands.md#backup-and-restore) describes the restore.
 
 `nixie-backup snapshots` prints one line of JSON for each snapshot of the data and key repositories:
 the repository, the full snapshot ID, restic's time, and the set, kind and publish number from the
