@@ -251,15 +251,20 @@ test('it fails the fetch when the time limit passes while it waits for a frame',
 test('it fails the fetch when a scan passes the time limit, and ignores its late result', async () => {
   const ctx = setupTest();
   const never = Promise.withResolvers<HopVerdict>();
+  const scanStarted = Promise.withResolvers<void>();
 
   const gated = gatePageHops(
     ctx.stream,
-    ctx.gate(() => never.promise),
+    ctx.gate(() => {
+      scanStarted.resolve();
+
+      return never.promise;
+    }),
   );
 
   ctx.pushHop('https://mid.test/b');
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await scanStarted.promise;
 
   ctx.clock.advance(10_000);
 
@@ -272,6 +277,10 @@ test('it fails the fetch when a scan passes the time limit, and ignores its late
   });
 
   never.resolve(ctx.pass);
+
+  await never.promise;
+
+  await Promise.resolve();
 
   expect(ctx.sent).toStrictEqual([]);
   expect(ctx.stops).toHaveLength(1);

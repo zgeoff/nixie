@@ -9,12 +9,15 @@ interface HopAskerIO {
   readonly write: (bytes: Uint8Array) => Promise<void>;
 }
 
-// Writes the hop frame, resolves on hop-pass, rejects on an abort or when the input closes.
+// Writes the hop frame, resolves on hop-pass, rejects on an abort, in the write or the wait, or
+// when the input closes.
 export function makeHopAsker(io: HopAskerIO): AskHop {
   return async (url, signal) => {
     signal.throwIfAborted();
 
-    await io.write(encodeFrame(encodeFetchMessage({ kind: 'hop', url })));
+    const frame = encodeFrame(encodeFetchMessage({ kind: 'hop', url }));
+
+    await raceAbort(io.write(frame), signal);
 
     const next = await raceAbort(io.frames.next(), signal);
 

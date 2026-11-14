@@ -8,6 +8,7 @@ function setupTest(replies: readonly Uint8Array[]) {
   const written: Uint8Array[] = [];
   const queue = [...replies];
   const closed = Promise.withResolvers<IteratorResult<Uint8Array>>();
+  const writeState = { gate: Promise.resolve() };
 
   const frames: AsyncIterator<Uint8Array> = {
     next: () => {
@@ -22,11 +23,22 @@ function setupTest(replies: readonly Uint8Array[]) {
     write: (bytes) => {
       written.push(bytes);
 
-      return Promise.resolve();
+      return writeState.gate;
     },
   });
 
-  return { askHop, written, closeFrames: () => closed.resolve({ done: true, value: undefined }) };
+  return {
+    askHop,
+    written,
+    stallWrites: () => {
+      const stalled = Promise.withResolvers<void>();
+
+      writeState.gate = stalled.promise;
+
+      return stalled;
+    },
+    closeFrames: () => closed.resolve({ done: true, value: undefined }),
+  };
 }
 
 test('it writes a hop frame and resolves on a hop-pass frame', async () => {
@@ -51,6 +63,21 @@ test('it rejects when the signal aborts while it waits', () => {
   controller.abort(new Error('time is up'));
 
   expect(asked).rejects.toThrowWithMessage(Error, 'time is up');
+});
+
+test('it rejects when the signal aborts while the write is still in flight', async () => {
+  const ctx = setupTest([encodeFetchMessage({ kind: 'hop-pass' })]);
+  const stalled = ctx.stallWrites();
+
+  const controller = new AbortController();
+
+  const asked = ctx.askHop('https://example.com/next', controller.signal);
+
+  controller.abort(new Error('time is up'));
+
+  await expect(asked).rejects.toThrowWithMessage(Error, 'time is up');
+
+  stalled.resolve();
 });
 
 test('it rejects without writing when the signal aborted before the ask', () => {
