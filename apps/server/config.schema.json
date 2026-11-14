@@ -1318,6 +1318,69 @@
       },
       "additionalProperties": false
     },
+    "approvals": {
+      "default": {
+        "defer": {
+          "default_minutes": 60,
+          "evening_at": "18:00",
+          "morning_at": "08:00"
+        }
+      },
+      "type": "object",
+      "properties": {
+        "defer": {
+          "default": {
+            "default_minutes": 60,
+            "evening_at": "18:00",
+            "morning_at": "08:00"
+          },
+          "type": "object",
+          "properties": {
+            "default_minutes": {
+              "default": 60,
+              "description": "Minutes for the \"1 hour\" choice of Defer.",
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "evening_at": {
+              "default": "18:00",
+              "description": "\"This evening\" means today before this time, and tomorrow after it.",
+              "type": "string",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+            },
+            "morning_at": {
+              "default": "08:00",
+              "description": "\"Tomorrow morning\" means this time.",
+              "type": "string",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "quiet_hours": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "When quiet hours begin, as HH:MM in your time zone."
+        },
+        "end": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "When quiet hours end, as HH:MM in your time zone."
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "additionalProperties": false
+    },
     "skills": {
       "type": "object",
       "properties": {

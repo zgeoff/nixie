@@ -23,3 +23,6 @@ export type {
 } from './types';
 
 export type { APIRecordKind } from './api-record-kind';
+export type { ProposalParts } from './build-proposal-core-deps';
+export { buildProposalCoreDeps } from './build-proposal-core-deps';
+export { proposalsProjection } from './proposals-projection';

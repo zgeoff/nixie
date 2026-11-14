@@ -7,6 +7,7 @@ import { formatMessageWhen } from './format-message-when';
 import { renderApprovalAnswer } from './render-approval-answer';
 import { renderLimitNotice } from './render-limit-notice';
 import { renderOwnerText } from './render-owner-text';
+import { renderProposalDefer } from './render-proposal-defer';
 import type { TaskMessageView } from './render-task-message';
 import { renderTaskMessage } from './render-task-message';
 import type { MessageTimeOptions } from './types';
@@ -38,6 +39,10 @@ export function renderInboxMessage(
 
   if (record.kind === 'policy.action_answered') {
     return renderApprovalAnswer(record, times);
+  }
+
+  if (record.kind === 'proposals.deferred' || record.kind === 'proposals.returned') {
+    return renderProposalDefer(record, times);
   }
 
   return `A ${record.kind} record arrived: ${JSON.stringify(record.payload)}`;

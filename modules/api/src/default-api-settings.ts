@@ -1,6 +1,14 @@
 import { conversationTaskID } from '@heynixie/tasks';
 import type { APISettings } from './types';
 
+export const defaultApprovalSettings = {
+  defaultMinutes: 60,
+  eveningAt: '18:00',
+  morningAt: '08:00',
+  quietHours: null,
+  defaultZone: 'Australia/Sydney',
+} as const;
+
 export const defaultAPISettings: APISettings = {
   enrolmentCodeLifetimeMs: 15 * 60 * 1000,
   sessionIdleMs: 30 * 24 * 60 * 60 * 1000,
@@ -9,6 +17,7 @@ export const defaultAPISettings: APISettings = {
   isMemoryWriterEnabled: true,
   isMemoryConsolidatorEnabled: true,
   isBackupEnabled: true,
+  approvals: defaultApprovalSettings,
   taskDirectory: [
     {
       taskID: conversationTaskID,

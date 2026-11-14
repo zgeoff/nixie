@@ -1,5 +1,6 @@
 import { eventIterator, oc } from '@orpc/contract';
 import { z } from 'zod';
+import { approvalContract } from './approval-contract';
 import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
@@ -362,6 +363,7 @@ export const contract = {
     readNotice: signedIn.output(z.object({ notice: backupNoticeSchema.nullable() })),
   },
   rules: ruleContract,
+  approvals: approvalContract,
   log: {
     // Clients of earlier releases call this path. A content blocker's generic rule for /rpc/log/
     // stops a browser from reaching it.

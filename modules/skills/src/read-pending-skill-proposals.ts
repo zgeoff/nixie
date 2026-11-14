@@ -1,8 +1,8 @@
 import { loadSkillVersions, readDefinitionsInForce } from '@heynixie/definitions';
-import { proposalLapseMs } from '@heynixie/proposals';
+import { proposalLapseMs, readProposalLapses } from '@heynixie/proposals';
 import { readCurrentSkillHashes } from './read-current-skill-hashes';
 import { readSkillProposals } from './read-skill-proposals';
-import type { PendingSkillProposal, SkillProposalContext } from './types';
+import type { PendingSkillProposal, SkillProposalContext, SkillProposalState } from './types';
 
 export async function readPendingSkillProposals(
   context: Pick<SkillProposalContext, 'log' | 'clock'>,
@@ -12,9 +12,16 @@ export async function readPendingSkillProposals(
 
   const proposals = await readSkillProposals(db);
 
-  const pending = proposals.filter(
-    (entry) => entry.outcome === null && entry.proposedAt + proposalLapseMs > now,
+  // A defer moves a lapse, so the shared row holds the time that counts.
+  const lapses = await readProposalLapses(
+    db,
+    proposals.map((entry) => entry.proposal.proposalID),
   );
+
+  const lapseOf = (entry: SkillProposalState): number =>
+    lapses.get(entry.proposal.proposalID) ?? entry.proposedAt + proposalLapseMs;
+
+  const pending = proposals.filter((entry) => entry.outcome === null && lapseOf(entry) > now);
 
   if (pending.length === 0) {
     return [];
@@ -38,7 +45,7 @@ export async function readPendingSkillProposals(
       proposal: entry.proposal,
       thread: entry.thread,
       proposedAt: entry.proposedAt,
-      lapseAt: entry.proposedAt + proposalLapseMs,
+      lapseAt: lapseOf(entry),
       isStale: (current.get(entry.proposal.name) ?? null) !== entry.proposal.baseHash,
       inForce:
         ref === undefined || version === undefined

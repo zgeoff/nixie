@@ -5,6 +5,7 @@ import { match } from 'ts-pattern';
 import type { ReadonlyDeep } from '../types';
 import { isForgettableKind } from './is-forgettable-kind';
 import { mockActionProposalProcedures } from './mock-action-proposal-procedures';
+import { mockApprovalProcedures } from './mock-approval-procedures';
 import { mockImplementer } from './mock-implementer';
 import { mockMemoryRouter } from './mock-memory-router';
 import { mockRuleProcedures } from './mock-rule-procedures';
@@ -29,6 +30,7 @@ const followProcedure = os.records.follow.handler((options) => {
 });
 
 export const mockAPIRouter = os.router({
+  approvals: mockApprovalProcedures,
   backups: {
     readNotice: os.backups.readNotice.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);

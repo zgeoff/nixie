@@ -1,4 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { ProposalContext } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import type { RuleProposal } from './build-rule-proposal';
 import { pickRuleProposalMove } from './pick-rule-proposal-move';
@@ -45,29 +46,20 @@ export async function writeRuleProposalAnswer(
       }
 
       if (move.status === 'rejected') {
-        await writeRecordsInTransaction(tx, context.log, [
-          {
-            kind: rulesChangeRejectedCodec.kind,
-            definitions: context.definitions(),
-            payload: rulesChangeRejectedCodec.encode({
-              proposalID: answer.proposalID,
-              reason: move.reason,
-            }),
-          },
-        ]);
+        await writeRuleProposalDecision(tx, context, {
+          proposal: move.proposal,
+          outcome: 'rejected',
+          reason: move.reason,
+        });
 
         return { status: 'rejected', proposalID: answer.proposalID };
       }
 
-      await writeApprovedRules(tx, move.proposal);
-
-      await writeRecordsInTransaction(tx, context.log, [
-        {
-          kind: rulesChangeApprovedCodec.kind,
-          definitions: context.definitions(),
-          payload: rulesChangeApprovedCodec.encode({ proposalID: answer.proposalID }),
-        },
-      ]);
+      await writeRuleProposalDecision(tx, context, {
+        proposal: move.proposal,
+        outcome: 'approved',
+        reason: '',
+      });
 
       return { status: 'approved', proposalID: answer.proposalID };
     },
@@ -78,6 +70,46 @@ export async function writeRuleProposalAnswer(
   }
 
   return result;
+}
+
+interface RuleProposalDecision {
+  readonly proposal: RuleProposal;
+  readonly outcome: 'approved' | 'rejected';
+  readonly reason: string;
+}
+
+// The records of an answer, once the shared checks passed.
+export async function writeRuleProposalDecision(
+  tx: Transaction<unknown>,
+  context: ProposalContext,
+  decision: RuleProposalDecision,
+): Promise<void> {
+  const proposal = decision.proposal;
+
+  if (decision.outcome === 'rejected') {
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: rulesChangeRejectedCodec.kind,
+        definitions: context.definitions(),
+        payload: rulesChangeRejectedCodec.encode({
+          proposalID: proposal.proposalID,
+          reason: decision.reason,
+        }),
+      },
+    ]);
+
+    return;
+  }
+
+  await writeApprovedRules(tx, proposal);
+
+  await writeRecordsInTransaction(tx, context.log, [
+    {
+      kind: rulesChangeApprovedCodec.kind,
+      definitions: context.definitions(),
+      payload: rulesChangeApprovedCodec.encode({ proposalID: proposal.proposalID }),
+    },
+  ]);
 }
 
 async function writeApprovedRules(tx: Transaction<unknown>, proposal: RuleProposal) {

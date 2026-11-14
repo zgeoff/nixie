@@ -5,9 +5,9 @@ import { apiImplementer } from './api-implementer';
 import { buildRuleProposalEntry } from './build-rule-proposal-entry';
 import { buildActionProposalEntry } from './create-host-action-procedures';
 import { requireCaller } from './require-caller';
+import { runActionProposalAnswer } from './run-action-proposal-answer';
 import { runRuleProposalAnswer } from './run-rule-proposal-answer';
 import type { APIContext } from './types';
-import { writeActionProposalAnswer } from './write-action-proposal-answer';
 
 type RuleProposalContext = APIContext & Pick<RuleContext, 'runInForceSeed'>;
 
@@ -63,7 +63,7 @@ export function createRuleProposalProcedures(context: RuleProposalContext) {
     approveActionProposal: rules.approveActionProposal.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      const result = await writeActionProposalAnswer(context, {
+      const result = await runActionProposalAnswer(context, {
         answer: 'approve',
         proposalID: options.input.proposalID,
       });
@@ -78,7 +78,7 @@ export function createRuleProposalProcedures(context: RuleProposalContext) {
     rejectActionProposal: rules.rejectActionProposal.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      const result = await writeActionProposalAnswer(context, {
+      const result = await runActionProposalAnswer(context, {
         answer: 'reject',
         proposalID: options.input.proposalID,
         reason: options.input.reason,

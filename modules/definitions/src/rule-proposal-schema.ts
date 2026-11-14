@@ -21,6 +21,9 @@ export const ruleProposalSchema = z.object({
     })
     .array(),
 
+  // lifting when the change creates or widens a rule that allows an effect of the always-ask set
+  riskClass: z.literal('lifting').exactOptional(),
+
   // effects that leave a tool, which wait for your approval as the rules do
   effectChanges: z
     .object({ tool: z.string(), remove: z.enum(effectNames).array() })

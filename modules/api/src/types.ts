@@ -10,6 +10,7 @@ import type {
   MomentStore,
 } from '@heynixie/memory';
 import type { PromptsInForce } from '@heynixie/prompts';
+import type { QuietHours } from '@heynixie/proposals';
 import type { TaskProfile, TasksContext } from '@heynixie/tasks';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 
@@ -29,6 +30,14 @@ export interface APISettings {
   readonly isBackupEnabled: boolean;
 
   readonly taskDirectory: readonly TaskProfile[];
+
+  readonly approvals?: {
+    readonly defaultMinutes: number;
+    readonly eveningAt: string;
+    readonly morningAt: string;
+    readonly quietHours: QuietHours | null;
+    readonly defaultZone: string;
+  };
 }
 
 export interface OwnerImage {

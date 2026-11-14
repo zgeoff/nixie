@@ -1,4 +1,5 @@
 import type { ConsentCheck, DestinationPermission } from '@heynixie/log';
+import { alwaysAskEffects } from './always-ask-effects';
 import type { ConsentFacts } from './check-consent';
 import { getFixedRules } from './get-fixed-rules';
 import { isRuleMatch } from './is-rule-match';
@@ -81,8 +82,6 @@ interface StageRun {
   readonly declaration: EffectDeclaration;
   readonly progress: StageProgress;
 }
-
-const alwaysAskEffects: ReadonlySet<string> = new Set(['spend', 'policy_widen', 'budget_raise']);
 
 async function runRuleStages(run: StageRun): Promise<PolicyDecision> {
   const call = run.call;

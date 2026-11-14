@@ -1,5 +1,5 @@
 import type { RuleForm } from '@heynixie/policy';
-import { renderRule } from '@heynixie/policy';
+import { alwaysAskEffects, renderRule } from '@heynixie/policy';
 import type { z } from 'zod';
 import type { RuleEdit } from './build-rule-seed-plan';
 import { buildSHA256 } from './build-sha256';
@@ -15,9 +15,12 @@ export function buildRuleProposal(
   edits: readonly RuleEdit[],
   effects: readonly HeldEffects[],
 ): RuleProposal {
+  const isLifting = edits.some((edit) => isLiftingEdit(edit));
+
   return {
     proposalID,
     proposalHash: buildRuleProposalHash(edits, effects),
+    ...(isLifting ? { riskClass: 'lifting' as const } : {}),
     changes: edits.map((edit) => ({
       ruleID: edit.ruleID,
       before: toRuleSide(edit.before),
@@ -26,6 +29,22 @@ export function buildRuleProposal(
     })),
     effectChanges: effects.map((held) => ({ tool: held.tool, remove: [...held.remove] })),
   };
+}
+
+function isLiftingEdit(edit: RuleEdit): boolean {
+  const after = edit.after?.rule;
+
+  if (after === undefined || !isLiftingRule(after)) {
+    return false;
+  }
+
+  return edit.before === null || edit.before.hash !== edit.after?.hash;
+}
+
+function isLiftingRule(rule: RuleForm): boolean {
+  return (
+    rule.outcome === 'allow' && (rule.effects ?? []).some((effect) => alwaysAskEffects.has(effect))
+  );
 }
 
 // A proposal with no effect change hashes as the release before did, so a pending one stays itself.

@@ -8,6 +8,7 @@ import {
   writerConfigSchema,
 } from '@heynixie/memory';
 import { policyConfigSchema } from '@heynixie/policy';
+import { approvalsConfigSchema, quietHoursSchema } from '@heynixie/proposals';
 import { skillsConfigSchema } from '@heynixie/skills';
 import { tasksConfigSchema } from '@heynixie/tasks';
 import { z } from 'zod';
@@ -32,6 +33,8 @@ export const deploymentConfigSchema = z
     memory: memoryConfigSchema.default(memoryConfigSchema.parse({})),
     memory_consolidation: consolidationConfigSchema.default(consolidationConfigSchema.parse({})),
     policy: policyConfigSchema.default(policyConfigSchema.parse({})),
+    approvals: approvalsConfigSchema.default(approvalsConfigSchema.parse({})),
+    quiet_hours: quietHoursSchema.optional(),
     skills: skillsConfigSchema.default(skillsConfigSchema.parse({})),
     backup: backupConfigSchema.default(backupConfigSchema.parse({})),
   })

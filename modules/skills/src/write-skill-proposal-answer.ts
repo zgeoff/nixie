@@ -28,21 +28,7 @@ export async function writeSkillProposalAnswer(
   const result = await withWriteTransaction(log.writer, async (tx) => {
     const state = await readOpenProposal(tx, context, answer);
 
-    if (answer.answer === 'reject') {
-      await writeRecordsInTransaction(tx, log, [
-        {
-          definitions: context.definitions(),
-          ...(state.thread === null ? {} : { thread: state.thread }),
-          kind: 'skills.write_rejected',
-          payload: skillsWriteRejectedCodec.encode({ proposalID: answer.proposalID }),
-          erasable: { reason: answer.reason },
-        },
-      ]);
-
-      return { proposalID: answer.proposalID, approvalID: null, skillHash: null };
-    }
-
-    return writeApproval(tx, context, { state, files: answer.files ?? null });
+    return writeSkillProposalDecision(tx, context, state, answer);
   });
 
   if (result.approvalID !== null) {
@@ -50,6 +36,31 @@ export async function writeSkillProposalAnswer(
   }
 
   return result;
+}
+
+// The records of an answer, once the checks passed. The shared answer path calls it too, with its
+// own checks of the state and the lapse.
+export async function writeSkillProposalDecision(
+  tx: Transaction<unknown>,
+  context: SkillProposalContext,
+  state: SkillProposalState,
+  answer: SkillProposalAnswer,
+): Promise<SkillProposalAnswerResult> {
+  if (answer.answer === 'reject') {
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        definitions: context.definitions(),
+        ...(state.thread === null ? {} : { thread: state.thread }),
+        kind: 'skills.write_rejected',
+        payload: skillsWriteRejectedCodec.encode({ proposalID: answer.proposalID }),
+        erasable: { reason: answer.reason },
+      },
+    ]);
+
+    return { proposalID: answer.proposalID, approvalID: null, skillHash: null };
+  }
+
+  return writeApproval(tx, context, { state, files: answer.files ?? null });
 }
 
 async function readOpenProposal(

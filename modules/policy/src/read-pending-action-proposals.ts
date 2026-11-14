@@ -1,5 +1,6 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { readProposalLapses } from '@heynixie/proposals';
 import { z } from 'zod';
 import { actionProposalLapseMs } from './action-proposal-lapse-ms';
 import type { ActionProposalState } from './read-action-proposals';
@@ -17,9 +18,16 @@ export async function readPendingActionProposals(
 ): Promise<readonly PendingActionProposal[]> {
   const proposals = await readActionProposals(log.writer.db);
 
-  const pending = proposals.filter(
-    (entry) => entry.outcome === null && entry.proposedAt + actionProposalLapseMs > now,
+  // A defer moves a lapse, so the shared row holds the time that counts.
+  const lapses = await readProposalLapses(
+    log.writer.db,
+    proposals.map((entry) => entry.proposalID),
   );
+
+  const lapseOf = (entry: ActionProposalState): number =>
+    lapses.get(entry.proposalID) ?? entry.proposedAt + actionProposalLapseMs;
+
+  const pending = proposals.filter((entry) => entry.outcome === null && lapseOf(entry) > now);
 
   if (pending.length === 0) {
     return [];
@@ -47,7 +55,7 @@ export async function readPendingActionProposals(
     proposedAt: entry.proposedAt,
     outcome: entry.outcome,
     destinations: destinations.get(entry.sequence) ?? [],
-    lapseAt: entry.proposedAt + actionProposalLapseMs,
+    lapseAt: lapseOf(entry),
   }));
 }
 

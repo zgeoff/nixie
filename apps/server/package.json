@@ -32,6 +32,7 @@
     "@heynixie/ops": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/prompts": "workspace:*",
+    "@heynixie/proposals": "workspace:*",
     "@heynixie/retry": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/sandbox-imp": "workspace:*",

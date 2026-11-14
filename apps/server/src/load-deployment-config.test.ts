@@ -75,6 +75,7 @@ test('it reads every section, with the default of each setting the file leaves o
     tasks: { runners: 3, startedClaimLoops: 2, messaging: { hopLimit: 20 } },
     actions: { runners: 4 },
     policy: { consent: { linkMaxAgeMs: 86_400_000 } },
+    approvals: { defer: { default_minutes: 60, evening_at: '18:00', morning_at: '08:00' } },
     skills: { catalogShare: 0.02 },
     backup: { isEnabled: true, intervalMs: 3_600_000 },
   });

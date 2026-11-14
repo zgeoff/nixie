@@ -10,6 +10,7 @@ import { buildTestClock } from '@heynixie/testing';
 import { apiProjections } from '../api-projections';
 import { createAPIApp } from '../create-api-app';
 import { defaultAPISettings } from '../default-api-settings';
+import { proposalsProjection } from '../proposals-projection';
 
 // The lint cap on imports per file holds this file to ten, so these types come from the app's
 // signature.
@@ -77,6 +78,7 @@ async function createTestContext(
         ...tasksProjections,
         ...apiProjections,
         ...memoryProjections,
+        proposalsProjection,
       ],
     },
     clock: buildTestClock(1_000_000),

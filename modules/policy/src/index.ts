@@ -13,8 +13,6 @@ export type { PendingActionProposal } from './read-pending-action-proposals';
 export { readPendingActionProposals } from './read-pending-action-proposals';
 export type { ActionProposalState } from './read-action-proposals';
 export { readActionProposals } from './read-action-proposals';
-export type { ActionLapseSweepOptions } from './start-action-lapse-sweep';
-export { startActionLapseSweep } from './start-action-lapse-sweep';
 export { writeActionProposalLapses } from './write-action-proposal-lapses';
 export { knownContactsProjection } from './known-contacts-projection';
 export type { KnownContactEntry } from './read-known-contacts';
@@ -77,3 +75,11 @@ export type {
   RunConsentCheck,
   StageProgress,
 } from './types';
+
+export type { AlwaysAllowFacts, AlwaysAllowRule } from './build-always-allow-rule';
+export { buildAlwaysAllowRule } from './build-always-allow-rule';
+export { buildActionProposalSentence } from './build-action-proposal-sentence';
+export type { ActionHandlerDeps } from './make-action-proposal-handler';
+export { makeActionProposalHandler } from './make-action-proposal-handler';
+export { mapActionProposalRecord } from './map-action-proposal-record';
+export { alwaysAskEffects } from './always-ask-effects';

@@ -35,6 +35,13 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           isMemoryConsolidatorEnabled: options.config.memory_consolidation.isEnabled,
           isBackupEnabled: options.config.backup.isEnabled,
           taskDirectory: buildTaskMessaging(options.config).directory,
+          approvals: {
+            defaultMinutes: options.config.approvals.defer.default_minutes,
+            eveningAt: options.config.approvals.defer.evening_at,
+            morningAt: options.config.approvals.defer.morning_at,
+            quietHours: options.config.quiet_hours ?? null,
+            defaultZone: options.config.time.default_zone,
+          },
         },
       );
     },

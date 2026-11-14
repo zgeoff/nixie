@@ -8,6 +8,8 @@ const inboxKinds: ReadonlySet<RecordKind> = new Set([
   'task_message',
   'task.limit_notice',
   'policy.action_answered',
+  'proposals.deferred',
+  'proposals.returned',
 ]);
 
 export function isInboxRecord(record: Pick<EnvelopeRecord, 'kind' | 'thread'>): boolean {

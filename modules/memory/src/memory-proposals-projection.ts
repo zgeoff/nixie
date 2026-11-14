@@ -1,4 +1,5 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
+import { proposalsDeferredCodec } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import { getRowSubject } from './get-row-subject';
 import type { ProposalRecord } from './parse-proposal-record';
@@ -11,6 +12,20 @@ export const memoryProposalsProjection: Projection = {
   table: 'memory_proposals',
   keyColumn: 'proposal_id',
   fold: async (tx, record) => {
+    if (record.kind === proposalsDeferredCodec.kind) {
+      const deferred = proposalsDeferredCodec.decode(record.payload);
+
+      await tx
+        .$extendTables<MemoryTables>()
+        .updateTable('memory_proposals')
+        .set({ lapse_at: deferred.lapsesAt })
+        .where('proposal_id', '=', deferred.proposalID)
+        .where('status', '=', 'pending')
+        .execute();
+
+      return [deferred.proposalID];
+    }
+
     const marked = parseSubjectRecord(record);
 
     if (marked?.target === 'proposal_change') {
