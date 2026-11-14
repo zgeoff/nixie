@@ -29,8 +29,9 @@ test('it reads every section, with the default of each setting the file leaves o
     ].join('\n'),
   );
 
-  const { models, ...sections } = await loadDeploymentConfig(ctx.path);
+  const config = await loadDeploymentConfig(ctx.path);
 
+  const { models, ...sections } = config;
   const { memory_writer: memoryWriter, memory, memory_consolidation: _, ...rest } = sections;
 
   expect(models.roles).toStrictEqual({ conversation: 'chat-direct' });
@@ -489,12 +490,14 @@ test('it refuses a log level nixie has no name for', async () => {
   );
 });
 
-test('it refuses a key no module reads', async () => {
+test('it refuses a file that holds an unknown key and a bad value, and names only the bad value', async () => {
   const ctx = await setupTest();
 
   await writeFile(
     ctx.path,
     [
+      'server:',
+      '  log_level: verbose',
       'models:',
       '  profiles:',
       '    chat-direct:',
@@ -515,38 +518,8 @@ test('it refuses a key no module reads', async () => {
     ].join('\n'),
   );
 
-  expect(loadDeploymentConfig(ctx.path)).rejects.toThrow('Unrecognized key: "modles"');
-});
-
-test('it refuses an unknown key inside a module’s section', async () => {
-  const ctx = await setupTest();
-
-  await writeFile(
-    ctx.path,
-    [
-      'models:',
-      '  profiles:',
-      '    chat-direct:',
-      '      harness: agent-sdk',
-      '      base_url: https://api.anthropic.com',
-      '      credential: deployment:anthropic',
-      '      auth_header: x-api-key',
-      '      model: claude-test-1',
-      '      effort: medium',
-      '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
-      '  roles:',
-      '    conversation: chat-direct',
-      'imp:',
-      '  url: http://127.0.0.1:7070',
-      'definitions:',
-      '  source: { kind: path, path: /etc/nixie/definitions }',
-      'tasks:',
-      '  runner: 5',
-    ].join('\n'),
-  );
-
   expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(
-    `nixie refuses the deployment configuration in ${ctx.path}:\ntasks: Unrecognized key: "runner"`,
+    `nixie refuses the deployment configuration in ${ctx.path}:\nserver.log_level: Invalid option`,
   );
 });
 

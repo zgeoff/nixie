@@ -1,27 +1,12 @@
-import { readFile } from 'node:fs/promises';
 import type { DeploymentConfig } from './deployment-config-schema';
-import { deploymentConfigSchema } from './deployment-config-schema';
+import { readDeploymentConfig } from './read-deployment-config';
 
+// The CLI commands and the tests take the settings and leave out the unknown keys, which only the
+// server start reports.
 export async function loadDeploymentConfig(
   path = '/etc/nixie/config.yaml',
 ): Promise<DeploymentConfig> {
-  const text = await readFile(path, 'utf8');
+  const loaded = await readDeploymentConfig(path);
 
-  const result = deploymentConfigSchema.safeParse(parseYAML(path, text));
-
-  if (!result.success) {
-    const issues = result.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`);
-
-    throw new Error(`nixie refuses the deployment configuration in ${path}:\n${issues.join('\n')}`);
-  }
-
-  return result.data;
-}
-
-function parseYAML(path: string, text: string): unknown {
-  try {
-    return Bun.YAML.parse(text);
-  } catch {
-    throw new Error(`nixie refuses the deployment configuration in ${path}: it is not YAML`);
-  }
+  return loaded.config;
 }
