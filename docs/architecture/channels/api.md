@@ -172,7 +172,9 @@ message record carries its text and spans while its key exists, and keeps its pl
 once the message is forgotten. Each forget record carries the sequence it forgets, so a client drops
 that message's text as the record arrives. A task message carries its sender's name, kind, hop and
 body, an exchange notice carries its text with a link to the receiver's thread, and a stop carries
-the actions it cancelled. A page and the stream read these records the same way.
+the actions it cancelled. A record whose key a forget deleted carries `isRemoved`, which the server
+reads from the `record.forget_started` record that names it, so a record whose key fails to decrypt
+carries no mark. A page and the stream read these records the same way.
 
 A step commit carries the step's read cursor: the sequence of the newest record in the task's
 [inbox](../core/tasks.md#the-inbox) that the step read. The step read a message when its cursor is

@@ -98,7 +98,12 @@ record comes with its event ID, its kind, its time, its payload, its policy deci
 its source of content. Either read returns the records as untrusted, so a span that holds outside
 content taints the task that reads it, even when the outside content itself is left out. The payload
 holds what the text leaves out, such as a called tool's name or an action's outcome. A record with
-no source holds only what nixie itself wrote, and a record whose key is gone shows as a gap.
+no source holds only what nixie itself wrote, and a record whose key is gone shows as a gap. Each
+record also says whether it was removed. A gap is removed only when its key is gone and a
+`record.forget_started` record names its sequence, so a record whose key fails to decrypt, or a
+session summary whose key a session cleanup deleted, shows as a gap that is not removed. The read
+looks for `record.forget_started` and never `record.forgotten`, because a crash between the key's
+deletion and `record.forgotten` leaves only the start record.
 
 Each page of `moment.read` stops at a token cap and returns a cursor, because a span over a long
 task holds thousands of records and a moment gathers reflections over time. The first page holds the
@@ -143,7 +148,10 @@ so an edit that commits between the reads cannot pair one version's row with ano
 The view marks a title that a model wrote, dates the note by the record that holds it, and labels
 each reflection with its model and date. Each link shows the memory item's short ID and current
 text. The span arrives a page of records at a time, in sequence order, and a record whose key is
-gone shows as a gap in its place, so a forget wins over the span.
+gone shows as a gap in its place, so a forget wins over the span. The view words a removed record
+apart from any other gap: a removed record reads "this part is removed. Its text was deleted", and
+any other gap reads "this part is gone. It was forgotten". The span read of the API carries the same
+removal mark.
 
 The user renames a moment, moves its edges, writes or rewrites its note, removes a reflection, and
 links or unlinks a memory item by its short ID. Each edit is a
