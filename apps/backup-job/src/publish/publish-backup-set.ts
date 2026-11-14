@@ -23,6 +23,14 @@ export type PublishConfig = Pick<JobConfig, 'stagingDir' | 'retention'>;
 
 type PublishFiles = Pick<JobFiles, 'readText' | 'readFileSHA256' | 'removeFile'>;
 
+interface PublishCount {
+  readonly publish: number;
+  readonly previous: PublishedSnapshot | null;
+  readonly hasPublishNumber: boolean;
+}
+
+type PublishCountRead = PublishCount | { readonly refused: string };
+
 // A failure that restic reports becomes a failed receipt, which nixie records and reports; any
 // other failure leaves the set without a receipt, so the next run publishes it again.
 export async function publishBackupSet(
@@ -37,7 +45,7 @@ export async function publishBackupSet(
     return buildFailedReceipt(set, verified.refused);
   }
 
-  const counted = await readPublishCount(repos).catch((error: unknown) => ({
+  const counted = await readPublishCount(repos).catch((error: unknown): PublishCountRead => ({
     refused: requireResticFailure(error),
   }));
 
@@ -183,26 +191,25 @@ function buildReceipt(parts: ReceiptParts): BackupReceipt {
   };
 }
 
-interface PublishCount {
-  readonly publish: number;
-  readonly previous: PublishedSnapshot | null;
-  readonly hasPublishNumber: boolean;
-}
-
-// A publish number never repeats, so a repo that cannot be listed stops the publish.
-async function readPublishCount(repos: BackupRepos): Promise<PublishCount> {
+// A publish number never repeats. A key repo that cannot be listed stops the publish. A data repo
+// that cannot be listed leaves the count to the key repo, and stops the publish only when the key
+// repo then holds no number.
+async function readPublishCount(repos: BackupRepos): Promise<PublishCountRead> {
   await repos.keys.createRepository();
 
   const keyList = await repos.keys.readSnapshots();
 
-  await repos.data.createRepository();
+  const dataList = await repos.data
+    .createRepository()
+    .then(() => repos.data.readSnapshots())
+    .catch((error: unknown) => ({ refused: requireResticFailure(error) }));
 
-  const dataList = await repos.data.readSnapshots();
+  const listed = 'refused' in dataList ? keyList : [...keyList, ...dataList];
+  const highest = Math.max(0, ...listed.map((snapshot) => snapshot.publish ?? 0));
 
-  const highest = Math.max(
-    0,
-    ...[...keyList, ...dataList].map((snapshot) => snapshot.publish ?? 0),
-  );
+  if ('refused' in dataList && highest === 0) {
+    return dataList;
+  }
 
   return {
     publish: highest + 1,
@@ -263,10 +270,9 @@ function pickKeyTagValues(count: PublishCount, note: RestoreNoteRead | null): Ke
   }
 
   if (previous.publish === null) {
-    return {
-      legacySet: previous.set,
-      provenFrom: count.hasPublishNumber ? count.publish : null,
-    };
+    return count.hasPublishNumber
+      ? { legacySet: null, provenFrom: count.publish }
+      : { legacySet: previous.set, provenFrom: null };
   }
 
   return { legacySet: previous.legacySet, provenFrom: previous.provenFrom };

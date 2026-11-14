@@ -59,9 +59,9 @@ receipt. For each set it ships, the job:
 3. backs up the key store copy to the key repository first, with the tags `set-`, `kind-` and
    `publish-`, and the tags `legacy-set-` and `proven-from-` where the
    [tag rules](../../design/queue/backup-pair.md#tags) give them: the key snapshot copies both from
-   the one it replaces, takes `legacy-set-` when it is the first numbered one, and takes
-   `proven-from-` with its own number when a restore note shows the restored keys are not the
-   newest's, or when the replaced snapshot has no number while a repository holds one;
+   the one it replaces, and takes `legacy-set-` when it is the first numbered one. It takes
+   `proven-from-` with its own number, and no other tag, when a restore note shows the restored keys
+   are not the newest's, or when the replaced snapshot has no number while a repository holds one;
 4. backs up the log copy to the data repository with the same `set-`, `kind-` and `publish-` tags,
    then applies the data retention;
 5. forgets every other key snapshot by its ID, prunes every unused byte, and checks the repository's
@@ -70,7 +70,9 @@ receipt. For each set it ships, the job:
 7. writes the receipt with an fsync and a rename, so nixie never reads a partial one;
 8. removes the set's copies, unless nixie has removed the set folder first.
 
-A job run that cannot list a repository writes a failed receipt and no snapshot, so a publish number
+A job run that cannot list the key repository writes a failed receipt and no snapshot. A job run
+that cannot list the data repository counts from the key repository alone, and writes a failed
+receipt and no snapshot only when the key repository holds no publish number, so a publish number
 never repeats. A failed key snapshot also gives a failed receipt with no data snapshot, no removed
 key snapshot and the restore note kept.
 

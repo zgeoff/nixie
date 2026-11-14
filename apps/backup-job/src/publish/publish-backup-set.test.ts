@@ -188,7 +188,7 @@ test('it gives the first numbered publish the legacy-set of the unnumbered key s
   ]);
 });
 
-test('it raises proven-from when the unnumbered key snapshot is older than a data publish number', async () => {
+test('it raises proven-from, with no legacy-set, when the unnumbered key snapshot is older than a data publish number', async () => {
   const ctx = await setupTest();
 
   await ctx.writeTaggedSnapshot(ctx.repos.data, ['set-8', 'kind-scheduled', 'publish-3']);
@@ -199,7 +199,7 @@ test('it raises proven-from when the unnumbered key snapshot is older than a dat
   const keys = await ctx.repos.keys.readSnapshots();
 
   expect(keys).toStrictEqual([
-    expect.objectContaining({ set: 10, publish: 4, legacySet: 9, provenFrom: 4 }),
+    expect.objectContaining({ set: 10, publish: 4, legacySet: null, provenFrom: 4 }),
   ]);
 });
 
@@ -265,28 +265,25 @@ test('it fails the receipt and writes no snapshot when the data repo cannot be l
   expect(afterwards).toStrictEqual({ keys: [], data: [] });
 });
 
-test('it writes no snapshot and removes no key snapshot when the data repo cannot be listed', async () => {
+test('it counts from the key repo alone and publishes when the data repo cannot be listed', async () => {
   const ctx = await setupTest();
 
+  await ctx.writeTaggedSnapshot(ctx.repos.data, ['set-1', 'kind-scheduled', 'publish-7']);
   await ctx.writeTaggedSnapshot(ctx.repos.keys, ['set-1', 'kind-scheduled', 'publish-2']);
   await ctx.stageSet(2);
 
   const failing = ctx.buildClients('', 'snapshots');
 
   const receipts = await ctx.runPass({ data: failing.data, keys: ctx.repos.keys });
-  const keys = await ctx.repos.keys.readSnapshots();
   const afterwards = await ctx.readBothRepos();
 
-  expect(receipts).toStrictEqual([
-    expect.objectContaining({
-      status: 'failed',
-      keySnapshotID: null,
-      failure: 'restic snapshots in the data repo exited 1: Fatal: the stub fails snapshots',
-    }),
-  ]);
+  expect(receipts).toStrictEqual([expect.objectContaining({ status: 'published' })]);
+  expect(afterwards.keys).toStrictEqual([expect.objectContaining({ set: 2, publish: 3 })]);
 
-  expect(keys).toStrictEqual([expect.objectContaining({ set: 1, publish: 2 })]);
-  expect(afterwards.data).toStrictEqual([]);
+  expect(afterwards.data).toIncludeSameMembers([
+    expect.objectContaining({ set: 1, publish: 7 }),
+    expect.objectContaining({ set: 2, publish: 3 }),
+  ]);
 });
 
 test('it fails the receipt and writes no snapshot when the key repo cannot be listed', async () => {
