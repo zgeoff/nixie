@@ -1,0 +1,2208 @@
+import { expect, onTestFinished, test } from 'bun:test';
+import { readLinkTarget } from '@heynixie/connectors';
+import { writeRecords } from '@heynixie/log';
+import { modelsConfigSchema } from '@heynixie/models';
+import {
+  claimTask,
+  createConversationTask,
+  runTaskStep,
+  taskLimitNoticeCodec,
+  writeFailedTurnSpend,
+  writeInboxRecords,
+  writeStepCommit,
+  writeTaskControl,
+  writeTaskLimitRaise,
+} from '@heynixie/tasks';
+import { writeTestTaskMessage } from '@heynixie/tasks/test-utils';
+import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
+import { buildSeeder } from '../test-utils/build-seeder';
+import { buildStubMemory } from '../test-utils/build-stub-memory';
+import { buildStubToolEndpoint } from '../test-utils/build-stub-tool-endpoint';
+import { readRecordsByKind } from '../test-utils/read-records-by-kind';
+import { runNextStep } from '../test-utils/run-next-step';
+import { startTestSessionHost } from '../test-utils/start-test-session-host';
+import { readTaskUsage } from './read-task-usage';
+import type { NixieRunnerOptions } from './start-nixie-runner';
+import { startNixieRunner } from './start-nixie-runner';
+
+async function setupTest() {
+  const clock = buildTestClock(1_000_000);
+
+  const host = await startTestSessionHost({ clock });
+
+  const tools = buildStubToolEndpoint();
+  const events: string[] = [];
+
+  const noMemory = buildStubMemory({
+    pinned: [],
+    pinnedUse: { items: 0, tokens: 0, budget: 2000 },
+  });
+
+  const startRunner = async (parts: Partial<Pick<NixieRunnerOptions, 'tools' | 'memory'>> = {}) => {
+    const runner = await startNixieRunner({
+      context: host.context,
+      models: modelsConfigSchema.parse({
+        profiles: {
+          'chat-direct': {
+            harness: 'agent-sdk',
+            base_url: 'https://models.example.test',
+            credential: 'deployment:anthropic',
+            auth_header: 'x-api-key',
+            model: 'claude-test-1',
+            effort: 'low',
+          },
+          errands: {
+            harness: 'agent-sdk',
+            base_url: 'https://models.example.test',
+            credential: 'deployment:anthropic',
+            auth_header: 'x-api-key',
+            model: 'claude-test-errands',
+            effort: 'low',
+            context_tokens: 200_000,
+            prices: { input: 0, cache_write: 0, cache_write_1h: 0, cached_input: 0, output: 0 },
+          },
+          'router-b': {
+            harness: 'agent-sdk',
+            base_url: 'https://router.example.test/anthropic',
+            credential: 'deployment:router',
+            auth_header: 'bearer',
+            model: 'other-family-test-3',
+            effort: 'low',
+            prices: { input: 3, cache_write: 3, cache_write_1h: 3, cached_input: 0.3, output: 15 },
+          },
+        },
+        roles: { conversation: 'chat-direct', task: 'errands' },
+        selectable: {
+          'second-look': { profile: 'router-b', description: 'Another family' },
+        },
+      }),
+      secrets: { model_credentials: { anthropic: 'not-a-real-key', router: 'not-a-real-token' } },
+      sandboxes: host.sandboxes,
+      images: { conversation: 'nixie-conversation-0123456789ab' },
+      tools: parts.tools ?? tools.endpoint,
+      memory: parts.memory ?? (() => noMemory),
+      getDefinitions: () => ({
+        persona: 'You are Pip.',
+        prompts: {},
+        personaHash: 'sha256:persona-test',
+        policyHash: 'sha256:policy-test',
+      }),
+      memorySettings: {
+        retrievalItems: 5,
+        retrievalSelfNotes: 2,
+        retrievalMessages: 3,
+        retrievalMinScore: 0.25,
+        retrievalMinSimilarity: 0.38,
+        rebuildTokens: 30_000,
+        ownerName: 'Robin',
+        agentNames: [],
+      },
+      compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 },
+      defaultZone: 'UTC',
+      messaging: { directory: [], hopLimit: 20, ownerName: 'Robin', agentName: null },
+      log: (event) => {
+        events.push(event);
+      },
+    });
+
+    host.defer(() => runner.stop());
+
+    return runner;
+  };
+
+  return {
+    ...host,
+    clock,
+    runs: tools.runs,
+    steps: tools.steps,
+    events,
+    startRunner,
+    seed: buildSeeder(host),
+    writeMessage: (taskID: string, text: string) =>
+      writeInboxRecords(host.context, [
+        {
+          kind: 'owner_message',
+          definitions: host.context.definitions(),
+          thread: taskID,
+          erasable: { text },
+        },
+      ]),
+    writeTaskMessage: (taskID: string, body: string) =>
+      writeInboxRecords(host.context, [
+        {
+          kind: 'task_message',
+          definitions: host.context.definitions(),
+          thread: taskID,
+          payload: {
+            messageID: 'q8v3m1x7ka',
+            from: 'conversation',
+            to: taskID,
+            kind: 'request',
+            replyTo: null,
+            onBehalfOf: [],
+            hop: 1,
+            hopLimit: 20,
+            wake: true,
+            woke: true,
+            source: 'task:conversation',
+          },
+          erasable: { body },
+        },
+      ]),
+    runNextStep: (runner: Awaited<ReturnType<typeof startRunner>>) =>
+      runNextStep(host.context, runner.runStep),
+    runNextStepWithNoRetryDelay: async (runner: Awaited<ReturnType<typeof startRunner>>) => {
+      const claim = await claimTask(host.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+      invariant(claim !== null, 'a task has work to claim');
+
+      await runTaskStep(host.context, claim, {
+        runStep: runner.runStep,
+        leaseMs: 60_000,
+        logger: () => {},
+        maxStepErrors: 3,
+        retryDelayMs: 0,
+        maxRetryDelayMs: 0,
+      });
+    },
+    readKinds: (kind: string) => readRecordsByKind(host.context.log, kind),
+    writeLegacyOpening: (taskID: string) =>
+      writeRecords(host.context.log, [
+        {
+          kind: 'model.session_opened',
+          definitions: host.context.definitions(),
+          thread: taskID,
+          payload: {},
+        },
+      ]),
+  };
+}
+
+test.each([
+  {
+    name: 'a task report',
+    kind: 'task_message',
+    buildPayload: (taskID: string) => ({
+      messageID: 'q8v3m1x7ka',
+      from: 'conversation',
+      to: taskID,
+      kind: 'report',
+      replyTo: null,
+      onBehalfOf: [],
+      hop: 1,
+      hopLimit: 20,
+      wake: true,
+      woke: true,
+      source: 'task:conversation',
+    }),
+    erasable: { body: 'The ferry runs at 09:25.' },
+  },
+  {
+    name: 'a timer',
+    kind: 'timer.fired',
+    buildPayload: (taskID: string) => ({
+      timerID: 'tide-check',
+      taskID,
+      dueAt: 1000,
+      firedAt: 1000,
+    }),
+    erasable: {},
+  },
+])(
+  'it ends a task turn that $name alone woke with no reply and no task message, and records the turn end as silent',
+  async (row) => {
+    const ctx = await setupTest();
+    const starter = await ctx.seed.conversationStep();
+
+    const taskID = await ctx.seed.task({
+      starter: starter.claim,
+      name: 'Tide tables',
+      brief: 'Find the high tides for Saturday.',
+    });
+
+    const runner = await ctx.startRunner();
+
+    await ctx.runNextStep(runner);
+
+    const repliesBefore = await ctx.readKinds('model.reply');
+
+    const ends: (string | undefined)[] = [];
+
+    ctx.guest.addReplies({
+      text: 'Nothing new on the tides.',
+      gate: () => {
+        ends.push(ctx.steps.at(-1)?.session?.endSilently?.());
+
+        return Promise.resolve();
+      },
+    });
+
+    await writeInboxRecords(ctx.context, [
+      {
+        kind: row.kind,
+        definitions: ctx.context.definitions(),
+        thread: taskID,
+        payload: row.buildPayload(taskID),
+        erasable: row.erasable,
+      },
+    ]);
+
+    await ctx.runNextStep(runner);
+
+    const replies = await ctx.readKinds('model.reply');
+    const sent = await ctx.readKinds('task_message');
+    const ended = await ctx.readKinds('model.turn_ended');
+
+    expect(ends).toStrictEqual(['ended']);
+    expect(replies).toStrictEqual(repliesBefore);
+    expect(sent.filter((record) => record.thread !== taskID)).toStrictEqual([]);
+
+    expect(ended.at(-1)).toStrictEqual({
+      sequence: expect.any(Number),
+      recordedAt: expect.any(Date),
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: taskID,
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: {
+        model: 'claude-test-errands',
+        profile: 'errands',
+        outcome: 'finished',
+        stopReason: 'end_turn',
+        turns: 1,
+        inputTokens: expect.any(Number),
+        outputTokens: expect.any(Number),
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        contextSize: expect.any(Number),
+        contextWindow: 200_000,
+        pinnedCore: [],
+        retrieved: [],
+        retrievedMessages: [],
+        invalidatedThrough: 0,
+        sessionImageBytes: 0,
+        sessionImageCount: 0,
+        recalledThrough: 0,
+        isSilent: true,
+      },
+      erasable: { status: 'none' },
+    });
+  },
+);
+
+test('it refuses to end a task turn that holds a message from you silently, and records its reply', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const ends: (string | undefined)[] = [];
+
+  ctx.guest.addReplies({
+    text: 'The morning tide is at 06:10.',
+    gate: () => {
+      ends.push(ctx.steps.at(-1)?.session?.endSilently?.());
+
+      return Promise.resolve();
+    },
+  });
+
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const replies = await ctx.readKinds('model.reply');
+
+  expect(ends).toStrictEqual(['refused']);
+
+  expect(replies.at(-1)).toStrictEqual({
+    sequence: expect.any(Number),
+    recordedAt: expect.any(Date),
+    kind: 'model.reply',
+    definitions: { snapshotHash: 'sha256:test' },
+    thread: taskID,
+    stepKey: null,
+    parent: null,
+    contentSource: null,
+    decision: null,
+    promptCause: null,
+    approval: null,
+    payload: {
+      model: 'claude-test-errands',
+      profile: 'errands',
+      messageID: expect.any(String),
+    },
+    erasable: { status: 'readable', fields: { text: 'The morning tide is at 06:10.' } },
+  });
+});
+
+test("it keeps a task's plain text on its own thread, with no message to its starter and no channel", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addReplies({ text: 'The morning tide is at 06:10.' });
+
+  await ctx.runNextStep(runner);
+
+  const replies = await ctx.readKinds('model.reply');
+  const messages = await ctx.readKinds('task_message');
+
+  expect(replies.map((record) => [record.thread, record.erasable.status])).toStrictEqual([
+    [taskID, 'readable'],
+  ]);
+
+  expect(messages.map((record) => record.payload['kind'])).toStrictEqual(['request']);
+});
+
+test("it runs a started task's first step in a worker imp that the task owns", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const sandboxes = await ctx.sandboxes.list(taskID);
+
+  expect(sandboxes.map((sandbox) => sandbox.spec)).toStrictEqual([
+    {
+      kind: 'worker',
+      image: 'nixie-conversation-0123456789ab',
+      owner: taskID,
+      egress: { kind: 'none' },
+      grants: [expect.objectContaining({ host: 'models.example.test' })],
+      toolRoute: true,
+      limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
+    },
+  ]);
+});
+
+test("it runs a started task's tool run on its own ID with the tools it is given, the silent end and the task role's model", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs).toStrictEqual([
+    {
+      toolUseMetaKey: 'claudecode/toolUseId',
+      runID: taskID,
+      thread: taskID,
+      tools: ['tasks.list', 'task.message', 'time.now', 'turn.end_silently'],
+      model: { model: 'claude-test-errands', profile: 'errands' },
+    },
+  ]);
+});
+
+test("it opens a started task's first session under the task prompt, with its brief as the first message in the envelope and no start note, persona or memory", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const [turn] = ctx.guest.turns;
+  const input = turn?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(turn?.profile.model).toBe('claude-test-errands');
+  expect(turn?.systemPrompt).toStartWith('You are "Tide tables", a task working for Robin.');
+  expect(turn?.systemPrompt).not.toInclude('You are Pip.');
+
+  expect(input).toMatch(
+    /<task-message id="\w+" from="task: conversation" kind="request" sent="[^"]+" fence="(?<fence>\w+)">\nFind the high tides for Saturday\.\n<\/task-message fence="\k<fence>">$/u,
+  );
+
+  expect(input).not.toInclude('task-start');
+  expect(input).not.toInclude('pinned-memory');
+  expect(ctx.guest.received.map((received) => received.owner)).toStrictEqual([taskID]);
+});
+
+test('it gives a task started with the persona and no memory no memory block, and a message that waits behind its brief the next turn, with no new wake', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'none' },
+  });
+
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const [first, second] = ctx.guest.turns;
+  const firstInput = first?.input.map((message) => message.text).join('\n') ?? '';
+  const secondInput = second?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(firstInput).not.toInclude('pinned-memory');
+  expect(firstInput).toInclude('Find the high tides for Saturday.');
+  expect(firstInput).not.toInclude('Only the morning tide, please.');
+  expect(secondInput).toInclude('Only the morning tide, please.');
+  expect(secondInput).not.toInclude('Find the high tides for Saturday.');
+});
+
+test("it rebuilds a started task's session once, with its brief in the new session, when the newest opening carries no brief mark", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeLegacyOpening(taskID);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'And the evening one.');
+  await ctx.runNextStep(runner);
+
+  const [, rebuilt, resumed] = ctx.guest.turns;
+  const rebuiltInput = rebuilt?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(rebuilt?.resume).toBeNull();
+  expect(rebuiltInput.split('Find the high tides for Saturday.')).toHaveLength(2);
+  expect(rebuiltInput).toInclude('Only the morning tide, please.');
+  expect(resumed?.resume?.sessionID).toBeString();
+});
+
+test('it sleeps the imp of a step that waits, and wakes the same imp for the next message', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+  const woken = await ctx.readKinds('sandbox.woken');
+
+  const turnSandboxes = new Set(ctx.guest.received.map((received) => received.sandboxID));
+
+  expect(slept).toHaveLength(2);
+  expect(woken).toHaveLength(1);
+  expect(turnSandboxes.size).toBe(1);
+});
+
+test('it resumes the same session for the next message', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const [first, second] = ctx.guest.turns;
+
+  expect(second?.resume?.sessionID).toBeString();
+  expect(first?.resume).toBeNull();
+});
+
+test("it starts a task's tool run again on the step after a start that failed", async () => {
+  const ctx = await setupTest();
+
+  const failing = buildStubToolEndpoint({ failedStarts: 1 });
+
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner({ tools: failing.endpoint });
+
+  await ctx.runNextStepWithNoRetryDelay(runner);
+  await ctx.runNextStep(runner);
+
+  expect(ctx.guest.turns).toHaveLength(1);
+});
+
+test('it destroys the imp of an idle task when the task closes, with no further step', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  await writeTaskControl(ctx.context, { taskID, control: 'close' });
+
+  await waitForCondition(async () => {
+    const sandboxes = await ctx.sandboxes.list(taskID);
+
+    return sandboxes.length === 0;
+  });
+
+  expect(ctx.guest.turns).toHaveLength(1);
+});
+
+test("it compacts a started task's session under the task prompt, with its name and no persona", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const prompts = ctx.guest.summaries.map((summary) => summary.systemPrompt);
+
+  expect(prompts).toStrictEqual([
+    expect.stringContaining('You are "Tide tables", a task working for'),
+  ]);
+
+  expect(prompts.join('')).not.toInclude('You are Pip.');
+});
+
+test('it commits a step whose imp fails to sleep, with no step error', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.failSleep(taskID, 'the snapshot would not write');
+
+  await ctx.runNextStep(runner);
+
+  const errored = await ctx.readKinds('task.step_errored');
+  const committed = await ctx.readKinds('task.step_committed');
+
+  expect(errored).toStrictEqual([]);
+  expect(committed).toHaveLength(1);
+});
+
+test('it destroys the imps of closed tasks, and on a later pass the one whose destroy failed', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const stuck = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const other = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Ferry times',
+    brief: 'Find the last ferry on Sunday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  ctx.guest.failNextDestroy(stuck, 'the imp would not stop');
+
+  await writeTaskControl(ctx.context, { taskID: stuck, control: 'close' });
+  await waitForCondition(() => ctx.events.includes('nixie_runner.task_remove_failed'));
+  await writeTaskControl(ctx.context, { taskID: other, control: 'close' });
+
+  await waitForCondition(async () => {
+    const sandboxes = await ctx.sandboxes.list(stuck);
+
+    return sandboxes.length === 0;
+  });
+
+  await waitForCondition(async () => {
+    const sandboxes = await ctx.sandboxes.list(other);
+
+    return sandboxes.length === 0;
+  });
+
+  expect(ctx.events.filter((event) => event.startsWith('nixie_runner.task_'))).toStrictEqual([
+    'nixie_runner.task_remove_failed',
+    'nixie_runner.task_removed',
+    'nixie_runner.task_removed',
+  ]);
+});
+
+test('it rebuilds the session of a task whose imp is gone with the messages the task sent', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Which quay?');
+
+  const claim = await claimTask(ctx.context, { holder: 'test-runner', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation',
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: taskID,
+      to: 'conversation',
+      kind: 'report',
+      body: 'High tide on Saturday is at 06:42 at Bramble Quay.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: false,
+    },
+  );
+
+  await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [] });
+
+  const [lost] = await ctx.sandboxes.list(taskID);
+
+  await lost?.destroy();
+  await ctx.writeMessage(taskID, 'And the low tide?');
+  await ctx.runNextStep(runner);
+
+  const rebuilt = ctx.guest.turns.at(-1);
+  const input = rebuilt?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(rebuilt?.resume).toBeNull();
+  expect(input).toInclude('High tide on Saturday is at 06:42 at Bramble Quay.');
+});
+
+test("it runs a task on its chosen model's profile, through that profile's host, with its own tool list", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      tools: ['tasks.list', 'task.message', 'web_fetch'],
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const [sandbox] = await ctx.sandboxes.list(taskID);
+
+  const [turn] = ctx.guest.turns;
+
+  expect(sandbox?.spec.grants).toStrictEqual([
+    expect.objectContaining({
+      host: 'router.example.test',
+      env: { ANTHROPIC_AUTH_TOKEN: expect.toBeString() },
+    }),
+  ]);
+
+  expect(turn?.profile).toStrictEqual({
+    harness: 'agent-sdk',
+    model: 'other-family-test-3',
+    baseURL: 'https://router.example.test/anthropic',
+    effort: 'low',
+    contextTokens: null,
+    cacheTTL: '5m',
+    authHeader: 'bearer',
+  });
+
+  expect(ctx.runs).toStrictEqual([
+    {
+      toolUseMetaKey: 'claudecode/toolUseId',
+      runID: taskID,
+      thread: taskID,
+      tools: ['tasks.list', 'task.message', 'web_fetch', 'turn.end_silently'],
+      model: { model: 'other-family-test-3', profile: 'router-b' },
+    },
+  ]);
+});
+
+test('it gives a stranger no persona text and no memory item', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { model: 'second-look', profile: 'router-b', persona: 'none' },
+  });
+
+  const memory = buildStubMemory({
+    pinned: [
+      {
+        itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
+        version: 1,
+        shortID: 'm4k2p8w1qz',
+        subject: 'owner',
+        text: 'Keeps bees on the allotment',
+        origin: 'owner',
+        source: 'owner',
+        model: null,
+        recordedAt: Date.UTC(2026, 9, 1),
+        evidenceQuote: null,
+        approval: null,
+      },
+    ],
+    pinnedUse: { items: 1, tokens: 8, budget: 2000 },
+  });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
+
+  await ctx.runNextStep(runner);
+
+  const [turn] = ctx.guest.turns;
+
+  invariant(turn);
+
+  const input = turn.input.map((message) => message.text).join('\n');
+
+  expect(turn.systemPrompt).not.toInclude('You are Pip.');
+  expect(input).not.toInclude('Keeps bees on the allotment');
+  expect(input).not.toInclude('pinned-memory');
+});
+
+test('it gives another me the persona and the pinned memory', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const memory = buildStubMemory({
+    pinned: [
+      {
+        itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
+        version: 1,
+        shortID: 'm4k2p8w1qz',
+        subject: 'owner',
+        text: 'Keeps bees on the allotment',
+        origin: 'owner',
+        source: 'owner',
+        model: null,
+        recordedAt: Date.UTC(2026, 9, 1),
+        evidenceQuote: null,
+        approval: null,
+      },
+    ],
+    pinnedUse: { items: 1, tokens: 8, budget: 2000 },
+  });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
+
+  await ctx.runNextStep(runner);
+
+  const [turn] = ctx.guest.turns;
+  const input = turn?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(turn?.systemPrompt).toInclude('You are Pip.');
+  expect(input).toInclude('Keeps bees on the allotment');
+});
+
+test("it searches memory for the brief of a task that reads memory, on the task's first turn", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
+
+  await ctx.runNextStep(runner);
+
+  const queries = memory.recall.mock.calls.map(([request]) => request.query);
+
+  expect(queries).toStrictEqual(['Find the high tides for Saturday.']);
+});
+
+test('it searches memory for the body of a task message to a task that reads memory', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
+
+  await ctx.runNextStep(runner);
+  await ctx.writeTaskMessage(taskID, 'Only the morning tide at the harbour.');
+  await ctx.runNextStep(runner);
+
+  const queries = memory.recall.mock.calls.map(([request]) => request.query);
+
+  expect(queries.at(-1)).toBe('Only the morning tide at the harbour.');
+});
+
+test('it purges and invalidates the session of a task that reads memory on a forget, so its next turn opens a new one', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+
+  const [, second] = ctx.guest.turns;
+
+  expect(invalidated.map((record) => record.thread)).toStrictEqual([taskID]);
+  expect(ctx.guest.purged).toHaveLength(1);
+  expect(second?.resume).toBeNull();
+});
+
+test("it shreds the summary and removes the web fetch links of a task that reads memory on a forget, and keeps another thread's links", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  await ctx.seed.webFetchLinks({
+    sessionKey: 'session-tides',
+    thread: taskID,
+    urls: ['https://harbour.test/tides'],
+  });
+
+  await ctx.seed.webFetchLinks({
+    sessionKey: 'session-ferry',
+    thread: 'conversation',
+    urls: ['https://harbour.test/ferry'],
+  });
+
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+
+  const summaries = await ctx.readKinds('model.session_summarized');
+
+  const taskLink = await readLinkTarget(ctx.context.log, {
+    sessionKey: 'session-tides',
+    number: 1,
+  });
+
+  const otherLink = await readLinkTarget(ctx.context.log, {
+    sessionKey: 'session-ferry',
+    number: 1,
+  });
+
+  expect(summaries.map((record) => [record.thread, record.erasable.status])).toStrictEqual([
+    [taskID, 'shredded'],
+  ]);
+
+  expect(taskLink).toBeNull();
+  expect(otherLink).toBe('https://harbour.test/ferry');
+});
+
+test('it runs the brief of a task that reads memory when a forget comes before its first session', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+  await ctx.runNextStep(runner);
+
+  const [turn] = ctx.guest.turns;
+  const input = turn?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(input).toInclude('Find the high tides for Saturday.');
+});
+
+test('it purges the guest of a task that reads memory when a forget aborts its first turn', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Checking the tides.', gate: () => held.promise });
+
+  const step = ctx.runNextStepWithNoRetryDelay(runner);
+
+  await waitForCondition(() => ctx.guest.turns.length === 1);
+
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+
+  await step;
+
+  expect(ctx.guest.purged).toHaveLength(1);
+});
+
+test('it leaves the session of a task that reads no memory as it is on a forget', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { memory: 'none' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+
+  expect(invalidated).toStrictEqual([]);
+  expect(ctx.guest.purged).toStrictEqual([]);
+});
+
+test('it purges and invalidates the session of a task that reads no memory when a forgotten record is on its thread', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { memory: 'none' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const replies = await ctx.readKinds('model.reply');
+
+  const recordSequence = replies.find((record) => record.thread === taskID)?.sequence ?? 0;
+
+  await runner.cleanupSessions({ recordSequence });
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+  const completed = await ctx.readKinds('model.session_cleanup_completed');
+
+  const [, second] = ctx.guest.turns;
+
+  expect(recordSequence).toBeGreaterThan(0);
+
+  expect(invalidated.map((record) => [record.thread, record.payload])).toStrictEqual([
+    [taskID, { recordSequence }],
+  ]);
+
+  expect(completed.map((record) => [record.thread, record.payload])).toStrictEqual([
+    [taskID, { recordSequence }],
+  ]);
+
+  expect(ctx.guest.purged).toHaveLength(1);
+  expect(second?.resume).toBeNull();
+});
+
+test('it leaves a closed task with no sandbox and no invalidation when a forgotten record is on its thread', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { memory: 'none' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const replies = await ctx.readKinds('model.reply');
+
+  const recordSequence = replies.find((record) => record.thread === taskID)?.sequence ?? 0;
+
+  await writeTaskControl(ctx.context, { taskID, control: 'close' });
+
+  await runner.cleanupSessions({ recordSequence });
+
+  await waitForCondition(async () => {
+    const sandboxes = await ctx.sandboxes.list(taskID);
+
+    return sandboxes.length === 0;
+  });
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+
+  expect(invalidated).toStrictEqual([]);
+});
+
+test('it pauses a task at its turn limit with no turn, and tells its starter in a limit notice', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { limits: { turns: 1, dollars: 2 } },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const paused = await ctx.readKinds('task.paused');
+  const notices = await ctx.readKinds('task.limit_notice');
+
+  expect(ctx.guest.turns).toHaveLength(1);
+  expect(paused.map((record) => record.thread)).toStrictEqual([taskID]);
+
+  expect(
+    notices.map((record) => ({ thread: record.thread, payload: record.payload })),
+  ).toStrictEqual([
+    {
+      thread: 'conversation',
+      payload: { taskID, used: { turns: 1, dollars: 0 }, limits: { turns: 1, dollars: 2 } },
+    },
+  ]);
+});
+
+test('it sleeps the awake imp of a task that pauses at its limit after a turn with work left', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { limits: { turns: 1, dollars: 2 } },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+
+  expect(ctx.guest.turns).toHaveLength(1);
+  expect(slept).toHaveLength(1);
+});
+
+test("it pauses a task at its dollar limit, priced on its model's profile", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 1e-6 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(ctx.guest.turns).toHaveLength(1);
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 1, dollars: expect.toBePositive() },
+    limits: { turns: 25, dollars: 1e-6 },
+  });
+});
+
+test('it interrupts a task turn whose model calls reach its dollar limit, and pauses the task with the limit it reached', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.runNextStep(runner);
+
+  const paused = await ctx.readKinds('task.paused');
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(paused.map((record) => record.thread)).toStrictEqual([taskID]);
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 1, dollars: 0.03 },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+});
+
+test('it resumes the work of a task turn that its dollar limit cut short once the limit is raised, with no new message', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.runNextStep(runner);
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 1 } });
+
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(ctx.guest.turns).toHaveLength(2);
+  expect(input).toInclude('Continue the work that is not done yet.');
+});
+
+test('it continues the work of a task turn that the user interrupted and paused once the user resumes it, with no new message', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+      await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  await writeTaskControl(ctx.context, { taskID, control: 'resume' });
+
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(ctx.guest.turns).toHaveLength(2);
+  expect(input).toInclude('Continue the work that is not done yet.');
+});
+
+test('it runs on at once the work of a task turn that the user interrupted with no pause', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(ctx.guest.turns).toHaveLength(2);
+  expect(input).toInclude('Continue the work that is not done yet.');
+});
+
+test('it keeps awake the imp of a task whose turn the user interrupted with no pause', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+
+  expect(slept).toStrictEqual([]);
+});
+
+test('it sleeps the imp of a task whose turn the user interrupted and paused', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+      await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+
+  expect(slept).toHaveLength(1);
+});
+
+test('it starts the next turn of an interrupted task from a message that arrived before the resume, with no continue note', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+      await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Skip Saturday, check Sunday instead.');
+
+  await writeTaskControl(ctx.context, { taskID, control: 'resume' });
+
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(input).toSatisfy(
+    (text: string) =>
+      text.includes('Skip Saturday, check Sunday instead.') &&
+      !text.includes('Continue the work that is not done yet.'),
+  );
+});
+
+test('it leaves waiting after its compaction a task whose turn ended before end_turn with no interrupt', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+  ctx.guest.addKindReplies('worker', { text: 'Checking the tides.', stopReason: 'tool_use' });
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runNextStep(runner)).rejects.toThrow('no task had work to claim');
+});
+
+test('it continues the cut work of a task whose interrupted turn passed the compaction threshold, in the session after the summary', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+      await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  await writeTaskControl(ctx.context, { taskID, control: 'resume' });
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(ctx.guest.summaries).toHaveLength(1);
+  expect(ctx.guest.turns).toHaveLength(2);
+  expect(input).toInclude('Continue the work that is not done yet.');
+});
+
+test('it keeps the cut work of a task whose continuing turn passed the context window, and continues it after the summary', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      text: 'Checking the tides.',
+      stopReason: 'tool_use',
+      gate: async () => {
+        await writeTaskControl(ctx.context, { taskID, control: 'pause' });
+        await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+        await waitForCondition(() =>
+          ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+        );
+      },
+    },
+    { overflow: 'prompt_too_long' },
+  );
+
+  await ctx.runNextStep(runner);
+
+  await writeTaskControl(ctx.context, { taskID, control: 'resume' });
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(ctx.guest.summaries).toHaveLength(1);
+  expect(input).toInclude('Continue the work that is not done yet.');
+});
+
+test('it leaves the conversation waiting after the user interrupts its turn, with no new message', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('conversation', {
+    text: 'Let me look up the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.writeMessage('conversation', 'When is high tide on Saturday?');
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runNextStep(runner)).rejects.toThrow('no task had work to claim');
+});
+
+test('it leaves waiting after a raise a task whose turn finished its work at its dollar limit', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'The high tide is at 14:10.',
+    stopReason: 'end_turn',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.runNextStep(runner);
+
+  const raised = await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 1 } });
+
+  expect(raised).toStrictEqual({
+    status: 'raised',
+    state: 'waiting',
+    isPauseRequested: false,
+    limits: { turns: 25, dollars: 1 },
+  });
+});
+
+test('it interrupts a task turn on the call that reaches its dollar limit with the spend of its earlier turns', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the evening tide.',
+    usage: {
+      uncachedInputTokens: 9990,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.writeMessage(taskID, 'And the evening tide?');
+  await ctx.runNextStep(runner);
+
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 2, dollars: expect.toBeWithin(0.03, 0.031) },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+});
+
+test('it pauses a task whose guest fails after its calls reach the dollar limit, so no retry spends again', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    failure: 'the guest lost its model stream',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const paused = await ctx.readKinds('task.paused');
+  const [notice] = await ctx.readKinds('task.limit_notice');
+  const errored = await ctx.readKinds('task.step_errored');
+
+  expect(paused.map((record) => record.thread)).toStrictEqual([taskID]);
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 0, dollars: 0.03 },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+
+  expect(errored.map((record) => record.thread)).toStrictEqual([taskID]);
+});
+
+test("it gives the retry of a failed turn only the dollars that the turn's spend and a raise leave", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      failure: 'the guest lost its model stream',
+      usage: {
+        uncachedInputTokens: 10_000,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+    {
+      text: 'Checking the tides.',
+      usage: {
+        uncachedInputTokens: 4000,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+  );
+
+  await ctx.runNextStepWithNoRetryDelay(runner);
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 0.04 } });
+
+  await ctx.runNextStep(runner);
+
+  const notices = await ctx.readKinds('task.limit_notice');
+
+  const [failed, retried] = notices.map(
+    (notice) => taskLimitNoticeCodec.decode(notice.payload).used,
+  );
+
+  expect(failed).toStrictEqual({ turns: 0, dollars: 0.03 });
+  expect(retried?.turns).toBe(1);
+  expect(retried?.dollars).toBeCloseTo(0.042, 6);
+});
+
+test('it interrupts the retry of a turn whose guest failed below the dollar limit once the retry spends what the failed turn left', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.04 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      failure: 'the guest lost its model stream',
+      usage: {
+        uncachedInputTokens: 10_000,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+    {
+      text: 'Checking the harbour charts.',
+      usage: {
+        uncachedInputTokens: 3400,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+  );
+
+  await ctx.runNextStepWithNoRetryDelay(runner);
+  await ctx.runNextStep(runner);
+
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 1, dollars: expect.toBeWithin(0.04, 0.041) },
+    limits: { turns: 25, dollars: 0.04 },
+  });
+});
+
+test('it counts the spend of a task turn whose commit lost its lease to another runner', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 1 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim !== null, 'the started task is ready to claim');
+
+  const taken: { holder: string | null } = { holder: null };
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: async (input) => {
+      const result = await runner.runStep(input);
+
+      ctx.clock.advance(60_000);
+
+      const retaken = await claimTask(ctx.context, {
+        holder: 'runner-b',
+        leaseMs: 60_000,
+        taskID,
+      });
+
+      taken.holder = retaken?.lease.holder ?? null;
+
+      return result;
+    },
+    leaseMs: 60_000,
+    logger: () => {},
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const usage = await readTaskUsage(ctx.context, taskID, {
+    input: 3,
+    cacheWrite: 3,
+    cacheWrite1h: 3,
+    cachedInput: 0.3,
+    output: 15,
+  });
+
+  expect(taken.holder).toBe('runner-b');
+  expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
+});
+
+test('it counts once the spend of a task turn at its dollar limit whose commit lost its lease after its pause', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim !== null, 'the started task is ready to claim');
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: async (input) => {
+      const result = await runner.runStep(input);
+
+      ctx.clock.advance(60_000);
+
+      return result;
+    },
+    leaseMs: 60_000,
+    logger: () => {},
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const usage = await readTaskUsage(ctx.context, taskID, {
+    input: 3,
+    cacheWrite: 3,
+    cacheWrite1h: 3,
+    cachedInput: 0.3,
+    output: 15,
+  });
+
+  expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
+});
+
+test('it interrupts a task turn at its own spend that, with a spend recorded after the turn started, reaches the dollar limit', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  // A brief ends its turn's batch, so the second call answers a message that lands during the turn.
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      text: 'The high tides on Saturday are at six and at half past six.',
+      usage: {
+        uncachedInputTokens: 3334,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+      gate: async () => {
+        await writeFailedTurnSpend(ctx.context, { taskID, dollars: 0.01 });
+
+        await ctx.writeMessage(taskID, 'And the evening tide?');
+
+        await waitForCondition(() =>
+          ctx.guest.received.some((entry) => entry.frame.type === 'message'),
+        );
+      },
+    },
+    {
+      text: 'The evening tide is at seven.',
+      usage: {
+        uncachedInputTokens: 3334,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+      gate: () =>
+        waitForCondition(() =>
+          ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+        ),
+    },
+  );
+
+  await ctx.runNextStep(runner);
+
+  const [notice] = await ctx.readKinds('task.limit_notice');
+
+  expect(notice?.payload).toStrictEqual({
+    taskID,
+    used: { turns: 1, dollars: expect.toBeWithin(0.03, 0.0301) },
+    limits: { turns: 25, dollars: 0.03 },
+  });
+});
+
+test('it caps each task turn at 100 model calls', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.guest.turns[0]?.limits).toStrictEqual({
+    modelCalls: 100,
+    toolCallWaitMs: 900_000,
+  });
+});
+
+test('it sleeps the imp of a task whose turn reached its dollar limit with work left', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      limits: { turns: 25, dollars: 0.03 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.setContextSize(165_000);
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const slept = await ctx.readKinds('sandbox.slept');
+
+  expect(slept).toHaveLength(1);
+});
+
+test('it runs the next turn of a task paused at its turn limit once the limit is raised', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { limits: { turns: 1, dollars: 2 } },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { turns: 2 } });
+
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(ctx.guest.turns).toHaveLength(2);
+  expect(input).toInclude('Only the morning tide, please.');
+});

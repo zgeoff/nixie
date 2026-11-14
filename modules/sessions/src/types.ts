@@ -7,10 +7,10 @@ import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { StepInput, TaskMessaging, TaskReport, TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
 import type { ModelCallUsage, SessionPoint, TurnProfile } from '@heynixie/wire';
-import type { StatusRegistry } from './build-status-registry';
-import type { SessionGuard } from './make-session-guard';
-import type { StepCapturePort } from './open-step-capture';
-import type { SessionMarks } from './read-session-marks';
+import type { StatusRegistry } from './session/build-status-registry';
+import type { SessionGuard } from './utils/make-session-guard';
+import type { StepCapturePort } from './utils/open-step-capture';
+import type { SessionMarks } from './utils/read-session-marks';
 
 export interface MemoryRef {
   readonly itemID: string;

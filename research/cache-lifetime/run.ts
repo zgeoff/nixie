@@ -21,11 +21,11 @@ import { runTurn } from '../../guests/conversation/src/turn/run-turn';
 // @boundaries-ignore a spike imports the code it measures
 import { renderPrompt } from '../../modules/prompts/src/prompt/render-prompt';
 // @boundaries-ignore a spike imports the code it measures
-import { formatMessageTime } from '../../modules/sessions/src/format-message-time';
+import { formatMessageTime } from '../../modules/sessions/src/message/format-message-time';
 // @boundaries-ignore a spike imports the code it measures
-import { renderPinnedMemory } from '../../modules/sessions/src/render-pinned-memory';
+import { renderPinnedMemory } from '../../modules/sessions/src/memory/render-pinned-memory';
 // @boundaries-ignore a spike imports the code it measures
-import { renderRetrievedItems } from '../../modules/sessions/src/render-retrieved-items';
+import { renderRetrievedItems } from '../../modules/sessions/src/retrieved/render-retrieved-items';
 // @boundaries-ignore the token use spike's fixtures, tools and tool server, so both spikes measure one context
 import { buildRoleTools } from '../turn-tokens/build-role-tools';
 // @boundaries-ignore the token use spike's fixtures, tools and tool server, so both spikes measure one context

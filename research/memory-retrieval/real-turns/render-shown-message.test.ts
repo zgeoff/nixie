@@ -2,9 +2,9 @@ import { expect, test } from 'bun:test';
 // @boundaries-ignore a spike imports the code it measures
 import { buildMockLogRecord } from '../../../modules/log/src/test-utils/build-mock-log-record.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { renderImageMarkers } from '../../../modules/sessions/src/render-image-markers.ts';
+import { renderImageMarkers } from '../../../modules/sessions/src/utils/render-image-markers.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { renderOwnerText } from '../../../modules/sessions/src/render-owner-text.ts';
+import { renderOwnerText } from '../../../modules/sessions/src/utils/render-owner-text.ts';
 import { renderShownMessage } from './render-shown-message.ts';
 
 test('it renders a message with a pasted span and an image as the product renderers do', () => {

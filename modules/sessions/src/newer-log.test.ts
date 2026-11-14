@@ -5,10 +5,10 @@ import { modelSessionOpenedCodec } from '@heynixie/models';
 import type { TaskProfile } from '@heynixie/tasks';
 import { readTaskDirectory, taskCreatedCodec } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
-import { readSessionMarks } from './read-session-marks';
-import { renderInboxMessage } from './render-inbox-message';
+import { renderInboxMessage } from './inbox/render-inbox-message';
 import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
 import { startTestTasks } from './test-utils/start-test-tasks';
+import { readSessionMarks } from './utils/read-session-marks';
 
 // A rolled-back server runs on the log its newer self left. This file writes this release's records
 // through the generic writer and reads them with the readers a step uses. It imports only symbols
