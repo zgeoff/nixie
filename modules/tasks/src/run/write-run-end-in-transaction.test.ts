@@ -3,6 +3,7 @@ import type { RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { writeStepCommit } from '../step/write-step-commit';
+import { writeTaskLimitRaise } from '../task/limit/write-task-limit-raise';
 import { claimTask } from '../task/projection/claim-task';
 import { writeTaskControl } from '../task/write-task-control';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
@@ -203,4 +204,54 @@ test('it leaves no open task run once a task reports', async () => {
   const ended = await ctx.readEnded(taskID);
 
   expect(ended).toHaveLength(1);
+});
+
+test('it joins the open task run when a crashed step is claimed again, so the rerun sends exactly one report', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.startTask();
+
+  await ctx.claim(taskID);
+
+  ctx.clock.advance(120_000);
+
+  const rerun = await ctx.claim(taskID);
+
+  await writeStepCommit(ctx.context, rerun, {
+    next: 'done',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+  });
+
+  const opened = await ctx.readKinds('task.run_opened');
+  const ended = await ctx.readKinds('task.run_ended');
+  const messages = await ctx.readKinds('task_message');
+
+  expect(opened).toHaveLength(1);
+  expect(ended).toHaveLength(1);
+  expect(messages.filter((message) => message.payload['kind'] === 'report')).toHaveLength(1);
+});
+
+test('it opens a task run that carries the limit-ended one, with the raised total, when the owner raises the limit', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.startTask({ report: 'none', limits: { turns: 1, dollars: 2 } });
+  const claim = await ctx.claim(taskID);
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'continue',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', limit: { meter: 'turns', used: 1, limit: 1 } },
+  });
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { turns: 3 } });
+
+  await ctx.claim(taskID);
+
+  const [first] = await ctx.readEnded(taskID);
+  const open = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+  expect(open?.opened.carriesRunID).toBe(first?.runID ?? null);
+  expect(open?.opened.origin.kind).toBe('raise');
+  expect(open?.opened.limits).toStrictEqual({ turns: 3, dollars: 2, calls: {} });
 });
