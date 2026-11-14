@@ -297,3 +297,30 @@ test.each([
     isRuleMatch(rule, call),
   ]).toStrictEqual([true, false, false]);
 });
+
+test.each([
+  ['the old context job', 'ask-task-sends:\n  outcome: ask\n  contexts: [job]\n'],
+  ['the context task', 'ask-task-sends:\n  outcome: ask\n  contexts: [task]\n'],
+])('it matches a chat task and a definition task run for a rule with %s', (_label, text) => {
+  const parsed = parseRuleFiles(new Map([['rules/mail.yaml', text]]));
+  const rule = parsed.status === 'parsed' ? parsed.rules[0]?.rule : undefined;
+
+  invariant(rule !== undefined, 'the rule file parses');
+
+  const call: RuleCall = {
+    tool: 'mail.send',
+    effects: ['send'],
+    context: 'task',
+    task: null,
+    args: {},
+    destinations: [],
+    sources: [],
+    at: 0,
+  };
+
+  expect([
+    isRuleMatch(rule, call),
+    isRuleMatch(rule, { ...call, task: 'inbox-triage' }),
+    isRuleMatch(rule, { ...call, context: 'conversation' }),
+  ]).toStrictEqual([true, true, false]);
+});

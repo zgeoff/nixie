@@ -47,9 +47,11 @@ names for one release, so the previous release still reads the stored rules and 
 calls: a rule that names definitions stores `task` as `job`, and any other rule stores it as `job`
 and `task`. The export writes the new names.
 
-Because `task` covers both kinds of task, an old rule with the context `job` and no `jobs` now also
-matches a task that nixie starts from chat, and an old rule with the context `task` and no `jobs`
-now also matches a definition's task run. Name the definitions in a rule that must stay narrow.
+The context `task` covers both kinds of task, so it matches more than either old context did. A rule
+with `contexts: [job]` matches a task that nixie starts from chat as well as a definition's task
+run. A rule with `contexts: [task]` matches a definition's task run as well as a task that nixie
+starts. A `definitions` or `jobs` list still limits a rule to the task runs of the definitions it
+names, so name the definitions in a rule that must match only them.
 
 The parser turns each rule into its canonical form: each list sorted with its duplicates dropped,
 free text in NFC, and the expiry in UTC. Two files that list the same rule in another order
