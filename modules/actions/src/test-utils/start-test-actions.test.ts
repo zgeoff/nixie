@@ -15,6 +15,7 @@ test('it starts a writer whose log folds the tasks and actions projections, on a
     'tasks',
     'timers',
     'task_messages',
+    'task_runs',
     'actions',
   ]);
 

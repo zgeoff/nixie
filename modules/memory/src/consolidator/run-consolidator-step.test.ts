@@ -3,6 +3,7 @@ import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { StepInput } from '@heynixie/tasks';
 import { claimTask, tasksProjections, writeStepCommit } from '@heynixie/tasks';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { startMemoryConsolidator } from '../memory/start-memory-consolidator';
@@ -19,7 +20,14 @@ async function setupTest() {
   const memory = await startTestMemory({ gate: { clock } });
 
   const log = { ...memory.log, projections: [...memory.log.projections, ...tasksProjections] };
-  const context = { log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
+
+  const context = {
+    log,
+    clock,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    runSettings: buildTestRunSettings(),
+  };
+
   const errors: unknown[] = [];
 
   return {
@@ -54,6 +62,7 @@ async function setupTest() {
       invariant(claim);
 
       const result = await consolidator.runStep({
+        run: null,
         taskID: claim.lease.workID,
         stepKey: claim.stepKey,
         lease: claim.lease,

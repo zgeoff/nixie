@@ -5,6 +5,7 @@ import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { claimLease } from '../../lease/claim-lease';
 import { buildPauseCheck } from '../../pause/build-pause-check';
+import { writeRunOpenInTransaction } from '../../run/write-run-open-in-transaction';
 import { buildStepWake } from '../../step/build-step-wake';
 import { taskStepStartedCodec } from '../../step/task-step-started-codec';
 import type {
@@ -100,21 +101,20 @@ async function writeStepStart(
 
   const unread = await db
     .selectFrom('records')
-    .select(['kind', 'thread', 'payload'])
+    .select(['sequence', 'kind', 'thread', 'payload'])
     .where('thread', '=', taskID)
     .where('sequence', '>', task.read_cursor)
     .orderBy('sequence')
     .execute();
 
-  const wake = buildStepWake(
-    unread.map((record) => ({
-      kind: record.kind,
-      thread: record.thread,
-      payload: parseJSONObject(record.payload),
-    })),
-    task.step_hop,
-  );
+  const unreadRecords = unread.map((record) => ({
+    sequence: record.sequence,
+    kind: record.kind,
+    thread: record.thread,
+    payload: parseJSONObject(record.payload),
+  }));
 
+  const wake = buildStepWake(unreadRecords, task.step_hop);
   const stepKey = `${taskID}:${task.committed_steps + 1}`;
   const definitions = context.definitions();
 
@@ -130,7 +130,12 @@ async function writeStepStart(
           },
         ];
 
-  if (task.pause_requested === 1) {
+  const opened =
+    task.pause_requested === 1
+      ? null
+      : await writeRunOpenInTransaction(tx, context, { taskID, stepKey, unread: unreadRecords });
+
+  if (task.pause_requested === 1 || opened === 'held') {
     await writeRecordsInTransaction(tx, context.log, [
       ...interrupted,
       buildPausedRecord(taskID, 'ready', definitions),

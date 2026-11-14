@@ -30,6 +30,8 @@ function setupTest() {
     session_kept: ['label'],
     'skills.write_rejected': ['reason'],
     'task.created': ['brief', 'name'],
+    'task.run_ended': ['body'],
+    'task.run_report_requested': ['summary', 'fields'],
     'task.step_errored': ['message'],
     task_message: ['body'],
     tool_called: ['input', 'destinations'],

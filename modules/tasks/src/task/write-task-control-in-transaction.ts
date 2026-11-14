@@ -8,6 +8,7 @@ import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { readLimitRecords } from '../limit/read-limit-records';
 import { taskPauseRequestedCodec } from '../pause/task-pause-requested-codec';
+import { writeRunEndInTransaction } from '../run/write-run-end-in-transaction';
 import type {
   TaskControl,
   TaskControlRefusal,
@@ -41,7 +42,7 @@ export type TaskControlOutcome =
 // record that moves it commit together.
 export async function writeTaskControlInTransaction(
   tx: Transaction<unknown>,
-  context: Pick<TasksContext, 'log' | 'definitions'>,
+  context: Pick<TasksContext, 'log' | 'definitions' | 'runSettings'>,
   request: TaskControlRequest,
 ): Promise<TaskControlOutcome> {
   const db = tx.$extendTables<TasksTables>();
@@ -88,6 +89,15 @@ export async function writeTaskControlInTransaction(
   ]);
 
   invariant(record, 'the control writes its record');
+
+  if (plan.kind === 'task.stopped' || plan.kind === 'task.closed') {
+    await writeRunEndInTransaction(tx, context, {
+      taskID: task.task_id,
+      trigger: { kind: plan.kind === 'task.stopped' ? 'stopped' : 'closed' },
+      endedBy: plan.kind === 'task.stopped' ? 'control:stop' : 'control:close',
+      stepKey: null,
+    });
+  }
 
   const row = await db
     .selectFrom('tasks')

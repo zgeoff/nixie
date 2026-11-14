@@ -1,5 +1,10 @@
 import { toSDKToolName } from '@heynixie/tools';
 import type { HarnessCapability } from '@heynixie/wire';
+import { checkReportShape } from '../../report/check-report-shape';
+import { taskReportToolName } from '../../report/task-report-tool-name';
+import type { ShapeFault } from '../../report/types';
+import { pickReportMode } from '../../run/pick-report-mode';
+import type { RunSettings } from '../../run/types';
 import type {
   TaskLimits,
   TaskMemory,
@@ -16,6 +21,7 @@ export interface TaskStartChoice {
   readonly memory?: TaskMemory | undefined;
   readonly tools?: readonly string[] | undefined;
   readonly report?: TaskReport | undefined;
+  readonly reportShape?: unknown;
   readonly limits?:
     | { readonly turns?: number | undefined; readonly dollars?: number | undefined }
     | undefined;
@@ -40,6 +46,7 @@ export type TaskStartChoiceRefusal =
   | { readonly reason: 'wider_memory' }
   | { readonly reason: 'wider_persona' }
   | { readonly reason: 'over_limit'; readonly limit: keyof TaskLimits; readonly max: number }
+  | { readonly reason: 'report_shape'; readonly fault: ShapeFault }
   | ToolRefusal;
 
 export type TaskStartPlan =
@@ -56,6 +63,7 @@ export function planTaskStart(
   choice: TaskStartChoice,
   starter: TaskStarter,
   bounds: TaskStartBounds,
+  settings: Pick<RunSettings, 'reportDefaults'>,
 ): TaskStartPlan {
   const starterTools = starter.tools;
 
@@ -89,6 +97,12 @@ export function planTaskStart(
   // Memory reaches a task's turn through its options and no tool, so the tool check misses it.
   if (memory === 'read' && starter.memory === 'none') {
     return refuse({ reason: 'wider_memory' });
+  }
+
+  const shape = choice.reportShape === undefined ? null : checkReportShape(choice.reportShape);
+
+  if (shape?.status === 'refused') {
+    return refuse({ reason: 'report_shape', fault: shape.fault });
   }
 
   const limits = {
@@ -140,9 +154,12 @@ export function planTaskStart(
       profile: model?.profile ?? null,
       persona,
       memory,
-      tools: [...new Set(tools)].filter((tool) => starterTools.includes(tool)),
-      report: choice.report ?? 'wake',
+      tools: [...new Set(tools)].filter(
+        (tool) => tool === taskReportToolName || starterTools.includes(tool),
+      ),
+      report: pickReportMode(choice.report, 'start', settings),
       limits,
+      ...(shape === null ? {} : { reportShape: shape.shape }),
     },
   };
 }

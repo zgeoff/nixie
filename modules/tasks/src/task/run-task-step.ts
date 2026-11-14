@@ -2,11 +2,12 @@ import { StaleWriterError } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { readInbox } from '../inbox/read-inbox';
 import { startLeaseRenewal } from '../lease/start-lease-renewal';
+import { readOpenRun } from '../run/read-open-run';
 import type { StepErrorOptions } from '../step/build-step-failure-plan';
 import { startStepControlWatch } from '../step/start-step-control-watch';
 import { writeStepCommit } from '../step/write-step-commit';
 import { writeStepError } from '../step/write-step-error';
-import type { RunStep, StartedClaim, StepErrored, TasksContext } from '../types';
+import type { RunStep, StartedClaim, StepErrored, StepResult, TasksContext } from '../types';
 import { LeaseLostError } from '../utils/lease-lost-error';
 import { readSessionBoundary } from './read-session-boundary';
 import { withTurnSpendOnFailure } from './with-turn-spend-on-failure';
@@ -54,22 +55,31 @@ async function tryCommitStep(
   try {
     const inbox = await readInbox(context, claim.lease.workID);
     const sessionBoundary = await readSessionBoundary(context, claim.lease.workID);
+    const run = await readOpenRun(context.log.writer.db, claim.lease.workID);
 
-    const result = await options.runStep({
-      taskID: claim.lease.workID,
-      stepKey: claim.stepKey,
-      lease: claim.lease,
-      inbox,
-      wake: claim.wake,
-      sessionBoundary,
-      signal: options.signal,
-      interrupt: options.interrupt,
-    });
+    const result =
+      run === null || run.reportID === null
+        ? await options.runStep({
+            run,
+            taskID: claim.lease.workID,
+            stepKey: claim.stepKey,
+            lease: claim.lease,
+            inbox,
+            wake: claim.wake,
+            sessionBoundary,
+            signal: options.signal,
+            interrupt: options.interrupt,
+          })
+        : buildReportOnlyResult(sessionBoundary);
 
     const spend =
       result.spentDollars === undefined
         ? null
-        : { taskID: claim.lease.workID, dollars: result.spentDollars };
+        : {
+            taskID: claim.lease.workID,
+            dollars: result.spentDollars,
+            ...(run === null ? {} : { taskRunID: run.runID }),
+          };
 
     await withTurnSpendOnFailure(context, { spend, logger: options.logger }, () =>
       writeStepCommit(context, claim, result),
@@ -83,4 +93,10 @@ async function tryCommitStep(
 
     return { error };
   }
+}
+
+// The rerun of a step that asked for its report runs no model turn, so its commit sends the report
+// and reads none of the inbox.
+function buildReportOnlyResult(sessionBoundary: string | null): StepResult {
+  return { next: 'wait', records: [], acknowledged: [], sessionBoundary };
 }

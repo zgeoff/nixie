@@ -132,7 +132,7 @@ tried, and each check's answer, with 3 choices:
 Retrying a payment with an unknown outcome takes the same passkey check as its first approval. The
 item stays on the dashboard until you answer, and the task can carry on with other work meanwhile.
 
-## Runner pools
+## Claim pools
 
 Tasks and actions share one claim mechanism and run in separate pools: 3 task steps and 4 actions at
 once by default, both settable. **Why:** one claim path means one set of crash tests, while separate

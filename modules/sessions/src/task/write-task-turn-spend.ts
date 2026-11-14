@@ -1,37 +1,25 @@
 import type { Logger } from '@heynixie/logger';
-import type { Lease, TaskLimits, TasksContext } from '@heynixie/tasks';
-import { withTurnSpendOnFailure, writeFailedTurnSpend, writeTaskLimitPause } from '@heynixie/tasks';
+import type { TasksContext } from '@heynixie/tasks';
+import { writeFailedTurnSpend } from '@heynixie/tasks';
 import type { TaskTurnEndPlan } from './plan-task-turn-end';
 
 export interface TaskTurnStep {
-  readonly lease: Lease;
-  readonly stepKey: string;
-  readonly startedBy: string;
-  readonly limits: TaskLimits;
+  readonly taskID: string;
+  readonly taskRunID: string;
 }
 
-// The spend goes in before the pause, so the limit record counts nothing past it, and a pause that
-// a lost lease refuses still leaves the spend counted. A step whose pause fails never commits, so a
-// failed pause records a completed turn's spend too.
+// A step that threw commits no turn record, so its spend goes in on its own. The write checks no
+// lease, so a step that lost its lease still counts what its turn spent.
 export async function writeTaskTurnSpend(
-  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'> & { readonly logger: Logger },
+  context: Pick<TasksContext, 'definitions' | 'log'> & { readonly logger: Logger },
   step: TaskTurnStep,
-  plan: Pick<TaskTurnEndPlan, 'reached' | 'failedDollars' | 'pausedDollars'>,
+  plan: Pick<TaskTurnEndPlan, 'failedDollars'>,
 ): Promise<void> {
-  const taskID = step.lease.workID;
-
   if (plan.failedDollars !== null) {
-    await writeFailedTurnSpend(context, { taskID, dollars: plan.failedDollars });
+    await writeFailedTurnSpend(context, {
+      taskID: step.taskID,
+      dollars: plan.failedDollars,
+      taskRunID: step.taskRunID,
+    });
   }
-
-  if (plan.reached === null) {
-    return;
-  }
-
-  const used = plan.reached;
-  const spend = plan.pausedDollars === null ? null : { taskID, dollars: plan.pausedDollars };
-
-  await withTurnSpendOnFailure(context, { spend, logger: context.logger }, () =>
-    writeTaskLimitPause(context, { ...step, used }),
-  );
 }

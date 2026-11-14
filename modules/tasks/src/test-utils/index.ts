@@ -1,4 +1,8 @@
+export type { TestTaskRunOptions } from './build-test-task-run';
+export { buildTestTaskRun } from './build-test-task-run';
 export { buildMockTaskStartBounds } from './build-mock-task-start-bounds';
+export type { TestRunSettingsOptions } from './build-test-run-settings';
+export { buildTestRunSettings } from './build-test-run-settings';
 export type { TaskSeederDeps } from './build-task-seeder';
 export { buildTaskSeeder } from './build-task-seeder';
 export { makeStubStep } from './make-stub-step';

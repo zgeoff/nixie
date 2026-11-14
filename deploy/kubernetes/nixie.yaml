@@ -65,7 +65,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
-      # past the runner pools' 30 s grace, with room for the parts that stop after the runners
+      # past the claim pools' 30 s grace, with room for the parts that stop after the runners
       terminationGracePeriodSeconds: 45
       securityContext:
         runAsNonRoot: true

@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { refreshDefinitions } from '../definition/refresh-definitions';
 import { createServerContext } from '../server/create-server-context';
@@ -67,7 +68,9 @@ test('it reports the definitions ready again once the source returns to its last
   await writeFile(join(root, 'persona.md'), '# Persona\n');
   await writeFile(join(root, 'skills', 'tide-tables', 'SKILL.md'), skill);
 
-  const context = await createServerContext(log.writer, log.deploymentKey, () => null);
+  const context = await createServerContext(log.writer, log.deploymentKey, () => null, {
+    runSettings: buildTestRunSettings(),
+  });
 
   const clock = buildTestClock(0);
 

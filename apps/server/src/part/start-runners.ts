@@ -1,7 +1,7 @@
 import { startActionRunners } from '@heynixie/actions';
 import { toErrorFields } from '@heynixie/logger';
 import type { RunStep } from '@heynixie/tasks';
-import { startTaskRunners } from '@heynixie/tasks';
+import { startTaskClaimPools } from '@heynixie/tasks';
 import { makeConversationFailureMarker } from '../conversation/make-conversation-failure-marker';
 import { startQueueCheckTask } from '../queue/start-queue-check-task';
 import type { ServerParts } from '../types';
@@ -23,7 +23,7 @@ export async function startRunners(parts: ServerParts, runSteps: RunnerSteps): P
   const logStepError = makeStepErrorLogger(parts.log);
   const markConversationFailure = makeConversationFailureMarker(parts.state);
 
-  const tasks = startTaskRunners(parts.context, {
+  const tasks = startTaskClaimPools(parts.context, {
     runStep: parts.tools.actions.trackSteps(steps),
     started: {
       runStep: parts.tools.actions.trackSteps(runSteps.started),

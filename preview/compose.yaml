@@ -36,7 +36,7 @@ services:
     # a reset exits the server 0 and leaves its next start to the container runtime, as Kubernetes
     # does in production; a docker compose stop still keeps it down
     restart: unless-stopped
-    # longer than the runner pools' grace, so a stop lets the steps in flight commit
+    # longer than the claim pools' grace, so a stop lets the steps in flight commit
     stop_grace_period: 45s
 
   # prints a code that signs one device in, once nixie is ready; run it again for another code

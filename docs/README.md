@@ -55,7 +55,7 @@ holds the design for a piece of work that is not built yet, with its spikes in
 - [Task messages](architecture/core/task-messages.md) — messages between tasks, the hop limit and
   message waits
 - [Leases and recovery](architecture/core/leases-and-recovery.md) — the one claim path, lease
-  generations, runner pools, crash recovery and fault points
+  generations, claim pools, crash recovery and fault points
 - [Actions](architecture/core/actions.md) — the action queue, outcomes, attempts, retries and what
   the model sees
 - [The definitions](architecture/core/definitions.md) — sources, the content hash, the definitions

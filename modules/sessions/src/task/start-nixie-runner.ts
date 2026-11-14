@@ -17,6 +17,7 @@ import type {
   StepInput,
   StepResult,
   TaskLimits,
+  TaskRun,
   TaskRunOptions,
   TaskSetup,
 } from '@heynixie/tasks';
@@ -24,9 +25,9 @@ import {
   probePauseRequested,
   readStartedTaskIDs,
   readTaskSetup,
-  startRunnerPool,
+  startClaimPool,
   startedTaskDefaultTools,
-  writeTaskLimitPause,
+  taskReportToolName,
 } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -38,7 +39,6 @@ import { taskImpMachine } from '../sandbox/task-imp-machine';
 import { buildDefaultStatus } from '../session/build-default-status';
 import { runConversationStep } from '../step/run-conversation-step';
 import { silentEndToolName } from '../turn/build-silent-end-tool';
-import { countEndedTurns } from '../turn/count-ended-turns';
 import type { ConversationRun, SessionCleanupCause } from '../types';
 import { createWorkerSandbox } from '../utils/create-worker-sandbox';
 import type { SessionGuard } from '../utils/make-session-guard';
@@ -46,6 +46,8 @@ import { makeSessionGuard } from '../utils/make-session-guard';
 import { runGuestPurge } from '../utils/run-guest-purge';
 import { sessionImageBudget } from '../utils/session-image-budget';
 import { buildGuestCommand } from './build-guest-command';
+import { buildReachedLimit } from './build-reached-limit';
+import { buildSpendRecord } from './build-spend-record';
 import type { CallBudget } from './create-call-budget';
 import { createCallBudget } from './create-call-budget';
 import { getHarnessImage } from './get-harness-image';
@@ -57,7 +59,8 @@ import { planTaskStep } from './plan-task-step';
 import { planTaskTurnEnd } from './plan-task-turn-end';
 import { readCleanedTaskIDs } from './read-cleaned-task-ids';
 import { readLateSpend } from './read-late-spend';
-import { readTaskUsage } from './read-task-usage';
+import { readRunUsage } from './read-run-usage';
+import { releaseTaskImp } from './release-task-imp';
 import { writeTaskTurnSpend } from './write-task-turn-spend';
 
 export interface NixieRunner {
@@ -159,7 +162,7 @@ interface EndedTaskWatch {
 function startEndedTaskWatch(runner: TaskRunner): EndedTaskWatch {
   const context = runner.options.context;
 
-  const sweep = startRunnerPool<never>(context.clock, {
+  const sweep = startClaimPool<never>(context.clock, {
     size: 1,
     pollMs: 60_000,
 
@@ -249,11 +252,11 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
       const run = await readStartedRun(runner, taskID);
 
       // The start's record lists only the tools that start named, and every task can end a turn
-      // silently, whatever its start named.
+      // silently and report, whatever its start named, a task that an earlier release started too.
       return options.tools.startRun({
         runID: taskID,
         thread: taskID,
-        tools: [...new Set([...run.options.tools, silentEndToolName])],
+        tools: [...new Set([...run.options.tools, silentEndToolName, taskReportToolName])],
         model: run.model,
         toolUseMetaKey: run.harness.toolUseMetaKey,
       });
@@ -286,7 +289,6 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
 interface StartedRun {
   readonly startedBy: string;
   readonly options: TaskRunOptions;
-  readonly limits: TaskLimits;
   readonly profile: ResolvedProfile;
   readonly harness: Harness;
   readonly command: GuestCommand;
@@ -325,7 +327,6 @@ function buildStartedRun(runner: TaskRunner, setup: TaskSetup): StartedRun {
   return {
     startedBy: setup.startedBy,
     options,
-    limits: setup.limits ?? options.limits,
     profile,
     harness,
     command: buildGuestCommand(runner.options.sandboxes, harness.guest),
@@ -362,26 +363,23 @@ async function runGuardedStep(
 ): Promise<StepResult> {
   const context = runner.options.context;
 
-  const run = await readStartedRun(runner, input.taskID);
-  const usage = await readTaskUsage(context, input.taskID, run.profile.profile.prices);
+  invariant(input.run !== null, `the nixie runner runs a task run, and ${input.taskID} has none`);
 
+  const taskRun = input.run;
+
+  const run = await readStartedRun(runner, input.taskID);
+  const usage = await readRunUsage(context, taskRun);
+
+  const limits = taskRun.opened.limits;
   const held = runner.imps.get(input.taskID);
 
   const plan = planTaskStep({
     used: usage.used,
-    limits: run.limits,
+    limits,
     isImpAwake: held?.getSnapshot().matches('awake') === true,
   });
 
   if (plan.kind === 'pause') {
-    await writeTaskLimitPause(context, {
-      lease: input.lease,
-      stepKey: input.stepKey,
-      startedBy: run.startedBy,
-      used: usage.used,
-      limits: run.limits,
-    });
-
     if (plan.isImpReleased && held !== undefined) {
       await releaseTaskImp(held);
     }
@@ -392,22 +390,16 @@ async function runGuardedStep(
       records: [],
       acknowledged: [],
       sessionBoundary: input.sessionBoundary,
+      run: { activity: 'none', limit: buildReachedLimit(plan.meter, usage.used, limits) },
     };
   }
 
-  return runTaskTurn(runner, input, { run, invalidated, ...usage });
-}
-
-async function releaseTaskImp(imp: TaskImpActor): Promise<void> {
-  const released = Promise.withResolvers<void>();
-
-  imp.send({ type: 'release', reply: released });
-
-  await released.promise;
+  return runTaskTurn(runner, input, { run, taskRun, invalidated, ...usage });
 }
 
 interface TaskTurnParts {
   readonly run: StartedRun;
+  readonly taskRun: TaskRun;
   readonly invalidated: AbortSignal;
   readonly used: TaskLimits;
   readonly throughSequence: number;
@@ -427,11 +419,12 @@ async function runTaskTurn(
 
   const run = parts.run;
   const context = runner.options.context;
+  const limits = parts.taskRun.opened.limits;
 
   const budget = createCallBudget(
     run.profile.profile.prices,
-    run.limits.dollars - parts.used.dollars,
-    () => readLateSpend(context, input.taskID, parts.throughSequence),
+    limits.dollars - parts.used.dollars,
+    () => readLateSpend(context, parts.taskRun, parts.throughSequence),
   );
 
   const ended = await runConversationStep(buildTaskRun(runner, { ...parts, ...held, budget }), {
@@ -444,16 +437,9 @@ async function runTaskTurn(
 
   const isPauseRequested = await probePauseRequested(context.log.writer.db, input.taskID);
 
-  // A step that lost the lease can record its spend during this turn, so a pause counts afresh.
-  const usageAtEnd = budget.signal.aborted
-    ? await readTaskUsage(context, input.taskID, run.profile.profile.prices)
-    : parts;
-
   const plan = planTaskTurnEnd({
-    used: usageAtEnd.used,
     isBudgetReached: budget.signal.aborted,
     spentDollars: budget.getSpentDollars(),
-    endedTurns: ended.result === null ? 0 : countEndedTurns(ended.result.records),
     isPauseRequested,
     next: ended.result?.next ?? null,
   });
@@ -464,7 +450,7 @@ async function runTaskTurn(
 
   await writeTaskTurnSpend(
     { ...context, logger: runner.options.log },
-    { lease: input.lease, stepKey: input.stepKey, startedBy: run.startedBy, limits: run.limits },
+    { taskID: input.taskID, taskRunID: parts.taskRun.runID },
     plan,
   );
 
@@ -472,9 +458,34 @@ async function runTaskTurn(
     throw ended.error;
   }
 
-  return plan.commitDollars === null
-    ? ended.result
-    : { ...ended.result, spentDollars: plan.commitDollars };
+  // The turn's records underprice a turn cut short, so its commit carries the budget's tally.
+  return {
+    ...ended.result,
+    records:
+      plan.limitDollars === null
+        ? ended.result.records
+        : [
+            ...ended.result.records,
+            buildSpendRecord(context, {
+              taskID: input.taskID,
+              taskRunID: parts.taskRun.runID,
+              dollars: plan.limitDollars,
+            }),
+          ],
+    ...(plan.commitDollars === null ? {} : { spentDollars: plan.commitDollars }),
+    run: {
+      activity: 'worked',
+      ...(plan.isLimitReached
+        ? {
+            limit: buildReachedLimit(
+              'dollars',
+              { turns: parts.used.turns, dollars: parts.used.dollars + budget.getSpentDollars() },
+              limits,
+            ),
+          }
+        : {}),
+    },
+  };
 }
 
 interface TaskRunParts {

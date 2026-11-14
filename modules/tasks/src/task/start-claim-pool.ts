@@ -2,7 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import { withTrackedWork } from '@heynixie/clock';
 import { waitAtFaultPoint } from '../lease/wait-at-fault-point';
 
-export interface RunnerPoolOptions<W> {
+export interface ClaimPoolOptions<W> {
   readonly size: number;
 
   readonly pollMs: number;
@@ -12,7 +12,7 @@ export interface RunnerPoolOptions<W> {
   readonly onError: (error: unknown) => void;
 }
 
-export interface RunnerPool {
+export interface ClaimPool {
   readonly wake: () => void;
 
   readonly stop: (graceMs?: number) => Promise<void>;
@@ -28,7 +28,7 @@ interface RunnerState {
   readonly onError: (error: unknown) => void;
 }
 
-export function startRunnerPool<W>(clock: Clock, options: RunnerPoolOptions<W>): RunnerPool {
+export function startClaimPool<W>(clock: Clock, options: ClaimPoolOptions<W>): ClaimPool {
   const stopping = new AbortController();
 
   const waking = { controller: new AbortController() };
@@ -72,7 +72,7 @@ export function startRunnerPool<W>(clock: Clock, options: RunnerPoolOptions<W>):
 
 async function runRunner<W>(
   clock: Clock,
-  options: RunnerPoolOptions<W>,
+  options: ClaimPoolOptions<W>,
   state: RunnerState,
 ): Promise<void> {
   try {
@@ -95,7 +95,7 @@ async function runRunner<W>(
   }
 }
 
-async function runClaim<W>(options: RunnerPoolOptions<W>, state: RunnerState): Promise<boolean> {
+async function runClaim<W>(options: ClaimPoolOptions<W>, state: RunnerState): Promise<boolean> {
   state.updateBusy(1);
 
   try {

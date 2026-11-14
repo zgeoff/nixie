@@ -8,6 +8,8 @@ import {
 } from '@heynixie/policy';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
+import { callCapRefusal } from './cap/call-cap-refusal';
+import { countCapCalls } from './cap/count-cap-calls';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
 import { resolveCallDestinations } from './policy-call/resolve-call-destinations';
 import { resolveCallPolicyFacts } from './policy-call/resolve-call-policy-facts';
@@ -103,16 +105,18 @@ export async function runToolCall(
 
   const written = await recorder.writeCall({ policy, stored, destinations, args: policyArgs });
 
-  const settled = await runDecidedCall({
-    policy,
-    stored,
-    registered,
-    call,
-    run,
-    callSequence: written.sequence,
-    shortID: written.shortID,
-    options,
-  });
+  const settled = written.isCapped
+    ? buildMessage('denied', renderCallCapRefusal(run, call.tool), { source: 'owner_data' })
+    : await runDecidedCall({
+        policy,
+        stored,
+        registered,
+        call,
+        run,
+        callSequence: written.sequence,
+        shortID: written.shortID,
+        options,
+      });
 
   return recorder.writeResult(written.sequence, settled);
 }
@@ -147,6 +151,9 @@ interface WrittenCall {
 
   // the short ID of the action proposal that an ask wrote, and null for any other call
   readonly shortID: string | null;
+
+  // whether the call is one more than its task run's cap on the tool
+  readonly isCapped: boolean;
 }
 
 interface CallRecorder {
@@ -160,7 +167,13 @@ function makeCallRecorder(
   options: ToolCallOptions,
   definitions: Definitions,
 ): CallRecorder {
-  const ids = { callID: call.callID, runID: run.runID, toolUseID: call.toolUseID };
+  const ids = {
+    callID: call.callID,
+    runID: run.runID,
+    toolUseID: call.toolUseID,
+    ...(run.taskRun === undefined ? {} : { taskRunID: run.taskRun.runID }),
+  };
+
   const recordInput = options.registry.findTool(call.tool)?.definition.recordInput;
 
   return {
@@ -198,6 +211,21 @@ function makeCallRecorder(
 
         invariant(written, 'the log wrote no record for the tool call');
 
+        const cap = decided === null ? undefined : run.taskRun?.calls[call.tool];
+
+        if (cap !== undefined && run.taskRun !== undefined) {
+          const earlier = await countCapCalls(tx, {
+            thread: run.thread,
+            taskRunID: run.taskRun.runID,
+            tool: call.tool,
+            beforeSequence: written.sequence,
+          });
+
+          if (earlier >= cap) {
+            return { sequence: written.sequence, shortID: null, isCapped: true };
+          }
+        }
+
         const cause = decided?.policy.decision.cause;
 
         if (
@@ -206,7 +234,7 @@ function makeCallRecorder(
           cause === undefined ||
           isMemoryRuleAsk(decided.policy)
         ) {
-          return { sequence: written.sequence, shortID: null };
+          return { sequence: written.sequence, shortID: null, isCapped: false };
         }
 
         const registered = options.registry.findTool(call.tool);
@@ -227,7 +255,7 @@ function makeCallRecorder(
 
         await writeRecordsInTransaction(tx, options.log, [proposal.record]);
 
-        return { sequence: written.sequence, shortID: proposal.shortID };
+        return { sequence: written.sequence, shortID: proposal.shortID, isCapped: false };
       }),
     writeResult: async (callSequence, settled) => {
       const contentSource = pickLeastTrusted(Object.values(settled.sources));
@@ -340,6 +368,12 @@ function buildMessage(
 // hidden is stored only when the tool set it to an object with 1 key or more
 function buildHiddenFields(fields: JSONObject, hidden: JSONObject | undefined): JSONObject {
   return hidden !== undefined && Object.keys(hidden).length > 0 ? { ...fields, hidden } : fields;
+}
+
+function renderCallCapRefusal(run: ToolRun, tool: string): string {
+  const cap = run.taskRun?.calls[tool] ?? 0;
+
+  return callCapRefusal.replace('{n}', String(cap)).replace('{tool}', tool);
 }
 
 interface DecidedCall {

@@ -1,61 +1,88 @@
 import { expect, test } from 'bun:test';
-import { writeFailedTurnSpend } from '@heynixie/tasks';
+import { claimTask, readOpenRun, writeFailedTurnSpend } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { readLateSpend } from './read-late-spend';
-import { readTaskUsage } from './read-task-usage';
+import { readRunUsage } from './read-run-usage';
 
 async function setupTest() {
   const tasks = await startTestTasks();
 
+  const seed = buildSeeder(tasks);
+
   return {
     tasks,
-    seed: buildSeeder(tasks),
-    readThroughSequence: async (taskID: string) => {
-      const usage = await readTaskUsage(tasks.context, taskID, null);
+    seed,
+    startRun: async () => {
+      const starter = await seed.conversationStep();
 
-      return usage.throughSequence;
+      const taskID = await seed.task({
+        starter: starter.claim,
+        name: 'Tide tables',
+        brief: 'Find the high tides for Saturday.',
+      });
+
+      const claim = await claimTask(tasks.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+      invariant(claim, 'the started task is ready to claim');
+
+      const run = await readOpenRun(tasks.context.log.writer.db, taskID);
+
+      invariant(run, 'the claim opened a task run');
+
+      return run;
     },
   };
 }
 
-test('it sums only the spend records on the thread of the task past the sequence', async () => {
+test('it sums only the spend of the task run past the sequence', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seed.conversationStep();
+  const run = await ctx.startRun();
 
-  const taskID = await ctx.seed.task({
-    starter: starter.claim,
-    name: 'Tide tables',
-    brief: 'Find the high tides for Saturday.',
+  await writeFailedTurnSpend(ctx.tasks.context, {
+    taskID: run.taskID,
+    taskRunID: run.runID,
+    dollars: 0.04,
   });
 
-  await writeFailedTurnSpend(ctx.tasks.context, { taskID, dollars: 0.04 });
+  const usage = await readRunUsage(ctx.tasks.context, run);
 
-  const throughSequence = await ctx.readThroughSequence(taskID);
+  await writeFailedTurnSpend(ctx.tasks.context, {
+    taskID: run.taskID,
+    taskRunID: run.runID,
+    dollars: 0.01,
+  });
 
-  await writeFailedTurnSpend(ctx.tasks.context, { taskID, dollars: 0.01 });
-  await writeFailedTurnSpend(ctx.tasks.context, { taskID: 'harbour-charts', dollars: 0.5 });
-  await writeFailedTurnSpend(ctx.tasks.context, { taskID, dollars: 0.02 });
+  await writeFailedTurnSpend(ctx.tasks.context, {
+    taskID: run.taskID,
+    taskRunID: 'an-earlier-run',
+    dollars: 0.5,
+  });
 
-  const dollars = await readLateSpend(ctx.tasks.context, taskID, throughSequence);
+  await writeFailedTurnSpend(ctx.tasks.context, {
+    taskID: run.taskID,
+    taskRunID: run.runID,
+    dollars: 0.02,
+  });
+
+  const dollars = await readLateSpend(ctx.tasks.context, run, usage.throughSequence);
 
   expect(dollars).toBeCloseTo(0.03, 10);
 });
 
 test('it reads no spend when none was recorded past the sequence', async () => {
   const ctx = await setupTest();
-  const starter = await ctx.seed.conversationStep();
+  const run = await ctx.startRun();
 
-  const taskID = await ctx.seed.task({
-    starter: starter.claim,
-    name: 'Tide tables',
-    brief: 'Find the high tides for Saturday.',
+  await writeFailedTurnSpend(ctx.tasks.context, {
+    taskID: run.taskID,
+    taskRunID: run.runID,
+    dollars: 0.04,
   });
 
-  await writeFailedTurnSpend(ctx.tasks.context, { taskID, dollars: 0.04 });
-
-  const throughSequence = await ctx.readThroughSequence(taskID);
-  const dollars = await readLateSpend(ctx.tasks.context, taskID, throughSequence);
+  const usage = await readRunUsage(ctx.tasks.context, run);
+  const dollars = await readLateSpend(ctx.tasks.context, run, usage.throughSequence);
 
   expect(dollars).toBe(0);
 });

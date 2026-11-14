@@ -3,7 +3,7 @@ import { setWorkTracker } from '@heynixie/clock';
 import { buildTestClock, buildWorkTracker, waitForCondition } from '@heynixie/testing';
 import { setFaultPointHandler } from '../lease/set-fault-point-handler';
 import { buildStubPoolWork } from '../test-utils/build-stub-pool-work';
-import { startRunnerPool } from './start-runner-pool';
+import { startClaimPool } from './start-claim-pool';
 
 function setupTest() {
   return { clock: buildTestClock(0) };
@@ -12,7 +12,7 @@ function setupTest() {
 test('it runs no more work at once than its size', async () => {
   const work = buildStubPoolWork(['a', 'b', 'c', 'd', 'e']);
 
-  const pool = startRunnerPool(buildTestClock(0), {
+  const pool = startClaimPool(buildTestClock(0), {
     size: 2,
     pollMs: 1000,
     claim: work.claim,
@@ -41,7 +41,7 @@ test('it claims again after the poll interval when no work was claimable', async
   const work = buildStubPoolWork([]);
   const claim = mock(work.claim);
 
-  const pool = startRunnerPool(ctx.clock, {
+  const pool = startClaimPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
     claim,
@@ -69,7 +69,7 @@ test('it claims at once when woken', async () => {
   const ctx = setupTest();
   const work = buildStubPoolWork([]);
 
-  const pool = startRunnerPool(ctx.clock, {
+  const pool = startClaimPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
     claim: work.claim,
@@ -98,7 +98,7 @@ test('it claims again at once when a wake lands during a claim that found nothin
   const work = buildStubPoolWork([]);
   const miss = work.holdNextMiss();
 
-  const pool = startRunnerPool(ctx.clock, {
+  const pool = startClaimPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
     claim: work.claim,
@@ -128,7 +128,7 @@ test('it claims again at once when the poll interval passed during a claim that 
   const work = buildStubPoolWork([]);
   const miss = work.holdNextMiss();
 
-  const pool = startRunnerPool(ctx.clock, {
+  const pool = startClaimPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
     claim: work.claim,
@@ -157,7 +157,7 @@ test('it claims nothing after a stop, and waits for the work in flight', async (
   const ctx = setupTest();
   const work = buildStubPoolWork(['a', 'b']);
 
-  const pool = startRunnerPool(ctx.clock, {
+  const pool = startClaimPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
     claim: work.claim,
@@ -183,7 +183,7 @@ test('it stops waiting for work in flight at the grace deadline', async () => {
   const ctx = setupTest();
   const work = buildStubPoolWork(['a']);
 
-  const pool = startRunnerPool(ctx.clock, {
+  const pool = startClaimPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
     claim: work.claim,
@@ -220,7 +220,7 @@ test('it reaches sigterm.grace when a stop finds work in flight', async () => {
     setFaultPointHandler(null);
   });
 
-  const pool = startRunnerPool(ctx.clock, {
+  const pool = startClaimPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
     claim: work.claim,
@@ -242,7 +242,7 @@ test('it runs no work whose claim committed after a stop began', async () => {
   const claim = mock(() => claimed.promise);
   const run = mock(() => Promise.resolve());
 
-  const pool = startRunnerPool(buildTestClock(0), {
+  const pool = startClaimPool(buildTestClock(0), {
     size: 1,
     pollMs: 1000,
     claim,
@@ -270,7 +270,7 @@ test('it reports an error a run threw and stops claiming', async () => {
 
   const failure = new Error('writer epoch 1 is stale: the database holds writer epoch 2');
 
-  const pool = startRunnerPool(ctx.clock, {
+  const pool = startClaimPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
     claim: work.claim,
@@ -295,7 +295,7 @@ test('it reports a claim in flight as unsettled work, and settles once the runne
 
   const miss = work.holdNextMiss();
 
-  const pool = startRunnerPool(ctx.clock, {
+  const pool = startClaimPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
     claim: work.claim,

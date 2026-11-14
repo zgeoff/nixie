@@ -10,7 +10,7 @@ import type { RunStep, StepErrored, StepResult, TasksTables } from '../types';
 import { createTask } from './create-task';
 import { claimTask } from './projection/claim-task';
 import { writeInboxRecords } from './projection/write-inbox-records';
-import { startTaskRunners } from './start-task-runners';
+import { startTaskClaimPools } from './start-task-claim-pools';
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -29,7 +29,7 @@ test('it runs 3 steps at once by default', async () => {
 
   await Promise.all(['a', 'b', 'c', 'd'].map((brief) => createTask(ctx.context, brief)));
 
-  const runners = startTaskRunners(ctx.context, {
+  const runners = startTaskClaimPools(ctx.context, {
     runStep: async (input): Promise<StepResult> => {
       running.add(input.taskID);
 
@@ -64,7 +64,7 @@ test('it runs a claimed step and commits its result', async () => {
   const ctx = await setupTest();
   const taskID = await createTask(ctx.context, 'tidy the inbox');
 
-  const runners = startTaskRunners(ctx.context, {
+  const runners = startTaskClaimPools(ctx.context, {
     runStep: () => Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
     onStepErrored: () => {},
     onError: () => {},
@@ -93,7 +93,7 @@ test('it runs a task created while every runner sleeps without waiting for the p
     Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
   );
 
-  const runners = startTaskRunners(ctx.context, {
+  const runners = startTaskClaimPools(ctx.context, {
     runStep: ran,
     onStepErrored: () => {},
     onError: () => {},
@@ -119,7 +119,7 @@ test('it stops waking on commits once stopped', async () => {
 
   const ran = mock(() => {});
 
-  const runners = startTaskRunners(ctx.context, {
+  const runners = startTaskClaimPools(ctx.context, {
     runStep: () => {
       ran();
 
@@ -146,7 +146,7 @@ test('it removes its commit listener once stopped', async () => {
 
   const recorded = buildRecordedCommits();
 
-  const runners = startTaskRunners(
+  const runners = startTaskClaimPools(
     {
       ...ctx.context,
       log: { ...ctx.context.log, writer: { ...ctx.context.log.writer, commits: recorded.commits } },
@@ -173,7 +173,7 @@ test('it reports a step that throws once its error record commits', async () => 
 
   const taskID = await createTask(ctx.context, 'tidy the inbox');
 
-  const runners = startTaskRunners(ctx.context, {
+  const runners = startTaskClaimPools(ctx.context, {
     runStep: () => Promise.reject(failure),
     onStepErrored,
     onError: () => {},
@@ -222,7 +222,7 @@ test('it fires a due timer on its next poll', async () => {
     timers: [{ dueAt: 1_060_000 }],
   });
 
-  const runners = startTaskRunners(ctx.context, {
+  const runners = startTaskClaimPools(ctx.context, {
     runStep: () => Promise.resolve<StepResult>({ next: 'wait', records: [], acknowledged: [] }),
     onStepErrored: () => {},
     onError: () => {},
@@ -258,7 +258,7 @@ test('it runs a started task through the started step', async () => {
     Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
   );
 
-  const runners = startTaskRunners(ctx.context, {
+  const runners = startTaskClaimPools(ctx.context, {
     runStep: () => Promise.reject(new Error('the started task reached the other step')),
     started: { runStep: ran, size: 1 },
     onStepErrored: () => {},
@@ -309,7 +309,7 @@ test('it claims a message to the conversation while every claim loop of the star
     }),
   );
 
-  const runners = startTaskRunners(ctx.context, {
+  const runners = startTaskClaimPools(ctx.context, {
     runStep: conversation,
     started: {
       runStep: async (input) => {

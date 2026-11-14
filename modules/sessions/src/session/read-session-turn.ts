@@ -1,5 +1,6 @@
 import { readTaskBrief } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import { renderRunBlocks } from '../task/render-run-blocks';
 import { pickTurnInbox } from '../turn/pick-turn-inbox';
 import { readTurnContext } from '../turn/read-turn-context';
 import type { SessionTurn } from '../turn/run-planned-turn';
@@ -26,6 +27,7 @@ export async function readSessionTurn(
     skillCatalog: step.skillCatalog,
     batch: pickTurnInbox(step.input.inbox),
     brief,
+    runBlocks: pickRunBlocks(step, isNewSession),
     previousCore: step.marks.previousCore,
     isNewSession,
 
@@ -46,6 +48,12 @@ export async function readSessionTurn(
     isFirstSession,
     context,
   };
+}
+
+function pickRunBlocks(step: SessionStep, isNewSession: boolean): string | null {
+  return step.input.run === null
+    ? null
+    : renderRunBlocks(step.input.run, { stepKey: step.input.stepKey, isNewSession });
 }
 
 // a session resumes only after its opening, which keeps or gives its key

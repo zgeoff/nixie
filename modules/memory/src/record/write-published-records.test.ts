@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { claimWriterLease } from '../test-utils/claim-writer-lease';
@@ -13,7 +14,13 @@ async function setupTest() {
   const memory = await startTestMemory();
 
   const clock = buildTestClock(1_000_000);
-  const context = { log: memory.log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
+
+  const context = {
+    log: memory.log,
+    clock,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    runSettings: buildTestRunSettings(),
+  };
 
   const parts = {
     context,
@@ -37,6 +44,7 @@ test('it merges a conversation write into the pending proposal the writer made o
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -99,6 +107,7 @@ test('it merges a writer proposal into the pending proposal the conversation mad
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -150,6 +159,7 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -220,6 +230,7 @@ test('it keeps a sensitive write and a write with no mark of the same text as pr
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,

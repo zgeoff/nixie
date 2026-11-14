@@ -5,6 +5,7 @@ test('it builds a default step input', () => {
   const input = buildMockStepInput();
 
   expect(input).toContainAllKeys([
+    'run',
     'taskID',
     'stepKey',
     'lease',

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { LeaseLostError, claimLease } from '@heynixie/tasks';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { startTestMemory } from '../test-utils/start-test-memory';
@@ -13,7 +14,13 @@ async function setupTest() {
   const memory = await startTestMemory();
 
   const clock = buildTestClock(1_000_000);
-  const context = { log: memory.log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
+
+  const context = {
+    log: memory.log,
+    clock,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    runSettings: buildTestRunSettings(),
+  };
 
   const parts = {
     context,
@@ -54,6 +61,7 @@ test('it publishes the batch and advances the cursor with its record', async () 
   invariant(lease);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -103,6 +111,7 @@ test('it returns superseded when an item moved on since the session read it', as
   invariant(lease);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -175,6 +184,7 @@ test('it returns superseded when the checker passed a write under definitions th
   invariant(lease);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -246,6 +256,7 @@ test('it returns superseded when an item a proposal names was forgotten since th
   invariant(lease);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -315,6 +326,7 @@ test('it rejects a publish whose lease another claim replaced', async () => {
   invariant(lease);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,

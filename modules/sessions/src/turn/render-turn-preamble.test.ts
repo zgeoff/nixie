@@ -35,6 +35,7 @@ test('it renders the continuation note, the change note, the facts, the self-not
       },
       thread: 'garden',
       at: 'Wed 14 Oct, 12:00, UTC',
+      runBlocks: null,
       brief: null,
     },
     { ownerName: 'Sam', defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
@@ -60,11 +61,29 @@ test('it leaves out each block with nothing in it', () => {
         retrieval: { items: [], selfNotes: [], messages: [] },
         thread: 'garden',
         at: 'Wed 14 Oct, 12:00, UTC',
+        runBlocks: null,
         brief: null,
       },
       { ownerName: null, defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
     ),
   ).toStrictEqual([]);
+});
+
+test('it puts the blocks of the task run before the brief', () => {
+  expect(
+    renderTurnPreamble(
+      {
+        continuation: null,
+        changes: null,
+        retrieval: { items: [], selfNotes: [], messages: [] },
+        thread: 'garden',
+        at: 'Wed 14 Oct, 12:00, UTC',
+        runBlocks: '<report-shape fence="k3f9">\n</report-shape fence="k3f9">',
+        brief: 'the brief',
+      },
+      { ownerName: null, defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
+    ),
+  ).toStrictEqual(['<report-shape fence="k3f9">\n</report-shape fence="k3f9">', 'the brief']);
 });
 
 test('it puts the brief that sits in no inbox record last', () => {
@@ -75,6 +94,7 @@ test('it puts the brief that sits in no inbox record last', () => {
       retrieval: { items: [], selfNotes: [], messages: [] },
       thread: 'garden',
       at: 'Wed 14 Oct, 12:00, UTC',
+      runBlocks: null,
       brief: '<task-message id="t4m2">Find quiet cafes.</task-message>',
     },
     { ownerName: null, defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },

@@ -1,15 +1,27 @@
 import type { Clock } from '@heynixie/clock';
 import type { taskMessageKindSchema } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
-import type { Definitions, Log, LogRecord, RecordInput, RecordKind } from '@heynixie/log';
+import type {
+  Definitions,
+  JSONObject,
+  Log,
+  LogRecord,
+  RecordInput,
+  RecordKind,
+} from '@heynixie/log';
 import type { ResumeState, TaskState } from '@heynixie/task-control';
 import type { HarnessCapability } from '@heynixie/wire';
 import type { z } from 'zod';
+import type { ReportShape } from './report/types';
+import type { RunSettings, TaskRun } from './run/types';
 
 export interface TasksContext {
   readonly log: Log;
   readonly clock: Clock;
   readonly definitions: () => Definitions;
+
+  // what a claim and the end of a task run read: the report defaults, the meters and the hop limit
+  readonly runSettings: RunSettings;
 }
 
 export type {
@@ -89,6 +101,9 @@ export interface TaskRunOptions {
   readonly tools: readonly string[];
   readonly report: TaskReport;
   readonly limits: TaskLimits;
+
+  // the report shape that the start declared, which a task run pins at its claim
+  readonly reportShape?: ReportShape;
 }
 
 export interface TaskModelChoice {
@@ -128,6 +143,18 @@ export interface StepErrored {
 
 export interface StepResult {
   readonly next: 'continue' | 'wait' | 'hold' | 'done';
+
+  // what a runner tells the end of a task run: whether the step did work, a limit that it reached,
+  // and the report that a runner with no model writes in place of a task.report call
+  readonly run?: {
+    readonly activity: 'worked' | 'none';
+    readonly limit?: {
+      readonly meter: 'turns' | 'dollars';
+      readonly used: number;
+      readonly limit: number;
+    };
+    readonly report?: { readonly summary: string; readonly fields?: JSONObject };
+  };
   readonly records: readonly RecordInput[];
   readonly acknowledged: readonly number[];
   readonly timers?: readonly { readonly dueAt: number }[];
@@ -140,6 +167,9 @@ export interface StepResult {
 }
 
 export interface StepInput {
+  // the open task run, or null for a task with none, such as the conversation
+  readonly run: TaskRun | null;
+
   readonly taskID: string;
   readonly stepKey: string;
 
@@ -263,6 +293,19 @@ interface TaskMessageTable {
   readonly sent_sequence: number;
 }
 
+interface TaskRunTable {
+  readonly run_id: string;
+  readonly task_id: string;
+  readonly opened_sequence: number;
+  readonly started_at: number;
+  readonly definition_id: string | null;
+  readonly opened: string;
+  readonly report_id: string | null;
+  readonly ended_sequence: number | null;
+  readonly ended_at: number | null;
+  readonly ended: string | null;
+}
+
 interface PauseTable {
   readonly id: number;
 }
@@ -287,6 +330,7 @@ export type TasksTables = CheckedTables<
     leases: LeaseTable;
     records: InboxRecordTable;
     task_messages: TaskMessageTable;
+    task_runs: TaskRunTable;
     nixie_pause: PauseTable;
     pause_exemptions: PauseExemptionTable;
   }>,

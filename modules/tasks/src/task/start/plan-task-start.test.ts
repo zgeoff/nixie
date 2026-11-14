@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildMockTaskStartBounds } from '../../test-utils/build-mock-task-start-bounds';
+import { buildTestRunSettings } from '../../test-utils/build-test-run-settings';
 import { planTaskStart } from './plan-task-start';
 
 test('it plans a start with no options as the persona, no memory, the default tools and the default limits', () => {
@@ -12,6 +13,7 @@ test('it plans a start with no options as the persona, no memory, the default to
         persona: 'default',
       },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'planned',
@@ -20,7 +22,7 @@ test('it plans a start with no options as the persona, no memory, the default to
       profile: null,
       persona: 'default',
       memory: 'none',
-      tools: ['tasks.list', 'task.message', 'time.now'],
+      tools: ['tasks.list', 'task.message', 'task.report', 'time.now'],
       report: 'wake',
       limits: { turns: 25, dollars: 2 },
     },
@@ -48,6 +50,7 @@ test('it plans a stranger on a selectable model with the tools asked for and the
           { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
         ],
       }),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'planned',
@@ -56,7 +59,7 @@ test('it plans a stranger on a selectable model with the tools asked for and the
       profile: 'router-b',
       persona: 'none',
       memory: 'none',
-      tools: ['tasks.list', 'task.message', 'web_fetch'],
+      tools: ['tasks.list', 'task.message', 'task.report', 'web_fetch'],
       report: 'next_turn',
       limits: { turns: 8, dollars: 2 },
     },
@@ -72,6 +75,7 @@ test('it gives a task that reads memory the memory read tools that its starter h
       persona: 'default',
     },
     buildMockTaskStartBounds(),
+    buildTestRunSettings(),
   );
 
   expect(plan).toStrictEqual({
@@ -81,7 +85,7 @@ test('it gives a task that reads memory the memory read tools that its starter h
       profile: null,
       persona: 'default',
       memory: 'read',
-      tools: ['tasks.list', 'task.message', 'memory.recall'],
+      tools: ['tasks.list', 'task.message', 'task.report', 'memory.recall'],
       report: 'wake',
       limits: { turns: 25, dollars: 2 },
     },
@@ -93,6 +97,7 @@ test('it leaves out each base tool that its starter lacks', () => {
     { tools: [] },
     { tools: ['task.message'], memory: 'read', persona: 'default' },
     buildMockTaskStartBounds(),
+    buildTestRunSettings(),
   );
 
   expect(plan).toStrictEqual({
@@ -102,7 +107,7 @@ test('it leaves out each base tool that its starter lacks', () => {
       profile: null,
       persona: 'default',
       memory: 'none',
-      tools: ['task.message'],
+      tools: ['task.message', 'task.report'],
       report: 'wake',
       limits: { turns: 25, dollars: 2 },
     },
@@ -119,6 +124,7 @@ test('it refuses a model that is not selectable', () => {
           { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
         ],
       }),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'unknown_model', model: 'opus-high' } });
 });
@@ -127,15 +133,20 @@ test('it refuses a tool list wider than its starter holds', () => {
   expect(
     planTaskStart(
       { tools: ['web_fetch', 'memory.remember', 'time.now'] },
-      { tools: ['tasks.list', 'task.message', 'time.now'], memory: 'read', persona: 'default' },
+      {
+        tools: ['tasks.list', 'task.message', 'task.report', 'time.now'],
+        memory: 'read',
+        persona: 'default',
+      },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'refused',
     refusal: {
       reason: 'wider_tools',
       tools: ['web_fetch', 'memory.remember'],
-      accepted: ['tasks.list', 'task.message', 'time.now'],
+      accepted: ['tasks.list', 'task.message', 'task.report', 'time.now'],
     },
   });
 });
@@ -149,6 +160,7 @@ test.each([
       { limits },
       { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default' },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'over_limit', limit, max } });
 });
@@ -159,6 +171,7 @@ test('it plans limits at the max', () => {
       { limits: { turns: 100, dollars: 10 } },
       { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default' },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'planned',
@@ -167,9 +180,30 @@ test('it plans limits at the max', () => {
       profile: null,
       persona: 'default',
       memory: 'none',
-      tools: ['tasks.list', 'task.message'],
+      tools: ['tasks.list', 'task.message', 'task.report'],
       report: 'wake',
       limits: { turns: 100, dollars: 10 },
+    },
+  });
+});
+
+test('it refuses a report shape that uses a keyword outside the table', () => {
+  expect(
+    planTaskStart(
+      {
+        reportShape: {
+          properties: { city: { type: 'string', pattern: '^[A-Z]' } },
+        },
+      },
+      { tools: ['tasks.list', 'task.message'], memory: 'none', persona: 'default' },
+      buildMockTaskStartBounds(),
+      buildTestRunSettings(),
+    ),
+  ).toStrictEqual({
+    status: 'refused',
+    refusal: {
+      reason: 'report_shape',
+      fault: { fault: 'keyword', path: 'city', keyword: 'pattern' },
     },
   });
 });
@@ -180,6 +214,7 @@ test('it refuses a stranger that reads memory', () => {
       { persona: 'none', memory: 'read' },
       { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default' },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'stranger_with_memory' } });
 });
@@ -190,6 +225,7 @@ test('it refuses a task that reads memory for a starter that does not', () => {
       { persona: 'default', memory: 'read' },
       { tools: ['tasks.list', 'task.message', 'task.start'], memory: 'none', persona: 'default' },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'wider_memory' } });
 });
@@ -200,6 +236,7 @@ test('it refuses the persona for a task whose starter runs with none', () => {
       { persona: 'default' },
       { tools: ['tasks.list', 'task.message', 'task.start'], memory: 'none', persona: 'none' },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'wider_persona' } });
 });
@@ -210,6 +247,7 @@ test("it plans a start with no persona from a starter that runs with none as the
       {},
       { tools: ['tasks.list', 'task.message', 'task.start'], memory: 'none', persona: 'none' },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'planned',
@@ -218,7 +256,7 @@ test("it plans a start with no persona from a starter that runs with none as the
       profile: null,
       persona: 'none',
       memory: 'none',
-      tools: ['tasks.list', 'task.message'],
+      tools: ['tasks.list', 'task.message', 'task.report'],
       report: 'wake',
       limits: { turns: 25, dollars: 2 },
     },
@@ -235,6 +273,7 @@ test('it refuses a memory tool for a task with no memory', () => {
         persona: 'default',
       },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'refused',
@@ -252,6 +291,7 @@ test('it refuses a tool that only the conversation can use, though the starter h
       { tools: ['skill_read'] },
       { tools: ['tasks.list', 'task.message', 'skill_read'], memory: 'read', persona: 'default' },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'refused',
@@ -299,12 +339,14 @@ test('it gives a task that reads memory each memory write tool that the start na
       { memory: 'read', tools: ['memory.recall', 'memory.edit'] },
       ctx.starter,
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'planned',
     options: ctx.readOptions([
       'tasks.list',
       'task.message',
+      'task.report',
       'memory.recall',
       'memory.edit',
       'memory.pending',
@@ -320,12 +362,14 @@ test('it gives a task that reads memory a moment write tool that the start names
       { memory: 'read', tools: ['moment.edit'] },
       ctx.starter,
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'planned',
     options: ctx.readOptions([
       'tasks.list',
       'task.message',
+      'task.report',
       'moment.edit',
       'memory.recall',
       'memory.pending',
@@ -341,12 +385,14 @@ test('it plans a memory write tool that the start names by its SDK name under th
       { memory: 'read', tools: ['mcp__nixie__memory_edit'] },
       ctx.starter,
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'planned',
     options: ctx.readOptions([
       'tasks.list',
       'task.message',
+      'task.report',
       'memory.edit',
       'memory.recall',
       'memory.pending',
@@ -364,6 +410,7 @@ test('it refuses a memory write tool that the starter lacks, though the task rea
         persona: 'default',
       },
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'refused',
@@ -379,7 +426,12 @@ test('it refuses a memory write tool for a task that does not read memory', () =
   const ctx = setupTest();
 
   expect(
-    planTaskStart({ tools: ['memory.edit'] }, ctx.starter, buildMockTaskStartBounds()),
+    planTaskStart(
+      { tools: ['memory.edit'] },
+      ctx.starter,
+      buildMockTaskStartBounds(),
+      buildTestRunSettings(),
+    ),
   ).toStrictEqual({
     status: 'refused',
     refusal: {
@@ -398,6 +450,7 @@ test('it lists each memory write tool that the starter holds as accepted when th
       { memory: 'read', tools: ['web_fetch'] },
       ctx.starter,
       buildMockTaskStartBounds(),
+      buildTestRunSettings(),
     ),
   ).toStrictEqual({
     status: 'refused',
@@ -420,8 +473,21 @@ test('it lists each memory write tool that the starter holds as accepted when th
 test('it gives a task that reads memory no write tool when the start names none', () => {
   const ctx = setupTest();
 
-  expect(planTaskStart({ memory: 'read' }, ctx.starter, buildMockTaskStartBounds())).toStrictEqual({
+  expect(
+    planTaskStart(
+      { memory: 'read' },
+      ctx.starter,
+      buildMockTaskStartBounds(),
+      buildTestRunSettings(),
+    ),
+  ).toStrictEqual({
     status: 'planned',
-    options: ctx.readOptions(['tasks.list', 'task.message', 'memory.recall', 'memory.pending']),
+    options: ctx.readOptions([
+      'tasks.list',
+      'task.message',
+      'task.report',
+      'memory.recall',
+      'memory.pending',
+    ]),
   });
 });

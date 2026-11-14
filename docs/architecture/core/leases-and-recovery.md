@@ -6,7 +6,7 @@ runner renews it, so a runner that dies frees its work within one lease length, 
 was only slow finds its lease gone and commits nothing. Task steps and action attempts claim through
 the same path, so both kinds of work follow one set of rules. After a crash, recovery runs before
 any runner starts and puts every piece of work that was in flight back into a state a runner can
-claim. `modules/tasks` owns the claim path, the runner pools and recovery. [Tasks](./tasks.md) and
+claim. `modules/tasks` owns the claim path, the claim pools and recovery. [Tasks](./tasks.md) and
 [actions](./actions.md) cover the work itself.
 
 ## The claim path
@@ -44,9 +44,9 @@ Leases sit outside the event log. A claim or a renewal changes a lease without w
 because a lease says who may write now, not what happened. A projection rebuild therefore leaves the
 leases as they were.
 
-## Runner pools
+## Claim pools
 
-A runner pool runs a fixed number of runners over one claim function. An idle runner sleeps for a
+A claim pool runs a fixed number of runners over one claim function. An idle runner sleeps for a
 poll interval unless the pool wakes it. Task steps and action attempts run in pools of their own, so
 an action goes out while every task runner is busy with a long turn. The task pool runs one more
 runner that fires due timers on each poll. The tasks that the conversation starts claim their steps

@@ -67,18 +67,16 @@ When the start refuses a tool, the start's error message holds both names of eac
 with the same options from the same starter would accept. When the start refuses a memory tool, the
 message also holds the `memory: read` setting that the tool needs.
 
-The report mode decides how the task's result reaches its starter. Under `wake` a report wakes the
-starter unless the task sends it with `wake: false`, under `next_turn` the message tool sends each
-report to the starter with no wake, and under `none` the message tool refuses a report to the
-starter. A report under `wake` stays subject to the [hop limit](./task-messages.md#the-hop-limit),
-so a report past that limit reaches the starter with no wake.
+The report mode decides how the task's report reaches its starter, as [reports](#reports) describes.
+The start can also declare a `reportShape`: the fields the task must pass with its report, beside
+its summary. nixie checks that the fields match the shape and never that they are true.
 
 ## The nixie runner
 
 The server gives the steps of every started task to the nixie runner, the step function in
 `modules/sessions` that runs a started task. The steps claim through a claim pool of their own, so
 the conversation never waits behind them
-([leases and recovery](./leases-and-recovery.md#runner-pools)). Each step runs in a
+([leases and recovery](./leases-and-recovery.md#claim-pools)). Each step runs in a
 [sandbox of the task's own](../connectors/sandboxes.md#a-started-tasks-sandbox), on the profile of
 the task's model, or of the `task` role when the start chose none. The sandbox's one grant is that
 profile's credential, and the turn goes to that profile's base URL, so a profile that points at a
@@ -99,9 +97,9 @@ The brief is an unread inbox message, so the task's first turn takes it as its i
 `<task-message>` envelope, and takes no message behind it in that turn. The next step reads the
 messages that wait. A task's plain text goes to nobody: it reaches its starter only through a
 `task.message` call. When the model ends a turn with text and no call, the text stays in its notes.
-The task prompt tells it to send the result to the task that started it, as a task message of kind
-`report`, unless the start set `report: none`. After the step that sends the report, the task waits:
-a message to it wakes it again, and the user closes it when its work is done.
+The task ends its task run by calling `task.report`, as [reports](#reports) describes. After the
+step that reports, the task waits: a message to it wakes it again and opens a new task run, and the
+user closes it when its work is done.
 
 A session opening after the first pins the brief as a message right after its status, as the
 [session opening](./session-opening.md#the-brief) describes, so a rebuilt session still reads what
@@ -130,77 +128,112 @@ waiting task to ready, so such a task never runs. At each server start, after th
 conversation task and before any claim, it moves each such task to ready. A task that the user
 paused or stopped keeps its state.
 
+## Task runs
+
+A task run is one stretch of a started task's work that ends in one report. A claim opens a task run
+when the task has none open and a waking message, a raise or a restart is waiting, and the run ends
+when the task reports, reaches a limit, stops, closes or fails. The 3 records `task.run_opened`,
+`task.run_report_requested` and `task.run_ended` hold it, and the `task_runs` projection folds them
+into one row per task run with the open run first in the unique `task_runs_open` index.
+
+A task run pins what it needs when it opens: the report mode and its target, the report shape, and
+its limits. A raise or a restart opens a task run that carries the one before it, as
+[limits](#limits) describes. A task has at most one open task run, and a rerun of a step joins it,
+so a crash after an action ran and a rerun of the step give exactly one report.
+
+A record belongs to a task run by the `taskRunID` it carries, or, for a record with none, by its
+place between the opening and the end of a run. Each tool call in a task run carries the ID, and a
+tool can have a cap of calls per task run: a call past the cap is a `tool_result` with the outcome
+`denied` and no decision, and a call that was invalid or denied never counts toward it.
+
+## Reports
+
+A started task ends its task run with one report: a summary and, when the start declared a
+`reportShape`, fields that match it. The model calls `task.report`, which checks the fields against
+the pinned shape, refuses a second report in the task run with the first report's ID, and writes a
+`task.run_report_requested` record that holds the words only in its erasable fields. A report shape
+takes a closed table of keywords, and nixie adds the object type and closes every object, so one
+shape always gives one text. nixie sends nothing from a call that fails the check, and the refusal
+repeats no value that the model sent.
+
+The task run's end writes the report, once, in the transaction of the step's commit, the stop or the
+close that ended it. When the task made no report, nixie writes a code-made summary for the cause
+and lists the fields it lacks as `missing`. A forget that destroyed the request before the end
+leaves the same code-made summary. The report mode decides the delivery:
+
+- `wake`: a task message of kind `report` goes to the starter and wakes it, inside the
+  [hop limit](./task-messages.md#the-hop-limit). Past the hop limit it waits for the starter's next
+  turn.
+- `next_turn`: the message goes to the starter with no wake.
+- `none`: nixie keeps the report on the `task.run_ended` record and sends no message.
+
+A report to a starter that is done, failed or closed, and the end of a task run that did no work,
+are kept the same way. An end for a limit under a mode that does not wake the starter also writes a
+`task.limit_notice` to the starter, so the starter learns the task paused.
+
+A task that finishes a turn with no report ends its task run as `no_report`. A forget of a delivered
+report destroys the request, the end and the message together, and rebuilds the sessions of each.
+`log.read` shows each task message on the thread it reads as an entry of the role `task`, with no
+text once the message is forgotten.
+
 ## Limits
 
 A started task has a limit of turns and of dollars, which its start set or took from
-`models.limits.taskRun`. Each model turn record on the task's thread counts as one turn, and its
-token counts, priced with the task's profile, count as its dollars. Each summary of the task's
-session records the token counts of its calls too, and they count as dollars and as no turn. Each
-`task.failed_turn_spent` record holds the dollars that the calls of a turn with no turn record
-spent, and they count as dollars and as no turn. The config schema refuses a profile with no price
-table for any profile a task can run on, as
+`models.limits.taskRun`. The limits belong to the task run, and 2 meters count a task run's use:
+
+- The turns meter counts the `model.turn_ended` records of the task run.
+- The dollars meter prices those records' token counts with the task's profile, adds each summary of
+  the task's session, which records the token counts of its calls too, and adds each
+  `task.failed_turn_spent` record of the task run, which holds the dollars of a turn that left no
+  turn record. A summary counts as dollars and as no turn.
+
+The config schema refuses a profile with no price table for any profile a task can run on, as
 [selectable models](./model-profiles.md#selectable-models) describes. A record sums its calls, and
-the per-call usage that the model API reports leaves out thinking tokens, so the count prices each
+the per-call usage that the model API reports leaves out thinking tokens, so the meter prices each
 record as one call. It therefore prices every cache write at the longer lifetime's price, and a turn
 whose calls together pass a profile's long-prompt size at the long-prompt prices. The count can run
 above the spend. One exception: a summary recorded by an earlier release kept no token counts, so it
 adds no dollars, and the count of a task that has one can fall below its spend.
 
-Before each step runs a turn, the runner counts the task's turns and dollars. When either count has
-reached its limit, the step runs no turn. In one transaction it asks for a pause, writes a
-`task.limit_reached` record on the task's thread, and writes a `task.limit_notice` record into the
-inbox of the task that started it, unless that task has finished. The step then commits with its
-work left, so the task pauses in the ready state. The notice wakes the starter, and its model reads
-the task's ID and counts in a system message that says only the user can resume the task. The
-message leaves out the task's name, because a model wrote that name, and the model trusts a system
-message as nixie's own text.
+Before each step runs a turn, the runner reads both meters. When either has reached its limit, the
+step runs no turn and returns the limit as its end, and the step's commit ends the task run as
+`limit`, which writes the report, a `task.limit_reached` record, and a pause that leaves the task in
+the ready state with its work. The starter learns of it through the report or the limit notice, and
+its model reads the task's ID and counts in a system message that says only the user can resume the
+task. The message leaves out the task's name, because a model wrote that name, and the model trusts
+a system message as nixie's own text.
 
 A turn can pass the dollar limit on its own, so the runner prices each of the turn's model calls
 with the task's profile as the guest reports it
 ([model calls](./conversation-turns.md#model-calls)). When the calls and the earlier count together
 reach the dollar limit, the runner interrupts the turn
-([interrupts](./conversation-turns.md#interrupts)). Once the turn ends, the step asks for the pause
-and writes the same two records, with the counts it reached. The step sleeps the task's imp, even
-with work left, and its commit pauses the task. A step whose guest fails after its calls reach the
-limit asks for the pause too, so the step's retry waits for a raise and spends nothing more.
+([interrupts](./conversation-turns.md#interrupts)). The turn record prices only the calls that
+finished, so the turn's commit also carries the budget's tally as a `task.failed_turn_spent` record,
+and the limit end counts both. The count can therefore run a little above the spend. The step sleeps
+the task's imp, even with work left. A step whose guest fails after its calls reach the limit leaves
+the task to its retry, which finds the meter at the limit and runs no turn.
 
 A failed turn commits no turn record, so a step whose guest fails writes a `task.failed_turn_spent`
-record on the task's thread, with the dollars its calls spent, before any limit record. A step whose
-guest fails before any priced call writes none. The write checks no lease, because the calls spent
-the dollars whoever holds the lease now. A failed turn's spend therefore counts toward the dollar
-limit, and the step's retry gets only the dollars that the failed turn left.
+record with the task run's ID and the dollars its calls spent. A step whose guest fails before any
+priced call writes none. The write checks no lease, because the calls spent the dollars whoever
+holds the lease now. The spend therefore counts toward the dollar limit, and the step's retry gets
+only the dollars that the failed turn left.
 
 A completed turn's turn record goes in with its step's commit, and the commit checks the lease
 first. When the commit fails, such as when it loses its lease, the step writes a
-`task.failed_turn_spent` record with the turn's dollars instead, so the turn's spend still counts. A
-turn that reached the limit counts its spend in its limit record, so its failed commit writes no
-spend record. When that limit record fails to commit, such as when a lost lease refuses it, the step
-writes the spend record in its place. When the spend record fails to write too, the runner logs a
-`task.turn_spend_unrecorded` error event with the task's ID and the dollars, and the count leaves
-that spend out.
+`task.failed_turn_spent` record with the turn's dollars instead, so the turn's spend still counts.
+When that write fails too, the runner logs a `task.turn_spend_unrecorded` error event with the
+task's ID and the dollars, and the count leaves that spend out.
 
-A step that lost its lease can write its spend record after another runner has taken the step. On
+A step that lost its lease can write its spend record after another claim has taken the step. On
 each priced call, the turn's budget reads the spend records written on the task since the turn's
-usage read, and lowers the dollars left by them. The turn therefore stops at the dollar limit even
-when that late spend lands during the turn. A profile with no prices reads nothing. When the read
-fails, the step fails, and its retry counts the task's use again from the log. When a turn reaches
-the limit, the runner counts the task's turns and dollars again before it writes the limit record,
-so the limit record includes the late spend.
+usage read, and lowers the dollars left by those that name the same task run. The turn therefore
+stops at the dollar limit even when that late spend lands during the turn, and another task run's
+spend never shortens it. A profile with no prices reads nothing. When the read fails, the step
+fails, and its retry counts the task run's use again from the log.
 
 The interrupt leaves the turn's work not done, so the task keeps that work for the raise, as
 [interrupted work](#interrupted-work) describes.
-
-A `task.limit_reached` record holds the task's whole count at its turn's end, with the key of its
-step, and commits before that step's commit. When the step's commit also carries a turn record, the
-turn record counts the turn's spend. When the turn failed, its `task.failed_turn_spent` record
-counts the spend, and the limit record counts nothing past it. A step that stopped before its commit
-leaves neither record, so the limit record is the only record of that spend. The count therefore
-adds the dollars that a limit record counted past the records before it, unless that step's own
-commit carried a turn record. A retry takes the same step key, so the count settles each limit
-record at its step's end: the step's commit, its `task.step_errored` record or the
-`task.step_interrupted` record that a reclaim writes. That way the spend of a step that stopped
-before its commit still counts after a raise, and a raise that lands before a step's commit never
-counts the turn twice.
 
 While the newest limit record on the task's thread is `task.limit_reached`, a resume or a restart of
 the task refuses. The user raises the limit with the `task-raise` host command
@@ -209,6 +242,12 @@ and resumes a paused task in one transaction. A task that the user stopped after
 stopped, and a restart runs it under the raised limit. A raise names turns, dollars or both, and
 refuses when no value goes above the limit the task reached or one falls below it. The max of
 `models.limits.taskRun` never caps a raise, because it bounds only what a start asks for.
+
+A raise or a restart opens a task run that carries the newest one. The totals of a piece of work are
+the limits of its first task run, or the newest raise's. A raise gives the new task run those totals
+less what the piece used since its newest restart, so a task that used 40 of 60 turns carries 20. A
+restart gives the full totals, because a restart after a limit end would otherwise carry nothing and
+end before its first turn.
 
 ## Interrupted work
 
@@ -221,8 +260,8 @@ the outcome is `finished`, and its task waits as usual.
 1. The step of the cut turn commits with work left, so the task stays ready, and it writes the turn
    record with `isInterrupted: true`.
 2. When the user or the limit asked for a pause, the commit pauses the task, the runner puts the
-   task's imp to sleep, and no runner claims the task until the user resumes it or raises the limit.
-   When nobody asked for a pause, the imp stays awake, and a runner claims the task again at once.
+   task's imp to sleep, and no claim takes the task until the user resumes it or raises the limit.
+   When nobody asked for a pause, the imp stays awake, and the task is claimed again at once.
 3. The next step finds no unread message, yet it runs a turn, because the task's newest turn record
    carries `isInterrupted: true`. nixie opens that turn with a `task-continue` system message, in
    which nixie asks the model to continue the work that the interrupt stopped.

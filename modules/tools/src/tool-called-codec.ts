@@ -10,5 +10,6 @@ export const toolCalledCodec = defineRecordCodec(
     tool: z.string(),
     model: z.string().exactOptional(),
     profile: z.string().exactOptional(),
+    taskRunID: z.string().exactOptional(),
   }),
 );

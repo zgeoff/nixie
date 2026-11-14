@@ -65,7 +65,7 @@ services:
     cap_drop: ['ALL']
     security_opt: ['no-new-privileges:true']
     restart: unless-stopped
-    # past the runner pools' 30 s grace, so a stop lets the steps in flight commit
+    # past the claim pools' 30 s grace, so a stop lets the steps in flight commit
     stop_grace_period: 45s
     depends_on:
       setup:

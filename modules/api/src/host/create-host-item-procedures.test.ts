@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { createMemoryItem, startTestMemory } from '@heynixie/memory/test-utils';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { createRouterClient } from '@orpc/server';
 import invariant from 'tiny-invariant';
 import { defaultAPISettings } from '../utils/default-api-settings';
@@ -12,6 +13,7 @@ async function setupTest() {
     log: memory.log,
     clock: memory.writer.clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
+    runSettings: buildTestRunSettings(),
     settings: defaultAPISettings,
     readSessionCleanup: () => null,
   };

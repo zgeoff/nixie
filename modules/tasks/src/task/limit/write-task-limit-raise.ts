@@ -21,7 +21,7 @@ export type TaskLimitRaiseOutcome =
   | { readonly status: 'refused'; readonly reason: TaskLimitRaiseRefusal };
 
 export function writeTaskLimitRaise(
-  context: Pick<TasksContext, 'definitions' | 'log'>,
+  context: Pick<TasksContext, 'definitions' | 'log' | 'runSettings'>,
   raise: TaskLimitRaise,
 ): Promise<TaskLimitRaiseOutcome> {
   return withWriteTransaction(context.log.writer, async (tx) => {

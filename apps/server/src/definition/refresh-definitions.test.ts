@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, loadSnapshotSkills } from '@heynixie/definitions';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import type { SeedParts } from '../seed/run-queued-seed';
 import { createServerContext } from '../server/create-server-context';
@@ -27,7 +28,9 @@ async function setupTest() {
 
   await mkdir(root);
 
-  const context = await createServerContext(log.writer, log.deploymentKey, () => null);
+  const context = await createServerContext(log.writer, log.deploymentKey, () => null, {
+    runSettings: buildTestRunSettings(),
+  });
 
   return { root, context, writer: log.writer };
 }

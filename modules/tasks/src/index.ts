@@ -1,3 +1,37 @@
+export { buildTaskReportTool } from './report/build-task-report-tool';
+export { checkReportShape } from './report/check-report-shape';
+export { codeMadeSummaries } from './report/code-made-summaries';
+export { listReportRecords } from './report/list-report-records';
+export { renderReportBody } from './report/render-report-body';
+export { taskReportToolName } from './report/task-report-tool-name';
+export type { FieldSchema, ReportShape, ShapeFault } from './report/types';
+export { pickRecordRun } from './run/pick-record-run';
+export { pickReportMode } from './run/pick-report-mode';
+export { readEndedRuns } from './run/read-ended-runs';
+export { readOpenRun } from './run/read-open-run';
+export { readPreviousRun } from './run/read-previous-run';
+export { readRunRecords } from './run/read-run-records';
+export { readRunState } from './run/read-run-state';
+export { toRunEndCause } from './run/run-end-cause';
+export type { RunEndCause } from './run/run-end-cause';
+export { toRunOrigin } from './run/run-origin';
+export type { RunOrigin } from './run/run-origin';
+export { taskRunEndedCodec } from './run/task-run-ended-codec';
+export { taskRunOpenedCodec } from './run/task-run-opened-codec';
+export { taskRunReportRequestedCodec } from './run/task-run-report-requested-codec';
+export { taskRunsProjection } from './run/task-runs-projection';
+
+export type {
+  RunLimits,
+  RunMeter,
+  RunMeterName,
+  RunSettings,
+  RunState,
+  TaskRun,
+  TaskRunEnded,
+  TaskRunOpened,
+} from './run/types';
+
 export { buildStepRunID } from './step/build-step-run-id';
 export { buildTaskMessageTool } from './task/projection/build-task-message-tool';
 export { buildTaskStartTool } from './lease/build-task-start-tool';
@@ -54,8 +88,6 @@ export { taskLimitsRaisedCodec } from './limit/task-limits-raised-codec';
 export type { FailedTurnSpend } from './task/write-failed-turn-spend';
 export { withTurnSpendOnFailure } from './task/with-turn-spend-on-failure';
 export { writeFailedTurnSpend } from './task/write-failed-turn-spend';
-export type { TaskLimitPause } from './task/limit/write-task-limit-pause';
-export { writeTaskLimitPause } from './task/limit/write-task-limit-pause';
 export type { TaskLimitRaise, TaskLimitRaiseOutcome } from './task/limit/write-task-limit-raise';
 export { writeTaskLimitRaise } from './task/limit/write-task-limit-raise';
 export { readSessionBoundary } from './task/read-session-boundary';
@@ -70,10 +102,10 @@ export { runTaskStep } from './task/run-task-step';
 export { setFaultPointHandler } from './lease/set-fault-point-handler';
 export type { LeaseRenewal } from './lease/start-lease-renewal';
 export { startLeaseRenewal } from './lease/start-lease-renewal';
-export type { RunnerPool, RunnerPoolOptions } from './task/start-runner-pool';
-export { startRunnerPool } from './task/start-runner-pool';
-export type { TaskRunnersOptions } from './task/start-task-runners';
-export { startTaskRunners } from './task/start-task-runners';
+export type { ClaimPool, ClaimPoolOptions } from './task/start-claim-pool';
+export { startClaimPool } from './task/start-claim-pool';
+export type { TaskClaimPoolsOptions } from './task/start-task-claim-pools';
+export { startTaskClaimPools } from './task/start-task-claim-pools';
 export { StepAlreadyCommittedError } from './step/step-already-committed-error';
 export type { StepFailure } from './step/step-failed-error';
 export { StepFailedError } from './step/step-failed-error';

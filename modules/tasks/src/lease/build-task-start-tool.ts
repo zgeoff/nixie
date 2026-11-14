@@ -3,6 +3,8 @@ import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { toSDKToolName } from '@heynixie/tools';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
+import { reportShapeKeywords } from '../report/check-report-shape';
+import { renderShapeFault } from '../report/render-shape-fault';
 import { readTaskSetup } from '../task/read-task-setup';
 import type { TaskStartChoiceRefusal } from '../task/start/plan-task-start';
 import { planTaskStart } from '../task/start/plan-task-start';
@@ -26,13 +28,14 @@ const startArguments = z.object({
   memory: z.enum(['none', 'read']).optional(),
   tools: z.string().array().optional(),
   report: z.enum(['wake', 'next_turn', 'none']).optional(),
+  reportShape: z.unknown().optional(),
   limits: z
     .object({ turns: z.int().positive().optional(), dollars: z.number().positive().optional() })
     .optional(),
 });
 
 export function buildTaskStartTool(
-  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
+  context: Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'runSettings'>,
   messaging: Pick<TaskMessaging, 'hopLimit' | 'ownerName'>,
   bounds: TaskStartBounds,
 ): ToolDefinition {
@@ -73,7 +76,12 @@ export function buildTaskStartTool(
 
       const access = await readStarterAccess(context, tool.run.thread);
 
-      const plan = planTaskStart(input, { tools: tool.run.tools, ...access }, bounds);
+      const plan = planTaskStart(
+        input,
+        { tools: tool.run.tools, ...access },
+        bounds,
+        context.runSettings,
+      );
 
       if (plan.status === 'refused') {
         return { status: 'error', message: renderChoiceRefusal(plan.refusal) };
@@ -153,6 +161,21 @@ function buildStartInput(bounds: TaskStartBounds): JSONObject {
           'how the result reaches you: wake wakes you, next_turn waits for your next turn, ' +
           'none sends no report',
       },
+      reportShape: {
+        type: 'object',
+        properties: {
+          properties: {
+            type: 'object',
+            description: `the fields your report must hold, by name, each a schema that takes only ${reportShapeKeywords.join(', ')}`,
+          },
+          required: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['properties'],
+        additionalProperties: false,
+        description:
+          'the fields the task must pass with its report, beside its summary; nixie checks that ' +
+          'they match this shape and never that they are true',
+      },
       limits: {
         type: 'object',
         properties: {
@@ -218,6 +241,7 @@ function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
       (over) =>
         `a task's ${over.limit} limit is at most ${String(over.max)}, so nixie started nothing`,
     )
+    .with({ reason: 'report_shape' }, (shape) => renderShapeFault(shape.fault))
     .with(
       { reason: 'wider_tools' },
       (wider) =>

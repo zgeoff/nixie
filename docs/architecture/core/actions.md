@@ -120,7 +120,7 @@ user's answer settles an unknown action. A result whose key was forgotten reads 
 as an empty success. The model has no tool that retries an action or sets an outcome, so only the
 queue settles one.
 
-Action attempts run in a runner pool of their own, apart from the task runners, so a send goes out
+Action attempts run in a claim pool of their own, apart from the task runners, so a send goes out
 while every task runner is busy with a long turn.
 
 ## The queue check

@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
@@ -19,7 +20,13 @@ async function setupTest(options: TestMemoryOptions = {}) {
   const memory = await startTestMemory(options);
 
   const clock = buildTestClock(1_000_000);
-  const context = { log: memory.log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
+
+  const context = {
+    log: memory.log,
+    clock,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    runSettings: buildTestRunSettings(),
+  };
 
   const parts = {
     context,
@@ -43,6 +50,7 @@ test('it publishes no proposal for an edit whose item moved on after the gate, a
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -104,6 +112,7 @@ test('it extracts the batch again after a moved-on edit, and proposes the edit a
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -175,6 +184,7 @@ test('it never runs the checker on an edit whose item moved on during extraction
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -239,6 +249,7 @@ test("it applies a write the checker confirms with both the writer's and the che
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -313,6 +324,7 @@ test('it shows the checker the end time of a staged fact in your zone, and saves
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -401,6 +413,7 @@ test('it publishes an edit that clears the end time of an item and keeps its tex
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,
@@ -466,6 +479,7 @@ test('it publishes a flag as a record in the conversation, and creates no item o
   const lease = await claimWriterLease(ctx.parts.context);
 
   const input = {
+    run: null,
     taskID: 'memory-writer',
     stepKey: 'step-1',
     lease,

@@ -8,7 +8,12 @@ import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import { buildSilentEndTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
-import { buildTaskMessageTool, buildTaskStartTool, buildTasksListTool } from '@heynixie/tasks';
+import {
+  buildTaskMessageTool,
+  buildTaskReportTool,
+  buildTaskStartTool,
+  buildTasksListTool,
+} from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildContactTool } from '../cli/build-contact-tool';
@@ -128,6 +133,7 @@ export async function startConversationEndpoint(
     ...search,
     buildContactTool(options.context, tools.refreshDefinitions),
     buildSilentEndTool(messaging),
+    buildTaskReportTool(options.context),
   ];
 
   const registry = buildToolRegistry([...definitions, ...tools.testTools]);

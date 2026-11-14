@@ -41,7 +41,7 @@ const logReadOutput = {
         type: 'object',
         properties: {
           eventID: { type: 'string' },
-          role: { type: 'string', enum: ['owner', 'assistant', 'tool'] },
+          role: { type: 'string', enum: ['owner', 'assistant', 'tool', 'task'] },
           recordedAt: { type: 'string', description: 'when the entry was recorded, in UTC' },
           text: { type: ['string', 'null'], description: 'null once the owner forgot it' },
           isCut: { type: 'boolean', description: 'the text runs on past what is shown' },

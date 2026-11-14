@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { tasksProjections } from '@heynixie/tasks';
+import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { startTestMemory } from '../test-utils/start-test-memory';
@@ -19,6 +20,7 @@ async function setupTest() {
       log,
       clock: buildTestClock(1_000_000),
       definitions: () => ({ snapshotHash: 'sha256:test' }),
+      runSettings: buildTestRunSettings(),
     },
     store: memory.store,
     publish: memory.store.writeBatch,

@@ -1,4 +1,5 @@
 import type { Projection } from '@heynixie/log';
+import { taskRunsProjection } from '../../run/task-runs-projection';
 import { taskMessagesProjection } from '../message/task-messages-projection';
 import { tasksProjection } from './tasks-projection';
 import { timersProjection } from './timers-projection';
@@ -7,4 +8,5 @@ export const tasksProjections: readonly Projection[] = [
   tasksProjection,
   timersProjection,
   taskMessagesProjection,
+  taskRunsProjection,
 ];

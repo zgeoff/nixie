@@ -6,15 +6,15 @@ import type { ClaimTaskOptions } from './projection/claim-task';
 import { claimTask } from './projection/claim-task';
 import { runDueTimers } from './run-due-timers';
 import { runTaskStep } from './run-task-step';
-import type { RunnerPool } from './start-runner-pool';
-import { startRunnerPool } from './start-runner-pool';
+import type { ClaimPool } from './start-claim-pool';
+import { startClaimPool } from './start-claim-pool';
 
 interface StartedTaskPool {
   readonly runStep: RunStep;
   readonly size: number;
 }
 
-export interface TaskRunnersOptions {
+export interface TaskClaimPoolsOptions {
   readonly runStep: RunStep;
 
   readonly started?: StartedTaskPool;
@@ -43,13 +43,16 @@ interface StepPool {
   readonly claimed: Pick<ClaimTaskOptions, 'tasks'>;
 }
 
-export function startTaskRunners(context: TasksContext, options: TaskRunnersOptions): RunnerPool {
+export function startTaskClaimPools(
+  context: TasksContext,
+  options: TaskClaimPoolsOptions,
+): ClaimPool {
   const holder = options.holder ?? crypto.randomUUID();
   const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
   const pollMs = options.pollMs ?? DEFAULT_POLL_MS;
 
   const startStepPool = (pool: StepPool) =>
-    startRunnerPool(context.clock, {
+    startClaimPool(context.clock, {
       size: pool.size,
       pollMs,
       claim: () => claimTask(context, { holder, leaseMs, ...pool.claimed }),
@@ -72,7 +75,7 @@ export function startTaskRunners(context: TasksContext, options: TaskRunnersOpti
 
   const steps = buildStepPools(options).map((pool) => startStepPool(pool));
 
-  const timers = startRunnerPool<never>(context.clock, {
+  const timers = startClaimPool<never>(context.clock, {
     size: 1,
     pollMs,
     claim: async () => {
@@ -110,7 +113,7 @@ const DEFAULT_SIZE = 3;
 
 // Started tasks claim through a pool of their own, so long steps of theirs never hold every claim
 // loop while the conversation waits.
-function buildStepPools(options: TaskRunnersOptions): readonly StepPool[] {
+function buildStepPools(options: TaskClaimPoolsOptions): readonly StepPool[] {
   const size = options.size ?? DEFAULT_SIZE;
 
   if (options.started === undefined) {

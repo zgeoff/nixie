@@ -413,10 +413,11 @@ test("it writes only the task message for the conversation's message about an un
 
 test.each([
   ['wake', 'report', true],
-  ['next_turn', 'report', false],
+  ['next_turn', 'report', true],
+  ['none', 'report', true],
   ['next_turn', 'progress', true],
 ] as const)(
-  'it sends a task started with report %s a %s to its starter with woke %s',
+  'it sends a %2$s from a task started with report %1$s to its starter with woke %3$s',
   async (report, kind, woke) => {
     const ctx = await setupTest();
     const starter = await seedConversationStep(ctx.context);
@@ -461,51 +462,3 @@ test.each([
     });
   },
 );
-
-test('it sends no report to the starter of a task started with no report', async () => {
-  const ctx = await setupTest();
-  const starter = await seedConversationStep(ctx.context);
-
-  const taskID = await seedTask(ctx.context, {
-    starter: starter.claim,
-    name: 'Tide tables',
-    brief: 'Find the high tides for Saturday.',
-    options: { report: 'none' },
-  });
-
-  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
-
-  invariant(claim);
-
-  const tool = buildTaskMessageTool(ctx.context, {
-    directory: [
-      {
-        taskID: 'conversation',
-        name: 'Conversation',
-        brief: 'Talks.',
-        isWokenByMessages: true,
-        speaker: 'conversation',
-      },
-    ],
-    hopLimit: 20,
-    ownerName: 'Robin',
-    agentName: null,
-  });
-
-  const outcome = await tool.run(
-    buildMockToolCall({
-      tool: 'task.message',
-      input: { to: 'conversation', kind: 'report', body: 'High tide is at 06:42.' },
-    }),
-    buildMockToolContext({ run: { thread: taskID, stepRunID: buildStepRunID(claim) } }),
-  );
-
-  const sent = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['task_message'] });
-
-  expect(outcome).toStrictEqual({
-    status: 'error',
-    message: 'you were started to send Conversation no report, so nixie sent nothing',
-  });
-
-  expect(sent.map((entry) => entry.record.payload['kind'])).toStrictEqual(['request']);
-});

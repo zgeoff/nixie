@@ -1,4 +1,7 @@
+export { buildSchemaParser } from './schema/build-schema-parser';
 export { buildToolRegistry } from './build-tool-registry';
+export { callCapRefusal } from './cap/call-cap-refusal';
+export { countCapCalls } from './cap/count-cap-calls';
 export type { ToolCallOptions, ToolCallRequest } from './run-tool-call';
 export { runToolCall } from './run-tool-call';
 export type { ToolEndpointOptions } from './start-tool-endpoint';

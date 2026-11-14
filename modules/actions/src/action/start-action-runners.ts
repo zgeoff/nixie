@@ -1,7 +1,7 @@
 import type { ActionConnector } from '@heynixie/connectors';
 import { subscribeToRecordCommits } from '@heynixie/log';
-import type { RunnerPool, TasksContext } from '@heynixie/tasks';
-import { startRunnerPool } from '@heynixie/tasks';
+import type { ClaimPool, TasksContext } from '@heynixie/tasks';
+import { startClaimPool } from '@heynixie/tasks';
 import { claimAction } from './claim-action';
 import { runActionAttempt } from './run-action-attempt';
 
@@ -22,11 +22,11 @@ const DEFAULT_POLL_MS = 1000;
 export function startActionRunners(
   context: TasksContext,
   options: ActionRunnersOptions,
-): RunnerPool {
+): ClaimPool {
   const holder = options.holder ?? crypto.randomUUID();
   const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
 
-  const pool = startRunnerPool(context.clock, {
+  const pool = startClaimPool(context.clock, {
     size: options.size ?? DEFAULT_SIZE,
     pollMs: options.pollMs ?? DEFAULT_POLL_MS,
     claim: () => claimAction(context, { holder, leaseMs }),

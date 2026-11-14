@@ -46,12 +46,21 @@ export async function runLiveTurn(
 
   const silence = buildTurnSilence(opening.batch.records);
 
-  const stepToken = run.endpoint.startStep(buildStepRunID(input), {
-    ...plan.session,
-    reserveImages: makeImageReserver(opening.images),
-    endSilently: silence.end,
-    policy: buildStepPolicyFrame(run.frame, opening.batch.records),
-  });
+  const taskRun =
+    input.run === null
+      ? undefined
+      : { runID: input.run.runID, calls: input.run.opened.limits.calls };
+
+  const stepToken = run.endpoint.startStep(
+    buildStepRunID(input),
+    {
+      ...plan.session,
+      reserveImages: makeImageReserver(opening.images),
+      endSilently: silence.end,
+      policy: buildStepPolicyFrame(run.frame, opening.batch.records),
+    },
+    taskRun,
+  );
 
   try {
     return await runTokenTurn(run, input, { ...plan, token: stepToken.token, opening, silence });

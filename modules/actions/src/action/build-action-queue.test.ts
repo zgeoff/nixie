@@ -22,6 +22,7 @@ test('it queues a call that a step makes under that step and returns its action 
   const claim = await createTestStep(ctx.context);
 
   const stepInput: StepInput = {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,
@@ -71,6 +72,7 @@ test('it returns the action a step queued when its rerun makes the same call', a
   const claim = await createTestStep(ctx.context);
 
   const stepInput: StepInput = {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,
@@ -118,6 +120,7 @@ test('it refuses a call on a thread where no step runs', async () => {
   const claim = await createTestStep(ctx.context);
 
   const stepInput: StepInput = {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,
@@ -151,6 +154,7 @@ test('it forgets the step once it ends, so a later call queues nothing', async (
   const claim = await createTestStep(ctx.context);
 
   const stepInput: StepInput = {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,
@@ -190,6 +194,7 @@ test('it refuses a call from a step whose claim a takeover replaced, and queues 
   const claim = await createTestStep(ctx.context);
 
   const stepInput: StepInput = {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,
@@ -238,6 +243,7 @@ test('it refuses a call that carries no step run ID, and queues nothing', async 
   const claim = await createTestStep(ctx.context);
 
   const stepInput: StepInput = {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,
@@ -280,6 +286,7 @@ test('it gives no outcome for an action still pending when the wait ends', async
   const claim = await createTestStep(ctx.context);
 
   const stepInput: StepInput = {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,
@@ -338,6 +345,7 @@ test.each([
     const claim = await createTestStep(ctx.context);
 
     const stepInput: StepInput = {
+      run: null,
       taskID: claim.lease.workID,
       stepKey: claim.stepKey,
       lease: claim.lease,
@@ -390,6 +398,7 @@ test('it gives a cancelled outcome for an action that a stop of its task cancell
   const claim = await createTestStep(ctx.context);
 
   const stepInput: StepInput = {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,

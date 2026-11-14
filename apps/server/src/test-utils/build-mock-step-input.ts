@@ -3,6 +3,7 @@ import type { StepInput } from '@heynixie/tasks';
 
 export function buildMockStepInput(overrides: Partial<StepInput> = {}): StepInput {
   return {
+    run: null,
     taskID: 'conversation',
     stepKey: 'conversation:1',
     lease: {

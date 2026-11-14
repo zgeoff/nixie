@@ -8,6 +8,7 @@ import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
 import { tasksProjections } from '../task/projection/tasks-projections';
 import type { TasksContext } from '../types';
+import { buildTestRunSettings } from './build-test-run-settings';
 
 export interface TestTasks {
   readonly defer: (cleanup: () => Promise<void>) => void;
@@ -45,6 +46,11 @@ export async function startTestTasks(): Promise<TestTasks> {
     dataDir,
     writer,
     clock,
-    context: { log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+    context: {
+      log,
+      clock,
+      definitions: () => ({ snapshotHash: 'sha256:test' }),
+      runSettings: buildTestRunSettings(),
+    },
   };
 }

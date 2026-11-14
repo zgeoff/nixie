@@ -3,7 +3,13 @@ import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { modelSessionOpenedCodec } from '@heynixie/models';
 import type { TaskProfile } from '@heynixie/tasks';
-import { readTaskDirectory, taskCreatedCodec } from '@heynixie/tasks';
+import {
+  claimTask,
+  readTaskDirectory,
+  taskCreatedCodec,
+  writeTaskLimitRaise,
+} from '@heynixie/tasks';
+import { toolCalledCodec, toolResultCodec } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { renderInboxMessage } from './inbox/render-inbox-message';
 import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
@@ -188,4 +194,315 @@ test('it renders a brief record in the inbox with its text', async () => {
       buildMockTaskMessageView(),
     ),
   ).toInclude('Find 3 quiet cafes near the station.');
+});
+
+test('it lists and reads a started task whose log holds task run records, a report shape and task run IDs on its calls', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.created',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        taskID: 't4m2',
+        isConversation: false,
+        state: 'ready',
+        startedBy: 'conversation',
+        startStep: 'conversation:1',
+        options: {
+          model: null,
+          profile: null,
+          persona: 'none',
+          memory: 'none',
+          tools: ['tasks.list', 'task.message', 'task.report'],
+          report: 'wake',
+          limits: { turns: 25, dollars: 2 },
+          reportShape: {
+            type: 'object',
+            additionalProperties: false,
+            properties: { city: { type: 'string' } },
+            required: ['city'],
+          },
+        },
+        briefMessageID: 'm7k2',
+      },
+      erasable: { name: 'Cafe scout' },
+    },
+    {
+      kind: 'task.run_opened',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        taskID: 't4m2',
+        runID: 'a3f9c2d4-1111-4222-8333-444455556666',
+        openedByStep: 't4m2:1',
+        origin: { kind: 'start', sequence: null },
+        definitionID: null,
+        definitionHash: null,
+        triggerKey: null,
+        carriesRunID: null,
+        briefID: null,
+        report: { mode: 'wake', target: 'conversation' },
+        reportShape: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { city: { type: 'string' } },
+          required: ['city'],
+        },
+        limits: { turns: 25, dollars: 2, calls: {} },
+      },
+    },
+    {
+      kind: 'tool_called',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        callID: 'c9a1',
+        runID: 't4m2',
+        toolUseID: 'toolu_report',
+        tool: 'task.report',
+        taskRunID: 'a3f9c2d4-1111-4222-8333-444455556666',
+      },
+    },
+    {
+      kind: 'tool_result',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        callID: 'c9a1',
+        runID: 't4m2',
+        toolUseID: 'toolu_report',
+        outcome: 'result',
+        actionID: null,
+        sources: {},
+        taskRunID: 'a3f9c2d4-1111-4222-8333-444455556666',
+      },
+    },
+    {
+      kind: 'task.failed_turn_spent',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        taskID: 't4m2',
+        dollars: 0.01,
+        taskRunID: 'a3f9c2d4-1111-4222-8333-444455556666',
+      },
+    },
+    {
+      kind: 'task.run_report_requested',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        taskID: 't4m2',
+        runID: 'a3f9c2d4-1111-4222-8333-444455556666',
+        stepKey: 't4m2:1',
+        reportID: 'r8d2',
+      },
+      erasable: { summary: 'Found two cafes.', fields: { city: 'Lyon' } },
+    },
+    {
+      kind: 'task.run_ended',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        taskID: 't4m2',
+        runID: 'a3f9c2d4-1111-4222-8333-444455556666',
+        cause: 'reported',
+        detail: {},
+        endedBy: 'step:t4m2:1',
+        definitionID: null,
+        triggerKey: null,
+        carriesRunID: null,
+        used: { turns: 1, dollars: 0.01, calls: {} },
+        reportID: 'r8d2',
+        reportTo: 'conversation',
+        delivery: 'wake',
+      },
+      erasable: { body: 'Found two cafes.' },
+    },
+  ]);
+
+  const directory: readonly TaskProfile[] = [];
+
+  const messaging = await readTaskDirectory(ctx.tasks.context, { directory });
+
+  const entries = await readRecords(ctx.tasks.context.log, {
+    afterSequence: 0,
+    thread: 't4m2',
+  });
+
+  const calls = entries
+    .filter((entry) => entry.record.kind === 'tool_called')
+    .map((entry) => toolCalledCodec.decode(entry.record.payload).tool);
+
+  const results = entries
+    .filter((entry) => entry.record.kind === 'tool_result')
+    .map((entry) => toolResultCodec.decode(entry.record.payload).outcome);
+
+  expect(messaging.directory.map((profile) => profile.taskID)).toStrictEqual(['t4m2']);
+  expect(entries).toHaveLength(7);
+  expect(calls).toStrictEqual(['task.report']);
+  expect(results).toStrictEqual(['result']);
+});
+
+test('it claims a started task with no report shape that waits on a message', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.created',
+      definitions,
+      thread: 't6p4',
+      payload: {
+        taskID: 't6p4',
+        isConversation: false,
+        state: 'ready',
+        startedBy: 'conversation',
+        startStep: 'conversation:1',
+        options: {
+          model: null,
+          profile: null,
+          persona: 'none',
+          memory: 'none',
+          tools: ['tasks.list', 'task.message', 'task.report'],
+          report: 'wake',
+          limits: { turns: 25, dollars: 2 },
+        },
+      },
+      erasable: { name: 'Tide tables' },
+    },
+    { kind: 'owner_message', definitions, thread: 't6p4' },
+  ]);
+
+  const claim = await claimTask(ctx.tasks.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    taskID: 't6p4',
+  });
+
+  expect(claim?.lease.workID).toBe('t6p4');
+});
+
+test('it raises the limit of a task that a limit end paused, and claims it again', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+  const runID = 'b5e1d3f7-2222-4333-8444-555566667777';
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.created',
+      definitions,
+      thread: 't8q6',
+      payload: {
+        taskID: 't8q6',
+        isConversation: false,
+        state: 'ready',
+        startedBy: 'conversation',
+        startStep: 'conversation:1',
+        options: {
+          model: null,
+          profile: null,
+          persona: 'none',
+          memory: 'none',
+          tools: ['tasks.list', 'task.message', 'task.report'],
+          report: 'next_turn',
+          limits: { turns: 25, dollars: 2 },
+        },
+      },
+      erasable: { name: 'Ferry times' },
+    },
+    { kind: 'owner_message', definitions, thread: 't8q6' },
+    {
+      kind: 'task.run_opened',
+      definitions,
+      thread: 't8q6',
+      payload: {
+        taskID: 't8q6',
+        runID,
+        openedByStep: 't8q6:1',
+        origin: { kind: 'owner', sequence: 2 },
+        definitionID: null,
+        definitionHash: null,
+        triggerKey: null,
+        carriesRunID: null,
+        briefID: null,
+        report: { mode: 'next_turn', target: 'conversation' },
+        reportShape: null,
+        limits: { turns: 25, dollars: 2, calls: {} },
+      },
+    },
+    {
+      kind: 'task.paused',
+      definitions,
+      thread: 't8q6',
+      payload: { taskID: 't8q6', resumeState: 'ready' },
+    },
+    {
+      kind: 'task.limit_reached',
+      definitions,
+      thread: 't8q6',
+      payload: {
+        taskID: 't8q6',
+        stepKey: 't8q6:1',
+        used: { turns: 25, dollars: 0.4 },
+        limits: { turns: 25, dollars: 2 },
+      },
+    },
+    {
+      kind: 'task.run_ended',
+      definitions,
+      thread: 't8q6',
+      payload: {
+        taskID: 't8q6',
+        runID,
+        cause: 'limit',
+        detail: { meter: 'turns', used: 25, limit: 25 },
+        endedBy: 'step:t8q6:1',
+        definitionID: null,
+        triggerKey: null,
+        carriesRunID: null,
+        used: { turns: 25, dollars: 0.4, calls: {} },
+        reportID: 'r3k7',
+        reportTo: 'conversation',
+        delivery: 'next_turn',
+      },
+      erasable: { body: 'The run stopped at its 25 turns limit before it wrote a summary.' },
+    },
+    {
+      kind: 'task.limit_notice',
+      definitions,
+      thread: 'conversation',
+      payload: {
+        taskID: 't8q6',
+        used: { turns: 25, dollars: 0.4 },
+        limits: { turns: 25, dollars: 2 },
+      },
+    },
+  ]);
+
+  const raise = await writeTaskLimitRaise(ctx.tasks.context, {
+    taskID: 't8q6',
+    limits: { turns: 40 },
+  });
+
+  const claim = await claimTask(ctx.tasks.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    taskID: 't8q6',
+  });
+
+  expect(raise).toStrictEqual({
+    status: 'raised',
+    state: 'ready',
+    isPauseRequested: false,
+    limits: { turns: 40, dollars: 2 },
+  });
+
+  expect(claim?.lease.workID).toBe('t8q6');
 });

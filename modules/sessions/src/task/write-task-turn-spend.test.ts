@@ -1,36 +1,18 @@
 import { expect, test } from 'bun:test';
-import { LeaseLostError, claimTask } from '@heynixie/tasks';
+import { claimTask, readOpenRun } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestTasks } from '../test-utils/start-test-tasks';
-import { readTaskUsage } from './read-task-usage';
+import { readLateSpend } from './read-late-spend';
 import { writeTaskTurnSpend } from './write-task-turn-spend';
 
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  return {
-    ...tasks,
-    seed: buildSeeder(tasks),
-    claimStartedTask: async (taskID: string) => {
-      const claim = await claimTask(tasks.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
-
-      invariant(claim, 'the started task is ready to claim');
-
-      return claim;
-    },
-    readUsage: (taskID: string) =>
-      readTaskUsage(tasks.context, taskID, {
-        input: 3,
-        cacheWrite: 3,
-        cacheWrite1h: 3,
-        cachedInput: 0.3,
-        output: 15,
-      }),
-  };
+  return { ...tasks, seed: buildSeeder(tasks) };
 }
 
-test('it refuses the limit pause of a completed turn whose lease is lost, and counts its spend', async () => {
+test("it counts the spend of a step that threw after its lease expired, under the step's task run", async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();
 
@@ -40,26 +22,52 @@ test('it refuses the limit pause of a completed turn whose lease is lost, and co
     brief: 'Find the depth at the north mooring.',
   });
 
-  const claim = await ctx.claimStartedTask(taskID);
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim, 'the started task is ready to claim');
+
+  const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+  invariant(run, 'the claim opened a task run');
 
   ctx.clock.advance(60_000);
 
-  const refusal = await writeTaskTurnSpend(
+  await writeTaskTurnSpend(
     { ...ctx.context, logger: () => {} },
-    {
-      lease: claim.lease,
-      stepKey: claim.stepKey,
-      startedBy: 'conversation',
-      limits: { turns: 25, dollars: 0.03 },
-    },
-    { reached: { turns: 1, dollars: 0.03 }, failedDollars: null, pausedDollars: 0.03 },
-  ).then(
-    () => null,
-    (error: unknown) => error,
+    { taskID, taskRunID: run.runID },
+    { failedDollars: 0.03 },
   );
 
-  const usage = await ctx.readUsage(taskID);
+  const spent = await readLateSpend(ctx.context, run, 0);
 
-  expect(refusal).toBeInstanceOf(LeaseLostError);
-  expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
+  expect(spent).toBeCloseTo(0.03, 10);
+});
+
+test('it writes nothing for a step that spent nothing', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Harbour charts',
+    brief: 'Find the depth at the north mooring.',
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim, 'the started task is ready to claim');
+
+  const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+  invariant(run, 'the claim opened a task run');
+
+  await writeTaskTurnSpend(
+    { ...ctx.context, logger: () => {} },
+    { taskID, taskRunID: run.runID },
+    { failedDollars: null },
+  );
+
+  const spent = await readLateSpend(ctx.context, run, 0);
+
+  expect(spent).toBe(0);
 });
