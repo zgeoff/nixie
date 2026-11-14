@@ -2,8 +2,8 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createStubRestic } from '../test-utils/create-stub-restic';
 import { runRestic } from './run-restic';
-import { createStubRestic } from './test-utils/create-stub-restic';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-run-restic-'));

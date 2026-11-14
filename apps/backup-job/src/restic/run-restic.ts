@@ -1,4 +1,4 @@
-import type { JobConfig, ResticRepository } from './parse-job-config';
+import type { JobConfig, ResticRepository } from '../parse-job-config';
 
 export interface ResticRun {
   readonly exitCode: number;

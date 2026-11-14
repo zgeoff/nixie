@@ -3,8 +3,8 @@ import type { BackupReceipt } from '@heynixie/wire';
 import { backupSetFiles, backupSetLayout, formatBackupFile, readBackupSets } from '@heynixie/wire';
 import type { JobFiles } from './local-job-files';
 import type { JobConfig } from './parse-job-config';
-import type { BackupRepos } from './publish-backup-set';
-import { publishBackupSet } from './publish-backup-set';
+import type { BackupRepos } from './publish/publish-backup-set';
+import { publishBackupSet } from './publish/publish-backup-set';
 
 export type JobPass =
   | { readonly status: 'ran'; readonly receipts: readonly BackupReceipt[] }
@@ -63,7 +63,7 @@ async function publishStagedSets(
   const receipts: BackupReceipt[] = [];
 
   for (const set of sets.filter((entry) => entry.hasMarker && !entry.hasReceipt)) {
-    const receipt = await publishBackupSet(repos, config.retention, files, set);
+    const receipt = await publishBackupSet(repos, config, files, set);
 
     await writeReceipt(files, set.directory, receipt);
     await removeCopies(files, set.directory);

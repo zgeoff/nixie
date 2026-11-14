@@ -60,6 +60,8 @@ export type { BackupFileReads } from './local-backup-file-reads';
 export { localBackupFileReads } from './local-backup-file-reads';
 export { parseBackupFile } from './parse-backup-file';
 export { parseBackupSetName } from './parse-backup-set-name';
+export type { RestoreNote } from './restore-note';
+export { restoreNoteSchema } from './restore-note';
 export type { BackupSetEntry } from './read-backup-sets';
 export { readBackupSets } from './read-backup-sets';
 export type { FileDigest } from './read-file-sha256';

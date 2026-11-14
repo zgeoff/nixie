@@ -2,9 +2,9 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createStubRestic } from '../test-utils/create-stub-restic';
 import { buildResticClient } from './build-restic-client';
 import { ResticError } from './restic-error';
-import { createStubRestic } from './test-utils/create-stub-restic';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-restic-client-'));
@@ -35,20 +35,36 @@ test('it creates a repository that does not exist, and opens one that does', asy
   expect(calls.match(/"init"/gu)).toHaveLength(1);
 });
 
-test('it reads back the ID of the snapshot it writes', async () => {
+test('it reads back the ID, the parsed tags and the time of the snapshot it writes', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.directory, 'keys.db'), 'key rows');
 
   await ctx.client.createRepository();
 
+  const before = Date.now();
+
   const snapshotID = await ctx.client.writeSnapshot(join(ctx.directory, 'keys.db'), 'keys.db', [
-    'set-1',
+    'set-18',
+    'kind-forget',
+    'publish-42',
+    'legacy-set-17',
+    'proven-from-7',
   ]);
 
-  const snapshotIDs = await ctx.client.readSnapshotIDs();
+  const snapshots = await ctx.client.readSnapshots();
 
-  expect(snapshotIDs).toStrictEqual([snapshotID]);
+  expect(snapshots).toStrictEqual([
+    {
+      snapshotID,
+      writtenAt: expect.toBeWithin(before - 1000, Date.now() + 1000),
+      set: 18,
+      kind: 'forget',
+      publish: 42,
+      legacySet: 17,
+      provenFrom: 7,
+    },
+  ]);
 });
 
 test('it names the step, the repo and the exit code of a failed restic', async () => {

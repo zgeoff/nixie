@@ -51,7 +51,7 @@ test('it prints a summary with the snapshot ID of a backup, and dumps the conten
   await $`${ctx.restic} init`.env(env).quiet();
 
   const backup =
-    await $`${ctx.restic} backup --json --host nixie --stdin --stdin-filename keys.db --tag set-1 < ${join(ctx.directory, 'keys.db')}`
+    await $`${ctx.restic} backup --json --host nixie --stdin --stdin-filename keys.db --tag set-1 --time 2026-01-02T03:04:05.123456789+11:00 < ${join(ctx.directory, 'keys.db')}`
       .env(env)
       .quiet();
 
@@ -66,6 +66,7 @@ test('it prints a summary with the snapshot ID of a backup, and dumps the conten
       id: expect.stringMatching(/^[0-9a-f]{64}$/u),
       hostname: 'nixie',
       paths: ['/keys.db'],
+      time: '2026-01-02T03:04:05.123456789+11:00',
       tags: ['set-1'],
       blob: expect.any(String),
     },
