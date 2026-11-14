@@ -993,12 +993,16 @@ test('it sends a reply to the brief of the sender to its starter, with no wait o
     kinds: ['task_message'],
   });
 
+  const briefMessageID = brief?.record.payload['messageID'];
+
+  invariant(typeof briefMessageID === 'string');
+
   const outcome = await writeTestTaskMessage(ctx.context, buildStartedDirectory(taskID), {
     from: taskID,
     to: 'conversation',
     kind: 'reply',
     body: 'Which harbour?',
-    replyTo: String(brief?.record.payload['messageID']),
+    replyTo: briefMessageID,
     onBehalfOf: [],
     wake: true,
   });
