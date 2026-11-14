@@ -96,6 +96,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   call steps, and the records of each call
 - [Sandboxes](architecture/connectors/sandboxes.md) — kinds of work, records and recovery, the tool
   route, the imp adapter and the test sandbox
+- [Memory kills](architecture/connectors/memory-kills.md) — the read of a guest's count of memory
+  kills, and the log line for each kill
 - [Web fetch](architecture/connectors/web-fetch.md) — the fetch sandbox, the fetcher's address
   checks, the limits and the result
 - [Web fetch images](architecture/connectors/web-fetch-images.md) — a fetched image as image
