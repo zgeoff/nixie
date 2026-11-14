@@ -67,7 +67,11 @@ export function createProcessSandboxAdapter(input: ProcessSandboxOptions): Sandb
   // A data directory replaced under a kept row, such as by a restore, takes the sandbox's folder
   // with it, as a host can lose an imp with no destroy from nixie.
   const readRowSandbox = async (row: SandboxRow): Promise<Sandbox | null> => {
-    if (!live.has(row.sandboxID) && !(await probeDirectory(join(options.rootDir, row.sandboxID)))) {
+    if (!(await probeDirectory(join(options.rootDir, row.sandboxID)))) {
+      await live.get(row.sandboxID)?.stop();
+
+      live.delete(row.sandboxID);
+
       await options.recorder.write({
         event: 'destroyed',
         sandboxID: row.sandboxID,
@@ -134,6 +138,9 @@ async function createProcessSandbox(
   requireSandboxSpec(spec);
 
   const id = createSandboxID();
+
+  // A read finds the folder of every recorded sandbox, so the folder exists before the row.
+  await mkdir(join(options.rootDir, id), { recursive: true });
 
   await options.recorder.write({ event: 'created', sandboxID: id, adapter: 'process', spec });
 
