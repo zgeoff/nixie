@@ -2,10 +2,10 @@ import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/logger';
 import { Elysia } from 'elysia';
-import { checkParts } from './check-parts';
+import type { HealthReport, PartCheck, PartReport } from '../types';
+import { checkParts } from '../utils/check-parts';
 import type { AdvisoryPart, DependencyPart, HealthPart, LivenessPart } from './health-parts';
 import { makeHealthLog } from './make-health-log';
-import type { HealthReport, PartCheck, PartReport } from './types';
 
 export interface HealthChecks {
   readonly liveness: Readonly<Record<Exclude<LivenessPart, 'process'>, PartCheck>>;

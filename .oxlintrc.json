@@ -45,7 +45,6 @@
           "modules/log",
           "modules/memory",
           "modules/models",
-          "modules/ops",
           "modules/policy",
           "modules/prompts",
           "modules/sandbox",

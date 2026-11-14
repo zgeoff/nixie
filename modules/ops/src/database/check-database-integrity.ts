@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import type { PartReport } from './types';
+import type { PartReport } from '../types';
 
 const quickCheckRowsSchema = z.array(z.object({ quick_check: z.string() }));
 

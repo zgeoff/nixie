@@ -1,5 +1,5 @@
 import type { Logger } from '@heynixie/logger';
-import type { HealthReport, PartReport } from './types';
+import type { HealthReport, PartReport } from '../types';
 
 export type HealthProbe = 'live' | 'ready';
 

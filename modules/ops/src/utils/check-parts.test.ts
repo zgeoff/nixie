@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import type { PartCheck } from '../types';
 import { checkParts } from './check-parts';
-import type { PartCheck } from './types';
 
 test('it reports ready when every part is ready', async () => {
   const report = await checkParts(

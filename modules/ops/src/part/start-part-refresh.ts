@@ -1,7 +1,7 @@
 import { createActor, toPromise } from 'xstate';
+import type { PartReport } from '../types';
 import type { PartRefreshOptions } from './part-refresh-machine';
 import { partRefreshMachine } from './part-refresh-machine';
-import type { PartReport } from './types';
 
 export type { PartRefreshOptions } from './part-refresh-machine';
 

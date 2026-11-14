@@ -1,5 +1,5 @@
 import { statfs } from 'node:fs/promises';
-import type { PartReport } from './types';
+import type { PartReport } from '../types';
 
 export type ReadDiskStats = (path: string) => Promise<{
   readonly blocks: number;

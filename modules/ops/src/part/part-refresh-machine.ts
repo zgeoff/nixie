@@ -1,8 +1,8 @@
 import type { Clock } from '@heynixie/clock';
 import { machineTypes } from '@zgeoff/std';
 import { assign, fromPromise, setup } from 'xstate';
-import { checkParts } from './check-parts';
-import type { HealthReport, PartCheck, PartReport } from './types';
+import type { HealthReport, PartCheck, PartReport } from '../types';
+import { checkParts } from '../utils/check-parts';
 
 export interface PartRefreshOptions<Part extends string> {
   readonly checks: Readonly<Record<Part, PartCheck>>;

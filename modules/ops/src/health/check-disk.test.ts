@@ -2,8 +2,8 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { makeStubDiskStats } from '../test-utils/make-stub-disk-stats';
 import { checkDisk } from './check-disk';
-import { makeStubDiskStats } from './test-utils/make-stub-disk-stats';
 
 test('it reads the data volume through statfs', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-ops-'));

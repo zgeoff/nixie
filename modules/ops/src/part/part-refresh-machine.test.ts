@@ -1,8 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { buildStubCheck, buildTestClock, waitForCondition } from '@heynixie/testing';
 import { createActor } from 'xstate';
+import type { PartReport } from '../types';
 import { partRefreshMachine } from './part-refresh-machine';
-import type { PartReport } from './types';
 
 function setupTest() {
   const clock = buildTestClock(0);

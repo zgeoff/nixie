@@ -1,7 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildStubCheck, buildTestClock, waitForCondition } from '@heynixie/testing';
+import type { PartReport } from '../types';
 import { startPartRefresh } from './start-part-refresh';
-import type { PartReport } from './types';
 
 function setupTest() {
   const clock = buildTestClock(0);

@@ -1,6 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
-import type { HealthReport, PartCheck, PartReport } from './types';
+import type { HealthReport, PartCheck, PartReport } from '../types';
 
 export async function checkParts(
   checks: Readonly<Record<string, PartCheck>>,
