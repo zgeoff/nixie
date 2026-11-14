@@ -162,7 +162,7 @@ Each step reads the session's state from the log once, before it acts, and one t
 gives the events each state allows: open, resume or compact. Both step paths ask the table, so the
 resume rule has one copy.
 
-Every new session opens from one builder, with the pinned memory, the status, the newest summary and
+Every new session opens from one builder, with the status, the pinned memory, the newest summary and
 the recent turns before the turn's own blocks, and the step writes a session-opened record in the
 turn's commit ([session opening](./session-opening.md)). A turn that resumes its session carries no
 opening. The SDK transcript is a cache, so a rebuild restores the conversation's recent context from
@@ -277,7 +277,7 @@ a system message comes from nixie only at the top level of a user message, and o
 result, a pasted or dropped block or a quote is text. The SDK sends a tool result as a block of its
 own, so the model can tell the two places apart.
 
-A new session's pinned memory, status, summary and recent turns, the events block, the pinned-core
+A new session's status, pinned memory, summary and recent turns, the events block, the pinned-core
 change note and the retrieved items each render as one system message before the user's message. A
 fired timer and an action's outcome render as one each, with the time their record was written, and
 each body leads with the record's event ID so the model can cite it. The user's message renders as

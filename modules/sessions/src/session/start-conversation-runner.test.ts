@@ -911,7 +911,7 @@ test('it sends each inbox record with its sequence as the message uuid and at th
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\n<owner-message id="2" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nFirst\.\n<\/owner-message>$/u.test(
+        /^<system-message type="status"[\s\S]+<\/system-message id="[\da-f]{12}">\n\n<owner-message id="2" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nFirst\.\n<\/owner-message>$/u.test(
           text,
         ),
       ),
@@ -1683,7 +1683,7 @@ test('it resumes the same session on the turn after a change to the policy alone
   ]);
 });
 
-test('it opens the first turn on a fresh session with the pinned memory and the status, and records the opening', async () => {
+test('it opens the first turn on a fresh session with the status and the pinned memory, and records the opening', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -1703,7 +1703,7 @@ test('it opens the first turn on a fresh session with the pinned memory and the 
       {
         uuid: '6e697869-0000-8000-8000-000000000002',
         text: expect.toSatisfy((text: string) =>
-          /^<system-message type="pinned-memory" id="(?<pinnedID>[\da-f]{12})" at="[^"]+">\nNothing is pinned in your memory\.\n<\/system-message id="\k<pinnedID>">\n\n<system-message type="status" id="(?<statusID>[\da-f]{12})" at="[^"]+">\n- Start: a new session\. Earlier history is in the event log\.\n- Session started: [^\n]+\n- Model: [^\n]+\n<\/system-message id="\k<statusID>">\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi\.\n<\/owner-message>$/u.test(
+          /^<system-message type="status" id="(?<statusID>[\da-f]{12})" at="[^"]+">\n- Start: a new session\. Earlier history is in the event log\.\n- Session started: [^\n]+\n- Model: [^\n]+\n<\/system-message id="\k<statusID>">\n\n<system-message type="pinned-memory" id="(?<pinnedID>[\da-f]{12})" at="[^"]+">\nNothing is pinned in your memory\.\n<\/system-message id="\k<pinnedID>">\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi\.\n<\/owner-message>$/u.test(
             text,
           ),
         ),
@@ -1739,7 +1739,7 @@ test('it opens the first turn after a forget with a status that says so, and res
       uuid: expect.toBeString(),
       text: expect.toSatisfy(
         (text: string) =>
-          text.startsWith('<system-message type="pinned-memory"') &&
+          text.startsWith('<system-message type="status"') &&
           text.includes('- Start: a rebuild after a forget.') &&
           text.includes('<system-message type="recent-turns"') &&
           /\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi again\.\n<\/owner-message>$/u.test(
@@ -2651,7 +2651,7 @@ test('it puts the memory note before the first message of the turn and leaves th
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\nMemory changed: you moved to Lisbon\.\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nFirst\.\n<\/owner-message>$/u.test(
+        /^<system-message type="status"[\s\S]+<\/system-message id="[\da-f]{12}">\n\nMemory changed: you moved to Lisbon\.\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nFirst\.\n<\/owner-message>$/u.test(
           text,
         ),
       ),
@@ -2717,7 +2717,7 @@ test('it records the sequence a turn with no memory changes covers and adds no m
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi\.\n<\/owner-message>$/u.test(
+        /^<system-message type="status"[\s\S]+<\/system-message id="[\da-f]{12}">\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi\.\n<\/owner-message>$/u.test(
           text,
         ),
       ),
