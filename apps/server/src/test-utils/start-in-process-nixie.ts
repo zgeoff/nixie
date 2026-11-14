@@ -151,6 +151,13 @@ async function startFirstRun(
   stack: AsyncDisposableStack,
   runBeforeCleanup: RunBeforeCleanup,
 ): Promise<InProcessNixie> {
+  const s0 = performance.now();
+
+  const mark = (label: string) =>
+    console.error(
+      `TIMING pid=${process.pid} ${label} at=${Math.round(performance.now() - s0)} t=${Math.round(performance.now())}`,
+    );
+
   const directory = await mkdtemp(join(tmpdir(), 'nixie-main-'));
 
   stack.defer(() => rm(directory, { recursive: true, force: true }));
@@ -172,13 +179,19 @@ async function startFirstRun(
     ...(options.modelCredential === undefined ? {} : { modelCredential: options.modelCredential }),
   });
 
+  mark('bootfiles');
+
   await writeMigratedData(files.dataDir, {
     createTemplate: createRunTemplate,
     startWriter,
     copyDirectory: (from, to) => cp(from, to, { recursive: true }),
   });
 
+  mark('migrated');
+
   await options.seedData?.(files);
+
+  mark('seeded');
 
   const host = buildRunHost();
   const toolResults: TestToolResult[] = [];
@@ -217,9 +230,13 @@ async function startFirstRun(
   if ((options.hasStarterRules ?? true) && isApproved && !isReadyHidden(options.logLevel)) {
     const [ready] = await Promise.allSettled([run.waitForLogEvent('ready')]);
 
+    mark('ready');
+
     if (ready.status === 'fulfilled') {
       await approveStarterRules(run.configPath);
     }
+
+    mark('approved');
   }
 
   return run;
@@ -274,8 +291,13 @@ function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
   const events: TestLogEvent[] = [];
   const stopSignal = Promise.withResolvers<string>();
   const state = { hasExited: false };
+  const l0 = performance.now();
 
   const log: Logger = (event, fields: LogFields = {}, level = 'info') => {
+    console.error(
+      `TIMING pid=${process.pid} event=${event} at=${Math.round(performance.now() - l0)}`,
+    );
+
     events.push({ ...fields, event, level });
   };
 

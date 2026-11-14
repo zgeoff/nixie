@@ -26,6 +26,8 @@ export interface Secrets {
 // The plaintext stays in this process's memory, never on a tmpfs, in an environment variable or in
 // a Compose secret, and an error never quotes a secret value.
 export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
+  const p0 = performance.now();
+
   const child = Bun.spawn([...options.sopsArgv, 'decrypt', '--output-type', 'json', options.path], {
     stdin: 'ignore',
     stdout: 'pipe',
@@ -37,6 +39,8 @@ export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
     new Response(child.stderr).text(),
     child.exited,
   ]);
+
+  console.error(`TIMING pid=${process.pid} sops=${Math.round(performance.now() - p0)}`);
 
   if (code !== 0) {
     throw new Error(`sops could not decrypt ${options.path}: ${stderr.trim()}`);
