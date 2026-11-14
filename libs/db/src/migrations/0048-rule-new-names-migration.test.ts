@@ -52,6 +52,15 @@ async function setupTest() {
         (snapshot_hash, persona_version, policy_hash, form, label, created_at)
         values (${hash}, 'p1', ${`policy-${hash}`}, ${form}, 'label', 1)`.execute(db);
     },
+    hashText: (text: string) => {
+      const hasher = new Bun.CryptoHasher('sha256');
+
+      hasher.update(text);
+
+      return hasher.digest('hex');
+    },
+    entry: (ruleID: string, before: string | null, after: string | null) =>
+      `{"after":${JSON.stringify(after)},"before":${JSON.stringify(before)},"ruleID":"${ruleID}"}`,
     runMigration: () => db.transaction().execute((tx) => ruleNewNamesMigration.up(tx)),
     readVersions: () =>
       readQueryRows(
@@ -475,4 +484,100 @@ test('it rewrites each rule of a snapshot form and keeps its hashes', async () =
       form: '{"policy":{"rules":[{"id":"r","revision":1,"rule":{"contexts":["task"],"definitions":["x"],"id":"r","outcome":"ask"},"sentence":"s"},{"id":"q","revision":2,"rule":{"id":"q","outcome":"allow"},"sentence":"t"}],"tools":[]}}',
     },
   ]);
+});
+
+test('it leaves the text of a record unchanged when no hash field moves', async () => {
+  const ctx = await setupTest();
+
+  const old = 'a'.repeat(64);
+
+  await ctx.writeVersion(old, JSON.stringify({ id: 'r', outcome: 'ask', jobs: ['x'] }));
+
+  const text = `{ "ruleHash": null, "reason": "kept ${old} after review" }`;
+
+  await sql`insert into records (recorded_at, kind, snapshot_hash, payload)
+    values (1, 'rules.runtime_changed', 'snapshot', ${text})`.execute(ctx.db);
+
+  await ctx.runMigration();
+
+  const rows = await sql`select payload from records`.execute(ctx.db);
+
+  expect(rows.rows).toStrictEqual([{ payload: text }]);
+});
+
+test('it repoints a closed proposal of several rules whose records a log reset deleted', async () => {
+  const ctx = await setupTest();
+
+  const hashText = ctx.hashText;
+  const entry = ctx.entry;
+  const first = 'a'.repeat(64);
+  const second = 'b'.repeat(64);
+  const unmoved = 'c'.repeat(64);
+
+  await ctx.writeVersion(first, JSON.stringify({ id: 'r1', outcome: 'ask', jobs: ['x'] }));
+  await ctx.writeVersion(second, JSON.stringify({ id: 'r2', outcome: 'ask', contexts: ['job'] }));
+  await ctx.writeVersion(unmoved, JSON.stringify({ id: 'r3', outcome: 'deny' }));
+
+  const oldProposal = hashText(`[${entry('r1', null, first)},${entry('r2', null, second)}]`);
+
+  await sql`insert into closed_rule_proposals (proposal_hash) values (${oldProposal})`.execute(
+    ctx.db,
+  );
+
+  await ctx.runMigration();
+
+  const versions = await ctx.readVersions();
+
+  const hashes = new Map(
+    versions.map((version) => [
+      z.object({ id: z.string() }).parse(JSON.parse(version.rule)).id,
+      version.rule_hash,
+    ]),
+  );
+
+  const closed = await sql`select proposal_hash from closed_rule_proposals`.execute(ctx.db);
+
+  const moved = [
+    entry('r1', null, hashes.get('r1') ?? ''),
+    entry('r2', null, hashes.get('r2') ?? ''),
+  ];
+
+  expect(closed.rows).toStrictEqual([{ proposal_hash: hashText(`[${moved.join(',')}]`) }]);
+});
+
+test('it repoints a closed proposal of rule and effect changes that a surviving record shows', async () => {
+  const ctx = await setupTest();
+
+  const hashText = ctx.hashText;
+  const entry = ctx.entry;
+  const old = 'a'.repeat(64);
+
+  await ctx.writeVersion(old, JSON.stringify({ id: 'r', outcome: 'ask', jobs: ['x'] }));
+
+  const effectChanges = [{ tool: 'mail.send', remove: ['network'] }];
+  const effectsText = '[{"remove":["network"],"tool":"mail.send"}]';
+
+  await ctx.writeRecord('rules.change_proposed', {
+    proposalID: 'other',
+    proposalHash: 'd'.repeat(64),
+    changes: [],
+    effectChanges,
+  });
+
+  const oldProposal = hashText(`{"effects":${effectsText},"rules":[${entry('r', null, old)}]}`);
+
+  await sql`insert into closed_rule_proposals (proposal_hash) values (${oldProposal})`.execute(
+    ctx.db,
+  );
+
+  await ctx.runMigration();
+
+  const [version] = await ctx.readVersions();
+  const closed = await sql`select proposal_hash from closed_rule_proposals`.execute(ctx.db);
+
+  const expected = hashText(
+    `{"effects":${effectsText},"rules":[${entry('r', null, version?.rule_hash ?? '')}]}`,
+  );
+
+  expect(closed.rows).toStrictEqual([{ proposal_hash: expected }]);
 });

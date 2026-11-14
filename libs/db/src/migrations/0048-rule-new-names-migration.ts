@@ -251,9 +251,14 @@ function buildProposalHash(proposal: ProposalPayload, moved: HashMap): string {
   return buildSHA256(toCanonicalJSON(hashed));
 }
 
-// A closed proposal whose records a log reset deleted has only its hash, which cannot be inverted.
-// Each proposal of one rule is rebuilt from the rule versions. A closed proposal of several rules
-// or of held effects has no rebuild.
+// The most proposals the rebuild below tries. A closed proposal beyond it keeps its hash.
+const closedRebuildLimit = 200_000;
+
+type Change = z.output<typeof changeSchema>;
+
+// A closed proposal whose records a log reset deleted has only its hash. Each set of rule changes over
+// the stored versions that includes a moved rule, beside each set of effect changes that a surviving
+// record holds, is hashed until one matches. Effect changes no record holds have no rebuild.
 async function readClosedProposalHashes(
   tx: Transaction<unknown>,
   ruleHashes: HashMap,
@@ -267,41 +272,20 @@ async function readClosedProposalHashes(
   const closedHashes = new Set(closed.map((row) => row.proposal_hash));
   const hashes = new Map<string, string>();
 
-  if (closedHashes.size === 0) {
+  if (closedHashes.size === 0 || ruleHashes.size === 0) {
     return hashes;
   }
 
-  const versions = await readQueryRows(
-    sql`select rule_hash, json_extract(rule, '$.id') as rule_id from rule_versions`,
-    tx,
-    z.object({ rule_hash: z.string(), rule_id: z.string().nullable() }),
-  );
+  const options = await readRuleChangeOptions(tx, ruleHashes);
+  const effectSets = await readEffectChangeSets(tx);
 
-  for (const [moved] of ruleHashes) {
-    const ruleID = versions.find((version) => version.rule_hash === moved)?.rule_id;
+  let remaining = closedRebuildLimit;
 
-    if (ruleID === undefined || ruleID === null) {
-      continue;
-    }
+  const tryChanges = (changes: readonly Change[]) => {
+    for (const effectChanges of effectSets) {
+      remaining -= 1;
 
-    const sides = [
-      null,
-      ...versions
-        .filter((version) => version.rule_id === ruleID)
-        .map((version) => version.rule_hash),
-    ];
-
-    const pairs = sides
-      .flatMap((before) => sides.map((after) => ({ before, after })))
-      .filter((pair) => pair.before === moved || pair.after === moved);
-
-    for (const pair of pairs) {
-      const proposal = {
-        proposalHash: '',
-        changes: [{ ruleID, before: toSide(pair.before), after: toSide(pair.after) }],
-        effectChanges: [],
-      };
-
+      const proposal = { proposalHash: '', changes: [...changes], effectChanges };
       const oldHash = buildProposalHash(proposal, new Map());
       const newHash = buildProposalHash(proposal, ruleHashes);
 
@@ -309,13 +293,96 @@ async function readClosedProposalHashes(
         hashes.set(oldHash, newHash);
       }
     }
-  }
+  };
+
+  const walk = (index: number, chosen: readonly Change[]) => {
+    if (remaining <= 0) {
+      return;
+    }
+
+    if (index === options.length) {
+      if (chosen.length > 0) {
+        tryChanges(chosen);
+      }
+
+      return;
+    }
+
+    walk(index + 1, chosen);
+
+    for (const change of options[index] ?? []) {
+      walk(index + 1, [...chosen, change]);
+    }
+  };
+
+  walk(0, []);
 
   return hashes;
 }
 
+// For each rule with a moved version, in rule ID order, every change that has a moved version on one
+// side and a version of the same rule, or none, on the other.
+async function readRuleChangeOptions(
+  tx: Transaction<unknown>,
+  ruleHashes: HashMap,
+): Promise<Change[][]> {
+  const versions = await readQueryRows(
+    sql`select rule_hash, json_extract(rule, '$.id') as rule_id from rule_versions`,
+    tx,
+    z.object({ rule_hash: z.string(), rule_id: z.string().nullable() }),
+  );
+
+  const added = new Set([...ruleHashes.values()].filter((hash) => !ruleHashes.has(hash)));
+  const byRule = new Map<string, string[]>();
+
+  for (const version of versions) {
+    if (version.rule_id !== null && !added.has(version.rule_hash)) {
+      byRule.set(version.rule_id, [...(byRule.get(version.rule_id) ?? []), version.rule_hash]);
+    }
+  }
+
+  return [...byRule]
+    .toSorted(([left], [right]) => (left < right ? -1 : 1))
+    .map(([ruleID, stored]) => {
+      const sides = [null, ...stored];
+
+      return sides
+        .flatMap((before) => sides.map((after) => ({ before, after })))
+        .filter(
+          (pair) =>
+            pair.before !== pair.after &&
+            [pair.before, pair.after].some((hash) => hash !== null && ruleHashes.has(hash)),
+        )
+        .map((pair) => ({ ruleID, before: toSide(pair.before), after: toSide(pair.after) }));
+    })
+    .filter((changes) => changes.length > 0);
+}
+
 function toSide(hash: string | null): { readonly hash: string } | null {
   return hash === null ? null : { hash };
+}
+
+type EffectChanges = z.output<typeof effectChangeSchema>[];
+
+// No effect change, and each distinct set of effect changes that a proposal record holds.
+async function readEffectChangeSets(tx: Transaction<unknown>): Promise<EffectChanges[]> {
+  const rows = await readQueryRows(
+    sql`select payload from records where kind = 'rules.change_proposed'`,
+    tx,
+    z.object({ payload: z.string() }),
+  );
+
+  const sets = new Map<string, EffectChanges>([['[]', []]]);
+
+  for (const row of rows) {
+    const payload = proposalPayloadSchema.safeParse(JSON.parse(row.payload));
+
+    if (payload.success && payload.data.effectChanges.length > 0) {
+      sets.set(JSON.stringify(payload.data.effectChanges), payload.data.effectChanges);
+    }
+  }
+
+  return [...sets.values()];
 }
 
 async function removeOldRuleVersions(tx: Transaction<unknown>, hashes: HashMap): Promise<void> {
@@ -342,10 +409,12 @@ async function rewriteHashFields(
       continue;
     }
 
-    const text = JSON.stringify(moveHashFields(JSON.parse(row.text), hashes));
+    const parsed: unknown = JSON.parse(row.text);
+    const moved = JSON.stringify(moveHashFields(parsed, hashes));
 
-    if (text !== row.text) {
-      await sql`update ${sql.table(table)} set ${sql.id(column)} = ${text}
+    // A hash that only a free-text field quotes moves nothing, so the stored text stays as it was.
+    if (moved !== JSON.stringify(parsed)) {
+      await sql`update ${sql.table(table)} set ${sql.id(column)} = ${moved}
         where rowid = ${row.id}`.execute(tx);
     }
   }
