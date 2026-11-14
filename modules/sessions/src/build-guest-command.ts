@@ -24,7 +24,7 @@ export function buildGuestCommand(
   }
 
   return {
-    argv: ['bun', `/app/guests/${guest.package}/src/${file}.ts`],
+    argv: ['bun', `/app/${guest.package}/${file}.js`],
     env: { HOME: '/home/nixie' },
   };
 }

@@ -43,8 +43,16 @@
         "src/migrations/[0-9][0-9][0-9][0-9]-*.ts"
       ]
     },
-    // the conversation image runs its guest's entries by their paths, so no import reaches them
-    "guests/conversation": { "entry": ["src/main.ts", "src/check.ts"] },
+    // the image build bundles the guest's entries and runs the bundle script by its path, and the
+    // Agent SDK lane's start hook runs the test bundle script, so no import reaches them
+    "guests/conversation": {
+      "entry": [
+        "src/main.ts",
+        "src/check.ts",
+        "src/write-guest-bundles.ts",
+        "src/test-utils/read-guest-bundles.ts"
+      ]
+    },
     // an eval run is a script a contributor runs by its path
     "evals": { "entry": ["*/run-*-eval.ts"] },
     // TanStack Router loads each route file by its path, and Vite loads the PostCSS config by its

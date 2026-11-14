@@ -92,8 +92,8 @@ whose script runs `bun test` itself.
 - To test one file of a lane, pass the file's path to the lane's command, such as
   `bun run test:agent-sdk <path>`. rig runs only the lane's own files among the paths you pass.
   Never test a lane's file with a bare `bun test`. A bare `bun test` gives the file the unit limit,
-  and skips the start hook that rig runs before the bundle and restic lanes to make the builds their
-  tests read.
+  and skips the lane's start hook, which writes the builds that the lane's tests read. The Agent SDK
+  lane needs no `bun run test:bundles`.
 - To test one e2e file, run the commands of the `test:e2e` script up to its `bun test`. Then run
   that `bun test` with the file's path in place of `e2e/`. `bun run test:e2e` passes a path you add
   only to its last command.

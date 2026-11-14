@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
 import { buildQueryOptions } from './build-query-options';
@@ -218,4 +218,26 @@ test('it refuses a guest env with no HOME', () => {
       toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
     }),
   ).toThrowWithMessage(Error, /needs HOME/u);
+});
+
+test('it passes the CLI path that the build defined to the SDK', () => {
+  Reflect.set(globalThis, 'NIXIE_CLI_PATH', '/app/claude');
+
+  onTestFinished(() => Reflect.deleteProperty(globalThis, 'NIXIE_CLI_PATH'));
+
+  const options = buildQueryOptions(buildMockTurnFrame({ profile: { authHeader: 'x-api-key' } }), {
+    env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+    toolServer: null,
+  });
+
+  expect(options.pathToClaudeCodeExecutable).toBe('/app/claude');
+});
+
+test('it names no CLI path when the guest runs from source', () => {
+  const options = buildQueryOptions(buildMockTurnFrame({ profile: { authHeader: 'x-api-key' } }), {
+    env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+    toolServer: null,
+  });
+
+  expect(options).not.toContainKey('pathToClaudeCodeExecutable');
 });

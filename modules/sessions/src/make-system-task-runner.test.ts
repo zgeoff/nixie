@@ -52,7 +52,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
       profile: { profile: { id: 'writer-direct', model: 'claude-test-writer' } },
       image: 'nixie-conversation-0123456789ab',
       limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
-      command: { argv: ['bun', '/app/guests/conversation/src/main.ts'] },
+      command: { argv: ['bun', '/app/conversation/main.js'] },
     },
   ]);
 });
@@ -91,7 +91,7 @@ test('it runs the check guest for a task whose entry is the check', async () => 
   });
 
   expect(commands).toStrictEqual([
-    { argv: ['bun', '/app/guests/conversation/src/check.ts'], env: { HOME: '/home/nixie' } },
+    { argv: ['bun', '/app/conversation/check.js'], env: { HOME: '/home/nixie' } },
   ]);
 });
 

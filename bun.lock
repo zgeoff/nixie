@@ -274,6 +274,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/testing": "workspace:*",
         "@modelcontextprotocol/server": "catalog:",
       },
     },
