@@ -9,7 +9,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { readQueryRows } from '../read-query-rows';
 import { nixieSchema } from '../schema/nixie-schema';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { memoryTaskRecordsMigration } from './0049-memory-task-records-migration';
+import { memoryTaskRecordsMigration } from './0050-memory-task-records-migration';
 
 interface RecordRow {
   readonly kind: string;
@@ -62,9 +62,9 @@ async function setupTest() {
   };
 }
 
-test('it moves the schema to version 49, which the release before cannot read', () => {
-  expect(nixieSchema.migrations.indexOf(memoryTaskRecordsMigration) + 1).toBe(49);
-  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(49);
+test('it moves the schema to version 50, which the release before cannot read', () => {
+  expect(nixieSchema.migrations.indexOf(memoryTaskRecordsMigration) + 1).toBe(50);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(50);
 });
 
 test('it rewrites a consolidation version as a conversation version and removes the change records', async () => {
