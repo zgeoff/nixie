@@ -10,7 +10,7 @@ user on a read-only root filesystem. `apps/server` holds the wiring, `modules/op
 checks, and `libs/logger` holds the logger, so a module that logs needs none of the health code.
 
 [The database](../core/database.md) covers the writer lock, the epoch and migrations.
-[Leases and recovery](../core/leases-and-recovery.md) covers runner pools and crash recovery, and
+[Leases and recovery](../core/leases-and-recovery.md) covers claim pools and crash recovery, and
 [sandboxes](../connectors/sandboxes.md) covers the imp adapter that the server adds images through.
 
 ## Configuration and secrets
@@ -207,12 +207,12 @@ is full, because that text names the failure and never quotes the turn's work.
 
 nixie handles SIGTERM and SIGINT itself, because Bun running as PID 1 ignores a signal that the
 process does not handle. The handlers exist before the start begins, so a signal that arrives during
-migrations stops nixie once the writer is open. On the signal, every runner pool stops claiming at
+migrations stops nixie once the writer is open. On the signal, every claim pool stops claiming at
 once, and each step in flight gets the pool's grace period to commit. The server then stops its
 parts in the reverse of their start order: the runners, the conversation imp, the HTTP and control
 sockets, and the writer last. A step that misses its grace keeps its lease, and the next start's
 recovery settles it. The process exits 0 after a clean stop and 1 when a part failed, such as
-another process taking the writer. The container runtime's stop grace must exceed the runner pools'
+another process taking the writer. The container runtime's stop grace must exceed the claim pools'
 grace, with room for the parts that stop after the runners, or the runtime kills nixie before the
 writer closes.
 

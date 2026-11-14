@@ -26,7 +26,7 @@ nixie runs as a StatefulSet of one replica, with its data directory on a `ReadWr
 the StatefulSet's claim template. A rolling update of a StatefulSet deletes the old pod and creates
 the new one only once the old pod is gone, so two nixie processes never run on the volume at once.
 The writer lock in the data directory guards the same rule a second time: a process that finds the
-lock held exits instead of writing. The pod's stop grace exceeds the runner pools' grace, so a
+lock held exits instead of writing. The pod's stop grace exceeds the claim pools' grace, so a
 rollout's stop lets the steps in flight commit and the writer close before the runtime kills the
 process.
 

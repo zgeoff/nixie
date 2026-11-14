@@ -56,7 +56,7 @@ inside nixie owns these parts:
   carries the clock's time from one process to the next, so a restart never moves time backwards. No
   test sleeps to let time pass.
 - **The work tracker.** An advance can wait until the runners settle, so the test knows that they
-  finished the work that the advance made due. Each claim and run of a runner pool counts as work,
+  finished the work that the advance made due. Each claim and run of a claim pool counts as work,
   and so do each lease renewal and each read that turns a commit into a wake of the pools, so a
   runner that another runner wakes keeps the advance waiting. A runner held at a fault point counts
   as settled, because only the test moves it on. Work that waits on a reply the test holds back,

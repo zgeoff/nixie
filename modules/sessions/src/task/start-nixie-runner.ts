@@ -24,7 +24,7 @@ import {
   probePauseRequested,
   readStartedTaskIDs,
   readTaskSetup,
-  startRunnerPool,
+  startClaimPool,
   startedTaskDefaultTools,
   writeTaskLimitPause,
 } from '@heynixie/tasks';
@@ -159,7 +159,7 @@ interface EndedTaskWatch {
 function startEndedTaskWatch(runner: TaskRunner): EndedTaskWatch {
   const context = runner.options.context;
 
-  const sweep = startRunnerPool<never>(context.clock, {
+  const sweep = startClaimPool<never>(context.clock, {
     size: 1,
     pollMs: 60_000,
 

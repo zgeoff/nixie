@@ -26,7 +26,7 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
   [time](../connectors/time.md) tool's default zone
 - the [search](../connectors/search.md) tool's daily call cap, its API URL and its key as a
   reference
-- the task and action [runner pool](../core/leases-and-recovery.md#runner-pools) sizes
+- the task and action [claim pool](../core/leases-and-recovery.md#claim-pools) sizes
 - whether nixie stages [backups](backups.md), and how often
 - the tuning of the [memory writer](../memory/writer.md), [memory in context](../memory/context.md)
   and [consolidation](../memory/consolidation.md)

@@ -78,7 +78,7 @@ so a report past that limit reaches the starter with no wake.
 The server gives the steps of every started task to the nixie runner, the step function in
 `modules/sessions` that runs a started task. The steps claim through a claim pool of their own, so
 the conversation never waits behind them
-([leases and recovery](./leases-and-recovery.md#runner-pools)). Each step runs in a
+([leases and recovery](./leases-and-recovery.md#claim-pools)). Each step runs in a
 [sandbox of the task's own](../connectors/sandboxes.md#a-started-tasks-sandbox), on the profile of
 the task's model, or of the `task` role when the start chose none. The sandbox's one grant is that
 profile's credential, and the turn goes to that profile's base URL, so a profile that points at a

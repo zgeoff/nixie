@@ -10,7 +10,7 @@ import {
 } from '@heynixie/definitions';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
-import { createConversationTask, startTaskRunners } from '@heynixie/tasks';
+import { createConversationTask, startTaskClaimPools } from '@heynixie/tasks';
 import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -253,10 +253,10 @@ test('it commits nothing of a turn still running at the end of the stop grace', 
     }),
   );
 
-  const runners = startTaskRunners(ctx.context, {
+  const runners = startTaskClaimPools(ctx.context, {
     runStep: turn.call,
-    onStepErrored: mock<Parameters<typeof startTaskRunners>[1]['onStepErrored']>(),
-    onError: mock<Parameters<typeof startTaskRunners>[1]['onError']>(),
+    onStepErrored: mock<Parameters<typeof startTaskClaimPools>[1]['onStepErrored']>(),
+    onError: mock<Parameters<typeof startTaskClaimPools>[1]['onError']>(),
     logger: () => {},
     size: 1,
   });

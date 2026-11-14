@@ -111,7 +111,7 @@ stages:
    waits for the calls in flight to answer, so no call commits a write that the reset then deletes.
    The host router refuses each host procedure this way except the two resets, because a reset waits
    for every call in flight and would otherwise wait for itself. It then stops the parts the start
-   sequence started: the runner pools stop claiming and give the work in flight the normal stop
+   sequence started: the claim pools stop claiming and give the work in flight the normal stop
    grace.
 2. It destroys every sandbox in the sandboxes projection through its adapter, by the path recovery
    uses. A failed destroy stops the reset before it removes anything, and the server exits 1.
