@@ -151,16 +151,22 @@ start and opens in full on demand, because a fetched page's text runs to many ki
 sits above the text and sticks to the top of the view while the text scrolls past, so the user
 closes an open value without scrolling back to find the control.
 
-Each message carries a forget control, which first asks and forgets only on the confirm. A
-confirmation keeps one client action ID, so a confirm that fails and goes again forgets once. A
-forget that fails after its start record dropped the text keeps its control and its error, so the
-user can confirm again and finish the cleanup. A message whose text is gone for another reason, such
-as a [reset of the conversation](../core/event-log.md#resetting-the-conversation) or a key that
-fails to decrypt, leaves the view with no placeholder. The view drops a message's text when a forget
-record that names it arrives, and shows the message as removed on every device, such as "nixie —
-removed", with no text and no forget control. A read shows the same line for a record the server
-marks removed. A tool call whose record is removed shows its name with "removed" and its result
-line, without its input or content.
+Each message carries a forget control, which first asks and forgets only on the confirm. The result
+of a tool call on the conversation thread carries one under its Result line, and a task's records
+carry none. A confirmation keeps one client action ID, so a confirm that fails and goes again
+forgets once. A forget that fails after its start record dropped the text keeps its control and its
+error, so the user can confirm again and finish the cleanup. A message whose text is gone for
+another reason, such as a
+[reset of the conversation](../core/event-log.md#resetting-the-conversation) or a key that fails to
+decrypt, leaves the view with no placeholder. The view drops a message's text when a forget record
+that names it arrives, and shows the message as removed on every device, such as "nixie — removed",
+with no text and no forget control. A read shows the same line for a record the server marks
+removed. A tool call whose record is removed shows its name with "removed" and its result line,
+without its input or content, and the view drops the input and the content of a tool record when the
+forget record that names it arrives. After a forget, one line takes the place of the control and
+states the key backup state of the forget: off, pending, failed, complete or unknown, worded as the
+[host commands](../deployment/host-commands.md#the-reset) word a reset's line. The removed record
+stays in view with that line until the view reloads.
 
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
 web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol

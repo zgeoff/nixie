@@ -3,7 +3,7 @@ export type ProposalRecordKind =
   | 'proposals.returned'
   | 'proposals.withdrawn';
 
-export type ProposalErasableRecordKind = 'proposals.deferred';
+type ProposalErasableRecordKind = 'proposals.deferred';
 
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry

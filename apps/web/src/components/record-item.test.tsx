@@ -104,8 +104,34 @@ test('it shows the message as removed as soon as your forget succeeds', async ()
   await user.click(target);
 
   await waitFor(() => {
-    expect(rendered.getByRole('listitem').textContent).toBe('nixie — removed');
+    expect(rendered.getByRole('listitem').textContent).toBe(
+      'nixie — removedKey backups: off. nixie stages no backup, so a backup copied before the forget still holds the record.',
+    );
   });
+});
+
+test('it shows the key backup state in place of the control once your forget succeeds', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const stored = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'The shed code is 4417.' },
+  });
+
+  const rendered = render(<RecordItem record={toLogRecord(stored)} />);
+
+  await user.click(rendered.getByRole('button', { name: 'Forget' }));
+
+  const confirm = await rendered.findByRole('button', { name: 'Forget for good' });
+
+  await user.click(confirm);
+
+  const line = await rendered.findByText(/^Key backups: off\./u);
+
+  expect(line).toHaveTextContent('Key backups: off.');
+  expect(rendered.queryByRole('button')).toBeNull();
 });
 
 test.each([

@@ -3,7 +3,7 @@ export type ActionsRecordKind =
   | 'action.attempt_started'
   | 'action.retry_scheduled';
 
-export type ActionsErasableRecordKind = 'action.queued' | 'action.retry_scheduled';
+type ActionsErasableRecordKind = 'action.queued' | 'action.retry_scheduled';
 
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry

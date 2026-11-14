@@ -9,7 +9,7 @@ export type ModelsRecordKind =
   | 'model.session_summarized'
   | 'model.session_cleanup_completed';
 
-export type ModelsErasableRecordKind =
+type ModelsErasableRecordKind =
   | 'model.reply'
   | 'model.session_summarized'
   | 'model.compaction_failed';

@@ -5,7 +5,7 @@ export type PromptsRecordKind =
   | 'prompts.override_lapsed'
   | 'prompts.override_exported';
 
-export type PromptsErasableRecordKind = 'prompts.override_rejected';
+type PromptsErasableRecordKind = 'prompts.override_rejected';
 
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry

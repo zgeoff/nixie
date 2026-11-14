@@ -125,12 +125,25 @@ confirm a guess at it. A retry is therefore compared with the first record itsel
 thread or text is refused, and once the first record's text is forgotten, only its thread is
 compared.
 
-## Forgetting a message
+## Forgetting a record
 
-A forget removes one of the user's messages or one of nixie's replies for good, so its text is gone
-from every copy nixie keeps. It is a checked action bound to the record's thread and sequence, and
-the API answers `RECORD_NOT_FOUND` for a sequence that names any other kind of record. It runs as a
-durable operation in 2 parts, as a [memory forget](../memory/store.md#forgetting) does:
+A forget removes one record with its own text for good, so the text is gone from every copy nixie
+keeps. That covers a message, a reply, a tool call or result, an action, a proposal answer and every
+other kind that carries [erasable fields](../core/erasable-fields.md#declaring-erasable-kinds),
+except 3 groups:
+
+- A moment's own records, which the moment's removal takes.
+- A memory item's own records, which the item's forget takes.
+- A record whose kind carries no erasable fields.
+
+The API reads the kinds from `forgettableKinds` in the contract library, and a test holds each
+erasable kind to exactly one of the 3 groups and the list. The forget is a checked action bound to
+the record's thread and sequence. The API answers `RECORD_NOT_FOUND` for a sequence that names a
+record outside the list, a record on another thread, and a record with no thread, such as a session
+label. It answers `ACTION_NOT_FINISHED` for the record that queued an action that has neither run
+nor been cancelled, because the action reads its arguments from that record. The refusal writes
+nothing, so the same client action ID succeeds once the action has run or a stop cancelled it. It
+runs as a durable operation in 2 parts, as a [memory forget](../memory/store.md#forgetting) does:
 
 1. In the transaction that keeps the action's result, the API commits a `record.forget_started`
    record on the record's thread, which names the record by its sequence. A second forget of the
@@ -145,6 +158,17 @@ so a forget that arrives first stops after the key deletion, as does one that a 
 The server's start hands the API the session cleanup and then finishes every such forget, before any
 runner claims work, so no turn resumes a session that holds the text. A retry of the action runs the
 cleanup again too, so a cleanup that failed finishes on the retry.
+
+The answer carries `forgottenAt` and `backup`, the key backup state that a
+[memory forget](../memory/store.md#forgetting) reports. The API reads it fresh on every answer, a
+replay of the client action included:
+
+- `deleting`, while no `record.forgotten` names the record. The state reads pending, or off when
+  nixie stages no backup.
+- `forgotten` with no sequence, when neither the record nor a brief's start call held a key. No
+  backup set can hold a key that never existed, so the state reads complete.
+- `forgotten` at the sequence of `record.forgotten`, otherwise. The backup job's report for that
+  sequence gives the state.
 
 ## Reading tasks
 

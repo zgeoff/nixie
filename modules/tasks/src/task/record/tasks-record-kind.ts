@@ -24,7 +24,7 @@ export type TasksRecordKind =
   | 'owner_message'
   | 'action.outcome';
 
-export type TasksErasableRecordKind =
+type TasksErasableRecordKind =
   | 'action.outcome'
   | 'owner_message'
   | 'task.created'

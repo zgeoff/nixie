@@ -7,7 +7,7 @@ export type SkillsRecordKind =
   | 'skills.write_lapsed'
   | 'skills.written_resolved';
 
-export type SkillsErasableRecordKind = 'skills.write_rejected';
+type SkillsErasableRecordKind = 'skills.write_rejected';
 
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry

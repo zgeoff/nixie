@@ -5,7 +5,7 @@ export type PolicyRecordKind =
   | 'policy.contact_marked_known'
   | 'policy.contact_unmarked';
 
-export type PolicyErasableRecordKind =
+type PolicyErasableRecordKind =
   | 'policy.action_proposed'
   | 'policy.action_answered'
   | 'policy.contact_marked_known';

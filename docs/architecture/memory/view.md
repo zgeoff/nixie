@@ -119,7 +119,7 @@ it cannot reach. A disk snapshot that the user took by hand of nixie's host or i
 holds the item, because no forget reaches a copy that nixie never made. The user's messages and
 nixie's replies that state the same fact stay under their own record keys, so the confirmation links
 to the conversation, where each one has its own forget
-([forgetting a message](../channels/api.md#forgetting-a-message)). Once the forget applies, the item
+([forgetting a message](../channels/api.md#forgetting-a-record)). Once the forget applies, the item
 shows in the forgotten list as a dated gap. The `memory-forget` host command runs the same store
 forget, bound to the version that `memory-show` printed.
 

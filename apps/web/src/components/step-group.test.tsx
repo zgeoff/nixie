@@ -411,3 +411,94 @@ test('it shows a tool record that fails to decrypt with its name, no input and n
 
   expect(call.textContent).toBe('web_fetchInputnoneResult (waiting)none');
 });
+
+test('it shows the forget control under the result of a conversation tool call, and none under the result of a task', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { status: 200 } },
+            input: { url: 'https://example.com/' },
+            outcome: 'result',
+            result: { kind: 'tool_result', sequence: 5, thread: 'conversation' },
+            tool: 'web_fetch',
+          },
+          {
+            callID: 'b',
+            content: { result: { status: 200 } },
+            input: { url: 'https://example.org/' },
+            outcome: 'result',
+            result: { kind: 'tool_result', sequence: 9, thread: 'task-4k7m2x9q1a' },
+            tool: 'web_search',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · /u));
+  await user.click(rendered.getByText('Tools 2'));
+
+  const conversationCall = within(rendered.getByRole('region', { name: 'web_fetch' }));
+  const taskCall = within(rendered.getByRole('region', { name: 'web_search' }));
+
+  expect(conversationCall.getByRole('button', { name: 'Forget this result' })).toBeVisible();
+  expect(taskCall.queryByRole('button')).toBeNull();
+});
+
+test('it shows the key backup state after the forget of a tool result, in place of its text', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const stored = await store.records.create({
+    kind: 'tool_result',
+    thread: 'conversation',
+    toolCall: { callID: 'a', content: { result: { status: 200 } }, outcome: 'result' },
+  });
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { status: 200 } },
+            input: { url: 'https://example.com/' },
+            outcome: 'result',
+            result: { kind: 'tool_result', sequence: stored.sequence, thread: 'conversation' },
+            tool: 'web_fetch',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · /u));
+  await user.click(rendered.getByText('Tools 1'));
+  await user.click(rendered.getByRole('button', { name: 'Forget this result' }));
+
+  const confirm = await rendered.findByRole('button', { name: 'Forget for good' });
+
+  await user.click(confirm);
+
+  const line = await rendered.findByText(/^Key backups: off\./u);
+
+  const call = rendered.getByRole('region', { name: 'web_fetch' });
+
+  expect(line).toHaveTextContent(
+    'Key backups: off. nixie stages no backup, so a backup copied before the forget still holds the record.',
+  );
+
+  expect(call.textContent).toBe(
+    'web_fetch — removedResult (result)Key backups: off. nixie stages no backup, so a backup copied before the forget still holds the record.',
+  );
+});

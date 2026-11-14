@@ -24,6 +24,7 @@ test('it keeps each message on its own and folds a step into one group', () => {
   const result = buildMockLogRecord({
     kind: 'tool_result',
     sequence: 4,
+    thread: 'conversation',
     toolCall: { callID: 'call-1', content: { result: { status: 200 } }, outcome: 'result' },
   });
 
@@ -41,6 +42,7 @@ test('it keeps each message on its own and folds a step into one group', () => {
             content: { result: { status: 200 } },
             input: { url: 'https://theverge.com/' },
             outcome: 'result',
+            result: { kind: 'tool_result', sequence: 4, thread: 'conversation' },
             tool: 'web_fetch',
           },
         ],
@@ -273,6 +275,7 @@ test('it closes a step that started before the page at its end record, with its 
   const result = buildMockLogRecord({
     kind: 'tool_result',
     sequence: 42,
+    thread: 'conversation',
     toolCall: { callID: 'call-1', outcome: 'error' },
   });
 
@@ -287,7 +290,14 @@ test('it closes a step that started before the page at its end record, with its 
 
   expect(buildActivity([called, result, errored, started, committed])).toStrictEqual([
     {
-      calls: [{ callID: 'call-1', outcome: 'error', tool: 'web_fetch' }],
+      calls: [
+        {
+          callID: 'call-1',
+          outcome: 'error',
+          result: { kind: 'tool_result', sequence: 42, thread: 'conversation' },
+          tool: 'web_fetch',
+        },
+      ],
       error: 'the fetch timed out',
       key: 41,
       kind: 'step',
@@ -660,6 +670,7 @@ test('it marks a tool call removed when its result record is removed', () => {
     isRemoved: true,
     kind: 'tool_result',
     sequence: 3,
+    thread: 'conversation',
     toolCall: { callID: 'call-1', outcome: 'result' },
   });
 
@@ -668,6 +679,46 @@ test('it marks a tool call removed when its result record is removed', () => {
   );
 
   expect(calls).toStrictEqual([
-    { callID: 'call-1', isRemoved: true, outcome: 'result', tool: 'web_fetch' },
+    {
+      callID: 'call-1',
+      isRemoved: true,
+      outcome: 'result',
+      result: { kind: 'tool_result', sequence: 3, thread: 'conversation' },
+      tool: 'web_fetch',
+    },
+  ]);
+});
+
+test('it names the record and thread of a call result, and none for a call without one', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
+  const called = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 2,
+    thread: 'conversation',
+    toolCall: { callID: 'call-1', tool: 'web_fetch' },
+  });
+
+  const answered = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 3,
+    thread: 'conversation',
+    toolCall: { callID: 'call-2', tool: 'web_fetch' },
+  });
+
+  const result = buildMockLogRecord({
+    kind: 'tool_result',
+    sequence: 4,
+    thread: 'conversation',
+    toolCall: { callID: 'call-2', outcome: 'result' },
+  });
+
+  const calls = buildActivity([started, called, answered, result]).flatMap((item) =>
+    item.kind === 'step' ? item.calls : [],
+  );
+
+  expect(calls.map((call) => call.result)).toStrictEqual([
+    undefined,
+    { kind: 'tool_result', sequence: 4, thread: 'conversation' },
   ]);
 });
