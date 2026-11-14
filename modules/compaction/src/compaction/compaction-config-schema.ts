@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { CompactionSettings } from './types';
+import type { CompactionSettings } from '../types';
 
 export const compactionConfigSchema = z
   .strictObject({

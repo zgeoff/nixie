@@ -9,12 +9,12 @@ import {
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { SessionPoint, TurnProfile } from '@heynixie/wire';
+import { renderCompactionInstruction } from '../compaction/render-compaction-instruction';
+import { renderSummaryCut } from '../summary/render-summary-cut';
+import type { GuestSummary } from '../summary/run-guest-summary';
+import { runGuestSummary } from '../summary/run-guest-summary';
+import type { CompactionSettings, LogContext } from '../types';
 import { countTextTokens } from './count-text-tokens';
-import { renderCompactionInstruction } from './render-compaction-instruction';
-import { renderSummaryCut } from './render-summary-cut';
-import type { GuestSummary } from './run-guest-summary';
-import { runGuestSummary } from './run-guest-summary';
-import type { CompactionSettings, LogContext } from './types';
 
 export interface CompactionRun {
   readonly context: LogContext & { readonly definitions: () => Definitions };

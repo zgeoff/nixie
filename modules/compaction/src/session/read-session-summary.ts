@@ -1,6 +1,6 @@
 import { readThreadNewestFirst } from '@heynixie/log';
 import { z } from 'zod';
-import type { LogContext } from './types';
+import type { LogContext } from '../types';
 
 const sessionSummarizedKind = 'model.session_summarized';
 

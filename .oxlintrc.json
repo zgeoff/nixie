@@ -44,7 +44,6 @@
           "modules/actions",
           "modules/api",
           "modules/backup",
-          "modules/compaction",
           "modules/connectors",
           "modules/definitions",
           "modules/log",

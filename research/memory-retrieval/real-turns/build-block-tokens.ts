@@ -2,7 +2,7 @@
 // product's own renderers and counting it the way the product budgets text: about 4 characters a
 // token.
 // @boundaries-ignore a spike imports the code it measures
-import { countTextTokens } from '../../../modules/compaction/src/count-text-tokens.ts';
+import { countTextTokens } from '../../../modules/compaction/src/session/count-text-tokens.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { formatMessageTime } from '../../../modules/sessions/src/format-message-time.ts';
 // @boundaries-ignore a spike imports the code it measures

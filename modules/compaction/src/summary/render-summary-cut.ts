@@ -1,5 +1,5 @@
 import { renderSystemMessage } from '@heynixie/wire';
-import { countSummaryWords } from './count-summary-words';
+import { countSummaryWords } from '../utils/count-summary-words';
 
 export interface SummaryCut {
   readonly at: string;

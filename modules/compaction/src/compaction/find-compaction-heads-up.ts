@@ -1,5 +1,5 @@
+import type { CompactionSettings, ContextSize } from '../types';
 import { isCompactionDue } from './is-compaction-due';
-import type { CompactionSettings, ContextSize } from './types';
 
 export function findCompactionHeadsUp(
   context: ContextSize | null,
