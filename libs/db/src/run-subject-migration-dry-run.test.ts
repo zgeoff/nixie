@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sql } from 'kysely';
-import { memorySubjectsMigration } from './memory-subjects-migration';
+import { memorySubjectsMigration } from './migrations/0018-memory-subjects-migration';
 import { nixieSchema } from './nixie-schema';
 import { runMigrations } from './run-migrations';
 import { runSubjectMigrationDryRun } from './run-subject-migration-dry-run';

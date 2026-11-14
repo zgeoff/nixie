@@ -1,5 +1,5 @@
 import { dirname, join } from 'node:path';
-import { sqliteWorkerEntry } from '@heynixie/db';
+import { migrationsPlugin, sqliteWorkerEntry } from '@heynixie/db';
 import type { BunPlugin } from 'bun';
 import { testBuildIDs } from './test-build-ids';
 
@@ -40,7 +40,7 @@ export async function writeReleaseBundle(
     // a bundle cannot inline a native addon, so the image carries the package beside the bundle
     external: ['onnxruntime-node'],
     define: { NIXIE_TEST_BUILD: String(isTestBuild) },
-    plugins: isTestBuild ? [sourceDirPlugin] : [],
+    plugins: isTestBuild ? [migrationsPlugin, sourceDirPlugin] : [migrationsPlugin],
   });
 
   // Bun.build throws on a failed build, so every result here is a success
