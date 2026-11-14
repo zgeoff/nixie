@@ -10,18 +10,30 @@ import { buildTestRunSettings } from '../test-utils/build-test-run-settings';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
-import type { TaskRunOptions, TasksTables } from '../types';
+import type { TaskClaim, TaskRunOptions, TasksTables } from '../types';
 import { readEndedRuns } from './read-ended-runs';
 import { readOpenRun } from './read-open-run';
 import { readRunState } from './read-run-state';
+import type { RunMeter, RunMeterName } from './types';
 
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  // each meter reads this use for every task run, so a carried limit shows the use it took off
+  // each meter reads the use a test gave a task run, so a carried limit shows the use it took off
+  const uses = new Map<string, Readonly<Record<RunMeterName, number>>>();
+
+  const buildMeter = (name: RunMeterName): RunMeter => ({
+    name,
+    read: (_, run) => Promise.resolve(uses.get(run.runID)?.[name] ?? 0),
+    render: String,
+  });
+
   const context = {
     ...tasks.context,
-    runSettings: buildTestRunSettings({ used: { turns: 1, dollars: 0.5 } }),
+    runSettings: {
+      ...buildTestRunSettings(),
+      meters: [buildMeter('turns'), buildMeter('dollars')] as const,
+    },
   };
 
   const starter = await seedConversationStep(context);
@@ -43,6 +55,20 @@ async function setupTest() {
       invariant(claim, 'the task is ready to claim');
 
       return claim;
+    },
+    endAtLimit: async (claim: TaskClaim, used: Readonly<Record<RunMeterName, number>>) => {
+      const run = await readOpenRun(context.log.writer.db, claim.lease.workID);
+
+      invariant(run, 'the claim opened a task run');
+
+      uses.set(run.runID, used);
+
+      await writeStepCommit(context, claim, {
+        next: 'continue',
+        records: [],
+        acknowledged: [],
+        run: { activity: 'worked', limit: { meter: 'turns', used: used.turns, limit: used.turns } },
+      });
     },
     readOpen: (taskID: string) => readOpenRun(context.log.writer.db, taskID),
     readEnded: (taskID: string) => readEndedRuns(context, { taskID, limit: 10 }),
@@ -121,12 +147,7 @@ test('it carries a limit-ended task run after a raise with the shape it pinned a
 
   const claim = await ctx.claim(taskID);
 
-  await writeStepCommit(ctx.context, claim, {
-    next: 'continue',
-    records: [],
-    acknowledged: [],
-    run: { activity: 'worked', limit: { meter: 'turns', used: 1, limit: 1 } },
-  });
+  await ctx.endAtLimit(claim, { turns: 1, dollars: 0.5 });
 
   await writeTaskLimitRaise(ctx.context, { taskID, limits: { turns: 3 } });
 
@@ -143,8 +164,54 @@ test('it carries a limit-ended task run after a raise with the shape it pinned a
     openedByStep: `${taskID}:2`,
     origin: { kind: 'raise', sequence: expect.any(Number) },
     carriesRunID: ended.runID,
+    reportShape: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { highTide: { type: 'string' } },
+      required: ['highTide'],
+    },
     limits: { turns: 2, dollars: 1.5, calls: {} },
   });
+});
+
+test('it carries a piece of work through 2 raises with the totals less its use, and a restart with the full totals', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.startTask({ report: 'none', limits: { turns: 40, dollars: 10 } });
+  const first = await ctx.claim(taskID);
+
+  await ctx.endAtLimit(first, { turns: 40, dollars: 3 });
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { turns: 60 } });
+
+  const second = await ctx.claim(taskID);
+  const afterFirstRaise = await ctx.readOpen(taskID);
+
+  await ctx.endAtLimit(second, { turns: 20, dollars: 2 });
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { turns: 80 } });
+
+  await ctx.claim(taskID);
+
+  const afterSecondRaise = await ctx.readOpen(taskID);
+
+  await writeTaskControl(ctx.context, { taskID, control: 'stop' });
+  await writeTaskControl(ctx.context, { taskID, control: 'restart' });
+
+  ctx.clock.advance(120_000);
+
+  await ctx.claim(taskID);
+
+  const afterRestart = await ctx.readOpen(taskID);
+
+  expect([
+    afterFirstRaise?.opened.limits,
+    afterSecondRaise?.opened.limits,
+    afterRestart?.opened.limits,
+  ]).toStrictEqual([
+    { turns: 20, dollars: 7, calls: {} },
+    { turns: 20, dollars: 5, calls: {} },
+    { turns: 80, dollars: 10, calls: {} },
+  ]);
 });
 
 test('it carries a stopped task run after a restart with the full totals', async () => {
