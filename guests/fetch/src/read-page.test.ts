@@ -1968,3 +1968,62 @@ test('it marks the refusal of a hop that the ask passed as gated', async () => {
     isGated: true,
   });
 });
+
+test('it asks for markdown first, then HTML, then plain text', async () => {
+  const site = await startTestSite({ names: ['site.test'], respond: () => new Response('x') });
+
+  await readPage(`https://site.test:${site.port}/`, {
+    limits: {
+      bodyBytes: 1_000_000,
+      timeoutMs: 5000,
+      redirects: 5,
+      textBytes: 1_000_000,
+      imageBytes: 1_000_000,
+    },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: site.ca,
+  });
+
+  expect(site.requests).toMatchObject([
+    {
+      headers: {
+        accept:
+          'text/markdown, text/html;q=0.9, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.7',
+      },
+    },
+  ]);
+});
+
+test('it returns a text/markdown reply as its text with no links', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: () =>
+      new Response('# Tide tables\n\nSee [the harbour](https://site.test/harbour) page.', {
+        headers: { 'content-type': 'text/markdown; charset=utf-8' },
+      }),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/tides`, {
+    limits: {
+      bodyBytes: 1_000_000,
+      timeoutMs: 5000,
+      redirects: 5,
+      textBytes: 1_000_000,
+      imageBytes: 1_000_000,
+    },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: site.ca,
+  });
+
+  expect(reply).toMatchObject({
+    kind: 'page',
+    status: 200,
+    contentType: 'text/markdown; charset=utf-8',
+    text: '# Tide tables\n\nSee [the harbour](https://site.test/harbour) page.',
+    links: [],
+  });
+});
