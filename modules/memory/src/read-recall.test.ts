@@ -1660,7 +1660,6 @@ test('it keeps the current version and the newest past versions of a first item 
   });
 
   for (const text of ['second wording', 'third wording', 'fourth wording']) {
-    // oxlint-disable-next-line no-await-in-loop -- each edit targets the version before
     version = await ctx.memory.store.remember({
       text,
       target: version,

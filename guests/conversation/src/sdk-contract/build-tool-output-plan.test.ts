@@ -50,7 +50,7 @@ test('it serves a filler of 30,000 characters whose last line is numbered', () =
 
 test('it serves 150 items in the recall shape as one JSON result of about 20,000 bytes', () => {
   const plan = buildToolOutputPlan({ HOME: '/home/tide' }, 'recall-shape');
-  const result = JSON.parse(plan.served);
+  const result: { items: unknown[] } = JSON.parse(plan.served);
 
   expect(result.items).toHaveLength(150);
   expect(result.items[149]).toMatchObject({ itemID: 'k000000149', subject: 'owner', version: 1 });

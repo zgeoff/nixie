@@ -138,7 +138,6 @@ test.each([
     const ctx = await setupTest();
 
     for (let index = 0; index < 100; index += 1) {
-      // oxlint-disable-next-line no-await-in-loop -- the items keep their order
       await ctx.memory.store.remember({
         text: `${prefix} ${index} ${filler.repeat(1900)}`,
         provenance: buildMockProvenance(),
@@ -168,13 +167,11 @@ test('it names the matches a query cut in rank order, and the omitted IDs read b
   const shortIDs: string[] = [];
 
   for (let index = 0; index < 30; index += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- the items keep their order
     const item = await ctx.memory.store.remember({
       text: `kayak paddle ${index} ${'x'.repeat(1950)}`,
       provenance: buildMockProvenance(),
     });
 
-    // oxlint-disable-next-line no-await-in-loop -- one read per item
     const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
     shortIDs.push(shortID);
@@ -206,13 +203,11 @@ test('it returns the first 20 of 30 named IDs and lists the other 10 in the orde
   const shortIDs: string[] = [];
 
   for (let index = 0; index < 30; index += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- the items keep their order
     const item = await ctx.memory.store.remember({
       text: `short note ${index}`,
       provenance: buildMockProvenance(),
     });
 
-    // oxlint-disable-next-line no-await-in-loop -- one read per item
     const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
     shortIDs.push(shortID);
@@ -231,7 +226,6 @@ test('it records exactly the versions of the page it returned, and sends an omit
   const items = [];
 
   for (let index = 0; index < 20; index += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- the items keep their order
     const item = await ctx.memory.store.remember({
       text: `kayak note ${index} ${'x'.repeat(1900)}`,
       provenance: buildMockProvenance(),
@@ -281,7 +275,6 @@ test('it fits one item of 40 long versions to the page limit and records only th
   });
 
   for (let index = 2; index <= 40; index += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- each edit targets the version before
     version = await ctx.memory.store.remember({
       text: `version ${index} ${'x'.repeat(1950)}`,
       target: version,
@@ -323,7 +316,6 @@ test('it stores the omitted item IDs in the record and keeps the searched query 
   const uuids: string[] = [];
 
   for (let index = 0; index < 20; index += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- the items keep their order
     const item = await ctx.memory.store.remember({
       text: `kayak note ${index} ${'x'.repeat(1900)}`,
       provenance: buildMockProvenance(),

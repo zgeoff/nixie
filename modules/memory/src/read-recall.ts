@@ -402,12 +402,10 @@ async function cutToBudget(request: RecallRequest, items: readonly RecalledItem[
   let used = 0;
 
   for (const item of items) {
-    // oxlint-disable-next-line no-await-in-loop -- each item's room depends on the items before it
     const size = await measureItem(item);
 
     if (used + kept.length + size > byteBudget) {
       if (kept.length === 0) {
-        // oxlint-disable-next-line no-await-in-loop -- runs once, for the first item
         const trimmed = await trimFirstItem(item, { byteBudget, measureItem });
 
         return { kept: [trimmed.item], dropped: items.slice(1), versions: trimmed.versions };
@@ -453,7 +451,6 @@ async function trimFirstItem(item: RecalledItem, budget: Budget): Promise<Trimme
       versions: dropped,
     };
 
-    // oxlint-disable-next-line no-await-in-loop -- each try drops one more version than the last
     if ((await budget.measureItem(lastTried.item)) <= budget.byteBudget) {
       return lastTried;
     }
