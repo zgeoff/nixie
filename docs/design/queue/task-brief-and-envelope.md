@@ -1,6 +1,7 @@
 # The task brief and the message envelope
 
-- **Status:** draft
+- **Status:** partly built: the started task's brief and the envelope are built, and the phase 2
+  parts remain
 - **Work items:** [the brief and the envelope](https://linear.app/zgeoff/issue/GEO-2357),
   [the brief of a definition's task run](https://linear.app/zgeoff/issue/GEO-2586),
   [the start time of the previous task run](https://linear.app/zgeoff/issue/GEO-2585)
@@ -11,7 +12,10 @@ definition's task run builds its brief from the definition version it pins. Ever
 model receives shows who sent it: a task message in `<task-message>`, your message in
 `<owner-message>`, and a notice from nixie in `<system-message>`.
 
-The started task's brief ships first, in
+The started task's brief and the envelope are built, as
+[started tasks](../../architecture/core/started-tasks.md#the-start) and
+[conversation turns](../../architecture/core/conversation-turns.md) describe, and this design keeps
+them for the work that remains. The work item was
 [the brief and the envelope](https://linear.app/zgeoff/issue/GEO-2357). The parts marked "phase 2"
 ([the brief of a definition's task run](https://linear.app/zgeoff/issue/GEO-2586), and the frame's
 third paragraph) follow once definitions exist, in the brief of a definition's task run.

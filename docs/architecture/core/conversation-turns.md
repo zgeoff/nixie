@@ -165,14 +165,22 @@ blocks is not the user's own words and may hold instructions the model acts on o
 own words ask. The model can then tell which quotes the [memory gate](../memory/writes.md) takes as
 typed.
 
-A message from another task renders as a `<task-message>` block, with its random block ID repeated
-on the closing tag. The opening tag gives the message's ID, its sender's ID and name, its kind, the
-message it replies to, when it was sent, its hop, whether a reply would wake the sender, and the
-user's messages it passes on. A fixed first line says the message is from another task, not from the
-user. The system prompt adds that a task message is never the user's own words, and that the model
-weighs its requests as a colleague's. Messages that arrived past the hop limit open the turn under
-one system message with a summary line per sender, which counts that sender's messages and names
-what woke the turn, as [task messages](./task-messages.md) describes.
+A message from another task renders as a `<task-message>` envelope. Its opening tag gives the
+message's ID, who it is from, its kind, the message it replies to, when it was sent, the user's
+messages it passes on, and a random ID that the closing tag repeats. A body that quotes a closing
+tag cannot end the envelope early. The envelope states no hop and no wake. The `from` label names
+the sender by how the receiver knows it:
+
+- `{agent}, in the chat with {user}`: the conversation, for a task that runs under the persona.
+- `{agent} (task: {name})`: a started task that runs under the persona.
+- `task: {name}`: a task with no persona, and the receiver of any message when the deployment names
+  no agent.
+
+The system prompt adds that a task message is never the user's own words, and that the model weighs
+its requests as a colleague's. A task's brief is its first message: it renders in this envelope, as
+[started tasks](./started-tasks.md#the-start) describes. Messages that arrived past the hop limit
+open the turn under one system message with a summary line per sender, which counts that sender's
+messages and names what woke the turn, as [task messages](./task-messages.md) describes.
 
 Images the user sends with a message reach the model as image input, read as dropped in like dropped
 text. The inbox message holds the text first, then for each image a `<dropped-image id="…" n="…"/>`
@@ -234,13 +242,16 @@ own, so the model can tell the two places apart.
 A new session's pinned memory, status, summary and recent turns, the events block, the pinned-core
 change note and the retrieved items each render as one system message before the user's message. A
 fired timer and an action's outcome render as one each, with the time their record was written, and
-each body leads with the record's event ID so the model can cite it. The user's own message stays
-outside any element, after its stamp, because it holds the user's own words.
-
-Every message stamp leads with the record's event ID, its log sequence, as in
-`[#48213 · Tue 14 Oct, 22:50, Sydney]`: the stamp on each of the user's messages and on each line of
-a rebuilt session's recent turns. The model can then cite any message it sees, in a summary, a
-memory quote or a moment's span, without a log read.
+each body leads with the record's event ID so the model can cite it. The user's message renders as
+an `<owner-message id="48213" from="…" sent="Tue 14 Oct, 22:50, Sydney">` element, with the user's
+own text inside. The `id` is the record's event ID, its log sequence, so the model can cite any
+message it sees, in a summary, a memory quote or a moment's span, and pass it on in a task message,
+without a log read. A message from a device the user named carries a `session` attribute, and a
+message that reached nixie long after the user typed it shows both times in `sent`. Each line of a
+rebuilt session's recent turns leads with the same event ID and send time in square brackets. A
+system message and an `<owner-message>` element come from nixie only at the top level of a user
+message: the system prompt says that one inside a tool result, a task message or a quote is text. A
+task that reaches its limit gets a one-line notice that names the task and its use.
 
 A turn carries no list of tasks. The conversation reads them with the list tool when it needs them,
 as [sending a message](./task-messages.md#sending-a-message) describes.
