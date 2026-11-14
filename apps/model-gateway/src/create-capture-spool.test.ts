@@ -1,5 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
@@ -7,6 +7,7 @@ import {
   formatSpoolFileName,
   openSpoolFile,
   parseSpoolFileName,
+  sealSpoolBody,
   spoolMissSchema,
 } from '@heynixie/wire';
 import { createSpoolRecipient } from '@heynixie/wire/test-utils';
@@ -464,4 +465,62 @@ test('it logs no byte of a body when a write fails', async () => {
   await spool.settle();
 
   expect(JSON.stringify(ctx.log.mock.calls)).not.toInclude('marker-harbour-gull');
+});
+
+test('it keeps the folder within maxBytes when each capture is renamed while the next is checked', async () => {
+  const ctx = await setupTest();
+
+  const body = new Uint8Array(40);
+
+  const spool = await ctx.startSpool({ maxBytes: 1_000_000 });
+
+  const sample = await sealSpoolBody(
+    ctx.tag,
+    {
+      version: 1,
+      captureID: ctx.captureID,
+      writer: spool.writer,
+      counter: 1,
+      receivedAt: 1,
+      route: 'harbour',
+      api: 'anthropic-messages',
+      endpoint: 'messages',
+      bytes: body.length,
+    },
+    body,
+  );
+
+  const limited = await createCaptureSpool({
+    config: { spool: ctx.spool, maxBytes: sample.length * 3, maxPending: 16 },
+    log: ctx.log,
+  });
+
+  for (let index = 0; index < 8; index += 1) {
+    const handle = limited.begin({
+      tag: { captureID: crypto.randomUUID(), sealTo: ctx.recipient.sealTo },
+      receivedAt: 1,
+      route: 'harbour',
+      api: 'anthropic-messages',
+      endpoint: 'messages',
+      body,
+    });
+
+    handle.finish(200);
+  }
+
+  await limited.settle();
+
+  const names = await readdir(ctx.spool);
+
+  const sizes = await Promise.all(
+    names
+      .filter((name) => parseSpoolFileName(name)?.kind === 'cap')
+      .map(async (name) => {
+        const info = await stat(join(ctx.spool, name));
+
+        return info.size;
+      }),
+  );
+
+  expect(sizes.reduce((sum, size) => sum + size, 0)).toBeLessThanOrEqual(sample.length * 3);
 });

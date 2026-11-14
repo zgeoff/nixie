@@ -304,7 +304,24 @@ function readErrorCode(error: unknown): string {
   return isRecord(error) && typeof error['code'] === 'string' ? error['code'] : 'unknown';
 }
 
+const maxScanAttempts = 8;
+
 async function readSpoolBytes(spool: string): Promise<number> {
+  // a file that vanishes between the listing and its stat was renamed or removed, so the listing is
+  // stale: read the folder again
+  for (let attempt = 0; attempt < maxScanAttempts; attempt += 1) {
+    const total = await scanSpoolBytes(spool);
+
+    if (total !== null) {
+      return total;
+    }
+  }
+
+  throw new Error('the capture spool kept changing during its size scan');
+}
+
+// null when a listed file vanished before its stat
+async function scanSpoolBytes(spool: string): Promise<number | null> {
   let total = 0;
 
   for (const name of await readdir(spool)) {
@@ -317,10 +334,11 @@ async function readSpoolBytes(spool: string): Promise<number> {
 
       total += info.size;
     } catch (error) {
-      // nixie removes files while the gateway reads the folder
-      if (readErrorCode(error) !== 'ENOENT') {
-        throw error;
+      if (readErrorCode(error) === 'ENOENT') {
+        return null;
       }
+
+      throw error;
     }
   }
 
