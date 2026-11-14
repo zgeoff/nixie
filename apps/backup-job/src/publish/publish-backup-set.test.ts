@@ -458,10 +458,14 @@ test('it picks the higher publish number when it stops before it removes the rep
     },
   };
 
-  await ctx.runPass(stopping).catch(() => null);
+  const stopped = await ctx.runPass(stopping).then(
+    () => null,
+    (error: unknown) => error,
+  );
 
   const keys = await ctx.repos.keys.readSnapshots();
 
+  expect(stopped).toStrictEqual(new Error('EIO: the removal stopped'));
   expect(keys.map((snapshot) => snapshot.publish)).toIncludeSameMembers([1, 2]);
   expect(pickNewestKey(keys)).toStrictEqual(expect.objectContaining({ publish: 2 }));
 });
@@ -480,10 +484,14 @@ test('it drops the replaced key snapshot by legacy-set when the first numbered p
     },
   };
 
-  await ctx.runPass(stopping).catch(() => null);
+  const stopped = await ctx.runPass(stopping).then(
+    () => null,
+    (error: unknown) => error,
+  );
 
   const keys = await ctx.repos.keys.readSnapshots();
 
+  expect(stopped).toStrictEqual(new Error('EIO: the removal stopped'));
   expect(keys).toHaveLength(2);
 
   expect(pickNewestKey(keys)).toStrictEqual(
@@ -505,7 +513,10 @@ test('it keeps the note and raises proven-from again when it stops before it rem
         : localJobFiles.removeFile(path),
   };
 
-  await ctx.runPass(ctx.repos, stopping).catch(() => null);
+  const stopped = await ctx.runPass(ctx.repos, stopping).then(
+    () => null,
+    (error: unknown) => error,
+  );
 
   const hasNote = await ctx.probeNote();
 
@@ -513,6 +524,7 @@ test('it keeps the note and raises proven-from again when it stops before it rem
 
   const keys = await ctx.repos.keys.readSnapshots();
 
+  expect(stopped).toStrictEqual(new Error('EIO: the note removal stopped'));
   expect(hasNote).toBeTrue();
   expect(keys).toStrictEqual([expect.objectContaining({ publish: 2, provenFrom: 2 })]);
 });
