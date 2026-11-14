@@ -95,10 +95,9 @@ function parseRuleFile(path: string, text: string): ParsedRuleFiles {
 
   return {
     status: 'parsed',
-    rules: Object.entries(result.data).map(([id, body]) => ({
-      path,
-      rule: toRuleForm({ id, ...body }),
-    })),
+    rules: Object.entries(result.data)
+      .filter(([id]) => !stripped.skippedIDs.has(id))
+      .map(([id, body]) => ({ path, rule: toRuleForm({ id, ...body }) })),
     warnings: stripped.warnings,
   };
 }
@@ -111,14 +110,22 @@ function parseYAML(text: string): unknown {
   }
 }
 
-// A field nested inside a checks entry is not stripped, so the schema still refuses it.
+// A field nested inside a checks entry is not stripped, so the schema still refuses it. A skipped
+// allow rule keeps its known fields in the YAML, so the schema validates it before the caller
+// leaves it out of the rules.
 function stripUnknownFields(
   path: string,
   yaml: unknown,
-): { readonly yaml: unknown; readonly warnings: readonly RuleFileWarning[] } {
+): {
+  readonly yaml: unknown;
+  readonly warnings: readonly RuleFileWarning[];
+  readonly skippedIDs: ReadonlySet<string>;
+} {
   if (!isRecord(yaml)) {
-    return { yaml, warnings: [] };
+    return { yaml, warnings: [], skippedIDs: new Set() };
   }
+
+  const skippedIDs = new Set<string>();
 
   const warnings: RuleFileWarning[] = [];
   const kept: Record<string, unknown> = {};
@@ -137,14 +144,16 @@ function stripUnknownFields(
 
     warnings.push(...unknown.map((field) => ({ path, ruleID, field, action }) as const));
 
-    if (action === 'dropped') {
-      kept[ruleID] = Object.fromEntries(
-        Object.entries(body).filter(([field]) => ruleFieldNames.has(field)),
-      );
+    kept[ruleID] = Object.fromEntries(
+      Object.entries(body).filter(([field]) => ruleFieldNames.has(field)),
+    );
+
+    if (action === 'skipped') {
+      skippedIDs.add(ruleID);
     }
   }
 
-  return { yaml: kept, warnings };
+  return { yaml: kept, warnings, skippedIDs };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

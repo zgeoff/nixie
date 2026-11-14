@@ -167,6 +167,19 @@ test('it skips an allow rule that holds an unknown field, and warns', () => {
   });
 });
 
+test('it refuses a file whose allow rule holds an unknown field and a bad checks entry', () => {
+  const parsed = parseRuleFiles(
+    new Map([
+      [
+        'rules/x.yaml',
+        'allow-x:\n  outcome: allow\n  future: true\n  checks:\n    - { arg: to, op: eq, value: x, extra: 1 }\n',
+      ],
+    ]),
+  );
+
+  expect(parsed.status).toBe('refused');
+});
+
 test.each(['ask', 'deny'])(
   'it drops the unknown field of a %s rule and keeps the rest',
   (outcome) => {
