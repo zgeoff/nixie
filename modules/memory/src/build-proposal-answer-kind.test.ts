@@ -515,10 +515,7 @@ test('it leaves an approval unquoted once its item changed again, and records no
   });
 
   expect(note).toEndWith(` · Avery approved your memory proposal ${proposal.proposalID}.`);
-
-  expect(recalls.map((entry) => entry.record.payload)).toStrictEqual([
-    { items: [], isTurnNote: true },
-  ]);
+  expect(recalls).toStrictEqual([]);
 });
 
 test('it reads only the answers inside the range, and leaves out a pending proposal', async () => {

@@ -11,7 +11,7 @@ import { makeImageReserver } from './make-image-reserver';
 import { readLiveInbox } from './read-live-inbox';
 import type { OpeningBatch } from './read-opening-batch';
 import { readOpeningBatch } from './read-opening-batch';
-import { readRecalledThrough } from './read-recalled-through';
+import { readTurnRecalledThrough } from './read-turn-recalled-through';
 import { renderHeldMessages } from './render-held-messages';
 import type { TaskMessageView } from './render-task-message';
 import { runGuestTurn } from './run-guest-turn';
@@ -115,7 +115,7 @@ async function runTokenTurn(
           }),
       signal: plan.signal,
       interrupt: input.interrupt,
-      readRecallMark: () => readRecalledThrough(run.context, input.taskID),
+      readRecallMark: () => readTurnRecalledThrough(run.context, input),
       ...(run.onModelCall === undefined ? {} : { onCall: run.onModelCall }),
     });
 

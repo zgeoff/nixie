@@ -4,6 +4,7 @@ export type { NixieOperationArgs } from '../build-nixie-operation-schemas';
 export { readDataFiles } from './read-data-files';
 export { readTestBundle } from './read-test-bundle';
 export { readTestRecords } from './read-test-records';
+export { readTestSessionDeliveries } from './read-test-session-deliveries';
 export { runOracle } from './run-oracle';
 export { runHostCommand } from './run-host-command';
 export { sendClientMessage } from './send-client-message';
