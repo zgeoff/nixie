@@ -172,6 +172,25 @@ The caller passes a command's environment as variables by name, and the adapter 
 placeholders. A stop sends SIGTERM once. After a grace period, imp's agent inside the guest kills
 the command's whole cgroup, so no descendant process outlives the command.
 
+## Reading memory kills
+
+`readMemoryKills` returns how many processes the guest's kernel has killed for memory since the
+guest booted. The count never falls while the guest is booted. The result is one of 3 kinds: a
+count, `unsupported` when the adapter or the guest holds no count, and `failed` when the sandbox is
+gone, the runtime refused the read or the read timed out. The read never rejects, and a caller can
+pass an abort signal to cut it short.
+
+- **The imp adapter** prints the guest's `memory.events` file through its own exec path and takes
+  the `oom_kill` line. A read of a sleeping imp wakes it, as any exec does, and a sleep keeps the
+  count. A guest with no such file gives `unsupported`.
+- **The test sandbox** reads `/.memory-kills` under the sandbox's directory, with no guest process,
+  so it also reads a sleeping sandbox. A missing file means a count of 0, and a file that holds
+  anything but a whole number gives `failed`. A test sets the count with `writeMemoryKills` from the
+  sandbox test utilities.
+- **Every other adapter** returns `unsupported`.
+
+A watcher that logs each new kill is planned ([GEO-2526](https://linear.app/zgeoff/issue/GEO-2526)).
+
 ## The test sandbox
 
 The test sandbox runs each guest as a local child process with no isolation, so it is not a security

@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { memoryKillsArgv } from '../memory-kills-argv';
 import { startFakeImp } from './start-fake-imp';
 
 test('it holds no secret until a test adds one', async () => {
@@ -358,4 +359,122 @@ test('it lists each image it holds with its digest and reference', async () => {
       ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
     },
   ]);
+});
+
+test('it answers the memory kills read with a count of 0 and no host process, by default', async () => {
+  const imp = await startFakeImp();
+
+  const exec = await imp.port.openExec('nixie-a', memoryKillsArgv, {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+
+  const [stdout, exit] = await Promise.allSettled([new Response(exec.stdout).text(), exec.exit]);
+
+  const read = { stdout, exit };
+
+  expect(read).toStrictEqual({
+    stdout: { status: 'fulfilled', value: expect.stringContaining('oom_kill 0\n') },
+    exit: { status: 'fulfilled', value: { code: 0, signal: null } },
+  });
+
+  expect(imp.calls).toStrictEqual(['memory-kills nixie-a']);
+  expect(imp.execs).toStrictEqual([]);
+});
+
+test('it answers the memory kills read with the count a test sets', async () => {
+  const imp = await startFakeImp();
+
+  imp.memoryKills = 3;
+
+  const exec = await imp.port.openExec('nixie-a', memoryKillsArgv, {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+
+  const [stdout, exit] = await Promise.allSettled([new Response(exec.stdout).text(), exec.exit]);
+
+  const read = { stdout, exit };
+
+  expect(read.stdout).toStrictEqual({
+    status: 'fulfilled',
+    value: expect.stringContaining('oom_kill 3\n'),
+  });
+});
+
+test('it answers the memory kills read with no output when the file is missing', async () => {
+  const imp = await startFakeImp();
+
+  imp.memoryKills = 'missing';
+
+  const exec = await imp.port.openExec('nixie-a', memoryKillsArgv, {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+
+  const [stdout, exit] = await Promise.allSettled([new Response(exec.stdout).text(), exec.exit]);
+
+  const read = { stdout, exit };
+
+  expect(read).toStrictEqual({
+    stdout: { status: 'fulfilled', value: '' },
+    exit: { status: 'fulfilled', value: { code: 0, signal: null } },
+  });
+});
+
+test('it rejects the exit of the memory kills read on a lost connection', async () => {
+  const imp = await startFakeImp();
+
+  imp.memoryKills = 'lost';
+
+  const exec = await imp.port.openExec('nixie-a', memoryKillsArgv, {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+
+  const [stdout, exit] = await Promise.allSettled([new Response(exec.stdout).text(), exec.exit]);
+
+  const read = { stdout, exit };
+
+  expect(read.exit).toStrictEqual({ status: 'rejected', reason: new Error('CONNECTION_CLOSED') });
+});
+
+test('it holds the memory kills read until an idle sleep ends', async () => {
+  const imp = await startFakeImp();
+
+  const snapshot = Promise.withResolvers<void>();
+
+  void imp.startIdleSleep('nixie-a', snapshot.promise);
+
+  const exec = await imp.port.openExec('nixie-a', memoryKillsArgv, {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+
+  const before = await Promise.race([exec.started, Promise.resolve('starting')]);
+
+  snapshot.resolve();
+
+  await exec.started;
+
+  expect(before).toBe('starting');
+});
+
+test('it runs an exec on the host when its argv only contains the memory kills argv', async () => {
+  const imp = await startFakeImp();
+
+  const exec = await imp.port.openExec('nixie-a', [...memoryKillsArgv, 'extra'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+
+  await exec.started;
+
+  expect(imp.calls).not.toContain('memory-kills nixie-a');
 });

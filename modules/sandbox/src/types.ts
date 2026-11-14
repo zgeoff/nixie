@@ -152,6 +152,14 @@ export interface ReadFilePathsOptions {
   readonly maxDepth?: number;
 }
 
+// A count is the kills since boot, which never falls while booted. Unsupported means the adapter,
+// or the guest at its size, holds no count. Failed means the sandbox is gone, the runtime refused,
+// or the read timed out.
+export type MemoryKillRead =
+  | { readonly kind: 'count'; readonly kills: number }
+  | { readonly kind: 'unsupported' }
+  | { readonly kind: 'failed' };
+
 export interface Sandbox {
   readonly id: string;
   readonly spec: SandboxSpec;
@@ -170,6 +178,9 @@ export interface Sandbox {
   readonly applyMove: (from: string, to: string) => Promise<void>;
   readonly toolRoute: () => Promise<ToolRoute | null>;
   readonly suspension: Suspension;
+
+  // never rejects
+  readonly readMemoryKills: (signal?: AbortSignal) => Promise<MemoryKillRead>;
   readonly destroy: () => Promise<void>;
 
   readonly isRetired: boolean;

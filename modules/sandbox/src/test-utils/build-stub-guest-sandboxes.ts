@@ -1,10 +1,13 @@
 import { join } from 'node:path';
 import type { CheckReply, CheckRequest, GuestFrame, HostFrame } from '@heynixie/wire';
 import { createSandboxID } from '../create-sandbox-id';
+import { memoryKillsPath } from '../memory-kills-path';
+import { parseMemoryKillsFile } from '../parse-memory-kills-file';
 import { requireSandboxSpec } from '../require-sandbox-spec';
 import type {
   FileSpec,
   GuestHome,
+  MemoryKillRead,
   Sandbox,
   SandboxAdapter,
   SandboxKind,
@@ -271,6 +274,20 @@ function buildSandbox(state: StubState, id: string, spec: SandboxSpec, own: Sand
 
         await state.options.recorder.write({ event: 'woken', sandboxID: id });
       },
+    },
+    readMemoryKills: (signal) => {
+      if (signal?.aborted === true || !state.sandboxes.has(id)) {
+        return Promise.resolve({ kind: 'failed' });
+      }
+
+      const bytes = own.disk.files.get(memoryKillsPath);
+
+      const read: MemoryKillRead =
+        bytes === undefined
+          ? { kind: 'count', kills: 0 }
+          : parseMemoryKillsFile(new TextDecoder().decode(bytes));
+
+      return Promise.resolve(read);
     },
     destroy: async () => {
       const failure = state.destroyFailures.get(own.owner);

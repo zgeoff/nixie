@@ -23,6 +23,7 @@ test('it builds a default sandbox', () => {
     applyMove: expect.toBeFunction(),
     toolRoute: expect.toBeFunction(),
     suspension: { kind: 'none' },
+    readMemoryKills: expect.toBeFunction(),
     destroy: expect.toBeFunction(),
     isRetired: false,
   });

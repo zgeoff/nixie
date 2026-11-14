@@ -10,12 +10,14 @@ import {
 import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { memoryKillsPath } from '../memory-kills-path';
 import type { SandboxSpec } from '../types';
 import { buildMockSandboxSpec } from './build-mock-sandbox-spec';
 import { buildStubGuestSandboxes } from './build-stub-guest-sandboxes';
 import { runGuestFrame } from './run-guest-frame';
 import type { StubGuestToolCaller } from './run-stub-guest-turn';
 import { setupTestRecorder } from './setup-test-recorder';
+import { writeMemoryKills } from './write-memory-kills';
 
 async function setupTest(options: { readonly callTool?: StubGuestToolCaller } = {}) {
   const recorder = await setupTestRecorder();
@@ -1301,4 +1303,45 @@ test('it answers a check in a checker sandbox with the queued answer, then fails
   ]);
 
   expect(ctx.stub.checks).toStrictEqual([request, request]);
+});
+
+test('it reads no kills from a sandbox whose disk holds no count', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 0 });
+});
+
+test('it reads the count that writeMemoryKills copied into the sandbox', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  await writeMemoryKills(sandbox, 3);
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 3 });
+});
+
+test('it fails the read of a count that is not a whole number', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  await sandbox.copyIn([{ path: memoryKillsPath, content: new TextEncoder().encode('many') }]);
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'failed' });
+});
+
+test('it fails the read of a destroyed sandbox', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  await sandbox.destroy();
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'failed' });
+});
+
+test('it fails the read of an aborted signal', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  expect(sandbox.readMemoryKills(AbortSignal.abort())).resolves.toStrictEqual({ kind: 'failed' });
 });

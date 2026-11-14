@@ -157,6 +157,7 @@ function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
     applyMove: requireSpawnOnly,
     toolRoute: () => Promise.resolve({ url: 'http://127.0.0.1:8901' }),
     suspension: { kind: 'none' },
+    readMemoryKills: () => Promise.resolve({ kind: 'unsupported' }),
     isRetired: false,
     destroy: () => {
       hooks.onDestroy(id);

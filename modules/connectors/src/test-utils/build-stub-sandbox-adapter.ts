@@ -131,6 +131,7 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
     applyMove: () => Promise.reject(new Error('the stub runs no exec')),
     toolRoute: () => Promise.resolve(null),
     suspension: { kind: 'none' },
+    readMemoryKills: () => Promise.resolve({ kind: 'unsupported' }),
     isRetired: false,
     destroy: async () => {
       await applyCallFailure(state.destroyFailures.shift());

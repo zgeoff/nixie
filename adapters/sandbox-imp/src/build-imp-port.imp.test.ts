@@ -66,3 +66,44 @@ test.skipIf(!hasImpHost)(
     expect(outcome).toMatch(/^status=[1-5]\d\d exit=0$/u);
   },
 );
+
+test.skipIf(!hasImpHost)(
+  'it keeps the count of memory kills of a 192 MiB imp across a sleep and a wake',
+  async () => {
+    const ctx = await setupTest();
+
+    const sandbox = await ctx.createSandbox(
+      buildMockSandboxSpec({
+        kind: 'code_run',
+        image: ctx.image,
+        egress: { kind: 'none' },
+        grants: [],
+        toolRoute: false,
+        limits: { vcpus: 1, memoryMiB: 192, diskMiB: 4096 },
+      }),
+    );
+
+    // GNU tail buffers the endless line of /dev/zero until the kernel kills it for memory.
+    await sandbox.exec({ argv: ['sh', '-c', 'tail /dev/zero'] });
+
+    const before = await sandbox.readMemoryKills();
+
+    invariant(sandbox.suspension.kind === 'memory');
+
+    await sandbox.suspension.sleep();
+    await sandbox.suspension.wake();
+
+    const after = await sandbox.readMemoryKills();
+
+    process.stdout.write(
+      `memory kills before sleep=${JSON.stringify(before)} after wake=${JSON.stringify(after)}\n`,
+    );
+
+    expect(before).toStrictEqual({
+      kind: 'count',
+      kills: expect.toBeWithin(1, Number.POSITIVE_INFINITY),
+    });
+
+    expect(after).toStrictEqual(before);
+  },
+);

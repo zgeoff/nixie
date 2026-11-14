@@ -203,3 +203,11 @@ test('it records each secret it is given', async () => {
 
   expect(ctx.stub.secrets).toStrictEqual([secret]);
 });
+
+test('it reads no memory kill count from a stub sandbox', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec());
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'unsupported' });
+});

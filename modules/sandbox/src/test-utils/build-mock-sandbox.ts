@@ -15,6 +15,7 @@ export function buildMockSandbox(overrides: Partial<Sandbox> = {}): Sandbox {
     applyMove: requireUnused,
     toolRoute: requireUnused,
     suspension: { kind: 'none' },
+    readMemoryKills: () => Promise.resolve({ kind: 'unsupported' }),
     destroy: () => Promise.resolve(),
     isRetired: false,
     ...overrides,
