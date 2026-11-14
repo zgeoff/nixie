@@ -24,7 +24,9 @@ function setupTest() {
         { hops: ['https://www.example.com/b', 'https://cdn.example.net/c'] },
       ),
     ),
-    (line) => lines.push(line),
+    (line) => {
+      lines.push(line);
+    },
   );
 
   const fetchSandbox = startFetchSandbox({
@@ -36,9 +38,7 @@ function setupTest() {
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
 
-  onTestFinished(() => {
-    fetchSandbox.stop();
-  });
+  onTestFinished(() => fetchSandbox.stop());
 
   return { lines, fetchSandbox };
 }
