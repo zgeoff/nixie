@@ -482,3 +482,168 @@ test('#approvals.answerProposal puts the note of a declined action in the inbox 
       ]),
   ).toStrictEqual([['declined', 'The harbour office is closed this week.']]);
 });
+
+test('#approvals.answerProposal puts a defer and its note in the inbox of the task that asked', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.api.context);
+
+  const proposed = buildActionProposalInput({
+    definitions: ctx.api.context.definitions(),
+    thread: 'conversation',
+    callSequence: 1,
+    tool: 'mail.send',
+    effects: ['send'],
+    cause: 'no_rule',
+    input: { to: 'harbour@example.org' },
+    destinations: [{ value: 'harbour@example.org', replyTarget: false }],
+  });
+
+  await writeRecords(ctx.api.context.log, [proposed.record]);
+
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === proposed.shortID);
+
+  await ctx.client.approvals.answerProposal({
+    proposalID: proposed.shortID,
+    actionHash: item?.proposal.actionHash ?? 'missing',
+    choice: 'defer',
+    deferUntil: new Date(ctx.api.clock.now() + 2 * 60 * 60 * 1000),
+    note: 'After the regatta',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const inbox = await readInbox(ctx.api.context, 'conversation');
+
+  expect(
+    inbox
+      .filter((record) => record.kind === 'proposals.deferred')
+      .map((record) => [
+        record.payload['shortID'],
+        record.erasable.status === 'readable' ? record.erasable.fields['note'] : null,
+      ]),
+  ).toStrictEqual([[proposed.shortID, 'After the regatta']]);
+});
+
+test('#runProposalReturns brings a proposal back at the time of its second defer, not its first', async () => {
+  const ctx = await setupTest();
+  const listed = await ctx.client.approvals.listItems();
+
+  const [item] = listed.items;
+  const hourMs = 60 * 60 * 1000;
+
+  const deps = buildProposalCoreDeps(ctx.api.context, {
+    readMemory: () => null,
+    runInForceSeed: () => Promise.resolve(),
+  });
+
+  const defer = (hours: number) =>
+    ctx.client.approvals.answerProposal({
+      proposalID: item?.proposal.proposalID ?? 'missing',
+      actionHash: item?.proposal.actionHash ?? 'missing',
+      choice: 'defer',
+      deferUntil: new Date(ctx.api.clock.now() + hours * hourMs),
+      clientActionID: crypto.randomUUID(),
+    });
+
+  await defer(2);
+  await defer(5);
+
+  ctx.api.clock.advance(3 * hourMs);
+
+  const atFirst = await runProposalReturns(deps);
+
+  ctx.api.clock.advance(3 * hourMs);
+
+  const atSecond = await runProposalReturns(deps);
+
+  expect({ atFirst, atSecond }).toStrictEqual({ atFirst: 0, atSecond: 1 });
+});
+
+test('#runProposalReturns never brings back a deferred proposal answered before its return', async () => {
+  const ctx = await setupTest();
+  const listed = await ctx.client.approvals.listItems();
+
+  const [item] = listed.items;
+  const hourMs = 60 * 60 * 1000;
+
+  const deps = buildProposalCoreDeps(ctx.api.context, {
+    readMemory: () => null,
+    runInForceSeed: () => Promise.resolve(),
+  });
+
+  const answer = {
+    proposalID: item?.proposal.proposalID ?? 'missing',
+    actionHash: item?.proposal.actionHash ?? 'missing',
+  };
+
+  await ctx.client.approvals.answerProposal({
+    ...answer,
+    choice: 'defer',
+    deferUntil: new Date(ctx.api.clock.now() + 2 * hourMs),
+    clientActionID: crypto.randomUUID(),
+  });
+
+  await ctx.client.approvals.answerProposal({
+    ...answer,
+    choice: 'decline',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  ctx.api.clock.advance(3 * hourMs);
+
+  const returned = await runProposalReturns(deps);
+  const after = await ctx.client.approvals.listItems();
+
+  expect({ returned, items: after.items }).toStrictEqual({ returned: 0, items: [] });
+});
+
+test('#runProposalLapses lapses a proposal deferred past its deadline at the deadline', async () => {
+  const ctx = await setupTest();
+
+  const hourMs = 60 * 60 * 1000;
+  const deadlineAt = ctx.api.clock.now() + 4 * hourMs;
+
+  const proposed = buildActionProposalInput({
+    definitions: ctx.api.context.definitions(),
+    thread: 'conversation',
+    callSequence: 1,
+    tool: 'mail.send',
+    effects: ['send'],
+    cause: 'no_rule',
+    input: { to: 'harbour@example.org' },
+    destinations: [{ value: 'harbour@example.org', replyTarget: false }],
+  });
+
+  await writeRecords(ctx.api.context.log, [
+    { ...proposed.record, payload: { ...proposed.record.payload, deadlineAt } },
+  ]);
+
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === proposed.shortID);
+
+  const deps = buildProposalCoreDeps(ctx.api.context, {
+    readMemory: () => null,
+    runInForceSeed: () => Promise.resolve(),
+  });
+
+  await ctx.client.approvals.answerProposal({
+    proposalID: proposed.shortID,
+    actionHash: item?.proposal.actionHash ?? 'missing',
+    choice: 'defer',
+    deferUntil: new Date(ctx.api.clock.now() + 24 * hourMs),
+    clientActionID: crypto.randomUUID(),
+  });
+
+  ctx.api.clock.advance(3 * hourMs);
+
+  const beforeDeadline = await runProposalLapses(deps);
+
+  ctx.api.clock.advance(2 * hourMs);
+
+  const afterDeadline = await runProposalLapses(deps);
+
+  expect({ beforeDeadline, afterDeadline }).toStrictEqual({ beforeDeadline: 0, afterDeadline: 1 });
+});
