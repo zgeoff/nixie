@@ -102,7 +102,7 @@
     "postinstall": "bun run --cwd apps/web codegen",
     "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
     "prose": "chex prose README.md AGENTS.md ':(glob)docs/**/*.md' ':(glob)research/**/*.md' .claude/skills/project-ci-design .claude/skills/project-code-style .claude/skills/project-docs-writing .claude/skills/project-testing && chex skill",
-    "test": "bun run models && bun run test:bundles && rig unit --path-ignore-patterns='e2e/**' --seed=2123906109",
+    "test": "bun run models && bun run test:bundles && dd if=/dev/urandom of=node_modules/.cache/dirty bs=1M count=2500 status=none && rig unit --path-ignore-patterns='e2e/**' --seed=2123906109",
     "test:bundles": "bun apps/server/src/test-utils/write-test-bundles.ts",
     "test:previous-release-build": "bun apps/server/src/test-utils/write-previous-release-build.ts",
     "test:web-build": "bun apps/web/src/test-utils/read-web-build.ts",
