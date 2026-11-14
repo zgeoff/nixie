@@ -287,6 +287,7 @@ interface MessageOptions {
   readonly source?: ContentSource;
   readonly isError?: boolean;
   readonly actionID?: string;
+  readonly hidden?: JSONObject | undefined;
 }
 
 function buildMessage(
@@ -298,9 +299,14 @@ function buildMessage(
     outcome,
     actionID: messageOptions.actionID ?? null,
     sources: { message: messageOptions.source ?? 'owner_data' },
-    content: { message },
+    content: buildHiddenFields({ message }, messageOptions.hidden),
     reply: { kind: 'text', text: message, isError: messageOptions.isError ?? true },
   };
+}
+
+// hidden is stored only when the tool set it to an object with 1 key or more
+function buildHiddenFields(fields: JSONObject, hidden: JSONObject | undefined): JSONObject {
+  return hidden !== undefined && Object.keys(hidden).length > 0 ? { ...fields, hidden } : fields;
 }
 
 interface DecidedCall {
@@ -383,7 +389,7 @@ async function runDirect(allowed: AllowedCall): Promise<Settled> {
 
   // a tool's error can quote what an outside service said, so it counts as outside content
   return outcome.status === 'error'
-    ? buildMessage('error', outcome.message, { source: 'untrusted' })
+    ? buildMessage('error', outcome.message, { source: 'untrusted', hidden: outcome.hidden })
     : buildTypedResult(allowed.registered, outcome, null);
 }
 
@@ -413,13 +419,8 @@ function buildTypedResult(
   };
 }
 
-// hidden is stored only when the tool set it to an object with 1 key or more
 function buildResultFields(typed: DirectResult, result: JSONObject): JSONObject {
-  const fields: JSONObject = { result: typed.record ?? result };
-
-  return typed.hidden !== undefined && Object.keys(typed.hidden).length > 0
-    ? { ...fields, hidden: typed.hidden }
-    : fields;
+  return buildHiddenFields({ result: typed.record ?? result }, typed.hidden);
 }
 
 async function runQueued(allowed: AllowedCall): Promise<Settled> {

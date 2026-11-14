@@ -129,6 +129,9 @@ export function buildSearchTool(
         return {
           status: 'error',
           message: 'the session ended while the search ran, so it returns no hits',
+
+          // the provider answered, so the search was paid for
+          hidden: { costUSD: reply.costUSD },
         };
       }
 

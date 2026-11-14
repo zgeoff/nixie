@@ -262,6 +262,7 @@ test('it refuses a search whose session a forget ended, and stores no link', asy
   expect(outcome).toStrictEqual({
     status: 'error',
     message: 'the session ended while the search ran, so it returns no hits',
+    hidden: { costUSD: 0.012 },
   });
 
   expect(links.rows).toStrictEqual([]);

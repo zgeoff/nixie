@@ -131,8 +131,9 @@ that destroys the other key would leave the copy readable. The model reads the w
 way. The memory tools use these forms, and [the memory store](../memory/store.md#the-models-tools)
 covers what each one records.
 
-The erasable fields of a result record hold the `result` or the `message`, and a tool's `hidden`
-object when it sets one with a key or more: values the server records and the model never reads. The
-model reads back the `result` or the `message` alone, through the reply, `log.read` and
-`moment.read`. A forget erases `hidden` with the record's other fields. The
+The erasable fields of a result record hold the `result` or the `message`. They also hold a tool's
+`hidden` object when the tool sets one with a key or more: values the server records and the model
+never reads. `hidden` sits beside the `result`, or beside the `message` of an error the tool
+returns, and nowhere else. The model reads back the `result` or the `message` alone, through the
+reply, `log.read` and `moment.read`. A forget erases `hidden` with the record's other fields. The
 [search](./search.md#what-the-result-carries) tool records each search's cost there.

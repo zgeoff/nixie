@@ -78,6 +78,39 @@ test('it shows each call with its input and result once its section opens', asyn
   expect(call).toHaveTextContent('"text": "Example Domain"');
 });
 
+test('it shows an error with hidden as one JSON object with the message before hidden', async () => {
+  const user = userEvent.setup();
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: {
+              message: 'the session ended while the search ran, so it returns no hits',
+              hidden: { costUSD: 0.012 },
+            },
+            input: { query: 'tide tables' },
+            outcome: 'error',
+            tool: 'search',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · /u));
+  await user.click(rendered.getByText('Tools 1'));
+
+  const call = rendered.getByRole('region', { name: 'search' });
+
+  expect(call).toHaveTextContent(
+    '{ "message": "the session ended while the search ran, so it returns no hits", "hidden": { "costUSD": 0.012 } }',
+  );
+});
+
 test('it names the task, the step and its events once the step section opens', async () => {
   const user = userEvent.setup();
 
