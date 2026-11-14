@@ -93,7 +93,7 @@ test('#approvals.answerProposal refuses a stale hash with CONFLICT and keeps the
     clientActionID: crypto.randomUUID(),
   });
 
-  await expect(answer).rejects.toMatchObject({ code: 'CONFLICT' });
+  expect(answer).rejects.toMatchObject({ code: 'CONFLICT' });
 
   const after = await ctx.client.approvals.listItems();
 
@@ -113,7 +113,7 @@ test('#approvals.answerProposal refuses always allow on a rule change with NOT_A
     clientActionID: crypto.randomUUID(),
   });
 
-  await expect(answer).rejects.toMatchObject({ code: 'NOT_ALLOWED' });
+  expect(answer).rejects.toMatchObject({ code: 'NOT_ALLOWED' });
 });
 
 test('#approvals.answerProposal refuses an answer to a closed proposal with CLOSED', async () => {
@@ -138,7 +138,7 @@ test('#approvals.answerProposal refuses an answer to a closed proposal with CLOS
     clientActionID: crypto.randomUUID(),
   });
 
-  await expect(again).rejects.toMatchObject({ code: 'CLOSED' });
+  expect(again).rejects.toMatchObject({ code: 'CLOSED' });
 });
 
 test('#approvals.answerProposal gives a retry of a refused answer the same refusal', async () => {
@@ -150,11 +150,11 @@ test('#approvals.answerProposal gives a retry of a refused answer the same refus
   const answer = { proposalID, actionHash: 'stale', choice: 'approve', clientActionID } as const;
   const first = ctx.client.approvals.answerProposal(answer);
 
-  await expect(first).rejects.toMatchObject({ code: 'CONFLICT' });
+  expect(first).rejects.toMatchObject({ code: 'CONFLICT' });
 
   const retry = ctx.client.approvals.answerProposal(answer);
 
-  await expect(retry).rejects.toMatchObject({ code: 'CONFLICT' });
+  expect(retry).rejects.toMatchObject({ code: 'CONFLICT' });
 });
 
 test('#approvals.answerProposal defers a proposal, which then lists as deferred', async () => {
@@ -316,7 +316,7 @@ test('#approvals.answerProposal applies no memory write when the session is revo
     clientActionID: crypto.randomUUID(),
   });
 
-  await expect(answer).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(answer).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 
   const pending = await ctx.memory.proposals.listPending();
 
