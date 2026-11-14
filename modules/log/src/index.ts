@@ -21,6 +21,8 @@ export { removeRecordKey } from './record/remove-record-key';
 export { removeThreadKeys } from './record/remove-thread-keys';
 export { claimBackupLock } from './data/claim-backup-lock';
 export { localDataStorage } from './writer/local-data-storage';
+export type { PendingRestore } from './restore/pending-restore';
+export { pendingRestoreSchema } from './restore/pending-restore';
 export type { DataRestore, DataRestoreOptions } from './record/restore-data-backup';
 export { restoreDataBackup } from './record/restore-data-backup';
 export type { DataBackup, DataBackupOptions } from './record/write-data-backup';

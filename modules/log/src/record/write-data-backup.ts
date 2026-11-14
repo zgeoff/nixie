@@ -59,7 +59,7 @@ export async function writeDataBackup(
 async function requireFinishedRestore(options: DataBackupOptions): Promise<void> {
   const state = await readRestoreState(options.storage.files, options.dataDir);
 
-  if (state === 'replacing') {
+  if (state.state === 'replacing') {
     throw new Error(
       `a restore of the data directory ${options.dataDir} stopped before it finished, so nixie backs up nothing`,
     );

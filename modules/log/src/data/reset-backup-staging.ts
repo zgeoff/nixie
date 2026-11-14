@@ -1,5 +1,4 @@
 import { join } from 'node:path';
-import type { Clock } from '@heynixie/clock';
 import type { RestoreNote } from '@heynixie/wire';
 import { backupSetLayout, formatBackupFile, readBackupSets } from '@heynixie/wire';
 import type { DataStorage } from '../utils/data-storage';
@@ -7,7 +6,7 @@ import type { DataStorage } from '../utils/data-storage';
 export interface BackupStagingReset {
   readonly storage: DataStorage;
   readonly stagingDir: string;
-  readonly clock: Pick<Clock, 'now'>;
+  readonly restoredAt: number;
   readonly keySnapshotID: string | null;
 }
 
@@ -54,7 +53,7 @@ async function writeRestoreNote(reset: BackupStagingReset): Promise<void> {
 
   const note: RestoreNote = {
     format: 1,
-    restoredAt: reset.clock.now(),
+    restoredAt: reset.restoredAt,
     keySnapshotID: reset.keySnapshotID,
   };
 

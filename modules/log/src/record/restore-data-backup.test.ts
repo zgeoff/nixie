@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claimFileLock } from '@heynixie/async';
@@ -7,10 +7,15 @@ import { startDatabase } from '@heynixie/db';
 import { formatBackupFile, getBackupSetDir, restoreNoteSchema } from '@heynixie/wire';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { claimBackupLock } from '../data/claim-backup-lock';
+import { pendingRestoreSchema } from '../restore/pending-restore';
+import { buildLogSeeder } from '../test-utils/build-log-seeder';
+import { startTestLog } from '../test-utils/start-test-log';
 import { claimWriterLock } from '../writer/claim-writer-lock';
 import { localDataStorage } from '../writer/local-data-storage';
 import { restoreDataBackup } from './restore-data-backup';
+import { writeDataBackup } from './write-data-backup';
 
 async function setupTest() {
   const root = await mkdtemp(join(tmpdir(), 'nixie-restore-'));
@@ -24,21 +29,28 @@ async function setupTest() {
   await mkdir(dataDir);
   await mkdir(directory);
 
-  const writeBackupDatabases = async (): Promise<void> => {
-    const backupLog = startDatabase(join(directory, 'nixie.db'));
+  // A backup of a real log, seeded through the log module, copied into the backup directory.
+  const writeBackupDatabases = async (): Promise<number> => {
+    const source = await startTestLog();
 
-    onTestFinished(() => backupLog.destroy());
+    const seed = buildLogSeeder(source);
 
-    await sql`create table schema_version (id integer primary key)`.execute(backupLog);
-    await sql`create table records (record_id text primary key)`.execute(backupLog);
-    await backupLog.destroy();
+    await seed.record({ kind: 'owner_message', thread: 'garden' });
 
-    const backupKeys = startDatabase(join(directory, 'keys.db'));
+    const newest = await seed.record({ kind: 'turn_finished', thread: 'garden' });
 
-    onTestFinished(() => backupKeys.destroy());
+    await writeDataBackup({
+      storage: localDataStorage,
+      dataDir: source.dataDir,
+      directory: join(root, 'seeded-backup'),
+      onCopied: () => Promise.resolve(),
+    });
 
-    await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
-    await backupKeys.destroy();
+    for (const file of ['nixie.db', 'keys.db']) {
+      await copyFile(join(root, 'seeded-backup', file), join(directory, file));
+    }
+
+    return newest.recordedAt.getTime();
   };
 
   return {
@@ -58,23 +70,7 @@ test('it replaces nixie.db and keys.db with the backup copies, and removes their
   await writeFile(join(ctx.dataDir, 'keys.db-shm'), 'the old key index');
   await writeFile(join(ctx.dataDir, 'keys.db'), 'the old keys');
 
-  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
-
-  onTestFinished(() => backupLog.destroy());
-
-  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
-  await sql`create table records (record_id text primary key)`.execute(backupLog);
-  await sql`create table items (id text primary key)`.execute(backupLog);
-  await sql`insert into items values ('k1')`.execute(backupLog);
-  await backupLog.destroy();
-
-  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
-
-  onTestFinished(() => backupKeys.destroy());
-
-  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
-  await sql`insert into record_keys values ('k1')`.execute(backupKeys);
-  await backupKeys.destroy();
+  await ctx.writeBackupDatabases();
 
   const restored = await restoreDataBackup({
     storage: localDataStorage,
@@ -90,17 +86,26 @@ test('it replaces nixie.db and keys.db with the backup copies, and removes their
 
   onTestFinished(() => log.destroy());
 
+  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'), { readonly: true });
+
+  onTestFinished(() => backupKeys.destroy());
+
   const keys = startDatabase(join(ctx.dataDir, 'keys.db'), { readonly: true });
 
   onTestFinished(() => keys.destroy());
 
-  const items = await sql`select id from items`.execute(log);
-  const recordKeys = await sql`select key_id from record_keys`.execute(keys);
+  const kinds = await sql`select kind from records order by sequence`.execute(log);
+
+  const backupKeyIDs = await sql`select key_id from record_keys order by key_id`.execute(
+    backupKeys,
+  );
+
+  const recordKeys = await sql`select key_id from record_keys order by key_id`.execute(keys);
 
   expect(restored).toStrictEqual({ files: ['nixie.db', 'keys.db'], pair: null });
-  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock']);
-  expect(items.rows).toStrictEqual([{ id: 'k1' }]);
-  expect(recordKeys.rows).toStrictEqual([{ key_id: 'k1' }]);
+  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock', 'restore-incomplete']);
+  expect(kinds.rows).toStrictEqual([{ kind: 'owner_message' }, { kind: 'turn_finished' }]);
+  expect(recordKeys.rows).toStrictEqual(backupKeyIDs.rows);
 });
 
 test('it refuses a restore while a backup reads the data directory, and leaves it alone', async () => {
@@ -138,21 +143,7 @@ test('it leaves its restore marker when it stops between the two databases', asy
   await mkdir(join(ctx.dataDir, 'keys.db'));
   await writeFile(join(ctx.dataDir, 'keys.db', 'in the way'), '');
 
-  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
-
-  onTestFinished(() => backupLog.destroy());
-
-  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
-  await sql`create table records (record_id text primary key)`.execute(backupLog);
-  await sql`create table items (id text primary key)`.execute(backupLog);
-  await backupLog.destroy();
-
-  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
-
-  onTestFinished(() => backupKeys.destroy());
-
-  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
-  await backupKeys.destroy();
+  await ctx.writeBackupDatabases();
 
   const restore = restoreDataBackup({
     storage: localDataStorage,
@@ -384,21 +375,7 @@ test('it removes its staged copies and keeps the old databases when it cannot st
   await writeFile(join(ctx.dataDir, 'nixie.db'), 'the old log');
   await mkdir(join(ctx.dataDir, 'keys.db.restoring'));
 
-  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
-
-  onTestFinished(() => backupLog.destroy());
-
-  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
-  await sql`create table records (record_id text primary key)`.execute(backupLog);
-  await sql`create table items (id text primary key)`.execute(backupLog);
-  await backupLog.destroy();
-
-  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
-
-  onTestFinished(() => backupKeys.destroy());
-
-  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
-  await backupKeys.destroy();
+  await ctx.writeBackupDatabases();
 
   const restore = restoreDataBackup({
     storage: localDataStorage,
@@ -428,21 +405,7 @@ test('it keeps the old databases when the data volume is full', async () => {
   await writeFile(join(ctx.dataDir, 'nixie.db'), 'the old log');
   await writeFile(join(ctx.dataDir, 'keys.db'), 'the old keys');
 
-  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
-
-  onTestFinished(() => backupLog.destroy());
-
-  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
-  await sql`create table records (record_id text primary key)`.execute(backupLog);
-  await sql`create table items (id text primary key)`.execute(backupLog);
-  await backupLog.destroy();
-
-  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
-
-  onTestFinished(() => backupKeys.destroy());
-
-  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
-  await backupKeys.destroy();
+  await ctx.writeBackupDatabases();
 
   const restore = restoreDataBackup({
     storage: {
@@ -479,28 +442,13 @@ test('it keeps the old databases when the data volume is full', async () => {
   expect(keys).toBe('the old keys');
 });
 
-test('it finishes the restore again after one that stopped between the two databases, and removes its marker', async () => {
+test('it finishes the restore again after one that stopped between the two databases, and ends on a holding marker', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.dataDir, 'restore-incomplete'), '');
   await writeFile(join(ctx.dataDir, 'keys.db'), 'the old keys');
 
-  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
-
-  onTestFinished(() => backupLog.destroy());
-
-  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
-  await sql`create table records (record_id text primary key)`.execute(backupLog);
-  await sql`create table items (id text primary key)`.execute(backupLog);
-  await backupLog.destroy();
-
-  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
-
-  onTestFinished(() => backupKeys.destroy());
-
-  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
-  await sql`insert into record_keys values ('k1')`.execute(backupKeys);
-  await backupKeys.destroy();
+  await ctx.writeBackupDatabases();
 
   await restoreDataBackup({
     storage: localDataStorage,
@@ -511,15 +459,18 @@ test('it finishes the restore again after one that stopped between the two datab
   });
 
   const files = await readdir(ctx.dataDir);
+  const markerText = await Bun.file(join(ctx.dataDir, 'restore-incomplete')).text();
 
+  const marker: unknown = JSON.parse(markerText);
   const keys = startDatabase(join(ctx.dataDir, 'keys.db'), { readonly: true });
 
   onTestFinished(() => keys.destroy());
 
-  const recordKeys = await sql`select key_id from record_keys`.execute(keys);
+  const recordKeys = await sql`select count(*) as total from record_keys`.execute(keys);
 
-  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock']);
-  expect(recordKeys.rows).toStrictEqual([{ key_id: 'k1' }]);
+  expect(marker).toMatchObject({ version: 1 });
+  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock', 'restore-incomplete']);
+  expect(recordKeys.rows).toStrictEqual([{ total: 0 }]);
 });
 
 test('it replaces neither database when its restore marker cannot reach the disk', async () => {
@@ -528,21 +479,7 @@ test('it replaces neither database when its restore marker cannot reach the disk
   await writeFile(join(ctx.dataDir, 'nixie.db'), 'the old log');
   await writeFile(join(ctx.dataDir, 'keys.db'), 'the old keys');
 
-  const backupLog = startDatabase(join(ctx.directory, 'nixie.db'));
-
-  onTestFinished(() => backupLog.destroy());
-
-  await sql`create table schema_version (id integer primary key)`.execute(backupLog);
-  await sql`create table records (record_id text primary key)`.execute(backupLog);
-  await sql`create table items (id text primary key)`.execute(backupLog);
-  await backupLog.destroy();
-
-  const backupKeys = startDatabase(join(ctx.directory, 'keys.db'));
-
-  onTestFinished(() => backupKeys.destroy());
-
-  await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
-  await backupKeys.destroy();
+  await ctx.writeBackupDatabases();
 
   const restore = restoreDataBackup({
     storage: {
@@ -652,7 +589,7 @@ test('it empties staging of its sets, writes the restore note, and returns the p
     keySnapshotID: 'a'.repeat(64),
   });
 
-  expect(dataFiles).not.toContain('restore-incomplete');
+  expect(dataFiles).toContain('restore-incomplete');
   expect(secondNoteText).toBe(noteText);
   expect(secondStaging).toIncludeSameMembers(['job.lock', 'restore-note.json']);
 });
@@ -718,4 +655,87 @@ test('it writes a note with no key snapshot for a directory without a pair file'
   expect(note).toBe(
     formatBackupFile({ format: 1, restoredAt: 1_700_000_000_000, keySnapshotID: null }),
   );
+});
+
+test('it ends on a holding marker that names the restore, its time and the newest record of the backup', async () => {
+  const ctx = await setupTest();
+  const newestRecordedAt = await ctx.writeBackupDatabases();
+
+  await restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
+  });
+
+  const text = await Bun.file(join(ctx.dataDir, 'restore-incomplete')).text();
+
+  const pending = pendingRestoreSchema.parse(JSON.parse(text));
+
+  expect(pending).toStrictEqual({
+    version: 1,
+    recoveryID: expect.toSatisfy((id: string) => z.uuid().safeParse(id).success),
+    restoredAt: 1_700_000_000_000,
+    backupTakenAt: newestRecordedAt,
+  });
+});
+
+test('it gives a backup with no records a backupTakenAt equal to restoredAt', async () => {
+  const ctx = await setupTest();
+  const source = await startTestLog();
+
+  await writeDataBackup({
+    storage: localDataStorage,
+    dataDir: source.dataDir,
+    directory: join(ctx.directory, 'empty'),
+    onCopied: () => Promise.resolve(),
+  });
+
+  for (const file of ['nixie.db', 'keys.db']) {
+    await copyFile(join(ctx.directory, 'empty', file), join(ctx.directory, file));
+  }
+
+  await restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
+  });
+
+  const text = await Bun.file(join(ctx.dataDir, 'restore-incomplete')).text();
+
+  expect(pendingRestoreSchema.parse(JSON.parse(text))).toMatchObject({
+    restoredAt: 1_700_000_000_000,
+    backupTakenAt: 1_700_000_000_000,
+  });
+});
+
+test('it restores over a holding marker, and ends on holding with a new recovery ID', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeBackupDatabases();
+
+  const options = {
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
+  };
+
+  await restoreDataBackup(options);
+
+  const firstText = await Bun.file(join(ctx.dataDir, 'restore-incomplete')).text();
+
+  const first = pendingRestoreSchema.parse(JSON.parse(firstText));
+
+  await restoreDataBackup(options);
+
+  const secondText = await Bun.file(join(ctx.dataDir, 'restore-incomplete')).text();
+
+  const second = pendingRestoreSchema.parse(JSON.parse(secondText));
+
+  expect(second.recoveryID).not.toBe(first.recoveryID);
 });

@@ -62,19 +62,28 @@ export async function restoreDataBackup(
         await requireIntactDatabase(options, file);
       }
 
+      const restoredAt = options.clock.now();
+
+      const newestRecordedAt = await readNewestRecordedAt(options.storage, options.directory);
+
+      const backupTakenAt = newestRecordedAt ?? restoredAt;
+
       await writeStagedFiles(options);
       await replaceDataFiles(options);
 
-      // The marker stays until the staging folder is empty, so a restore that stops here leaves a
-      // server that will not start and a rerun that finishes the job.
+      // The marker stays replacing until the staging folder is empty, so a restore that stops here
+      // leaves a server that will not start and a rerun that finishes the job.
       await resetBackupStaging({
         storage: options.storage,
         stagingDir: options.stagingDir,
-        clock: options.clock,
+        restoredAt,
         keySnapshotID: pair?.key.snapshotID ?? null,
       });
 
-      await writeRestoreState(options.storage.files, options.dataDir, 'none');
+      await writeRestoreState(options.storage.files, options.dataDir, {
+        state: 'holding',
+        pending: { version: 1, recoveryID: crypto.randomUUID(), restoredAt, backupTakenAt },
+      });
 
       return { files: dataFiles, pair };
     } finally {
@@ -200,6 +209,29 @@ async function readMissingTables(
   }
 }
 
+const newestRecordSchema = z.object({ recorded_at: z.number().int() });
+
+// The backup copy is byte-identical to the staged one, and reading it here leaves no WAL file in the
+// data directory.
+async function readNewestRecordedAt(
+  storage: DataStorage,
+  directory: string,
+): Promise<number | null> {
+  const db = storage.startDatabase(getDataFilePath(directory, 'nixie.db'), { readonly: true });
+
+  try {
+    const rows = await readQueryRows(
+      sql`select recorded_at from records order by sequence desc limit 1`,
+      db,
+      newestRecordSchema,
+    );
+
+    return rows[0]?.recorded_at ?? null;
+  } finally {
+    await db.destroy();
+  }
+}
+
 const stagedSuffix = '.restoring';
 
 // Both copies land on the data directory's own filesystem before either replaces its database, so
@@ -234,7 +266,7 @@ async function writeStagedFiles(options: DataRestoreOptions): Promise<void> {
 async function replaceDataFiles(options: DataRestoreOptions): Promise<void> {
   const files = options.storage.files;
 
-  await writeRestoreState(files, options.dataDir, 'replacing');
+  await writeRestoreState(files, options.dataDir, { state: 'replacing' });
 
   for (const file of dataFiles) {
     const path = getDataFilePath(options.dataDir, file);

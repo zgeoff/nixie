@@ -2,6 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import type { CheckedTables, MigrationReport } from '@heynixie/db';
 import type { TaskState } from '@heynixie/task-control';
 import type { Generated, Kysely, Selectable, Transaction } from 'kysely';
+import type { PendingRestore } from './restore/pending-restore';
 
 export interface Writer {
   readonly dataDir: string;
@@ -9,6 +10,9 @@ export interface Writer {
 
   readonly keys: Kysely<unknown>;
   readonly epoch: number;
+
+  // The finished restore this start found, which only the server's start installs.
+  readonly pendingRestore: PendingRestore | null;
 
   readonly clock: Clock;
 
