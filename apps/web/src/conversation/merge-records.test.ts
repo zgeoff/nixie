@@ -81,3 +81,22 @@ test('it leaves a tool record that no forget names readable', () => {
 
   expect(merged.records).toStrictEqual([result]);
 });
+
+test('it drops the error text of a failed step record that a forget names', () => {
+  const failed = buildMockLogRecord({
+    kind: 'task.step_errored',
+    sequence: 5,
+    task: { error: 'Request failed for private code 6210', stepKey: 'step-1', taskID: 'task-1' },
+  });
+
+  const forget = buildMockLogRecord({
+    forget: { sequence: 5 },
+    kind: 'record.forgotten',
+    sequence: 6,
+  });
+
+  const record = mergeRecords([failed], [forget]).records.at(0);
+
+  expect(record?.isRemoved).toBe(true);
+  expect(record?.task).toStrictEqual({ stepKey: 'step-1', taskID: 'task-1' });
+});

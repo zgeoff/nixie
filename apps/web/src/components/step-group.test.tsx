@@ -502,3 +502,53 @@ test('it shows the key backup state after the forget of a tool result, in place 
     'web_fetch — removedResult (result)Key backups: off. nixie stages no backup, so a backup copied before the forget still holds the record.',
   );
 });
+
+test('it keeps the open forget confirmation when the record turns removed before the forget finishes', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const stored = await store.records.create({
+    kind: 'tool_result',
+    thread: 'conversation',
+    toolCall: { callID: 'a', content: { result: { status: 200 } }, outcome: 'result' },
+  });
+
+  const result = { kind: 'tool_result', sequence: stored.sequence, thread: 'conversation' };
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { status: 200 } },
+            input: { url: 'https://example.com/' },
+            outcome: 'result',
+            result,
+            tool: 'web_fetch',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · /u));
+  await user.click(rendered.getByText('Tools 1'));
+  await user.click(rendered.getByRole('button', { name: 'Forget this result' }));
+  await rendered.findByRole('button', { name: 'Forget for good' });
+
+  rendered.rerender(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [{ callID: 'a', isRemoved: true, outcome: 'result', result, tool: 'web_fetch' }],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  expect(rendered.getByRole('heading', { name: 'web_fetch — removed' })).toBeVisible();
+  expect(rendered.getByRole('group', { name: 'Forget this tool result' })).toBeVisible();
+  expect(rendered.getByRole('button', { name: 'Forget for good' })).toBeVisible();
+});

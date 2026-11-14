@@ -90,28 +90,25 @@ function ToolCallDetail(props: ToolCallDetailProps): ReactNode {
 
   const backupLine = backup === null ? null : <ForgetBackupLine backup={backup} />;
 
-  if (isRemoved) {
-    return (
-      <section aria-label={call.tool}>
-        <h3 className={css({ fontWeight: 'semibold' })}>{call.tool} — removed</h3>
-        <p>Result{call.outcome === undefined ? ' (waiting)' : ` (${call.outcome})`}</p>
-        {hasControl ? renderControl(call, setForgetOpen, setBackup) : null}
-        {backupLine}
-      </section>
-    );
-  }
-
+  // The control sits at the same position whether or not the call is removed, so a record that
+  // turns removed while its confirmation is open keeps the control mounted and its action ID.
   return (
     <section aria-label={call.tool}>
-      <h3 className={css({ fontWeight: 'semibold' })}>{call.tool}</h3>
-      <p>Input</p>
-      <ClippedText text={formatJSON(call.input)} />
+      <h3 className={css({ fontWeight: 'semibold' })}>
+        {isRemoved ? `${call.tool} — removed` : call.tool}
+      </h3>
+      {isRemoved ? null : <p>Input</p>}
+      {isRemoved ? null : <ClippedText text={formatJSON(call.input)} />}
       <p>Result{call.outcome === undefined ? ' (waiting)' : ` (${call.outcome})`}</p>
-      <ClippedText text={formatJSON(call.content)} />
+      {isRemoved ? null : <ClippedText text={formatJSON(call.content)} />}
       {hasControl ? renderControl(call, setForgetOpen, setBackup) : null}
       {backupLine}
     </section>
   );
+}
+
+function formatJSON(value: unknown): string {
+  return value === undefined ? 'none' : JSON.stringify(value, null, 2);
 }
 
 function renderControl(
@@ -136,8 +133,4 @@ function renderControl(
       thread={result.thread}
     />
   );
-}
-
-function formatJSON(value: unknown): string {
-  return value === undefined ? 'none' : JSON.stringify(value, null, 2);
 }
