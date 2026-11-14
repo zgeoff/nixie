@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Kysely, Transaction } from 'kysely';
 import { sql } from 'kysely';
@@ -121,8 +121,30 @@ async function createCopyBeforeMigration(
   const copyPath = join(copyDir, `nixie-schema-${version}.db`);
 
   await createDatabaseCopy(db, copyPath);
+  await removeOldCopies(copyDir, version);
 
   return copyPath;
+}
+
+const KEPT_COPIES = 3;
+const PARTIAL_COPY_NAME = /^nixie-schema-\d+\.db\.partial$/u;
+
+// The copy just written stays even when copies of a higher version sit beside it, as they do after
+// a restore of older data. The other kept copies are the ones of the highest schema versions.
+async function removeOldCopies(copyDir: string, written: number): Promise<void> {
+  const names = await readdir(copyDir);
+
+  const others = names
+    .map((name) => ({ name, version: parseCopyVersion(name) }))
+    .filter((copy) => copy.version !== null && copy.version !== written)
+    .toSorted((left, right) => Number(right.version) - Number(left.version));
+
+  const stale = [
+    ...others.slice(KEPT_COPIES - 1).map((copy) => copy.name),
+    ...names.filter((name) => PARTIAL_COPY_NAME.test(name)),
+  ];
+
+  await Promise.all(stale.map((name) => rm(join(copyDir, name), { force: true })));
 }
 
 // SQLite ignores the foreign_keys pragma inside a transaction, so enforcement goes off around the
