@@ -66,7 +66,7 @@ checker counts as unreachable.
 - Stage 8 allows when the code check passes and the checker answers asserted.
 - An ask at stage 5 or 9 where the code check passed and the checker did not agree has the cause
   `direct_request`. It is a defect to count, because you asked and nixie asked again.
-- The checker has its own timeout of 15 seconds.
+- The checker has its own timeout, shorter than the fault deadline below.
 
 ## Asks
 
@@ -76,13 +76,13 @@ the model reads "Waiting for approval as `<shortID>`". The model keeps working. 
 
 `nixie proposals approve <shortID>` and `nixie proposals reject <shortID>`, or the page for actions,
 answer it. The answer lands in the inbox of the task that asked. Approving runs nothing yet: the
-model reads that the action did not run. A proposal lapses after 72 hours. `contacts.mark_known` is
-a tool that declares `policy_widen`, so it always asks, and until approved actions run only the CLI
-marks a contact.
+model reads that the action did not run. A proposal lapses after a fixed time without an answer.
+`contacts.mark_known` is a tool that declares `policy_widen`, so it always asks, and until approved
+actions run only the CLI marks a contact.
 
 ## Faults
 
-The tool endpoint races the decision against 30 seconds and against a throw. Either denies the call,
+The tool endpoint races the decision against a deadline and against a throw. Either denies the call,
 records the fault and the stage that was running, and tells the model "Not allowed: nixie could not
 decide on this call. Try again later."
 
