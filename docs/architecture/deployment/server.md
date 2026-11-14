@@ -42,7 +42,7 @@ flowchart LR
   L["load config,<br>secrets, manifest"] --> W["writer: lock, epoch,<br>copy, migrate"]
   W --> H["health endpoint,<br>API, control socket"]
   H --> S0["first seed,<br>if none in force"]
-  S0 --> R["recovery"] --> I["add images"] --> C["conversation imp"] --> M["memory"]
+  S0 --> RP["restore pause,<br>if a restore is pending"] --> R["recovery"] --> I["add images"] --> C["conversation imp"] --> M["memory"]
   M --> S["seed"] --> SR["start record"] --> RU["runners claim work"] --> Y["ready"]
 ```
 
@@ -53,6 +53,15 @@ it sees every lease the last process left and settles each one
 ([crash recovery](../core/leases-and-recovery.md#crash-recovery)). Its sandbox cleanup destroys
 every sandbox whose owner no longer runs, and keeps the conversation's sandbox, whose task never
 ends, and the memory checker's, which the deployment owns.
+
+The restore pause runs between the first seed and recovery. When the data directory holds the marker
+of a finished restore, it writes one `recovery.started` record that lists each task to check, pauses
+nixie with the cause `restore`, and then removes the marker. A task is on the list when it was
+running at the backup or owns an action with no outcome. The list reads each task's state and open
+step before recovery moves a running task or writes an `unknown` outcome, so the list shows the
+backup as it was. A start that stops after the pause commits and before the marker goes finds the
+recovery already recorded, writes nothing, and removes the marker. Nothing takes a step on the
+restored data until a resume ([the pause design](../../design/queue/pause.md)).
 
 The server adds each image in the manifest to impd before any part creates a sandbox, because a step
 that creates a sandbox on an image impd lacks would fail. The server sends no add for an image that
@@ -76,13 +85,13 @@ version, the version of the start before it, and what the conversation is given:
 tools and the version of its persona. Because the record follows the seed, it holds the persona this
 start applies. Only then do the runners claim work.
 
-The first seed, recovery, adding the images, starting the conversation imp and the memory store, and
-writing the start record each wait and run again when they fail, with a log line per attempt. nixie
-therefore stays live and unready while impd is down or the definitions refuse to seed, and the
-container runtime sees why in the readiness report instead of a restart loop. Any other failure in
-the sequence logs the error and ends the process, so the container runtime restarts it instead of
-leaving it live with no runners. A stop during the sequence ends it at the next step, and waits for
-the step in flight before any part closes.
+The first seed, the restore pause, recovery, adding the images, starting the conversation imp and
+the memory store, and writing the start record each wait and run again when they fail, with a log
+line per attempt. nixie therefore stays live and unready while impd is down or the definitions
+refuse to seed, and the container runtime sees why in the readiness report instead of a restart
+loop. Any other failure in the sequence logs the error and ends the process, so the container
+runtime restarts it instead of leaving it live with no runners. A stop during the sequence ends it
+at the next step, and waits for the step in flight before any part closes.
 
 Each part's declaration names the parts it needs, which start before it, and the parts it uses,
 which it reads only later, such as the tool endpoint that the sandbox adapter resolves when a guest
