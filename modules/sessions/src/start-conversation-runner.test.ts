@@ -817,6 +817,8 @@ test('it sends each inbox record with its sequence as the message uuid and at th
 
   const task = await readTestTaskProgress(ctx.context, 'conversation');
 
+  expect(ctx.sandboxes.turns[0]?.limits).toStrictEqual({ modelCalls: null, toolCallWaitMs: null });
+
   expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
     {
       uuid: '6e697869-0000-8000-8000-000000000002',

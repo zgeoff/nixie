@@ -148,6 +148,9 @@ export interface ConversationRun {
   readonly profile: ResolvedProfile;
 
   readonly turnProfile: TurnProfile;
+
+  // the harness record's wait for one tool call, copied into each turn frame
+  readonly toolCallWaitMs: number | null;
   readonly sandbox: Sandbox;
 
   readonly endpoint: Pick<RunEndpoint, 'startStep'>;

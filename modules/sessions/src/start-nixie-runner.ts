@@ -329,8 +329,7 @@ async function readStartedRun(runner: TaskRunner, taskID: string): Promise<Start
 function buildStartedRun(runner: TaskRunner, setup: TaskSetup): StartedRun {
   const defaultLimits = runner.options.models.limits.taskRun.default;
 
-  // A task that the user started by moving a message to it holds no options, so it runs with no
-  // persona, no memory and the default tools.
+  // A task started by moving a message to it holds no options: no persona, no memory, default tools.
   const options: TaskRunOptions = setup.options ?? {
     model: null,
     profile: null,
@@ -522,6 +521,7 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     frame: { kind: 'task', startedBy: parts.run.startedBy, report: parts.run.options.report },
     profile: parts.run.profile,
     turnProfile: parts.run.harness.toTurnProfile(parts.run.profile.profile),
+    toolCallWaitMs: parts.run.harness.toolCallWaitMs,
     sandbox: parts.sandbox,
     endpoint: parts.endpoint,
     model: parts.run.model,

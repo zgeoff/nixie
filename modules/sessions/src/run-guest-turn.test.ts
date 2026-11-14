@@ -36,6 +36,25 @@ test('it collects the frames the guest sent for the turn', async () => {
   });
 });
 
+test.each([
+  ['900000 milliseconds', 900_000],
+  ['null', null],
+])('it sends the guest a tool call wait of %s unchanged', async (_case, toolCallWaitMs) => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  await runGuestTurn({
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame({ limits: { toolCallWaitMs } }),
+    messages: [],
+    signal: new AbortController().signal,
+  });
+
+  expect(ctx.stub.turns[0]?.limits).toStrictEqual({ modelCalls: null, toolCallWaitMs });
+});
+
 test('it drops the reads and replies a guest sent after its last result when it dies before the next', async () => {
   const ctx = setupTest();
 

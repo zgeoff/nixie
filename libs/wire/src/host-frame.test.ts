@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { HostFrame } from './host-frame';
 import { hostFrameSchema } from './host-frame';
+import { buildMockTurnFrame } from './test-utils/build-mock-turn-frame';
 
 test('it accepts a summarize frame that resumes the session at a point', () => {
   const frame: HostFrame = {
@@ -89,11 +90,41 @@ test.each([
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: null,
     systemPrompt: 'You are nixie.',
-    limits: { modelCalls },
+    limits: { modelCalls, toolCallWaitMs: null },
     input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['limits', 'modelCalls'] });
+});
+
+test.each([
+  ['900000 milliseconds', 900_000],
+  ['null', null],
+])('it accepts a turn frame whose tool call wait is %s', (_case, toolCallWaitMs) => {
+  const frame = buildMockTurnFrame({ limits: { toolCallWaitMs } });
+
+  expect(hostFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test('it refuses a turn frame with no tool call wait', () => {
+  const result = hostFrameSchema.safeParse({
+    ...buildMockTurnFrame(),
+    limits: { modelCalls: null },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['limits', 'toolCallWaitMs'] });
+});
+
+test.each([
+  ['zero', 0],
+  ['a negative number', -3],
+  ['a fraction', 2.5],
+])('it refuses a turn frame whose tool call wait is %s', (_case, toolCallWaitMs) => {
+  const result = hostFrameSchema.safeParse(
+    buildMockTurnFrame({ limits: { modelCalls: null, toolCallWaitMs } }),
+  );
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['limits', 'toolCallWaitMs'] });
 });
 
 test('it accepts an interrupt frame', () => {

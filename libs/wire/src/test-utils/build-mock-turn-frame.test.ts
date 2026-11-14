@@ -20,7 +20,7 @@ test('it builds a default turn frame', () => {
     resume: null,
     systemPrompt: expect.toBeString(),
     input: [{ uuid: expect.toBeString(), text: expect.toBeString() }],
-    limits: { modelCalls: null },
+    limits: { modelCalls: null, toolCallWaitMs: null },
   });
 
   expect(hostFrameSchema.parse(frame)).toStrictEqual(frame);
@@ -36,7 +36,7 @@ test('it applies overrides on top of the defaults', () => {
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
     input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
-    limits: { modelCalls: 40 },
+    limits: { modelCalls: 40, toolCallWaitMs: 900_000 },
   });
 
   expect(frame).toStrictEqual({
@@ -58,6 +58,12 @@ test('it applies overrides on top of the defaults', () => {
     },
     systemPrompt: expect.toBeString(),
     input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
-    limits: { modelCalls: 40 },
+    limits: { modelCalls: 40, toolCallWaitMs: 900_000 },
   });
+});
+
+test('it keeps the default of a limit that the overrides leave out', () => {
+  const frame = buildMockTurnFrame({ limits: { toolCallWaitMs: 900_000 } });
+
+  expect(frame.limits).toStrictEqual({ modelCalls: null, toolCallWaitMs: 900_000 });
 });

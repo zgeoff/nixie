@@ -158,7 +158,7 @@ async function runGuestTurn(
         tools: { url: server.config.url, token: 'unused' },
         resume: session.resume,
         systemPrompt: session.systemPrompt,
-        limits: { modelCalls: null },
+        limits: { modelCalls: null, toolCallWaitMs: null },
         input,
       },
       {

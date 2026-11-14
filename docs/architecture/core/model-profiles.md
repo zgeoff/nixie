@@ -59,7 +59,9 @@ everything that differs between harnesses, and never branches on a harness ID:
 - the model API the harness speaks;
 - the MCP `_meta` key that carries the model's tool-use ID on each tool call;
 - the session files that a replaced sandbox carries, or none when the harness keeps no session that
-  a new sandbox can resume.
+  a new sandbox can resume;
+- how long the harness's runtime waits for one tool call, which the host copies into each turn
+  frame, or null when the harness declares none.
 
 Only the `agent-sdk` harness has a record, so the schema refuses a profile on any other harness.
 

@@ -227,6 +227,9 @@ maximum turns, and a turn that reaches it ends at its last chain entry, as an in
 A conversation turn has no limit. A started task's turn has a fixed limit, because no one watches
 it.
 
+The turn frame also holds the wait for one tool call, which the host copies from the harness record.
+It is null on the `agent-sdk` harness, and no guest reads it yet.
+
 ## System messages
 
 Every block that nixie writes into a user message is a system message: a `<system-message>` element

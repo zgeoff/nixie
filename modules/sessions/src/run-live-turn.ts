@@ -98,7 +98,7 @@ async function runTokenTurn(
         tools: { url, token: plan.token },
         resume: plan.resume,
         systemPrompt: plan.systemPrompt,
-        limits: { modelCalls: run.modelCallLimit ?? null },
+        limits: { modelCalls: run.modelCallLimit ?? null, toolCallWaitMs: run.toolCallWaitMs },
         input: buildTurnInput(opening.batch.messages, [...plan.preamble, note?.text ?? null, held]),
       },
       messages: hasMore

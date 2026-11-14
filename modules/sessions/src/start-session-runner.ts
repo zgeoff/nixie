@@ -151,6 +151,7 @@ async function runCapturedSession(
   captured: CapturedSession,
 ): Promise<SessionUsage> {
   const profile = run.profile.profile;
+  const harness = getHarness(profile.harness);
   const tools = captured.tools;
 
   const turn = await runGuestTurn({
@@ -159,7 +160,7 @@ async function runCapturedSession(
     turn: {
       type: 'turn',
       profile: {
-        ...getHarness(profile.harness).toTurnProfile(profile),
+        ...harness.toTurnProfile(profile),
 
         // Each run starts a fresh session, so a 1-hour cache entry costs more to write and is never
         // read again.
@@ -169,7 +170,7 @@ async function runCapturedSession(
       tools,
       resume: null,
       systemPrompt: session.systemPrompt,
-      limits: { modelCalls: null },
+      limits: { modelCalls: null, toolCallWaitMs: harness.toolCallWaitMs },
       input: [{ uuid: crypto.randomUUID(), text: session.prompt }],
     },
     messages: [],

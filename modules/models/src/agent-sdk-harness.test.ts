@@ -37,6 +37,10 @@ test('#toTurnProfile gives the guest the profile with no credential reference an
   });
 });
 
+test('it declares no tool call wait', () => {
+  expect(agentSDKHarness.toolCallWaitMs).toBeNull();
+});
+
 test('#listSessionFiles names the transcript first and the folder of its tool files after it', () => {
   expect(
     agentSDKHarness.listSessionFiles?.({
