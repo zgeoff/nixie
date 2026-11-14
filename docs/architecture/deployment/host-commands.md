@@ -195,3 +195,22 @@ task that the user stopped after the pause stays stopped, and `task-restart` run
 raised limit. The command takes the task ID and `--turns`, `--dollars` or both, such as
 `nixie task-raise k3x9m2p7qa --turns 40`, and prints the task's state and its new limits. It fails,
 and changes nothing, for a task that no limit holds and for a value that raises nothing.
+
+## Turn inputs
+
+The turn-input commands drive the [turn-input log](../policy/turn-input-log.md) through the
+`turnInputs` procedures of the host contract. They never reach the client API. With no
+`turn_input_log` section, each command fails with `NOT_CONFIGURED`.
+
+| Command                            | Effect                                                                                   |
+| ---------------------------------- | ---------------------------------------------------------------------------------------- |
+| `turn-input on [--for <duration>]` | captures from now on, for the duration capped at `max_window`, or until `turn-input off` |
+| `turn-input off [--drop]`          | stops capturing, and with `--drop` removes every logged request                          |
+| `turn-input list [--limit <n>]`    | prints the newest requests and misses as JSON, with no key and no body                   |
+| `turn-input open <input_id>`       | writes the request body to stdout, byte for byte                                         |
+
+An open records `model.input_opened` before it reads a body. It exits 1 with `NOT_FOUND` for an
+unknown ID, `REMOVED` for a removed request or a missing body, and `OPEN_NOT_RECORDED` when the
+record cannot commit.
+
+The [reset](#the-reset) removes every body, and the other resets leave them to retention.

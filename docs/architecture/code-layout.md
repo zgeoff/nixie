@@ -149,6 +149,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `ops`         | The health checks behind [the server's](deployment/server.md) health endpoint                                                              |
 | `skills`      | [Skills](core/skills.md): the pins, the catalog, the skill tools and the skill proposals                                                   |
 | `proposals`   | The review lifecycle that [skill proposals](core/skills.md#skills-that-nixie-writes) run on: its moves, its lapse time and the lapse sweep |
+| `turn-inputs` | The [turn-input log](policy/turn-input-log.md): the capture of a step, the intake, the removals and the reading                            |
 
 The other packages each hold one piece the modules and apps share:
 

@@ -85,6 +85,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   widening check
 - [The model gateway](architecture/policy/model-gateway.md) — routes, the count and its store, the
   spending limit and the refusals
+- [The turn-input log](architecture/policy/turn-input-log.md) — the capture of a step, the intake,
+  the removals and the reading
 
 ### Connectors
 
