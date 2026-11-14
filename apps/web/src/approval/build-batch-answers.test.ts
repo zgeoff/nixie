@@ -15,7 +15,6 @@ function setupTest() {
     ): SeenApproval => ({
       proposalID,
       group: overrides.group ?? 'routine',
-      firstActionHash: `first-${proposalID}`,
       item: {
         proposal: {
           proposalID,
@@ -45,7 +44,7 @@ function setupTest() {
   };
 }
 
-test('it asks for one approve per routine row against the hash first shown', () => {
+test('it asks for one approve per routine row against the hash its line shows', () => {
   const ctx = setupTest();
   let count = 0;
 
@@ -56,8 +55,8 @@ test('it asks for one approve per routine row against the hash first shown', () 
 
   expect(calls).toStrictEqual([
     [
-      { proposalID: 'a', actionHash: 'first-a', choice: 'approve', clientActionID: 'action-1' },
-      { proposalID: 'b', actionHash: 'first-b', choice: 'approve', clientActionID: 'action-2' },
+      { proposalID: 'a', actionHash: 'now-a', choice: 'approve', clientActionID: 'action-1' },
+      { proposalID: 'b', actionHash: 'now-b', choice: 'approve', clientActionID: 'action-2' },
     ],
   ]);
 });

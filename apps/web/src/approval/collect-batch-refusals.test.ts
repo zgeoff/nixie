@@ -7,7 +7,6 @@ function setupTest() {
     buildEntry: (proposalID: string, sentence: string): SeenApproval => ({
       proposalID,
       group: 'routine',
-      firstActionHash: 'hash',
       item: {
         proposal: {
           proposalID,

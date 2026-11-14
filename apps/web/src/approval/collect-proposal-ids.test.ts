@@ -31,7 +31,7 @@ test('it collects a proposal once', () => {
   expect(collectProposalIDs(records)).toStrictEqual(['first']);
 });
 
-test('it keeps the newest 100 proposals of a longer thread', () => {
+test('it keeps every proposal of a thread with more than 100', () => {
   const ctx = setupTest();
 
   const records = Array.from({ length: 101 }, (_unused, index) =>
@@ -40,5 +40,5 @@ test('it keeps the newest 100 proposals of a longer thread', () => {
 
   const ids = collectProposalIDs(records);
 
-  expect([ids.length, ids[0], ids.at(-1)]).toStrictEqual([100, 'proposal-1', 'proposal-100']);
+  expect([ids.length, ids[0], ids.at(-1)]).toStrictEqual([101, 'proposal-0', 'proposal-100']);
 });

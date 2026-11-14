@@ -67,14 +67,12 @@ test('it keeps a row that left the list after the current rows', () => {
   expect(merged.map((entry) => entry.proposalID)).toStrictEqual(['b', 'a']);
 });
 
-test('it keeps the action hash a row first showed when the list holds another', () => {
+test('it takes the action hash the list now holds for a row', () => {
   const ctx = setupTest();
   const first = mergeSeenApprovals([], [ctx.buildListed('a', 'hash-old', 'routine')]);
   const merged = mergeSeenApprovals(first, [ctx.buildListed('a', 'hash-new', 'routine')]);
 
-  expect(
-    merged.map((entry) => [entry.firstActionHash, entry.item.proposal.actionHash]),
-  ).toStrictEqual([['hash-old', 'hash-new']]);
+  expect(merged.map((entry) => entry.item.proposal.actionHash)).toStrictEqual(['hash-new']);
 });
 
 test('it moves a row to the group the list now holds it in', () => {

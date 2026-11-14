@@ -19,8 +19,8 @@ export function isBatchable(entry: SeenApproval): boolean {
   );
 }
 
-// One approve answer for each batchable row, against the hash the digest first showed, in calls of
-// at most the host's limit.
+// One approve answer for each batchable row, against the hash of the row its line shows, in calls
+// of at most the host's limit.
 export function buildBatchAnswers(
   entries: readonly SeenApproval[],
   nextClientActionID: () => string,
@@ -29,7 +29,7 @@ export function buildBatchAnswers(
     .filter((entry) => isBatchable(entry))
     .map((entry) => ({
       proposalID: entry.proposalID,
-      actionHash: entry.firstActionHash,
+      actionHash: entry.item.proposal.actionHash,
       choice: 'approve',
       clientActionID: nextClientActionID(),
     }));

@@ -8,9 +8,6 @@ export interface SeenApproval {
 
   // the row as the digest last listed it, or as it last read it
   readonly item: ApprovalRead;
-
-  // the action hash when the digest first showed the row, which a batch answer sends
-  readonly firstActionHash: string;
 }
 
 export function toApprovalRead(item: ApprovalItem): ApprovalRead {
@@ -31,15 +28,12 @@ export function mergeSeenApprovals(
   seen: readonly SeenApproval[],
   listed: readonly ApprovalItem[],
 ): readonly SeenApproval[] {
-  const earlier = new Map(seen.map((entry) => [entry.proposalID, entry]));
   const listedIDs = new Set(listed.map((item) => item.proposal.proposalID));
 
   const current = listed.map((item) => ({
     proposalID: item.proposal.proposalID,
     group: item.group,
     item: toApprovalRead(item),
-    firstActionHash:
-      earlier.get(item.proposal.proposalID)?.firstActionHash ?? item.proposal.actionHash,
   }));
 
   return [...current, ...seen.filter((entry) => !listedIDs.has(entry.proposalID))];
