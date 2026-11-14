@@ -80,7 +80,7 @@ test('it fails to start the web fetch part when its declaration names no image',
   const others = serverPartDeclarations.filter((declaration) => declaration.name !== 'web_fetch');
   const withoutImages = [...others, ctx.webFetchWithoutImages];
 
-  await expect(ctx.startWebFetch(withoutImages)).rejects.toThrow(
+  expect(ctx.startWebFetch(withoutImages)).rejects.toThrow(
     'the sandbox manifest holds no fetch image',
   );
 });
