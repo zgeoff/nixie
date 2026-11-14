@@ -146,13 +146,33 @@ logger('web_fetch.secret_refused', { rule: 'github-pat', hop: 1 });
 
 - The public rules are the Betterleaks rules at tag v1.9.0, commit `81aff7a`, under the MIT licence,
   from its `config/betterleaks.toml`.
-- A rule that backtracks in more than linear time on hostile input runs on `re2js`, an entry of the
-  root catalog.
+- Every rule runs on `re2js`, an entry of the root catalog, so each scan runs in linear time.
 - The lib holds the builder script, the generated rule file with its source and licence notice, and
   a check that fails when the file and the pinned commit disagree. The rule file is committed, so a
   build reads no other repo.
-- Both functions read the URL as given and percent-decoded. The finder matches each own value as it
-  is and percent-encoded.
+- Both functions try every rule on 3 forms of the URL, and a rule matches when it matches any form:
+  the URL as given; the URL percent-decoded; and the URL with each `&`, `?`, `#` and `/` replaced by
+  a line break, then each line percent-decoded. The third form splits before it decodes, so an
+  encoded `%2F` or `%26` inside a value never splits a key. A malformed `%` sequence stays as it is,
+  and decoding never throws. The finder matches each own value as it is and percent-encoded, with
+  the hex of an escape in either case.
+- A rule family is a kind of rule by where its key sits. A prefix-token rule matches a key anywhere
+  in the path and the query. A keyword-assignment rule matches `keyword=value` in the query and in a
+  path segment of that shape, such as `/keyword=value/`.
+- A filter discards a finding that a public rule would report, such as a placeholder. The builder
+  turns each filter into data and keeps only the clauses that read the secret or the match: an
+  entropy limit, a pattern match, a list of strings, each negated or not, and a group of those
+  joined by "or". A clause that needs more, such as the token-efficiency check, the file path or the
+  text around the match, never discards, and the builder lists each one in the rule file's header. A
+  conjunction that holds such a clause never discards. A filter script keeps its recognised parts. A
+  clause of any other shape fails the build, so a new upstream form never passes unnoticed.
+- The builder also makes these choices, each listed in the rule file's header where it applies:
+  - it never copies a `validate` script, because one sends the secret over HTTP;
+  - a rule reports only when each of its required companion rules also matches in the same URL,
+    whatever the distance between them, and a rule marked `skipReport` serves only as a companion;
+  - a rule with a file path or with no pattern never fires;
+  - a match returns the rule's name and nothing else;
+  - no committed file holds a value that a rule matches, so a test builds each key at run time.
 - The lib gives each rule no file path, so a rule that matches on a file path alone never fires.
 - The own values come from the 5 credential entries by default. `settings` holds your name and
   pronouns, and a scan for them would refuse an ordinary URL that holds your name.
@@ -203,6 +223,9 @@ passes use it. The exemption gives the same answer for every rule, `nixie-secret
 - **The finder tries own values first.** The tool error and the log event then name `nixie-secret`
   for a URL with an own value, so a reader of the log can tell a leak of nixie's own credential from
   a public rule's match.
+- **A filter keeps only the clauses that read the secret or the match.** The owner chose this on 15
+  Nov. The scan then needs no tokenizer. A dropped clause only lets through a finding that the
+  upstream rules would discard, and the rule file's header lists each one.
 - **A URL that you typed runs, whatever it holds, one of nixie's own values included.** The owner
   chose this on 3 Nov.
 - **Under `redirects`, a typed URL's exemption covers every hop, whatever rule matches, an own value

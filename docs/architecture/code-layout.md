@@ -117,9 +117,10 @@ production code reach test code.
 
 - **Libs depend only on libs.** A guest or a client therefore never reaches a module through a lib,
   because no lib can depend on one.
-- **`server-only`** marks a lib that only the trusted core and the test suites may use: `libs/db`.
-  Its rule allows dependents tagged `app`, `module`, `adapter`, `server-only`, `e2e`, `integration`
-  or `eval`, so a guest or a client that declares it fails the check.
+- **`server-only`** marks a lib that only the trusted core and the test suites may use: `libs/db`
+  and `libs/secret-scan`. Its rule allows dependents tagged `app`, `module`, `adapter`,
+  `server-only`, `e2e`, `integration` or `eval`, so a guest or a client that declares it fails the
+  check.
 - **An adapter depends only on the module that owns its interface.** The tags allow any module, so
   review holds this rule.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
@@ -181,6 +182,8 @@ The other packages each hold one piece the modules and apps share:
   that the web client uses.
 - `libs/db` is nixie's Kysely dialect for `bun:sqlite` off the main thread, the migration runner and
   the schema version from [the database](core/database.md#migrations), tagged `server-only`.
+- `libs/secret-scan` scans a URL for a key or a token, with the pinned public rules and nixie's own
+  values, tagged `server-only`.
 - `libs/wire` holds the message formats that cross a sandbox boundary.
 - `libs/clock` is the one clock that every time and every wait reads. A test build replaces it with
   a clock the test steps.
