@@ -1,4 +1,4 @@
-import { lstat, readFile, rm } from 'node:fs/promises';
+import { lstat, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { openSpoolFile, spoolMissSchema } from '@heynixie/wire';
 import type { CaptureRow } from '../capture/read-capture-row';
@@ -10,6 +10,7 @@ import { getTurnInputsDB } from '../utils/get-turn-inputs-db';
 import type { InputMissReason } from '../utils/turn-inputs-tables';
 import { writeInputMiss } from '../write-input-miss';
 import type { SpoolEntry } from './list-spool-files';
+import { readSpoolBytes } from './read-spool-bytes';
 import { writeInputBody } from './write-input-body';
 
 export interface SpoolFile extends SpoolEntry {
@@ -110,8 +111,9 @@ async function takeInMiss(
   path: string,
   capture: CaptureRow,
 ): Promise<void> {
-  const text = await readFile(path, 'utf8');
+  const bytes = await readSpoolBytes(path, bodyLimitBytes);
 
+  const text = bytes === null ? '' : new TextDecoder().decode(bytes);
   const miss = spoolMissSchema.safeParse(parseJSON(text));
 
   const isMatch =
@@ -151,9 +153,9 @@ async function takeInBody(
   path: string,
   target: BodyTarget,
 ): Promise<boolean> {
-  const bytes = await readFile(path);
-  const opened = await openSpoolFile(new Uint8Array(bytes), target.open.privateKey);
+  const bytes = await readSpoolBytes(path, bodyLimitBytes);
 
+  const opened = bytes === null ? null : await openSpoolFile(bytes, target.open.privateKey);
   const header = opened?.header;
 
   if (

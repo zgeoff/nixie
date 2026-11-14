@@ -46,11 +46,15 @@ test('it covers the conversation thread for a forgotten memory item', async () =
     threads: [conversationTaskID],
     fromSequence: expect.any(Number),
   });
+});
 
-  expect(ctx.closeCaptures).toHaveBeenCalledWith({
-    cause: 'forget',
-    taskIDs: [conversationTaskID],
-  });
+test('it ends every open capture, on every thread, for a forgotten memory item', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Is allergic to peanuts' });
+
+  await ctx.forget({ itemID: item.itemID });
+
+  expect(ctx.closeCaptures).toHaveBeenCalledExactlyOnceWith({ cause: 'forget' });
 });
 
 test('it removes the requests from the first record of a forgotten memory item on', async () => {

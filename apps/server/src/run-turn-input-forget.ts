@@ -10,23 +10,16 @@ export interface TurnInputForgetOptions {
   readonly turnInputs: Pick<TurnInputs, 'closeCaptures' | 'removeForgotten'>;
 }
 
-// A record forget ends every open capture. A memory or moment forget ends the captures of the
-// conversation thread and the tasks it covers. Then it removes the requests it covers. It
-// throws when a shred fails, so the forget fails with it and the start sequence runs it again.
+// Every forget ends every open capture first: a spool file on any thread may still be on its way,
+// and a live capture key would take it in after the removal. It throws when a shred fails, so the
+// forget fails with it and the start sequence runs it again.
 export async function runTurnInputForget(
   options: TurnInputForgetOptions,
   cause: SessionCleanupCause,
 ): Promise<void> {
   const cleaned = await readCleanedTaskIDs(options.context, cause);
 
-  if ('recordSequence' in cause) {
-    await options.turnInputs.closeCaptures({ cause: 'forget' });
-  } else {
-    await options.turnInputs.closeCaptures({
-      cause: 'forget',
-      taskIDs: [conversationTaskID, ...cleaned],
-    });
-  }
+  await options.turnInputs.closeCaptures({ cause: 'forget' });
 
   const threads = 'recordSequence' in cause ? cleaned : [conversationTaskID, ...cleaned];
 

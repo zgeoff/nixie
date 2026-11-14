@@ -71,7 +71,14 @@ stores it:
 
 A body that holds an own secret value in plain or JSON-escaped form is never stored and gives a
 `holds_own_value` miss. A file that fails to open gives `undecodable`, and 5 failed intakes of one
-file give `intake_failed` and remove the file. A symlink in the spool is never followed.
+file give `intake_failed` and remove the file. nixie opens each spool file without following a link
+and reads only a regular file, so a symlink or a FIFO in the spool is never followed and never
+stalls the intake.
+
+nixie trusts every writer of the spool folder as it trusts the gateway. The capture's public key is
+in the tag, which the guest sees, so a sealed file proves only that its writer could write the
+spool. The deployment gives the spool's group to the gateway and nixie alone, and never mounts the
+folder into a sandbox.
 
 ## Removal
 
@@ -87,12 +94,13 @@ start repair finishes.
 | `dropped`         | `nixie turn-input off --drop`                                                   |
 | `restore`         | a body write fails, or the start repair finds a row without its key or its file |
 
-A forget closes the open captures of the tasks it covers, then removes the requests it covers. A
-request is covered when its thread is covered, or when its intake sequence is at or after the
-forget's floor: the sequence of the forgotten record, or the first record of the forgotten item or
-moment. The boundary is inclusive, so a request taken in at the floor goes. When nixie cannot find a
-floor, every request goes. A failed shred fails the forget, and the start sequence runs it again. A
-full reset removes every body after the log's own reset. A reset of the conversations closes the
+A forget closes every open capture, on every thread, then removes the requests it covers. A spool
+file still on its way then arrives after its capture closed, and nixie never stores it. A request is
+covered when its thread is covered, or when its intake sequence is at or after the forget's floor:
+the sequence of the forgotten record, or the first record of the forgotten item or moment. The
+boundary is inclusive, so a request taken in at the floor goes. When nixie cannot find a floor,
+every request goes. A failed shred fails the forget, and the start sequence runs it again. A full
+reset removes every body after the log's own reset. A reset of the conversations closes the
 conversation thread's open captures and removes every request on that thread, in the same order as
 any removal, before it writes its `log_reset` record. A failed removal fails the reset.
 
