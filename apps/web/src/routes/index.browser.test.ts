@@ -320,6 +320,35 @@ test('it shows a card from its records when the model reply claims the action is
 
   await ctx.view.click('[aria-label="Routine proposal"] button[name=approve]');
 
+  for (const delayMs of [500, 1500, 3000]) {
+    const debugStart = Date.now();
+
+    await waitFor(() => {
+      expect(Date.now() - debugStart).toBeGreaterThan(delayMs);
+    });
+
+    const debugCard: unknown = await ctx.view.evaluate(
+      "document.querySelector('[aria-label=\"Routine proposal\"]')?.innerText ?? 'NO CARD'",
+    );
+
+    const debugRow = store.approvalRows.findFirst((query) =>
+      query.where({ proposalID: row.proposalID }),
+    );
+
+    const debugReads: unknown = await ctx.view.evaluate(
+      "JSON.stringify(performance.getEntriesByType('resource').map((entry) => entry.name).filter((name) => name.includes('approvals')).map((name) => name.split('/').slice(-2).join('/')))",
+    );
+
+    console.log(
+      'DEBUG-CARD',
+      delayMs,
+      String(debugReads),
+      JSON.stringify(debugCard),
+      debugRow?.state,
+      JSON.stringify(debugRow?.answeredBy ?? null),
+    );
+  }
+
   await waitFor(
     async () => {
       const card: unknown = await ctx.view.evaluate(
