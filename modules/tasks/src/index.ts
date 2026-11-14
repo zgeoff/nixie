@@ -155,3 +155,6 @@ export type { StepErrorOptions } from './step/build-step-failure-plan';
 export { writeStepError } from './step/write-step-error';
 export type { TasksRecordKind } from './task/record/tasks-record-kind';
 export { installRestorePause } from './pause/install-restore-pause';
+export type { RecoveryStarted } from './pause/read-recovery-started';
+export { readLatestRecovery } from './pause/read-latest-recovery';
+export { readTasksPausedByNixie } from './pause/read-tasks-paused-by-nixie';

@@ -10,13 +10,16 @@ import { mockImplementer } from './mock-implementer';
 import { mockMemoryRouter } from './mock-memory-router';
 import { mockRuleProcedures } from './mock-rule-procedures';
 import { readMockBackupNotice } from './read-mock-backup-notice';
+import { readMockPause } from './read-mock-pause';
 import { readMockRecordForgetPreview } from './read-mock-record-forget-preview';
+import { readMockRecovery } from './read-mock-recovery';
 import { readMockTaskActions } from './read-mock-task-actions';
 import { readMockTaskList } from './read-mock-task-list';
 import { requireMockSession } from './require-mock-session';
 import { store } from './store';
 import { toLogRecord } from './to-log-record';
 import { writeMockForget } from './write-mock-forget';
+import { writeMockNixieControl } from './write-mock-nixie-control';
 import { writeMockRetry } from './write-mock-retry';
 import type { MockTaskControl } from './write-mock-task-control';
 import { writeMockTaskControl } from './write-mock-task-control';
@@ -169,6 +172,22 @@ export const mockAPIRouter = os.router({
   },
   log: { follow: followProcedure },
   memory: mockMemoryRouter,
+  nixie: {
+    read: os.nixie.read.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return { paused: readMockPause() };
+    }),
+    pause: os.nixie.pause.handler((options) => runMockNixieControl('pause', options)),
+    resume: os.nixie.resume.handler((options) => runMockNixieControl('resume', options)),
+  },
+  recovery: {
+    read: os.recovery.read.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return { recovery: readMockRecovery() };
+    }),
+  },
   records: { follow: followProcedure },
   rules: { ...mockRuleProcedures, ...mockActionProposalProcedures },
   sessions: {
@@ -339,6 +358,20 @@ async function waitForRecord(signal: AbortSignal | undefined): Promise<void> {
     store.records.hooks.once('create', stopWaiting, { signal: waiting.signal });
     signal?.addEventListener('abort', stopWaiting, { once: true, signal: waiting.signal });
   });
+}
+
+type MockNixieControlOptions = Parameters<Parameters<typeof os.nixie.pause.handler>[0]>[0];
+
+async function runMockNixieControl(control: 'pause' | 'resume', options: MockNixieControlOptions) {
+  requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+  const result = await writeMockNixieControl(control, options.input);
+
+  if (result.status === 'reused') {
+    throw options.errors.CLIENT_ACTION_ID_REUSED();
+  }
+
+  return { paused: result.paused };
 }
 
 function findUsableCode(code: string, clientActionID: string) {

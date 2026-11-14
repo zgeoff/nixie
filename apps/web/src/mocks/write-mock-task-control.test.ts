@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import { pauseStore } from './pause-store';
+import { probeMockTaskPaused } from './probe-mock-task-paused';
 import { store } from './store';
 import { writeMockTaskControl } from './write-mock-task-control';
 
@@ -136,4 +138,50 @@ test('it refuses a client action ID that another control used', async () => {
   });
 
   expect(result).toStrictEqual({ status: 'reused' });
+});
+
+test('it exempts a ready task that nixie stopped, and leaves its state', async () => {
+  await store.tasks.create({ state: 'ready', taskID: 'k3x9m2p7qa' });
+  await pauseStore.pauses.create({ cause: 'restore' });
+
+  const result = await writeMockTaskControl('resume', {
+    clientActionID: '1a3c5e7f-9b2d-4f6a-8c0e-2d4f6a8b0c1e',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  expect(result).toStrictEqual({
+    status: 'controlled',
+    controlledAt: expect.toBeValidDate(),
+    isPauseRequested: false,
+    state: 'ready',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  expect(probeMockTaskPaused('k3x9m2p7qa')).toBeFalse();
+});
+
+test('it resumes a task that is paused on its own and nixie stopped, and exempts it', async () => {
+  await store.tasks.create({ state: 'paused', resumeState: 'waiting', taskID: 'k3x9m2p7qa' });
+  await pauseStore.pauses.create({ cause: 'owner' });
+
+  const result = await writeMockTaskControl('resume', {
+    clientActionID: '1a3c5e7f-9b2d-4f6a-8c0e-2d4f6a8b0c1e',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  expect(result).toMatchObject({ status: 'controlled', state: 'waiting' });
+  expect(probeMockTaskPaused('k3x9m2p7qa')).toBeFalse();
+});
+
+test('it leaves the other tasks paused when one task resumes', async () => {
+  await store.tasks.create({ state: 'ready', taskID: 'k3x9m2p7qa' });
+  await store.tasks.create({ state: 'ready', taskID: 'w5n1c8d3ra' });
+  await pauseStore.pauses.create({ cause: 'owner' });
+
+  await writeMockTaskControl('resume', {
+    clientActionID: '1a3c5e7f-9b2d-4f6a-8c0e-2d4f6a8b0c1e',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  expect(probeMockTaskPaused('w5n1c8d3ra')).toBeTrue();
 });

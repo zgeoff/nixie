@@ -68,6 +68,7 @@ export type {
   Pause,
   PauseCause,
   PauseLog,
+  PauseSince,
   TaskToCheck,
   LogRecord,
   LogTables,
@@ -94,4 +95,5 @@ export { buildEnvelopeRecord } from './record/build-envelope-record';
 export { exemptTaskInTransaction } from './pause/exempt-task-in-transaction';
 export { pauseNixieInTransaction } from './pause/pause-nixie-in-transaction';
 export { readPause } from './pause/read-pause';
+export { readPauseSince } from './pause/read-pause-since';
 export { resumeNixieInTransaction } from './pause/resume-nixie-in-transaction';

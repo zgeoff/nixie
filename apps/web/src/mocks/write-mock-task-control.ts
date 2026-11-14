@@ -1,5 +1,7 @@
 import type { TaskControl } from '@heynixie/task-control';
 import { buildControlledFields, planTaskControl } from '@heynixie/task-control';
+import { pauseStore } from './pause-store';
+import { probeMockTaskPaused } from './probe-mock-task-paused';
 import { store } from './store';
 
 export type MockTaskControl = TaskControl;
@@ -57,6 +59,15 @@ export async function writeMockTaskControl(
     return { status: 'task_not_found' };
   }
 
+  const isPausedByNixie = control === 'resume' && probeMockTaskPaused(task.taskID);
+
+  const isPausedOnItsOwn =
+    task.state === 'paused' || (task.state === 'running' && task.isPauseRequested);
+
+  if (isPausedByNixie && !isPausedOnItsOwn) {
+    return writeMockExemption(input, control, task);
+  }
+
   // The mock holds no inbox and no task limits, so no message waits unread when a task resumes or
   // restarts, and no limit holds it.
   const plan = planTaskControl(control, {
@@ -102,6 +113,35 @@ export async function writeMockTaskControl(
       },
     );
   }
+
+  if (isPausedByNixie) {
+    await pauseStore.pauseExemptions.create({ taskID: task.taskID });
+  }
+
+  await store.taskControlActions.create({
+    clientActionID: input.clientActionID,
+    control,
+    ...controlled,
+  });
+
+  return { status: 'controlled', ...controlled };
+}
+
+// A resume of a task that nixie's pause stops, with nothing else holding it, only lifts the pause
+// from that task.
+async function writeMockExemption(
+  input: TaskControlInput,
+  control: MockTaskControl,
+  task: MockTask,
+): Promise<TaskControlResult> {
+  await pauseStore.pauseExemptions.create({ taskID: task.taskID });
+
+  const controlled = {
+    controlledAt: new Date(),
+    isPauseRequested: task.isPauseRequested,
+    state: task.state,
+    taskID: task.taskID,
+  };
 
   await store.taskControlActions.create({
     clientActionID: input.clientActionID,

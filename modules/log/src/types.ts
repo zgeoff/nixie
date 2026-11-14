@@ -255,6 +255,10 @@ export interface Pause {
   readonly recoveryID: string | null;
 }
 
+export interface PauseSince extends Pause {
+  readonly since: number;
+}
+
 export interface TaskToCheck {
   readonly taskID: string;
   readonly stateAtBackup: TaskState;
