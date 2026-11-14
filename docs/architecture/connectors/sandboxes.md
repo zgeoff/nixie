@@ -189,57 +189,10 @@ The caller passes a command's environment as variables by name, and the adapter 
 placeholders. A stop sends SIGTERM once. After a grace period, imp's agent inside the guest kills
 the command's whole cgroup, so no descendant process outlives the command.
 
-## Reading memory kills
+## Memory kills
 
-`readMemoryKills` returns how many processes the guest's kernel has killed for memory since the
-guest booted. The count never falls while the guest is booted. The result is one of 3 kinds: a
-count, `unsupported` when the adapter or the guest holds no count, and `failed` when the sandbox is
-gone, the runtime refused the read or the read timed out. The read never rejects, and a caller can
-pass an abort signal to cut it short.
-
-- **The imp adapter** prints the guest's `memory.events` file through its own exec path and takes
-  the `oom_kill` line. A read of a sleeping imp wakes it, as any exec does, and a sleep keeps the
-  count. A guest with no such file gives `unsupported`.
-- **The test sandbox** reads `/.memory-kills` under the sandbox's directory, with no guest process,
-  so it also reads a sleeping sandbox. A missing file means a count of 0, and a file that holds
-  anything but a whole number gives `failed`. A test sets the count with `writeMemoryKills` from the
-  sandbox test utilities.
-- **Every other adapter** returns `unsupported`.
-
-## Watching memory kills
-
-The server wraps its sandbox adapter in `watchMemoryKills`, whether it built the adapter or took it
-from the `createSandboxAdapter` option, and logs `sandbox.memory_watch` once. The wrapped adapter
-has the same `id` and methods as the adapter it wraps.
-
-When a program that `spawn` started ends, for any cause, the watcher reads that sandbox's count and
-compares it with the last count it holds. It never reads after an `exec`, and it never looks at the
-exit code or signal, because a stop's `SIGKILL` looks like a memory kill. `exit` and `stop()` settle
-with the adapter's own values.
-
-A sandbox that the watcher created starts at a count of 0. A sandbox it did not create, such as one
-that `read` or `list` returned after a restart, gets one baseline read before its first `spawn`.
-
-| Case                                                        | Line                                                          |
-| ----------------------------------------------------------- | ------------------------------------------------------------- |
-| the count rose                                              | `sandbox.memory_kill` at `error`, with `kills` as the rise    |
-| the count is the same, such as after a stop or a clean end  | no line                                                       |
-| the adapter returns `unsupported`                           | `sandbox.memory_kill_unknown`, reason `unsupported`, each end |
-| the read failed or passed `readTimeoutMs` (2000 by default) | unknown, reason `read_failed`                                 |
-| the count fell, as after a cold boot                        | unknown, reason `counter_reset`                               |
-| no last count, and the count is above 0                     | unknown, reason `no_baseline`                                 |
-
-`kills` is the rise since the last read of that sandbox, so a day's kills are the sum of that day's
-lines. Each end writes at most one line. A line holds `ended` (`turn` for a conversation sandbox,
-`fetch` for a fetch sandbox, `step` for any other), `kind`, `memoryMiB`, `sandboxID`, and `kills` or
-`reason`, and never a task ID, a step key, guest output, a URL or a prompt. The lines are log lines
-only, with no event-log record.
-
-The read runs in the background. Nothing waits on it except the next `spawn`, the `sleep` and the
-`destroy` of the same sandbox, which run after it so a sandbox never goes while its count is unread.
-A web fetch's reply never waits for the read. The watcher keys its state by sandbox ID, because
-`read` and `list` return a new object for the same sandbox, and compares and stores each count in
-one synchronous step, so 2 programs that end together on one sandbox give one line for one kill.
+Each sandbox reports how many of its guest's processes the kernel killed for memory, and the server
+logs a line for each kill. [Memory kills](./memory-kills.md) covers the read and the watcher.
 
 ## The test sandbox
 
