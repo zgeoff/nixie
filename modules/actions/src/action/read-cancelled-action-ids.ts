@@ -1,6 +1,6 @@
 import type { TasksContext } from '@heynixie/tasks';
+import type { ActionsTables } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
-import type { ActionsTables } from './types';
 
 export async function readCancelledActionIDs(
   context: Pick<TasksContext, 'log'>,

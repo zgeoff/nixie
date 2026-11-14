@@ -1,11 +1,11 @@
 import { expect, test } from 'bun:test';
 import { waitForCondition } from '@heynixie/testing';
+import { buildStubConnector } from '../test-utils/build-stub-connector';
+import { claimTestAction } from '../test-utils/claim-test-action';
+import { createTestStep } from '../test-utils/create-test-step';
+import { startTestActions } from '../test-utils/start-test-actions';
 import { createAllowedAction } from './create-allowed-action';
 import { runActionAttempt } from './run-action-attempt';
-import { buildStubConnector } from './test-utils/build-stub-connector';
-import { claimTestAction } from './test-utils/claim-test-action';
-import { createTestStep } from './test-utils/create-test-step';
-import { startTestActions } from './test-utils/start-test-actions';
 import { waitForActionOutcome } from './wait-for-action-outcome';
 
 async function setupTest() {

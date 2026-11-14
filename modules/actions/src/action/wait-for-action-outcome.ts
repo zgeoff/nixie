@@ -2,9 +2,9 @@ import type { Clock } from '@heynixie/clock';
 import type { RecordWake } from '@heynixie/log';
 import { readRecords, startRecordWake, subscribeToCommits } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
+import type { ActionRow, ActionsTables, ModelView } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildModelView } from './build-model-view';
-import type { ActionRow, ActionsTables, ModelView } from './types';
 
 export interface WaitForActionOutcomeOptions {
   readonly timeoutMs?: number;

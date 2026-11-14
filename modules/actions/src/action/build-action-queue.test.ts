@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
 import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID, writeTaskControl } from '@heynixie/tasks';
+import { createTestStep } from '../test-utils/create-test-step';
+import { startTestActions } from '../test-utils/start-test-actions';
+import type { ActionsTables } from '../types';
 import { buildActionQueue } from './build-action-queue';
 import { claimAction } from './claim-action';
 import { runActionAttempt } from './run-action-attempt';
-import { createTestStep } from './test-utils/create-test-step';
-import { startTestActions } from './test-utils/start-test-actions';
-import type { ActionsTables } from './types';
 
 async function setupTest() {
   const actions = await startTestActions();

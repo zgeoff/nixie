@@ -1,13 +1,13 @@
 import { expect, test } from 'bun:test';
 import { runProjectionRebuild } from '@heynixie/log';
 import { writeTaskControl } from '@heynixie/tasks';
+import { buildStubConnector } from '../test-utils/build-stub-connector';
+import { claimTestAction } from '../test-utils/claim-test-action';
+import { createTestStep } from '../test-utils/create-test-step';
+import { startTestActions } from '../test-utils/start-test-actions';
+import type { ActionsTables } from '../types';
 import { createAllowedAction } from './create-allowed-action';
 import { runActionAttempt } from './run-action-attempt';
-import { buildStubConnector } from './test-utils/build-stub-connector';
-import { claimTestAction } from './test-utils/claim-test-action';
-import { createTestStep } from './test-utils/create-test-step';
-import { startTestActions } from './test-utils/start-test-actions';
-import type { ActionsTables } from './types';
 
 async function setupTest() {
   const actions = await startTestActions();

@@ -8,14 +8,14 @@ import {
 } from '@heynixie/log';
 import { setFaultPointHandler, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
 import { readTestLeases } from '@heynixie/tasks/test-utils';
-import { createAllowedAction, runActionAttempt } from './index';
-import { buildActionSeeder } from './test-utils/build-action-seeder';
-import { buildStubConnector } from './test-utils/build-stub-connector';
-import { claimTestAction } from './test-utils/claim-test-action';
-import { createTestStep } from './test-utils/create-test-step';
-import { runStalledAttempt } from './test-utils/run-stalled-attempt';
-import { startTestActions } from './test-utils/start-test-actions';
-import type { ActionsTables } from './types';
+import { createAllowedAction, runActionAttempt } from '../index';
+import { buildActionSeeder } from '../test-utils/build-action-seeder';
+import { buildStubConnector } from '../test-utils/build-stub-connector';
+import { claimTestAction } from '../test-utils/claim-test-action';
+import { createTestStep } from '../test-utils/create-test-step';
+import { runStalledAttempt } from '../test-utils/run-stalled-attempt';
+import { startTestActions } from '../test-utils/start-test-actions';
+import type { ActionsTables } from '../types';
 
 async function setupTest() {
   const actions = await startTestActions();

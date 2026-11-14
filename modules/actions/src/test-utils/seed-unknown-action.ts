@@ -2,7 +2,7 @@ import type { ActionConnector } from '@heynixie/connectors';
 import { claimLease } from '@heynixie/tasks';
 import type { TasksContext } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
-import { runActionAttempt } from '../run-action-attempt';
+import { runActionAttempt } from '../action/run-action-attempt';
 import type { ActionRow } from '../types';
 import type { AllowedCallSeed } from './build-mock-allowed-call';
 import { readTestAction } from './read-test-action';

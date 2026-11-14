@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createAllowedAction } from '../create-allowed-action';
+import { createAllowedAction } from '../action/create-allowed-action';
 import type { ActionsTables } from '../types';
 import { createTestStep } from './create-test-step';
 import { runStalledAttempt } from './run-stalled-attempt';

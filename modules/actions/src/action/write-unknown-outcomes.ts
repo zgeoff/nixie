@@ -1,7 +1,7 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { waitAtFaultPoint } from '@heynixie/tasks';
-import type { ActionsTables } from './types';
+import type { ActionsTables } from '../types';
 
 export async function writeUnknownOutcomes(context: TasksContext): Promise<void> {
   const settled = await withWriteTransaction(context.log.writer, async (tx) => {

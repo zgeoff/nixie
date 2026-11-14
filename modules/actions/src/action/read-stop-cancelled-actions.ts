@@ -1,5 +1,5 @@
 import type { TasksContext } from '@heynixie/tasks';
-import type { ActionsTables, ListedAction } from './types';
+import type { ActionsTables, ListedAction } from '../types';
 
 export async function readStopCancelledActions(
   context: Pick<TasksContext, 'log'>,

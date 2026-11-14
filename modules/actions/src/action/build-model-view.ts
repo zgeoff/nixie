@@ -1,6 +1,6 @@
 import type { JSONObject, LogRecord } from '@heynixie/log';
+import type { ActionRow, ModelView } from '../types';
 import { isJSONObject } from './is-json-object';
-import type { ActionRow, ModelView } from './types';
 
 export function buildModelView(
   action: Pick<ActionRow, 'action_id' | 'reason' | 'status'> & { readonly isCancelled: boolean },

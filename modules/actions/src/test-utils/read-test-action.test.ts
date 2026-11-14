@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createAllowedAction } from '../create-allowed-action';
+import { createAllowedAction } from '../action/create-allowed-action';
 import { buildMockAllowedCall } from './build-mock-allowed-call';
 import { createTestStep } from './create-test-step';
 import { readTestAction } from './read-test-action';

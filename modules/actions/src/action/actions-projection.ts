@@ -1,10 +1,10 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import { taskStoppedCodec } from '@heynixie/tasks';
 import type { Transaction, UpdateObject } from 'kysely';
+import type { ActionsTables } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
 import type { ActionRecord } from './parse-action-record';
 import { parseActionRecord } from './parse-action-record';
-import type { ActionsTables } from './types';
 
 export const actionsProjection: Projection = {
   table: 'actions',

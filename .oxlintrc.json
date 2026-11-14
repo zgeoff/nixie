@@ -37,7 +37,6 @@
           "libs/db",
           "libs/testing",
           "libs/wire",
-          "modules/actions",
           "modules/api",
           "modules/backup",
           "modules/connectors",

@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { writeTaskControl } from '@heynixie/tasks';
+import { createTestStep } from '../test-utils/create-test-step';
+import { startTestActions } from '../test-utils/start-test-actions';
+import type { ActionsTables } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { createAllowedAction } from './create-allowed-action';
-import { createTestStep } from './test-utils/create-test-step';
-import { startTestActions } from './test-utils/start-test-actions';
-import type { ActionsTables } from './types';
 
 async function setupTest() {
   const actions = await startTestActions();

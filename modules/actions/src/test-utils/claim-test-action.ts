@@ -1,6 +1,6 @@
 import type { Lease, TasksContext } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
-import { claimAction } from '../claim-action';
+import { claimAction } from '../action/claim-action';
 
 export interface TestActionClaim {
   readonly holder: string;

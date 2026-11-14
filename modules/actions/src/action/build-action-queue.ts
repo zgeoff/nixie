@@ -1,9 +1,9 @@
 import type { RunStep, TaskClaim, TasksContext } from '@heynixie/tasks';
 import { buildStepRunID } from '@heynixie/tasks';
 import type { ActionOutcome, ActionQueue } from '@heynixie/tools';
+import type { ModelView } from '../types';
 import { buildActionHash } from './build-action-hash';
 import { createAllowedAction } from './create-allowed-action';
-import type { ModelView } from './types';
 import { waitForActionOutcome } from './wait-for-action-outcome';
 
 export interface ActionQueueBridge {

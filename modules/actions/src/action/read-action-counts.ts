@@ -1,7 +1,7 @@
 import type { TasksContext } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import type { ActionCounts, ActionsTables } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
-import type { ActionCounts, ActionsTables } from './types';
 
 export async function readActionCounts(
   context: Pick<TasksContext, 'log'>,

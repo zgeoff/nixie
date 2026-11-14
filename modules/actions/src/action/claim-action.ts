@@ -1,9 +1,9 @@
 import type { Lease, TasksContext } from '@heynixie/tasks';
 import { buildPauseCheck, claimLease } from '@heynixie/tasks';
 import { sql } from 'kysely';
+import type { ActionsTables } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
-import type { ActionsTables } from './types';
 
 export interface ClaimActionOptions {
   readonly holder: string;

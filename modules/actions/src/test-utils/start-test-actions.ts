@@ -7,7 +7,7 @@ import { logProjections, startWriter } from '@heynixie/log';
 import { tasksProjections } from '@heynixie/tasks';
 import type { TestTasks } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
-import { actionsProjection } from '../actions-projection';
+import { actionsProjection } from '../action/actions-projection';
 
 export async function startTestActions(): Promise<TestTasks> {
   const stack = new AsyncDisposableStack();

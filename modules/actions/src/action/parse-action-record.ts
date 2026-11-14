@@ -1,5 +1,5 @@
 import type { EnvelopeRecord, JSONValue } from '@heynixie/log';
-import type { ActionStatus, OutcomeReason } from './types';
+import type { ActionStatus, OutcomeReason } from '../types';
 
 export type ActionRecord =
   | {

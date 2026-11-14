@@ -1,6 +1,6 @@
 import type { TasksContext } from '@heynixie/tasks';
+import type { ActionsTables, ListedAction } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
-import type { ActionsTables, ListedAction } from './types';
 
 export interface TaskActions {
   readonly queued: readonly ListedAction[];

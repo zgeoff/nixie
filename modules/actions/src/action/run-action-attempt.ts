@@ -11,11 +11,11 @@ import {
   startLeaseRenewal,
   waitAtFaultPoint,
 } from '@heynixie/tasks';
+import type { ActionRow, ActionsTables, Outcome } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
 import { isJSONObject } from './is-json-object';
 import { pickOutcome } from './pick-outcome';
-import type { ActionRow, ActionsTables, Outcome } from './types';
 
 export interface ActionAttemptOptions {
   readonly connectors: ReadonlyMap<string, ActionConnector>;

@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { writeTaskControl } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import { createTestStep } from '../test-utils/create-test-step';
+import { startTestActions } from '../test-utils/start-test-actions';
 import { createAllowedAction } from './create-allowed-action';
 import { readStopCancelledActions } from './read-stop-cancelled-actions';
-import { createTestStep } from './test-utils/create-test-step';
-import { startTestActions } from './test-utils/start-test-actions';
 
 async function setupTest() {
   const actions = await startTestActions();

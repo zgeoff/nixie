@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { writeTaskControl } from '@heynixie/tasks';
+import { createTestStep } from '../test-utils/create-test-step';
+import { startTestActions } from '../test-utils/start-test-actions';
+import type { ActionsTables } from '../types';
 import { createAllowedAction } from './create-allowed-action';
-import { readActionCounts } from './read-action-counts';
-import { createTestStep } from './test-utils/create-test-step';
-import { startTestActions } from './test-utils/start-test-actions';
-import type { ActionsTables } from './types';
+import { readTaskActions } from './read-task-actions';
 
 async function setupTest() {
   const actions = await startTestActions();
@@ -12,11 +12,11 @@ async function setupTest() {
   return { ...actions, db: actions.writer.db.$extendTables<ActionsTables>() };
 }
 
-test('it counts the cancelled and the started actions of a stopped task apart', async () => {
+test('it splits the pending actions of a task into queued and started', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  const queued = await createAllowedAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -38,16 +38,15 @@ test('it counts the cancelled and the started actions of a stopped task apart', 
     .where('action_id', '=', started.actionID)
     .execute();
 
-  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'stop' });
+  const actions = await readTaskActions(ctx.context, step.lease.workID);
 
-  const counts = await readActionCounts(ctx.context, [step.lease.workID]);
-
-  expect(counts).toStrictEqual(
-    new Map([[step.lease.workID, { queued: 0, started: 1, cancelled: 1 }]]),
-  );
+  expect(actions).toStrictEqual({
+    queued: [{ actionID: queued.actionID, tool: 'test.send' }],
+    started: [{ actionID: started.actionID, tool: 'test.archive' }],
+  });
 });
 
-test('it counts the unstarted action of a running task as queued', async () => {
+test('it leaves out the actions a stop cancelled', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
@@ -59,24 +58,14 @@ test('it counts the unstarted action of a running task as queued', async () => {
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
-  const counts = await readActionCounts(ctx.context, [step.lease.workID]);
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'stop' });
 
-  expect(counts).toStrictEqual(
-    new Map([[step.lease.workID, { queued: 1, started: 0, cancelled: 0 }]]),
-  );
+  const actions = await readTaskActions(ctx.context, step.lease.workID);
+
+  expect(actions).toStrictEqual({ queued: [], started: [] });
 });
 
-test('it counts nothing for a task with no action', async () => {
-  const ctx = await setupTest();
-  const step = await createTestStep(ctx.context);
-  const counts = await readActionCounts(ctx.context, [step.lease.workID]);
-
-  expect(counts).toStrictEqual(
-    new Map([[step.lease.workID, { queued: 0, started: 0, cancelled: 0 }]]),
-  );
-});
-
-test('it leaves a settled action out of every count', async () => {
+test('it leaves out a settled action', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
@@ -94,9 +83,7 @@ test('it leaves a settled action out of every count', async () => {
     .where('action_id', '=', settled.actionID)
     .execute();
 
-  const counts = await readActionCounts(ctx.context, [step.lease.workID]);
+  const actions = await readTaskActions(ctx.context, step.lease.workID);
 
-  expect(counts).toStrictEqual(
-    new Map([[step.lease.workID, { queued: 0, started: 0, cancelled: 0 }]]),
-  );
+  expect(actions).toStrictEqual({ queued: [], started: [] });
 });

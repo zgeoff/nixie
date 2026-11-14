@@ -1,5 +1,5 @@
 import type { ProviderResponse } from '@heynixie/connectors';
-import type { Outcome } from './types';
+import type { Outcome } from '../types';
 
 export function pickOutcome(
   response: ProviderResponse,

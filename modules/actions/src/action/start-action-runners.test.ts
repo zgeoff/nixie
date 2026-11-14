@@ -2,12 +2,12 @@ import { expect, onTestFinished, test } from 'bun:test';
 import type { ProviderResponse } from '@heynixie/connectors';
 import { buildRecordedCommits } from '@heynixie/log/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import { buildStubConnector } from '../test-utils/build-stub-connector';
+import { createTestStep } from '../test-utils/create-test-step';
+import { startTestActions } from '../test-utils/start-test-actions';
+import type { ActionsTables } from '../types';
 import { createAllowedAction } from './create-allowed-action';
 import { startActionRunners } from './start-action-runners';
-import { buildStubConnector } from './test-utils/build-stub-connector';
-import { createTestStep } from './test-utils/create-test-step';
-import { startTestActions } from './test-utils/start-test-actions';
-import type { ActionsTables } from './types';
 
 async function setupTest() {
   const actions = await startTestActions();
