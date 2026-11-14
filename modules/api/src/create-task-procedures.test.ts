@@ -1,13 +1,21 @@
 import { expect, test } from 'bun:test';
-import type { ActionsTables } from '@heynixie/actions';
+import { claimAction, runActionAttempt } from '@heynixie/actions';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { registerFaultPointAction } from '@heynixie/memory/test-utils';
-import { createConversationTask } from '@heynixie/tasks';
+import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
+import { seedConversationStep } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { defaultAPISettings } from './default-api-settings';
+import { buildSeeder } from './test-utils/build-seeder';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
+
+async function setupTest() {
+  const api = await startTestAPI();
+
+  return { ...api, seed: buildSeeder(api) };
+}
 
 test('#tasks.list lists the conversation and each started task with its name and brief', async () => {
   const api = await startTestAPI();
@@ -176,51 +184,21 @@ test('#tasks.list names the task that a task with an open question waits on', as
 });
 
 test('#tasks.list counts a cancelled action apart from a queued one', async () => {
-  const api = await startTestAPI();
-  const laptop = await createDeviceSession(api.context, 'laptop');
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
 
-  const client = buildTestClient(api.url, laptop.token);
+  const client = buildTestClient(ctx.url, laptop.token);
 
-  await createConversationTask(api.context);
+  const firstStep = await seedConversationStep(ctx.context);
 
-  await api.writer.db
-    .$extendTables<ActionsTables>()
-    .insertInto('actions')
-    .values([
-      {
-        action_id: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24',
-        task_id: 'conversation',
-        step_key: 'conversation:1',
-        action_hash: 'sha256:send-1',
-        tool: 'test.send',
-        status: 'pending',
-        attempt_count: 0,
-        attempt_open: 0,
-        next_attempt_at: 0,
-        reason: null,
-        queued_sequence: 1,
-        outcome_sequence: null,
-        cancelled_sequence: null,
-        updated_sequence: 1,
-      },
-      {
-        action_id: '6e8a0c2d-4f3b-4d7e-9a1c-2b4d6f8a0c3e',
-        task_id: 'conversation',
-        step_key: 'conversation:1',
-        action_hash: 'sha256:archive-1',
-        tool: 'test.archive',
-        status: 'pending',
-        attempt_count: 0,
-        attempt_open: 0,
-        next_attempt_at: 0,
-        reason: null,
-        queued_sequence: 1,
-        outcome_sequence: null,
-        cancelled_sequence: 1,
-        updated_sequence: 1,
-      },
-    ])
-    .execute();
+  await ctx.seed.action({ step: firstStep.claim });
+
+  await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'stop' });
+  await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'restart' });
+
+  const secondStep = await seedConversationStep(ctx.context);
+
+  await ctx.seed.action({ step: secondStep.claim, tool: 'test.archive' });
 
   const listed = await client.tasks.list({});
 
@@ -330,57 +308,33 @@ test('#tasks.read refuses a caller with no session', async () => {
 });
 
 test('#tasks.readActions lists the queued actions a stop would cancel and the started ones apart', async () => {
-  const api = await startTestAPI();
-  const laptop = await createDeviceSession(api.context, 'laptop');
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
 
-  const client = buildTestClient(api.url, laptop.token);
+  const client = buildTestClient(ctx.url, laptop.token);
 
-  await createConversationTask(api.context);
+  const step = await seedConversationStep(ctx.context);
+  const started = await ctx.seed.action({ step: step.claim, tool: 'test.archive' });
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  await api.writer.db
-    .$extendTables<ActionsTables>()
-    .insertInto('actions')
-    .values([
-      {
-        action_id: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24',
-        task_id: 'conversation',
-        step_key: 'conversation:1',
-        action_hash: 'sha256:send-1',
-        tool: 'test.send',
-        status: 'pending',
-        attempt_count: 0,
-        attempt_open: 0,
-        next_attempt_at: 0,
-        reason: null,
-        queued_sequence: 1,
-        outcome_sequence: null,
-        cancelled_sequence: null,
-        updated_sequence: 1,
-      },
-      {
-        action_id: '6e8a0c2d-4f3b-4d7e-9a1c-2b4d6f8a0c3e',
-        task_id: 'conversation',
-        step_key: 'conversation:1',
-        action_hash: 'sha256:archive-1',
-        tool: 'test.archive',
-        status: 'pending',
-        attempt_count: 1,
-        attempt_open: 0,
-        next_attempt_at: 0,
-        reason: null,
-        queued_sequence: 1,
-        outcome_sequence: null,
-        cancelled_sequence: null,
-        updated_sequence: 1,
-      },
-    ])
-    .execute();
+  invariant(lease);
 
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([
+      [
+        'test.archive',
+        { run: () => Promise.resolve({ kind: 'refused_retryable', reason: 'rate limited' }) },
+      ],
+    ]),
+    leaseMs: 60_000,
+  });
+
+  const queued = await ctx.seed.action({ step: step.claim });
   const actions = await client.tasks.readActions({ taskID: 'conversation' });
 
   expect(actions).toStrictEqual({
-    queued: [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }],
-    started: [{ actionID: '6e8a0c2d-4f3b-4d7e-9a1c-2b4d6f8a0c3e', tool: 'test.archive' }],
+    queued: [{ actionID: queued.action_id, tool: 'test.send' }],
+    started: [{ actionID: started.action_id, tool: 'test.archive' }],
   });
 });
 

@@ -1,13 +1,16 @@
 import { expect, test } from 'bun:test';
-import type { ActionsTables } from '@heynixie/actions';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
+import { seedConversationStep } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { readRecordLookups } from './read-record-lookups';
+import { buildSeeder } from './test-utils/build-seeder';
 import { startTestAPI } from './test-utils/start-test-api';
 
-function setupTest() {
-  return startTestAPI();
+async function setupTest() {
+  const api = await startTestAPI();
+
+  return { ...api, seed: buildSeeder(api) };
 }
 
 test('it reads the actions each stop cancelled and the names of the started tasks', async () => {
@@ -50,30 +53,11 @@ test('it reads the actions each stop cancelled and the names of the started task
     },
   ]);
 
+  const step = await seedConversationStep(ctx.context);
+  const action = await ctx.seed.action({ step: step.claim });
   const stop = await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'stop' });
 
   invariant(stop.status === 'controlled');
-
-  await ctx.writer.db
-    .$extendTables<ActionsTables>()
-    .insertInto('actions')
-    .values({
-      action_id: 'b3f1c7e2-5a9d-4e61-8c2f-7d0a1e3b5c94',
-      task_id: 'conversation',
-      step_key: 'conversation:1',
-      action_hash: 'sha256:send-1',
-      tool: 'test.send',
-      status: 'pending',
-      attempt_count: 0,
-      attempt_open: 0,
-      next_attempt_at: 0,
-      reason: null,
-      queued_sequence: 1,
-      outcome_sequence: null,
-      cancelled_sequence: stop.sequence,
-      updated_sequence: stop.sequence,
-    })
-    .execute();
 
   const entries = await readRecords(ctx.context.log, { afterSequence: 0, thread: 'conversation' });
 
@@ -86,7 +70,7 @@ test('it reads the actions each stop cancelled and the names of the started task
     cancelledActionIDs: new Set(),
     removedSequences: new Set(),
     stopCancelledActions: new Map([
-      [stop.sequence, [{ actionID: 'b3f1c7e2-5a9d-4e61-8c2f-7d0a1e3b5c94', tool: 'test.send' }]],
+      [stop.sequence, [{ actionID: action.action_id, tool: 'test.send' }]],
     ]),
     taskDirectory: [
       {

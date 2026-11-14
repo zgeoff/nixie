@@ -1,11 +1,12 @@
 import { expect, test } from 'bun:test';
-import type { ActionsTables } from '@heynixie/actions';
 import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { claimTask, createConversationTask, createTask, writeStepCommit } from '@heynixie/tasks';
+import { seedConversationStep } from '@heynixie/tasks/test-utils';
 import { isDefinedError, safe } from '@orpc/client';
 import invariant from 'tiny-invariant';
 import { createEnrolmentCode } from './create-enrolment-code';
+import { buildSeeder } from './test-utils/build-seeder';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { readEvents } from './test-utils/read-events';
@@ -17,7 +18,7 @@ async function setupTest() {
 
   const db = api.writer.db.$extendTables<APITables>();
 
-  return { ...api, db };
+  return { ...api, db, seed: buildSeeder(api) };
 }
 
 test('#sessions.enrol sets a host-only HttpOnly Secure SameSite=Lax cookie on Path=/', async () => {
@@ -914,33 +915,16 @@ test('#records.follow streams a forgotten message as removed', async () => {
 
 test('#records.follow streams a failed tool result as cancelled when a stop cancelled its action', async () => {
   const ctx = await setupTest();
-
-  await createConversationTask(ctx.context);
-
+  const step = await seedConversationStep(ctx.context);
+  const action = await ctx.seed.action({ step: step.claim });
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
-  await ctx.writer.db
-    .$extendTables<ActionsTables>()
-    .insertInto('actions')
-    .values({
-      action_id: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24',
-      task_id: 'conversation',
-      step_key: 'conversation:1',
-      action_hash: 'sha256:send-1',
-      tool: 'test.send',
-      status: 'pending',
-      attempt_count: 0,
-      attempt_open: 0,
-      next_attempt_at: 0,
-      reason: null,
-      queued_sequence: 1,
-      outcome_sequence: null,
-      cancelled_sequence: 1,
-      updated_sequence: 1,
-    })
-    .execute();
+  await laptopClient.tasks.stop({
+    clientActionID: '4e6a8c0d-2f4b-4d6e-8a9c-0b1d2e3f4a5b',
+    taskID: 'conversation',
+  });
 
   const [result] = await writeRecords(ctx.context.log, [
     {
@@ -952,7 +936,7 @@ test('#records.follow streams a failed tool result as cancelled when a stop canc
         runID: 'conversation',
         toolUseID: null,
         outcome: 'failed',
-        actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24',
+        actionID: action.action_id,
         sources: {},
       },
     },
@@ -1093,9 +1077,8 @@ test('#records.follow resumes a task thread mid-step with exactly the records it
 
 test('#records.follow streams a stop with the actions it cancelled', async () => {
   const ctx = await setupTest();
-
-  await createConversationTask(ctx.context);
-
+  const step = await seedConversationStep(ctx.context);
+  const action = await ctx.seed.action({ step: step.claim });
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const laptopClient = buildTestClient(ctx.url, laptop.token);
@@ -1114,27 +1097,6 @@ test('#records.follow streams a stop with the actions it cancelled', async () =>
 
   const stop = stopRead.record;
 
-  await ctx.writer.db
-    .$extendTables<ActionsTables>()
-    .insertInto('actions')
-    .values({
-      action_id: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24',
-      task_id: 'conversation',
-      step_key: 'conversation:1',
-      action_hash: 'sha256:send-1',
-      tool: 'test.send',
-      status: 'pending',
-      attempt_count: 0,
-      attempt_open: 0,
-      next_attempt_at: 0,
-      reason: null,
-      queued_sequence: 1,
-      outcome_sequence: null,
-      cancelled_sequence: stop.sequence,
-      updated_sequence: stop.sequence,
-    })
-    .execute();
-
   const connection = await laptopClient.records.follow({
     afterSequence: stop.sequence - 1,
     thread: 'conversation',
@@ -1146,7 +1108,7 @@ test('#records.follow streams a stop with the actions it cancelled', async () =>
 
   expect(seen.map((event) => event.record.stop)).toStrictEqual([
     {
-      cancelledActions: [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }],
+      cancelledActions: [{ actionID: action.action_id, tool: 'test.send' }],
     },
   ]);
 });
