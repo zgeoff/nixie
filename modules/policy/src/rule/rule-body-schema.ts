@@ -35,30 +35,33 @@ const contextSchema = z.union([
 
 const definitionIDsSchema = z.array(z.string().min(1)).min(1);
 
-export const ruleBodySchema = z
-  .strictObject({
-    outcome: z.enum(['allow', 'ask', 'deny']),
-    tools: z
-      .array(patternSchema)
-      .min(1)
-      .optional()
-      .describe('Tool names, such as mail.send, or a tool variant, such as task.start/atc'),
-    effects: z.array(z.enum(effectNames)).min(1).optional(),
-    contexts: z.array(contextSchema).min(1).optional(),
-    definitions: definitionIDsSchema
-      .optional()
-      .describe('Task definition IDs; the rule matches a task run of one of them'),
-    jobs: definitionIDsSchema
-      .optional()
-      .meta({ deprecated: true, description: 'The old name of definitions' }),
-    checks: z.array(checkSchema).min(1).optional(),
-    destinations: z.array(patternSchema).min(1).optional(),
-    sources: z.array(z.enum(ruleSources)).min(1).optional(),
-    expires: z.iso.datetime({ offset: true }).optional(),
-    mandate: z.string().regex(ruleIDPattern).optional(),
-    cel: z.string().min(1).optional(),
-    note: z.string().min(1).optional(),
-  })
+const ruleObjectSchema = z.strictObject({
+  outcome: z.enum(['allow', 'ask', 'deny']),
+  tools: z
+    .array(patternSchema)
+    .min(1)
+    .optional()
+    .describe('Tool names, such as mail.send, or a tool variant, such as task.start/atc'),
+  effects: z.array(z.enum(effectNames)).min(1).optional(),
+  contexts: z.array(contextSchema).min(1).optional(),
+  definitions: definitionIDsSchema
+    .optional()
+    .describe('Task definition IDs; the rule matches a task run of one of them'),
+  jobs: definitionIDsSchema
+    .optional()
+    .meta({ deprecated: true, description: 'The old name of definitions' }),
+  checks: z.array(checkSchema).min(1).optional(),
+  destinations: z.array(patternSchema).min(1).optional(),
+  sources: z.array(z.enum(ruleSources)).min(1).optional(),
+  expires: z.iso.datetime({ offset: true }).optional(),
+  mandate: z.string().regex(ruleIDPattern).optional(),
+  cel: z.string().min(1).optional(),
+  note: z.string().min(1).optional(),
+});
+
+export const ruleFieldNames: ReadonlySet<string> = new Set(Object.keys(ruleObjectSchema.shape));
+
+export const ruleBodySchema = ruleObjectSchema
   .refine((rule) => rule.mandate === undefined || rule.expires !== undefined, {
     message: 'a mandate rule needs expires',
     path: ['expires'],

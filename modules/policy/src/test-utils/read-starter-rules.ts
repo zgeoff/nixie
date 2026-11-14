@@ -29,5 +29,11 @@ export function readStarterRules(): readonly RuleEntry[] {
     throw new Error(`the starter rules do not parse: ${JSON.stringify(parsed.problems)}`);
   }
 
+  if (parsed.warnings.length > 0) {
+    throw new Error(
+      `the starter rules hold a field nixie does not know: ${JSON.stringify(parsed.warnings)}`,
+    );
+  }
+
   return parsed.rules.map((entry) => ({ id: entry.rule.id, revision: 1, rule: entry.rule }));
 }

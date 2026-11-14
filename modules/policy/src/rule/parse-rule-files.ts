@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 import type { RuleForm } from '../types';
+import { ruleFieldNames } from './rule-body-schema';
 import { rulesFileSchema } from './rules-file-schema';
 import { toRuleForm } from './to-rule-form';
 
@@ -13,12 +14,26 @@ export interface RuleFileProblem {
   readonly reason: string;
 }
 
+// A field this release does not know. An allow rule that holds one is skipped whole, so it matches
+// nothing; an ask or deny rule drops the field and keeps the rest, so it matches more.
+export interface RuleFileWarning {
+  readonly path: string;
+  readonly ruleID: string;
+  readonly field: string;
+  readonly action: 'skipped' | 'dropped';
+}
+
 export type ParsedRuleFiles =
-  | { readonly status: 'parsed'; readonly rules: readonly RuleFileEntry[] }
+  | {
+      readonly status: 'parsed';
+      readonly rules: readonly RuleFileEntry[];
+      readonly warnings: readonly RuleFileWarning[];
+    }
   | { readonly status: 'refused'; readonly problems: readonly RuleFileProblem[] };
 
 export function parseRuleFiles(files: ReadonlyMap<string, string>): ParsedRuleFiles {
   const problems: RuleFileProblem[] = [];
+  const warnings: RuleFileWarning[] = [];
 
   const byID = new Map<string, RuleFileEntry>();
 
@@ -29,6 +44,8 @@ export function parseRuleFiles(files: ReadonlyMap<string, string>): ParsedRuleFi
       problems.push(...parsed.problems);
       continue;
     }
+
+    warnings.push(...parsed.warnings);
 
     for (const entry of parsed.rules) {
       const seen = byID.get(entry.rule.id);
@@ -51,6 +68,7 @@ export function parseRuleFiles(files: ReadonlyMap<string, string>): ParsedRuleFi
         rules: [...byID.values()].toSorted((left, right) =>
           left.rule.id < right.rule.id ? -1 : 1,
         ),
+        warnings,
       };
 }
 
@@ -62,10 +80,11 @@ function parseRuleFile(path: string, text: string): ParsedRuleFiles {
   }
 
   if (yaml === null) {
-    return { status: 'parsed', rules: [] };
+    return { status: 'parsed', rules: [], warnings: [] };
   }
 
-  const result = rulesFileSchema.safeParse(yaml);
+  const stripped = stripUnknownFields(path, yaml);
+  const result = rulesFileSchema.safeParse(stripped.yaml);
 
   if (!result.success) {
     return {
@@ -80,6 +99,7 @@ function parseRuleFile(path: string, text: string): ParsedRuleFiles {
       path,
       rule: toRuleForm({ id, ...body }),
     })),
+    warnings: stripped.warnings,
   };
 }
 
@@ -89,6 +109,46 @@ function parseYAML(text: string): unknown {
   } catch (error) {
     return error instanceof Error ? error : new Error(String(error));
   }
+}
+
+// A field nested inside a checks entry is not stripped, so the schema still refuses it.
+function stripUnknownFields(
+  path: string,
+  yaml: unknown,
+): { readonly yaml: unknown; readonly warnings: readonly RuleFileWarning[] } {
+  if (!isRecord(yaml)) {
+    return { yaml, warnings: [] };
+  }
+
+  const warnings: RuleFileWarning[] = [];
+  const kept: Record<string, unknown> = {};
+
+  for (const [ruleID, body] of Object.entries(yaml)) {
+    const unknown = isRecord(body)
+      ? Object.keys(body).filter((field) => !ruleFieldNames.has(field))
+      : [];
+
+    if (!isRecord(body) || unknown.length === 0) {
+      kept[ruleID] = body;
+      continue;
+    }
+
+    const action = body['outcome'] === 'allow' ? 'skipped' : 'dropped';
+
+    warnings.push(...unknown.map((field) => ({ path, ruleID, field, action }) as const));
+
+    if (action === 'dropped') {
+      kept[ruleID] = Object.fromEntries(
+        Object.entries(body).filter(([field]) => ruleFieldNames.has(field)),
+      );
+    }
+  }
+
+  return { yaml: kept, warnings };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function formatIssue(issue: z.core.$ZodIssue): string {

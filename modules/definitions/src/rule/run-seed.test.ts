@@ -1907,3 +1907,33 @@ test('it refuses an override of a tool the code does not declare', async () => {
     error: { message: 'an effects override names the unknown tool mail.nothing' },
   });
 });
+
+test('it seeds a rules file with an unknown rule field, and names the rule and the field of each warning', async () => {
+  const ctx = await setupTest();
+
+  const warnings: unknown[] = [];
+
+  await mkdir(join(ctx.root, 'rules'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'allow-mail:\n  outcome: allow\n  tools: [mail.send]\n  risk: low\n',
+  );
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+    onRuleWarning: (warning) => {
+      warnings.push(warning);
+    },
+  });
+
+  expect(result.status).toBe('seeded');
+
+  expect(warnings).toStrictEqual([
+    { path: 'rules/mail.yaml', ruleID: 'allow-mail', field: 'risk', action: 'skipped' },
+  ]);
+});

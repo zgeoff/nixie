@@ -33,7 +33,7 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
   const rules =
     formatVersion >= definitionsFormats.rules
       ? parseRuleDefinitions(texts, overrides.partFiles)
-      : { rules: [], paths: new Set<string>() };
+      : { rules: [], paths: new Set<string>(), warnings: [] };
 
   const effects =
     formatVersion >= definitionsFormats.effects
@@ -57,6 +57,7 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
     conversationSkills,
     prompts: overrides.prompts,
     rules: rules.rules,
+    ruleWarnings: rules.warnings,
     effects: effects.effects,
     unapplied,
   };

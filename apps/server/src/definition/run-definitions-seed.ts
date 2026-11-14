@@ -7,6 +7,9 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
   return runQueuedSeed(parts, async () => {
     const result = await runSeed({
       log: parts.context.log,
+      onRuleWarning: (warning) => {
+        parts.log('definitions.rule_field_unknown', { ...warning }, 'warn');
+      },
       source: parts.source,
       buildPolicy: parts.buildPolicy,
     });
