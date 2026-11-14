@@ -6,12 +6,13 @@ import { nixieSchema } from '@heynixie/db';
 import {
   createPathSource,
   readDefinitionsInForce,
+  readRuleProposals,
   readRulesInForce,
   readSnapshotPolicy,
   runSeed,
 } from '@heynixie/definitions';
 import { runProjectionRebuild, withWriteTransaction } from '@heynixie/log';
-import type { PolicyCall } from '@heynixie/policy';
+import type { PolicyCall, RuleForm } from '@heynixie/policy';
 import { makeDecisionPoint } from '@heynixie/policy';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -210,6 +211,18 @@ deny-old-names:
 
       return rules.map((entry) => [entry.ruleID, entry.rule.rule]);
     },
+    writeRulesFile: (text: string) => writeFile(join(root, 'rules', 'mail.yaml'), text),
+    writeClosedProposal: async (hash: string) => {
+      await sql`insert into closed_rule_proposals (proposal_hash) values (${hash})`.execute(db);
+    },
+    readProposals: async () => {
+      const proposals = await readRuleProposals(db);
+
+      return proposals.map((state) => ({
+        outcome: state.outcome,
+        changes: state.proposal.changes.map((change) => change.ruleID),
+      }));
+    },
   };
 }
 
@@ -277,4 +290,59 @@ test('it gives the same rows after a projection rebuild as the migration left', 
 
   expect(rebuilt).toStrictEqual(migrated);
   expect(rebuiltInForce).toStrictEqual(inForce);
+});
+
+test('it asks again for a widening rejected before a log reset, and keeps the rule in force until you answer', async () => {
+  const ctx = await setupTest();
+
+  await ctx.runSeedAgain();
+  await ctx.downgrade();
+
+  const stored: RuleForm = {
+    id: 'deny-old-names',
+    outcome: 'deny',
+    tools: ['mail.archive'],
+    contexts: ['task'],
+    definitions: ['nightly-sweep'],
+  };
+
+  const before = buildOldRuleRow(stored);
+  const after = buildOldRuleRow({ ...stored, outcome: 'ask' });
+
+  invariant(before && after);
+
+  const hasher = new Bun.CryptoHasher('sha256');
+
+  hasher.update(toCanonical([{ ruleID: stored.id, before: before.hash, after: after.hash }]));
+
+  await ctx.writeClosedProposal(hasher.digest('hex'));
+  await ctx.migrate();
+
+  await ctx.writeRulesFile(`deny-triage-sends:
+  outcome: deny
+  tools: [mail.send]
+  contexts: [task]
+  definitions: [inbox-triage]
+deny-chat-tasks:
+  outcome: deny
+  tools: [mail.bulk]
+  contexts: [job, task]
+ask-in-chat:
+  outcome: ask
+  tools: [mail.send]
+  contexts: [conversation]
+deny-old-names:
+  outcome: ask
+  tools: [mail.archive]
+  contexts: [task]
+  definitions: [nightly-sweep]
+`);
+
+  await ctx.runSeedAgain();
+
+  const inForce = await ctx.readInForce();
+  const proposals = await ctx.readProposals();
+
+  expect(inForce).toContainEqual(['deny-old-names', stored]);
+  expect(proposals).toStrictEqual([{ outcome: null, changes: ['deny-old-names'] }]);
 });

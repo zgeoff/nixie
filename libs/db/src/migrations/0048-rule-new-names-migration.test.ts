@@ -372,36 +372,6 @@ test('it leaves a hash quoted in the free text of a record unchanged', async () 
   ]);
 });
 
-test('it repoints a closed proposal whose records a log reset deleted', async () => {
-  const ctx = await setupTest();
-
-  const old = 'a'.repeat(64);
-
-  await ctx.writeVersion(old, JSON.stringify({ id: 'r', outcome: 'ask', jobs: ['x'] }));
-
-  const oldHasher = new Bun.CryptoHasher('sha256');
-
-  oldHasher.update(JSON.stringify([{ after: old, before: null, ruleID: 'r' }]));
-
-  const oldProposal = oldHasher.digest('hex');
-
-  await sql`insert into closed_rule_proposals (proposal_hash) values (${oldProposal})`.execute(
-    ctx.db,
-  );
-
-  await ctx.runMigration();
-
-  const [version] = await ctx.readVersions();
-
-  const newHasher = new Bun.CryptoHasher('sha256');
-
-  newHasher.update(JSON.stringify([{ after: version?.rule_hash, before: null, ruleID: 'r' }]));
-
-  const closed = await sql`select proposal_hash from closed_rule_proposals`.execute(ctx.db);
-
-  expect(closed.rows).toStrictEqual([{ proposal_hash: newHasher.digest('hex') }]);
-});
-
 test('it rewrites a decision whose recorded context is job and keeps the permission job', async () => {
   const ctx = await setupTest();
 
@@ -505,79 +475,50 @@ test('it leaves the text of a record unchanged when no hash field moves', async 
   expect(rows.rows).toStrictEqual([{ payload: text }]);
 });
 
-test('it repoints a closed proposal of several rules whose records a log reset deleted', async () => {
+test('it keeps the hash of a closed proposal whose records a log reset deleted', async () => {
   const ctx = await setupTest();
 
-  const hashText = ctx.hashText;
-  const entry = ctx.entry;
-  const first = 'a'.repeat(64);
-  const second = 'b'.repeat(64);
-  const unmoved = 'c'.repeat(64);
-
-  await ctx.writeVersion(first, JSON.stringify({ id: 'r1', outcome: 'ask', jobs: ['x'] }));
-  await ctx.writeVersion(second, JSON.stringify({ id: 'r2', outcome: 'ask', contexts: ['job'] }));
-  await ctx.writeVersion(unmoved, JSON.stringify({ id: 'r3', outcome: 'deny' }));
-
-  const oldProposal = hashText(`[${entry('r1', null, first)},${entry('r2', null, second)}]`);
-
-  await sql`insert into closed_rule_proposals (proposal_hash) values (${oldProposal})`.execute(
-    ctx.db,
-  );
-
-  await ctx.runMigration();
-
-  const versions = await ctx.readVersions();
-
-  const hashes = new Map(
-    versions.map((version) => [
-      z.object({ id: z.string() }).parse(JSON.parse(version.rule)).id,
-      version.rule_hash,
-    ]),
-  );
-
-  const closed = await sql`select proposal_hash from closed_rule_proposals`.execute(ctx.db);
-
-  const moved = [
-    entry('r1', null, hashes.get('r1') ?? ''),
-    entry('r2', null, hashes.get('r2') ?? ''),
-  ];
-
-  expect(closed.rows).toStrictEqual([{ proposal_hash: hashText(`[${moved.join(',')}]`) }]);
-});
-
-test('it repoints a closed proposal of rule and effect changes that a surviving record shows', async () => {
-  const ctx = await setupTest();
-
-  const hashText = ctx.hashText;
-  const entry = ctx.entry;
   const old = 'a'.repeat(64);
 
   await ctx.writeVersion(old, JSON.stringify({ id: 'r', outcome: 'ask', jobs: ['x'] }));
 
-  const effectChanges = [{ tool: 'mail.send', remove: ['network'] }];
-  const effectsText = '[{"remove":["network"],"tool":"mail.send"}]';
+  const closedHash = ctx.hashText(`[${ctx.entry('r', null, old)}]`);
 
-  await ctx.writeRecord('rules.change_proposed', {
-    proposalID: 'other',
-    proposalHash: 'd'.repeat(64),
-    changes: [],
-    effectChanges,
-  });
-
-  const oldProposal = hashText(`{"effects":${effectsText},"rules":[${entry('r', null, old)}]}`);
-
-  await sql`insert into closed_rule_proposals (proposal_hash) values (${oldProposal})`.execute(
+  await sql`insert into closed_rule_proposals (proposal_hash) values (${closedHash})`.execute(
     ctx.db,
   );
 
   await ctx.runMigration();
 
-  const [version] = await ctx.readVersions();
   const closed = await sql`select proposal_hash from closed_rule_proposals`.execute(ctx.db);
 
-  const expected = hashText(
-    `{"effects":${effectsText},"rules":[${entry('r', null, version?.rule_hash ?? '')}]}`,
-  );
+  expect(closed.rows).toStrictEqual([{ proposal_hash: closedHash }]);
+});
 
-  expect(closed.rows).toStrictEqual([{ proposal_hash: expected }]);
+test('it keeps the hash of a closed proposal over rules with no old names', async () => {
+  const ctx = await setupTest();
+
+  const moved = 'a'.repeat(64);
+  const unmoved = 'b'.repeat(64);
+
+  await ctx.writeVersion(moved, JSON.stringify({ id: 'r1', outcome: 'ask', jobs: ['x'] }));
+  await ctx.writeVersion(unmoved, JSON.stringify({ id: 'r2', outcome: 'deny' }));
+
+  const payload = {
+    proposalID: 'p',
+    proposalHash: ctx.hashText(`[${ctx.entry('r2', null, unmoved)}]`),
+    changes: [{ ruleID: 'r2', before: null, after: { hash: unmoved, sentence: 'Deny.' } }],
+    effectChanges: [],
+  };
+
+  await ctx.writeRecord('rules.change_proposed', payload);
+
+  await sql`insert into closed_rule_proposals (proposal_hash)
+    values (${payload.proposalHash})`.execute(ctx.db);
+
+  await ctx.runMigration();
+
+  const closed = await sql`select proposal_hash from closed_rule_proposals`.execute(ctx.db);
+
+  expect(closed.rows).toStrictEqual([{ proposal_hash: payload.proposalHash }]);
 });
