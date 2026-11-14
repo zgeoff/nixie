@@ -97,6 +97,15 @@ oldest reader, so reverting one release needs no restore and loses no writes. A 
 the release before raises the oldest reader. A build older than that refuses to start, and its error
 points at the newest pre-migration copy it can read, or at a backup when no copy exists.
 
+A pause of all of nixie raises the stored oldest reader, the reader gate, so a release that has no
+pause refuses the database with the same error. The transaction that pauses saves the open value in
+`open_oldest_reader` and raises `oldest_reader` to the pause migration's version, and the resume in
+its transaction puts the saved value back. A migration that runs while the gate is closed moves the
+value it would have given `oldest_reader` into `open_oldest_reader`, and never lowers
+`oldest_reader`. At each start, after the migrations, the writer opens a closed gate when no pause
+is stored and closes an open gate when one is. A projection rebuild and a log reset can leave the
+gate and the pause apart, and the start repairs that.
+
 ## Key store IDs
 
 Every ID that keys the key store is random, and never a row number or any other sequence. A restore

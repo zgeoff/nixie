@@ -1,6 +1,7 @@
 # The pause, and the restore that starts paused
 
-- **Status:** draft
+- **Status:** partly built: the pause tables, the records, the reader gate and the claim check are
+  built; the marker, the install, the controls and the trigger check remain
 - **Work items:** [the `holding` marker](https://linear.app/zgeoff/issue/GEO-2561),
   [the pause tables, the reader gate and the claim check](https://linear.app/zgeoff/issue/GEO-2566),
   [the install at the next start](https://linear.app/zgeoff/issue/GEO-2564),
