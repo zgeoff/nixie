@@ -1,33 +1,22 @@
-import type { RecordKind } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import { recordForgetStartedCodec } from '@heynixie/memory';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
+import { probeForgettableRecord } from './probe-forgettable-record';
 import { readRecordForget } from './read-record-forget';
-import type { APIContext, APITables } from './types';
+import type { APIContext } from './types';
 
 interface ForgetTarget {
   readonly thread: string;
   readonly sequence: number;
 }
 
-const forgettableKinds: readonly RecordKind[] = ['owner_message', 'model.reply'];
-
 export async function writeForgetStart(
   tx: Transaction<unknown>,
   context: APIContext,
   input: ForgetTarget,
 ): Promise<number | null> {
-  const target = await tx
-    .$extendTables<APITables>()
-    .selectFrom('records')
-    .select('sequence')
-    .where('sequence', '=', input.sequence)
-    .where('thread', '=', input.thread)
-    .where('kind', 'in', forgettableKinds)
-    .executeTakeFirst();
-
-  if (target === undefined) {
+  if (!(await probeForgettableRecord(tx, input))) {
     return null;
   }
 

@@ -88,9 +88,9 @@ test("it shows the span's messages and replies, a gap where a record has no text
       .getAllByRole('listitem')
       .map((record) => record.textContent),
   ).toStrictEqual([
-    'You · record 4the ladder slipped on the stairs',
+    'You · record 4the ladder slipped on the stairsRemove this record',
     'Record 5: this part is gone. It was forgotten, and the moment keeps its place.',
-    'nixie · record 6Keep it in the shed from now on.',
+    'nixie · record 6Keep it in the shed from now on.Remove this record',
     'Record 7: this part is removed. Its text was deleted, and the moment keeps its place.',
   ]);
 });
@@ -652,4 +652,128 @@ test('it hides the moment once a read finds it destroyed elsewhere', async () =>
 
   expect(gone).toBeVisible();
   expect(rendered.queryByRole('heading', { name: 'The ladder' })).toBeNull();
+});
+
+test('it offers the removal on a message and a reply, and on no tool record or gap', async () => {
+  await createDeviceSession();
+
+  await store.records.create({ sequence: 4, kind: 'owner_message', message: { text: 'ladder' } });
+  await store.records.create({ sequence: 5, kind: 'model.reply', message: { text: 'shed' } });
+  await store.records.create({ sequence: 6, kind: 'owner_message' });
+
+  await store.records.create({
+    sequence: 7,
+    kind: 'tool_called',
+    toolCall: { tool: 'memory.recall' },
+  });
+
+  const moment = await store.moments.create({ firstSequence: 4, lastSequence: 7 });
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const records = await rendered.findByRole('list', { name: 'Records' });
+
+  expect(
+    within(records)
+      .getAllByRole('listitem')
+      .map(
+        (record) => within(record).queryAllByRole('button', { name: 'Remove this record' }).length,
+      ),
+  ).toStrictEqual([1, 1, 0, 0]);
+});
+
+test('it reads the preview on a click, forgets only after the confirm, and then marks the record removed', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.records.create({
+    sequence: 4,
+    kind: 'owner_message',
+    message: { text: 'the ladder slipped' },
+  });
+
+  await store.moments.create({ firstSequence: 4, lastSequence: 4 });
+
+  const moment = await store.moments.create({ firstSequence: 4, lastSequence: 5 });
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const target = await rendered.findByRole('button', { name: 'Remove this record' });
+
+  await ctx.user.click(target);
+
+  const confirm = await rendered.findByRole('button', { name: 'Forget for good' });
+
+  expect(rendered.getByRole('group', { name: 'Forget this message' })).toHaveTextContent(
+    'It is part of 2 moments.',
+  );
+
+  expect(store.forgetActions.all()).toStrictEqual([]);
+
+  await ctx.user.click(confirm);
+
+  await rendered.findByText(
+    'Record 4: this part is removed. Its text was deleted, and the moment keeps its place.',
+  );
+
+  expect(store.forgetActions.all()).toMatchObject([{ sequence: 4, thread: 'conversation' }]);
+});
+
+test('it words the memory sentence only when a memory item quotes the record', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.records.create({ sequence: 4, kind: 'owner_message', message: { text: 'ladder' } });
+
+  await store.memoryItems.create({
+    versions: [
+      { evidence: { end: 3, sequence: 4, start: 0 }, text: 'Keeps the ladder in the shed' },
+    ],
+  });
+
+  const moment = await store.moments.create({ firstSequence: 4, lastSequence: 4 });
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const target = await rendered.findByRole('button', { name: 'Remove this record' });
+
+  await ctx.user.click(target);
+
+  const group = await rendered.findByRole('group', { name: 'Forget this message' });
+
+  await rendered.findByText('Keeps the ladder in the shed');
+
+  expect(group).toHaveTextContent(
+    "These memories stay, but lose their edit history, their quotes of this message, and any suggested changes you haven't answered.",
+  );
+});
+
+test('it shows an error in place of the confirm when the preview fails, and hides the control', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.records.create({ sequence: 4, kind: 'owner_message', message: { text: 'ladder' } });
+
+  const moment = await store.moments.create({ firstSequence: 4, lastSequence: 4 });
+
+  server.use(
+    http.post('*/rpc/conversation/previewForget', () =>
+      HttpResponse.json({ code: 'INTERNAL_SERVER_ERROR' }, { status: 500 }),
+    ),
+  );
+
+  const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
+
+  const target = await rendered.findByRole('button', { name: 'Remove this record' });
+
+  await ctx.user.click(target);
+
+  const alert = await rendered.findByRole('alert');
+
+  expect(alert).toHaveTextContent('The forget could not read what it removes.');
+  expect(rendered.queryByRole('button', { name: 'Forget for good' })).toBeNull();
+  expect(rendered.queryByRole('button', { name: 'Remove this record' })).toBeNull();
 });

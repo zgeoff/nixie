@@ -1,3 +1,4 @@
+import { forgettableKinds } from '@heynixie/contract';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
@@ -10,8 +11,7 @@ export interface RecordItemProps {
   readonly record: LiveRecord;
 }
 
-const forgettableKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
-
+const forgettable: readonly string[] = forgettableKinds;
 const speaker = css({ display: 'block', fontWeight: 'semibold' });
 const message = css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' });
 
@@ -28,7 +28,7 @@ export function RecordItem(props: RecordItemProps): ReactNode {
   }
 
   // A forget that has not finished keeps its control on a removed message, so the owner can try again.
-  const hasControl = forgettableKinds.has(props.record.kind) && (!isRemoved || isForgetOpen);
+  const hasControl = forgettable.includes(props.record.kind) && (!isRemoved || isForgetOpen);
 
   return (
     <li>
@@ -46,11 +46,14 @@ export function RecordItem(props: RecordItemProps): ReactNode {
       {hasControl ? (
         <ForgetControl
           hasText={text !== undefined}
+          kind={props.record.kind}
+          label="Forget"
           onForgotten={() => {
             setForgotten(true);
           }}
           onOpenChange={setForgetOpen}
-          record={props.record}
+          sequence={props.record.sequence}
+          thread={props.record.thread}
         />
       ) : null}
     </li>

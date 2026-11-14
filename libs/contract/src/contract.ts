@@ -171,6 +171,12 @@ const taskStateSchema = z.enum([
 
 const taskControlSchema = z.enum(['pause', 'resume', 'stop', 'restart', 'close', 'interrupt']);
 const actionCountSchema = z.int().nonnegative();
+const forgetPreviewItemSchema = z.object({ itemID: z.string(), text: z.string() });
+
+const recordForgetPreviewSchema = z.object({
+  momentCount: actionCountSchema,
+  memoryItems: z.array(forgetPreviewItemSchema),
+});
 
 const listedTaskSchema = z.object({
   actions: z.object({
@@ -274,6 +280,16 @@ export const contract = {
       .errors({ IMAGE_NOT_FOUND: imageNotFoundError })
       .input(imageRefSchema)
       .output(z.file()),
+
+    previewForget: signedIn
+      .errors({
+        RECORD_NOT_FOUND: {
+          message: 'No message or reply on this thread has this sequence',
+          status: 404,
+        },
+      })
+      .input(z.object({ thread: threadSchema, sequence: sequenceSchema }))
+      .output(recordForgetPreviewSchema),
 
     forget: checkedAction
       .errors({

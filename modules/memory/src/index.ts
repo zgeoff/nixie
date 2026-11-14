@@ -192,3 +192,6 @@ export { recordForgetStartedCodec } from './record-forget-started-codec';
 export { readAllRemovedSequences } from './read-all-removed-sequences';
 export { readRemovedSequences } from './read-removed-sequences';
 export { recordForgottenCodec } from './record-forgotten-codec';
+export { readPurgeSet } from './read-purge-set';
+export type { RecordForgetPreview, RecordForgetTarget } from './read-record-forget-preview';
+export { readRecordForgetPreview } from './read-record-forget-preview';
