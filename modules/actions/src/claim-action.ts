@@ -1,5 +1,5 @@
 import type { Lease, TasksContext } from '@heynixie/tasks';
-import { claimLease } from '@heynixie/tasks';
+import { buildPauseCheck, claimLease } from '@heynixie/tasks';
 import { sql } from 'kysely';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
@@ -28,17 +28,18 @@ export function claimAction(
             .onRef('leases.work_id', '=', 'actions.action_id'),
         )
         .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
-        .select('actions.action_id')
+        .select(['actions.action_id', 'actions.task_id'])
         .where('actions.status', '=', 'pending')
         .where((eb) => eb.not(buildCancelledCheck(eb)))
         .where('actions.next_attempt_at', '<=', now)
+        .where((eb) => buildPauseCheck(eb, 'actions.task_id'))
         .where((eb) => eb.not(buildHeldCheck(eb)))
         .where((eb) => eb.or([eb('leases.holder', 'is', null), eb('leases.expires_at', '<=', now)]))
         .orderBy('actions.next_attempt_at')
         .limit(1)
         .executeTakeFirst();
 
-      return row?.action_id ?? null;
+      return row === undefined ? null : { workID: row.action_id, taskID: row.task_id };
     },
   });
 }

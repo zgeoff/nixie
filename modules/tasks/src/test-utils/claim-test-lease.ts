@@ -17,7 +17,7 @@ export async function claimTestLease(
     kind: request.kind,
     holder: request.holder,
     durationMs: request.durationMs,
-    readCandidate: () => Promise.resolve(request.workID),
+    readCandidate: () => Promise.resolve({ workID: request.workID, taskID: request.workID }),
   });
 
   invariant(lease);

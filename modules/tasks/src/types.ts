@@ -261,9 +261,22 @@ interface TaskMessageTable {
   readonly sent_sequence: number;
 }
 
+interface PauseTable {
+  readonly id: number;
+}
+
+interface PauseExemptionTable {
+  readonly task_id: string;
+}
+
 export type TaskRow = TaskTable;
 
 // Kysely's table map needs an index signature, which an interface lacks.
+export interface ClaimCandidate {
+  readonly workID: string;
+  readonly taskID: string;
+}
+
 export type TasksTables = CheckedTables<
   Readonly<{
     tasks: TaskTable;
@@ -271,6 +284,8 @@ export type TasksTables = CheckedTables<
     leases: LeaseTable;
     records: InboxRecordTable;
     task_messages: TaskMessageTable;
+    nixie_pause: PauseTable;
+    pause_exemptions: PauseExemptionTable;
   }>,
-  'records'
+  'records' | 'nixie_pause' | 'pause_exemptions'
 >;

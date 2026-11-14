@@ -48,7 +48,7 @@ test('it publishes the batch and advances the cursor with its record', async () 
     kind: 'task',
     holder: 'runner-1',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('memory-writer'),
+    readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
   });
 
   invariant(lease);
@@ -97,7 +97,7 @@ test('it returns superseded when an item moved on since the session read it', as
     kind: 'task',
     holder: 'runner-1',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('memory-writer'),
+    readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
   });
 
   invariant(lease);
@@ -169,7 +169,7 @@ test('it returns superseded when the checker passed a write under definitions th
     kind: 'task',
     holder: 'runner-1',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('memory-writer'),
+    readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
   });
 
   invariant(lease);
@@ -240,7 +240,7 @@ test('it returns superseded when an item a proposal names was forgotten since th
     kind: 'task',
     holder: 'runner-1',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('memory-writer'),
+    readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
   });
 
   invariant(lease);
@@ -309,7 +309,7 @@ test('it rejects a publish whose lease another claim replaced', async () => {
     kind: 'task',
     holder: 'runner-1',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('memory-writer'),
+    readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
   });
 
   invariant(lease);

@@ -5,6 +5,7 @@ import { planBackoffDelay } from '@heynixie/retry';
 import type { Lease, TasksContext } from '@heynixie/tasks';
 import {
   LeaseLostError,
+  probeTaskPaused,
   requireLease,
   resetLease,
   startLeaseRenewal,
@@ -163,9 +164,9 @@ async function readArguments(context: TasksContext, sequence: number): Promise<J
   return isJSONObject(args) ? args : null;
 }
 
-// A stop, a pause or a close can commit between the claim and the attempt's start, so the start
-// reads the cancel and the hold again in its own transaction, and frees the lease of an action that
-// must not start.
+// A stop, a pause, a close or a pause of all of nixie can commit between the claim and the attempt's
+// start, so the start reads the cancel, the hold and the nixie pause again in its own transaction,
+// and frees the lease of an action that must not start.
 async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Promise<boolean> {
   const isStarted = await withWriteTransaction(context.log.writer, async (tx) => {
     await requireLease(tx, attempt.lease, context.clock.now());
@@ -178,7 +179,11 @@ async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Pro
       .where('actions.action_id', '=', attempt.action.action_id)
       .executeTakeFirstOrThrow();
 
-    if (action.is_barred === 1 || action.is_barred === true) {
+    const isPaused = await probeTaskPaused(tx, attempt.action.task_id);
+
+    const isBarred = action.is_barred === 1 || action.is_barred === true;
+
+    if (isBarred || isPaused) {
       await resetLease(tx, attempt.lease);
 
       return false;

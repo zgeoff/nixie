@@ -1,7 +1,14 @@
 import { expect, test } from 'bun:test';
+import {
+  exemptTaskInTransaction,
+  pauseNixieInTransaction,
+  resumeNixieInTransaction,
+  withWriteTransaction,
+} from '@heynixie/log';
 import { writeStepCommit, writeTaskControl } from '@heynixie/tasks';
 import { claimAction } from './claim-action';
 import { createAllowedAction } from './create-allowed-action';
+import { buildActionSeeder } from './test-utils/build-action-seeder';
 import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables } from './types';
@@ -10,7 +17,35 @@ import { waitForActionOutcome } from './wait-for-action-outcome';
 async function setupTest() {
   const actions = await startTestActions();
 
-  return { ...actions, db: actions.writer.db.$extendTables<ActionsTables>() };
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  return {
+    ...actions,
+    db: actions.writer.db.$extendTables<ActionsTables>(),
+    seed: buildActionSeeder({ context: actions.context }),
+    definitions,
+    pauseNixie: () =>
+      withWriteTransaction(actions.writer, (tx) =>
+        pauseNixieInTransaction(tx, actions.context.log, {
+          cause: 'owner',
+          recoveryID: null,
+          by: 'session-a',
+          definitions,
+        }),
+      ),
+    resumeNixie: () =>
+      withWriteTransaction(actions.writer, (tx) =>
+        resumeNixieInTransaction(tx, actions.context.log, { by: 'session-a', definitions }),
+      ),
+    exemptTask: (taskID: string) =>
+      withWriteTransaction(actions.writer, (tx) =>
+        exemptTaskInTransaction(tx, actions.context.log, {
+          taskID,
+          by: 'session-a',
+          definitions,
+        }),
+      ),
+  };
 }
 
 test('it claims a due pending action with an action lease at generation 1', async () => {
@@ -202,4 +237,49 @@ test('it claims an action with a started attempt while its task is paused', asyn
   const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
   expect(lease?.workID).toBe(queued.actionID);
+});
+
+test('it claims no queued action while nixie is paused', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await ctx.seed.action({ step });
+  await ctx.pauseNixie();
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease).toBeNull();
+});
+
+test('it claims no action with a started attempt and a due retry while nixie is paused', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await ctx.seed.pendingRetryScheduledAction({ step });
+  await ctx.pauseNixie();
+
+  ctx.clock.advance(3_600_000);
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease).toBeNull();
+});
+
+test('it claims the action of an exempt task while nixie is paused, though a paused task has the earlier action', async () => {
+  const ctx = await setupTest();
+  const pausedStep = await createTestStep(ctx.context);
+
+  await ctx.seed.action({ step: pausedStep });
+
+  ctx.clock.advance(1000);
+
+  const exemptStep = await createTestStep(ctx.context);
+  const exempt = await ctx.seed.action({ step: exemptStep });
+
+  await ctx.pauseNixie();
+  await ctx.exemptTask(exemptStep.lease.workID);
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease?.workID).toBe(exempt.action_id);
 });

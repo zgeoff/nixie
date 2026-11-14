@@ -1,6 +1,7 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import type { Lease, LeaseKind, TasksContext, TasksTables } from './types';
+import { probeTaskPaused } from './probe-task-paused';
+import type { ClaimCandidate, Lease, LeaseKind, TasksContext, TasksTables } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
 export interface ClaimRequest {
@@ -8,7 +9,7 @@ export interface ClaimRequest {
   readonly holder: string;
   readonly durationMs: number;
 
-  readonly readCandidate: (tx: Transaction<unknown>, now: number) => Promise<string | null>;
+  readonly readCandidate: (tx: Transaction<unknown>, now: number) => Promise<ClaimCandidate | null>;
 
   readonly onClaim?: (tx: Transaction<unknown>, lease: Lease) => Promise<void>;
 }
@@ -20,15 +21,21 @@ export async function claimLease(
   const lease = await withWriteTransaction(context.log.writer, async (tx) => {
     const now = context.clock.now();
 
-    const workID = await request.readCandidate(tx, now);
+    const candidate = await request.readCandidate(tx, now);
 
-    if (workID === null) {
+    if (candidate === null) {
+      return null;
+    }
+
+    const isRefused = await probeRefusalAsPaused(tx, candidate);
+
+    if (isRefused) {
       return null;
     }
 
     const held = await upsertLease(tx, {
       kind: request.kind,
-      workID,
+      workID: candidate.workID,
       holder: request.holder,
       epoch: context.log.writer.epoch,
       expiresAt: now + request.durationMs,
@@ -47,6 +54,21 @@ export async function claimLease(
   }
 
   return lease;
+}
+
+async function probeRefusalAsPaused(
+  tx: Transaction<unknown>,
+  candidate: ClaimCandidate,
+): Promise<boolean> {
+  const isPaused = await probeTaskPaused(tx, candidate.taskID);
+
+  if (isPaused && NIXIE_TEST_BUILD) {
+    throw new Error(
+      `a candidate query returned work ${candidate.workID} of task ${candidate.taskID}, which nixie's pause stops`,
+    );
+  }
+
+  return isPaused;
 }
 
 type LeaseClaim = Omit<Lease, 'generation'> & { readonly now: number };
