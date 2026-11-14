@@ -2,21 +2,54 @@ import { mkdir } from 'node:fs/promises';
 import type { SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, SessionPoint } from '@heynixie/wire';
+import type { RequestRewriter } from '../rewrite/start-request-rewriter';
+import { startRequestRewriter } from '../rewrite/start-request-rewriter';
+import { waitForRefusal } from '../rewrite/wait-for-refusal';
 import type { TurnDependencies } from '../types';
 import type { SummarizeFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
 
-export type SummaryDependencies = Pick<TurnDependencies, 'env' | 'emit' | 'runQuery'>;
+export type SummaryDependencies = Pick<TurnDependencies, 'env' | 'emit' | 'runQuery' | 'rewriter'>;
 
 export async function runSummary(frame: SummarizeFrame, deps: SummaryDependencies): Promise<void> {
-  const options = buildQueryOptions(frame, { env: deps.env, toolServer: null });
+  let rewriter: RequestRewriter | null;
+
+  try {
+    rewriter = startRequestRewriter(frame, deps.rewriter);
+  } catch (error) {
+    await deps.emit({
+      type: 'failed',
+      reason: 'error',
+      detail: `the request rewriter could not start: ${String(error)}`,
+    });
+
+    return;
+  }
+
+  try {
+    await runSummaryThrough(frame, deps, rewriter);
+  } finally {
+    await rewriter?.stop();
+  }
+}
+
+async function runSummaryThrough(
+  frame: SummarizeFrame,
+  deps: SummaryDependencies,
+  rewriter: RequestRewriter | null,
+): Promise<void> {
+  const options = buildQueryOptions(frame, {
+    env: deps.env,
+    toolServer: null,
+    ...(rewriter === null ? {} : { rewriterURL: rewriter.url }),
+  });
 
   await mkdir(options.cwd ?? '', { recursive: true });
 
   const session = (deps.runQuery ?? query)({ prompt: frame.instruction, options });
 
   try {
-    const summary = await readSummaryFrame(session);
+    const summary = await readSummaryFrame(session, rewriter);
 
     await deps.emit(summary);
   } finally {
@@ -32,11 +65,26 @@ interface SummaryState {
   boundary: SessionPoint | null;
 }
 
-async function readSummaryFrame(session: AsyncIterable<SDKMessage>): Promise<GuestFrame> {
+async function readSummaryFrame(
+  session: AsyncIterable<SDKMessage>,
+  rewriter: RequestRewriter | null,
+): Promise<GuestFrame> {
   const state: SummaryState = { texts: [], boundary: null };
+  const messages = session[Symbol.asyncIterator]();
+  const refused = waitForRefusal(rewriter);
 
-  for await (const message of session) {
-    const frame = collectSummaryFrame(message, state);
+  for (;;) {
+    const next = await Promise.race([messages.next(), refused]);
+
+    if ('refusal' in next) {
+      return { type: 'failed', reason: 'error', detail: next.refusal };
+    }
+
+    if (next.done === true) {
+      break;
+    }
+
+    const frame = collectSummaryFrame(next.value, state);
 
     if (frame !== null) {
       return frame;

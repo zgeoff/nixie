@@ -1268,6 +1268,7 @@ test('it answers a check in a checker sandbox with the queued answer, then fails
       authHeader: 'x-api-key',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
     },
     systemPrompt: 'You check one candidate memory.',
     input: '<owner_message>\nI swim on Fridays\n</owner_message>',

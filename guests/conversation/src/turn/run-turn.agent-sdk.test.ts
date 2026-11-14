@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, readdir, readlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
@@ -1537,4 +1538,91 @@ test('it keeps only the session it resumes and the fork it writes on the guest d
   expect(
     files.filter((path) => path.endsWith('.jsonl')).map((path) => basename(path)),
   ).toIncludeSameMembers([`${second.sessionID}.jsonl`, `${third.sessionID}.jsonl`]);
+});
+
+test('it gives the model nixie’s system prompt alone and the provider order on a turn outside Claude', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'hello' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: {
+        baseURL: ctx.model.url,
+        model: 'glm-test-1',
+        requestRewrite: { providerPin: 'z-ai' },
+      },
+      systemPrompt: 'You are nixie.',
+    }),
+    ctx.deps,
+  );
+
+  const body = ctx.model.requests.at(-1)?.body;
+
+  expect(ctx.frames.map((frame) => frame.type)).toContain('ended');
+
+  expect(body?.system).toStrictEqual([
+    { type: 'text', text: 'You are nixie.', cache_control: { type: 'ephemeral' } },
+  ]);
+
+  expect(body).toMatchObject({ provider: { order: ['z-ai'], allow_fallbacks: false } });
+});
+
+test('it sends one failed frame with the refusal text when the rewriter refuses a request of a turn', async () => {
+  const ctx = await setupTest();
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: {
+        baseURL: ctx.model.url,
+        model: 'glm-test-1',
+        requestRewrite: { providerPin: null },
+      },
+      systemPrompt: 'You are nixie.',
+    }),
+    {
+      ...ctx.deps,
+      runQuery: (params) =>
+        query({
+          ...params,
+          options: { ...params.options, systemPrompt: 'You are somebody else.' },
+        }),
+    },
+  );
+
+  expect(ctx.frames).toStrictEqual([
+    {
+      type: 'failed',
+      reason: 'error',
+      detail:
+        "nixie refused a model request to glm-test-1: no tail of its 3 system blocks equals nixie's system prompt, so nixie cannot show that the CLI's blocks are gone",
+    },
+  ]);
+
+  expect(ctx.model.requests).toStrictEqual([]);
+});
+
+test('it sends failed with the bind error and starts no CLI when the rewriter cannot bind', async () => {
+  const ctx = await setupTest();
+
+  const taken = startStubModel();
+
+  onTestFinished(() => taken.stop());
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url, requestRewrite: { providerPin: null } },
+    }),
+    { ...ctx.deps, rewriter: { port: Number(new URL(taken.url).port) } },
+  );
+
+  expect(ctx.frames).toStrictEqual([
+    {
+      type: 'failed',
+      reason: 'error',
+      detail: expect.toStartWith('the request rewriter could not start'),
+    },
+  ]);
+
+  expect(ctx.recorder.options).toStrictEqual([]);
 });

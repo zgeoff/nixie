@@ -32,6 +32,7 @@ test('it answers a turn frame with the script frames, then exits', async () => {
         authHeader: 'x-api-key',
         contextTokens: null,
         cacheTTL: '5m',
+        requestRewrite: null,
       },
       tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
       resume: null,

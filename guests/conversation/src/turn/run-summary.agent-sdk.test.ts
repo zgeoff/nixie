@@ -1,6 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame } from '@heynixie/wire';
 import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
@@ -226,4 +227,76 @@ test('it keeps the session it forked from on the guest disk', async () => {
   const forkedFrom = ended.boundary.sessionID;
 
   expect(files).toSatisfyAny((path: string) => path.endsWith(`/${forkedFrom}.jsonl`));
+});
+
+test('it sends one failed frame with the refusal text when the rewriter refuses the request of a summary', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'hello' });
+
+  await runTurn(
+    buildMockTurnFrame({ profile: { baseURL: ctx.model.url }, systemPrompt: 'You are nixie.' }),
+    { ...ctx.io, toolServer: createStubToolServer().config, messages: [] },
+  );
+
+  const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
+
+  invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
+  invariant(ended.boundary, 'the turn the summary forks from sent no session point');
+
+  const requestCount = ctx.model.requests.length;
+
+  await runSummary(
+    buildMockSummarizeFrame({
+      profile: {
+        baseURL: ctx.model.url,
+        model: 'glm-test-1',
+        requestRewrite: { providerPin: null },
+      },
+      systemPrompt: 'You are nixie.',
+      resume: ended.boundary,
+    }),
+    {
+      ...ctx.io,
+      runQuery: (params) =>
+        query({
+          ...params,
+          options: { ...params.options, systemPrompt: 'You are somebody else.' },
+        }),
+    },
+  );
+
+  expect(ctx.io.frames).toStrictEqual([
+    {
+      type: 'failed',
+      reason: 'error',
+      detail:
+        "nixie refused a model request to glm-test-1: no tail of its 3 system blocks equals nixie's system prompt, so nixie cannot show that the CLI's blocks are gone",
+    },
+  ]);
+
+  expect(ctx.model.requests).toHaveLength(requestCount);
+});
+
+test('it sends failed with the bind error when the rewriter of a summary cannot bind', async () => {
+  const ctx = await setupTest();
+
+  const taken = startStubModel();
+
+  onTestFinished(() => taken.stop());
+
+  await runSummary(
+    buildMockSummarizeFrame({
+      profile: { baseURL: ctx.model.url, requestRewrite: { providerPin: null } },
+    }),
+    { ...ctx.io, rewriter: { port: Number(new URL(taken.url).port) } },
+  );
+
+  expect(ctx.io.frames).toStrictEqual([
+    {
+      type: 'failed',
+      reason: 'error',
+      detail: expect.toStartWith('the request rewriter could not start'),
+    },
+  ]);
 });

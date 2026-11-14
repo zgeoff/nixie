@@ -17,6 +17,7 @@ test('it answers each summary call with the next answer in order', async () => {
       authHeader: 'x-api-key',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
     },
     resume: {
       harness: 'agent-sdk',
@@ -50,6 +51,7 @@ test('it throws on a summary call past the last answer', () => {
         authHeader: 'x-api-key',
         contextTokens: null,
         cacheTTL: '5m',
+        requestRewrite: null,
       },
       resume: {
         harness: 'agent-sdk',

@@ -1614,3 +1614,53 @@ test('it answers the capture ask with a 405 to a method other than GET', async (
   expect(response.status).toBe(405);
   expect(body).toMatchObject({ type: 'error', error: { type: 'invalid_request_error' } });
 });
+
+test.each([
+  ['a Claude route', 'claude', '{ "model":"model-small",  "system":[{"type":"text","text":"a"}] }'],
+  [
+    'a route outside Claude, with its provider order',
+    'router',
+    '{"model":"model-small","system":[{"type":"text","text":"a"}],"provider":{"order":["z-ai"],"allow_fallbacks":false}}',
+  ],
+])('it sends the body of %s upstream byte for byte', async (_label, route, bodyText) => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const sent: Uint8Array[] = [];
+  const prices = { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 };
+
+  const handler = makeProxyHandler({
+    routes: {
+      claude: {
+        api: 'anthropic-messages',
+        upstream: 'http://model.test',
+        model: 'model-small',
+        prices,
+      },
+      router: {
+        api: 'anthropic-messages',
+        upstream: 'http://router.test',
+        model: 'model-small',
+        prices,
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store: await createCounterStore(ctx.storePath),
+    capture: null,
+    sendUpstream: async (_url, init) => {
+      const bytes = await new Response(init.body).arrayBuffer();
+
+      sent.push(new Uint8Array(bytes));
+
+      return Response.json({ usage: { input_tokens: 3, output_tokens: 2 } });
+    },
+    log: ctx.log,
+  });
+
+  const body = new TextEncoder().encode(bodyText);
+
+  await handler(new Request(`http://proxy.test/${route}/v1/messages`, { method: 'POST', body }));
+
+  expect(sent).toStrictEqual([body]);
+});

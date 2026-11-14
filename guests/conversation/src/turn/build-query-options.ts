@@ -15,6 +15,10 @@ export interface QueryContext {
   readonly env: Readonly<Record<string, string | undefined>>;
 
   readonly toolServer: McpServerConfig | null;
+
+  // the URL of the request rewriter that the CLI sends its requests to, in place of the profile's
+  // base URL
+  readonly rewriterURL?: string;
 }
 
 export function buildQueryOptions(
@@ -50,7 +54,7 @@ export function buildQueryOptions(
     mcpServers: buildMcpServers(turn, context.toolServer),
     systemPrompt: { type: 'custom', prompt: turn.systemPrompt, snapshot: false },
     cwd: getWorkDir(home),
-    env: buildQueryEnv(turn, context.env, home),
+    env: buildQueryEnv(turn, context, home),
     ...(resume === null
       ? {}
       : {
@@ -109,9 +113,10 @@ const credentialVariables = {
 
 function buildQueryEnv(
   turn: Pick<TurnFrame, 'profile'>,
-  env: Readonly<Record<string, string | undefined>>,
+  context: Pick<QueryContext, 'env' | 'rewriterURL'>,
   home: string,
 ): Record<string, string> {
+  const env = context.env;
   const credentialVariable = credentialVariables[turn.profile.authHeader];
   const placeholder = env[credentialVariable];
 
@@ -134,7 +139,13 @@ function buildQueryEnv(
     HOME: home,
     CLAUDE_CONFIG_DIR: getConfigDir(home),
     [credentialVariable]: placeholder,
-    ANTHROPIC_BASE_URL: turn.profile.baseURL,
+    ...(context.rewriterURL === undefined
+      ? {}
+      : {
+          NO_PROXY: appendLoopback(env['NO_PROXY']),
+          no_proxy: appendLoopback(env['no_proxy']),
+        }),
+    ANTHROPIC_BASE_URL: context.rewriterURL ?? turn.profile.baseURL,
     ANTHROPIC_MODEL: turn.profile.model,
 
     // The CLI's background calls name a small model, which an endpoint that serves one model lacks.
@@ -154,4 +165,9 @@ function buildQueryEnv(
     MAX_MCP_OUTPUT_TOKENS: String(toolOutputLimitTokens),
     ENABLE_MCP_LARGE_OUTPUT_FILES: '0',
   };
+}
+
+// The CLI reaches the request rewriter on loopback, which the sandbox's proxy must not carry.
+function appendLoopback(noProxy: string | undefined): string {
+  return [noProxy, '127.0.0.1'].filter((entry) => entry !== undefined && entry !== '').join(',');
 }

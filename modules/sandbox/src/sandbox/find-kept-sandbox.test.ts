@@ -25,3 +25,10 @@ test('it keeps the sandbox that replaced a retired one with the same spec', () =
 
   expect(findKeptSandbox([retired, replacement], spec)).toBe(replacement);
 });
+
+test("it keeps no sandbox whose spec holds another release's guest image", () => {
+  const spec = buildMockSandboxSpec({ image: 'conversation:release-1' });
+  const started = buildMockSandbox({ spec });
+
+  expect(findKeptSandbox([started], { ...spec, image: 'conversation:release-2' })).toBeUndefined();
+});
