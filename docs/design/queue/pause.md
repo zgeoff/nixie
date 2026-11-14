@@ -1,6 +1,7 @@
 # The pause, and the restore that starts paused
 
-- **Status:** draft
+- **Status:** partly built: the pause tables, the records, the reader gate and the claim check are
+  built; the marker, the install, the controls and the trigger check remain
 - **Work items:** [the `holding` marker](https://linear.app/zgeoff/issue/GEO-2561),
   [the pause tables, the reader gate and the claim check](https://linear.app/zgeoff/issue/GEO-2566),
   [the install at the next start](https://linear.app/zgeoff/issue/GEO-2564),
@@ -240,8 +241,8 @@ declare function buildPauseCheck(
 
 // tasks module, exported: takes the caller's transaction
 // true when nixie is paused and the task is not exempt; a task's own pause is not part of it
-const paused = await isTaskPaused(tx, '7c1d2e9a'); // → true
-declare function isTaskPaused(tx: Transaction<unknown>, taskID: string): Promise<boolean>;
+const paused = await probeTaskPaused(tx, '7c1d2e9a'); // → true
+declare function probeTaskPaused(tx: Transaction<unknown>, taskID: string): Promise<boolean>;
 ```
 
 ### The install at the next start
@@ -345,8 +346,8 @@ type RestorePauseFaultPoint =
 
 - While nixie is paused, `deliverTriggerBatch` writes nothing, takes no key and counts in no
   `delivered` a schedule event whose task is paused: the definition's task, or the conversation for
-  `target: conversation`. It reads `isTaskPaused` before rows 4 to 6 of its table. The definition's
-  watermark stays where it was.
+  `target: conversation`. It reads `probeTaskPaused` before rows 4 to 6 of its table. The
+  definition's watermark stays where it was.
 - The source delivers the same events at its next tick. So the first tick after the resume, or after
   you resume that task, finds each missed fire late, and the catch-up rule of
   [triggers](triggers.md#decisions) decides: one catch-up within half the interval, and a `too_late`
@@ -384,10 +385,10 @@ type RestorePauseFaultPoint =
   queries.
 - The action query's filter has no `attempt_count = 0` condition, so it covers an action with a
   started attempt.
-- The attempt start refuses an action whose task is paused, with `isTaskPaused` in the transaction
-  that writes the attempt record, as it refuses an action that a stop cancelled after its claim. A
-  pause between the claim and the attempt then starts no attempt. The refused action stays pending,
-  and its next claim after the resume, or after you resume its task, starts it.
+- The attempt start refuses an action whose task is paused, with `probeTaskPaused` in the
+  transaction that writes the attempt record, as it refuses an action that a stop cancelled after
+  its claim. A pause between the claim and the attempt then starts no attempt. The refused action
+  stays pending, and its next claim after the resume, or after you resume its task, starts it.
 - The pause check sits before the write of `task.run_opened` that the task run records add to the
   claim's transaction. Whichever of the two lands second keeps that order.
 

@@ -22,7 +22,7 @@ export async function seedFailedAction(
     kind: 'action',
     holder: 'seed',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve(queued.action_id),
+    readCandidate: () => Promise.resolve({ workID: queued.action_id, taskID: queued.task_id }),
   });
 
   invariant(lease);

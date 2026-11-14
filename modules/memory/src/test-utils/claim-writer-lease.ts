@@ -9,7 +9,8 @@ export async function claimWriterLease(
     kind: 'task',
     holder: 'runner-1',
     durationMs: 3_600_000,
-    readCandidate: () => Promise.resolve(memoryWriterTaskID),
+    readCandidate: () =>
+      Promise.resolve({ workID: memoryWriterTaskID, taskID: memoryWriterTaskID }),
   });
 
   if (lease === null) {

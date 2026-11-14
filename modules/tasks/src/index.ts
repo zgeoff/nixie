@@ -20,7 +20,9 @@ export { taskExchangeLimitedCodec } from './task-exchange-limited-codec';
 export { taskMessageCodec } from './task-message-codec';
 export type { TaskMessageOutcome } from './write-task-message';
 export { writeTaskMessage } from './write-task-message';
+export { buildPauseCheck } from './build-pause-check';
 export type { ClaimRequest } from './claim-lease';
+export { probeTaskPaused } from './probe-task-paused';
 export { claimLease } from './claim-lease';
 export type { ClaimTaskOptions } from './claim-task';
 export { claimTask } from './claim-task';
@@ -94,6 +96,7 @@ export type {
   FaultPointContext,
   FaultPointHandler,
   FaultPointID,
+  ClaimCandidate,
   Lease,
   LeaseKind,
   RunStep,

@@ -8,6 +8,9 @@ test('it starts a writer whose log folds the tasks projections, on a test clock'
 
   expect(ctx.context.log.projections.map((projection) => projection.table)).toStrictEqual([
     'threads',
+    'nixie_pause',
+    'pause_exemptions',
+    'recoveries',
     'tasks',
     'timers',
     'task_messages',

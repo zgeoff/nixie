@@ -3,10 +3,15 @@ import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Migration } from '@heynixie/db';
+import { reopenToOlderReaders } from '@heynixie/db';
 import { sql } from 'kysely';
 import { claimWriterLock } from './claim-writer-lock';
 import { localDataStorage } from './local-data-storage';
+import { pauseNixieInTransaction } from './pause-nixie-in-transaction';
+import { runLogReset } from './run-log-reset';
 import { startWriter } from './start-writer';
+import { startTestLog } from './test-utils/start-test-log';
+import { withWriteTransaction } from './with-write-transaction';
 
 async function setupTest() {
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-writer-'));
@@ -273,4 +278,62 @@ test('it opens the key store as keys.db beside nixie.db, with secure delete on',
   expect(secureDelete.rows).toStrictEqual([{ secure_delete: 1 }]);
   expect(tables.rows).toStrictEqual([{ name: 'record_keys' }]);
   expect(names).toIncludeAllMembers(['keys.db', 'nixie.db']);
+});
+
+test('it opens a closed reader gate at the next start after a log reset removed the pause', async () => {
+  const log = await startTestLog();
+
+  await withWriteTransaction(log.writer, (tx) =>
+    pauseNixieInTransaction(tx, log.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: 'session-a',
+      definitions: { snapshotHash: 'sha256:aa11' },
+    }),
+  );
+
+  await runLogReset(log.log, {
+    keptTables: [],
+    readKept: () => Promise.resolve(null),
+    writeFirstRecords: () => Promise.resolve(),
+  });
+
+  await log.writer.stop();
+
+  const writer = await startWriter({ dataDir: log.dataDir });
+
+  onTestFinished(() => writer.stop());
+
+  const gate = await sql`select oldest_reader, open_oldest_reader from schema_version`.execute(
+    writer.db,
+  );
+
+  expect(gate.rows).toStrictEqual([{ oldest_reader: 35, open_oldest_reader: null }]);
+});
+
+test('it closes the reader gate at the next start while nixie is paused', async () => {
+  const log = await startTestLog();
+
+  await withWriteTransaction(log.writer, async (tx) => {
+    await pauseNixieInTransaction(tx, log.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: 'session-a',
+      definitions: { snapshotHash: 'sha256:aa11' },
+    });
+
+    await reopenToOlderReaders(tx);
+  });
+
+  await log.writer.stop();
+
+  const writer = await startWriter({ dataDir: log.dataDir });
+
+  onTestFinished(() => writer.stop());
+
+  const gate = await sql`select oldest_reader, open_oldest_reader from schema_version`.execute(
+    writer.db,
+  );
+
+  expect(gate.rows).toStrictEqual([{ oldest_reader: 45, open_oldest_reader: 35 }]);
 });

@@ -277,6 +277,16 @@ export interface NixieTables {
     readonly edited_at: number | null;
     readonly updated_sequence: number;
   };
+  readonly nixie_pause: {
+    readonly id: number;
+    readonly cause: string;
+    readonly recovery_id: string | null;
+    readonly paused_sequence: number;
+  };
+  readonly pause_exemptions: {
+    readonly task_id: string;
+    readonly exempt_sequence: number;
+  };
   readonly personas: {
     readonly persona_version: string;
     readonly instructions: string;
@@ -354,6 +364,12 @@ export interface NixieTables {
     readonly payload: string;
     readonly key_id: string | null;
     readonly sealed: Uint8Array<ArrayBuffer> | null;
+  };
+  readonly recoveries: {
+    readonly recovery_id: string;
+    readonly restored_at: number;
+    readonly backup_taken_at: number;
+    readonly started_sequence: number;
   };
   readonly refusals: {
     readonly refusal_key: string;

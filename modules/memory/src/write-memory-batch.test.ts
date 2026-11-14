@@ -26,7 +26,7 @@ test('it publishes an applied write as a version the writer made', async () => {
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -90,7 +90,7 @@ test('it publishes every item the writer creates as a fact, never a self-note', 
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -141,7 +141,7 @@ test('it publishes a proposal records and counts the proposal', async () => {
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -204,7 +204,7 @@ test('it rejects a batch whose proposal names an item that moved on since the se
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -268,7 +268,7 @@ test('it advances the cursor with the batch own records in the same publish', as
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -317,7 +317,7 @@ test('it leaves out a write whose source was forgotten and counts it', async () 
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -376,7 +376,7 @@ test('it keeps a flag whose source is readable, and leaves out one whose source 
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -423,7 +423,7 @@ test('it applies a shared write as a shared item', async () => {
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -477,7 +477,7 @@ test('it returns superseded for a batch the cursor no longer waits on', async ()
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -527,7 +527,7 @@ test('it rejects a publish under a lease another claim replaced', async () => {
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -558,7 +558,7 @@ test('it rejects a publish after the lease expired', async () => {
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -591,7 +591,7 @@ test('it rejects a publish whose lease expired while it waited for the delivery 
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 
@@ -651,7 +651,7 @@ test('it leaves out a write whose message backed an item forgotten after the gat
       kind: 'task',
       holder: 'runner-1',
       durationMs: 60_000,
-      readCandidate: () => Promise.resolve('memory-writer'),
+      readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
     },
   );
 

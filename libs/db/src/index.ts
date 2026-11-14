@@ -1,4 +1,5 @@
 export { buildShortIDFromUUID } from './build-short-id-from-uuid';
+export { closeToOlderReaders } from './close-to-older-readers';
 export { createDatabaseCopy } from './create-database-copy';
 export { createShortID } from './create-short-id';
 export { DatabaseError } from './database-error';
@@ -19,3 +20,6 @@ export type { MemorySubjectCounts, SubjectCount } from './read-memory-subject-co
 export { readMemorySubjectCounts } from './read-memory-subject-counts';
 export type { SubjectMigrationReport } from './run-subject-migration-dry-run';
 export { runSubjectMigrationDryRun } from './run-subject-migration-dry-run';
+export { pauseMigrationVersion } from './pause-migration-version';
+export { reopenToOlderReaders } from './reopen-to-older-readers';
+export { syncPauseGate } from './sync-pause-gate';

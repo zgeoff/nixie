@@ -1,8 +1,15 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import {
+  exemptTaskInTransaction,
+  pauseNixieInTransaction,
+  readRecords,
+  resumeNixieInTransaction,
+  withWriteTransaction,
+} from '@heynixie/log';
 import { setFaultPointHandler, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
 import { readTestLeases } from '@heynixie/tasks/test-utils';
 import { createAllowedAction, runActionAttempt } from './index';
+import { buildActionSeeder } from './test-utils/build-action-seeder';
 import { buildStubConnector } from './test-utils/build-stub-connector';
 import { claimTestAction } from './test-utils/claim-test-action';
 import { createTestStep } from './test-utils/create-test-step';
@@ -13,7 +20,35 @@ import type { ActionsTables } from './types';
 async function setupTest() {
   const actions = await startTestActions();
 
-  return { ...actions, db: actions.writer.db.$extendTables<ActionsTables>() };
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  return {
+    ...actions,
+    db: actions.writer.db.$extendTables<ActionsTables>(),
+    seed: buildActionSeeder({ context: actions.context }),
+    definitions,
+    pauseNixie: () =>
+      withWriteTransaction(actions.writer, (tx) =>
+        pauseNixieInTransaction(tx, actions.context.log, {
+          cause: 'owner',
+          recoveryID: null,
+          by: 'session-a',
+          definitions,
+        }),
+      ),
+    resumeNixie: () =>
+      withWriteTransaction(actions.writer, (tx) =>
+        resumeNixieInTransaction(tx, actions.context.log, { by: 'session-a', definitions }),
+      ),
+    exemptTask: (taskID: string) =>
+      withWriteTransaction(actions.writer, (tx) =>
+        exemptTaskInTransaction(tx, actions.context.log, {
+          taskID,
+          by: 'session-a',
+          definitions,
+        }),
+      ),
+  };
 }
 
 test('it calls the provider with the action ID as the idempotency key', async () => {
@@ -402,4 +437,65 @@ test('it reaches each attempt fault point in order', async () => {
     'attempt.result.after',
     'inbox.write.after',
   ]);
+});
+
+test('it starts no attempt for an action whose task nixie paused after the claim, and frees the lease', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await ctx.seed.action({ step });
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  await ctx.pauseNixie();
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
+  const leases = await readTestLeases(ctx.writer);
+
+  const action = await ctx.db
+    .selectFrom('actions')
+    .select(['status', 'attempt_count'])
+    .where('action_id', '=', queued.action_id)
+    .executeTakeFirstOrThrow();
+
+  expect(stub.calls).toStrictEqual([]);
+  expect(records.map((read) => read.record.kind)).not.toContain('action.attempt_started');
+
+  expect(leases).toContainEqual({
+    kind: 'action',
+    workID: queued.action_id,
+    holder: null,
+    generation: 1,
+  });
+
+  expect(action).toStrictEqual({ status: 'pending', attempt_count: 0 });
+});
+
+test('it starts the attempt at the next claim after nixie resumes', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await ctx.seed.action({ step });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+  const options = { connectors: new Map([['test.send', stub.connector]]), leaseMs: 60_000 };
+
+  await ctx.pauseNixie();
+
+  await runActionAttempt(ctx.context, lease, options);
+
+  await ctx.resumeNixie();
+
+  const next = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, next, options);
+
+  expect(stub.calls).toHaveLength(1);
 });

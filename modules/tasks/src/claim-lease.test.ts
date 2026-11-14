@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
+import { pauseNixieInTransaction, withWriteTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { claimLease } from './claim-lease';
 import { resetLease } from './reset-lease';
@@ -18,7 +18,7 @@ test('it claims free work at generation 1 under the writer epoch, for one lease 
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
   });
 
   expect(lease).toStrictEqual({
@@ -38,7 +38,7 @@ test('it refuses work whose lease another runner holds and has not expired', asy
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
   });
 
   ctx.clock.advance(59_999);
@@ -47,7 +47,7 @@ test('it refuses work whose lease another runner holds and has not expired', asy
     kind: 'action',
     holder: 'runner-b',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
   });
 
   expect(lease).toBeNull();
@@ -60,7 +60,7 @@ test('it claims work whose lease expired at the next generation', async () => {
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
   });
 
   ctx.clock.advance(60_000);
@@ -69,7 +69,7 @@ test('it claims work whose lease expired at the next generation', async () => {
     kind: 'action',
     holder: 'runner-b',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
   });
 
   expect(lease).toMatchObject({ holder: 'runner-b', generation: 2, expiresAt: 1_120_000 });
@@ -82,7 +82,7 @@ test('it claims work whose lease was reset at the next generation', async () => 
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
   });
 
   invariant(first);
@@ -93,7 +93,7 @@ test('it claims work whose lease was reset at the next generation', async () => 
     kind: 'action',
     holder: 'runner-b',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
   });
 
   expect(lease).toMatchObject({ holder: 'runner-b', generation: 2 });
@@ -106,7 +106,7 @@ test('it stores the lease it returns', async () => {
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
   });
 
   const rows = await ctx.writer.db
@@ -147,7 +147,7 @@ test('it rolls the lease back when the claim records fail', async () => {
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
     onClaim: () => Promise.reject(new Error('the claim records failed')),
   }).catch(() => null);
 
@@ -177,8 +177,43 @@ test('it reaches the claim.after fault point once the claim commits', async () =
     kind: 'action',
     holder: 'runner-a',
     durationMs: 60_000,
-    readCandidate: () => Promise.resolve('work-1'),
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
   });
 
   expect(reached).toStrictEqual([{ id: 'claim.after', context: { kind: 'action', id: 'work-1' } }]);
+});
+
+test('it throws under the test build when a candidate query returns the work of a paused task, and writes no lease', async () => {
+  const ctx = await setupTest();
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    pauseNixieInTransaction(tx, ctx.context.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: 'session-a',
+      definitions: { snapshotHash: 'sha256:test' },
+    }),
+  );
+
+  const claim = claimLease(ctx.context, {
+    kind: 'task',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'task-1' }),
+  });
+
+  await Promise.allSettled([claim]);
+
+  const leases = await ctx.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('leases')
+    .select('work_id')
+    .execute();
+
+  expect(claim).rejects.toThrowWithMessage(
+    Error,
+    "a candidate query returned work work-1 of task task-1, which nixie's pause stops",
+  );
+
+  expect(leases).toStrictEqual([]);
 });

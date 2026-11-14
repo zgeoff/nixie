@@ -170,6 +170,8 @@ function runMigration(
     const version = pending.index + 1;
     const oldestReader = Math.min(options.schema.oldestReader, version);
 
+    const closedAt = await readClosedGate(tx);
+
     const result = await sql`update schema_version
         set version = ${version}, oldest_reader = ${oldestReader}
         where id = 1 and version = ${pending.index}`.execute(tx);
@@ -177,5 +179,35 @@ function runMigration(
     if (result.numAffectedRows !== 1n) {
       throw new Error(`schema_version moved during migration ${pending.migration.name}`);
     }
+
+    if (closedAt !== null) {
+      await sql`update schema_version
+        set open_oldest_reader = ${oldestReader}, oldest_reader = ${Math.max(closedAt, oldestReader)}
+        where id = 1`.execute(tx);
+    }
   });
+}
+
+// While a pause holds the gate closed, the stored oldest reader stays raised. The value the
+// migration gives the open gate moves to open_oldest_reader, so the resume reopens to it.
+async function readClosedGate(tx: Transaction<unknown>): Promise<number | null> {
+  const columns = await readQueryRows(
+    sql`select name from pragma_table_info('schema_version') where name = 'open_oldest_reader'`,
+    tx,
+    z.object({ name: z.string() }),
+  );
+
+  if (columns.length === 0) {
+    return null;
+  }
+
+  const [row] = await readQueryRows(
+    sql`select oldest_reader, open_oldest_reader from schema_version where id = 1`,
+    tx,
+    z.object({ oldest_reader: z.number(), open_oldest_reader: z.number().nullable() }),
+  );
+
+  invariant(row);
+
+  return row.open_oldest_reader === null ? null : row.oldest_reader;
 }

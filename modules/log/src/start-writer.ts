@@ -2,7 +2,7 @@ import { statfsSync } from 'node:fs';
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
 import type { BuildSchema } from '@heynixie/db';
-import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
+import { nixieSchema, runMigrations, startDatabase, syncPauseGate } from '@heynixie/db';
 import { claimWriterEpoch } from './claim-writer-epoch';
 import { claimWriterLock } from './claim-writer-lock';
 import type { DataFileSystem } from './data-storage';
@@ -47,6 +47,8 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
       copyDir: options.dataDir,
       requireWriter: (tx) => requireWriterEpoch(tx, epoch),
     });
+
+    await syncPauseGate(db);
 
     const keys = await startKeyStore(options.dataDir, options.keyStoreBusyTimeoutMs);
 

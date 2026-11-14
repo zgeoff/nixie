@@ -13,6 +13,9 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
 
   expect(server.context.log.projections.map((projection) => projection.table)).toStrictEqual([
     'threads',
+    'nixie_pause',
+    'pause_exemptions',
+    'recoveries',
     'tasks',
     'timers',
     'task_messages',

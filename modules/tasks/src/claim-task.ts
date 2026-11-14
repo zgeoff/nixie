@@ -3,13 +3,21 @@ import { parseJSONObject, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { buildPauseCheck } from './build-pause-check';
 import { buildPausedRecord } from './build-paused-record';
 import { buildStepWake } from './build-step-wake';
 import { claimLease } from './claim-lease';
 import { resetLease } from './reset-lease';
 import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
 import { taskStepStartedCodec } from './task-step-started-codec';
-import type { Lease, StartedClaim, StepWake, TasksContext, TasksTables } from './types';
+import type {
+  ClaimCandidate,
+  Lease,
+  StartedClaim,
+  StepWake,
+  TasksContext,
+  TasksTables,
+} from './types';
 
 type ClaimedTasks = 'started' | 'unstarted';
 
@@ -51,7 +59,7 @@ async function readClaimableTask(
   tx: Transaction<unknown>,
   now: number,
   options: ClaimTaskOptions,
-): Promise<string | null> {
+): Promise<ClaimCandidate | null> {
   const tasks = options.tasks ?? null;
   const taskID = options.taskID;
   const startedBy = tasks === 'started' ? 'is not' : 'is';
@@ -67,12 +75,13 @@ async function readClaimableTask(
     .where('tasks.state', 'in', ['ready', 'running'])
     .where((eb) => eb.or([eb('leases.holder', 'is', null), eb('leases.expires_at', '<=', now)]))
     .$if(tasks !== null, (query) => query.where('tasks.started_by', startedBy, null))
+    .where((eb) => buildPauseCheck(eb, 'tasks.task_id'))
     .where((eb) => (taskID === undefined ? eb.and([]) : eb('tasks.task_id', '=', taskID)))
     .orderBy('tasks.updated_sequence')
     .limit(1)
     .executeTakeFirst();
 
-  return row?.task_id ?? null;
+  return row === undefined ? null : { workID: row.task_id, taskID: row.task_id };
 }
 
 async function writeStepStart(

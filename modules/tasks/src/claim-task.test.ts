@@ -1,20 +1,58 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import {
+  exemptTaskInTransaction,
+  pauseNixieInTransaction,
+  readRecords,
+  resumeNixieInTransaction,
+  withWriteTransaction,
+} from '@heynixie/log';
+import type { ClaimTaskOptions } from './claim-task';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { createTask } from './create-task';
+import { runDueTimers } from './run-due-timers';
+import { createTestClaim } from './test-utils/create-test-claim';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
 import { seedStartedTask } from './test-utils/seed-started-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
+import { writeInboxRecords } from './write-inbox-records';
+import { writeStepCommit } from './write-step-commit';
 import { writeTaskControl } from './write-task-control';
 
 async function setupTest() {
   const tasks = await startTestTasks();
 
   const db = tasks.writer.db.$extendTables<TasksTables>();
+  const definitions = { snapshotHash: 'sha256:test' };
 
-  return { ...tasks, db };
+  return {
+    ...tasks,
+    db,
+    definitions,
+    pauseNixie: () =>
+      withWriteTransaction(tasks.writer, (tx) =>
+        pauseNixieInTransaction(tx, tasks.context.log, {
+          cause: 'owner',
+          recoveryID: null,
+          by: 'session-a',
+          definitions,
+        }),
+      ),
+    resumeNixie: () =>
+      withWriteTransaction(tasks.writer, (tx) =>
+        resumeNixieInTransaction(tx, tasks.context.log, { by: 'session-a', definitions }),
+      ),
+    exemptTask: (taskID: string) =>
+      withWriteTransaction(tasks.writer, (tx) =>
+        exemptTaskInTransaction(tx, tasks.context.log, { taskID, by: 'session-a', definitions }),
+      ),
+    readRecordCount: async () => {
+      const records = await readRecords(tasks.context.log, { afterSequence: 0 });
+
+      return records.length;
+    },
+  };
 }
 
 test('it moves a ready task to running and records the step it starts', async () => {
@@ -191,4 +229,121 @@ test('it never claims a started task for the unstarted tasks', async () => {
   });
 
   expect(claim).toBeNull();
+});
+
+test.each<[string, Pick<ClaimTaskOptions, 'tasks'>]>([
+  ['started', { tasks: 'started' }],
+  ['unstarted', { tasks: 'unstarted' }],
+  ['every', {}],
+])(
+  'it claims no task while nixie is paused, for the %s tasks, and writes no record',
+  async (_pool, pool) => {
+    const ctx = await setupTest();
+    const starter = await seedConversationStep(ctx.context);
+
+    await createTask(ctx.context, 'tidy the inbox');
+
+    await seedStartedTask(ctx.context, {
+      starter: starter.claim,
+      name: 'Tide tables',
+      brief: 'Find the high tides for Saturday.',
+    });
+
+    await ctx.pauseNixie();
+
+    const before = await ctx.readRecordCount();
+    const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000, ...pool });
+    const after = await ctx.readRecordCount();
+
+    expect(claim).toBeNull();
+    expect(after).toBe(before);
+  },
+);
+
+test('it claims no task by its ID while nixie is paused', async () => {
+  const ctx = await setupTest();
+  const taskID = await createTask(ctx.context, 'tidy the inbox');
+
+  await ctx.pauseNixie();
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  expect(claim).toBeNull();
+});
+
+test('it claims the step of an exempt task while nixie is paused, though a paused task comes first', async () => {
+  const ctx = await setupTest();
+
+  await createTask(ctx.context, 'tidy the inbox');
+
+  const exemptID = await createTask(ctx.context, 'water the ferns');
+
+  await ctx.pauseNixie();
+  await ctx.exemptTask(exemptID);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(claim?.lease.workID).toBe(exemptID);
+});
+
+test('it refuses the claim of a task that an inbox record and a fired timer reached while nixie was paused, until nixie resumes', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: 1_060_000 }],
+  });
+
+  await ctx.pauseNixie();
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: ctx.definitions,
+      thread: claim.lease.workID,
+      erasable: { text: 'add the receipts too' },
+    },
+  ]);
+
+  ctx.clock.advance(60_000);
+
+  const fired = await runDueTimers(ctx.context);
+  const refused = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  await ctx.resumeNixie();
+
+  const taken = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  expect(fired).toBe(1);
+  expect(refused).toBeNull();
+  expect(taken?.lease.workID).toBe(claim.lease.workID);
+});
+
+test('it leaves a task row and its lease as they were through a pause, an exemption and a resume', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
+  const readRows = async () => {
+    const task = await ctx.db.selectFrom('tasks').selectAll().execute();
+    const leases = await ctx.db.selectFrom('leases').selectAll().execute();
+
+    return { task, leases };
+  };
+
+  const before = await readRows();
+
+  await ctx.pauseNixie();
+  await ctx.exemptTask(claim.lease.workID);
+
+  const paused = await readRows();
+
+  await ctx.resumeNixie();
+
+  const after = await readRows();
+
+  expect(paused).toStrictEqual(before);
+  expect(after).toStrictEqual(before);
 });
