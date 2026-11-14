@@ -94,7 +94,14 @@ async function setupTest() {
         (error: unknown) => (error instanceof ORPCError ? error : null),
       );
 
-      return refusal === null ? null : { code: refusal.code, data: refusal.data };
+      if (refusal === null) {
+        return null;
+      }
+
+      const code: string = refusal.code;
+      const data: unknown = refusal.data;
+
+      return { code, data };
     },
     client: createRouterClient(procedures, {
       context: { sessionToken: laptop.token, tokenSource: 'bearer' },

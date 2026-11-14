@@ -140,6 +140,7 @@ test('#approve records the approval that names you, then seeds the written skill
       skillHash: skill.skillHash,
       isEdited: false,
       approver: 'owner',
+      identityID: 'owner',
       channel: 'host',
     },
   ]);

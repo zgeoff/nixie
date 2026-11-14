@@ -36,7 +36,7 @@ export async function writeMockRuleChange(change: MockRuleChange): Promise<MockR
       return { status: 'refused', error: 'NOT_ALLOWED', reason: 'widens' };
     }
 
-    await store.rules.delete((query) => query.where({ ruleID: change.ruleID }));
+    store.rules.delete((query) => query.where({ ruleID: change.ruleID }));
 
     return { status: 'changed', revision: rule.revision };
   }

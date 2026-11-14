@@ -114,7 +114,9 @@ async function writeApproval(
   callerSessionID: string,
 ): Promise<MockApprovalResult> {
   const proposalID = row.proposalID;
-  const isClosedMatch = answer.memory?.revisionOf !== undefined || answer.memory?.ignoreCloseMatch;
+
+  const isClosedMatch =
+    answer.memory?.revisionOf !== undefined || answer.memory?.ignoreCloseMatch === true;
 
   if (row.closeMatch !== undefined && !isClosedMatch) {
     return answered({ proposalID, state: 'pending', closeMatch: { ...row.closeMatch } });
