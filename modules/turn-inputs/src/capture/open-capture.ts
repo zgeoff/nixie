@@ -114,6 +114,7 @@ async function createCapture(
           profile: input.profile.id,
           model: input.profile.model,
           harness: input.profile.harness,
+          is_rewritten: input.isRewritten ? 1 : 0,
           source: plan.name,
           key_id: recordKey.keyID,
           sealed_private_key: sealed,

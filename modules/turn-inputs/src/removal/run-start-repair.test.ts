@@ -17,12 +17,12 @@ async function setupTest() {
 
     // a start of the same data directory: a new instance with nothing in memory
     restart: () => createTurnInputs(ctx.turnInputsOptions),
-    openStep: () =>
+    openStep: (isRewritten = false) =>
       ctx.turnInputs.openCapture({
         step: { taskID: 'task-a', stepRunID: 'step-1@1' },
         profile: ctx.profile,
         role: 'task',
-        isRewritten: false,
+        isRewritten,
       }),
     readCaptureRows: () =>
       getTurnInputsDB(ctx.log).selectFrom('turn_input_captures').selectAll().execute(),
@@ -54,6 +54,21 @@ test('it takes in the files of an open capture and closes it with start', async 
   const received1 = await ctx.readKeyRows();
 
   expect(received1).toHaveLength(1);
+});
+
+test('it keeps the rewritten mark of a capture restarted before its first intake', async () => {
+  const ctx = await setupTest();
+  const capture = await ctx.openStep(true);
+
+  await ctx.writeSpoolFile(capture.baseURL, { counter: 1, body: new Uint8Array([9]) });
+
+  const restarted = ctx.restart();
+
+  await restarted.runStart();
+
+  const inputs = await ctx.readInputRows();
+
+  expect(inputs.map((row) => row.is_rewritten)).toStrictEqual([1]);
 });
 
 test('it closes a capture whose key is gone with no intake', async () => {

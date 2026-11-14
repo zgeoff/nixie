@@ -85,13 +85,6 @@ async function readOpenCapture(
       pkcs8.fill(0);
     });
 
-  // The capture row holds no mark, and every input of a capture carries the same one.
-  const marked = await getTurnInputsDB(ctx.log)
-    .selectFrom('turn_inputs')
-    .select('is_rewritten')
-    .where('capture_id', '=', row.capture_id)
-    .executeTakeFirst();
-
   return {
     captureID: row.capture_id,
     taskID: row.task_id,
@@ -100,7 +93,7 @@ async function readOpenCapture(
     profile: row.profile,
     model: row.model,
     harness: row.harness,
-    isRewritten: marked?.is_rewritten === 1,
+    isRewritten: row.is_rewritten === 1,
     source: row.source,
     keyID: row.key_id,
     privateKey,

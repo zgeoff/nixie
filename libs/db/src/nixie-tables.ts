@@ -530,6 +530,7 @@ export interface NixieTables {
     readonly call_frames: number | null;
     readonly inputs: number;
     readonly misses: number;
+    readonly is_rewritten: number;
   };
   readonly turn_input_misses: {
     readonly miss_id: string;
