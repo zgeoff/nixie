@@ -60,7 +60,7 @@ fi
   bun build src/index.ts --outdir dist --target node --format esm --packages external > /dev/null
   bunx tsrs -p tsconfig.build.json
   # node16 resolution needs an extension on each relative import, and the source writes none
-  sed -i -E "s#(from '\./[a-z0-9-]+)'#\1.js'#" dist/*.d.ts
+  find dist -name '*.d.ts' -exec sed -i -E "s#(from '\.\.?/[a-z0-9/-]+)'#\1.js'#" {} +
 )
 jq --arg version "$version" '.version = $version
   | .exports = { ".": { types: "./dist/index.d.ts", default: "./dist/index.js" } }
