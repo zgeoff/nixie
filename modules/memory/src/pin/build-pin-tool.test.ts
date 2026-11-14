@@ -3,7 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import type { TestMemoryOptions } from '../test-utils';
-import { makeToolAllowRule, readItemShortID, startTestMemory } from '../test-utils';
+import { readItemShortID, startTestMemory } from '../test-utils';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildPinTool } from './build-pin-tool';
 
@@ -61,38 +61,6 @@ test("it proposes a pin of the item a short ID names, for the owner's review", a
   });
 
   expect(pending).toMatchObject([{ operation: 'pin', itemID: item.itemID, targetVersion: 1 }]);
-});
-
-test('it pins the item at once under an allow rule that names memory.pin', async () => {
-  const ctx = await setupTest({ gate: { findAllowRule: makeToolAllowRule('memory.pin') } });
-
-  const item = await ctx.memory.store.remember({
-    text: 'Walks the coast path on bank holidays',
-    provenance: buildMockProvenance(),
-  });
-
-  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
-
-  const result = await runToolCall(
-    { tool: 'memory.pin', input: { itemID: shortID, version: 1 }, toolUseID: null },
-    {
-      runID: 'run-1',
-      thread: 'conversation',
-      tools: ['memory.pin'],
-      model: { model: 'test-model', profile: 'standard' },
-    },
-    ctx.toolCallOptions,
-  );
-
-  const core = await ctx.memory.store.readPinnedCore();
-
-  expect(result.structuredContent).toStrictEqual({
-    status: 'applied',
-    itemID: shortID,
-    version: 1,
-  });
-
-  expect(core).toMatchObject([{ itemID: item.itemID }]);
 });
 
 test('it answers a pin of a retired item with an error that names its short ID', async () => {
@@ -175,37 +143,4 @@ test('it answers a pin of a version the item moved past with an error, and write
 
   expect(pending).toStrictEqual([]);
   expect(records).toStrictEqual([]);
-});
-
-test('it answers a pin under an allow rule that takes the core past its budget with an error', async () => {
-  const ctx = await setupTest({ gate: { findAllowRule: makeToolAllowRule('memory.pin') } });
-
-  await ctx.memory.store.remember({
-    text: 'Keeps a long packing list for trips. '.repeat(119),
-    isPinned: true,
-    provenance: buildMockProvenance(),
-  });
-
-  const item = await ctx.memory.store.remember({
-    text: 'Keeps a long reading list for winter. '.repeat(116),
-    provenance: buildMockProvenance(),
-  });
-
-  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
-
-  const result = await runToolCall(
-    { tool: 'memory.pin', input: { itemID: shortID, version: 1 }, toolUseID: null },
-    {
-      runID: 'run-1',
-      thread: 'conversation',
-      tools: ['memory.pin'],
-      model: { model: 'test-model', profile: 'standard' },
-    },
-    ctx.toolCallOptions,
-  );
-
-  expect(result).toMatchObject({
-    isError: true,
-    content: [{ type: 'text', text: expect.toStartWith(`pinning memory item ${shortID} takes`) }],
-  });
 });

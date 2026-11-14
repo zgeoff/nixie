@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import type { RuleEntry } from '@heynixie/policy';
-import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
+import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
+import { readStarterDecisionPoint, readStarterRules } from '@heynixie/policy/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildToolRegistry } from './build-tool-registry';
@@ -10,11 +10,15 @@ import { runToolCall } from './run-tool-call';
 import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition';
 import { buildStubActionQueue } from './test-utils/build-stub-action-queue';
 import { setupTestLog } from './test-utils/setup-test-log';
+import type { ToolContext } from './types';
 
 interface SetupConfig {
   readonly tools: readonly ReturnType<typeof buildMockToolDefinition>[];
   readonly rules?: readonly RuleEntry[];
   readonly decisionDeadlineMs?: number;
+
+  // the declarations of a snapshot, which the decision point reads before the ones in code
+  readonly snapshotTools?: ReadonlyMap<string, EffectDeclaration>;
 }
 
 async function setupTest(config: SetupConfig) {
@@ -27,7 +31,20 @@ async function setupTest(config: SetupConfig) {
     registry,
     decide: readStarterDecisionPoint(
       (tool) => registry.findTool(tool)?.definition.declaration ?? null,
-      { extraRules: config.rules ?? [] },
+      {
+        extraRules: config.rules ?? [],
+        ...(config.snapshotTools === undefined
+          ? {}
+          : {
+              readInputs: () =>
+                Promise.resolve({
+                  rules: [...readStarterRules(), ...(config.rules ?? [])],
+                  contacts: [],
+                  tools: config.snapshotTools ?? new Map(),
+                  ownerDestinations: [],
+                }),
+            }),
+      },
     ),
     ...(config.decisionDeadlineMs === undefined
       ? {}
@@ -1172,4 +1189,377 @@ test('it records a scope denial, which repeats the tool name, as outside content
   const entries = await readRecords(ctx.log, { afterSequence: 0 });
 
   expect(entries[1]?.record.contentSource).toBe('untrusted');
+});
+
+test('it runs a memory write that no rule decides with the gate verdict, and writes no action proposal', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(contexts.map((context) => context.verdict)).toStrictEqual([{ kind: 'gate' }]);
+  expect(entries.map((entry) => entry.record.kind)).toStrictEqual(['tool_called', 'tool_result']);
+  expect(entries[0]?.record.decision).toMatchObject({ outcome: 'gate', stage: 8, rule: null });
+});
+
+test('it runs a memory write that allow rules decide with every rule that matched and its checks', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+        resolvePolicyFacts: (input) =>
+          Promise.resolve({
+            status: 'ok',
+            sources: ['outside'],
+            args: { ...input, subject: 'self' },
+          }),
+      }),
+    ],
+    rules: [
+      {
+        id: 'allow-memory',
+        revision: 3,
+        rule: { id: 'allow-memory', outcome: 'allow', effects: ['memory_write'] },
+      },
+      {
+        id: 'allow-self',
+        revision: 3,
+        rule: {
+          id: 'allow-self',
+          outcome: 'allow',
+          effects: ['memory_write'],
+          checks: [{ arg: 'subject', op: 'eq', value: 'self' }],
+        },
+      },
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(contexts.map((context) => context.verdict)).toStrictEqual([
+    {
+      kind: 'rule-allow',
+      rules: [
+        { id: 'allow-memory', revision: 3, checks: [] },
+        { id: 'allow-self', revision: 3, checks: [{ arg: 'subject', op: 'eq', value: 'self' }] },
+      ],
+    },
+  ]);
+
+  expect(entries[0]?.record.decision).toMatchObject({
+    outcome: 'allow',
+    stage: 7,
+    rule: { id: 'allow-memory', revision: 3 },
+    inputs: { sources: ['outside'] },
+  });
+});
+
+test('it reads the sources a tool sets, so an allow rule on owner leaves a write from outside to the gate', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+        resolvePolicyFacts: (input) =>
+          Promise.resolve({ status: 'ok', sources: ['outside'], args: input }),
+      }),
+    ],
+    rules: [
+      {
+        id: 'allow-owner',
+        revision: 3,
+        rule: {
+          id: 'allow-owner',
+          outcome: 'allow',
+          effects: ['memory_write'],
+          sources: ['owner'],
+        },
+      },
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(contexts.map((context) => context.verdict)).toStrictEqual([{ kind: 'gate' }]);
+});
+
+test('it runs a memory write that an ask rule decides with the ask verdict, and writes no action proposal', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+      }),
+    ],
+    rules: [
+      {
+        id: 'ask-memory',
+        revision: 3,
+        rule: { id: 'ask-memory', outcome: 'ask', effects: ['memory_write'] },
+      },
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(result.isError).toBeUndefined();
+
+  expect(contexts.map((context) => context.verdict)).toStrictEqual([
+    { kind: 'rule-ask', rule: { id: 'ask-memory', revision: 3 } },
+  ]);
+
+  expect(entries.map((entry) => entry.record.kind)).toStrictEqual(['tool_called', 'tool_result']);
+
+  expect(entries[0]?.record.decision).toMatchObject({
+    outcome: 'ask',
+    stage: 6,
+    cause: 'ask_rule',
+    rule: { id: 'ask-memory', revision: 3 },
+  });
+});
+
+test('it denies a memory write that a deny rule matches, and never runs the tool', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+      }),
+    ],
+    rules: [
+      {
+        id: 'deny-memory',
+        revision: 3,
+        rule: { id: 'deny-memory', outcome: 'deny', effects: ['memory_write'] },
+      },
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result.isError).toBeTrue();
+  expect(contexts).toStrictEqual([]);
+});
+
+test('it returns the error of a tool that cannot set its policy facts, and never runs the tool', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+        resolvePolicyFacts: () =>
+          Promise.resolve({ status: 'error', message: 'memory item 9 does not exist' }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'memory item 9 does not exist' }],
+    isError: true,
+  });
+
+  expect(contexts).toStrictEqual([]);
+});
+
+test('it gives a tool no verdict when the decision read a snapshot declaration that says note, so the tool runs every check', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+      }),
+    ],
+    snapshotTools: new Map([
+      [
+        'memory.remember',
+        { effects: ['note'], destinations: [], amount: null, content: [], results: {} },
+      ],
+    ]),
+  });
+
+  await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(contexts.map((context) => context.verdict)).toStrictEqual([undefined]);
+  expect(entries[0]?.record.decision).toMatchObject({ outcome: 'allow', stage: 7 });
+});
+
+test('it writes an action proposal for an ask rule on note when the snapshot declaration says note', async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.remember',
+        declaration: { effects: ['memory_write'] },
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'kept' } });
+        },
+      }),
+    ],
+    rules: [
+      {
+        id: 'ask-notes',
+        revision: 3,
+        rule: { id: 'ask-notes', outcome: 'ask', effects: ['note'] },
+      },
+    ],
+    snapshotTools: new Map([
+      [
+        'memory.remember',
+        { effects: ['note'], destinations: [], amount: null, content: [], results: {} },
+      ],
+    ]),
+  });
+
+  await runToolCall(
+    { tool: 'memory.remember', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(contexts).toStrictEqual([]);
+
+  expect(entries.map((entry) => entry.record.kind)).toStrictEqual([
+    'tool_called',
+    'policy.action_proposed',
+    'tool_result',
+  ]);
 });

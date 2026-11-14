@@ -6,11 +6,17 @@ import { buildGateReview } from './build-gate-review';
 import { findMissingToken } from './find-missing-token';
 import type { ContentGateRequest, ContentGateResult } from './gate-context';
 
+const invisible = /\p{Cf}/u;
+
 export async function runRuleGate(
   context: Pick<MemoryContext, 'log' | 'gate'>,
   request: ContentGateRequest,
   rule: JSONObject,
 ): Promise<ContentGateResult> {
+  if (invisible.test(request.text)) {
+    return buildGateReview('invisible_character', { checks: { rule, tokens: 'fail' } });
+  }
+
   const messages = await readOwnerMessages(context.log, {
     thread: request.thread,
     limit: context.gate.limits.evidenceWindow,

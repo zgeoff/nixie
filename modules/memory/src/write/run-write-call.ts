@@ -3,15 +3,7 @@ import type { ToolOutcome } from '@heynixie/tools';
 import type { ModelWriteStore, WriteOutcome } from '../gate/gate-context';
 import type { ItemIDStore } from '../types';
 import { buildHiddenUUIDs } from '../utils/build-hidden-uuids';
-import { ImageSourceError } from '../utils/error/image-source-error';
-import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
-import { MemoryStateError } from '../utils/error/memory-state-error';
-import { NotPinnedError } from '../utils/error/not-pinned-error';
-import { PinnedCoreFullError } from '../utils/error/pinned-core-full-error';
-import { ProposalCapError } from '../utils/error/proposal-cap-error';
-import { SelfNoteError } from '../utils/error/self-note-error';
-import { StaleVersionError } from '../utils/error/stale-version-error';
-import { UntilPassedError } from '../utils/error/until-passed-error';
+import { isWriteRefusal } from '../utils/error/is-write-refusal';
 
 export async function runWriteCall(
   memory: Pick<ItemIDStore, 'readShortIDs'> & Pick<ModelWriteStore, 'renderReviewReason'>,
@@ -42,17 +34,7 @@ export async function runWriteCall(
       result: { ...outcome, itemID: shortIDs.get(outcome.itemID) ?? outcome.itemID },
     };
   } catch (error) {
-    if (
-      error instanceof StaleVersionError ||
-      error instanceof MemoryItemNotFoundError ||
-      error instanceof MemoryStateError ||
-      error instanceof NotPinnedError ||
-      error instanceof PinnedCoreFullError ||
-      error instanceof ProposalCapError ||
-      error instanceof SelfNoteError ||
-      error instanceof ImageSourceError ||
-      error instanceof UntilPassedError
-    ) {
+    if (isWriteRefusal(error)) {
       return { status: 'error', message: await readShortIDMessage(memory, error.message, itemID) };
     }
 

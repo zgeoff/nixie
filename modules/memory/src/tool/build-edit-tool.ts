@@ -1,7 +1,7 @@
 import { untilConventions } from '@heynixie/prompts';
 import type { ToolCall, ToolContext, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
-import type { ModelWriteStore } from '../gate/gate-context';
+import type { GatedRememberRequest, ModelWriteStore } from '../gate/gate-context';
 import type { ItemIDStore } from '../types';
 import { readItemIDs } from '../utils/item/read-item-ids';
 import { makeInputRecorder } from '../utils/make-input-recorder';
@@ -9,6 +9,7 @@ import { memoryWriteOutput } from '../utils/memory-write-output';
 import { parseUntilInput } from '../utils/parse-until-input';
 import { untilInputSchema } from '../utils/schema/until-input-schema';
 import { buildWriteCaller } from '../write/build-write-caller';
+import { resolveWriteFacts } from '../write/resolve-write-facts';
 import { runWriteCall } from '../write/run-write-call';
 
 const editDescription =
@@ -67,7 +68,7 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
     input: editInput,
     output: memoryWriteOutput,
     declaration: {
-      effects: ['note'],
+      effects: ['memory_write'],
       destinations: [],
       amount: null,
       content: ['text', 'quote'],
@@ -83,6 +84,22 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
     execution: 'direct',
 
     recordInput: makeInputRecorder(['text', 'quote']),
+    resolvePolicyFacts: (rawInput, context) =>
+      resolveWriteFacts(async () => {
+        const input = editArguments.parse(rawInput);
+
+        const [itemID = input.itemID] = await readItemIDs(memory, [input.itemID]);
+        const itemSubject = await memory.writes.readItemSubject(itemID);
+
+        const subject = input.subject ?? itemSubject;
+
+        return {
+          sources: await memory.writes.readRememberSources(
+            buildEditRequest(input, itemID, undefined, context),
+          ),
+          args: { ...rawInput, subject },
+        };
+      }),
     run: async (call: ToolCall, context: ToolContext) => {
       const input = editArguments.parse(call.input);
       const parsed = parseUntilInput(input.until);
@@ -95,20 +112,27 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
 
       return runWriteCall(
         memory,
-        () =>
-          memory.writes.remember({
-            text: input.text,
-            target: { itemID, version: input.version },
-            caller: buildWriteCaller(context),
-            ...(input.quote === undefined ? {} : { quote: input.quote }),
-            ...(input.eventID === undefined
-              ? {}
-              : { eventID: Number(input.eventID.replace(/^#/u, '')) }),
-            ...(parsed.until === undefined ? {} : { until: parsed.until }),
-            ...(input.subject === undefined ? {} : { subject: input.subject }),
-          }),
+        () => memory.writes.remember(buildEditRequest(input, itemID, parsed.until, context)),
         itemID,
       );
     },
+  };
+}
+
+function buildEditRequest(
+  input: z.infer<typeof editArguments>,
+  itemID: string,
+  until: number | null | undefined,
+  context: ToolContext,
+): GatedRememberRequest {
+  return {
+    text: input.text,
+    target: { itemID, version: input.version },
+    caller: buildWriteCaller(context),
+    ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
+    ...(input.quote === undefined ? {} : { quote: input.quote }),
+    ...(input.eventID === undefined ? {} : { eventID: Number(input.eventID.replace(/^#/u, '')) }),
+    ...(until === undefined ? {} : { until }),
+    ...(input.subject === undefined ? {} : { subject: input.subject }),
   };
 }

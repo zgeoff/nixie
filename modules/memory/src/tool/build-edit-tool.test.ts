@@ -2,20 +2,18 @@ import { expect, test } from 'bun:test';
 import { buildShortIDFromUUID } from '@heynixie/db';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
 import { buildMockToolContext } from '../test-utils/build-mock-tool-context';
 import { createMemoryItem } from '../test-utils/create-memory-item';
-import { makeToolAllowRule } from '../test-utils/make-tool-allow-rule';
 import { readItemShortID } from '../test-utils/read-item-short-id';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
 import { buildEditTool } from './build-edit-tool';
 
-test('it applies an edit with no quote under your allow rule on memory.edit', async () => {
-  const memory = await startTestMemory({
-    gate: { findAllowRule: makeToolAllowRule('memory.edit') },
-  });
+test('it applies an edit with no quote under your allow rule on memory_write', async () => {
+  const memory = await startTestMemory();
 
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
@@ -31,7 +29,7 @@ test('it applies an edit with no quote under your allow rule on memory.edit', as
       input: { itemID: item.itemID, version: 1, text: 'Lives on Oak Avenue' },
       toolUseID: null,
     },
-    buildMockToolContext(),
+    buildMockToolContext({}, buildAllowVerdict()),
   );
 
   expect(outcome).toStrictEqual({
@@ -41,11 +39,9 @@ test('it applies an edit with no quote under your allow rule on memory.edit', as
 });
 
 test.each(['conversation', 'task-1'])(
-  'it proposes an edit from the %s thread that moves the item to another subject, though your allow rule on memory.edit applies other edits at once',
+  'it proposes an edit from the %s thread that moves the item to another subject, though your allow rule on memory_write applies other edits at once',
   async (thread) => {
-    const memory = await startTestMemory({
-      gate: { findAllowRule: makeToolAllowRule('memory.edit') },
-    });
+    const memory = await startTestMemory();
 
     const item = await memory.store.remember({
       text: 'The owner calls the kettle Captain Steam',
@@ -70,7 +66,7 @@ test.each(['conversation', 'task-1'])(
         },
         toolUseID: null,
       },
-      buildMockToolContext({ thread }),
+      buildMockToolContext({ thread }, buildAllowVerdict()),
     );
 
     const row = await memory.writer.db
@@ -104,10 +100,7 @@ test.each(['conversation', 'task-1'])(
 
 test('it clears the end time of an item when the edit passes a null end time', async () => {
   const memory = await startTestMemory({
-    gate: {
-      findAllowRule: makeToolAllowRule('memory.edit'),
-      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
-    },
+    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
   });
 
   const item = await memory.store.remember({
@@ -123,7 +116,7 @@ test('it clears the end time of an item when the edit passes a null end time', a
       input: { itemID: item.itemID, version: 1, text: 'Lives in Lisbon', until: null },
       toolUseID: null,
     },
-    buildMockToolContext(),
+    buildMockToolContext({}, buildAllowVerdict()),
   );
 
   const row = await memory.writer.db
@@ -138,10 +131,7 @@ test('it clears the end time of an item when the edit passes a null end time', a
 
 test('it moves the end time of an item to the one the edit passes', async () => {
   const memory = await startTestMemory({
-    gate: {
-      findAllowRule: makeToolAllowRule('memory.edit'),
-      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
-    },
+    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
   });
 
   const item = await memory.store.remember({
@@ -162,7 +152,7 @@ test('it moves the end time of an item to the one the edit passes', async () => 
       },
       toolUseID: null,
     },
-    buildMockToolContext(),
+    buildMockToolContext({}, buildAllowVerdict()),
   );
 
   const row = await memory.writer.db
@@ -175,10 +165,8 @@ test('it moves the end time of an item to the one the edit passes', async () => 
   expect(row).toStrictEqual({ version: 2, until: Date.parse('2026-10-21T22:59:59Z') });
 });
 
-test('it proposes an edit with no quote when your allow rule names only memory.remember', async () => {
-  const memory = await startTestMemory({
-    gate: { findAllowRule: makeToolAllowRule('memory.remember') },
-  });
+test('it proposes an edit with no quote when no rule decided it', async () => {
+  const memory = await startTestMemory();
 
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',

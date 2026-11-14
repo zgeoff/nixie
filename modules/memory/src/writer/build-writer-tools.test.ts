@@ -14,7 +14,7 @@ async function setupTest() {
   return { memory, staging, registry };
 }
 
-test('it declares read for recall and note for remember, edit, retire and the flag', async () => {
+test('it declares read for recall, memory_write for remember, edit and retire, and note for the flag', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -27,9 +27,9 @@ test('it declares read for recall and note for remember, edit, retire and the fl
 
   expect(effects).toStrictEqual([
     ['memory.recall', ['read']],
-    ['memory.remember', ['note']],
-    ['memory.edit', ['note']],
-    ['memory.retire', ['note']],
+    ['memory.remember', ['memory_write']],
+    ['memory.edit', ['memory_write']],
+    ['memory.retire', ['memory_write']],
     ['memory.flag-self-note', ['note']],
   ]);
 });

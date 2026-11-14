@@ -6,19 +6,37 @@ import { parseRuleFiles } from './parse-rule-files';
 
 test.each<[string, Rule, Partial<RuleCall>, boolean]>([
   [
-    'a deny that lists memory_write catches a call that declares note',
+    'a deny that lists memory_write matches a call that declares memory_write',
+    { id: 'deny-memory', outcome: 'deny', effects: ['memory_write'] },
+    { effects: ['memory_write'] },
+    true,
+  ],
+  [
+    'an ask that lists memory_write matches a call that declares memory_write',
+    { id: 'ask-memory', outcome: 'ask', effects: ['memory_write'] },
+    { effects: ['memory_write'] },
+    true,
+  ],
+  [
+    'an allow that lists memory_write matches a call that declares memory_write',
+    { id: 'allow-memory', outcome: 'allow', effects: ['memory_write'] },
+    { effects: ['memory_write'] },
+    true,
+  ],
+  [
+    'a deny that lists memory_write leaves a call that declares note',
     { id: 'deny-memory', outcome: 'deny', effects: ['memory_write'] },
     { effects: ['note'] },
-    true,
+    false,
   ],
   [
-    'an ask that lists memory_write catches a call that declares note',
+    'an ask that lists memory_write leaves a call that declares note',
     { id: 'ask-memory', outcome: 'ask', effects: ['memory_write'] },
     { effects: ['read', 'note'] },
-    true,
+    false,
   ],
   [
-    'an allow that lists memory_write covers no call that declares note',
+    'an allow that lists memory_write leaves a call that declares note',
     { id: 'allow-memory', outcome: 'allow', effects: ['memory_write'] },
     { effects: ['note'] },
     false,

@@ -335,6 +335,7 @@ const memoryProposals = new Collection({
         'from_photo',
         'sensitive',
         'subject_change',
+        'ask_rule',
       ])
       .default('no_quote'),
     source: z.enum(['owner', 'owner_data', 'untrusted']).default('untrusted'),

@@ -5,6 +5,10 @@ import { writeGatedRemember } from '../gated/write-gated-remember';
 import { writeGatedRetirement } from '../gated/write-gated-retirement';
 import { writeCallerSensitiveMark } from '../sensitive/write-caller-sensitive-mark';
 import type { StoreParts } from '../types';
+import { readBatchSources } from '../write/read-batch-sources';
+import { readItemSubject } from '../write/read-item-subject';
+import { readRememberSources } from '../write/read-remember-sources';
+import { readRetireSources } from '../write/read-retire-sources';
 import { buildWriterGate } from '../writer/build-writer-gate';
 import { writeUnpin } from './write-unpin';
 
@@ -16,5 +20,9 @@ export function buildMemoryWrites(parts: StoreParts): MemoryWrites {
     unpin: (request) => writeUnpin(parts, request),
     markSensitive: (request) => writeCallerSensitiveMark(parts, request),
     batch: buildWriterGate(parts),
+    readRememberSources: (request) => readRememberSources(parts, request),
+    readRetireSources: (request) => readRetireSources(parts, request),
+    readBatchSources: (source, quote) => readBatchSources(parts, source, quote),
+    readItemSubject: (itemID) => readItemSubject(parts, itemID),
   };
 }

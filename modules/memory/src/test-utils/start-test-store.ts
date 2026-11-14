@@ -2,7 +2,6 @@ import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { defaultGateLimits } from '../gate/default-gate-limits';
 import { startMemoryStore } from '../memory/start-memory-store';
-import { findNoAllowRule } from '../moment/find-no-allow-rule';
 import { memoryProjections } from '../moment/projection/memory-projections';
 import { defaultOwnerPronouns } from '../owner/default-owner-pronouns';
 import type { TestMemory, TestMemoryOptions } from './start-test-memory';
@@ -44,7 +43,6 @@ export async function startTestStore(
           })),
       clock: options.gate?.clock ?? { now: () => Date.now() },
       defaultZone: options.gate?.defaultZone ?? 'UTC',
-      findAllowRule: options.gate?.findAllowRule ?? findNoAllowRule,
       limits: options.gate?.limits ?? defaultGateLimits,
       ownerName: options.gate?.ownerName ?? null,
       ownerPronouns: options.gate?.ownerPronouns ?? defaultOwnerPronouns,

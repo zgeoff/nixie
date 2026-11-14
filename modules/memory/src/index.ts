@@ -38,7 +38,6 @@ export type { WriterStaging } from './writer/create-writer-staging';
 export { createWriterStaging } from './writer/create-writer-staging';
 export { defaultGateLimits } from './gate/default-gate-limits';
 export { defaultOwnerPronouns } from './owner/default-owner-pronouns';
-export { findNoAllowRule } from './moment/find-no-allow-rule';
 export type { MemoryConfig } from './writer/memory-config-schema';
 export { memoryConfigSchema } from './writer/memory-config-schema';
 export { MemoryProposalNotFoundError } from './utils/error/memory-proposal-not-found-error';
@@ -95,9 +94,6 @@ export type { MemoryConsolidatorRunnerOptions } from './memory/start-memory-cons
 export { startMemoryConsolidatorRunner } from './memory/start-memory-consolidator-runner';
 
 export type {
-  AllowRuleCall,
-  AllowRuleMatch,
-  FindAllowRule,
   GateContext,
   GateLimits,
   GatedRememberRequest,

@@ -45,7 +45,7 @@ export async function readSourceEvidence(
 
 const spanSources: readonly MessageSpan['source'][] = ['typed', 'pasted', 'dropped', 'unknown'];
 
-function toOwnerMessage(source: SourceMessage): OwnerMessage {
+export function toOwnerMessage(source: SourceMessage): OwnerMessage {
   return {
     sequence: source.sequence,
     text: source.text,

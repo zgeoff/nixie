@@ -1,12 +1,19 @@
 import type { ToolCall, ToolContext, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
-import type { ModelWriteStore } from '../gate/gate-context';
+import type { GatedRetireRequest, ModelWriteStore } from '../gate/gate-context';
 import type { ItemIDStore } from '../types';
 import { readItemIDs } from '../utils/item/read-item-ids';
 import { makeInputRecorder } from '../utils/make-input-recorder';
 import { memoryWriteOutput } from '../utils/memory-write-output';
 import { buildWriteCaller } from '../write/build-write-caller';
+import { resolveWriteFacts } from '../write/resolve-write-facts';
 import { runWriteCall } from '../write/run-write-call';
+
+const retireArguments = z.object({
+  itemID: z.string(),
+  version: z.int(),
+  intentQuote: z.string().optional(),
+});
 
 export function buildRetireTool(memory: ModelWriteStore & ItemIDStore): ToolDefinition {
   return {
@@ -30,7 +37,7 @@ export function buildRetireTool(memory: ModelWriteStore & ItemIDStore): ToolDefi
     },
     output: memoryWriteOutput,
     declaration: {
-      effects: ['note'],
+      effects: ['memory_write'],
       destinations: [],
       amount: null,
       content: ['intentQuote'],
@@ -46,15 +53,36 @@ export function buildRetireTool(memory: ModelWriteStore & ItemIDStore): ToolDefi
     execution: 'direct',
 
     recordInput: makeInputRecorder(['intentQuote']),
+    resolvePolicyFacts: (rawInput, context) =>
+      resolveWriteFacts(async () => {
+        const input = retireArguments.parse(rawInput);
+
+        const [itemID = input.itemID] = await readItemIDs(memory, [input.itemID]);
+        const subject = await memory.writes.readItemSubject(itemID);
+
+        return {
+          sources: await memory.writes.readRetireSources(
+            buildRetireRequest(input, itemID, context),
+          ),
+          args: { ...rawInput, subject },
+        };
+      }),
     run: (call, context) => runRetireCall(memory, call, context),
   };
 }
 
-const retireArguments = z.object({
-  itemID: z.string(),
-  version: z.int(),
-  intentQuote: z.string().optional(),
-});
+function buildRetireRequest(
+  input: z.infer<typeof retireArguments>,
+  itemID: string,
+  context: ToolContext,
+): GatedRetireRequest {
+  return {
+    target: { itemID, version: input.version },
+    caller: buildWriteCaller(context),
+    ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
+    ...(input.intentQuote === undefined ? {} : { intentQuote: input.intentQuote }),
+  };
+}
 
 async function runRetireCall(
   memory: ModelWriteStore & ItemIDStore,
@@ -67,12 +95,7 @@ async function runRetireCall(
 
   return runWriteCall(
     memory,
-    () =>
-      memory.writes.retire({
-        target: { itemID, version: input.version },
-        caller: buildWriteCaller(context),
-        ...(input.intentQuote === undefined ? {} : { intentQuote: input.intentQuote }),
-      }),
+    () => memory.writes.retire(buildRetireRequest(input, itemID, context)),
     itemID,
   );
 }

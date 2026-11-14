@@ -1,5 +1,11 @@
 import type { ContentSource, Decision, JSONObject } from '@heynixie/log';
-import type { CallDestination, EffectDeclaration, RuleContext, RuleSource } from '@heynixie/policy';
+import type {
+  AllowingRule,
+  CallDestination,
+  EffectDeclaration,
+  RuleContext,
+  RuleSource,
+} from '@heynixie/policy';
 import type { SandboxRef, ToolTarget } from '@heynixie/sandbox';
 
 export type JsonSchema = JSONObject;
@@ -16,7 +22,19 @@ export interface ToolCall {
 
 export interface ToolContext {
   readonly run: ToolRun;
+
+  // What the decision point said about a call to a tool that declares memory_write. A call with no
+  // verdict runs every check of the tool's own gate.
+  readonly verdict?: MemoryWriteVerdict;
 }
+
+export type MemoryWriteVerdict =
+  | { readonly kind: 'rule-allow'; readonly rules: readonly AllowingRule[] }
+  | {
+      readonly kind: 'rule-ask';
+      readonly rule: { readonly id: string; readonly revision: number };
+    }
+  | { readonly kind: 'gate' };
 
 export type ToolOutcome =
   | ({ readonly status: 'ok' } & DirectResult)
@@ -67,7 +85,25 @@ export interface ToolDefinition {
     input: JSONObject,
     context: ToolContext,
   ) => Promise<DestinationResolution>;
+
+  // Sets the call's policy sources and arguments on the host before the decision point runs, for a
+  // tool whose sources depend on its input, such as a memory write that rests on a quote. A tool
+  // without it takes the step's sources and its raw input.
+  readonly resolvePolicyFacts?: (
+    input: JSONObject,
+    context: ToolContext,
+  ) => Promise<PolicyFactsResolution>;
 }
+
+// The sources and arguments that the decision point reads for a call, when the frame's sources and
+// the model's raw input would misstate them.
+export type PolicyFactsResolution =
+  | {
+      readonly status: 'ok';
+      readonly sources: readonly RuleSource[];
+      readonly args: JSONObject;
+    }
+  | { readonly status: 'error'; readonly message: string };
 
 export type DestinationResolution =
   | { readonly status: 'ok'; readonly destinations: readonly CallDestination[] }

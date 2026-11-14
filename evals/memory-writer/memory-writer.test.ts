@@ -17,6 +17,7 @@ async function setupTest() {
     {
       recall: () =>
         Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
+      writes: { readBatchSources: () => Promise.resolve('owner') },
     },
     createWriterStaging(),
     5,

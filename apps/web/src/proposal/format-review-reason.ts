@@ -18,6 +18,7 @@ const reviewReasons: Readonly<Record<MemoryProposal['reason'], string>> = {
   sensitive: 'The note-taker marked it sensitive, and every sensitive item waits for your review.',
   subject_change:
     'It changes whose fact the item is, and every subject change waits for your review.',
+  ask_rule: 'A rule of yours asks before nixie writes this kind of memory.',
 };
 
 export function formatReviewReason(reason: MemoryProposal['reason']): string {

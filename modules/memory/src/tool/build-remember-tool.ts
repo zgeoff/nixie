@@ -8,6 +8,7 @@ import { memoryWriteOutput } from '../utils/memory-write-output';
 import { parseUntilInput } from '../utils/parse-until-input';
 import { untilInputSchema } from '../utils/schema/until-input-schema';
 import { buildWriteCaller } from '../write/build-write-caller';
+import { resolveWriteFacts } from '../write/resolve-write-facts';
 import { runWriteCall } from '../write/run-write-call';
 
 const rememberDescription =
@@ -89,7 +90,7 @@ export function buildRememberTool(
     input: rememberInput,
     output: memoryWriteOutput,
     declaration: {
-      effects: ['note'],
+      effects: ['memory_write'],
       destinations: [],
       amount: null,
       content: ['text', 'quote'],
@@ -103,6 +104,17 @@ export function buildRememberTool(
       },
     },
     execution: 'direct',
+    resolvePolicyFacts: (rawInput, context) =>
+      resolveWriteFacts(async () => {
+        const input = rememberArguments.parse(rawInput);
+
+        return {
+          sources: await memory.writes.readRememberSources(
+            buildRememberRequest(input, undefined, context),
+          ),
+          args: rawInput,
+        };
+      }),
     run: (call, context) => {
       const input = rememberArguments.parse(call.input);
       const parsed = parseUntilInput(input.until);
@@ -128,6 +140,7 @@ function buildRememberRequest(
   return {
     text: input.text,
     caller: buildWriteCaller(context),
+    ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
     ...(until === undefined || until === null ? {} : { until }),
     ...(input.quote === undefined ? {} : { quote: input.quote }),
     ...(input.eventID === undefined ? {} : { eventID: toSequence(input.eventID) }),

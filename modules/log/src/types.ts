@@ -68,7 +68,8 @@ export interface DecisionInputs {
 }
 
 export interface Decision {
-  readonly outcome: 'allow' | 'ask' | 'deny';
+  // gate: no rule decided a memory write, and the memory gate decides it
+  readonly outcome: 'allow' | 'ask' | 'deny' | 'gate';
   readonly stage: number;
   readonly rule: { readonly id: string; readonly revision: number } | null;
 

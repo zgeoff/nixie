@@ -1,10 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import {
-  defaultGateLimits,
-  defaultOwnerPronouns,
-  findNoAllowRule,
-  startMemoryStore,
-} from '@heynixie/memory';
+import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import {
   buildMockCheckerAnswer,
   buildMockWriteCaller,
@@ -27,7 +22,6 @@ async function setupTest() {
       check: () => Promise.resolve(buildMockCheckerAnswer()),
       clock: api.clock,
       defaultZone: 'UTC',
-      findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,

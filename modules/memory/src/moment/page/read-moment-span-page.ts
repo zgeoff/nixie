@@ -1,5 +1,6 @@
 import type {
   ContentSource,
+  Decision,
   JSONObject,
   Log,
   LogRecord,
@@ -159,13 +160,20 @@ function buildSpanEntry(
     recordedAt: record.recordedAt.getTime(),
     source: record.contentSource ?? 'nixie',
     payload: Object.keys(record.payload).length === 0 ? null : record.payload,
-    decision: record.decision?.outcome ?? null,
+    decision: pickSpanDecision(record.decision?.outcome),
     text: erasable.status === 'readable' ? renderRecordText(record, erasable.fields, render) : null,
     images: erasable.status === 'readable' ? collectSpanImages(record) : [],
     isGap,
     isRemoved: erasable.status === 'shredded' && removed.has(record.sequence),
     isCut: false,
   };
+}
+
+// The export file's decision lists only the three outcomes that a rule or the consent check gives,
+// and a file that a release before this one reads must still parse. A memory write that no rule
+// decided, which the memory gate then decided, shows no decision.
+function pickSpanDecision(outcome: Decision['outcome'] | undefined): MomentSpanEntry['decision'] {
+  return outcome === undefined || outcome === 'gate' ? null : outcome;
 }
 
 function renderRecordText(

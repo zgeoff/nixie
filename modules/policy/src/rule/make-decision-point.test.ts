@@ -451,3 +451,84 @@ test('it refuses a note whose destination is not word for word in the typed mess
 
   expect([decided.decision.outcome, decided.decision.stage]).toStrictEqual(['ask', 5]);
 });
+
+test('it gates a memory write at stage 8 when no rule decides it, and never reads consent', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+    messages: [buildTypedMessage(7, 'Remember that I take tea', 1_794_550_000_000)],
+    rules: [buildRuleEntry('allow-notes', { outcome: 'allow', effects: ['note'] })],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ turnMessageSequence: 7 }));
+
+  expect(decided).toStrictEqual({
+    decision: { outcome: 'gate', stage: 8, rule: null, destinations: [], snapshot: 'snapshot-1' },
+    sentence: null,
+    memoryWrite: { allowing: [] },
+  });
+
+  expect(ctx.asked).toStrictEqual([]);
+});
+
+test('it allows a memory write at stage 7 and lists every allow rule that matched, by ID', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+    rules: [
+      buildRuleEntry('b-owner', { outcome: 'allow', effects: ['memory_write'] }),
+      buildRuleEntry('a-self', {
+        outcome: 'allow',
+        effects: ['memory_write'],
+        checks: [{ arg: 'subject', op: 'eq', value: 'self' }],
+      }),
+      buildRuleEntry('c-notes', { outcome: 'allow', effects: ['note'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall({ args: { subject: 'self' } }));
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'allow',
+    stage: 7,
+    rule: { id: 'a-self', revision: 2, others: ['b-owner'] },
+    destinations: [],
+    snapshot: 'snapshot-1',
+  });
+
+  expect(decided.memoryWrite).toStrictEqual({
+    allowing: [
+      { id: 'a-self', revision: 2, checks: [{ arg: 'subject', op: 'eq', value: 'self' }] },
+      { id: 'b-owner', revision: 2, checks: [] },
+    ],
+  });
+});
+
+test('it asks at stage 6 for a memory write that an ask rule names', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['memory_write'], destinations: [] }),
+    rules: [buildRuleEntry('ask-memory', { outcome: 'ask', effects: ['memory_write'] })],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'ask',
+    stage: 6,
+    cause: 'ask_rule',
+    rule: { id: 'ask-memory' },
+  });
+});
+
+test('it leaves a call that declares note to the rules on note when a rule asks about memory_write', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['note'], destinations: [] }),
+    rules: [
+      buildRuleEntry('ask-memory', { outcome: 'ask', effects: ['memory_write'] }),
+      buildRuleEntry('allow-notes', { outcome: 'allow', effects: ['note'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(buildPolicyCall());
+
+  expect([decided.decision.outcome, decided.decision.stage]).toStrictEqual(['allow', 7]);
+  expect(decided.memoryWrite).toBeUndefined();
+});

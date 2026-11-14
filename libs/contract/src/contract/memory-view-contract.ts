@@ -103,6 +103,7 @@ const reviewReasonSchema = z.enum([
   'from_photo',
   'sensitive',
   'subject_change',
+  'ask_rule',
 ]);
 
 const proposalSourceSchema = z.object({

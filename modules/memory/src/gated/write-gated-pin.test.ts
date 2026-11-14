@@ -4,7 +4,6 @@ import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
-import { makeToolAllowRule } from '../test-utils/make-tool-allow-rule';
 import { startTestMemory } from '../test-utils/start-test-memory';
 
 test('it proposes a pin of an active fact for review, and leaves the pinned core as it was', async () => {
@@ -39,49 +38,6 @@ test('it proposes a pin of an active fact for review, and leaves the pinned core
   ]);
 
   expect(core).toStrictEqual([]);
-});
-
-test('it pins an item at once under an allow rule that names memory.pin, with no proposal', async () => {
-  const memory = await startTestMemory({
-    gate: { findAllowRule: makeToolAllowRule('memory.pin') },
-  });
-
-  const item = await memory.store.remember({
-    text: 'Takes the early ferry on Mondays',
-    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
-  });
-
-  const outcome = await memory.store.writes.pin({
-    target: item,
-    caller: buildMockWriteCaller({ thread: 'harbour' }),
-  });
-
-  const pending = await memory.store.proposals.listPending();
-  const core = await memory.store.readPinnedCore();
-  const records = await readRecords(memory.log, { afterSequence: 0, kinds: ['memory.pinned'] });
-
-  expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 1 });
-  expect(pending).toStrictEqual([]);
-  expect(core).toMatchObject([{ itemID: item.itemID }]);
-
-  expect(records.map((entry) => [entry.record.thread, entry.record.payload])).toStrictEqual([
-    ['harbour', { itemID: item.itemID, isPinned: true }],
-  ]);
-});
-
-test('it proposes a pin under an allow rule that names another tool', async () => {
-  const memory = await startTestMemory({
-    gate: { findAllowRule: makeToolAllowRule('memory.remember') },
-  });
-
-  const item = await memory.store.remember({
-    text: 'Takes the early ferry on Mondays',
-    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
-  });
-
-  const outcome = await memory.store.writes.pin({ target: item, caller: buildMockWriteCaller() });
-
-  expect(outcome).toMatchObject({ status: 'proposed', reason: 'pinned' });
 });
 
 test('it refuses a pin of a retired item, and writes nothing', async () => {

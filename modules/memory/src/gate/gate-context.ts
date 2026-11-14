@@ -1,7 +1,9 @@
 import type { Clock } from '@heynixie/clock';
 import type { ContentSource } from '@heynixie/log';
+import type { RuleSource } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { RunCheck } from '@heynixie/sessions';
+import type { MemoryWriteVerdict } from '@heynixie/tools';
 import type { Selectable } from 'kysely';
 import type {
   MemoryChange,
@@ -12,7 +14,7 @@ import type {
   VersionRef,
   WriteInTransaction,
 } from '../types';
-import type { WriterGate } from '../writer/writer-model';
+import type { SourceMessage, WriterGate } from '../writer/writer-model';
 import type { reviewReasons } from './review-reasons';
 
 export type { ContentGateRequest, ContentGateResult } from './content-gate-request';
@@ -21,7 +23,6 @@ export interface GateContext {
   readonly check: RunCheck;
   readonly clock: Pick<Clock, 'now'>;
   readonly defaultZone: string;
-  readonly findAllowRule: FindAllowRule;
   readonly limits: GateLimits;
   readonly ownerName: string | null;
   readonly ownerPronouns: OwnerPronouns;
@@ -46,22 +47,6 @@ export interface GateLimits {
   readonly proposalCap: number;
 
   readonly closeMatchScore: number;
-}
-
-export interface AllowRuleMatch {
-  readonly ruleID: string;
-  readonly revision: number;
-
-  readonly source?: 'image';
-}
-
-export type FindAllowRule = (call: AllowRuleCall) => Promise<AllowRuleMatch | null>;
-
-export interface AllowRuleCall {
-  readonly tool: 'memory.remember' | 'memory.edit' | 'memory.pin';
-  readonly thread: string;
-
-  readonly source?: 'image';
 }
 
 export interface OwnerMessage {
@@ -104,12 +89,16 @@ export interface GatedRememberRequest {
 
   readonly image?: ImageRef;
   readonly caller: WriteCaller;
+
+  // what the decision point said; a write with none runs every check
+  readonly verdict?: MemoryWriteVerdict;
 }
 
 export interface GatedRetireRequest {
   readonly target: VersionRef;
   readonly intentQuote?: string;
   readonly caller: WriteCaller;
+  readonly verdict?: MemoryWriteVerdict;
 }
 
 export interface GatedPinRequest {
@@ -150,10 +139,30 @@ export interface MemoryWrites {
   readonly markSensitive: (request: SensitiveMarkRequest) => Promise<WriteOutcome>;
 
   readonly batch: WriterGate;
+
+  // the sources that the decision point reads for a write, from the quote the gate finds
+  readonly readRememberSources: (request: GatedRememberRequest) => Promise<readonly WriteSource[]>;
+  readonly readRetireSources: (request: GatedRetireRequest) => Promise<readonly WriteSource[]>;
+  readonly readBatchSources: (source: SourceMessage, quote: string) => Promise<WriteSource>;
+
+  // the subject of an item, which a rule reads when a call leaves it out
+  readonly readItemSubject: (itemID: string) => Promise<MemorySubject>;
 }
 
+export type WriteSource = Extract<RuleSource, 'owner' | 'outside' | 'task'>;
+
 export interface ModelWriteStore {
-  readonly writes: Pick<MemoryWrites, 'remember' | 'retire' | 'pin' | 'unpin' | 'markSensitive'>;
+  readonly writes: Pick<
+    MemoryWrites,
+    | 'remember'
+    | 'retire'
+    | 'pin'
+    | 'unpin'
+    | 'markSensitive'
+    | 'readRememberSources'
+    | 'readRetireSources'
+    | 'readItemSubject'
+  >;
   readonly renderReviewReason: (reason: ReviewReason) => string;
 }
 

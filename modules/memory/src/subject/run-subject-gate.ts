@@ -1,5 +1,8 @@
+import { buildAskReview } from '../gate/build-ask-review';
 import type { ContentGateResult, GatedRememberRequest } from '../gate/gate-context';
+import { pickCoveringRule } from '../gate/pick-covering-rule';
 import { runContentGate } from '../gate/run-content-gate';
+import { runRuleGate } from '../gate/run-rule-gate';
 import { runSelfNoteGate } from '../gate/run-self-note-gate';
 import { requireImageSource } from '../image/require-image-source';
 import { runImageGate } from '../image/run-image-gate';
@@ -72,8 +75,10 @@ function runGateOfSubject(
     requireSelfNoteWrite(request, isNewSelfNote);
   }
 
-  if ((subjects.newSubject ?? subjects.subject) === 'self') {
-    return runSelfNoteGate(parts.context, { text: request.text, thread: request.caller.thread });
+  const verdict = request.verdict;
+
+  if (verdict?.kind === 'rule-ask') {
+    return Promise.resolve(buildAskReview(verdict.rule));
   }
 
   const content = {
@@ -85,13 +90,19 @@ function runGateOfSubject(
     until: request.until ?? null,
   };
 
-  if (request.image !== undefined) {
-    return runImageGate(parts.context, content);
+  if ((subjects.newSubject ?? subjects.subject) === 'self') {
+    const covering = pickCoveringRule(verdict, 'self_note');
+
+    return covering === null
+      ? runSelfNoteGate(parts.context, { text: request.text, thread: request.caller.thread })
+      : runRuleGate(parts.context, content, { id: covering.id, revision: covering.revision });
   }
 
-  const tool = request.target === undefined ? 'memory.remember' : 'memory.edit';
+  if (request.image !== undefined) {
+    return runImageGate(parts.context, content, pickCoveringRule(verdict, 'photo'));
+  }
 
-  return runContentGate(parts.context, content, tool);
+  return runContentGate(parts.context, content, pickCoveringRule(verdict, 'none'));
 }
 
 function requireSelfNoteWrite(request: GatedRememberRequest, isNewSelfNote: boolean): void {

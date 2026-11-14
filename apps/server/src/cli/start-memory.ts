@@ -1,6 +1,6 @@
 import { toErrorFields } from '@heynixie/logger';
 import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
-import { findNoAllowRule, startLapseSweep, startMemoryStore } from '@heynixie/memory';
+import { startLapseSweep, startMemoryStore } from '@heynixie/memory';
 import type { RunCheck } from '@heynixie/sessions';
 import type { ServerParts } from '../types';
 
@@ -28,7 +28,6 @@ export async function startMemory(
       check,
       clock: parts.context.clock,
       defaultZone: parts.config.time.default_zone,
-      findAllowRule: findNoAllowRule,
       limits: parts.config.memory.limits,
       ownerName: parts.config.owner.name,
       ownerPronouns: parts.config.owner.pronouns,

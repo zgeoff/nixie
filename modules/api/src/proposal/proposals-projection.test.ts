@@ -4,12 +4,7 @@ import { join } from 'node:path';
 import { nixieSchema, readQueryRows, removeTableRows } from '@heynixie/db';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { withWriteTransaction, writeRecords } from '@heynixie/log';
-import {
-  defaultGateLimits,
-  defaultOwnerPronouns,
-  findNoAllowRule,
-  startMemoryStore,
-} from '@heynixie/memory';
+import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { sql } from 'kysely';
@@ -55,7 +50,6 @@ async function setupTest() {
         }),
       clock: api.clock,
       defaultZone: 'UTC',
-      findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,

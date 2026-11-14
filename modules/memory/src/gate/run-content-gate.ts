@@ -2,28 +2,25 @@ import { readEventEvidence } from '../evidence/read-event-evidence';
 import { readQuoteEvidence } from '../evidence/read-quote-evidence';
 import type { MemoryContext } from '../types';
 import { buildGateReview } from './build-gate-review';
-import type { AllowRuleCall, ContentGateRequest, ContentGateResult } from './gate-context';
+import type { ContentGateRequest, ContentGateResult } from './gate-context';
+import type { CoveringRule } from './pick-covering-rule';
 import { runQuotedGate } from './run-quoted-gate';
 import { runRuleGate } from './run-rule-gate';
 
 const invisible = /\p{Cf}/u;
 
+// An allow rule that covers the write skips the quote check and the memory checker.
 export async function runContentGate(
   context: Pick<MemoryContext, 'log' | 'gate'>,
   request: ContentGateRequest,
-  tool: AllowRuleCall['tool'],
+  rule: CoveringRule | null,
 ): Promise<ContentGateResult> {
   if (invisible.test(request.text)) {
     return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
   }
 
-  const rule = await context.gate.findAllowRule({
-    tool,
-    thread: request.thread,
-  });
-
   if (rule !== null) {
-    return runRuleGate(context, request, { id: rule.ruleID, revision: rule.revision });
+    return runRuleGate(context, request, { id: rule.id, revision: rule.revision });
   }
 
   if (request.quote === null) {

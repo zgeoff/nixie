@@ -8,6 +8,7 @@ test('it renders the production prompts over the case, with the guest names of t
     {
       recall: () =>
         Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
+      writes: { readBatchSources: () => Promise.resolve('owner') },
     },
     createWriterStaging(),
     5,
@@ -80,6 +81,7 @@ test('it sends the messages of a case at the time the case sets, and starts its 
     {
       recall: () =>
         Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
+      writes: { readBatchSources: () => Promise.resolve('owner') },
     },
     createWriterStaging(),
     5,
@@ -117,6 +119,7 @@ test('it gives the same input the same hash, and another case another hash', () 
     {
       recall: () =>
         Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
+      writes: { readBatchSources: () => Promise.resolve('owner') },
     },
     createWriterStaging(),
     5,

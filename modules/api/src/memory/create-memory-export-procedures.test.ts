@@ -2,7 +2,6 @@ import { expect, onTestFinished, test } from 'bun:test';
 import {
   defaultGateLimits,
   defaultOwnerPronouns,
-  findNoAllowRule,
   memoryExportSchema,
   startMemoryStore,
 } from '@heynixie/memory';
@@ -28,7 +27,6 @@ async function setupTest() {
         }),
       clock: api.clock,
       defaultZone: 'UTC',
-      findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,

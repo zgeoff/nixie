@@ -87,7 +87,8 @@ export interface PolicyCall {
   readonly snapshot: string;
 }
 
-export type PolicyOutcome = 'allow' | 'ask' | 'deny';
+// gate: no rule decided a memory write, so the memory gate decides it
+export type PolicyOutcome = 'allow' | 'ask' | 'deny' | 'gate';
 
 export type PolicyStage = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
@@ -112,9 +113,25 @@ export interface DecisionDetail {
   readonly fault?: DecisionFault;
 }
 
+// An allow rule that matched the call, with the checks the memory gate reads to see what it covers.
+export interface AllowingRule {
+  readonly id: string;
+  readonly revision: number;
+  readonly checks: readonly RuleCheck[];
+}
+
+// What a call to a tool that declares memory_write carries to the tool, beside the stored decision.
+export interface MemoryWriteFacts {
+  // every allow rule that matched the call, by ID; the first is the rule the decision names
+  readonly allowing: readonly AllowingRule[];
+}
+
 export interface PolicyDecision {
   readonly decision: DecisionDetail;
   readonly sentence: string | null;
+
+  // present only when the declaration the decision used holds memory_write
+  readonly memoryWrite?: MemoryWriteFacts;
 }
 
 export interface RuleEntry {

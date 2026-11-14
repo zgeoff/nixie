@@ -1,5 +1,5 @@
 import type { Definitions, JSONObject } from '@heynixie/log';
-import type { CallDestination, PolicyCall } from '@heynixie/policy';
+import type { CallDestination, PolicyCall, RuleSource } from '@heynixie/policy';
 import type { StepPolicyFrame, ToolRun } from '../types';
 
 const defaultFrame: StepPolicyFrame = {
@@ -16,6 +16,9 @@ export interface ToolPolicyFacts {
   readonly destinations: readonly CallDestination[];
   readonly definitions: Definitions;
   readonly at: number;
+
+  // set by the tool, in place of the step's sources
+  readonly sources?: readonly RuleSource[];
 }
 
 export function buildToolPolicyCall(run: ToolRun, facts: ToolPolicyFacts): PolicyCall {
@@ -28,7 +31,7 @@ export function buildToolPolicyCall(run: ToolRun, facts: ToolPolicyFacts): Polic
     definitionID: frame.definitionID,
     args: facts.input,
     destinations: facts.destinations,
-    sources: frame.sources,
+    sources: facts.sources ?? frame.sources,
     at: facts.at,
     turnMessageSequence: frame.turnMessageSequence,
     onBehalfOf: frame.onBehalfOf,
