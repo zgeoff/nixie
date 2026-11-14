@@ -54,11 +54,25 @@ lists the set folders in sequence order, and skips each one that lacks its marke
 receipt. For each set it ships, the job:
 
 1. checks the manifest against the folder's sequence, and each copy against its size and checksum;
-2. backs up the log copy to the data repository, then applies the data retention;
-3. backs up the key store copy to the key repository, forgets every other key snapshot by its ID,
-   prunes every unused byte, and checks the repository's data once the prune passes;
-4. writes the receipt with an fsync and a rename, so nixie never reads a partial one;
-5. removes the set's copies, unless nixie has removed the set folder first.
+2. lists both repositories, and gives the publish the number one above the highest `publish-` tag in
+   either, or 1 when neither holds one;
+3. backs up the key store copy to the key repository first, with the tags `set-`, `kind-` and
+   `publish-`, and the tags `legacy-set-` and `proven-from-` where the
+   [tag rules](../../design/queue/backup-pair.md#tags) give them: the key snapshot copies both from
+   the one it replaces, takes `legacy-set-` when it is the first numbered one, and takes
+   `proven-from-` with its own number when a restore note shows the restored keys are not the
+   newest's, or when the replaced snapshot has no number while a repository holds one;
+4. backs up the log copy to the data repository with the same `set-`, `kind-` and `publish-` tags,
+   then applies the data retention;
+5. forgets every other key snapshot by its ID, prunes every unused byte, and checks the repository's
+   data once the prune passes, whether the data snapshot passed or failed;
+6. removes the restore note from the staging folder, when one was there;
+7. writes the receipt with an fsync and a rename, so nixie never reads a partial one;
+8. removes the set's copies, unless nixie has removed the set folder first.
+
+A job run that cannot list a repository writes a failed receipt and no snapshot, so a publish number
+never repeats. A failed key snapshot also gives a failed receipt with no data snapshot, no removed
+key snapshot and the restore note kept.
 
 A restic failure in either repository gives the set a failed receipt that lists each failed step,
 and the job moves on to the next set. A failed manifest check gives the set a failed receipt too.

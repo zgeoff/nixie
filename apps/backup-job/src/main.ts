@@ -2,10 +2,10 @@ import { setTimeout } from 'node:timers/promises';
 import type { Logger } from '@heynixie/logger';
 import { makeLogger, startLineLog, toErrorFields } from '@heynixie/logger';
 import { cli, define } from 'gunshi';
-import { buildResticClient } from './build-restic-client';
 import { localJobFiles } from './local-job-files';
 import type { JobConfig } from './parse-job-config';
 import { parseJobConfig } from './parse-job-config';
+import { buildResticClient } from './restic/build-restic-client';
 import { runJobPass } from './run-job-pass';
 
 const stopping = new AbortController();

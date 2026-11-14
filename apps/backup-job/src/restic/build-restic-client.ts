@@ -1,19 +1,11 @@
 import { parseJSONOrNull } from '@heynixie/wire';
 import { z } from 'zod';
-import type { DataRetention, JobConfig, ResticRepository } from './parse-job-config';
+import type { JobConfig, ResticRepository } from '../parse-job-config';
+import type { BackupRepository, PublishedSnapshot } from '../publish/backup-repository';
+import { parseSnapshotTags } from './parse-snapshot-tags';
 import { ResticError } from './restic-error';
 import type { ResticRun } from './run-restic';
 import { runRestic } from './run-restic';
-
-export interface ResticClient {
-  readonly createRepository: () => Promise<void>;
-  readonly writeSnapshot: (path: string, name: string, tags: readonly string[]) => Promise<string>;
-  readonly readSnapshotIDs: () => Promise<readonly string[]>;
-  readonly removeSnapshots: (snapshotIDs: readonly string[]) => Promise<void>;
-  readonly runRetention: (retention: DataRetention) => Promise<void>;
-  readonly runPrune: () => Promise<void>;
-  readonly runCheck: () => Promise<void>;
-}
 
 // restic 0.17 and later exit 10 when the repository does not exist, and 12 on a wrong password
 const missingRepositoryExit = 10;
@@ -21,13 +13,20 @@ const missingRepositoryExit = 10;
 // One host for every snapshot, so a pod's changing host name never splits retention into groups.
 const snapshotHost = 'nixie';
 const summarySchema = z.object({ message_type: z.literal('summary'), snapshot_id: z.string() });
-const snapshotsSchema = z.array(z.object({ id: z.string() }));
+
+const listedSnapshotSchema = z.object({
+  id: z.string(),
+  time: z.string(),
+  tags: z.array(z.string()).default([]),
+});
+
+const snapshotsSchema = z.array(listedSnapshotSchema);
 
 export function buildResticClient(
   config: Pick<JobConfig, 'restic' | 'backendEnv'>,
   repository: ResticRepository,
   label: string,
-): ResticClient {
+): BackupRepository {
   const run = async (args: readonly string[], stdin?: string): Promise<ResticRun> => {
     const result = await runRestic(config, repository, {
       args,
@@ -89,12 +88,34 @@ export function buildResticClient(
 
       return summary.data.snapshot_id;
     },
-    readSnapshotIDs: async () => {
+    readSnapshots: async () => {
       const result = await run(['snapshots', '--json']);
 
       requireSuccess('snapshots', result);
 
-      return snapshotsSchema.parse(parseJSONOrNull(result.stdout)).map((snapshot) => snapshot.id);
+      const listed = snapshotsSchema.parse(parseJSONOrNull(result.stdout));
+
+      return listed.map((snapshot): PublishedSnapshot => {
+        const writtenAt = Date.parse(snapshot.time);
+
+        if (Number.isNaN(writtenAt)) {
+          throw new ResticError(
+            `restic snapshots in the ${label} repo listed snapshot ${snapshot.id} with the unreadable time ${snapshot.time}`,
+          );
+        }
+
+        const tags = parseSnapshotTags(snapshot.tags);
+
+        return {
+          snapshotID: snapshot.id,
+          writtenAt,
+          set: tags.set,
+          kind: tags.kind,
+          publish: tags.publish,
+          legacySet: tags.legacySet,
+          provenFrom: tags.provenFrom,
+        };
+      });
     },
     removeSnapshots: async (snapshotIDs) => {
       if (snapshotIDs.length === 0) {

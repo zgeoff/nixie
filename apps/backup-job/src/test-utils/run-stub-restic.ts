@@ -20,6 +20,7 @@ const parsed = parseArgs({
     stdin: { type: 'boolean' },
     'stdin-filename': { type: 'string' },
     tag: { type: 'string', multiple: true },
+    time: { type: 'string' },
     'group-by': { type: 'string' },
     'keep-hourly': { type: 'string' },
     'keep-daily': { type: 'string' },
@@ -35,6 +36,7 @@ const [command = '', ...rest] = parsed.positionals;
 
 const snapshotSchema = z.object({
   id: z.string(),
+  time: z.string(),
   hostname: z.string(),
   paths: z.array(z.string()),
   tags: z.array(z.string()),
@@ -96,6 +98,7 @@ if (command === 'cat' && rest[0] === 'config') {
 
   const snapshot: Snapshot = {
     id,
+    time: parsed.values.time ?? new Date().toISOString(),
     hostname: parsed.values.host ?? 'stub-host',
     paths: [`/${parsed.values['stdin-filename'] ?? 'stdin'}`],
     tags: parsed.values.tag ?? [],
