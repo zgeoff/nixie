@@ -1,9 +1,11 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
 import { startScriptedModel, waitForCondition } from '@heynixie/testing';
+import { encodeCaptureTag, openSpoolFile, parseSpoolFileName } from '@heynixie/wire';
+import { createSpoolRecipient } from '@heynixie/wire/test-utils';
 import { startModelGateway } from './start-model-gateway';
 
 async function setupTest() {
@@ -374,4 +376,86 @@ test('it leaves the count unmarked when a stop finds no reply under way', async 
   const stored = await readFile(join(ctx.directory, 'counter.json'), 'utf8');
 
   expect(stored).toBe('{"dollars":0,"tokens":0}');
+});
+
+test('it captures a tagged request to its spool, answers the capture ask, and logs that it captures', async () => {
+  const ctx = await setupTest();
+
+  const spool = join(ctx.directory, 'spool');
+
+  await mkdir(spool);
+
+  ctx.model.addReplies({ text: 'captured', usage: { input_tokens: 6, output_tokens: 4 } });
+
+  await writeFile(
+    join(ctx.directory, 'proxy.yaml'),
+    [
+      'listen: { port: 0 }',
+      `store: ${join(ctx.directory, 'counter.json')}`,
+      'limits: { dollars: 1 }',
+      'capture:',
+      `  spool: ${spool}`,
+      'routes:',
+      '  preview:',
+      `    upstream: ${ctx.model.url}`,
+      '    model: model-small',
+      '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+    ].join('\n'),
+  );
+
+  const proxy = await startModelGateway({
+    configPath: join(ctx.directory, 'proxy.yaml'),
+    log: ctx.log,
+    waitForDrainDeadline: () => Promise.resolve(),
+  });
+
+  const recipient = await createSpoolRecipient();
+
+  const captureID = '3f9c2a54-7b1e-4d68-9a0f-5e2c81b6d7a3';
+  const segment = encodeCaptureTag({ captureID, sealTo: recipient.sealTo });
+  const body = JSON.stringify({ model: 'model-small', messages: [] });
+
+  const ask = await fetch(`${proxy.url}/~capture?spool=${encodeURIComponent(spool)}`);
+  const answer: unknown = await ask.json();
+
+  await fetch(`${proxy.url}/preview/~in.${segment}/v1/messages`, { method: 'POST', body });
+
+  await proxy.stop();
+
+  const names = await readdir(spool);
+  const file = await readFile(join(spool, names[0] ?? ''));
+  const opened = await openSpoolFile(new Uint8Array(file), recipient.privateKey);
+
+  expect(answer).toStrictEqual({ canCapture: true });
+  expect(names.map((name) => parseSpoolFileName(name)?.kind)).toStrictEqual(['cap']);
+  expect(new TextDecoder().decode(opened?.body)).toBe(body);
+  expect(ctx.log).toHaveBeenCalledWith('proxy.started', expect.objectContaining({ capture: true }));
+});
+
+test('it refuses to start when its capture spool is not a folder it can write', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.directory, 'proxy.yaml'),
+    [
+      'listen: { port: 0 }',
+      `store: ${join(ctx.directory, 'counter.json')}`,
+      'limits: { dollars: 1 }',
+      'capture:',
+      `  spool: ${join(ctx.directory, 'missing')}`,
+      'routes:',
+      '  preview:',
+      `    upstream: ${ctx.model.url}`,
+      '    model: model-small',
+      '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+    ].join('\n'),
+  );
+
+  const starting = startModelGateway({
+    configPath: join(ctx.directory, 'proxy.yaml'),
+    log: ctx.log,
+    waitForDrainDeadline: () => Promise.resolve(),
+  });
+
+  expect(starting).rejects.toThrow();
 });

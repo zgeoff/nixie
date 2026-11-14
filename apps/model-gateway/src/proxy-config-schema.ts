@@ -1,3 +1,4 @@
+import { isAbsolute } from 'node:path';
 import { modelPricesSchema } from '@heynixie/models';
 import { modelAPIs } from '@heynixie/wire';
 import { z } from 'zod';
@@ -21,6 +22,14 @@ const limitsSchema = z
     message: 'the limits name no dollar or token limit, and the proxy needs one to count against',
   });
 
+const captureSchema = z.strictObject({
+  spool: z.string().refine((spool) => isAbsolute(spool), {
+    message: 'the capture spool is an absolute path',
+  }),
+  max_bytes: z.int().positive().default(536_870_912),
+  max_pending: z.int().positive().default(16),
+});
+
 export const proxyConfigSchema = z
   .strictObject({
     listen: z.strictObject({
@@ -29,6 +38,7 @@ export const proxyConfigSchema = z
     }),
     store: z.string().min(1),
     limits: limitsSchema,
+    capture: captureSchema.optional(),
     routes: z
       .record(routeIDSchema, routeSchema)
       .refine((routes) => Object.keys(routes).length > 0, {
@@ -39,6 +49,14 @@ export const proxyConfigSchema = z
     listen: config.listen,
     store: config.store,
     limits: { dollars: config.limits.dollars ?? null, tokens: config.limits.tokens ?? null },
+    capture:
+      config.capture === undefined
+        ? null
+        : {
+            spool: config.capture.spool,
+            maxBytes: config.capture.max_bytes,
+            maxPending: config.capture.max_pending,
+          },
     routes: Object.fromEntries(
       Object.entries(config.routes).map(([id, route]) => [
         id,

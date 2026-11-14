@@ -1,5 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
+import { createCaptureSpool } from './create-capture-spool';
 import { createCounterStore } from './create-counter-store';
 import { makeProxyHandler } from './make-proxy-handler';
 import { proxyConfigSchema } from './proxy-config-schema';
@@ -25,10 +26,16 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
 
   const store = await createCounterStore(config.store);
 
+  const capture =
+    config.capture === null
+      ? null
+      : await createCaptureSpool({ config: config.capture, log: options.log });
+
   const answerRequest = makeProxyHandler({
     routes: config.routes,
     limits: config.limits,
     store,
+    capture,
     sendUpstream: fetch,
     log: options.log,
   });
@@ -46,6 +53,7 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
   options.log('proxy.started', {
     port: server.port ?? config.listen.port,
     routes: Object.keys(config.routes).join(','),
+    capture: capture !== null,
   });
 
   return {
@@ -68,6 +76,7 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
       }
 
       await server.stop(true);
+      await capture?.settle();
       await store.settle();
     },
   };

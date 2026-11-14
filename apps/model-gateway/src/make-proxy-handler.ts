@@ -1,11 +1,17 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import { buildCallCost } from '@heynixie/models';
-import type { ModelCallUsage } from '@heynixie/wire';
-import { parseJSONOrNull } from '@heynixie/wire';
+import type { ModelAPIEndpointName, ModelCallUsage } from '@heynixie/wire';
+import {
+  captureAnswerSchema,
+  capturePath,
+  decodeCaptureTag,
+  parseJSONOrNull,
+} from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { buildCallTokens } from './build-call-tokens';
 import { buildCountedStream } from './build-counted-stream';
+import type { CaptureSpool } from './create-capture-spool';
 import { findProxyEndpoint } from './find-proxy-endpoint';
 import { isRecord } from './is-record';
 import type { CounterStore, ProxyLimits, ProxyRoute, SpendTotals, StoredCount } from './types';
@@ -15,6 +21,9 @@ export interface ProxyHandlerDeps {
   readonly routes: Readonly<Record<string, ProxyRoute>>;
   readonly limits: ProxyLimits;
   readonly store: CounterStore;
+
+  // null when the config holds no capture key
+  readonly capture: CaptureSpool | null;
   readonly sendUpstream: (url: string, init: RequestInit) => Promise<Response>;
   readonly log: Logger;
 }
@@ -72,7 +81,14 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
   };
 
   return async (request) => {
+    const receivedAt = Date.now();
+
     const url = new URL(request.url);
+
+    // no route ID can match this path, and the answer is about the capture, not the spend
+    if (url.pathname === capturePath) {
+      return answerCaptureAsk(deps.capture, request, url);
+    }
 
     const target = findRouteTarget(deps.routes, url.pathname);
 
@@ -90,7 +106,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return renderAPIError(
         403,
         'permission_error',
-        `the model gateway forwards only requests whose spend it can count, so it refuses ${request.method} ${target.path}`,
+        `the model gateway forwards only requests whose spend it can count, so it refuses ${request.method} ${target.rawPath}`,
       );
     }
 
@@ -142,6 +158,26 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
+    const tag =
+      deps.capture !== null &&
+      target.tag !== null &&
+      body !== null &&
+      isCapturableEndpoint(endpoint.name)
+        ? decodeCaptureTag(target.tag)
+        : null;
+
+    const handle =
+      deps.capture === null || tag === null || body === null || !isCapturableEndpoint(endpoint.name)
+        ? null
+        : deps.capture.begin({
+            tag,
+            receivedAt,
+            route: target.routeID,
+            api: target.route.api,
+            endpoint: endpoint.name,
+            body: new Uint8Array(body),
+          });
+
     const upstream = await deps
       .sendUpstream(`${target.route.upstream}${target.path}${url.search}`, {
         method: request.method,
@@ -154,6 +190,12 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
         return null;
       });
+
+    if (upstream === null) {
+      handle?.drop();
+    } else {
+      handle?.finish(upstream.status);
+    }
 
     // a connection can break after the model API took the call, so the model may have spent
     if (upstream === null) {
@@ -218,20 +260,76 @@ function isLimitReached(totals: SpendTotals, limits: ProxyLimits): boolean {
   );
 }
 
-function findRouteTarget(
-  routes: Readonly<Record<string, ProxyRoute>>,
-  pathname: string,
-): { readonly route: ProxyRoute; readonly path: string } | null {
-  const [, routeID = '', ...rest] = pathname.split('/');
-  const route = Object.hasOwn(routes, routeID) ? routes[routeID] : undefined;
+async function answerCaptureAsk(
+  capture: CaptureSpool | null,
+  request: Request,
+  url: URL,
+): Promise<Response> {
+  if (request.method !== 'GET') {
+    return renderAPIError(
+      405,
+      'invalid_request_error',
+      `the model gateway answers ${capturePath} only to GET, so it refuses ${request.method}`,
+    );
+  }
 
-  return route === undefined
-    ? null
-    : { route, path: rest.length === 0 ? '' : `/${rest.join('/')}` };
+  const spool = url.searchParams.get('spool');
+
+  if (spool === null || spool === '') {
+    return renderAPIError(
+      400,
+      'invalid_request_error',
+      `the model gateway needs a spool query for ${capturePath}`,
+    );
+  }
+
+  const canCapture = capture === null ? false : await capture.probeCapture(spool);
+
+  return Response.json(captureAnswerSchema.parse({ canCapture }));
 }
 
 function renderAPIError(status: number, type: string, message: string): Response {
   return Response.json({ type: 'error', error: { type, message } }, { status });
+}
+
+interface RouteTarget {
+  readonly routeID: string;
+  readonly route: ProxyRoute;
+
+  // the path after the route, with a capture tag removed
+  readonly path: string;
+
+  // the path after the route, as the request sent it
+  readonly rawPath: string;
+
+  // the tag segment after `~in.`, or null when the path has none
+  readonly tag: string | null;
+}
+
+const captureTagPrefix = '~in.';
+
+function findRouteTarget(
+  routes: Readonly<Record<string, ProxyRoute>>,
+  pathname: string,
+): RouteTarget | null {
+  const [, routeID = '', ...rest] = pathname.split('/');
+  const route = Object.hasOwn(routes, routeID) ? routes[routeID] : undefined;
+
+  if (route === undefined) {
+    return null;
+  }
+
+  const first = rest[0] ?? '';
+  const isTagged = first.startsWith(captureTagPrefix);
+  const kept = isTagged ? rest.slice(1) : rest;
+
+  return {
+    routeID,
+    route,
+    path: kept.length === 0 ? '' : `/${kept.join('/')}`,
+    rawPath: rest.length === 0 ? '' : `/${rest.join('/')}`,
+    tag: isTagged ? first.slice(captureTagPrefix.length) : null,
+  };
 }
 
 async function readTotals(deps: ProxyHandlerDeps): Promise<StoredCount | null> {
@@ -251,6 +349,10 @@ function formatLimitRefusal(totals: SpendTotals, limits: ProxyLimits): string {
   ].filter((part) => part !== null);
 
   return `the model gateway reached its spending limit (${spent.join(', ')}), so it refuses every further request`;
+}
+
+function isCapturableEndpoint(name: ModelAPIEndpointName): name is 'messages' | 'responses' {
+  return name === 'messages' || name === 'responses';
 }
 
 // hop-by-hop headers, and the ones the proxy sets again for the body it sends on

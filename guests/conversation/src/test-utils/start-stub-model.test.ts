@@ -435,3 +435,37 @@ test('it records every request with its path, headers and body', async () => {
     },
   ]);
 });
+
+test('it matches a request after the path prefix it was given and records the full path', async () => {
+  const stub = startStubModel({ pathPrefix: '/harbour/~in.tag' });
+
+  onTestFinished(() => stub.stop());
+
+  stub.addReplies({ text: 'prefixed' });
+
+  const response = await fetch(`${stub.url}/harbour/~in.tag/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  const body: unknown = await response.json();
+
+  expect(body).toMatchObject({ content: [{ type: 'text', text: 'prefixed' }] });
+
+  expect(stub.requests.map((request) => request.path)).toStrictEqual([
+    '/harbour/~in.tag/v1/messages',
+  ]);
+});
+
+test('it answers 404 to a request outside the path prefix it was given', async () => {
+  const stub = startStubModel({ pathPrefix: '/harbour/~in.tag' });
+
+  onTestFinished(() => stub.stop());
+
+  const response = await fetch(`${stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  expect(response.status).toBe(404);
+});
