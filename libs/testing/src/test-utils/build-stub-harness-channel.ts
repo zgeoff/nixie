@@ -1,4 +1,4 @@
-import type { HarnessChannel } from '../start-harness-link';
+import type { HarnessChannel } from '../harness/start-harness-link';
 import type { HarnessMessage, NixieMessage } from '../types';
 
 export interface StubHarnessChannel {

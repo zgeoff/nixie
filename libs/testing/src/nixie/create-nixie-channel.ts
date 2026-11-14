@@ -1,5 +1,5 @@
+import type { HarnessMessage, NixieMessage } from '../types';
 import type { FaultPointArrival } from './start-nixie-process';
-import type { HarnessMessage, NixieMessage } from './types';
 
 interface NixieChannel {
   readonly ready: Promise<void>;

@@ -1,7 +1,7 @@
 import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { waitForCondition } from './wait-for-condition';
+import { waitForCondition } from '../utils/wait-for-condition';
 
 export interface RunTemplateOptions {
   readonly name: string;

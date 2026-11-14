@@ -1,11 +1,11 @@
 import { setImmediate } from 'node:timers/promises';
 import { z } from 'zod';
-import type { TestClock } from './build-test-clock';
-import { buildTestClock } from './build-test-clock';
+import type { FaultPointArm, FaultPointWork, HarnessMessage, NixieMessage } from '../types';
+import type { TestClock } from '../utils/build-test-clock';
+import { buildTestClock } from '../utils/build-test-clock';
+import { harnessEnv } from '../utils/harness-env';
 import type { WorkTracker } from './build-work-tracker';
 import { buildWorkTracker } from './build-work-tracker';
-import { harnessEnv } from './harness-env';
-import type { FaultPointArm, FaultPointWork, HarnessMessage, NixieMessage } from './types';
 
 export interface HarnessChannel {
   readonly send: (message: NixieMessage) => void;

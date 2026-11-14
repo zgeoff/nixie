@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { startHarnessLink } from '../start-harness-link';
+import { startHarnessLink } from '../harness/start-harness-link';
 
 const link = startHarnessLink();
 

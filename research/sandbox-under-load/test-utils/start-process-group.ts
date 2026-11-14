@@ -1,5 +1,5 @@
 // @boundaries-ignore a spike imports the repo's process stop by path
-import { stopProcesses } from '../../../libs/testing/src/stop-processes';
+import { stopProcesses } from '../../../libs/testing/src/wait/stop-processes';
 
 export interface ProcessGroup<Out extends Bun.Spawn.Readable, Err extends Bun.Spawn.Readable> {
   readonly child: Bun.Subprocess<'ignore', Out, Err>;

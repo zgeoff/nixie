@@ -4,7 +4,7 @@ import { startCrashHarness } from './start-crash-harness';
 
 function setupTest() {
   const harness = startCrashHarness({
-    entry: join(import.meta.dir, 'test-utils/run-stub-nixie.ts'),
+    entry: join(import.meta.dir, '../test-utils/run-stub-nixie.ts'),
     env: {},
     startMs: 1_000_000,
   });
@@ -30,7 +30,7 @@ test('it starts each nixie on the clock time the test has reached', async () => 
 
 test('it starts each nixie with the arguments the harness is given', async () => {
   const harness = startCrashHarness({
-    entry: join(import.meta.dir, 'test-utils/run-stub-nixie.ts'),
+    entry: join(import.meta.dir, '../test-utils/run-stub-nixie.ts'),
     args: ['serve', '--config', 'nixie.yaml'],
     env: {},
     startMs: 1_000_000,

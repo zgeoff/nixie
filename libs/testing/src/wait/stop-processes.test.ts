@@ -1,8 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { probeProcessGone } from './probe-process-gone';
+import { probeProcessGone } from '../process/probe-process-gone';
+import { waitForCondition } from '../utils/wait-for-condition';
 import { readDescendants } from './read-descendants';
 import { stopProcesses } from './stop-processes';
-import { waitForCondition } from './wait-for-condition';
 
 test('it kills a process and every member of the group it leads', async () => {
   const leader = Bun.spawn(['sh', '-c', 'sleep 60 & wait'], {

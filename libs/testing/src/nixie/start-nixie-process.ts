@@ -1,9 +1,9 @@
 import { join } from 'node:path';
+import type { FaultPointArm, FaultPointWork, NixieMessage } from '../types';
+import { harnessEnv } from '../utils/harness-env';
+import { readDescendants } from '../wait/read-descendants';
+import { stopProcesses } from '../wait/stop-processes';
 import { createNixieChannel } from './create-nixie-channel';
-import { harnessEnv } from './harness-env';
-import { readDescendants } from './read-descendants';
-import { stopProcesses } from './stop-processes';
-import type { FaultPointArm, FaultPointWork, NixieMessage } from './types';
 
 export interface NixieProcessOptions {
   readonly entry: string;
@@ -89,7 +89,7 @@ export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
   };
 }
 
-const defineTestBuildPath = join(import.meta.dir, 'define-test-build.ts');
+const defineTestBuildPath = join(import.meta.dir, '../define-test-build.ts');
 
 function startChild(options: NixieProcessOptions, receive: (message: NixieMessage) => void) {
   const command = [process.execPath, '--preload', defineTestBuildPath, options.entry];

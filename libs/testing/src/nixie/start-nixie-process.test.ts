@@ -1,12 +1,12 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
-import { probeProcessGone } from './probe-process-gone';
+import { probeProcessGone } from '../process/probe-process-gone';
+import { waitForCondition } from '../utils/wait-for-condition';
+import { stopProcesses } from '../wait/stop-processes';
 import { startNixieProcess } from './start-nixie-process';
-import { stopProcesses } from './stop-processes';
-import { waitForCondition } from './wait-for-condition';
 
 function setupTest() {
-  return { entry: join(import.meta.dir, 'test-utils/run-stub-nixie.ts') };
+  return { entry: join(import.meta.dir, '../test-utils/run-stub-nixie.ts') };
 }
 
 test('it resolves ready once nixie says it is ready', async () => {

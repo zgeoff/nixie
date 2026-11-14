@@ -1,6 +1,6 @@
-import type { NixieProcess } from './start-nixie-process';
-import { startNixieProcess } from './start-nixie-process';
-import type { FaultPointArm } from './types';
+import type { NixieProcess } from '../nixie/start-nixie-process';
+import { startNixieProcess } from '../nixie/start-nixie-process';
+import type { FaultPointArm } from '../types';
 
 export interface CrashHarnessOptions {
   readonly entry: string;

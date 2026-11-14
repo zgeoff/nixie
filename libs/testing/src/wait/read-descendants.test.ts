@@ -1,8 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { waitForCondition } from '../utils/wait-for-condition';
 import { readDescendants } from './read-descendants';
 import { stopProcesses } from './stop-processes';
-import { waitForCondition } from './wait-for-condition';
 
 test('it reads the children of a process and their children', async () => {
   const child = Bun.spawn(['sh', '-c', 'sleep 60 & wait'], {

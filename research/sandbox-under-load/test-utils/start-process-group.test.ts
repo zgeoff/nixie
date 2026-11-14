@@ -1,13 +1,13 @@
 import { join } from 'node:path';
 import { expect, onTestFinished, test } from 'bun:test';
 // @boundaries-ignore a spike imports the repo's process helpers by path
-import { probeProcessGone } from '../../../libs/testing/src/probe-process-gone';
+import { probeProcessGone } from '../../../libs/testing/src/process/probe-process-gone';
 // @boundaries-ignore a spike imports the repo's process helpers by path
-import { readDescendants } from '../../../libs/testing/src/read-descendants';
+import { readDescendants } from '../../../libs/testing/src/wait/read-descendants';
 // @boundaries-ignore a spike imports the repo's process helpers by path
-import { stopProcesses } from '../../../libs/testing/src/stop-processes';
+import { stopProcesses } from '../../../libs/testing/src/wait/stop-processes';
 // @boundaries-ignore a spike imports the repo's condition wait by path
-import { waitForCondition } from '../../../libs/testing/src/wait-for-condition';
+import { waitForCondition } from '../../../libs/testing/src/utils/wait-for-condition';
 import { startProcessGroup } from './start-process-group';
 
 async function setupTest() {
