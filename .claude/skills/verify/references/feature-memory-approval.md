@@ -2,7 +2,7 @@
 
 The model can propose a memory item, a fact about the user that nixie keeps. When the user's own
 words in the conversation do not state the fact, nixie holds the item as a proposal until the user
-approves it on the proposals page, `/memory/proposals`. An approved item shows on the memory page,
+approves it on the approvals page, `/memory/proposals`. An approved item shows on the memory page,
 `/memory`, and its row in the `memory_items` table has the state `active`. A proposal has no row in
 that table.
 
@@ -46,25 +46,25 @@ are. A message that states the item's fact would make nixie keep the item at onc
 
    Expect: `data.rows` is empty.
 
-4. Open the proposals page:
+4. Open the approvals page:
 
    ```bash
    bun verify browser goto /memory/proposals
    bun verify browser snapshot
    ```
 
-   Expect: one item in the "Pending proposals" list, with an Approve button. Note the item's text.
-   On `preview`, when that list is empty, skip the rest and `done`. Report the snapshot, and which
-   case it shows:
-   - The "Pending actions" list holds "Run memory.remember (note).": nixie's policy held the model's
-     call as an action. Approving an action runs nothing yet, so the item never reaches the memory
-     page.
-   - Neither list holds an item: the model proposed nothing.
+   Expect: one item in the "Memory" list, a collapsed card. Note the item's text. On `preview`, when
+   that list is empty, skip the rest and `done`. Report the snapshot, and which case it shows:
+   - The "Routine" list holds "Run memory.remember (note).": nixie's policy held the model's call as
+     an action. Approving an action runs nothing yet, so the item never reaches the memory page.
+   - No list holds an item: the model proposed nothing.
 
-5. Approve the proposal. The disabled "Approve selected" button never matches this command.
+5. Open the card, then approve the proposal. Click the group in the item, by the `ref` that the
+   snapshot gives it, to open the card. A second snapshot shows its buttons.
 
    ```bash
-   bun verify browser click --role button --name Approve
+   bun verify browser click --ref f3e11
+   bun verify browser click --role button --name 'Save to memory'
    ```
 
 6. Check the memory. On `preview`, skip the `db query` line.
@@ -79,7 +79,7 @@ are. A message that states the item's fact would make nixie keep the item at onc
 
 ## End state
 
-- The proposals page of step 4 listed the item.
+- The approvals page of step 4 listed the item.
 - On `local`, the `db query` of step 6 returns one row, whose `state` is `active`.
 - The memory page shows the item's text from step 4: on `local`, "The user keeps bees on the
   allotment.".
