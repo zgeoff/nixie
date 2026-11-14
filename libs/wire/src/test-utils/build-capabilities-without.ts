@@ -1,5 +1,5 @@
-import type { HarnessCapability } from '../harness-ids';
-import { harnessCapabilities } from '../harness-ids';
+import type { HarnessCapability } from '../host/harness-ids';
+import { harnessCapabilities } from '../host/harness-ids';
 
 // The Agent SDK's capabilities, less one.
 export function buildCapabilitiesWithout(

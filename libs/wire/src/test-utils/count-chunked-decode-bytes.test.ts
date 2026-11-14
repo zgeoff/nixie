@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { frameHeaderBytes } from '../frame-header-bytes';
+import { frameHeaderBytes } from '../frame/frame-header-bytes';
 import { buildPrototypelessUint8Array } from './build-prototypeless-uint8-array';
 import { countChunkedDecodeBytes } from './count-chunked-decode-bytes';
 

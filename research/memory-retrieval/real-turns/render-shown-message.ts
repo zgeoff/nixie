@@ -1,6 +1,6 @@
 import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
-import { mintBlockID } from '../../../libs/wire/src/mint-block-id.ts';
+import { mintBlockID } from '../../../libs/wire/src/backup/mint-block-id.ts';
 import type { PlainRecord } from './read-plain-export.ts';
 
 const messageSpans = z.array(z.object({ start: z.int(), end: z.int(), source: z.string() }));

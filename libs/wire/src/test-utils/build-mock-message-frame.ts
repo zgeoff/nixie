@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import type { HostFrame, InboxMessage } from '../host-frame';
+import type { HostFrame, InboxMessage } from '../utils/host-frame';
 
 type MessageFrame = Extract<HostFrame, { type: 'message' }>;
 

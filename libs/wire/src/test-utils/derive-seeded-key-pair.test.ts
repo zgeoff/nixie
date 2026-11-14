@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { isP256Point } from '../is-p256-point';
+import { isP256Point } from '../utils/is-p256-point';
 import { deriveSeededKeyPair } from './derive-seeded-key-pair';
 
 test('it derives the same public key from the same seed', async () => {

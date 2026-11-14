@@ -18,7 +18,7 @@ import { renderRetrievedSelfNotes } from '../../../modules/sessions/src/render-r
 // @boundaries-ignore a spike imports the code it measures
 import type { MemoryItem, MemoryRef } from '../../../modules/sessions/src/types.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { renderSystemMessage } from '../../../libs/wire/src/render-system-message.ts';
+import { renderSystemMessage } from '../../../libs/wire/src/backup/render-system-message.ts';
 import type { TurnCase } from './build-turn-cases.ts';
 
 export interface BlockTokens {

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import type { HostFrame, TurnProfile } from '../host-frame';
+import type { HostFrame, TurnProfile } from '../utils/host-frame';
 
 type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 
