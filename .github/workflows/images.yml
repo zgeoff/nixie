@@ -97,6 +97,14 @@ jobs:
           dockerfile: guests/fetch/Dockerfile
           cache-scope: fetch
 
+      - name: Build the code image
+        id: code
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-code
+          dockerfile: guests/code/Dockerfile
+          cache-scope: code
+
       - name: Build the backup image
         id: backup
         uses: ./.github/actions/build-image
