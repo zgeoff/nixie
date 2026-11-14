@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import type { SandboxLimits } from '../types';
 import { sandboxSizes } from './sandbox-sizes';
-import type { SandboxLimits } from './types';
 
 test('it holds the conversation row', () => {
   expect(sandboxSizes.conversation).toStrictEqual({ vcpus: 2, memoryMiB: 512, diskMiB: 4096 });

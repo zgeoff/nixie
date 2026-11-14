@@ -309,9 +309,12 @@ test('it creates the web fetch sandbox and the skill fetch sandbox at the fetch 
   const webFetch = startWebFetch({
     adapter,
     image: 'fetch',
-    argv: [process.execPath, join(import.meta.dir, '../../../guests/fetch/src/main.ts')],
+    argv: [process.execPath, join(import.meta.dir, '../../../../guests/fetch/src/main.ts')],
     deniedRanges: [],
     log: ctx.log,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => {},
     config: {
       limits: {
         bodyBytes: 1000,
@@ -324,6 +327,10 @@ test('it creates the web fetch sandbox and the skill fetch sandbox at the fetch 
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
+      secretTypedURLCovers: 'redirects',
+      secretOwnValues: [],
+      secretOwnValueMinChars: 8,
     },
   });
 
