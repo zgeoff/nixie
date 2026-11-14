@@ -100,5 +100,6 @@ nixie reads the change at its next start.
 
 Each manifest pins its image by the release's version tag and the image's digest, so the cluster
 runs exactly the digest the release published while the tag shows a reader which release it is. An
-upgrade changes the nixie and web digests in one pull request in the deployment repo, as
-[upgrades](../../design/platform/deployment/upgrades.md) describes.
+upgrade changes the nixie, web and backup digests in one pull request in the deployment repo, as
+[upgrades](../../design/platform/deployment/upgrades.md) describes. The
+[upgrade runbook](../../runbooks/upgrades.md) gives the steps.
