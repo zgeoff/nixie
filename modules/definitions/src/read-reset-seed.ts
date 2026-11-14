@@ -1,6 +1,5 @@
 import type { JSONObject } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
-import { proposalLapseMs } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
 import { loadSkillVersions } from './load-skill-versions';
@@ -109,7 +108,7 @@ function collectClosedProposalHashes(
   return proposals.flatMap((state) =>
     state.outcome === 'rejected' ||
     state.outcome === 'lapsed' ||
-    (state.outcome === null && state.proposedAt + proposalLapseMs <= now)
+    (state.outcome === null && state.lapseAt <= now)
       ? [state.proposal.proposalHash]
       : [],
   );

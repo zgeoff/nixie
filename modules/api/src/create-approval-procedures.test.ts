@@ -1,5 +1,5 @@
-import { expect, onTestFinished, test } from 'bun:test';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import type { LogTables } from '@heynixie/log';
@@ -12,7 +12,7 @@ import {
 } from '@heynixie/memory';
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import { buildActionProposalInput } from '@heynixie/policy';
-import { runProposalLapses, runProposalReturns } from '@heynixie/proposals';
+import { readProposal, runProposalLapses, runProposalReturns } from '@heynixie/proposals';
 import { createConversationTask, readInbox } from '@heynixie/tasks';
 import { buildProposalCoreDeps } from './build-proposal-core-deps';
 import { buildTestClient } from './test-utils/build-test-client';
@@ -281,6 +281,40 @@ test('#runProposalLapses lapses a proposal at the new time after a defer, not th
     lapsedAtOldTime: 0,
     lapsedAtNewTime: 1,
   });
+});
+
+test('#runSeed withdraws a rule change a defer kept open past its first lapse time when its widening goes', async () => {
+  const ctx = await setupTest();
+  const listed = await ctx.client.approvals.listItems();
+
+  const [item] = listed.items;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const proposalID = item?.proposal.proposalID ?? 'missing';
+
+  await ctx.client.approvals.answerProposal({
+    proposalID,
+    actionHash: item?.proposal.actionHash ?? 'missing',
+    choice: 'defer',
+    deferUntil: new Date(ctx.api.clock.now() + 20 * dayMs),
+    clientActionID: crypto.randomUUID(),
+  });
+
+  setSystemTime(new Date(Date.now() + 15 * dayMs));
+  onTestFinished(() => setSystemTime());
+
+  const root = join(ctx.api.dataDir, 'definitions');
+
+  await rm(join(root, 'rules', 'web.yaml'));
+
+  await runSeed({
+    log: ctx.api.context.log,
+    source: createPathSource({ directory: root }),
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const row = await readProposal(ctx.api.context.log.writer.db, proposalID);
+
+  expect(row?.state).toBe('withdrawn');
 });
 
 test('#approvals.answerProposal applies no memory write when the session is revoked between the checks and the write', async () => {

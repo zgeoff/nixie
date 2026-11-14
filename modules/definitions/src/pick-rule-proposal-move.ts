@@ -1,4 +1,4 @@
-import { canMoveProposal, proposalLapseMs } from '@heynixie/proposals';
+import { canMoveProposal } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
 import type { RuleProposal } from './build-rule-proposal';
 import type { RuleProposalState } from './read-rule-proposals';
@@ -26,7 +26,7 @@ export function pickRuleProposalMove(input: RuleProposalMoveInput): RuleProposal
     return refuse('NOT_FOUND', `no rule change proposal has ID ${answer.proposalID}`);
   }
 
-  const isPastLapse = state.proposedAt + proposalLapseMs <= input.now;
+  const isPastLapse = state.lapseAt <= input.now;
   const status = state.outcome ?? (isPastLapse ? 'lapsed' : 'pending');
   const next = answer.answer === 'approve' ? 'approved' : 'rejected';
 
