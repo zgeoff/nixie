@@ -81,3 +81,23 @@ test('it fails when the image holds node_modules', async () => {
     stdout: '::error::the conversation image holds /app/node_modules\n',
   });
 });
+
+test('it fails when the node_modules check does not run', async () => {
+  const ctx = setupTest();
+
+  createStubProgram(join(ctx.binPath, 'docker'), {
+    callsPath: ctx.callsPath,
+    answers: { [ctx.modulesCall]: { exitCode: 125 } },
+  });
+
+  const result = await $`${process.execPath} ${ctx.scriptPath}`
+    .cwd(ctx.repoPath)
+    .env({ PATH: ctx.binPath, CONVERSATION: 'r/nixie-conversation@sha256:cc33' })
+    .nothrow()
+    .quiet();
+
+  expect({ exitCode: result.exitCode, stdout: result.stdout.toString() }).toStrictEqual({
+    exitCode: 1,
+    stdout: '::error::the check for /app/node_modules did not run\n',
+  });
+});
