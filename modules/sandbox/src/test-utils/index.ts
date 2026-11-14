@@ -20,3 +20,4 @@ export { setupTestRecorder } from './setup-test-recorder';
 export type { StubGuestScript } from './start-stub-guest';
 export type { StubGuestReply, StubGuestToolCall, StubGuestToolCaller } from './run-stub-guest-turn';
 export { startStubToolEndpoint } from './start-stub-tool-endpoint';
+export { writeMemoryKills } from './write-memory-kills';

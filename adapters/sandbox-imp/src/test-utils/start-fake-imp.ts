@@ -1,5 +1,7 @@
 import { onTestFinished } from 'bun:test';
 import { createServer } from 'node:net';
+import { waitForSettled } from '@heynixie/async';
+import { memoryKillsArgv } from '../memory-kills-argv';
 import type { ImpCreateInput, ImpExec, ImpExecOptions, ImpFeatures, ImpPort } from '../types';
 import type { FakeSleeps } from './build-fake-sleeps';
 import { buildFakeSleeps } from './build-fake-sleeps';
@@ -31,7 +33,13 @@ interface FakeState {
   refuseImageAdd: boolean;
 }
 
-interface FakeImp extends FakeState, Pick<FakeSleeps, 'startIdleSleep' | 'sleepsAfterWake'> {
+interface FakeImpMemory {
+  // A count the guest's memory.events holds, no such file, or a connection that drops mid-read.
+  memoryKills: number | 'missing' | 'lost';
+}
+
+interface FakeImp
+  extends FakeState, FakeImpMemory, Pick<FakeSleeps, 'startIdleSleep' | 'sleepsAfterWake'> {
   readonly port: ImpPort;
 }
 
@@ -40,7 +48,7 @@ export async function startFakeImp(): Promise<FakeImp> {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const state: FakeState = {
+  const state: FakeState & FakeImpMemory = {
     guestToolPort: await readFreePort(),
     calls: [],
     created: [],
@@ -53,6 +61,7 @@ export async function startFakeImp(): Promise<FakeImp> {
     failRemove: false,
     failExitOnStop: false,
     refuseImageAdd: false,
+    memoryKills: 0,
   };
 
   const sleeps = buildFakeSleeps(state.calls);
@@ -79,7 +88,11 @@ async function readFreePort(): Promise<number> {
   return typeof address === 'object' && address !== null ? address.port : 0;
 }
 
-function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposableStack): ImpPort {
+function buildFakePort(
+  state: FakeState & FakeImpMemory,
+  sleeps: FakeSleeps,
+  stack: AsyncDisposableStack,
+): ImpPort {
   const updateCallLog = (call: string): Promise<void> => {
     state.calls.push(call);
 
@@ -122,6 +135,16 @@ function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposa
     ...buildFakeSecretCalls(state, updateCallLog),
 
     openExec: (name, argv, options) => {
+      if (isSameArgv(argv, memoryKillsArgv)) {
+        state.calls.push(`memory-kills ${name}`);
+
+        return Promise.resolve(
+          createPendingExec(sleeps.waitForAwake(name, 'exec'), () =>
+            startFakeMemoryKillsExec(state.memoryKills),
+          ),
+        );
+      }
+
       const exec: FakeExec = { argv, options, signals: [], failsOnStop: state.failExitOnStop };
 
       state.execs.push(exec);
@@ -167,6 +190,40 @@ function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): F
 
       state.secrets.set(secret.name, [secret.host]);
     },
+  };
+}
+
+function isSameArgv(argv: readonly string[], expected: readonly string[]): boolean {
+  return argv.length === expected.length && argv.every((arg, index) => arg === expected[index]);
+}
+
+function startFakeMemoryKillsExec(memoryKills: FakeImpMemory['memoryKills']): ImpExec {
+  const encoder = new TextEncoder();
+
+  const events =
+    typeof memoryKills === 'number'
+      ? `low 0\nhigh 0\nmax ${memoryKills}\noom ${memoryKills}\noom_kill ${memoryKills}\noom_group_kill 0\n`
+      : '';
+
+  const exit = Promise.withResolvers<{ code: number | null; signal: string | null }>();
+
+  if (memoryKills === 'lost') {
+    exit.reject(new Error('CONNECTION_CLOSED'));
+  } else {
+    exit.resolve({ code: 0, signal: null });
+  }
+
+  void waitForSettled(exit.promise);
+
+  return {
+    started: Promise.resolve(),
+    stdout: new Blob([encoder.encode(events)]).stream(),
+    stderr: new Blob([]).stream(),
+    write: () => Promise.resolve(),
+    closeStdin: () => Promise.resolve(),
+    sendSignal: () => {},
+    close: () => {},
+    exit: exit.promise,
   };
 }
 

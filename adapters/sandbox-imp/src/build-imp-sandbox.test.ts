@@ -28,7 +28,7 @@ async function setupTest() {
     guestToolPort: imp.guestToolPort,
   });
 
-  return { imp, adapter };
+  return { imp, adapter, recorder };
 }
 
 test('it lets a turn that starts during an idle sleep reach the tool endpoint on the woken imp', async () => {
@@ -104,4 +104,94 @@ test('it lets a turn reach the tool endpoint when an idle sleep starts between i
     path: '/mcp',
     authorization: 'Bearer run-token',
   });
+});
+
+test('it reads the count of memory kills the guest holds', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  ctx.imp.memoryKills = 3;
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 3 });
+});
+
+test('it reads a count of 0 from a guest that was never killed for memory', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 0 });
+});
+
+test('it reads no count from a guest with no memory.events file', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  ctx.imp.memoryKills = 'missing';
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'unsupported' });
+});
+
+test('it fails the memory kill read when the connection drops', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  ctx.imp.memoryKills = 'lost';
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'failed' });
+});
+
+test('it wakes a sleeping imp for the memory kill read and records the wake', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  ctx.imp.memoryKills = 2;
+
+  invariant(sandbox.suspension.kind === 'memory');
+
+  await sandbox.suspension.sleep();
+
+  const read = await sandbox.readMemoryKills();
+
+  expect(read).toStrictEqual({ kind: 'count', kills: 2 });
+
+  expect(ctx.imp.calls).toIncludeAllMembers([
+    `wake ${ctx.imp.created[0]?.name}`,
+    `memory-kills ${ctx.imp.created[0]?.name}`,
+  ]);
+
+  const records = await ctx.recorder.readSandboxRecords();
+
+  expect(records).toContainEqual(expect.objectContaining({ kind: 'sandbox.woken' }));
+});
+
+test('it fails the memory kill read of an aborted signal and starts no exec', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  expect(sandbox.readMemoryKills(AbortSignal.abort())).resolves.toStrictEqual({ kind: 'failed' });
+  expect(ctx.imp.execs).toStrictEqual([]);
+  expect(ctx.imp.calls.filter((call) => call.startsWith('memory-kills'))).toStrictEqual([]);
+});
+
+test('it fails the memory kill read on an abort while an idle sleep holds the exec', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  const snapshot = Promise.withResolvers<void>();
+
+  const controller = new AbortController();
+
+  void ctx.imp.startIdleSleep(sandbox.id, snapshot.promise);
+  const read = sandbox.readMemoryKills(controller.signal);
+
+  await waitForCondition(() => ctx.imp.calls.some((call) => call.startsWith('wait ')));
+
+  controller.abort();
+
+  const result = await read;
+
+  expect(result).toStrictEqual({ kind: 'failed' });
+  expect(ctx.imp.calls).not.toContain(`woken by exec ${sandbox.id}`);
+
+  snapshot.resolve();
 });

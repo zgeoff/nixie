@@ -3,6 +3,7 @@ import type {
   ExecSpec,
   FileSpec,
   GuestHome,
+  MemoryKillRead,
   ReadFilePathsOptions,
   Sandbox,
   SandboxRecorder,
@@ -10,6 +11,8 @@ import type {
 } from '@heynixie/sandbox';
 import { readStreamOutput, runCommand, startExecStream } from '@heynixie/sandbox';
 import type { RouteRegistry } from './build-route-registry';
+import { memoryKillsArgv } from './memory-kills-argv';
+import { parseMemoryEvents } from './parse-memory-events';
 import { toProcessIO } from './to-process-io';
 import type { ImpPort } from './types';
 
@@ -57,6 +60,7 @@ export function buildImpSandbox(ctx: ImpSandboxContext): Sandbox {
       return ctx.spec.toolRoute ? { url: `http://127.0.0.1:${ctx.guestToolPort}` } : null;
     },
     suspension: buildSuspension(ctx),
+    readMemoryKills: (signal) => readGuestMemoryKills(ctx, signal),
     destroy: async () => {
       await ctx.routes.close(ctx.id);
       await ctx.port.removeImp(ctx.id);
@@ -244,4 +248,43 @@ function buildSuspension(ctx: ImpSandboxContext): Sandbox['suspension'] {
       await ctx.routes.open(ctx.id, ctx.spec);
     },
   };
+}
+
+async function readGuestMemoryKills(
+  ctx: ImpSandboxContext,
+  signal: AbortSignal | undefined,
+): Promise<MemoryKillRead> {
+  if (signal?.aborted === true) {
+    return { kind: 'failed' };
+  }
+
+  const aborted = Promise.withResolvers<MemoryKillRead>();
+
+  const failOnAbort = (): void => {
+    aborted.resolve({ kind: 'failed' });
+  };
+
+  signal?.addEventListener('abort', failOnAbort, { once: true });
+
+  try {
+    return await Promise.race([runMemoryKillsRead(ctx, signal), aborted.promise]);
+  } finally {
+    signal?.removeEventListener('abort', failOnAbort);
+  }
+}
+
+async function runMemoryKillsRead(
+  ctx: ImpSandboxContext,
+  signal: AbortSignal | undefined,
+): Promise<MemoryKillRead> {
+  try {
+    const io = await startImpProcess(ctx, { argv: memoryKillsArgv });
+    const result = await runCommand(io, undefined, signal);
+
+    return result.code === 0 && result.signal === null
+      ? parseMemoryEvents(new TextDecoder().decode(result.stdout.bytes))
+      : { kind: 'failed' };
+  } catch {
+    return { kind: 'failed' };
+  }
 }
