@@ -8,12 +8,12 @@ import type {
   MemoryForgottenEvidenceTable,
   MemoryNoticeEntryTable,
   MemoryProposalTable,
-} from './gate-context';
-import type { DeliveryLock } from './make-delivery-lock';
-import type { RateRequest } from './memory-rating';
-import type { ItemHistory, MemoryView } from './memory-view';
-import type { MessageRecallRequest, MessageRecallResult } from './message-recall-request';
-import type { StoreIndexes } from './start-store-indexes';
+} from './gate/gate-context';
+import type { RateRequest } from './memory/memory-rating';
+import type { MessageRecallRequest, MessageRecallResult } from './message/message-recall-request';
+import type { StoreIndexes } from './moment/store/start-store-indexes';
+import type { DeliveryLock } from './utils/make-delivery-lock';
+import type { ItemHistory, MemoryView } from './view/memory-view';
 
 export type MemoryState = 'active' | 'retired' | 'forgetting' | 'forgotten';
 

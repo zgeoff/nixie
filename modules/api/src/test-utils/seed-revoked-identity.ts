@@ -1,6 +1,6 @@
 import invariant from 'tiny-invariant';
 import type { APIContext } from '../types';
-import { writeSessionRevocation } from '../write-session-revocation';
+import { writeSessionRevocation } from '../utils/write-session-revocation';
 import type { IdentitySeed, SeededIdentity } from './seed-identity';
 import { seedIdentity } from './seed-identity';
 

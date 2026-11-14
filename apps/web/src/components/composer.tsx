@@ -2,10 +2,10 @@ import type { SpanState } from '@heynixie/contract';
 import { buildSpanState } from '@heynixie/contract';
 import type { ClipboardEvent, DragEvent, KeyboardEvent, ReactNode } from 'react';
 import { useRef, useState } from 'react';
-import { normalizeImage as normalizeInBrowser } from '../normalize-image';
+import { normalizeImage as normalizeInBrowser } from '../image/normalize-image';
+import { useAttachedImages } from '../image/use-attached-images';
 import { css } from '../styled-system/css';
-import { useAttachedImages } from '../use-attached-images';
-import { usePendingInput } from '../use-pending-input';
+import { usePendingInput } from '../task/use-pending-input';
 import { AttachedImages } from './attached-images';
 import { ImagePickers } from './image-pickers';
 

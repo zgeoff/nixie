@@ -1,0 +1,51 @@
+import { join } from 'node:path';
+import { toErrorFields } from '@heynixie/logger';
+import type { StartedMemoryStore } from '@heynixie/memory';
+import { startMemoryConsolidatorRunner } from '@heynixie/memory';
+import type { RunStep } from '@heynixie/tasks';
+import { toImageNames } from '../sandbox/to-image-names';
+import type { ServerParts } from '../types';
+import { buildTaskMessaging } from '../utils/build-task-messaging';
+import { runOffTaskStep } from './run-off-task-step';
+
+export async function startConsolidatorTask(
+  parts: ServerParts,
+  store: StartedMemoryStore,
+): Promise<RunStep> {
+  if (!parts.config.memory_consolidation.isEnabled) {
+    parts.log('memory_consolidator.off');
+
+    return runOffTaskStep;
+  }
+
+  const consolidator = await startMemoryConsolidatorRunner({
+    context: parts.context,
+    models: parts.config.models,
+    secrets: parts.modelSecrets,
+    sandboxes: parts.tools.adapter,
+    queue: parts.tools.actions.queue,
+    makeDecide: parts.decisions,
+    socketDir: join(parts.config.server.dataDir, 'run', 'tools'),
+    images: toImageNames(parts.images),
+    store,
+    config: parts.config.memory_consolidation,
+    getPersona: () => parts.inForce.read()?.persona ?? '',
+    getPrompts: () => parts.inForce.read()?.prompts ?? {},
+    ownerName: parts.config.owner.name,
+    defaultZone: parts.config.time.default_zone,
+    messaging: buildTaskMessaging(parts.config),
+    turnInputs: parts.turnInputs,
+
+    onError: (error) => {
+      parts.log('memory_consolidator.run_failed', toErrorFields(error));
+    },
+  });
+
+  await parts.cleanup.defer(() => consolidator.stop());
+
+  parts.log('memory_consolidator.started', {
+    periodMs: parts.config.memory_consolidation.periodMs,
+  });
+
+  return consolidator.runStep;
+}

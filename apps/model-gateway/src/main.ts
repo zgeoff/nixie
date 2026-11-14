@@ -1,6 +1,6 @@
 import { makeLogger, startLineLog, toErrorFields } from '@heynixie/logger';
 import { cli, define } from 'gunshi';
-import { startModelGateway } from './start-model-gateway';
+import { startModelGateway } from './proxy/start-model-gateway';
 
 const received = Promise.withResolvers<string>();
 

@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import type { LiveRecord } from '../conversation/use-live-records';
 import { css } from '../styled-system/css';
-import type { LiveRecord } from '../use-live-records';
-import { useNixieClient } from '../use-nixie-client';
-import { useNoteOffer } from '../use-note-offer';
+import { useNoteOffer } from '../task/use-note-offer';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { MomentNoteForm } from './moment-note-form';
 
 export interface MomentKeptNoticeProps {

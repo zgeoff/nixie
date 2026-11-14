@@ -4,13 +4,13 @@
 //   bun read-plain.ts <url>
 import { readFile } from 'node:fs/promises';
 // @boundaries-ignore a spike imports the code it measures
-import { createWebTransports } from '../../guests/fetch/src/create-web-transports';
+import { createWebTransports } from '../../guests/fetch/src/page/create-web-transports';
 // @boundaries-ignore a spike imports the code it measures
-import { makeAddressCheck } from '../../guests/fetch/src/make-address-check';
+import { makeAddressCheck } from '../../guests/fetch/src/page/make-address-check';
 // @boundaries-ignore a spike imports the code it measures
-import { readPage } from '../../guests/fetch/src/read-page';
+import { readPage } from '../../guests/fetch/src/page/read-page';
 // @boundaries-ignore a spike imports the code it measures
-import { resolveHostAddresses } from '../../guests/fetch/src/resolve-host-addresses';
+import { resolveHostAddresses } from '../../guests/fetch/src/page/resolve-host-addresses';
 
 const [url = ''] = process.argv.slice(2);
 const started = performance.now();

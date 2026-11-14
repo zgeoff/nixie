@@ -3,13 +3,13 @@ import type { ReactNode } from 'react';
 import { useEffect, useReducer } from 'react';
 import type { EventFrom, SnapshotFrom } from 'xstate';
 import { initialTransition, transition } from 'xstate';
-import { formatItemCount } from '../format-item-count';
-import { retiredForgetMachine } from '../retired-forget-machine';
+import { retiredForgetMachine } from '../memory/retired-forget-machine';
 import { css } from '../styled-system/css';
 import type { RetiredForgetItem } from '../types';
-import { useNixieClient } from '../use-nixie-client';
-import type { RetiredForgetInput, RetiredForgetOutcome } from '../use-retired-forget';
-import { useRetiredForget } from '../use-retired-forget';
+import { formatItemCount } from '../utils/format-item-count';
+import { useNixieClient } from '../utils/use-nixie-client';
+import type { RetiredForgetInput, RetiredForgetOutcome } from '../utils/use-retired-forget';
+import { useRetiredForget } from '../utils/use-retired-forget';
 
 export interface MemoryRetiredForgetControlProps {
   readonly onSettled: (notice: string) => void;

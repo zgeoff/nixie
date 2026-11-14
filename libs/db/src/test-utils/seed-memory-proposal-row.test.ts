@@ -3,9 +3,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sql } from 'kysely';
-import { nixieSchema } from '../nixie-schema';
-import { runMigrations } from '../run-migrations';
-import { startDatabase } from '../start-database';
+import { startDatabase } from '../database/start-database';
+import { runMigrations } from '../migration/run-migrations';
+import { nixieSchema } from '../schema/nixie-schema';
 import { seedMemoryProposalRow } from './seed-memory-proposal-row';
 import { seedRecordRow } from './seed-record-row';
 

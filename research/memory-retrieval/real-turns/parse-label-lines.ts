@@ -1,5 +1,5 @@
 // @boundaries-ignore a spike imports the code it measures
-import { parseJSONOrNull } from '../../../libs/wire/src/parse-json-or-null.ts';
+import { parseJSONOrNull } from '../../../libs/wire/src/utils/parse-json-or-null.ts';
 import type { Label } from './score-turns.ts';
 import { labelSchema } from './score-turns.ts';
 

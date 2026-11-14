@@ -3,13 +3,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { match } from 'ts-pattern';
-import { formatMemoryDate } from '../format-memory-date';
-import { formatNoticeSummary } from '../format-notice-summary';
-import type { NoticeEntryStatus } from '../pick-notice-entry-status';
-import { pickNoticeEntryStatus } from '../pick-notice-entry-status';
+import { formatMemoryDate } from '../memory/format-memory-date';
+import { formatNoticeSummary } from '../notice/format-notice-summary';
+import type { NoticeEntryStatus } from '../notice/pick-notice-entry-status';
+import { pickNoticeEntryStatus } from '../notice/pick-notice-entry-status';
 import { css } from '../styled-system/css';
 import type { MemoryNotice as MemoryNoticeData, MemoryNoticeEntry } from '../types';
-import { useNixieClient } from '../use-nixie-client';
+import { useNixieClient } from '../utils/use-nixie-client';
 
 export interface MemoryNoticeProps {
   readonly notice: MemoryNoticeData;

@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sql } from 'kysely';
 import { z } from 'zod';
+import { startDatabase } from './database/start-database';
 import { readQueryRows } from './read-query-rows';
-import { startDatabase } from './start-database';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();

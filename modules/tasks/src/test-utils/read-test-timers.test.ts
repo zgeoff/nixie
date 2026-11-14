@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { runDueTimers } from '../run-due-timers';
-import { writeStepCommit } from '../write-step-commit';
+import { writeStepCommit } from '../step/write-step-commit';
+import { runDueTimers } from '../task/run-due-timers';
 import { createTestClaim } from './create-test-claim';
 import { readTestTimers } from './read-test-timers';
 import { startTestTasks } from './start-test-tasks';

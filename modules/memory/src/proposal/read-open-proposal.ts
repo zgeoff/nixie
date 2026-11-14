@@ -1,0 +1,36 @@
+import type { MemoryProposalRow, ProposalAnswer } from '../gate/gate-context';
+import { requirePendingProposal } from '../pending/require-pending-proposal';
+import type { MemoryTables, StoreParts } from '../types';
+import type { ProposalText } from '../utils/codec/sealed-codec';
+import { decodeProposalText } from '../utils/decode-proposal-text';
+import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
+import { readItemKey } from '../utils/item/read-item-key';
+
+export interface OpenedProposal {
+  readonly row: MemoryProposalRow;
+  readonly text: ProposalText;
+}
+
+export async function readOpenProposal(
+  parts: StoreParts,
+  answer: Pick<ProposalAnswer, 'proposalID' | 'actionHash'>,
+): Promise<OpenedProposal> {
+  const row = await requirePendingProposal(
+    parts.context.log.writer.db.$extendTables<MemoryTables>(),
+    {
+      proposalID: answer.proposalID,
+      actionHash: answer.actionHash,
+      now: parts.context.gate.clock.now(),
+    },
+  );
+
+  const key = await readItemKey(parts.context.log, row.item_id);
+
+  if (key === null || key === undefined) {
+    throw new MemoryItemNotFoundError(row.item_id);
+  }
+
+  const text = await decodeProposalText(key, row.proposal_id, row.sealed);
+
+  return { row, text };
+}

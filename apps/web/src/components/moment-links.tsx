@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { useMomentEdit } from '../memory/use-moment-edit';
 import { css } from '../styled-system/css';
 import type { MomentDetail } from '../types';
-import { useMomentEdit } from '../use-moment-edit';
 
 export interface MomentLinksProps {
   readonly moment: MomentDetail;

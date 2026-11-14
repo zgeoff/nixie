@@ -1,0 +1,177 @@
+import type { StepInput } from '@heynixie/tasks';
+import { buildStepRunID } from '@heynixie/tasks';
+import type { ToolSession } from '@heynixie/tools';
+import type { InboxMessage, SessionPoint } from '@heynixie/wire';
+import invariant from 'tiny-invariant';
+import { renderHeldMessages } from '../held/render-held-messages';
+import { readLiveInbox } from '../inbox/read-live-inbox';
+import { buildStepPolicyFrame } from '../step/build-step-policy-frame';
+import type { CompletedTurn } from '../step/build-step-result';
+import { makeImageReserver } from '../task/make-image-reserver';
+import type { TaskMessageView } from '../task/render-task-message';
+import type { ConversationRun, ImageTally, MessageTimeOptions, TurnNote } from '../types';
+import type { TurnSilence } from '../utils/build-turn-silence';
+import { buildTurnSilence } from '../utils/build-turn-silence';
+import { runGuestTurn } from '../utils/run-guest-turn';
+import type { OpeningBatch } from './read-opening-batch';
+import { readOpeningBatch } from './read-opening-batch';
+import { readTurnRecalledThrough } from './read-turn-recalled-through';
+
+export interface LiveTurnPlan {
+  readonly resume: SessionPoint | null;
+  readonly systemPrompt: string;
+
+  readonly preamble: readonly string[];
+
+  readonly signal: AbortSignal;
+
+  readonly times: MessageTimeOptions;
+  readonly view: TaskMessageView;
+
+  readonly images: ImageTally;
+
+  // the session the turn runs on, which the turn's step token hands each tool call
+  readonly session: ToolSession;
+}
+
+export async function runLiveTurn(
+  run: ConversationRun,
+  input: StepInput,
+  plan: LiveTurnPlan,
+): Promise<CompletedTurn> {
+  const opening = await readOpeningBatch(run.context.log, input.inbox, {
+    ...plan,
+    imageBudget: run.imageBudget,
+  });
+
+  const silence = buildTurnSilence(opening.batch.records);
+
+  const stepToken = run.endpoint.startStep(buildStepRunID(input), {
+    ...plan.session,
+    reserveImages: makeImageReserver(opening.images),
+    endSilently: silence.end,
+    policy: buildStepPolicyFrame(run.frame, opening.batch.records),
+  });
+
+  try {
+    return await runTokenTurn(run, input, { ...plan, token: stepToken.token, opening, silence });
+  } finally {
+    await stepToken.stop();
+  }
+}
+
+interface TokenTurnPlan extends LiveTurnPlan {
+  readonly token: string;
+  readonly opening: OpeningBatch;
+  readonly silence: TurnSilence;
+}
+
+async function runTokenTurn(
+  run: ConversationRun,
+  input: StepInput,
+  plan: TokenTurnPlan,
+): Promise<CompletedTurn> {
+  plan.signal.throwIfAborted();
+
+  const [url, note] = await Promise.all([
+    readToolURL(run, plan.signal),
+    readTurnNote(run, plan.resume === null),
+  ]);
+
+  const opening = plan.opening;
+
+  const sent = new Set(opening.batch.records.map((record) => record.sequence));
+
+  const held = renderHeldMessages(opening.batch.records, plan.times, plan.view);
+
+  const live = new AbortController();
+
+  const hasMore = input.inbox.length > opening.batch.records.length;
+
+  try {
+    const capabilities = run.harness.capabilities;
+
+    const turn = await runGuestTurn({
+      harness: run.harness,
+      sandbox: run.sandbox,
+      command: run.command,
+      turn: {
+        type: 'turn',
+        profile: run.turnProfile,
+        tools: { url, token: plan.token },
+        ...(run.harness.session === null ? {} : { resume: plan.resume }),
+        systemPrompt: plan.systemPrompt,
+        limits: {
+          modelCalls: capabilities.has('turn-limit') ? (run.modelCallLimit ?? null) : null,
+          toolCallWaitMs: run.harness.toolCallWaitMs,
+        },
+        input: buildTurnInput(opening.batch.messages, [...plan.preamble, note?.text ?? null, held]),
+      },
+      messages:
+        hasMore || !capabilities.has('live-messages')
+          ? []
+          : readLiveInbox(run.context, {
+              taskID: input.taskID,
+              sent,
+              signal: live.signal,
+              times: plan.times,
+              view: plan.view,
+              images: opening.images,
+              silence: plan.silence,
+              log: run.log,
+            }),
+      signal: plan.signal,
+      ...(capabilities.has('interrupt') ? { interrupt: input.interrupt } : {}),
+      readRecallMark: () => readTurnRecalledThrough(run.context, input),
+      ...(run.onModelCall === undefined ? {} : { onCall: run.onModelCall }),
+    });
+
+    return {
+      turn,
+      sent,
+      hasMore: hasMore || opening.images.isCapped,
+      notedThrough: note?.throughSequence ?? null,
+      images: opening.images.spent,
+      isSilent: plan.silence.isSilent(),
+    };
+  } finally {
+    live.abort();
+  }
+}
+
+async function readToolURL(run: ConversationRun, signal: AbortSignal): Promise<string> {
+  const route = await run.sandbox.toolRoute();
+
+  signal.throwIfAborted();
+
+  invariant(route, 'the conversation sandbox has no tool route');
+
+  return route.url;
+}
+
+function readTurnNote(run: ConversationRun, isNewSession: boolean): Promise<TurnNote | null> {
+  return run.readTurnNote === undefined
+    ? Promise.resolve(null)
+    : run.readTurnNote({ isNewSession });
+}
+
+// The SDK acknowledges an inbox record by its message's uuid, so the preamble joins the first
+// message rather than going in a message of its own. A turn with no message, such as a started
+// task's first, sends the preamble alone under a uuid that names no inbox record.
+function buildTurnInput(
+  messages: readonly InboxMessage[],
+  blocks: readonly (string | null)[],
+): readonly InboxMessage[] {
+  const [first, ...rest] = messages;
+  const preamble = blocks.filter((block) => block !== null);
+
+  if (first === undefined && preamble.length > 0) {
+    return [{ uuid: crypto.randomUUID(), text: preamble.join('\n\n') }];
+  }
+
+  if (first === undefined || preamble.length === 0) {
+    return messages;
+  }
+
+  return [{ ...first, text: [...preamble, first.text].join('\n\n') }, ...rest];
+}

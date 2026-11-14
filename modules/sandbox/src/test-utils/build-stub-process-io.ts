@@ -1,4 +1,4 @@
-import type { ProcessIO } from '../start-exec-stream';
+import type { ProcessIO } from '../exec/start-exec-stream';
 import type { ExecExit } from '../types';
 
 interface StubProcessOutput {

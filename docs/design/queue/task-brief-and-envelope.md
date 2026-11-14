@@ -178,8 +178,8 @@ declare function renderSinceBlock(previousStartedAt: Date, startedAt: Date): str
 
 ## Constraints
 
-- The built first line of the task prompt, in `modules/prompts/src/task-prompt.ts`, changes to the
-  frame's first line, and its tests change with it.
+- The built first line of the task prompt, in `modules/prompts/src/prompt/task-prompt.ts`, changes
+  to the frame's first line, and its tests change with it.
 
 ### The brief record
 

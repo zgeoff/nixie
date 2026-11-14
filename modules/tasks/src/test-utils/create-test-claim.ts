@@ -1,6 +1,6 @@
 import invariant from 'tiny-invariant';
-import { claimTask } from '../claim-task';
-import { createTask } from '../create-task';
+import { createTask } from '../task/create-task';
+import { claimTask } from '../task/projection/claim-task';
 import type { StartedClaim, TasksContext } from '../types';
 
 export async function createTestClaim(context: TasksContext, brief: string): Promise<StartedClaim> {

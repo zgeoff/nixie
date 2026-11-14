@@ -1,4 +1,4 @@
-import type { ReadDiskStats } from '../check-disk';
+import type { ReadDiskStats } from '../health/check-disk';
 
 type DiskStats = Awaited<ReturnType<ReadDiskStats>>;
 

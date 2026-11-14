@@ -1,0 +1,63 @@
+import type { LogTables } from '@heynixie/log';
+import { sql } from 'kysely';
+import { readQuoteEvidence } from '../evidence/read-quote-evidence';
+import { runRetirementChecker } from '../retirement/run-retirement-checker';
+import type { MemoryContext, VersionRef } from '../types';
+import { buildGateReview } from './build-gate-review';
+import type { ContentGateResult } from './gate-context';
+
+export interface IntentGateRequest {
+  readonly target: VersionRef;
+  readonly intentQuote: string | null;
+  readonly thread: string;
+
+  readonly itemText: string;
+}
+
+export async function runIntentGate(
+  context: Pick<MemoryContext, 'log' | 'gate'>,
+  request: IntentGateRequest,
+): Promise<ContentGateResult> {
+  if (!(await probeReadVersion(context, request))) {
+    return buildGateReview('ambiguous_target', { checks: { read: 'fail' } });
+  }
+
+  if (request.intentQuote === null) {
+    return buildGateReview('no_quote', { checks: { read: 'pass', quote: 'fail' } });
+  }
+
+  const found = await readQuoteEvidence(context.log, {
+    thread: request.thread,
+    quote: request.intentQuote,
+    window: context.gate.limits.evidenceWindow,
+  });
+
+  if (found.status === 'review') {
+    return buildGateReview(found.reason, { checks: { read: 'pass', quote: 'fail' } });
+  }
+
+  return runRetirementChecker(context, request.itemText, found);
+}
+
+async function probeReadVersion(
+  context: Pick<MemoryContext, 'log'>,
+  request: IntentGateRequest,
+): Promise<boolean> {
+  const row = await context.log.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('sequence')
+    .where('kind', '=', 'memory.recalled')
+    .where('thread', '=', request.thread)
+    .where(
+      sql`exists (select 1 from json_each(records.payload, '$.items') as item
+        where json_extract(item.value, '$.itemID') = ${request.target.itemID}
+        and json_extract(item.value, '$.version') = ${request.target.version})`,
+      '=',
+      1,
+    )
+    .limit(1)
+    .executeTakeFirst();
+
+  return row !== undefined;
+}

@@ -1,0 +1,219 @@
+import { expect, onTestFinished, test } from 'bun:test';
+import { pauseNixieInTransaction, withWriteTransaction } from '@heynixie/log';
+import invariant from 'tiny-invariant';
+import { startTestTasks } from '../test-utils/start-test-tasks';
+import type { FaultPointContext, FaultPointID, TasksTables } from '../types';
+import { resetLease } from '../utils/reset-lease';
+import { claimLease } from './claim-lease';
+import { setFaultPointHandler } from './set-fault-point-handler';
+
+function setupTest() {
+  return startTestTasks();
+}
+
+test('it claims free work at generation 1 under the writer epoch, for one lease length', async () => {
+  const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
+  });
+
+  expect(lease).toStrictEqual({
+    kind: 'action',
+    workID: 'work-1',
+    holder: 'runner-a',
+    generation: 1,
+    epoch: ctx.writer.epoch,
+    expiresAt: 1_060_000,
+  });
+});
+
+test('it refuses work whose lease another runner holds and has not expired', async () => {
+  const ctx = await setupTest();
+
+  await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
+  });
+
+  ctx.clock.advance(59_999);
+
+  const lease = await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-b',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
+  });
+
+  expect(lease).toBeNull();
+});
+
+test('it claims work whose lease expired at the next generation', async () => {
+  const ctx = await setupTest();
+
+  await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
+  });
+
+  ctx.clock.advance(60_000);
+
+  const lease = await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-b',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
+  });
+
+  expect(lease).toMatchObject({ holder: 'runner-b', generation: 2, expiresAt: 1_120_000 });
+});
+
+test('it claims work whose lease was reset at the next generation', async () => {
+  const ctx = await setupTest();
+
+  const first = await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
+  });
+
+  invariant(first);
+
+  await withWriteTransaction(ctx.writer, (tx) => resetLease(tx, first));
+
+  const lease = await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-b',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
+  });
+
+  expect(lease).toMatchObject({ holder: 'runner-b', generation: 2 });
+});
+
+test('it stores the lease it returns', async () => {
+  const ctx = await setupTest();
+
+  await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
+  });
+
+  const rows = await ctx.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('leases')
+    .selectAll()
+    .execute();
+
+  expect(rows).toStrictEqual([
+    {
+      kind: 'action',
+      work_id: 'work-1',
+      holder: 'runner-a',
+      expires_at: 1_060_000,
+      epoch: ctx.writer.epoch,
+      generation: 1,
+    },
+  ]);
+});
+
+test('it claims nothing when no work is claimable', async () => {
+  const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.context, {
+    kind: 'task',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve(null),
+  });
+
+  expect(lease).toBeNull();
+});
+
+test('it rolls the lease back when the claim records fail', async () => {
+  const ctx = await setupTest();
+
+  await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
+    onClaim: () => Promise.reject(new Error('the claim records failed')),
+  }).catch(() => null);
+
+  const rows = await ctx.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('leases')
+    .selectAll()
+    .execute();
+
+  expect(rows).toStrictEqual([]);
+});
+
+test('it reaches the claim.after fault point once the claim commits', async () => {
+  const ctx = await setupTest();
+
+  const reached: { id: FaultPointID; context: FaultPointContext }[] = [];
+
+  setFaultPointHandler((id, context) => {
+    reached.push({ id, context });
+  });
+
+  onTestFinished(() => {
+    setFaultPointHandler(null);
+  });
+
+  await claimLease(ctx.context, {
+    kind: 'action',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
+  });
+
+  expect(reached).toStrictEqual([{ id: 'claim.after', context: { kind: 'action', id: 'work-1' } }]);
+});
+
+test('it throws under the test build when a candidate query returns the work of a paused task, and writes no lease', async () => {
+  const ctx = await setupTest();
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    pauseNixieInTransaction(tx, ctx.context.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: 'session-a',
+      definitions: { snapshotHash: 'sha256:test' },
+    }),
+  );
+
+  const claim = claimLease(ctx.context, {
+    kind: 'task',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'task-1' }),
+  });
+
+  await Promise.allSettled([claim]);
+
+  const leases = await ctx.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('leases')
+    .select('work_id')
+    .execute();
+
+  expect(claim).rejects.toThrowWithMessage(
+    Error,
+    "a candidate query returned work work-1 of task task-1, which nixie's pause stops",
+  );
+
+  expect(leases).toStrictEqual([]);
+});

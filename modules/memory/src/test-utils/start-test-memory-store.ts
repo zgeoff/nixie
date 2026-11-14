@@ -1,10 +1,10 @@
 import { mock, onTestFinished } from 'bun:test';
 import type { TasksContext } from '@heynixie/tasks';
-import { defaultGateLimits } from '../default-gate-limits';
-import { defaultOwnerPronouns } from '../default-owner-pronouns';
-import { findNoAllowRule } from '../find-no-allow-rule';
-import type { StartedMemoryStore } from '../start-memory-store';
-import { startMemoryStore } from '../start-memory-store';
+import { defaultGateLimits } from '../gate/default-gate-limits';
+import type { StartedMemoryStore } from '../memory/start-memory-store';
+import { startMemoryStore } from '../memory/start-memory-store';
+import { findNoAllowRule } from '../moment/find-no-allow-rule';
+import { defaultOwnerPronouns } from '../owner/default-owner-pronouns';
 import type { CleanupSessions } from '../types';
 import { buildStubEncoder } from './build-stub-encoder';
 

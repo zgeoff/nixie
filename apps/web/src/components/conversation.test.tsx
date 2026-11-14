@@ -3,7 +3,7 @@ import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
 import invariant from 'tiny-invariant';
-import { MicrophoneContext } from '../microphone-context';
+import { MicrophoneContext } from '../microphone/microphone-context';
 import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { buildStubMicrophone } from '../test-utils/build-stub-microphone';

@@ -1,5 +1,5 @@
 import { onTestFinished } from 'bun:test';
-import { setFaultPointHandler } from '../set-fault-point-handler';
+import { setFaultPointHandler } from '../lease/set-fault-point-handler';
 import type { FaultPointID } from '../types';
 
 export function startFaultPointFailure(id: FaultPointID, contextID?: string): void {

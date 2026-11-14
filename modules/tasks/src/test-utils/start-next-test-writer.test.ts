@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createTask } from '../create-task';
+import { createTask } from '../task/create-task';
 import type { TasksTables } from '../types';
 import { startNextTestWriter } from './start-next-test-writer';
 import { startTestTasks } from './start-test-tasks';

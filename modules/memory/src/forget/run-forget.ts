@@ -1,0 +1,50 @@
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { ForgetRequest, MemoryTables, StoreParts } from '../types';
+import { requireItem } from '../utils/item/require-item';
+import { readEvidenceSequences } from '../utils/read-evidence-sequences';
+import { removeMessageEntries } from '../utils/remove-message-entries';
+import { runForgetCleanup } from '../utils/run-forget-cleanup';
+
+export async function runForget(parts: StoreParts, request: ForgetRequest): Promise<void> {
+  const log = parts.context.log;
+  const itemID = request.target.itemID;
+
+  await parts.lock(async () => {
+    const evidenceSequences = await withWriteTransaction(log.writer, async (tx) => {
+      const db = tx.$extendTables<MemoryTables>();
+
+      await request.writeInTransaction?.(tx);
+
+      await requireItem(db, {
+        target: request.target,
+        operation: 'forget',
+        states: ['active', 'retired'],
+      });
+
+      const sequences = await readEvidenceSequences(db, itemID);
+
+      await writeRecordsInTransaction(tx, log, [
+        {
+          kind: 'memory.forget_started',
+          definitions: parts.context.definitions(),
+          ...(request.provenance.thread === undefined ? {} : { thread: request.provenance.thread }),
+          payload: {
+            itemID,
+            version: request.target.version,
+            evidenceSequences: [...sequences],
+          },
+        },
+      ]);
+
+      return sequences;
+    });
+
+    await parts.index.remove(itemID);
+
+    parts.vectors?.remove(itemID);
+
+    await removeMessageEntries(parts, evidenceSequences);
+  });
+
+  await runForgetCleanup(parts, itemID);
+}

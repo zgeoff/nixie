@@ -1,0 +1,100 @@
+import { removeRecordKey } from '@heynixie/log';
+import type { Kysely } from 'kysely';
+import type { ApprovalResult, ProposalAnswer } from '../gate/gate-context';
+import type { OpenedProposal } from '../proposal/read-open-proposal';
+import { toAppliedResult } from '../proposal/to-applied-result';
+import type { MemorySubject, MemoryTables, StoreParts } from '../types';
+import { SelfNoteError } from '../utils/error/self-note-error';
+import { getRowSubject } from '../utils/get-row-subject';
+import { CloseMatchError } from './close-match-error';
+import { readCloseMatch } from './read-close-match';
+import { writeApprovedRemember } from './write-approved-remember';
+
+export async function writeApprovedNewItem(
+  parts: StoreParts,
+  opened: OpenedProposal,
+  answer: ProposalAnswer,
+): Promise<ApprovalResult> {
+  const revisionOf = answer.revisionOf;
+
+  if (revisionOf !== undefined) {
+    const ref = await writeApprovedRemember(parts, {
+      opened,
+      answer,
+      target: revisionOf,
+      requireInTransaction: (db) =>
+        requireSameSubject(db, revisionOf.itemID, getRowSubject(opened.row)),
+    });
+
+    await removeRecordKey(parts.context.log, opened.row.item_id);
+
+    return toAppliedResult(ref);
+  }
+
+  if (answer.ignoreCloseMatch === true) {
+    const ref = await writeApprovedRemember(parts, { opened, answer, target: null });
+
+    return toAppliedResult(ref);
+  }
+
+  return writeUnmatchedNewItem(parts, opened, answer);
+}
+
+const subjectNames: Readonly<Record<MemorySubject, string>> = {
+  owner: 'a fact about the owner',
+  self: 'a self-note',
+  shared: 'a shared item',
+};
+
+async function requireSameSubject(
+  db: Kysely<MemoryTables>,
+  itemID: string,
+  subject: MemorySubject,
+): Promise<void> {
+  const item = await db
+    .selectFrom('memory_items')
+    .select(['kind', 'subject'])
+    .where('item_id', '=', itemID)
+    .executeTakeFirst();
+
+  if (item !== undefined && getRowSubject(item) !== subject) {
+    throw new SelfNoteError(
+      `memory item ${itemID} is not ${subjectNames[subject]}, so it cannot take this text`,
+    );
+  }
+}
+
+async function writeUnmatchedNewItem(
+  parts: StoreParts,
+  opened: OpenedProposal,
+  answer: ProposalAnswer,
+): Promise<ApprovalResult> {
+  const query = { text: answer.editedText ?? opened.text.text, subject: getRowSubject(opened.row) };
+
+  const match = await readCloseMatch(parts, query);
+
+  if (match !== null) {
+    return { status: 'close_match', item: match };
+  }
+
+  try {
+    const ref = await writeApprovedRemember(parts, {
+      opened,
+      answer,
+      target: null,
+      requireInTransaction: async (db) => {
+        if ((await readCloseMatch(parts, { ...query, db })) !== null) {
+          throw new CloseMatchError(opened.row.proposal_id);
+        }
+      },
+    });
+
+    return toAppliedResult(ref);
+  } catch (error) {
+    if (!(error instanceof CloseMatchError)) {
+      throw error;
+    }
+
+    return writeUnmatchedNewItem(parts, opened, answer);
+  }
+}

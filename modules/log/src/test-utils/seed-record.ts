@@ -1,6 +1,6 @@
 import invariant from 'tiny-invariant';
+import { writeRecords } from '../record/write-records';
 import type { LogRecord, RecordInput } from '../types';
-import { writeRecords } from '../write-records';
 import type { LogSeederDeps } from './log-seeder-deps';
 
 export async function seedRecord(

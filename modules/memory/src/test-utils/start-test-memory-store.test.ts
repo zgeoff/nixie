@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { startTestSessionHost } from '@heynixie/sessions/test-utils';
-import { memoryProjections } from '../memory-projections';
+import { memoryProjections } from '../moment/projection/memory-projections';
 import { startTestMemoryStore } from './start-test-memory-store';
 
 async function setupTest() {

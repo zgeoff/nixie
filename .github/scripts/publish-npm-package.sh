@@ -60,7 +60,8 @@ fi
   bun build src/index.ts --outdir dist --target node --format esm --packages external > /dev/null
   bunx tsrs -p tsconfig.build.json
   # node16 resolution needs an extension on each relative import, and the source writes none
-  sed -i -E "s#(from '\./[a-z0-9-]+)'#\1.js'#" dist/*.d.ts
+  find dist -name '*.d.ts' -exec sed -i -E \
+    "s#((from |import\()(['\"])(\.\.?/)+[a-z0-9_/-]+)(['\"])#\1.js\5#g" {} +
 )
 jq --arg version "$version" '.version = $version
   | .exports = { ".": { types: "./dist/index.d.ts", default: "./dist/index.js" } }
@@ -99,6 +100,13 @@ undeclared=$(grep -rhoE "(from |import\()['\"][^'\"./][^'\"]*['\"]" "$work/unpac
   grep -vxF -f <(printf '%s\n' "$declared") || true)
 if [[ -n $undeclared ]]; then
   echo "::error::the packed $name imports modules it does not declare as dependencies: ${undeclared//$'\n'/ }"
+  exit 1
+fi
+# node16 resolution finds a relative import of a declaration only by its full file name
+bare=$(grep -rhoE --include='*.d.ts' "(from |import\()['\"]\.\.?/[^'\"]*['\"]" \
+  "$work/unpacked/package/dist" | grep -vE "\.js['\"]\$" || true)
+if [[ -n $bare ]]; then
+  echo "::error::the packed $name has declaration imports with no .js extension: ${bare//$'\n'/ }"
   exit 1
 fi
 

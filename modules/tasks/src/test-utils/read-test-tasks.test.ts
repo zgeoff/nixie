@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { claimTask } from '../claim-task';
-import { createTask } from '../create-task';
+import { createTask } from '../task/create-task';
+import { claimTask } from '../task/projection/claim-task';
 import { readTestTasks } from './read-test-tasks';
 import { startTestTasks } from './start-test-tasks';
 

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readRecordAttachments } from '../read-record-attachments';
+import { readRecordAttachments } from '../record/read-record-attachments';
 import { seedRecord } from './seed-record';
 import { seedUnreadableAttachmentRecord } from './seed-unreadable-attachment-record';
 import { startTestLog } from './start-test-log';

@@ -1,9 +1,9 @@
 import { useQueries } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import type { MemoryRating, RecalledMemory } from '../build-activity';
+import type { MemoryRating, RecalledMemory } from '../conversation/build-activity';
 import { css } from '../styled-system/css';
-import { useNixieClient } from '../use-nixie-client';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { StepSection } from './step-section';
 
 export interface StepMemoriesProps {

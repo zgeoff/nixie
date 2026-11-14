@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
 import type { TestRecorder } from '@heynixie/sandbox/test-utils';
 import { setupTestRecorder, startStubToolEndpoint } from '@heynixie/sandbox/test-utils';
-import { buildImpSandboxAdapter } from '../build-imp-sandbox-adapter';
-import type { PublicEgressConfig } from '../parse-imp-config';
+import type { PublicEgressConfig } from '../config/parse-imp-config';
+import { buildImpSandboxAdapter } from '../sandbox/build-imp-sandbox-adapter';
 import type { ImpPort } from '../types';
 import { removeOwnedSandboxes } from './remove-owned-sandboxes';
 

@@ -41,8 +41,8 @@ every other endpoint with a 403:
 | `openai-responses`   | creating a response, and the model list   |
 
 The method and path of each endpoint live in one table in
-[`find-model-api-endpoint.ts`](../../../libs/wire/src/find-model-api-endpoint.ts). The scripted
-model that stands in for the model API in tests routes its requests through the same table.
+[`find-model-api-endpoint.ts`](../../../libs/wire/src/spool/find-model-api-endpoint.ts). The
+scripted model that stands in for the model API in tests routes its requests through the same table.
 
 A message batch, for one, spends after its reply and names its models inside each request, out of
 reach of both the count and the model check. A stored response read back by its ID spends nothing

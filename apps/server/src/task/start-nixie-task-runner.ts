@@ -1,0 +1,37 @@
+import type { StartedMemoryStore } from '@heynixie/memory';
+import type { NixieRunner } from '@heynixie/sessions';
+import { startNixieRunner } from '@heynixie/sessions';
+import { toImageNames } from '../sandbox/to-image-names';
+import type { ServerParts } from '../types';
+import { buildTaskMessaging } from '../utils/build-task-messaging';
+import { toSessionDefinitions } from '../utils/to-session-definitions';
+
+export async function startNixieTaskRunner(
+  parts: ServerParts,
+  memory: () => StartedMemoryStore,
+): Promise<NixieRunner> {
+  const runner = await startNixieRunner({
+    context: parts.context,
+    models: parts.config.models,
+    secrets: parts.modelSecrets,
+    sandboxes: parts.tools.adapter,
+    images: toImageNames(parts.images),
+    tools: parts.tools.endpoint,
+    getDefinitions: () => toSessionDefinitions(parts.inForce.read()),
+    memory,
+    memorySettings: {
+      ...parts.config.memory,
+      ownerName: parts.config.owner.name,
+      agentNames: parts.config.agent.names,
+    },
+    compaction: parts.config.compaction,
+    defaultZone: parts.config.time.default_zone,
+    messaging: buildTaskMessaging(parts.config),
+    turnInputs: parts.turnInputs,
+    log: parts.log,
+  });
+
+  await parts.cleanup.defer(() => runner.stop());
+
+  return runner;
+}

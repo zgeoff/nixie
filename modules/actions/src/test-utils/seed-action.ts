@@ -1,6 +1,6 @@
 import type { TasksContext } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
-import { createAllowedAction } from '../create-allowed-action';
+import { createAllowedAction } from '../action/create-allowed-action';
 import type { ActionRow } from '../types';
 import type { AllowedCallSeed } from './build-mock-allowed-call';
 import { buildMockAllowedCall } from './build-mock-allowed-call';

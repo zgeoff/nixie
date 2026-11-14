@@ -1,7 +1,7 @@
 import invariant from 'tiny-invariant';
-import { claimTask } from '../claim-task';
+import { writeStepError } from '../step/write-step-error';
+import { claimTask } from '../task/projection/claim-task';
 import type { TasksContext } from '../types';
-import { writeStepError } from '../write-step-error';
 import type { StartedTaskSeed } from './seed-task';
 import { seedTask } from './seed-task';
 

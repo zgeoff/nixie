@@ -13,37 +13,37 @@ import type { LogRecord } from '../../modules/log/src/index';
 // @boundaries-ignore a spike imports the code it measures
 import type { GuestFrame, InboxMessage } from '../../libs/wire/src/index';
 // @boundaries-ignore a spike imports the code it measures
-import { runCheckQuery } from '../../guests/conversation/src/run-check-query';
+import { runCheckQuery } from '../../guests/conversation/src/check/run-check-query';
 // @boundaries-ignore a spike imports the code it measures
-import { runTurn } from '../../guests/conversation/src/run-turn';
+import { runTurn } from '../../guests/conversation/src/turn/run-turn';
 // @boundaries-ignore a spike imports the code it measures
-import { renderConsolidatorPrompt } from '../../modules/memory/src/render-consolidator-prompt';
+import { renderConsolidatorPrompt } from '../../modules/memory/src/consolidator/render-consolidator-prompt';
 // @boundaries-ignore a spike imports the code it measures
-import { renderWriterPrompt } from '../../modules/memory/src/render-writer-prompt';
+import { renderWriterPrompt } from '../../modules/memory/src/writer/render-writer-prompt';
 // @boundaries-ignore a spike imports the code it measures
-import { encodeInboxUUID } from '../../modules/sessions/src/encode-inbox-uuid';
+import { encodeInboxUUID } from '../../modules/sessions/src/inbox/encode-inbox-uuid';
 // @boundaries-ignore a spike imports the code it measures
-import { renderInboxMessage } from '../../modules/sessions/src/render-inbox-message';
+import { renderInboxMessage } from '../../modules/sessions/src/inbox/render-inbox-message';
 // @boundaries-ignore a spike imports the code it measures
-import { buildModelStatus } from '../../modules/sessions/src/build-model-status';
+import { buildModelStatus } from '../../modules/sessions/src/session/build-model-status';
 // @boundaries-ignore a spike imports the code it measures
-import { buildStartStatus } from '../../modules/sessions/src/build-start-status';
+import { buildStartStatus } from '../../modules/sessions/src/session/build-start-status';
 // @boundaries-ignore a spike imports the code it measures
-import { buildStartTimeStatus } from '../../modules/sessions/src/build-start-time-status';
+import { buildStartTimeStatus } from '../../modules/sessions/src/session/build-start-time-status';
 // @boundaries-ignore a spike imports the code it measures
-import { buildStatusRegistry } from '../../modules/sessions/src/build-status-registry';
+import { buildStatusRegistry } from '../../modules/sessions/src/session/build-status-registry';
 // @boundaries-ignore a spike imports the code it measures
-import { formatMessageTime } from '../../modules/sessions/src/format-message-time';
+import { formatMessageTime } from '../../modules/sessions/src/message/format-message-time';
 // @boundaries-ignore a spike imports the code it measures
-import { renderPinnedMemory } from '../../modules/sessions/src/render-pinned-memory';
+import { renderPinnedMemory } from '../../modules/sessions/src/memory/render-pinned-memory';
 // @boundaries-ignore a spike imports the code it measures
 import { renderSystemMessage } from '../../libs/wire/src/index';
 // @boundaries-ignore a spike imports the code it measures
-import { buildVersionStatus } from '../../apps/server/src/build-version-status';
+import { buildVersionStatus } from '../../apps/server/src/conversation/build-version-status';
 // @boundaries-ignore a spike imports the code it measures
-import { renderRetrievedItems } from '../../modules/sessions/src/render-retrieved-items';
+import { renderRetrievedItems } from '../../modules/sessions/src/retrieved/render-retrieved-items';
 // @boundaries-ignore a spike imports the code it measures
-import { renderPrompt } from '../../modules/prompts/src/render-prompt';
+import { renderPrompt } from '../../modules/prompts/src/prompt/render-prompt';
 // @boundaries-ignore a spike imports the code it measures
 import { buildCheckerEvalInput, loadCheckerCorpus } from '../../modules/memory/src/evals';
 import type { ToolSet } from './build-role-tools';

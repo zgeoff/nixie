@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 // @boundaries-ignore a spike imports the code it measures
-import { startMemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
+import { startMemoryIndex } from '../../../modules/memory/src/memory/start-memory-index.ts';
 import { buildRanker, SHIPPED } from './rank-turn.ts';
 import { buildRuns } from './score-turns.ts';
 

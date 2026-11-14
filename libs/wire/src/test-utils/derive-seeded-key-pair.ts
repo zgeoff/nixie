@@ -1,4 +1,4 @@
-import { parseBase64URL } from '../parse-base64url';
+import { parseBase64URL } from '../utils/parse-base64url';
 
 const groupOrder =
   0xff_ff_ff_ff_00_00_00_00_ff_ff_ff_ff_ff_ff_ff_ff_bc_e6_fa_ad_a7_17_9e_84_f3_b9_ca_c2_fc_63_25_51n;

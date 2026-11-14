@@ -1,5 +1,5 @@
 import { withWriteTransaction } from '@heynixie/log';
-import { createSystemTask } from '../create-system-task';
+import { createSystemTask } from '../task/create-system-task';
 import type { TasksContext, TasksTables } from '../types';
 
 export interface SystemTaskAtHopSeed {

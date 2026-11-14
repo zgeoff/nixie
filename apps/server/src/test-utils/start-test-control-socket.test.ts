@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startTestMemory } from '@heynixie/memory/test-utils';
-import { buildHostClient } from '../build-host-client';
+import { buildHostClient } from '../cli/build-host-client';
 import { buildSeeder } from './build-seeder';
 import { startTestControlSocket } from './start-test-control-socket';
 

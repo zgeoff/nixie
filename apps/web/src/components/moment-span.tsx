@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { css } from '../styled-system/css';
 import type { MomentSpanRecord } from '../types';
-import { useNixieClient } from '../use-nixie-client';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { ForgetControl } from './forget-control';
 
 export interface MomentSpanProps {

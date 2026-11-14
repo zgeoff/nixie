@@ -10,7 +10,7 @@ import {
 import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import { memoryKillsPath } from '../memory-kills-path';
+import { memoryKillsPath } from '../process/memory-kills-path';
 import type { SandboxSpec } from '../types';
 import { buildMockSandboxSpec } from './build-mock-sandbox-spec';
 import { buildStubGuestSandboxes } from './build-stub-guest-sandboxes';

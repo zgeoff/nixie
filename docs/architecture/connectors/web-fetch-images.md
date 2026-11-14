@@ -48,5 +48,5 @@ When a new JPEG is past the API limit, the tool returns an error and no image.
 
 The tool returns an error with the codec's reason for a body that the codecs cannot read as an
 image. The tool reads each image's header first, and returns an error for an image that claims more
-pixels than the `maxPixels` value in `modules/connectors/src/fit-fetched-image.ts`, before it
+pixels than the `maxPixels` value in `modules/connectors/src/fetch/fit-fetched-image.ts`, before it
 decodes any pixel. A small file then cannot claim a canvas that would fill the host's memory.

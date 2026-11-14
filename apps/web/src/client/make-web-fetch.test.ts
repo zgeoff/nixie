@@ -1,0 +1,253 @@
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { z } from 'zod';
+import { startStubAPI } from '../test-utils/start-stub-api';
+import { makeWebFetch } from './make-web-fetch';
+
+async function setupTest() {
+  const clientDir = await mkdtemp(join(tmpdir(), 'nixie-web-client-'));
+
+  onTestFinished(async () => {
+    await rm(clientDir, { force: true, recursive: true });
+  });
+
+  await mkdir(join(clientDir, 'assets'));
+
+  return { clientDir };
+}
+
+test('it answers live without calling the API or Start', async () => {
+  const ctx = await setupTest();
+
+  const startFetch = mock(() => new Response('start'));
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch,
+  });
+
+  const response = await webFetch(new Request('http://web.test/health/live'));
+  const body: unknown = await response.json();
+
+  expect(response.status).toBe(200);
+  expect(body).toStrictEqual({ status: 'live' });
+  expect(startFetch).not.toHaveBeenCalled();
+});
+
+test('it answers ready when the API answers', async () => {
+  const ctx = await setupTest();
+
+  const api = startStubAPI();
+
+  const webFetch = makeWebFetch({
+    apiURL: api.url,
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/health/ready'));
+  const body: unknown = await response.json();
+
+  expect(response.status).toBe(200);
+  expect(body).toStrictEqual({ status: 'ready' });
+});
+
+test('it probes the API with no credential', async () => {
+  const ctx = await setupTest();
+
+  const api = startStubAPI();
+
+  const webFetch = makeWebFetch({
+    apiURL: api.url,
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  await webFetch(
+    new Request('http://web.test/health/ready', {
+      headers: { authorization: 'Bearer probe-token', cookie: 'nixie_session=probe-token' },
+    }),
+  );
+
+  expect(api.requests).toStrictEqual([
+    { authorization: null, cookie: null, path: '/rpc/sessions/list' },
+  ]);
+});
+
+test('it answers unready when the API does not answer', async () => {
+  const ctx = await setupTest();
+
+  const answerRequest = mock(() => new Response());
+  const closed = Bun.serve({ fetch: answerRequest, hostname: '127.0.0.1', port: 0 });
+  const apiURL = `http://127.0.0.1:${closed.port}`;
+
+  await closed.stop(true);
+
+  const webFetch = makeWebFetch({
+    apiURL,
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/health/ready'));
+  const body: unknown = await response.json();
+
+  expect(response.status).toBe(503);
+  expect(body).toStrictEqual({ status: 'unready', unready: ['api'] });
+});
+
+test('it serves a built browser asset', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.clientDir, 'assets', 'index-abc.js'), 'console.log("hi");');
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/assets/index-abc.js'));
+  const body = await response.text();
+
+  expect(body).toBe('console.log("hi");');
+});
+
+test('it serves the web app manifest for an hour', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.clientDir, 'manifest.webmanifest'), '{"name":"nixie"}');
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/manifest.webmanifest'));
+  const body = await response.text();
+
+  expect(body).toBe('{"name":"nixie"}');
+  expect(response.headers.get('content-type')).toBe('application/manifest+json');
+  expect(response.headers.get('cache-control')).toBe('public, max-age=3600');
+});
+
+test('it serves an app icon for an hour', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.clientDir, 'icons'));
+  await writeFile(join(ctx.clientDir, 'icons', 'icon-192.png'), 'png');
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/icons/icon-192.png'));
+  const body = await response.text();
+
+  expect(body).toBe('png');
+  expect(response.headers.get('content-type')).toBe('image/png');
+  expect(response.headers.get('cache-control')).toBe('public, max-age=3600');
+});
+
+// A PNG holds its width and height as 4-byte integers at bytes 16 and 20, inside its header chunk.
+test('it serves each icon the manifest lists at its listed size', async () => {
+  const publicDir = join(import.meta.dir, '..', '..', 'public');
+
+  const manifestJSON: unknown = await Bun.file(join(publicDir, 'manifest.webmanifest')).json();
+
+  // oxlint-disable-next-line zgeoff/no-abbreviated-names -- the web app manifest names an icon's URL `src`
+  const iconSchema = z.object({ sizes: z.string(), src: z.string() });
+  const manifest = z.object({ icons: z.array(iconSchema) }).parse(manifestJSON);
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: publicDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const sizes = await Promise.all(
+    manifest.icons.map(async (icon) => {
+      const response = await webFetch(new Request(`http://web.test${icon.src}`));
+      const bytes = await response.arrayBuffer();
+
+      const view = new DataView(bytes);
+
+      return `${view.getUint32(16)}x${view.getUint32(20)}`;
+    }),
+  );
+
+  expect(sizes).toStrictEqual(manifest.icons.map((icon) => icon.sizes));
+});
+
+test('it sends any other file at the root of the browser assets to Start', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.clientDir, 'secret.txt'), 'outside');
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/secret.txt'));
+  const body = await response.text();
+
+  expect(body).toBe('start');
+});
+
+test('it never serves a file outside the browser assets', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.clientDir, 'secret.txt'), 'outside');
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/assets/%2e%2e/secret.txt'));
+  const body = await response.text();
+
+  expect(body).toBe('start');
+});
+
+test('it sends every other path to Start', async () => {
+  const ctx = await setupTest();
+
+  const startFetch = mock(() => new Response('start'));
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch,
+  });
+
+  const response = await webFetch(new Request('http://web.test/'));
+  const body = await response.text();
+
+  expect(body).toBe('start');
+  expect(startFetch).toHaveBeenCalledOnce();
+});
+
+test('it marks a rendered page private to the browser that asked for it', async () => {
+  const ctx = await setupTest();
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
+  });
+
+  const response = await webFetch(new Request('http://web.test/'));
+
+  expect(response.headers.get('cache-control')).toBe('private, no-store');
+  expect(response.headers.get('vary')).toBe('cookie');
+});

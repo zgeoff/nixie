@@ -26,40 +26,6 @@
     ],
     "zgeoff/seed-only": "error",
     "zgeoff/test-beside-seed": "error",
-    // the list holds the packages not yet folded and shrinks as each is folded
-    "zgeoff/feature-folders": [
-      "error",
-      {
-        "pending": [
-          "adapters/sandbox-imp",
-          "apps/model-gateway",
-          "apps/server",
-          "apps/web",
-          "guests/conversation",
-          "guests/fetch",
-          "libs/contract",
-          "libs/db",
-          "libs/testing",
-          "libs/wire",
-          "modules/actions",
-          "modules/api",
-          "modules/backup",
-          "modules/compaction",
-          "modules/connectors",
-          "modules/definitions",
-          "modules/log",
-          "modules/memory",
-          "modules/models",
-          "modules/ops",
-          "modules/policy",
-          "modules/prompts",
-          "modules/sandbox",
-          "modules/sessions",
-          "modules/skills",
-          "modules/tasks"
-        ]
-      }
-    ],
     // the import boundaries: each outside system has one package that may import it, and every
     // import names its module where the zones can see it
     "zgeoff/import-zones": [

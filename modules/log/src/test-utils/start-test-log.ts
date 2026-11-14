@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
-import { logProjections } from '../log-projections';
-import { startWriter } from '../start-writer';
+import { logProjections } from '../record/log-projections';
 import type { Log, Writer } from '../types';
+import { startWriter } from '../writer/start-writer';
 
 interface TestLog {
   readonly dataDir: string;

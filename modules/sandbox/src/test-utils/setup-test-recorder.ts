@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Log, LogRecord } from '@heynixie/log';
 import { logProjections, readRecords, startWriter } from '@heynixie/log';
-import { buildSandboxRecorder } from '../build-sandbox-recorder';
-import { sandboxesProjection } from '../sandboxes-projection';
+import { buildSandboxRecorder } from '../sandbox/build-sandbox-recorder';
+import { sandboxesProjection } from '../sandbox/sandboxes-projection';
 import type { SandboxEvent, SandboxRecorder } from '../types';
 
 export interface TestRecorder {

@@ -1,7 +1,7 @@
 import type { Definitions, Log } from '@heynixie/log';
 import type { ToolTargetResolver } from '@heynixie/sandbox';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
-import { createSandboxAdapter } from '../create-sandbox-adapter';
+import { createSandboxAdapter } from '../sandbox/create-sandbox-adapter';
 import type { TestSandboxes } from './build-retirable-sandboxes';
 import { buildRetirableSandboxes } from './build-retirable-sandboxes';
 

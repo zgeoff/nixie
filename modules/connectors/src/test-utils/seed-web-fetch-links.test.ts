@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readLinkTarget } from '../read-link-target';
+import { readLinkTarget } from '../web/read-link-target';
 import { seedWebFetchLinks } from './seed-web-fetch-links';
 import { startTestLog } from './start-test-log';
 

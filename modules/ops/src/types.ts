@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { healthReportSchema } from './health-report-schema';
+import type { healthReportSchema } from './health/health-report-schema';
 
 export type HealthReport = z.infer<typeof healthReportSchema>;
 

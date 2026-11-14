@@ -1,0 +1,1123 @@
+import { expect, test } from 'bun:test';
+import { readRecords, writeRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
+import { createConversationTask } from '../../conversation/create-conversation-task';
+import { buildStepRunID } from '../../step/build-step-run-id';
+import { writeStepCommit } from '../../step/write-step-commit';
+import { buildStartedDirectory } from '../../test-utils/build-started-directory';
+import { makeStubStep } from '../../test-utils/make-stub-step';
+import { runTaskSteps } from '../../test-utils/run-task-steps';
+import { seedConversationStep } from '../../test-utils/seed-conversation-step';
+import { seedTask } from '../../test-utils/seed-task';
+import { startTestTasks } from '../../test-utils/start-test-tasks';
+import { writeTestTaskMessage } from '../../test-utils/write-test-task-message';
+import type { TasksTables } from '../../types';
+import { createSystemTask } from '../create-system-task';
+import { claimTask } from './claim-task';
+import { writeInboxRecords } from './write-inbox-records';
+import { writeTaskMessage } from './write-task-message';
+
+async function setupTest() {
+  const tasks = await startTestTasks();
+
+  return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
+}
+
+test('it refuses a message from a step whose task another runner reclaimed, and writes nothing', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  const lost = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(lost);
+
+  ctx.clock.advance(60_000);
+
+  const reclaimed = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const outcome = await writeTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'question',
+      body: 'Is Tuesday free?',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+      stepRunID: buildStepRunID(lost),
+    },
+  );
+
+  const messages = await ctx.db.selectFrom('task_messages').select('message_id').execute();
+
+  expect(reclaimed?.lease.workID).toBe('planner');
+  expect(outcome).toStrictEqual({ status: 'refused', refusal: { reason: 'stale_step' } });
+  expect(messages).toStrictEqual([]);
+});
+
+test('it refuses a message from a step whose lease expired, and writes nothing', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  ctx.clock.advance(60_000);
+
+  const outcome = await writeTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'chat',
+      body: 'Still here.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+      stepRunID: buildStepRunID(claim),
+    },
+  );
+
+  const messages = await ctx.db.selectFrom('task_messages').select('message_id').execute();
+
+  expect(outcome).toStrictEqual({ status: 'refused', refusal: { reason: 'stale_step' } });
+  expect(messages).toStrictEqual([]);
+});
+
+test('it delivers a message to the task it names and wakes it', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const outcome = await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'report',
+      body: 'The week is planned.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    },
+  );
+
+  const entries = await readRecords(ctx.context.log, { afterSequence: 0, thread: 'conversation' });
+
+  const message = entries.find((entry) => entry.record.kind === 'task_message')?.record;
+
+  const conversation = await ctx.db
+    .selectFrom('tasks')
+    .select('state')
+    .where('task_id', '=', 'conversation')
+    .executeTakeFirstOrThrow();
+
+  expect(outcome).toStrictEqual({
+    status: 'sent',
+    messageID: expect.toBeString(),
+    hop: 1,
+    woke: true,
+    hold: 'none',
+  });
+
+  expect(message).toMatchObject({
+    payload: {
+      messageID: expect.toBeString(),
+      from: 'planner',
+      to: 'conversation',
+      kind: 'report',
+      replyTo: null,
+      onBehalfOf: [],
+      hop: 1,
+      hopLimit: 20,
+      wake: true,
+      woke: true,
+      source: 'task:planner',
+    },
+    erasable: { status: 'readable', fields: { body: 'The week is planned.' } },
+  });
+
+  expect(conversation.state).toBe('ready');
+});
+
+test('it leaves the receiver waiting for its next wake when the sender asks for no wake', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const outcome = await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'progress',
+      body: 'Half the week is planned.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: false,
+    },
+  );
+
+  const conversation = await ctx.db
+    .selectFrom('tasks')
+    .select('state')
+    .where('task_id', '=', 'conversation')
+    .executeTakeFirstOrThrow();
+
+  expect(outcome).toMatchObject({ status: 'sent', woke: false, hold: 'none' });
+
+  const next = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  expect(conversation.state).toBe('waiting');
+  expect(next).toBeNull();
+});
+
+test('it holds a message for a task that runs on its own schedule, with no wake', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const outcome = await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: false,
+          speaker: 'conversation' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'chat',
+      body: 'Nice weather for it.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    },
+  );
+
+  const conversation = await ctx.db
+    .selectFrom('tasks')
+    .select('state')
+    .where('task_id', '=', 'conversation')
+    .executeTakeFirstOrThrow();
+
+  expect(outcome).toMatchObject({ status: 'sent', woke: false, hold: 'next_run' });
+  expect(conversation.state).toBe('waiting');
+});
+
+test('it refuses a message to the sender itself', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const outcome = await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'planner',
+      kind: 'chat',
+      body: 'Hello me.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    },
+  );
+
+  expect(outcome).toStrictEqual({ status: 'refused', refusal: { reason: 'self' } });
+});
+
+test('it refuses a message to a task the directory does not list', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createSystemTask(ctx.context, 'queue-check');
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const outcome = await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'queue-check',
+      kind: 'chat',
+      body: 'Anything queued?',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'unknown_task', taskID: 'queue-check' },
+  });
+});
+
+test('it refuses a message to a task that has finished', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'gardener');
+  await createSystemTask(ctx.context, 'planner');
+
+  const gardener = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(gardener);
+
+  await writeStepCommit(ctx.context, gardener, { next: 'done', records: [], acknowledged: [] });
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const outcome = await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'gardener',
+          name: 'Gardener',
+          brief: 'Waters.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'gardener',
+      kind: 'request',
+      body: 'Water the ferns.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'finished', taskID: 'gardener' },
+  });
+});
+
+test('it refuses a reply to a message that was never sent to the sender', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const outcome = await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'reply',
+      body: 'Yes, Tuesday.',
+      replyTo: 'z9z9z9z9z9',
+      onBehalfOf: [],
+      wake: true,
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'unknown_reply', messageID: 'z9z9z9z9z9' },
+  });
+});
+
+test("it refuses on-behalf-of IDs that do not name the owner's messages", async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const outcome = await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'request',
+      body: 'Book the table, as asked.',
+      replyTo: null,
+      onBehalfOf: ['#1', '#404'],
+      wake: true,
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'not_owner_message', eventIDs: ['1', '404'] },
+  });
+});
+
+test("it stores on-behalf-of IDs that name the owner's messages", async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  const [owned] = await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'planner',
+      contentSource: 'owner',
+      erasable: { text: 'book us a table for Friday' },
+    },
+  ]);
+
+  invariant(owned);
+
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
+      ],
+      hopLimit: 20,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'request',
+      body: 'Book the table, as asked.',
+      replyTo: null,
+      onBehalfOf: [`#${owned.sequence}`],
+      wake: true,
+    },
+  );
+
+  const entries = await readRecords(ctx.context.log, { afterSequence: 0, thread: 'conversation' });
+
+  const message = entries.find((entry) => entry.record.kind === 'task_message')?.record;
+
+  expect(message?.payload['onBehalfOf']).toStrictEqual([String(owned.sequence)]);
+});
+
+test('it delivers a message past the hop limit without a wake and tells the owner once', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await ctx.db.updateTable('tasks').set({ step_hop: 3 }).where('task_id', '=', 'planner').execute();
+
+  const messaging = {
+    directory: [
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
+    ],
+    hopLimit: 3,
+  };
+
+  const outcome = await writeTestTaskMessage(ctx.context, messaging, {
+    from: 'planner',
+    to: 'conversation',
+    kind: 'question',
+    body: 'Shall I plan Sunday too?',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  await writeTestTaskMessage(ctx.context, messaging, {
+    from: 'planner',
+    to: 'conversation',
+    kind: 'chat',
+    body: 'Or leave it free?',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  const notices = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.exchange_limited'],
+  });
+
+  const conversation = await ctx.db
+    .selectFrom('tasks')
+    .select('state')
+    .where('task_id', '=', 'conversation')
+    .executeTakeFirstOrThrow();
+
+  invariant(outcome.status === 'sent');
+
+  expect(outcome).toStrictEqual({
+    status: 'sent',
+    messageID: expect.toBeString(),
+    hop: 4,
+    woke: false,
+    hold: 'hop_limit',
+  });
+
+  expect(notices.map((read) => [read.record.thread, read.record.payload])).toStrictEqual([
+    [
+      'planner',
+      {
+        messageID: outcome.messageID,
+        stepKey: claim.stepKey,
+        from: 'planner',
+        to: 'conversation',
+        hops: 3,
+        waiting: { taskID: 'planner', onTaskID: 'conversation' },
+      },
+    ],
+  ]);
+
+  expect(conversation.state).toBe('waiting');
+});
+
+test('it tells the owner nothing waits when the message past the limit asks nothing', async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await ctx.db.updateTable('tasks').set({ step_hop: 3 }).where('task_id', '=', 'planner').execute();
+
+  await writeTestTaskMessage(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
+      ],
+      hopLimit: 3,
+    },
+    {
+      from: 'planner',
+      to: 'conversation',
+      kind: 'chat',
+      body: 'Sunday stays free.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    },
+  );
+
+  const [notice] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.exchange_limited'],
+  });
+
+  expect(notice?.record.payload['waiting']).toBeNull();
+});
+
+test('it stops waking a chain of tasks that message each other at the hop limit', async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'critic',
+        name: 'Critic',
+        brief: 'Checks plans.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+    ],
+    hopLimit: 3,
+  };
+
+  const settle = makeStubStep();
+
+  const makeSend = (from: string, to: string) =>
+    makeStubStep(() =>
+      writeTestTaskMessage(ctx.context, messaging, {
+        from,
+        to,
+        kind: 'chat',
+        body: 'One more idea.',
+        replyTo: null,
+        onBehalfOf: [],
+        wake: true,
+      }),
+    );
+
+  await createSystemTask(ctx.context, 'planner');
+  await createSystemTask(ctx.context, 'critic');
+
+  await runTaskSteps(ctx.context, {
+    steps: { planner: settle, critic: settle },
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
+    maxSteps: 10,
+  });
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'task.wake',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'planner',
+      payload: { at: 0 },
+    },
+  ]);
+
+  const steps = await runTaskSteps(ctx.context, {
+    steps: { planner: makeSend('planner', 'critic'), critic: makeSend('critic', 'planner') },
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
+    maxSteps: 10,
+  });
+
+  const messages = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(steps).toBe(4);
+
+  expect(
+    messages
+      .filter((entry) => entry.record.kind === 'task_message')
+      .map((entry) => ({
+        to: entry.record.payload['to'],
+        hop: entry.record.payload['hop'],
+        woke: entry.record.payload['woke'],
+      })),
+  ).toStrictEqual([
+    { to: 'critic', hop: 1, woke: true },
+    { to: 'planner', hop: 2, woke: true },
+    { to: 'critic', hop: 3, woke: true },
+    { to: 'planner', hop: 4, woke: false },
+  ]);
+});
+
+test('it starts the count again when the owner writes to a task in a held exchange', async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
+    ],
+    hopLimit: 1,
+  };
+
+  const settle = makeStubStep();
+
+  const makeSend = (from: string, to: string) =>
+    makeStubStep(() =>
+      writeTestTaskMessage(ctx.context, messaging, {
+        from,
+        to,
+        kind: 'chat',
+        body: 'Still here.',
+        replyTo: null,
+        onBehalfOf: [],
+        wake: true,
+      }),
+    );
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  await runTaskSteps(ctx.context, {
+    steps: { planner: makeSend('planner', 'conversation'), conversation: settle },
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
+    maxSteps: 10,
+  });
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'owner',
+      erasable: { text: 'tell the planner thanks' },
+    },
+  ]);
+
+  await runTaskSteps(ctx.context, {
+    steps: {
+      planner: makeSend('planner', 'conversation'),
+      conversation: makeSend('conversation', 'planner'),
+    },
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
+    maxSteps: 10,
+  });
+
+  const messages = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(
+    messages
+      .filter((entry) => entry.record.kind === 'task_message')
+      .map((entry) => ({
+        to: entry.record.payload['to'],
+        hop: entry.record.payload['hop'],
+        woke: entry.record.payload['woke'],
+      })),
+  ).toStrictEqual([
+    { to: 'conversation', hop: 1, woke: true },
+    { to: 'planner', hop: 1, woke: true },
+    { to: 'conversation', hop: 2, woke: false },
+  ]);
+});
+
+test('it starts the count again when a timer wakes a task in a held exchange', async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'critic',
+        name: 'Critic',
+        brief: 'Checks plans.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+    ],
+    hopLimit: 1,
+  };
+
+  const settle = makeStubStep();
+
+  const makeSend = (from: string, to: string) =>
+    makeStubStep(() =>
+      writeTestTaskMessage(ctx.context, messaging, {
+        from,
+        to,
+        kind: 'chat',
+        body: 'Morning check-in.',
+        replyTo: null,
+        onBehalfOf: [],
+        wake: true,
+      }),
+    );
+
+  await createSystemTask(ctx.context, 'planner');
+  await createSystemTask(ctx.context, 'critic');
+
+  await runTaskSteps(ctx.context, {
+    steps: { planner: makeSend('planner', 'critic'), critic: settle },
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
+    maxSteps: 10,
+  });
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'timer.fired',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'critic',
+      payload: { taskID: 'critic', timerID: 'timer-a', dueAt: 1_000_000, firedAt: 1_000_000 },
+    },
+  ]);
+
+  await runTaskSteps(ctx.context, {
+    steps: { planner: makeSend('planner', 'critic'), critic: makeSend('critic', 'planner') },
+    advance: (durationMs) => {
+      ctx.clock.advance(durationMs);
+    },
+    maxSteps: 10,
+  });
+
+  const messages = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(
+    messages
+      .filter((entry) => entry.record.kind === 'task_message')
+      .map((entry) => ({
+        to: entry.record.payload['to'],
+        hop: entry.record.payload['hop'],
+        woke: entry.record.payload['woke'],
+      })),
+  ).toStrictEqual([
+    { to: 'critic', hop: 1, woke: true },
+    { to: 'planner', hop: 1, woke: true },
+    { to: 'critic', hop: 2, woke: false },
+  ]);
+});
+
+test('it sends a reply to the brief of the sender to its starter, with no wait opened or closed', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  const [brief] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task_message'],
+  });
+
+  const briefMessageID = brief?.record.payload['messageID'];
+
+  invariant(typeof briefMessageID === 'string');
+
+  const outcome = await writeTestTaskMessage(ctx.context, buildStartedDirectory(taskID), {
+    from: taskID,
+    to: 'conversation',
+    kind: 'reply',
+    body: 'Which harbour?',
+    replyTo: briefMessageID,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  const waits = await ctx.db
+    .selectFrom('task_messages')
+    .select(['kind', 'wait_state'])
+    .orderBy('sent_sequence')
+    .execute();
+
+  expect(outcome).toStrictEqual({
+    status: 'sent',
+    messageID: expect.toBeString(),
+    hop: 1,
+    woke: true,
+    hold: 'none',
+  });
+
+  expect(waits).toStrictEqual([
+    { kind: 'request', wait_state: 'none' },
+    { kind: 'reply', wait_state: 'none' },
+  ]);
+});
+
+test.each([
+  ['the sender own task ID', 'sender', 'conversation', 'sent'],
+  ['the ID of another task', 'other', 'conversation', 'refused'],
+  ['the sender own task ID, to a task that did not start it', 'sender', 'other', 'refused'],
+] as const)(
+  'it handles a reply to a brief of the release before with replyTo as %s',
+  async (_case, replyTo, to, status) => {
+    const ctx = await setupTest();
+
+    await seedConversationStep(ctx.context);
+    await createSystemTask(ctx.context, 'other');
+
+    await writeRecords(ctx.context.log, [
+      {
+        kind: 'task.created',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'k3x9m2p7qa',
+        payload: {
+          taskID: 'k3x9m2p7qa',
+          isConversation: false,
+          state: 'ready',
+          startedBy: 'conversation',
+        },
+        erasable: { name: 'Tide tables', brief: 'Find the high tides.' },
+      },
+    ]);
+
+    const claim = await claimTask(ctx.context, {
+      holder: 'runner-b',
+      leaseMs: 60_000,
+      taskID: 'k3x9m2p7qa',
+    });
+
+    invariant(claim);
+
+    const outcome = await writeTestTaskMessage(
+      ctx.context,
+      {
+        ...buildStartedDirectory('k3x9m2p7qa'),
+        directory: [
+          ...buildStartedDirectory('k3x9m2p7qa').directory,
+          {
+            taskID: 'other',
+            name: 'Other',
+            brief: 'Other.',
+            isWokenByMessages: true,
+            speaker: 'plain_task' as const,
+          },
+        ],
+      },
+      {
+        from: 'k3x9m2p7qa',
+        to,
+        kind: 'reply',
+        body: 'Which harbour?',
+        replyTo: replyTo === 'sender' ? 'k3x9m2p7qa' : 'other',
+        onBehalfOf: [],
+        wake: true,
+      },
+    );
+
+    expect(outcome.status).toBe(status);
+  },
+);
+
+test('it refuses a reply that names the sender own task ID once the sender has a brief record', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  const outcome = await writeTestTaskMessage(ctx.context, buildStartedDirectory(taskID), {
+    from: taskID,
+    to: 'conversation',
+    kind: 'reply',
+    body: 'Which harbour?',
+    replyTo: taskID,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'unknown_reply', messageID: taskID },
+  });
+});

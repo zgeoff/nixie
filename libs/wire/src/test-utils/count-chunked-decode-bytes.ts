@@ -1,7 +1,7 @@
 import { spyOn } from 'bun:test';
 import invariant from 'tiny-invariant';
-import { encodeFrame } from '../encode-frame';
-import { makeFrameDecoder } from '../make-frame-decoder';
+import { encodeFrame } from '../frame/encode-frame';
+import { makeFrameDecoder } from '../frame/make-frame-decoder';
 
 export interface ChunkedDecodeBytes {
   readonly messages: readonly Uint8Array<ArrayBuffer>[];

@@ -3,7 +3,7 @@
 // container, which holds no package for it, so run-spike.ts sends it there as one bundled file.
 import { Database } from 'bun:sqlite';
 // @boundaries-ignore a spike imports the code it measures
-import { modelTurnEndedCodec } from '../../modules/models/src/model-turn-ended-codec.ts';
+import { modelTurnEndedCodec } from '../../modules/models/src/session/model-turn-ended-codec.ts';
 
 export interface TurnUsage {
   readonly thread: string;

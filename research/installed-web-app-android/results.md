@@ -75,13 +75,14 @@ nixie sends no push of any kind. The Telegram notifier in
 [client design](../../docs/design/platform/channels/client.md#deep-links) carries only a link.
 
 An approval passes the server's check through the session alone. The API refuses any call without
-the `x-nixie-client` header ([create-api-app.ts:25](../../modules/api/src/create-api-app.ts#L25)),
-then `memory.approveProposals` resolves the caller from the session and checks the proposal ID and
-action hash of each answer
-([create-memory-proposal-procedures.ts:28](../../modules/api/src/create-memory-proposal-procedures.ts#L28),
-[line 141](../../modules/api/src/create-memory-proposal-procedures.ts#L141)). A service worker can
-send that header and the cookie, so a notification's Approve button passes the same check as the
-card, if the push carries the proposal ID and the action hash.
+the `x-nixie-client` header
+([create-api-app.ts:25](../../modules/api/src/api/create-api-app.ts#L25)), then
+`memory.approveProposals` resolves the caller from the session and checks the proposal ID and action
+hash of each answer
+([create-memory-proposal-procedures.ts:28](../../modules/api/src/memory/create-memory-proposal-procedures.ts#L28),
+[line 141](../../modules/api/src/memory/create-memory-proposal-procedures.ts#L141)). A service
+worker can send that header and the cookie, so a notification's Approve button passes the same check
+as the card, if the push carries the proposal ID and the action hash.
 
 [Approvals in the client](../../docs/design/platform/channels/approvals.md) gives an always-ask
 approval a passkey check. WebAuthn runs in a page, so the button for an always-ask item opens its
@@ -154,10 +155,10 @@ settles the minting of a deployment's host and what a second tapped link does to
 
 The API sets the session as a host-only `HttpOnly; Secure; SameSite=Lax` cookie with the longest
 lifetime a browser keeps
-([render-session-cookie.ts:4](../../libs/contract/src/render-session-cookie.ts#L4),
-[line 11](../../libs/contract/src/render-session-cookie.ts#L11)). The cookie is Lax so that a launch
-from the app's icon sends it. The server keeps only a hash of each token, and a session lapses after
-30 days without use by default, as the
+([render-session-cookie.ts:4](../../libs/contract/src/contract/render-session-cookie.ts#L4),
+[line 11](../../libs/contract/src/contract/render-session-cookie.ts#L11)). The cookie is Lax so that
+a launch from the app's icon sends it. The server keeps only a hash of each token, and a session
+lapses after 30 days without use by default, as the
 [device sessions](../../docs/design/platform/channels/client.md#device-sessions) design gives.
 
 ### Reading
@@ -183,10 +184,10 @@ EditContext ships on Chrome for Android from 121
 ### What nixie does
 
 The composer records `inputType`, `data` and the selection on each `beforeinput`
-([use-pending-input.ts:18](../../apps/web/src/use-pending-input.ts#L18)). The span logic labels a
-single `insertText` or `insertCompositionText` of several words as unknown
-([pick-span-source.ts:27](../../libs/contract/src/pick-span-source.ts#L27)), so a clipboard chip, a
-keyboard's own undo and a dictated phrase fail closed. The
+([use-pending-input.ts:18](../../apps/web/src/task/use-pending-input.ts#L18)). The span logic labels
+a single `insertText` or `insertCompositionText` of several words as unknown
+([pick-span-source.ts:27](../../libs/contract/src/span/pick-span-source.ts#L27)), so a clipboard
+chip, a keyboard's own undo and a dictated phrase fail closed. The
 [paste spans spike](../paste-spans/results.md#android-gboard-in-chrome) ran Gboard in Chrome on a
 phone and showed typing, predictions, autocorrect and swipes land typed.
 
@@ -208,9 +209,9 @@ paste spans spike left out.
   ([manifest updates](https://web.dev/articles/manifest-updates)).
 - **Background sync.** The `sync` event fires once the network returns, with the app closed. The
   outbox keeps unsent messages in `localStorage`
-  ([use-stored-outbox.ts:83](../../apps/web/src/use-stored-outbox.ts#L83)), which a service worker
-  cannot read, so background sending needs the outbox in IndexedDB. Periodic sync needs an installed
-  app and lets Chrome pick the interval
+  ([use-stored-outbox.ts:83](../../apps/web/src/outbox/use-stored-outbox.ts#L83)), which a service
+  worker cannot read, so background sending needs the outbox in IndexedDB. Periodic sync needs an
+  installed app and lets Chrome pick the interval
   ([periodic background sync](https://developer.chrome.com/docs/capabilities/periodic-background-sync)).
 - **Manifest shortcuts.** A long press on the icon offers the manifest's shortcuts, such as the
   approval digest and a new message; MDN lists `shortcuts` on Chrome for Android from 84

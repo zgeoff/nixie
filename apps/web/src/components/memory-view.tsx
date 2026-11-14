@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
 import type { MemoryItem } from '../types';
-import { useNixieClient } from '../use-nixie-client';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { ConsolidatorStatusPanel } from './consolidator-status-panel';
 import { makeMemoryItemRenderer } from './make-memory-item-renderer';
 import { MemoryExportButton } from './memory-export-button';

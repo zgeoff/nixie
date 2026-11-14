@@ -1,0 +1,344 @@
+import { expect, test } from 'bun:test';
+import { LeaseLostError, claimLease } from '@heynixie/tasks';
+import { buildTestClock } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
+import { startTestMemory } from '../test-utils/start-test-memory';
+import { writePlannedBatch } from '../test-utils/write-planned-batch';
+import { writerConfigSchema } from '../utils/schema/writer-config-schema';
+import { createWriterStaging } from '../writer/create-writer-staging';
+import { readWriterRow } from '../writer/read-writer-row';
+import { tryWriteBatch } from './try-write-batch';
+
+async function setupTest() {
+  const memory = await startTestMemory();
+
+  const clock = buildTestClock(1_000_000);
+  const context = { log: memory.log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
+
+  const parts = {
+    context,
+    store: memory.store,
+    publish: memory.store.writeBatch,
+    staging: createWriterStaging(),
+    model: {
+      model: 'claude-test-1',
+      profile: 'writer-direct',
+      runSession: () => Promise.reject(new Error('no session runs in a publish')),
+    },
+    gate: {
+      check: () => Promise.reject(new Error('no gate runs in a publish')),
+      release: () => Promise.resolve(),
+    },
+    config: writerConfigSchema.parse({}),
+    getPersona: () => '',
+    getPrompts: () => ({}),
+    ownerName: null,
+    assistantName: null,
+    defaultZone: 'UTC',
+    messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+  };
+
+  return { memory, clock, parts };
+}
+
+test('it publishes the batch and advances the cursor with its record', async () => {
+  const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.parts.context, {
+    kind: 'task',
+    holder: 'runner-1',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
+  });
+
+  invariant(lease);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
+  };
+
+  const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
+  const row = await readWriterRow(ctx.memory.log);
+
+  const result = await tryWriteBatch(ctx.parts, {
+    input,
+    row,
+    now: ctx.clock.now(),
+    bounds: planned.bounds,
+    capped: { kind: 'publish', writes: [], dropped: 0 },
+    flags: [],
+    usage: null,
+  });
+
+  const after = await readWriterRow(ctx.memory.log);
+
+  expect(result).toStrictEqual({
+    status: 'published',
+    applied: [],
+    proposed: 0,
+    forgotten: 0,
+    flags: [],
+  });
+
+  expect(after.cursor).toBe(planned.bounds.end);
+});
+
+test('it returns superseded when an item moved on since the session read it', async () => {
+  const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.parts.context, {
+    kind: 'task',
+    holder: 'runner-1',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
+  });
+
+  invariant(lease);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
+  };
+
+  const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
+
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const row = await readWriterRow(ctx.memory.log);
+
+  const result = await tryWriteBatch(ctx.parts, {
+    input,
+    row,
+    now: ctx.clock.now(),
+    bounds: planned.bounds,
+    capped: {
+      kind: 'publish',
+      writes: [
+        {
+          write: {
+            op: 'remember',
+            subject: 'owner',
+            text: 'You live at 9 Oak Lane.',
+            quote: '9 Oak Lane',
+            sourceSequence: planned.bounds.end,
+            target: item,
+          },
+          verdict: {
+            outcome: 'apply',
+            source: 'owner',
+            checks: { quote: 'exact' },
+            evidence: { recordSequence: planned.bounds.end, start: 12, end: 22 },
+            model: 'claude-writer-1',
+          },
+        },
+      ],
+      dropped: 0,
+    },
+    flags: [],
+    usage: null,
+  });
+
+  expect(result).toStrictEqual({ status: 'superseded' });
+});
+
+test('it returns superseded when the checker passed a write under definitions that are no longer in force', async () => {
+  const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.parts.context, {
+    kind: 'task',
+    holder: 'runner-1',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
+  });
+
+  invariant(lease);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
+  };
+
+  const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
+
+  const result = await tryWriteBatch(ctx.parts, {
+    input,
+    row: await readWriterRow(ctx.memory.log),
+    now: ctx.clock.now(),
+    bounds: planned.bounds,
+    capped: {
+      kind: 'publish',
+      writes: [
+        {
+          write: {
+            op: 'remember',
+            subject: 'owner',
+            text: 'You live at 9 Oak Lane.',
+            quote: '9 Oak Lane',
+            sourceSequence: planned.bounds.end,
+            target: null,
+          },
+          verdict: {
+            outcome: 'apply',
+            source: 'owner',
+            checks: {
+              quote: 'pass',
+              checker: {
+                verdict: 'asserted',
+                model: 'claude-checker-1',
+                failure: null,
+                snapshotHash: 'sha256:earlier',
+              },
+            },
+            evidence: { recordSequence: planned.bounds.end, start: 12, end: 22 },
+            model: 'claude-writer-1',
+          },
+        },
+      ],
+      dropped: 0,
+    },
+    flags: [],
+    usage: null,
+  });
+
+  const after = await readWriterRow(ctx.memory.log);
+
+  expect(result).toStrictEqual({ status: 'superseded' });
+  expect(after.cursor).not.toBe(planned.bounds.end);
+});
+
+test('it returns superseded when an item a proposal names was forgotten since the session read it', async () => {
+  const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.parts.context, {
+    kind: 'task',
+    holder: 'runner-1',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
+  });
+
+  invariant(lease);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
+  };
+
+  const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
+
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.forget({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await tryWriteBatch(ctx.parts, {
+    input,
+    row: await readWriterRow(ctx.memory.log),
+    now: ctx.clock.now(),
+    bounds: planned.bounds,
+    capped: {
+      kind: 'publish',
+      writes: [
+        {
+          write: {
+            op: 'remember',
+            subject: 'owner',
+            text: 'You live at 9 Oak Lane.',
+            quote: '9 Oak Lane',
+            sourceSequence: planned.bounds.end,
+            target: item,
+          },
+          verdict: {
+            outcome: 'propose',
+            reason: 'the checker did not assert the quote',
+            records: [],
+            plan: null,
+          },
+        },
+      ],
+      dropped: 0,
+    },
+    flags: [],
+    usage: null,
+  });
+
+  expect(result).toStrictEqual({ status: 'superseded' });
+});
+
+test('it rejects a publish whose lease another claim replaced', async () => {
+  const ctx = await setupTest();
+
+  const lease = await claimLease(ctx.parts.context, {
+    kind: 'task',
+    holder: 'runner-1',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve({ workID: 'memory-writer', taskID: 'memory-writer' }),
+  });
+
+  invariant(lease);
+
+  const input = {
+    taskID: 'memory-writer',
+    stepKey: 'step-1',
+    lease,
+    inbox: [],
+    wake: { hop: 0, cause: { kind: 'event' as const } },
+    sessionBoundary: null,
+    signal: new AbortController().signal,
+    interrupt: new AbortController().signal,
+  };
+
+  const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
+  const row = await readWriterRow(ctx.memory.log);
+
+  const publish = tryWriteBatch(ctx.parts, {
+    input: { ...input, lease: { ...input.lease, generation: 99 } },
+    row,
+    now: ctx.clock.now(),
+    bounds: planned.bounds,
+    capped: { kind: 'publish', writes: [], dropped: 0 },
+    flags: [],
+    usage: null,
+  });
+
+  await publish.catch(() => {});
+
+  expect(publish).rejects.toBeInstanceOf(LeaseLostError);
+});

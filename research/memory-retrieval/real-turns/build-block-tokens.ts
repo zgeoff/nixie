@@ -2,23 +2,23 @@
 // product's own renderers and counting it the way the product budgets text: about 4 characters a
 // token.
 // @boundaries-ignore a spike imports the code it measures
-import { countTextTokens } from '../../../modules/compaction/src/count-text-tokens.ts';
+import { countTextTokens } from '../../../modules/compaction/src/session/count-text-tokens.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { formatMessageTime } from '../../../modules/sessions/src/format-message-time.ts';
+import { formatMessageTime } from '../../../modules/sessions/src/message/format-message-time.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { renderPinnedMemory } from '../../../modules/sessions/src/render-pinned-memory.ts';
+import { renderPinnedMemory } from '../../../modules/sessions/src/memory/render-pinned-memory.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { renderCoreChanges } from '../../../modules/sessions/src/render-core-changes.ts';
+import { renderCoreChanges } from '../../../modules/sessions/src/turn/render-core-changes.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { renderRetrievedItems } from '../../../modules/sessions/src/render-retrieved-items.ts';
+import { renderRetrievedItems } from '../../../modules/sessions/src/retrieved/render-retrieved-items.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { renderRetrievedMessages } from '../../../modules/sessions/src/render-retrieved-messages.ts';
+import { renderRetrievedMessages } from '../../../modules/sessions/src/retrieved/render-retrieved-messages.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { renderRetrievedSelfNotes } from '../../../modules/sessions/src/render-retrieved-self-notes.ts';
+import { renderRetrievedSelfNotes } from '../../../modules/sessions/src/retrieved/render-retrieved-self-notes.ts';
 // @boundaries-ignore a spike imports the code it measures
 import type { MemoryItem, MemoryRef } from '../../../modules/sessions/src/types.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { renderSystemMessage } from '../../../libs/wire/src/render-system-message.ts';
+import { renderSystemMessage } from '../../../libs/wire/src/backup/render-system-message.ts';
 import type { TurnCase } from './build-turn-cases.ts';
 
 export interface BlockTokens {

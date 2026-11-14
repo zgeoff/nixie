@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { sealSpoolBody } from '../seal-spool-body';
+import { sealSpoolBody } from '../spool/seal-spool-body';
 import { buildFileWithHeader } from './build-file-with-header';
 import { createSpoolRecipient } from './create-spool-recipient';
 import { parseSealedHeader } from './parse-sealed-header';

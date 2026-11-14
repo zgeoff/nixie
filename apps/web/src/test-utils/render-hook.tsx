@@ -3,8 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { RenderHookResult } from '@testing-library/react';
 import { renderHook as renderHookWithTestingLibrary } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
-import { buildBrowserClient } from '../build-browser-client';
-import { NixieClientContext } from '../nixie-client-context';
+import { buildBrowserClient } from '../client/build-browser-client';
+import { NixieClientContext } from '../utils/nixie-client-context';
 
 export function renderHook<Result>(hook: () => Result): RenderHookResult<Result, unknown> {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import type { LiveRecord } from '../use-live-records';
+import type { LiveRecord } from '../conversation/use-live-records';
 
 export function buildMockLogRecord(overrides: Partial<LiveRecord> = {}): LiveRecord {
   return {

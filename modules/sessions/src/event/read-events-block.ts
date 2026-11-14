@@ -1,0 +1,43 @@
+import type { EventRegistry, TurnNoteRange } from '../types';
+import type { EventsBlockSettings } from './render-events-block';
+import { renderEventsBlock } from './render-events-block';
+
+export interface EventsBlock {
+  readonly text: string | null;
+  readonly count: number;
+}
+
+export interface EventsBlockRead extends EventsBlockSettings {
+  readonly isNewSession?: boolean;
+}
+
+const eventsCap = 10;
+
+export async function readEventsBlock(
+  everyKind: EventRegistry,
+  range: TurnNoteRange,
+  settings: EventsBlockRead,
+): Promise<EventsBlock> {
+  const isNewSession = settings.isNewSession === true || settings.isReplay === true;
+  const registry = isNewSession ? everyKind.filter((kind) => !kind.isSessionBound) : everyKind;
+
+  const read = await Promise.all(registry.map((kind) => kind.read(range)));
+
+  const uncapped = new Set(registry.filter((kind) => kind.isUncapped).map((kind) => kind.name));
+
+  const events = read.flat().toSorted((left, right) => left.sequence - right.sequence);
+
+  const listed = [
+    ...events.filter((event) => uncapped.has(event.kind)),
+    ...events.filter((event) => !uncapped.has(event.kind)).slice(0, eventsCap),
+  ];
+
+  const completed = await Promise.all(
+    registry.map((kind) => kind.complete(listed.filter((event) => event.kind === kind.name))),
+  );
+
+  return {
+    text: renderEventsBlock(completed.flat(), events.length - listed.length, settings),
+    count: events.length,
+  };
+}

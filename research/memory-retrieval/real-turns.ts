@@ -34,7 +34,7 @@ import { pickCurrentLabels } from './real-turns/pick-current-labels.ts';
 import { parseEncoderNames } from './real-turns/parse-encoder-names.ts';
 import { readPlainExport } from './real-turns/read-plain-export.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { startMemoryIndex } from '../../modules/memory/src/start-memory-index.ts';
+import { startMemoryIndex } from '../../modules/memory/src/memory/start-memory-index.ts';
 import { type BackgroundMessage, buildRanker, SHIPPED } from './real-turns/rank-turn.ts';
 import { readJSONLines } from './real-turns/read-json-lines.ts';
 import { buildTurnReport } from './real-turns/build-turn-report.ts';
@@ -55,7 +55,7 @@ import { pickLabelFiles } from './real-turns/pick-label-files.ts';
 import { pickKeptLabels } from './real-turns/pick-kept-labels.ts';
 import { messageKeyPrefix } from './real-turns/build-rating-sample.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { buildVectorQuery } from '../../modules/memory/src/build-vector-query.ts';
+import { buildVectorQuery } from '../../modules/memory/src/utils/build-vector-query.ts';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,

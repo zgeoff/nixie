@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '../read-records';
+import { readRecords } from '../record/read-records';
 import { seedRecord } from './seed-record';
 import { startTestLog } from './start-test-log';
 

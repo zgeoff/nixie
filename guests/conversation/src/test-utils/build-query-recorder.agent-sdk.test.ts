@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { InboxMessage } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
-import { runTurn } from '../run-turn';
+import { runTurn } from '../turn/run-turn';
 import { buildQueryRecorder } from './build-query-recorder';
 import { createStubToolServer } from './create-stub-tool-server';
 import { startStubModel } from './start-stub-model';

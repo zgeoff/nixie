@@ -2,9 +2,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { sandboxImageKeys } from '@heynixie/sandbox';
 import { z } from 'zod';
-import { buildImageShape } from './build-image-shape';
-import { buildReleaseManifest } from './build-release-manifest';
-import { imageRefSchema } from './load-sandbox-manifest';
+import { buildReleaseManifest } from './release/build-release-manifest';
+import { buildImageShape } from './sandbox/build-image-shape';
+import { imageRefSchema } from './sandbox/load-sandbox-manifest';
 
 const addedMigrationSchema = z.strictObject({ version: z.int().positive(), name: z.string() });
 

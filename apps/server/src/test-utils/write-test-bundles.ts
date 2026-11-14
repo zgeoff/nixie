@@ -15,7 +15,7 @@ if (import.meta.main) {
 
   const faults = collectSourceDirFaults(
     { test: testBuild.mainText, release: release.mainText },
-    join(import.meta.dir, '..', '..', '..', '..', 'modules', 'sessions', 'src'),
+    join(import.meta.dir, '..', '..', '..', '..', 'modules', 'sessions', 'src', 'task'),
   );
 
   if (faults.length > 0) {

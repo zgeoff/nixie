@@ -1,5 +1,5 @@
-import type { DecisionPointOptions } from '../make-decision-point';
-import { makeDecisionPoint } from '../make-decision-point';
+import type { DecisionPointOptions } from '../rule/make-decision-point';
+import { makeDecisionPoint } from '../rule/make-decision-point';
 import type { DecisionPoint, EffectDeclaration, RuleEntry } from '../types';
 import { readStarterRules } from './read-starter-rules';
 

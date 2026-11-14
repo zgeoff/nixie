@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { buildWriterTools } from '../build-writer-tools';
-import { createWriterStaging } from '../create-writer-staging';
+import { buildWriterTools } from '../writer/build-writer-tools';
+import { createWriterStaging } from '../writer/create-writer-staging';
 import { buildWriterEvalInput } from './build-writer-eval-input';
 
 test('it renders the production prompts over the case, with the guest names of the writer tools', () => {

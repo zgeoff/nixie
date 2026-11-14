@@ -1,8 +1,8 @@
 import invariant from 'tiny-invariant';
-import { claimTask } from '../claim-task';
+import { writeStepCommit } from '../step/write-step-commit';
+import { writeTaskLimitPause } from '../task/limit/write-task-limit-pause';
+import { claimTask } from '../task/projection/claim-task';
 import type { StartedClaim, TaskLimits, TasksContext } from '../types';
-import { writeStepCommit } from '../write-step-commit';
-import { writeTaskLimitPause } from '../write-task-limit-pause';
 import { seedTask } from './seed-task';
 
 export interface PausedTaskSeed {

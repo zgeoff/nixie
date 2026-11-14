@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { modelPricesSchema } from '../model-prices-schema';
+import { modelPricesSchema } from '../agent/model-prices-schema';
 
 // A stand-in for a second harness's profile schema, whose profiles take no fields of their own.
 export function buildStubCodexProfileSchema() {

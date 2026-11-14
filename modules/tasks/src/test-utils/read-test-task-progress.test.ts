@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { writeStepError } from '../write-step-error';
+import { writeStepError } from '../step/write-step-error';
 import { createTestConversationClaim } from './create-test-conversation-claim';
 import { readTestTaskProgress } from './read-test-task-progress';
 import { startTestTasks } from './start-test-tasks';

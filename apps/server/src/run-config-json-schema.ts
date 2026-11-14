@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { buildConfigJSONSchema } from './build-config-json-schema';
+import { buildConfigJSONSchema } from './config/build-config-json-schema';
 
 const path = join(import.meta.dir, '..', 'config.schema.json');
 

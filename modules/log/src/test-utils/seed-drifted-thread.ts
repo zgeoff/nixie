@@ -1,6 +1,6 @@
 import { sql } from 'kysely';
+import { withWriteTransaction } from '../record/with-write-transaction';
 import type { RecordKind } from '../types';
-import { withWriteTransaction } from '../with-write-transaction';
 import type { LogSeederDeps } from './log-seeder-deps';
 import { seedRecord } from './seed-record';
 

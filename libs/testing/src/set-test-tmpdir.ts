@@ -1,4 +1,4 @@
-import { pointTmpdirAtMemory } from './point-tmpdir-at-memory';
+import { pointTmpdirAtMemory } from './memory/point-tmpdir-at-memory';
 
 // Each test's SQLite databases fsync every commit, and on a small host's disk one fsync can wait
 // seconds behind other writes. On tmpfs an fsync costs nothing, so a test's temp directory goes

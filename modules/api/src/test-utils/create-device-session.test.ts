@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { verifySessionToken } from '../verify-session-token';
+import { verifySessionToken } from '../session/verify-session-token';
 import { createDeviceSession } from './create-device-session';
 import { startTestAPI } from './start-test-api';
 

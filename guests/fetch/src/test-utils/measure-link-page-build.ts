@@ -1,4 +1,4 @@
-import { buildReadableText } from '../build-readable-text';
+import { buildReadableText } from '../utils/build-readable-text';
 
 export interface LinkPageBuild {
   linkCount: number;

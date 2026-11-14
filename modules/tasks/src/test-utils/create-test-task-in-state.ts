@@ -1,11 +1,11 @@
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
-import { claimTask } from '../claim-task';
-import { createTask } from '../create-task';
+import { writeStepCommit } from '../step/write-step-commit';
+import { writeStepError } from '../step/write-step-error';
+import { createTask } from '../task/create-task';
+import { claimTask } from '../task/projection/claim-task';
+import { writeTaskControl } from '../task/write-task-control';
 import type { StartedClaim, TaskState, TasksContext } from '../types';
-import { writeStepCommit } from '../write-step-commit';
-import { writeStepError } from '../write-step-error';
-import { writeTaskControl } from '../write-task-control';
 
 export type TestTaskState = TaskState | 'pause_requested';
 

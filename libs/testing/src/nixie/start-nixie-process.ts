@@ -1,0 +1,155 @@
+import { join } from 'node:path';
+import type { FaultPointArm, FaultPointWork, NixieMessage } from '../types';
+import { harnessEnv } from '../utils/harness-env';
+import { readDescendants } from '../wait/read-descendants';
+import { stopProcesses } from '../wait/stop-processes';
+import { createNixieChannel } from './create-nixie-channel';
+
+export interface NixieProcessOptions {
+  readonly entry: string;
+
+  readonly args?: readonly string[];
+  readonly env: Readonly<Record<string, string>>;
+
+  readonly clockMs: number;
+
+  readonly faultPoints?: readonly FaultPointArm[];
+}
+
+export interface FaultPointArrival {
+  readonly arrivalID: number;
+  readonly point: string;
+  readonly work: FaultPointWork;
+}
+
+export interface NixieExit {
+  readonly code: number | null;
+  readonly signal: string | null;
+}
+
+export interface NixieProcess {
+  readonly pid: number;
+
+  readonly ready: Promise<void>;
+  readonly exited: Promise<NixieExit>;
+
+  readonly readStdout: () => string;
+
+  readonly readStderr: () => string;
+
+  readonly waitForArrival: (point: string, workID?: string) => Promise<FaultPointArrival>;
+  readonly release: (arrival: FaultPointArrival) => void;
+
+  readonly request: (operation: string, args: unknown) => Promise<unknown>;
+
+  readonly kill: () => Promise<NixieExit>;
+  readonly signal: (signal: 'SIGTERM' | 'SIGSTOP' | 'SIGCONT') => void;
+}
+
+export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
+  const channel = createNixieChannel();
+  const child = startChild(options, channel.receive);
+  const stdout = startTextReader(child.stdout);
+  const stderr = startTextReader(child.stderr);
+
+  const exited = waitForExit(child, Promise.all([stdout.done, stderr.done]), (exit) => {
+    channel.close(new Error(`nixie exited with ${formatExit(exit)}: ${stderr.read()}`));
+  });
+
+  return {
+    pid: child.pid,
+    ready: channel.ready,
+    exited,
+    readStdout: stdout.read,
+    readStderr: stderr.read,
+    waitForArrival: channel.waitForArrival,
+    release: (arrival) => {
+      child.send({ type: 'release', arrivalID: arrival.arrivalID });
+    },
+    request: (operation, args) =>
+      channel.sendRequest(
+        (message) => {
+          child.send(message);
+        },
+        operation,
+        args,
+      ),
+    kill: () => {
+      const descendants = readDescendants(child.pid);
+
+      child.kill('SIGKILL');
+
+      stopProcesses(descendants);
+
+      return exited;
+    },
+    signal: (signal) => {
+      child.kill(signal);
+    },
+  };
+}
+
+const defineTestBuildPath = join(import.meta.dir, '../define-test-build.ts');
+
+function startChild(options: NixieProcessOptions, receive: (message: NixieMessage) => void) {
+  const command = [process.execPath, '--preload', defineTestBuildPath, options.entry];
+
+  return Bun.spawn([...command, ...(options.args ?? [])], {
+    env: {
+      ...process.env,
+      ...options.env,
+      [harnessEnv.clockMs]: String(options.clockMs),
+      [harnessEnv.faultPoints]: JSON.stringify(options.faultPoints ?? []),
+    },
+    stdin: 'ignore',
+    stdout: 'pipe',
+    stderr: 'pipe',
+    serialization: 'json',
+    ipc: receive,
+  });
+}
+
+interface CollectedText {
+  readonly read: () => string;
+
+  readonly done: Promise<void>;
+}
+
+function startTextReader(stream: ReadableStream<Uint8Array>): CollectedText {
+  const text = { value: '' };
+
+  const decoder = new TextDecoder();
+
+  const done = (async () => {
+    for await (const chunk of stream) {
+      text.value += decoder.decode(chunk, { stream: true });
+    }
+  })();
+
+  return { read: () => text.value, done };
+}
+
+type NixieChild = ReturnType<typeof startChild>;
+
+type OnExit = (exit: NixieExit) => void;
+
+// Bun can report the exit before the last of the output is read, so the wait covers both.
+async function waitForExit(
+  child: NixieChild,
+  outputDone: Promise<unknown>,
+  onExit: OnExit,
+): Promise<NixieExit> {
+  await Promise.all([child.exited, outputDone]);
+
+  // Bun reports a signal with no name, such as a real-time one, as its number.
+  const signal = child.signalCode === null ? null : String(child.signalCode);
+  const exit = { code: child.exitCode, signal };
+
+  onExit(exit);
+
+  return exit;
+}
+
+function formatExit(exit: NixieExit): string {
+  return exit.signal === null ? `code ${exit.code}` : `signal ${exit.signal}`;
+}

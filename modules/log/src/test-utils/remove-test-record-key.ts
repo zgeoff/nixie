@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant';
-import { removeRecordKey } from '../remove-record-key';
+import { removeRecordKey } from '../record/remove-record-key';
 import type { Log, LogTables } from '../types';
 
 export async function removeTestRecordKey(

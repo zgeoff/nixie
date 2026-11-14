@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
-import { writeLinkNumbers } from '../write-link-numbers';
+import { writeLinkNumbers } from '../web/write-link-numbers';
 
 export interface WebFetchLinksSeed {
   readonly sessionKey: string;

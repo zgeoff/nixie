@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { localDataStorage } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
-import { writeReceivedReceipts } from '../write-received-receipts';
-import { writeSnapshotSet } from '../write-snapshot-set';
+import { writeReceivedReceipts } from '../backup/write-received-receipts';
+import { writeSnapshotSet } from '../backup/write-snapshot-set';
 import { writeTestBackupReceipt } from './write-test-backup-receipt';
 
 async function setupTest() {

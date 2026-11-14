@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { buildTaskHref } from '../build-task-href';
+import type { LiveRecord } from '../conversation/use-live-records';
 import { css } from '../styled-system/css';
-import type { LiveRecord } from '../use-live-records';
+import { buildTaskHref } from '../task/build-task-href';
 
 export interface ExchangeNoticeProps {
   readonly notice: NonNullable<LiveRecord['exchangeNotice']>;

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { css } from '../styled-system/css';
 import type { MemoryItem } from '../types';
-import { useNixieClient } from '../use-nixie-client';
+import { useNixieClient } from '../utils/use-nixie-client';
 
 export interface PinnedCorePanelProps {
   readonly renderItem: (item: MemoryItem) => ReactNode;

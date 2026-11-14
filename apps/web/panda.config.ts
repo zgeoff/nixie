@@ -1,5 +1,5 @@
 import { defineConfig } from '@pandacss/dev';
-import { themePalette } from './src/theme-palette';
+import { themePalette } from './src/theme/theme-palette';
 
 export default defineConfig({
   conditions: { extend: { dark: '[data-theme=dark] &' } },

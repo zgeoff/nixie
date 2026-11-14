@@ -8,10 +8,10 @@ import { memoryProjections } from '@heynixie/memory';
 import { tasksProjections } from '@heynixie/tasks';
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
-import { apiProjections } from '../api-projections';
-import { createAPIApp } from '../create-api-app';
-import { defaultAPISettings } from '../default-api-settings';
-import { proposalsProjection } from '../proposals-projection';
+import { apiProjections } from '../api/api-projections';
+import { createAPIApp } from '../api/create-api-app';
+import { proposalsProjection } from '../proposal/proposals-projection';
+import { defaultAPISettings } from '../utils/default-api-settings';
 
 type APIContext = Parameters<typeof createAPIApp>[0];
 

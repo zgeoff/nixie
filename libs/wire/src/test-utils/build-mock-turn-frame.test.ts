@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { hostFrameSchema } from '../host-frame';
+import { hostFrameSchema } from '../utils/host-frame';
 import { buildMockTurnFrame } from './build-mock-turn-frame';
 
 test('it builds a default turn frame', () => {

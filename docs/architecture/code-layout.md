@@ -73,6 +73,23 @@ and `moduleResolution: bundler`, and sets no `baseUrl` and no path aliases, so e
 package name or a path relative to the importing file. Each package extends the base and has its own
 `typecheck` script.
 
+## Inside a package
+
+The `zgeoff/feature-folders` lint rule checks the layout of each package's `src/`, with no package
+exempt.
+
+- The `src/` root holds 8 modules at most. Not counted are `index`, `types` and `constants`,
+  declaration files, tests, and every file that `package.json` names in `main`, `module`, `bin`,
+  `exports` or a script. A file that a tool outside the package runs by its path, such as a
+  Dockerfile, a workflow or a preload, also stays at the root.
+- Each other module sits in a feature folder named for one thing the package does, such as
+  `approvals/` or `index-build/`. A test sits beside the module it tests.
+- Code that 2 or more feature folders use sits in `src/utils/`. A module in `utils/` never imports a
+  file in a feature folder.
+- `test-utils/` and `generated/` are exempt folders. A folder named `lib/`, `shared/`, `helpers/` or
+  `common/` holds no module: use `utils/`.
+- Importers name a file directly, so a feature folder has no `index.ts`.
+
 ## Boundaries
 
 Each package has a `turbo.json` that holds only its tags, and `turbo boundaries` checks every

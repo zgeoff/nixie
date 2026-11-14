@@ -1,4 +1,4 @@
-import { memoryKillsPath } from '../memory-kills-path';
+import { memoryKillsPath } from '../process/memory-kills-path';
 import type { Sandbox } from '../types';
 
 export function writeMemoryKills(sandbox: Sandbox, kills: number): Promise<void> {

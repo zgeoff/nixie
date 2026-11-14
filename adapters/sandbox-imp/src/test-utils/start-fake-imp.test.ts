@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { memoryKillsArgv } from '../memory-kills-argv';
+import { memoryKillsArgv } from '../memory/memory-kills-argv';
 import { startFakeImp } from './start-fake-imp';
 
 test('it holds no secret until a test adds one', async () => {

@@ -1,8 +1,8 @@
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { claimTask } from '../claim-task';
+import { writeStepCommit } from '../step/write-step-commit';
+import { claimTask } from '../task/projection/claim-task';
 import type { TasksContext } from '../types';
-import { writeStepCommit } from '../write-step-commit';
 import type { StartedTaskSeed } from './seed-task';
 import { seedTask } from './seed-task';
 

@@ -1,7 +1,7 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { Log } from '@heynixie/log';
 import type { ProposalContext, ProposalOutcome } from '@heynixie/proposals';
-import type { promptsOverrideProposedCodec } from './prompts-override-proposed-codec';
+import type { promptsOverrideProposedCodec } from './override/prompts-override-proposed-codec';
 
 interface PromptOwner {
   readonly name: string | null;

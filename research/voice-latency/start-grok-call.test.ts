@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { waitForCondition } from '../../libs/testing/src/wait-for-condition.ts';
+import { waitForCondition } from '../../libs/testing/src/wait/wait-for-condition.ts';
 import { startGrokCall } from './start-grok-call.ts';
 import { stubTools } from './stub-tool-answers.ts';
 import { startStubVoiceServer } from './test-utils/start-stub-voice-server.ts';

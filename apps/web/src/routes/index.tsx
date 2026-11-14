@@ -2,8 +2,8 @@ import { Link, createFileRoute, useLocation, useRouter } from '@tanstack/react-r
 import type { ReactNode } from 'react';
 import { Conversation } from '../components/conversation';
 import { SignedInPage } from '../components/signed-in-page';
-import { parseLinkedMessage } from '../parse-linked-message';
-import { readSessionState } from '../read-session-state';
+import { parseLinkedMessage } from '../conversation/parse-linked-message';
+import { readSessionState } from '../conversation/read-session-state';
 import { css } from '../styled-system/css';
 
 const thread = 'conversation';

@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { match } from 'ts-pattern';
-import { formatMemoryDate } from '../format-memory-date';
-import { formatMemoryProvenance } from '../format-memory-provenance';
-import { formatReviewReason } from '../format-review-reason';
+import { formatMemoryDate } from '../memory/format-memory-date';
+import { formatMemoryProvenance } from '../memory/format-memory-provenance';
+import { formatReviewReason } from '../proposal/format-review-reason';
+import type { ProposalAnswers } from '../proposal/use-proposal-answers';
 import { css } from '../styled-system/css';
 import type { MemoryProposal, ProposalOutcome } from '../types';
-import type { ProposalAnswers } from '../use-proposal-answers';
 import { MessageImage } from './message-image';
 import { SelfNoteBadge } from './self-note-badge';
 

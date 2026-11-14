@@ -1,5 +1,5 @@
-import { getTypedQuote } from '../get-typed-quote';
-import { renderCheckerInput } from '../render-checker-input';
+import { renderCheckerInput } from '../checker/render-checker-input';
+import { getTypedQuote } from '../typed/get-typed-quote';
 import type { CheckerPair, CheckerSample } from './load-checker-corpus';
 
 export function buildCheckerEvalInput(

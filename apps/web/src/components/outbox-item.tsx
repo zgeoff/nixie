@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { formatOutboxAge } from '../format-outbox-age';
+import { formatOutboxAge } from '../outbox/format-outbox-age';
+import type { OutboxEntry } from '../outbox/use-outbox';
 import { css } from '../styled-system/css';
 import type { OutboxMessage } from '../types';
-import type { OutboxEntry } from '../use-outbox';
 import { ImageThumbnail } from './image-thumbnail';
 
 export interface OutboxItemProps {

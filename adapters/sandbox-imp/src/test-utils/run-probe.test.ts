@@ -4,7 +4,7 @@ import {
   buildMockSandboxSpec,
   setupTestRecorder,
 } from '@heynixie/sandbox/test-utils';
-import { buildImpSandboxAdapter } from '../build-imp-sandbox-adapter';
+import { buildImpSandboxAdapter } from '../sandbox/build-imp-sandbox-adapter';
 import { runProbe } from './run-probe';
 import { startFakeImp } from './start-fake-imp';
 

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { css } from '../styled-system/css';
-import type { ThemeChoice } from '../use-theme-choice';
-import { useThemeChoice } from '../use-theme-choice';
+import type { ThemeChoice } from '../theme/use-theme-choice';
+import { useThemeChoice } from '../theme/use-theme-choice';
 
 const picker = css({ color: 'textMuted', display: 'block', fontSize: 'sm', textAlign: 'end' });
 

@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Kysely, sql } from 'kysely';
 import { z } from 'zod';
-import { buildSqliteWorkerDialect } from '../build-sqlite-worker-dialect';
-import { nixieSchema } from '../nixie-schema';
+import { runMigrations } from '../migration/run-migrations';
 import { readQueryRows } from '../read-query-rows';
-import { runMigrations } from '../run-migrations';
+import { nixieSchema } from '../schema/nixie-schema';
+import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { memorySubjectChangesMigration } from './0031-memory-subject-changes-migration';
 
 async function setupTest() {

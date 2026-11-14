@@ -1,0 +1,117 @@
+import { expect, onTestFinished, test } from 'bun:test';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { startWriter } from '@heynixie/log';
+import { sql } from 'kysely';
+import { createPathSource } from '../definition/create-path-source';
+import { runSeed } from '../rule/run-seed';
+import { loadSkillVersions } from './load-skill-versions';
+
+async function setupTest() {
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
+  const directory = await mkdtemp(join(tmpdir(), 'nixie-skill-versions-'));
+
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
+
+  const root = join(directory, 'definitions');
+
+  const writer = await startWriter({ dataDir: directory });
+
+  stack.defer(() => writer.stop());
+
+  await mkdir(root);
+
+  const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
+    'wrapKey',
+    'unwrapKey',
+  ]);
+
+  return {
+    root,
+    writer,
+    log: { writer, deploymentKey, projections: [] },
+    source: createPathSource({ directory: root }),
+  };
+}
+
+test('it reads each seeded skill version by its content hash, with its frontmatter and files', async () => {
+  const ctx = await setupTest();
+
+  const skill = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), skill);
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const skillHash = seeded.inForce?.skills.at(0)?.skillHash ?? '';
+
+  const versions = await loadSkillVersions(ctx.writer.db, [skillHash, 'f'.repeat(64)]);
+
+  expect([...versions.values()]).toStrictEqual([
+    {
+      name: 'tide-tables',
+      skillHash,
+      frontmatter: {
+        name: 'tide-tables',
+        description: 'Reads a tide table.',
+        license: null,
+        compatibility: null,
+        allowedTools: null,
+        metadata: {},
+      },
+      files: new Map([['SKILL.md', skill]]),
+    },
+  ]);
+});
+
+test('it refuses a stored version whose files hold a value that is not text', async () => {
+  const ctx = await setupTest();
+
+  await sql`insert into skill_versions (skill_hash, name, frontmatter, files) values (
+    ${'a'.repeat(64)},
+    'tide-tables',
+    '{"name":"tide-tables","description":"Reads a tide table.","license":null,"compatibility":null,"allowedTools":null,"metadata":{}}',
+    '{"SKILL.md":7}'
+  )`.execute(ctx.writer.db);
+
+  const read = loadSkillVersions(ctx.writer.db, ['a'.repeat(64)]);
+
+  await read.catch(() => {});
+
+  expect(read).rejects.toMatchObject({ issues: [{ path: ['SKILL.md'] }] });
+});
+
+test('it refuses a stored version whose frontmatter lacks a field', async () => {
+  const ctx = await setupTest();
+
+  await sql`insert into skill_versions (skill_hash, name, frontmatter, files) values (
+    ${'a'.repeat(64)},
+    'tide-tables',
+    '{"name":"tide-tables","license":null,"compatibility":null,"allowedTools":null,"metadata":{}}',
+    '{"SKILL.md":"# Tides"}'
+  )`.execute(ctx.writer.db);
+
+  const read = loadSkillVersions(ctx.writer.db, ['a'.repeat(64)]);
+
+  await read.catch(() => {});
+
+  expect(read).rejects.toMatchObject({ issues: [{ path: ['description'] }] });
+});
+
+test('it reads no versions for no hashes', async () => {
+  const ctx = await setupTest();
+  const versions = await loadSkillVersions(ctx.writer.db, []);
+
+  expect(versions).toStrictEqual(new Map());
+});

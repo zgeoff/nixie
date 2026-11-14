@@ -1,0 +1,23 @@
+import type { Kysely } from 'kysely';
+import { readDeliverableItems } from '../item/read-deliverable-items';
+import type { MemoryTables, RecalledItem, StoreParts } from '../types';
+
+export async function readPinnedItems(
+  parts: StoreParts,
+  db: Kysely<MemoryTables> = parts.context.log.writer.db.$extendTables<MemoryTables>(),
+): Promise<readonly RecalledItem[]> {
+  const rows = await db
+    .selectFrom('memory_items')
+    .select('item_id')
+    .where('is_pinned', '=', 1)
+    .where('state', '=', 'active')
+    .orderBy('pinned_sequence')
+    .execute();
+
+  return readDeliverableItems(parts, {
+    itemIDs: rows.map((row) => row.item_id),
+    states: ['active'],
+    includeHistory: false,
+    db,
+  });
+}

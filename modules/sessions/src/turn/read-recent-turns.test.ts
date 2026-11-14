@@ -1,0 +1,461 @@
+import { expect, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
+import { buildMockTaskMessageView } from '../test-utils/build-mock-task-message-view';
+import { startTestTasks } from '../test-utils/start-test-tasks';
+import { readRecentTurns } from './read-recent-turns';
+
+async function setupTest() {
+  return { tasks: await startTestTasks() };
+}
+
+test('it reads the messages and replies before the first inbox record, oldest first, leaving out other kinds', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Where is the spare key?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'task-backlog',
+      erasable: { text: 'A message on another thread.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'And the side gate?' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'A message that lands during the turn.' },
+    },
+  ]);
+
+  const records = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 5,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(records.map((turn) => turn.record.sequence)).toStrictEqual([1, 2]);
+});
+
+test("it reads a task's message as a turn, and pairs the reply after it with that message", async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'k3vq8m2xpa',
+        from: 'planner',
+        to: 'conversation',
+        kind: 'question',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:planner',
+      },
+      erasable: { body: 'Which day suits the dentist?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Thursday.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Hi.' },
+    },
+  ]);
+
+  const records = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 3,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(
+    records.map((turn) => ({
+      sequence: turn.record.sequence,
+      answered: turn.answered?.sequence ?? null,
+    })),
+  ).toStrictEqual([
+    { sequence: 1, answered: null },
+    { sequence: 2, answered: 1 },
+  ]);
+});
+
+test('it reads a message the task sent from the thread of the task it went to, in order among its own turns', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'planner',
+      payload: {
+        messageID: 'b6rd2k9wpe',
+        from: 'conversation',
+        to: 'planner',
+        kind: 'request',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 0,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:conversation',
+      },
+      erasable: { body: 'Find a dentist slot this week.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'planner',
+      erasable: { text: 'On it.' },
+    },
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'p2xc7d4nqa',
+        from: 'planner',
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        source: 'task:planner',
+      },
+      erasable: { body: 'Thursday at 10 is free.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'planner',
+      erasable: { text: 'Reported.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'planner',
+      erasable: { text: 'Thanks.' },
+    },
+  ]);
+
+  const records = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'planner',
+    beforeSequence: 5,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(
+    records.map((turn) => ({
+      sequence: turn.record.sequence,
+      answered: turn.answered?.sequence ?? null,
+      isSent: turn.isSent ?? false,
+    })),
+  ).toStrictEqual([
+    { sequence: 1, answered: null, isSent: false },
+    { sequence: 2, answered: 1, isSent: false },
+    { sequence: 3, answered: null, isSent: true },
+    { sequence: 4, answered: 1, isSent: false },
+  ]);
+});
+
+test('it keeps a reply that committed after a message still pending, paired with the message before that one', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Where is the spare key?' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'A message past the batch the turn took.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { messageID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' },
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+  ]);
+
+  const records = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 2,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(
+    records.map((turn) => [turn.record.sequence, turn.answered?.sequence ?? null]),
+  ).toStrictEqual([
+    [1, null],
+    [3, 1],
+  ]);
+});
+
+test('it keeps only the newest turns that fit the token budget', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(
+    ctx.tasks.context.log,
+    ['first', 'secnd', 'third'].map((word) => ({
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: `${word} ${'x'.repeat(59)}` },
+    })),
+  );
+
+  const records = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 4,
+    tokens: 60,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(records.map((turn) => turn.record.sequence)).toStrictEqual([2, 3]);
+});
+
+test('it reads back past a page of records', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(
+    ctx.tasks.context.log,
+    Array.from({ length: 250 }, (_, index) => ({
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: `Message ${index + 1}.` },
+    })),
+  );
+
+  const records = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 251,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(records).toHaveLength(250);
+  expect(records.at(0)?.record.sequence).toBe(1);
+});
+
+test('it pairs each reply with the newest message before it, and a reply with none before it with nothing', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Good morning.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { timeZone: 'Asia/Tokyo' },
+      erasable: { text: 'Where is the spare key?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'The side gate key is there too.' },
+    },
+  ]);
+
+  const turns = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 5,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(
+    turns.map((turn) => [turn.record.sequence, turn.answered?.sequence ?? null]),
+  ).toStrictEqual([
+    [1, null],
+    [2, null],
+    [3, 2],
+    [4, 2],
+  ]);
+});
+
+test('it pairs the oldest reply it keeps with the message it answers, though the budget leaves that message out', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { timeZone: 'Asia/Tokyo' },
+      erasable: { text: `Where is the spare key? ${'x'.repeat(200)}` },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+  ]);
+
+  const turns = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 3,
+    tokens: 30,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(
+    turns.map((turn) => [turn.record.sequence, turn.answered?.sequence ?? null]),
+  ).toStrictEqual([[2, 1]]);
+});
+
+test('it leaves out every record that a summary covers', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Where is the spare key?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'And the side gate?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'It has no lock.' },
+    },
+  ]);
+
+  const turns = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 5,
+    afterSequence: 2,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(turns.map((turn) => turn.record.sequence)).toStrictEqual([3, 4]);
+});
+
+test('it leaves out every record from before the newest reset of the conversation', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Where is the spare key?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+    {
+      kind: 'log_reset',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { resetAt: 1_760_000_000_000, lastSequence: 2, mode: 'conversations' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'And the side gate?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'It has no lock.' },
+    },
+  ]);
+
+  const turns = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 6,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(turns.map((turn) => turn.record.sequence)).toStrictEqual([4, 5]);
+});

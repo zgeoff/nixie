@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { waitAtFaultPoint } from '../wait-at-fault-point';
+import { waitAtFaultPoint } from '../lease/wait-at-fault-point';
 import { startFaultPointFailure } from './start-fault-point-failure';
 
 test('it throws at the first arrival at the fault point', () => {

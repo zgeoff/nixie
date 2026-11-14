@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
 import type { Log, Writer } from '@heynixie/log';
-import type { GateContext } from '../gate-context';
-import type { StartedMemoryStore } from '../start-memory-store';
+import type { GateContext } from '../gate/gate-context';
+import type { StartedMemoryStore } from '../memory/start-memory-store';
 import type { CleanupSessions, MemoryContext, SemanticSearch } from '../types';
 import { startTestStore } from './start-test-store';
 

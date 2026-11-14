@@ -1,10 +1,10 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { nixieSchema } from './nixie-schema';
-import { readSchemaObjects } from './read-schema-objects';
-import { runMigrations } from './run-migrations';
-import { startDatabase } from './start-database';
+import { startDatabase } from './database/start-database';
+import { runMigrations } from './migration/run-migrations';
+import { nixieSchema } from './schema/nixie-schema';
+import { readSchemaObjects } from './schema/read-schema-objects';
 
 const directory = await mkdtemp(join(tmpdir(), 'nixie-schema-report-'));
 

@@ -3,9 +3,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Kysely, sql } from 'kysely';
-import { buildSqliteWorkerDialect } from '../build-sqlite-worker-dialect';
-import { nixieSchema } from '../nixie-schema';
-import { runMigrations } from '../run-migrations';
+import { runMigrations } from '../migration/run-migrations';
+import { nixieSchema } from '../schema/nixie-schema';
+import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
 import { ruleExportsMigration } from './0040-rule-exports-migration';
 

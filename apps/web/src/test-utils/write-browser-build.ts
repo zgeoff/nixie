@@ -23,7 +23,7 @@ export async function writeBrowserBuild(
   }
 
   await Bun.build({
-    entrypoints: [join(webDir, 'src', 'normalize-image.ts')],
+    entrypoints: [join(webDir, 'src', 'image', 'normalize-image.ts')],
     format: 'esm',
     naming: 'normalize-image.js',
     outdir: dirname(build.normalizeImagePath),

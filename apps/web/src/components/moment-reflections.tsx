@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { formatMemoryDate } from '../format-memory-date';
+import { formatMemoryDate } from '../memory/format-memory-date';
+import { useMomentEdit } from '../memory/use-moment-edit';
 import { css } from '../styled-system/css';
 import type { MomentDetail } from '../types';
-import { useMomentEdit } from '../use-moment-edit';
 
 export interface MomentReflectionsProps {
   readonly moment: MomentDetail;

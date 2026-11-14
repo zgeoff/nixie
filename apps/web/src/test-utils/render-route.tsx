@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router';
 import type { RenderResult, queries } from '@testing-library/react';
 import { render } from '@testing-library/react';
-import { buildBrowserClient } from '../build-browser-client';
+import { buildBrowserClient } from '../client/build-browser-client';
 import { routeTree } from '../routeTree.gen';
 
 // The root route renders the whole document, so the route renders into the document itself.

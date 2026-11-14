@@ -1,5 +1,5 @@
-import { checkConsent } from '../check-consent';
-import { makeDecisionPoint } from '../make-decision-point';
+import { checkConsent } from '../consent/check-consent';
+import { makeDecisionPoint } from '../rule/make-decision-point';
 import type { Effect, EffectDeclaration, RuleEntry, RuleSource } from '../types';
 import { buildTypedMessage } from './build-test-decision-point';
 import { readStarterRules } from './read-starter-rules';

@@ -2,17 +2,17 @@
 // stores. The model reads only each tool's name, description and input schema, and the spike's
 // tool server answers every call from a script, so no store is ever reached.
 // @boundaries-ignore a spike imports the code it measures
-import { buildTimeTool } from '../../modules/connectors/src/build-time-tool';
+import { buildTimeTool } from '../../modules/connectors/src/time/build-time-tool';
 // @boundaries-ignore a spike imports the code it measures
-import { buildWebFetchTool } from '../../modules/connectors/src/build-web-fetch-tool';
+import { buildWebFetchTool } from '../../modules/connectors/src/web/build-web-fetch-tool';
 // @boundaries-ignore a spike imports the code it measures
-import { buildConsolidatorTools } from '../../modules/memory/src/build-consolidator-tools';
+import { buildConsolidatorTools } from '../../modules/memory/src/consolidator/build-consolidator-tools';
 // @boundaries-ignore a spike imports the code it measures
-import { buildLogReadTool } from '../../modules/memory/src/build-log-read-tool';
+import { buildLogReadTool } from '../../modules/memory/src/log/build-log-read-tool';
 // @boundaries-ignore a spike imports the code it measures
-import { buildMemoryTools } from '../../modules/memory/src/build-memory-tools';
+import { buildMemoryTools } from '../../modules/memory/src/memory/build-memory-tools';
 // @boundaries-ignore a spike imports the code it measures
-import { buildWriterTools } from '../../modules/memory/src/build-writer-tools';
+import { buildWriterTools } from '../../modules/memory/src/writer/build-writer-tools';
 import type { ListedTool } from './start-tool-server';
 
 export type ToolSet = 'conversation' | 'memory-writer' | 'memory-consolidator' | 'worker';

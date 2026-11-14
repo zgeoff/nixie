@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { match } from 'ts-pattern';
 import { css } from '../styled-system/css';
-import { useNixieClient } from '../use-nixie-client';
+import { useNixieClient } from '../utils/use-nixie-client';
 
 const notice = css({
   color: 'textMuted',

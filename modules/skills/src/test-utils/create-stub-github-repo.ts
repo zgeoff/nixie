@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { FetchReply } from '@heynixie/wire';
 import { $ } from 'bun';
-import type { ReadPage } from '../read-github-skill';
+import type { ReadPage } from '../skill/read-github-skill';
 
 export interface StubGitHubRepoOptions {
   readonly owner: string;

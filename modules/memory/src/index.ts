@@ -1,17 +1,22 @@
-export type { CheckerRule } from './build-checker-rules';
-export { buildCheckerRules } from './build-checker-rules';
-export type { MemoryToolStore } from './memory-tool-store';
-export { buildLogReadTool } from './build-log-read-tool';
-export { buildLogReadImageTool } from './build-log-read-image-tool';
-export { readOwnerImage } from './read-owner-image';
-export { buildMemoryTools } from './build-memory-tools';
-export { buildPinnedCoreStatus } from './build-pinned-core-status';
-export { buildMomentKeptKind } from './build-moment-kept-kind';
-export { buildMomentStatus } from './build-moment-status';
-export { buildWriterTools } from './build-writer-tools';
-export { buildConsolidatorTools } from './build-consolidator-tools';
-export type { ConsolidationConfig, ConsolidationConfigInput } from './consolidation-config-schema';
-export { consolidationConfigSchema } from './consolidation-config-schema';
+export type { CheckerRule } from './checker/build-checker-rules';
+export { buildCheckerRules } from './checker/build-checker-rules';
+export type { MemoryToolStore } from './tool/memory-tool-store';
+export { buildLogReadTool } from './log/build-log-read-tool';
+export { buildLogReadImageTool } from './log/build-log-read-image-tool';
+export { readOwnerImage } from './owner/read-owner-image';
+export { buildMemoryTools } from './memory/build-memory-tools';
+export { buildPinnedCoreStatus } from './pinned/build-pinned-core-status';
+export { buildMomentKeptKind } from './moment/kept/build-moment-kept-kind';
+export { buildMomentStatus } from './moment/build-moment-status';
+export { buildWriterTools } from './writer/build-writer-tools';
+export { buildConsolidatorTools } from './consolidator/build-consolidator-tools';
+
+export type {
+  ConsolidationConfig,
+  ConsolidationConfigInput,
+} from './utils/schema/consolidation-config-schema';
+
+export { consolidationConfigSchema } from './utils/schema/consolidation-config-schema';
 
 export type {
   ChangeAnswer,
@@ -22,67 +27,72 @@ export type {
   ConsolidationDiff,
   ConsolidationSchedule,
   MemoryConsolidations,
-} from './memory-consolidations';
+} from './utils/memory-consolidations';
 
-export type { ConsolidationStaging } from './create-consolidation-staging';
-export { createConsolidationStaging } from './create-consolidation-staging';
-export { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
-export type { MemoryConsolidator } from './start-memory-consolidator';
-export { startMemoryConsolidator } from './start-memory-consolidator';
-export type { WriterStaging } from './create-writer-staging';
-export { createWriterStaging } from './create-writer-staging';
-export { defaultGateLimits } from './default-gate-limits';
-export { defaultOwnerPronouns } from './default-owner-pronouns';
-export { findNoAllowRule } from './find-no-allow-rule';
-export type { MemoryConfig } from './memory-config-schema';
-export { memoryConfigSchema } from './memory-config-schema';
-export { MemoryProposalNotFoundError } from './memory-proposal-not-found-error';
-export { ProposalCapError } from './proposal-cap-error';
-export { ProposalClosedError } from './proposal-closed-error';
-export { ProposalHashError } from './proposal-hash-error';
-export { RetirementEditError } from './retirement-edit-error';
-export { memoryProjections } from './memory-projections';
-export { InvalidCursorError } from './invalid-cursor-error';
-export type { MemoryExport, MemoryExportItem } from './memory-export-schema';
-export { memoryExportSchema } from './memory-export-schema';
-export { memoryExportSchemaVersion } from './memory-export-schema-version';
-export type { MemoryExportRequest } from './read-memory-export';
-export { MemoryItemNotFoundError } from './memory-item-not-found-error';
-export { MemoryStateError } from './memory-state-error';
-export { memoryWriterTaskID } from './memory-writer-task-id';
-export type { ForgetFloorCause } from './read-forget-floor';
-export { readForgetFloor } from './read-forget-floor';
-export type { AnswerQuoteSource, ProposalAnswerEvent } from './build-proposal-answer-kind';
-export { buildProposalAnswerKind } from './build-proposal-answer-kind';
-export { buildCatchUpKind } from './build-catch-up-kind';
-export type { SelfNoteFlagEvent } from './build-self-note-flag-kind';
-export { buildSelfNoteFlagKind } from './build-self-note-flag-kind';
-export { buildMemoryChangeKind } from './build-memory-change-kind';
-export type { HostMemory, HostMemoryStore } from './build-host-memory';
-export { buildHostMemory } from './build-host-memory';
-export type { LapseSweep } from './start-lapse-sweep';
-export { startLapseSweep } from './start-lapse-sweep';
-export { buildProposalMergeKind } from './build-proposal-merge-kind';
-export type { VersionTextResult } from './read-version-texts';
-export { readVersionTexts } from './read-version-texts';
-export type { RatingNoteRef, RatingNoteResult } from './read-rating-notes';
-export { readRatingNotes } from './read-rating-notes';
-export type { WriterStatus } from './read-writer-status';
-export { readWriterStatus } from './read-writer-status';
-export { PinnedCoreFullError } from './pinned-core-full-error';
-export { SelfNoteError } from './self-note-error';
-export { StaleVersionError } from './stale-version-error';
-export type { MomentStore } from './build-moment-store';
-export type { MomentDestroyPreview } from './read-moment-destroy-preview';
-export type { MomentRow } from './read-moment-row';
-export type { StartedMemoryStore } from './start-memory-store';
-export { startMemoryStore } from './start-memory-store';
-export type { MemoryWriter, MemoryWriterOptions } from './start-memory-writer';
-export { startMemoryWriter } from './start-memory-writer';
-export type { MemoryWriterRunner, MemoryWriterRunnerOptions } from './start-memory-writer-runner';
-export { startMemoryWriterRunner } from './start-memory-writer-runner';
-export type { MemoryConsolidatorRunnerOptions } from './start-memory-consolidator-runner';
-export { startMemoryConsolidatorRunner } from './start-memory-consolidator-runner';
+export type { ConsolidationStaging } from './consolidation/create-consolidation-staging';
+export { createConsolidationStaging } from './consolidation/create-consolidation-staging';
+export { memoryConsolidatorTaskID } from './utils/memory-consolidator-task-id';
+export type { MemoryConsolidator } from './memory/start-memory-consolidator';
+export { startMemoryConsolidator } from './memory/start-memory-consolidator';
+export type { WriterStaging } from './writer/create-writer-staging';
+export { createWriterStaging } from './writer/create-writer-staging';
+export { defaultGateLimits } from './gate/default-gate-limits';
+export { defaultOwnerPronouns } from './owner/default-owner-pronouns';
+export { findNoAllowRule } from './moment/find-no-allow-rule';
+export type { MemoryConfig } from './writer/memory-config-schema';
+export { memoryConfigSchema } from './writer/memory-config-schema';
+export { MemoryProposalNotFoundError } from './utils/error/memory-proposal-not-found-error';
+export { ProposalCapError } from './utils/error/proposal-cap-error';
+export { ProposalClosedError } from './utils/error/proposal-closed-error';
+export { ProposalHashError } from './utils/error/proposal-hash-error';
+export { RetirementEditError } from './retirement/retirement-edit-error';
+export { memoryProjections } from './moment/projection/memory-projections';
+export { InvalidCursorError } from './item/invalid-cursor-error';
+export type { MemoryExport, MemoryExportItem } from './utils/schema/memory-export-schema';
+export { memoryExportSchema } from './utils/schema/memory-export-schema';
+export { memoryExportSchemaVersion } from './utils/schema/memory-export-schema-version';
+export type { MemoryExportRequest } from './memory/read-memory-export';
+export { MemoryItemNotFoundError } from './utils/error/memory-item-not-found-error';
+export { MemoryStateError } from './utils/error/memory-state-error';
+export { memoryWriterTaskID } from './utils/memory-writer-task-id';
+export type { ForgetFloorCause } from './forget/read-forget-floor';
+export { readForgetFloor } from './forget/read-forget-floor';
+export type { AnswerQuoteSource, ProposalAnswerEvent } from './proposal/build-proposal-answer-kind';
+export { buildProposalAnswerKind } from './proposal/build-proposal-answer-kind';
+export { buildCatchUpKind } from './version/build-catch-up-kind';
+export type { SelfNoteFlagEvent } from './gate/build-self-note-flag-kind';
+export { buildSelfNoteFlagKind } from './gate/build-self-note-flag-kind';
+export { buildMemoryChangeKind } from './memory/build-memory-change-kind';
+export type { HostMemory, HostMemoryStore } from './memory/build-host-memory';
+export { buildHostMemory } from './memory/build-host-memory';
+export type { LapseSweep } from './consolidation/start-lapse-sweep';
+export { startLapseSweep } from './consolidation/start-lapse-sweep';
+export { buildProposalMergeKind } from './proposal/build-proposal-merge-kind';
+export type { VersionTextResult } from './version/read-version-texts';
+export { readVersionTexts } from './version/read-version-texts';
+export type { RatingNoteRef, RatingNoteResult } from './memory/read-rating-notes';
+export { readRatingNotes } from './memory/read-rating-notes';
+export type { WriterStatus } from './writer/read-writer-status';
+export { readWriterStatus } from './writer/read-writer-status';
+export { PinnedCoreFullError } from './utils/error/pinned-core-full-error';
+export { SelfNoteError } from './utils/error/self-note-error';
+export { StaleVersionError } from './utils/error/stale-version-error';
+export type { MomentStore } from './moment/store/build-moment-store';
+export type { MomentDestroyPreview } from './moment/destroy/read-moment-destroy-preview';
+export type { MomentRow } from './moment/read-moment-row';
+export type { StartedMemoryStore } from './memory/start-memory-store';
+export { startMemoryStore } from './memory/start-memory-store';
+export type { MemoryWriter, MemoryWriterOptions } from './memory/start-memory-writer';
+export { startMemoryWriter } from './memory/start-memory-writer';
+
+export type {
+  MemoryWriterRunner,
+  MemoryWriterRunnerOptions,
+} from './memory/start-memory-writer-runner';
+
+export { startMemoryWriterRunner } from './memory/start-memory-writer-runner';
+export type { MemoryConsolidatorRunnerOptions } from './memory/start-memory-consolidator-runner';
+export { startMemoryConsolidatorRunner } from './memory/start-memory-consolidator-runner';
 
 export type {
   AllowRuleCall,
@@ -105,7 +115,7 @@ export type {
   ReviewReason,
   WriteCaller,
   WriteOutcome,
-} from './gate-context';
+} from './gate/gate-context';
 
 export type {
   EvidenceMessage,
@@ -128,7 +138,7 @@ export type {
   ViewProposal,
   ViewText,
   ViewVersion,
-} from './memory-view';
+} from './view/memory-view';
 
 export type {
   CleanupSessions,
@@ -162,9 +172,9 @@ export type {
   WriteInTransaction,
 } from './types';
 
-export type { BatchPublication, GatedWrite, PublishResult } from './write-memory-batch';
-export type { WriterConfig, WriterConfigInput } from './writer-config-schema';
-export { writerConfigSchema } from './writer-config-schema';
+export type { BatchPublication, GatedWrite, PublishResult } from './memory/write-memory-batch';
+export type { WriterConfig, WriterConfigInput } from './utils/schema/writer-config-schema';
+export { writerConfigSchema } from './utils/schema/writer-config-schema';
 
 export type {
   GateBatch,
@@ -175,33 +185,33 @@ export type {
   WriterModel,
   WriterSessionInput,
   WriterUsage,
-} from './writer-model';
+} from './writer/writer-model';
 
-export { getTypedQuote } from './get-typed-quote';
-export { readOwnerMessagesBySequence } from './read-owner-messages-by-sequence';
-export type { UntypedTokenQuery } from './check-untyped-token';
-export { checkUntypedToken } from './check-untyped-token';
-export type { DestinationToken } from './collect-destination-tokens';
-export { collectDestinationTokens } from './collect-destination-tokens';
-export { removeImageOfferKeys } from './remove-image-offer-keys';
-export { renderCheckerInput } from './render-checker-input';
-export type { ShownItem, SpeakerNames, WriterPromptInput } from './render-writer-prompt';
-export { renderWriterPrompt } from './render-writer-prompt';
-export type { MemoryRecordKind } from './memory-record-kind';
-export { memoryRatedCodec } from './memory-rated-codec';
-export { momentKeptCodec } from './moment-kept-codec';
-export { recordForgetStartedCodec } from './record-forget-started-codec';
-export { readAllRemovedSequences } from './read-all-removed-sequences';
-export { readRemovedSequences } from './read-removed-sequences';
-export { recordForgottenCodec } from './record-forgotten-codec';
-export { readPurgeSet } from './read-purge-set';
-export type { RecordForgetPreview, RecordForgetTarget } from './read-record-forget-preview';
-export { readRecordForgetPreview } from './read-record-forget-preview';
+export { getTypedQuote } from './typed/get-typed-quote';
+export { readOwnerMessagesBySequence } from './owner/read-owner-messages-by-sequence';
+export type { UntypedTokenQuery } from './gate/check-untyped-token';
+export { checkUntypedToken } from './gate/check-untyped-token';
+export type { DestinationToken } from './gate/collect-destination-tokens';
+export { collectDestinationTokens } from './gate/collect-destination-tokens';
+export { removeImageOfferKeys } from './image/remove-image-offer-keys';
+export { renderCheckerInput } from './checker/render-checker-input';
+export type { ShownItem, SpeakerNames, WriterPromptInput } from './writer/render-writer-prompt';
+export { renderWriterPrompt } from './writer/render-writer-prompt';
+export type { MemoryRecordKind } from './record/memory-record-kind';
+export { memoryRatedCodec } from './memory/memory-rated-codec';
+export { momentKeptCodec } from './moment/codec/moment-kept-codec';
+export { recordForgetStartedCodec } from './record/record-forget-started-codec';
+export { readAllRemovedSequences } from './record/read-all-removed-sequences';
+export { readRemovedSequences } from './record/read-removed-sequences';
+export { recordForgottenCodec } from './record/record-forgotten-codec';
+export { readPurgeSet } from './record/read-purge-set';
+export type { RecordForgetPreview, RecordForgetTarget } from './record/read-record-forget-preview';
+export { readRecordForgetPreview } from './record/read-record-forget-preview';
 
 export type {
   MemoryAnswerPort,
   MemoryProposalHandlerOptions,
-} from './make-memory-proposal-handler';
+} from './memory/make-memory-proposal-handler';
 
-export { makeMemoryProposalHandler } from './make-memory-proposal-handler';
-export { mapMemoryProposalRecord } from './map-memory-proposal-record';
+export { makeMemoryProposalHandler } from './memory/make-memory-proposal-handler';
+export { mapMemoryProposalRecord } from './proposal/map-memory-proposal-record';

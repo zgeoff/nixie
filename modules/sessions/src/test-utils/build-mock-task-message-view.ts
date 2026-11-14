@@ -1,4 +1,4 @@
-import type { TaskMessageView } from '../render-task-message';
+import type { TaskMessageView } from '../task/render-task-message';
 
 export function buildMockTaskMessageView(
   overrides: Partial<TaskMessageView> = {},

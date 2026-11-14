@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { sql } from 'kysely';
-import { logProjections } from '../log-projections';
+import { logProjections } from '../record/log-projections';
 import { startTestLog } from './start-test-log';
 
 test('it starts a writer on its test clock', async () => {

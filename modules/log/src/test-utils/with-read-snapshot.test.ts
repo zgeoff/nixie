@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
-import { writeRecords } from '../write-records';
+import { writeRecords } from '../record/write-records';
 import { startTestLog } from './start-test-log';
 import { withReadSnapshot } from './with-read-snapshot';
 

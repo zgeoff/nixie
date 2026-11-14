@@ -1,7 +1,7 @@
-import { checkConsent } from '../check-consent';
-import type { DecisionPointOptions } from '../make-decision-point';
-import { makeDecisionPoint } from '../make-decision-point';
-import type { ReplayOptions } from '../replay-decision';
+import { checkConsent } from '../consent/check-consent';
+import type { DecisionPointOptions } from '../rule/make-decision-point';
+import { makeDecisionPoint } from '../rule/make-decision-point';
+import type { ReplayOptions } from '../rule/replay-decision';
 import type {
   ConsentAnswer,
   ConsentMessage,

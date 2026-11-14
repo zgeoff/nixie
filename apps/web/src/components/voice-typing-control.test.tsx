@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import userEvent from '@testing-library/user-event';
-import { MicrophoneContext } from '../microphone-context';
+import { MicrophoneContext } from '../microphone/microphone-context';
 import { buildStubMicrophone } from '../test-utils/build-stub-microphone';
 import { render } from '../test-utils/render';
 import { VoiceTypingControl } from './voice-typing-control';

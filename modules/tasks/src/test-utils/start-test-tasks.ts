@@ -6,7 +6,7 @@ import type { Log, Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
-import { tasksProjections } from '../tasks-projections';
+import { tasksProjections } from '../task/projection/tasks-projections';
 import type { TasksContext } from '../types';
 
 export interface TestTasks {

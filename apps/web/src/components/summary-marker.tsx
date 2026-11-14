@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import type { SummaryActivity } from '../build-activity';
-import { formatSummary } from '../format-summary';
+import type { SummaryActivity } from '../conversation/build-activity';
+import { formatSummary } from '../conversation/format-summary';
 import { css, cx } from '../styled-system/css';
 import { markerRule } from './marker-rule';
 

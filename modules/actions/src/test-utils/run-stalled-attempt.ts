@@ -1,7 +1,7 @@
 import type { TasksContext } from '@heynixie/tasks';
 import type { TestClock } from '@heynixie/testing';
-import { claimAction } from '../claim-action';
-import { runActionAttempt } from '../run-action-attempt';
+import { claimAction } from '../action/claim-action';
+import { runActionAttempt } from '../action/run-action-attempt';
 import { buildStubConnector } from './build-stub-connector';
 
 interface StalledAttemptOptions {

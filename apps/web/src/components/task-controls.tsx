@@ -3,11 +3,11 @@ import { isControlAllowed } from '@heynixie/task-control';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { formatStopPreview } from '../format-stop-preview';
-import { runTaskControl } from '../run-task-control';
+import { formatStopPreview } from '../conversation/format-stop-preview';
 import { css } from '../styled-system/css';
-import type { ListedTask } from '../use-live-task-list';
-import { useNixieClient } from '../use-nixie-client';
+import { runTaskControl } from '../task/run-task-control';
+import type { ListedTask } from '../task/use-live-task-list';
+import { useNixieClient } from '../utils/use-nixie-client';
 
 export interface TaskControlsProps {
   readonly task: ListedTask;

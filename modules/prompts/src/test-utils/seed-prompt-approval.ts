@@ -1,9 +1,9 @@
 import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { buildPromptProposalHash } from '../build-prompt-proposal-hash';
-import { promptsOverrideProposedCodec } from '../prompts-override-proposed-codec';
+import { promptsOverrideProposedCodec } from '../override/prompts-override-proposed-codec';
+import { buildPromptProposalHash } from '../prompt/build-prompt-proposal-hash';
+import { writePromptProposalAnswer } from '../prompt/write-prompt-proposal-answer';
 import type { PromptID } from '../types';
-import { writePromptProposalAnswer } from '../write-prompt-proposal-answer';
 import type { PromptSeederDeps } from './prompt-seeder-deps';
 
 export interface PromptApprovalSeed {

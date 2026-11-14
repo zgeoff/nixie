@@ -1,5 +1,5 @@
-import { buildPendingInput } from '../build-pending-input';
-import { buildSpanState } from '../build-span-state';
+import { buildPendingInput } from '../span/build-pending-input';
+import { buildSpanState } from '../span/build-span-state';
 import type { PendingInput, SpanState } from '../types';
 
 export type RecordedInputEvent =

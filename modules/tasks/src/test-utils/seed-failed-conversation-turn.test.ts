@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createSystemTask } from '../create-system-task';
+import { createSystemTask } from '../task/create-system-task';
 import type { TasksTables } from '../types';
 import { seedFailedConversationTurn } from './seed-failed-conversation-turn';
 import { startTestTasks } from './start-test-tasks';

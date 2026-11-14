@@ -1,0 +1,33 @@
+import type { MemoryTables, StoreParts } from '../types';
+import { countPinnedCoreTokens } from '../utils/count-pinned-core-tokens';
+import type { PinnedCoreView } from '../view/memory-view';
+import { readViewItems } from '../view/read-view-items';
+import { getPinnedCoreBudget } from './get-pinned-core-budget';
+import { readPinnedItems } from './read-pinned-items';
+
+export async function readPinnedCoreView(parts: StoreParts): Promise<PinnedCoreView> {
+  const log = parts.context.log;
+
+  const rows = await log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('item_id')
+    .where('is_pinned', '=', 1)
+    .where('state', '=', 'active')
+    .orderBy('pinned_sequence')
+    .execute();
+
+  const [items, readable] = await Promise.all([
+    readViewItems(
+      log,
+      rows.map((row) => row.item_id),
+    ),
+    readPinnedItems(parts),
+  ]);
+
+  return {
+    items,
+    tokens: countPinnedCoreTokens(parts.context, readable),
+    budget: getPinnedCoreBudget(parts.context),
+  };
+}

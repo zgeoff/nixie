@@ -1,4 +1,4 @@
-import { runProjectionRebuild } from '../run-projection-rebuild';
+import { runProjectionRebuild } from '../record/run-projection-rebuild';
 import type { Log, Writer } from '../types';
 
 export async function readTestProjectionDrift(log: Log): Promise<readonly string[]> {

@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
-import { buildMigrationSummary } from './build-migration-summary';
-import { checkMigrations } from './check-migrations';
-import { nixieSchema } from './nixie-schema';
-import { renderMigrationNotes } from './render-migration-notes';
+import { buildMigrationSummary } from './migration/build-migration-summary';
+import { checkMigrations } from './migration/check-migrations';
+import { renderMigrationNotes } from './migration/render-migration-notes';
+import { nixieSchema } from './schema/nixie-schema';
 
 const schemaObject = z.strictObject({
   type: z.string(),

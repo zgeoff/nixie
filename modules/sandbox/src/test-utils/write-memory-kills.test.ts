@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { memoryKillsPath } from '../memory-kills-path';
+import { memoryKillsPath } from '../process/memory-kills-path';
 import { buildMockSandbox } from './build-mock-sandbox';
 import { writeMemoryKills } from './write-memory-kills';
 

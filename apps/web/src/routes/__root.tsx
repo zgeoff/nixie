@@ -2,12 +2,12 @@
 
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { buildThemeScript } from '../build-theme-script';
-import { NixieClientContext } from '../nixie-client-context';
 import { css } from '../styled-system/css';
 import styles from '../styles.css?url';
-import { themePalette } from '../theme-palette';
+import { buildThemeScript } from '../theme/build-theme-script';
+import { themePalette } from '../theme/theme-palette';
 import type { RouterContext } from '../types';
+import { NixieClientContext } from '../utils/nixie-client-context';
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootDocument,

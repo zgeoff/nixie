@@ -1,7 +1,7 @@
-import type { TaskMessageRequest } from '../plan-task-message';
+import type { TaskMessageRequest } from '../task/message/plan-task-message';
+import type { TaskMessageOutcome } from '../task/projection/write-task-message';
+import { writeTaskMessage } from '../task/projection/write-task-message';
 import type { TaskMessaging, TasksContext, TasksTables } from '../types';
-import type { TaskMessageOutcome } from '../write-task-message';
-import { writeTaskMessage } from '../write-task-message';
 
 export async function writeTestTaskMessage(
   context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,

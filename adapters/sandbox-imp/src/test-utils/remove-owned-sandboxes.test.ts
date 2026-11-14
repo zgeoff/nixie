@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildMockSandboxSpec, setupTestRecorder } from '@heynixie/sandbox/test-utils';
-import { buildImpSandboxAdapter } from '../build-imp-sandbox-adapter';
+import { buildImpSandboxAdapter } from '../sandbox/build-imp-sandbox-adapter';
 import { removeOwnedSandboxes } from './remove-owned-sandboxes';
 import { startFakeImp } from './start-fake-imp';
 

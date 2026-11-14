@@ -1,4 +1,4 @@
-import { runCheckGuest } from './run-check-guest';
+import { runCheckGuest } from './check/run-check-guest';
 
 const writer = Bun.stdout.writer();
 

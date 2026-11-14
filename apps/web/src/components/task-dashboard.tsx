@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { collectDashboardGroups } from '../collect-dashboard-groups';
-import type { StartTimer } from '../start-platform-timer';
 import { css } from '../styled-system/css';
-import type { ListedTask } from '../use-live-task-list';
-import { useLiveTaskList } from '../use-live-task-list';
+import { collectDashboardGroups } from '../task/collect-dashboard-groups';
+import type { ListedTask } from '../task/use-live-task-list';
+import { useLiveTaskList } from '../task/use-live-task-list';
+import type { StartTimer } from '../utils/start-platform-timer';
 import { TaskSummary } from './task-summary';
 
 export interface TaskDashboardProps {

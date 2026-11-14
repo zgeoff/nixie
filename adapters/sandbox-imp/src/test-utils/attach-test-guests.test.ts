@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { TEST_TOKEN, startTestImpd } from '@impz/testing';
-import { buildImpPort } from '../build-imp-port';
+import { buildImpPort } from '../sandbox/build-imp-port';
 import { attachTestGuests } from './attach-test-guests';
 
 async function setupTest() {

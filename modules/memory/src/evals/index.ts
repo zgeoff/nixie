@@ -12,4 +12,4 @@ export type { WriterCase } from './load-writer-cases';
 export { loadWriterCases } from './load-writer-cases';
 export type { WriterCall, WriterReport } from './load-writer-report';
 export { loadWriterReport } from './load-writer-report';
-export type { MemoryRecordKind } from '../memory-record-kind';
+export type { MemoryRecordKind } from '../record/memory-record-kind';

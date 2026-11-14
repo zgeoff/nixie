@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import {
   sandboxImageKeys,
   sandboxImageRecords,
-} from '../../modules/sandbox/src/sandbox-image-keys.ts';
+} from '../../modules/sandbox/src/sandbox/sandbox-image-keys.ts';
 import { buildSandboxManifest } from '../lib/build-sandbox-manifest.ts';
 import { collectKeyOutputs } from '../lib/collect-key-outputs.ts';
 import { getStepEnv } from '../lib/get-step-env.ts';

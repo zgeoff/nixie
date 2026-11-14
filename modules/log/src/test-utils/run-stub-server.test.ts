@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { claimWriterLock } from '../claim-writer-lock';
+import { claimWriterLock } from '../writer/claim-writer-lock';
 
 async function setupTest() {
   const dataDir = await mkdtemp(join(tmpdir(), 'nixie-stub-server-'));
