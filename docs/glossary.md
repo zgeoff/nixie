@@ -108,3 +108,11 @@ one person a nixie deployment works for, and the architecture docs call that per
 | reader gate    | The stored `oldest_reader` value, raised while nixie is paused so that a release without the pause refuses the database, planned in [GEO-2566](https://linear.app/zgeoff/issue/GEO-2566) |
 | test seed      | A function in a module's test utils that puts one record into one state, which is not the definitions seed, planned in [GEO-2565](https://linear.app/zgeoff/issue/GEO-2565)              |
 | seeder         | An object whose members are test seeds, bound to a test's dependencies, planned in [GEO-2565](https://linear.app/zgeoff/issue/GEO-2565)                                                  |
+
+## Code
+
+| Term     | Meaning                                                                                                                                                               |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| port     | An interface that one module owns and that has a second real provider in sight, as [the ports doc](architecture/ports.md) defines                                     |
+| provider | One implementation of an interface: a real one does the work in a release, and a fake stands in for it in a test, as [the ports doc](architecture/ports.md) describes |
+| adapter  | A provider that reaches a system outside nixie, as a package of its own, as [the ports doc](architecture/ports.md) describes                                          |
