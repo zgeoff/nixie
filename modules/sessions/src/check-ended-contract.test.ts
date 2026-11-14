@@ -13,7 +13,7 @@ function setupTest() {
 test('it fails a guest that sends a session point from a harness with no session', () => {
   const ctx = setupTest();
 
-  expect(() =>
+  expect(() => {
     checkEndedContract(ctx.codex, {
       type: 'ended',
       outcome: 'finished',
@@ -25,28 +25,28 @@ test('it fails a guest that sends a session point from a harness with no session
       stopReason: 'end_turn',
       turns: 1,
       usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    }),
-  ).toThrow('broke its contract: it sent a session point');
+    });
+  }).toThrow('broke its contract: it sent a session point');
 });
 
 test('it fails a guest that ends with no session point on a harness with a session', () => {
   const ctx = setupTest();
 
-  expect(() =>
+  expect(() => {
     checkEndedContract(ctx.agentSDK, {
       type: 'ended',
       outcome: 'finished',
       stopReason: 'end_turn',
       turns: 1,
       usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    }),
-  ).toThrow('broke its contract: it ended its turn with no session point');
+    });
+  }).toThrow('broke its contract: it ended its turn with no session point');
 });
 
 test('it fails a guest that sends a context size from a harness without context-window', () => {
   const ctx = setupTest();
 
-  expect(() =>
+  expect(() => {
     checkEndedContract(ctx.codex, {
       type: 'ended',
       outcome: 'finished',
@@ -54,14 +54,14 @@ test('it fails a guest that sends a context size from a harness without context-
       turns: 1,
       usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 },
       context: { size: 10, window: 100 },
-    }),
-  ).toThrow('broke its contract: it sent a context size');
+    });
+  }).toThrow('broke its contract: it sent a context size');
 });
 
 test('it passes a guest that sends its point and context from a harness that declares both', () => {
   const ctx = setupTest();
 
-  expect(() =>
+  expect(() => {
     checkEndedContract(ctx.agentSDK, {
       type: 'ended',
       outcome: 'finished',
@@ -74,20 +74,20 @@ test('it passes a guest that sends its point and context from a harness that dec
       turns: 1,
       usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 },
       context: { size: 10, window: 100 },
-    }),
-  ).not.toThrow();
+    });
+  }).not.toThrow();
 });
 
 test('it passes a guest that sends no point and no context from a harness with no session', () => {
   const ctx = setupTest();
 
-  expect(() =>
+  expect(() => {
     checkEndedContract(ctx.codex, {
       type: 'ended',
       outcome: 'finished',
       stopReason: 'end_turn',
       turns: 1,
       usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    }),
-  ).not.toThrow();
+    });
+  }).not.toThrow();
 });

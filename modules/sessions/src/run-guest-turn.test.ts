@@ -515,7 +515,7 @@ test('it fails the turn, and sends the guest no live message, on a harness witho
     signal: new AbortController().signal,
   });
 
-  await expect(turn).rejects.toThrow('The harness lacks live-messages');
+  expect(turn).rejects.toThrow('The harness lacks live-messages');
 });
 
 test('it fails the turn, and sends the guest no interrupt, on a harness without interrupt', async () => {
@@ -543,5 +543,5 @@ test('it fails the turn, and sends the guest no interrupt, on a harness without 
     interrupt: interrupt.signal,
   });
 
-  await expect(turn).rejects.toThrow('The harness lacks interrupt');
+  expect(turn).rejects.toThrow('The harness lacks interrupt');
 });
