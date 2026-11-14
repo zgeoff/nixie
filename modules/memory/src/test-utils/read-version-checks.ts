@@ -14,5 +14,5 @@ export async function readVersionChecks(
     .orderBy('version')
     .execute();
 
-  return rows.map((row) => (row.checks === null ? null : JSON.parse(row.checks)));
+  return rows.map((row): unknown => (row.checks === null ? null : JSON.parse(row.checks)));
 }
