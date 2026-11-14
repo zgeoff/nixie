@@ -3,14 +3,19 @@ import { actionsProjection } from '@heynixie/actions';
 import { apiProjections, proposalsProjection } from '@heynixie/api';
 import { nixieSchema } from '@heynixie/db';
 import { ruleFiresProjection } from '@heynixie/definitions';
-import type { Log } from '@heynixie/log';
-import { logProjections, runProjectionRebuild, withWriteTransaction } from '@heynixie/log';
+import type { Log, RecordInput } from '@heynixie/log';
+import {
+  logProjections,
+  runProjectionRebuild,
+  withWriteTransaction,
+  writeRecords,
+} from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
 import { startTestMemoryWriter } from '@heynixie/memory/test-utils';
 import { knownContactsProjection } from '@heynixie/policy';
 import { sandboxesProjection } from '@heynixie/sandbox';
 import { startTestServer } from '@heynixie/server/test-utils';
-import { tasksProjections } from '@heynixie/tasks';
+import { createSystemTask, readInbox, tasksProjections } from '@heynixie/tasks';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -50,6 +55,10 @@ async function setupTest() {
       await runProjectionRebuild(log);
     },
     rebuild: () => runProjectionRebuild(log),
+    writeRecords: (records: readonly RecordInput[]) => writeRecords(log, records),
+    createTask: (taskID: string) =>
+      createSystemTask({ definitions: memory.context.definitions, log }, taskID),
+    readInbox: (taskID: string) => readInbox({ log }, taskID),
     runMigration: () => withWriteTransaction(log.writer, (tx) => migration.up(tx)),
     readForeignKeyViolations: async () => {
       const result = await sql`pragma foreign_key_check`.execute(log.writer.db);
@@ -263,4 +272,49 @@ test('it keeps the moved memory records, the prompt records of other prompts and
     'prompts.override_proposed@conversation',
     'prompts.override_rejected@conversation',
   ]);
+});
+
+test('it keeps a read cursor that sits on a record it removes, and the next read returns the records after it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.createData();
+  await ctx.createTask('tide-log');
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  const [, notice] = await ctx.writeRecords([
+    { kind: 'task.wake', definitions, thread: 'tide-log', payload: { at: 1 } },
+    {
+      kind: 'memory.notice',
+      definitions,
+      thread: 'tide-log',
+      payload: { notice: 'batch', versions: [], count: 1, isQuiet: true },
+    },
+  ]);
+
+  invariant(notice !== undefined);
+
+  const [, after] = await ctx.writeRecords([
+    {
+      kind: 'task.step_committed',
+      definitions,
+      thread: 'tide-log',
+      payload: {
+        taskID: 'tide-log',
+        nextState: 'ready',
+        readCursor: notice.sequence,
+        sessionBoundary: null,
+        timers: [],
+      },
+    },
+    { kind: 'task.wake', definitions, thread: 'tide-log', payload: { at: 2 } },
+  ]);
+
+  invariant(after !== undefined);
+
+  await ctx.runMigration();
+
+  const inbox = await ctx.readInbox('tide-log');
+
+  expect(inbox.map((record) => record.sequence)).toStrictEqual([after.sequence]);
 });

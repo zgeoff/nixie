@@ -237,7 +237,7 @@ test('it refuses a kept record whose payload points at a record it would remove'
   expect(records).toHaveLength(2);
 });
 
-test('it refuses a kept record whose read cursor points at a record it would remove', async () => {
+test('it removes a record that a kept read cursor, through mark or held-from mark sits on', async () => {
   const ctx = await setupTest();
 
   await ctx.writeRecord({
@@ -249,41 +249,14 @@ test('it refuses a kept record whose read cursor points at a record it would rem
   await ctx.writeRecord({
     kind: 'task.step_committed',
     thread: 'conversation',
-    payload: { readCursor: 1 },
+    payload: { readCursor: 1, throughSequence: 1, heldFrom: 1 },
   });
 
-  const run = ctx.runMigration();
-
-  await run.catch(() => {});
+  await ctx.runMigration();
 
   const records = await ctx.readRecords();
 
-  expect(run).rejects.toThrow(/through \$\.readCursor/u);
-  expect(records).toHaveLength(2);
-});
-
-test('it refuses a kept projection change whose row points at a record it would remove', async () => {
-  const ctx = await setupTest();
-
-  await ctx.writeRecord({
-    kind: 'memory.notice',
-    thread: 'conversation',
-    payload: { notice: 'batch' },
-  });
-
-  await ctx.writeRecord({ kind: 'owner_message', thread: 'conversation', payload: {} });
-
-  await sql`insert into projection_changes (sequence, projection, row_key, row)
-    values (2, 'example_rows', 'row-1', ${JSON.stringify({ readCursor: 1 })})`.execute(ctx.db);
-
-  const run = ctx.runMigration();
-
-  await run.catch(() => {});
-
-  const records = await ctx.readRecords();
-
-  expect(run).rejects.toThrow(/change of example_rows at record 2.*through \$\.readCursor/u);
-  expect(records).toHaveLength(2);
+  expect(records).toMatchObject([{ kind: 'task.step_committed' }]);
 });
 
 test('it keeps a record that only mentions a task ID as free text', async () => {
