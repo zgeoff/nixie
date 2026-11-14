@@ -7,6 +7,7 @@ import { parseItemCursor } from './parse-item-cursor';
 import { readDeliverableItems } from './read-deliverable-items';
 import type { RankQuery, RankedMatches } from './read-ranked-matches';
 import { readRankedMatches } from './read-ranked-matches';
+import { recallLimits } from './recall-limits';
 import { subjectColumn } from './subject-column';
 import type {
   MemoryState,
@@ -20,11 +21,8 @@ import type {
   VersionRef,
 } from './types';
 
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
-
 export async function readRecall(parts: StoreParts, request: RecallRequest): Promise<RecallResult> {
-  const limit = Math.min(request.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+  const limit = Math.min(request.limit ?? recallLimits.default, recallLimits.max);
 
   const states: readonly MemoryState[] =
     request.includeRetired === true ? ['active', 'retired'] : ['active'];
@@ -38,11 +36,16 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
   }
 
   return parts.lock(async () => {
-    const deliverable = await readDeliverableItems(parts, {
-      itemIDs: candidates.itemIDs,
-      states,
-      includeHistory: request.includeHistory === true,
-    });
+    const includeHistory = request.includeHistory === true;
+
+    const [deliverable, pastLimit] = await Promise.all([
+      readDeliverableItems(parts, { itemIDs: candidates.itemIDs, states, includeHistory }),
+      readDeliverableItems(parts, {
+        itemIDs: candidates.pastLimitIDs,
+        states,
+        includeHistory: false,
+      }),
+    ]);
 
     const excluded = buildVersionKeys(request.excludedVersions ?? []);
 
@@ -50,30 +53,44 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
       request.excludeSensitive === true
         ? await readSensitiveItemIDs(
             parts,
-            deliverable.map((item) => item.itemID),
+            [...deliverable, ...pastLimit].map((item) => item.itemID),
           )
         : [];
 
     const sensitive = new Set(sensitiveIDs);
 
-    const items = deliverable.filter(
-      (item) =>
-        !(request.excludePinned === true && item.isPinned) &&
-        !sensitive.has(item.itemID) &&
-        !excluded.has(buildVersionKey(item)) &&
-        isAtNamedVersion(item, request) &&
-        (request.subjects === undefined || request.subjects.includes(item.subject)),
-    );
+    const isDelivered = (item: RecalledItem): boolean =>
+      !(request.excludePinned === true && item.isPinned) &&
+      !sensitive.has(item.itemID) &&
+      !excluded.has(buildVersionKey(item)) &&
+      isAtNamedVersion(item, request) &&
+      (request.subjects === undefined || request.subjects.includes(item.subject));
+
+    const items = deliverable.filter((item) => isDelivered(item));
 
     if (NIXIE_TEST_BUILD) {
       await waitAtFaultPoint('memory.recall.checked', { kind: 'memory', id: null });
     }
 
-    await writeRecallRecord(parts, { request, items, candidates });
+    const cut = await cutToBudget(request, items);
+
+    if (cut.kept.length > 0) {
+      await writeRecallRecord(parts, { request, items: cut.kept, candidates });
+    }
+
+    const omittedItems = [...cut.dropped, ...pastLimit.filter((item) => isDelivered(item))];
 
     return {
-      items,
-      next: candidates.next,
+      items: cut.kept,
+      next: pickNext(candidates, cut),
+      omitted: {
+        items:
+          candidates.sequences === undefined
+            ? omittedItems.map((item) => ({ itemID: item.itemID, shortID: item.shortID }))
+            : [],
+        count: candidates.sequences === undefined ? omittedItems.length : cut.dropped.length,
+        versions: cut.versions,
+      },
       ...(candidates.searchMode === undefined ? {} : { searchMode: candidates.searchMode }),
     };
   });
@@ -89,7 +106,13 @@ interface CandidateQuery {
 
 interface Candidates {
   readonly itemIDs: readonly string[];
+
+  // The named IDs past the limit, which the recall does not return or record.
+  readonly pastLimitIDs: readonly string[];
   readonly next: string | null;
+
+  // The cursor of each item, for the plain list only.
+  readonly sequences?: ReadonlyMap<string, number>;
 
   readonly scores?: ReadonlyMap<string, MatchScores>;
 
@@ -108,7 +131,11 @@ async function readCandidates(parts: StoreParts, query: CandidateQuery): Promise
   if (named !== undefined) {
     const kept = await readNamedSubjectIDs(parts, [...new Set(named)], request.subjects);
 
-    return { itemIDs: kept.slice(0, query.limit), next: null };
+    return {
+      itemIDs: kept.slice(0, query.limit),
+      pastLimitIDs: kept.slice(query.limit),
+      next: null,
+    };
   }
 
   const rows = await parts.context.log.writer.db
@@ -135,6 +162,8 @@ async function readCandidates(parts: StoreParts, query: CandidateQuery): Promise
 
   return {
     itemIDs: page.map((row) => row.item_id),
+    pastLimitIDs: [],
+    sequences: new Map(page.map((row) => [row.item_id, row.created_sequence])),
     next: rows.length > query.limit && last !== undefined ? String(last.created_sequence) : null,
   };
 }
@@ -162,12 +191,13 @@ async function readQueryCandidates(parts: StoreParts, query: QueryCandidates): P
       ? await readRankedMatches(parts, buildRankQuery(request, query.limit, excludedIDs))
       : await readSubjectRankedMatches(parts, {
           request,
-          limits: { others: query.limit, self: Math.min(selfLimit, MAX_LIMIT) },
+          limits: { others: query.limit, self: Math.min(selfLimit, recallLimits.max) },
           excludedIDs,
         });
 
   return {
     itemIDs: ranked.matches.map((match) => match.itemID),
+    pastLimitIDs: [],
     next: null,
     scores: new Map(ranked.matches.map((match) => [match.itemID, match])),
     searchMode: ranked.searchMode,
@@ -354,6 +384,81 @@ function isAtNamedVersion(item: RecalledItem, request: RecallRequest): boolean {
   );
 }
 
+interface Cut {
+  readonly kept: readonly RecalledItem[];
+  readonly dropped: readonly RecalledItem[];
+  readonly versions: number;
+}
+
+async function cutToBudget(request: RecallRequest, items: readonly RecalledItem[]): Promise<Cut> {
+  const byteBudget = request.byteBudget;
+  const measureItem = request.measureItem;
+
+  if (byteBudget === undefined || measureItem === undefined) {
+    return { kept: items, dropped: [], versions: 0 };
+  }
+
+  const kept: RecalledItem[] = [];
+  let used = 0;
+
+  for (const item of items) {
+    const size = await measureItem(item);
+
+    if (used + kept.length + size > byteBudget) {
+      if (kept.length === 0) {
+        const trimmed = await trimFirstItem(item, { byteBudget, measureItem });
+
+        return { kept: [trimmed.item], dropped: items.slice(1), versions: trimmed.versions };
+      }
+
+      break;
+    }
+
+    used += size;
+
+    kept.push(item);
+  }
+
+  return { kept, dropped: items.slice(kept.length), versions: 0 };
+}
+
+interface Budget {
+  readonly byteBudget: number;
+  readonly measureItem: (item: RecalledItem) => Promise<number>;
+}
+
+interface TrimmedItem {
+  readonly item: RecalledItem;
+  readonly versions: number;
+}
+
+// Keeps the current version and the newest past versions that fit. The current version stays even
+// when it alone passes the budget.
+async function trimFirstItem(item: RecalledItem, budget: Budget): Promise<TrimmedItem> {
+  const history = item.history ?? [];
+  const past = history.filter((version) => version.version !== item.version);
+  const current = history.find((version) => version.version === item.version);
+
+  if (current === undefined || past.length === 0) {
+    return { item, versions: 0 };
+  }
+
+  let lastTried: TrimmedItem = { item, versions: 0 };
+
+  for (let dropped = 1; dropped <= past.length; dropped += 1) {
+    lastTried = {
+      item: { ...item, history: [...past.slice(dropped), current] },
+      versions: dropped,
+    };
+
+    if ((await budget.measureItem(lastTried.item)) <= budget.byteBudget) {
+      return lastTried;
+    }
+  }
+
+  return lastTried;
+}
+
 interface RecallRecord {
   readonly request: RecallRequest;
   readonly items: readonly RecalledItem[];
@@ -397,4 +502,16 @@ function buildRecalledRef(ref: VersionRef, scores: MatchScores | undefined): Rec
     ...(scores?.score === undefined ? {} : { score: scores.score }),
     ...(scores?.similarity === undefined ? {} : { similarity: scores.similarity }),
   };
+}
+
+function pickNext(candidates: Candidates, cut: Cut): string | null {
+  const last = cut.kept.at(-1);
+
+  if (cut.dropped.length === 0 || last === undefined || candidates.sequences === undefined) {
+    return candidates.next;
+  }
+
+  const sequence = candidates.sequences.get(last.itemID);
+
+  return sequence === undefined ? candidates.next : String(sequence);
 }

@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { toolOutputLimitTokens } from '@heynixie/wire';
+import { recallPageLimitBytes, toolOutputLimitTokens } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { buildStubContractEnv } from '../test-utils/build-stub-contract-env';
 import { startStubModel } from '../test-utils/start-stub-model';
@@ -96,6 +96,77 @@ test('it cuts a result past the guest tool-output limit inline and never saves i
   expect(read.text).toInclude(`OUTPUT TRUNCATED - exceeded ${toolOutputLimitTokens} token limit`);
   expect(read.text).not.toInclude('Output has been saved to');
   expect(read.text).not.toInclude('<persisted-output>');
+});
+
+test.each([[2], [0.5]])(
+  'it passes a filler of the page limit to the model whole at %d characters a token',
+  async (charactersPerToken) => {
+    const ctx = await setupTest();
+
+    ctx.model.addReplies(
+      { toolUse: { name: 'mcp__pages__read_page', input: { page: 1 } } },
+      { text: 'DONE' },
+    );
+
+    ctx.model.setCharactersPerToken(charactersPerToken);
+
+    const probe = await runToolOutputProbe(ctx.target, 'at-page-limit');
+
+    const read = collectToolCalls(probe.run.messages).at(0)?.result;
+    const sent = JSON.stringify(ctx.model.requests.at(-1)?.body?.messages);
+
+    invariant(read);
+
+    expect(Buffer.byteLength(probe.served)).toBe(recallPageLimitBytes);
+    expect(read.text).toInclude('Log 199: ');
+    expect(read.text).not.toInclude('OUTPUT TRUNCATED');
+    expect(read.text).not.toInclude('Output has been saved to');
+    expect(sent).toInclude('Log 199: ');
+  },
+);
+
+test('it passes a filler past the limit in tokens, and under the 4 characters a token the CLI cuts at, whole with the notice after it', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__pages__read_page', input: { page: 1 } } },
+    { text: 'DONE' },
+  );
+
+  ctx.model.setCharactersPerToken(2);
+
+  const probe = await runToolOutputProbe(ctx.target, 'past-page-limit-cut');
+
+  const read = collectToolCalls(probe.run.messages).at(0)?.result;
+
+  invariant(read);
+
+  expect(read.text).toInclude('Log 299: ');
+  expect(read.text).toInclude(`OUTPUT TRUNCATED - exceeded ${toolOutputLimitTokens} token limit`);
+  expect(read.text).not.toInclude('Output has been saved to');
+});
+
+test('it passes every item of a result in the recall shape to the model', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__pages__read_page', input: { page: 1 } } },
+    { text: 'DONE' },
+  );
+
+  ctx.model.setCharactersPerToken(2);
+
+  const probe = await runToolOutputProbe(ctx.target, 'recall-shape');
+
+  const read = collectToolCalls(probe.run.messages).at(0)?.result;
+  const sent = JSON.stringify(ctx.model.requests.at(-1)?.body?.messages);
+
+  invariant(read);
+
+  expect(read.text).toInclude('k000000000');
+  expect(read.text).toInclude('k000000149');
+  expect(read.text).not.toInclude('OUTPUT TRUNCATED');
+  expect(sent).toInclude('k000000149');
 });
 
 test('it passes the model the image of a result whose JSON rides in a text block beside it', async () => {

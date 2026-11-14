@@ -5,7 +5,10 @@ import { buildWriterEvalInput } from './build-writer-eval-input';
 
 test('it renders the production prompts over the case, with the guest names of the writer tools', () => {
   const tools = buildWriterTools(
-    { recall: () => Promise.resolve({ items: [], next: null }) },
+    {
+      recall: () =>
+        Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
+    },
     createWriterStaging(),
     5,
   );
@@ -74,7 +77,10 @@ test('it renders the production prompts over the case, with the guest names of t
 
 test('it sends the messages of a case at the time the case sets, and starts its batch an hour later', () => {
   const tools = buildWriterTools(
-    { recall: () => Promise.resolve({ items: [], next: null }) },
+    {
+      recall: () =>
+        Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
+    },
     createWriterStaging(),
     5,
   );
@@ -108,7 +114,10 @@ test('it sends the messages of a case at the time the case sets, and starts its 
 
 test('it gives the same input the same hash, and another case another hash', () => {
   const tools = buildWriterTools(
-    { recall: () => Promise.resolve({ items: [], next: null }) },
+    {
+      recall: () =>
+        Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
+    },
     createWriterStaging(),
     5,
   );

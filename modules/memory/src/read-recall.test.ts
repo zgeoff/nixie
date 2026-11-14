@@ -241,6 +241,7 @@ test('it returns the items that match a query word for word, with their provenan
       },
     ],
     next: null,
+    omitted: { items: [], count: 0, versions: 0 },
     searchMode: 'keyword',
   });
 });
@@ -1055,11 +1056,7 @@ test('it leaves out an item named at a version that is no longer current, and re
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
   expect(result.items).toStrictEqual([]);
-
-  expect(records.at(-1)?.record).toMatchObject({
-    kind: 'memory.recalled',
-    payload: { items: [] },
-  });
+  expect(records.map((entry) => entry.record.kind)).not.toContain('memory.recalled');
 });
 
 test('it holds a forget until a recall that checked the item has recorded its delivery', async () => {
@@ -1117,7 +1114,13 @@ test('it never delivers an item that a forget removed while the recall ranked it
   const result = await recall;
 
   expect(ranked).toStrictEqual({ kind: 'memory', id: null });
-  expect(result).toStrictEqual({ items: [], next: null, searchMode: 'keyword' });
+
+  expect(result).toStrictEqual({
+    items: [],
+    next: null,
+    omitted: { items: [], count: 0, versions: 0 },
+    searchMode: 'keyword',
+  });
 });
 
 test('it recalls an item that shares no word with the query through the vector index', async () => {
@@ -1496,4 +1499,233 @@ test('it returns no moment text to the recall that per-turn retrieval makes, eve
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([item.itemID]);
   expect(JSON.stringify(result)).not.toInclude('noise');
+});
+
+test('it keeps the leading items that fit the byte budget, records only them, and returns the cursor of the last one', async () => {
+  const ctx = await setupTest();
+
+  const texts = ['alpha one', 'bravo two', 'cobalt three', 'delta four'];
+
+  for (const text of texts) {
+    await ctx.memory.store.remember({ text, provenance: buildMockProvenance() });
+  }
+
+  const page = await ctx.memory.store.recall({
+    byteBudget: 25,
+    measureItem: (item) => Promise.resolve(item.text.length + 2),
+    thread: 'conversation',
+  });
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  const rest = await ctx.memory.store.recall({ after: page.next ?? '' });
+
+  expect(page.items.map((item) => item.text)).toStrictEqual(['alpha one', 'bravo two']);
+  expect(page.omitted).toStrictEqual({ items: [], count: 2, versions: 0 });
+  expect(rest.items.map((item) => item.text)).toStrictEqual(['cobalt three', 'delta four']);
+
+  expect(records.map((entry) => entry.record.payload['items'])).toStrictEqual([
+    page.items.map((item) => ({ itemID: item.itemID, version: 1 })),
+  ]);
+});
+
+test('it keeps the first item when it alone passes the byte budget', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({ text: 'alpha one', provenance: buildMockProvenance() });
+  await ctx.memory.store.remember({ text: 'bravo two', provenance: buildMockProvenance() });
+
+  const result = await ctx.memory.store.recall({
+    byteBudget: 1,
+    measureItem: () => Promise.resolve(500),
+  });
+
+  expect(result.items.map((item) => item.text)).toStrictEqual(['alpha one']);
+  expect(result.omitted.count).toBe(1);
+});
+
+test('it names the matches a byte budget cut in rank order, and records only the kept one', async () => {
+  const ctx = await setupTest();
+
+  const first = await ctx.memory.store.remember({
+    text: 'kayak paddle kayak paddle',
+    provenance: buildMockProvenance(),
+  });
+
+  const second = await ctx.memory.store.remember({
+    text: 'kayak paddle only',
+    provenance: buildMockProvenance(),
+  });
+
+  const result = await ctx.memory.store.recall({
+    query: 'kayak paddle',
+    byteBudget: 10,
+    measureItem: () => Promise.resolve(8),
+    thread: 'conversation',
+  });
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  const keptIDs = result.items.map((item) => item.itemID);
+  const omittedIDs = [first.itemID, second.itemID].filter((itemID) => !keptIDs.includes(itemID));
+
+  expect(result.items).toHaveLength(1);
+  expect(result.omitted.items.map((omitted) => omitted.itemID)).toStrictEqual(omittedIDs);
+  expect(result.omitted.count).toBe(1);
+
+  expect(records.map((entry) => entry.record.payload['items'])).toStrictEqual([
+    [expect.objectContaining({ itemID: keptIDs[0] })],
+  ]);
+});
+
+test('it cuts nothing without a byte budget', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({ text: 'alpha one', provenance: buildMockProvenance() });
+  await ctx.memory.store.remember({ text: 'bravo two', provenance: buildMockProvenance() });
+
+  const result = await ctx.memory.store.recall({});
+
+  expect(result.items).toHaveLength(2);
+  expect(result.omitted).toStrictEqual({ items: [], count: 0, versions: 0 });
+});
+
+test('it rejects and records nothing when measuring an item fails', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({ text: 'alpha one', provenance: buildMockProvenance() });
+
+  const recall = ctx.memory.store.recall({
+    byteBudget: 100,
+    measureItem: () => Promise.reject(new Error('moment links unreadable')),
+    thread: 'conversation',
+  });
+
+  const [outcome] = await Promise.allSettled([recall]);
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect(outcome).toMatchObject({
+    status: 'rejected',
+    reason: expect.objectContaining({ message: 'moment links unreadable' }),
+  });
+
+  expect(records).toStrictEqual([]);
+});
+
+test.each([
+  ['a query recall', { query: 'zucchini', thread: 'conversation' }],
+  [
+    'a turn search',
+    {
+      query: 'zucchini',
+      selfNoteLimit: 2,
+      excludePinned: true,
+      excludeSensitive: true,
+      thread: 'conversation',
+    },
+  ],
+  ['a list of subjects with no item', { subjects: ['shared' as const], thread: 'conversation' }],
+])('it writes no recall record for %s that finds nothing', async (_label, request) => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({ text: 'alpha one', provenance: buildMockProvenance() });
+
+  const result = await ctx.memory.store.recall(request);
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect(result.items).toStrictEqual([]);
+  expect(records).toStrictEqual([]);
+});
+
+test('it keeps the current version and the newest past versions of a first item that passes the byte budget, and records only those', async () => {
+  const ctx = await setupTest();
+
+  let version = await ctx.memory.store.remember({
+    text: 'first wording',
+    provenance: buildMockProvenance(),
+  });
+
+  for (const text of ['second wording', 'third wording', 'fourth wording']) {
+    version = await ctx.memory.store.remember({
+      text,
+      target: version,
+      provenance: buildMockProvenance(),
+    });
+  }
+
+  const result = await ctx.memory.store.recall({
+    itemIDs: [version.itemID],
+    includeHistory: true,
+    byteBudget: 30,
+    measureItem: (item) => Promise.resolve((item.history?.length ?? 1) * 10),
+    thread: 'conversation',
+  });
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect(result.items[0]?.history?.map((entry) => entry.version)).toStrictEqual([2, 3, 4]);
+  expect(result.omitted.versions).toBe(1);
+
+  expect(records.map((entry) => entry.record.payload['items'])).toStrictEqual([
+    [
+      { itemID: version.itemID, version: 2 },
+      { itemID: version.itemID, version: 3 },
+      { itemID: version.itemID, version: 4 },
+    ],
+  ]);
+});
+
+test('it names the IDs past the limit that it would have returned, in the order named', async () => {
+  const ctx = await setupTest();
+
+  const kept = await ctx.memory.store.remember({
+    text: 'alpha one',
+    provenance: buildMockProvenance(),
+  });
+
+  const retired = await ctx.memory.store.remember({
+    text: 'bravo two',
+    provenance: buildMockProvenance(),
+  });
+
+  const past = await ctx.memory.store.remember({
+    text: 'cobalt three',
+    provenance: buildMockProvenance(),
+  });
+
+  const pastTwo = await ctx.memory.store.remember({
+    text: 'delta four',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.retire({ target: retired, provenance: buildMockProvenance() });
+
+  const result = await ctx.memory.store.recall({
+    itemIDs: [kept.itemID, 'unknown-id', retired.itemID, past.itemID, pastTwo.itemID],
+    limit: 2,
+  });
+
+  expect(result.items.map((item) => item.itemID)).toStrictEqual([kept.itemID]);
+
+  expect(result.omitted.items.map((omitted) => omitted.itemID)).toStrictEqual([
+    past.itemID,
+    pastTwo.itemID,
+  ]);
 });

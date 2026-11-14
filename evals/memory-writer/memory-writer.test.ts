@@ -14,7 +14,10 @@ async function setupTest() {
   const report = await loadWriterReport(join(import.meta.dir, 'report.json'));
 
   const tools = buildWriterTools(
-    { recall: () => Promise.resolve({ items: [], next: null }) },
+    {
+      recall: () =>
+        Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
+    },
     createWriterStaging(),
     5,
   ).map((tool) => ({ name: tool.name, description: tool.description, input: tool.input }));

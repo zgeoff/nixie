@@ -68,7 +68,8 @@ export async function startTestConversation(
       (() => ({
         readPinnedCore: () => Promise.resolve([]),
         readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
-        recall: () => Promise.resolve({ items: [], next: null }),
+        recall: () =>
+          Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
         recallMessages: () => Promise.resolve({ messages: [] }),
         readShortIDs: () => Promise.resolve(new Map()),
       })),

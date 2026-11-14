@@ -174,6 +174,13 @@ export interface RecallRequest {
   readonly selfNoteLimit?: number;
 
   readonly subjects?: readonly MemorySubject[];
+
+  // The most UTF-8 bytes the items of the result may take, with a comma between items. Without
+  // it, the recall cuts nothing.
+  readonly byteBudget?: number;
+
+  // The UTF-8 bytes of one item as the caller returns it.
+  readonly measureItem?: (item: RecalledItem) => Promise<number>;
 }
 
 export interface RecalledVersion {
@@ -207,10 +214,29 @@ export interface RecalledItem extends RecalledVersion {
 
 export type SearchMode = 'hybrid' | 'keyword' | 'keyword-fallback';
 
+export interface OmittedItem {
+  readonly itemID: string;
+  readonly shortID: string;
+}
+
+export interface RecallOmitted {
+  // The items the result leaves out, in the order named or ranked. The plain list names none.
+  readonly items: readonly OmittedItem[];
+
+  // The entries the result leaves out: the named items for a query or IDs, the cut items of the
+  // page for the plain list.
+  readonly count: number;
+
+  // The history versions of an oversized first item that the result leaves out.
+  readonly versions: number;
+}
+
 export interface RecallResult {
   readonly items: readonly RecalledItem[];
 
   readonly next: string | null;
+
+  readonly omitted: RecallOmitted;
 
   readonly searchMode?: SearchMode;
 }

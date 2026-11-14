@@ -7,7 +7,7 @@ import {
   collectToolCalls,
   runToolOutputProbe,
 } from '@heynixie/conversation/sdk-contract';
-import { toolOutputLimitTokens } from '@heynixie/wire';
+import { recallPageLimitBytes, toolOutputLimitTokens } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 
 // The probes call the model on the subscription, so only a contract run enables them. Bun 1.4.2's
@@ -99,4 +99,90 @@ test.skipIf(!isContractRun)(
     ]);
   },
   24_000,
+);
+
+test.skipIf(!isContractRun)(
+  'it passes a filler of the page limit to the model whole',
+  async () => {
+    const ctx = await setupTest();
+    const probe = await runToolOutputProbe(ctx.target, 'at-page-limit');
+
+    const read = collectToolCalls(probe.run.messages).at(0)?.result;
+
+    invariant(read);
+
+    expect(Buffer.byteLength(probe.served)).toBe(recallPageLimitBytes);
+    expect(read.text).toInclude('Log 199: ');
+    expect(read.text).not.toInclude('OUTPUT TRUNCATED');
+    expect(read.text).not.toInclude('Output has been saved to');
+  },
+  27_000,
+);
+
+test.skipIf(!isContractRun)(
+  'it passes a filler past the limit in tokens whole with the cut notice after it',
+  async () => {
+    const ctx = await setupTest();
+    const probe = await runToolOutputProbe(ctx.target, 'past-page-limit-cut');
+
+    const read = collectToolCalls(probe.run.messages).at(0)?.result;
+
+    invariant(read);
+
+    expect(read.text).toInclude('Log 299: ');
+    expect(read.text).toInclude(`OUTPUT TRUNCATED - exceeded ${toolOutputLimitTokens} token limit`);
+    expect(read.text).not.toInclude('Output has been saved to');
+  },
+  27_000,
+);
+
+test.skipIf(!isContractRun)(
+  'it passes every item of a result in the recall shape to the model',
+  async () => {
+    const ctx = await setupTest();
+    const probe = await runToolOutputProbe(ctx.target, 'recall-shape');
+
+    const read = collectToolCalls(probe.run.messages).at(0)?.result;
+
+    invariant(read);
+
+    expect(read.text).toInclude('k000000000');
+    expect(read.text).toInclude('k000000149');
+    expect(read.text).not.toInclude('OUTPUT TRUNCATED');
+  },
+  27_000,
+);
+
+test.skipIf(!isContractRun)(
+  'it reads the model at under 12,000 tokens for a page limit of items in the recall shape',
+  async () => {
+    const ctx = await setupTest();
+    const probe = await runToolOutputProbe(ctx.target, 'recall-shape');
+
+    const read = collectToolCalls(probe.run.messages).at(0)?.result;
+
+    // each reply reports the new input tokens and those read from or written to the cache
+    const inputTokens = probe.run.messages.flatMap((message) =>
+      message.type === 'assistant'
+        ? [
+            message.message.usage.input_tokens +
+              (message.message.usage.cache_read_input_tokens ?? 0) +
+              (message.message.usage.cache_creation_input_tokens ?? 0),
+          ]
+        : [],
+    );
+
+    invariant(read);
+
+    const withoutResult = inputTokens.at(0);
+    const withResult = inputTokens.at(-1);
+
+    invariant(withoutResult !== undefined && withResult !== undefined);
+
+    const resultTokens = withResult - withoutResult;
+    const bytesPerToken = Buffer.byteLength(read.text) / resultTokens;
+
+    expect(recallPageLimitBytes / bytesPerToken).toBeLessThan(toolOutputLimitTokens);
+  },
+  27_000,
 );
