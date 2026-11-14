@@ -5,7 +5,7 @@ import {
   resumeNixieInTransaction,
   withWriteTransaction,
 } from '@heynixie/log';
-import { writeStepCommit, writeTaskControl } from '@heynixie/tasks';
+import { writeStepCommit, writeTaskControl, writeTaskResume } from '@heynixie/tasks';
 import { claimAction } from './claim-action';
 import { createAllowedAction } from './create-allowed-action';
 import { buildActionSeeder } from './test-utils/build-action-seeder';
@@ -282,4 +282,20 @@ test('it claims the action of an exempt task while nixie is paused, though a pau
   const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
   expect(lease?.workID).toBe(exempt.action_id);
+});
+
+test('it claims the action of a done task once the resume of the task exempts it while nixie is paused', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await ctx.seed.action({ step });
+
+  await writeStepCommit(ctx.context, step, { next: 'done', records: [], acknowledged: [] });
+
+  await ctx.pauseNixie();
+
+  await writeTaskResume(ctx.context, { taskID: step.lease.workID, by: 'host' });
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease?.workID).toBe(queued.action_id);
 });
