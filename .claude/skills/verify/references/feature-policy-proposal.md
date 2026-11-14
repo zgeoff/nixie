@@ -4,8 +4,8 @@ When an ask rule matches a tool call the model makes, nixie holds the call until
 
 - The call's `tool_result` record has the outcome `queued`, and its `actionID` is `null`: nothing
   ran.
-- The approvals page, `/memory/proposals`, lists each held call as a card, under "Routine" or
-  another risk group.
+- The approvals page, `/memory/proposals`, lists each held call under the group of its risk, such as
+  "Routine" for the export call.
 - The `proposals` table holds one row for the call, with `family` `action` and `state` `pending`.
   The table also holds other kinds of proposal, such as rule changes.
 
@@ -22,7 +22,7 @@ This journey runs on `local` only:
 Before you start:
 
 - When the browser has no sign-in since `up`, run [sign-in-enrol](feature-sign-in-enrol.md) first.
-- Steps 3, 5 and 6 expect the export call of this pass to be the only held call since `up`. Before a
+- Steps 3, 5 and 7 expect the export call of this pass to be the only held call since `up`. Before a
   second pass, run `bun verify up --restart` and `bun verify doctor`, then sign-in-enrol.
 
 ## Journey
@@ -69,20 +69,28 @@ Before you start:
 
    Expect: `data.replies` is 1.
 
-5. Approve the call on the approvals page. Click the group in the item, by the `ref` that the
-   snapshot gives it, to open the card:
+5. Open the approvals page:
 
    ```bash
    bun verify browser goto /memory/proposals
    bun verify browser snapshot
-   bun verify browser click --ref f3e11
+   ```
+
+   Expect: the "Routine" list holds one collapsed item, which reads "Run memory.export (export).",
+   with no buttons.
+
+6. Expand the item, then approve the call. In the snapshot of step 5, find the line that holds "Run
+   memory.export (export)." and `[cursor=pointer]`. Pass that line's `ref`, such as `f3e11`, as
+   `<item_ref>`. Each snapshot gives new refs. The approve button is named "Run memory.export".
+
+   ```bash
+   bun verify browser click --ref '<item_ref>'
    bun verify browser click --role button --name 'Run memory.export'
    ```
 
-   Expect: the first snapshot's "Routine" list holds one item, which reads "Run memory.export
-   (export).".
+   Expect: both clicks exit 0.
 
-6. Check the answer. `proposals --waiting none` passes when no call of the tool is held.
+7. Check the answer. `proposals --waiting none` passes when no call of the tool is held.
 
    ```bash
    bun verify proposals --tool memory.export --waiting none
@@ -96,4 +104,4 @@ Before you start:
 ## End state
 
 - Step 3: nixie held one call of `memory.export`. Its result had the outcome `queued` and no action.
-- Step 6: no call is held. The call's row in `proposals` and its answer record both say `approved`.
+- Step 7: no call is held. The call's row in `proposals` and its answer record both say `approved`.
