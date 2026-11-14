@@ -72,7 +72,7 @@ test('it returns each hit with a link ID and a date only on a dated hit, and kee
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: { hits },
-    record: { hits, costUSD: 0.012 },
+    hidden: { costUSD: 0.012 },
   });
 });
 
@@ -126,7 +126,7 @@ test('it numbers a hit after the links the session already holds, and gives a kn
         { link: 'L1', title: 'Manly ferry', url: 'https://ferries.test/manly', snippet: null },
       ],
     },
-    record: expect.any(Object),
+    hidden: { costUSD: 0.012 },
   });
 });
 
@@ -174,7 +174,7 @@ test('it gives two hits with one URL the same link ID', async () => {
         { link: 'L1', title: 'Fares 2026', url: 'https://ferries.test/fares', snippet: null },
       ],
     },
-    record: expect.any(Object),
+    hidden: { costUSD: 0.012 },
   });
 });
 
@@ -306,7 +306,7 @@ test.each([
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: { hits: [{ link: 'L1', title: 'Tides', url: 'https://tides.test/', snippet: null }] },
-    record: expect.any(Object),
+    hidden: { costUSD: 0.012 },
   });
 });
 
@@ -490,7 +490,7 @@ test('it counts afresh from local midnight', async () => {
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: { hits: [] },
-    record: { hits: [], costUSD: 0.012 },
+    hidden: { costUSD: 0.012 },
   });
 });
 

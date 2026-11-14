@@ -134,8 +134,9 @@ export function buildSearchTool(
 
       const hits = reply.hits.map((hit) => parseHitResult(hit, links));
 
-      // the result leaves out the cost, which could steer what the model searches for
-      return { status: 'ok', result: { hits }, record: { hits, costUSD: reply.costUSD } };
+      // the cost goes under hidden, which the model never reads, because it could steer what the
+      // model searches for
+      return { status: 'ok', result: { hits }, hidden: { costUSD: reply.costUSD } };
     },
   };
 }

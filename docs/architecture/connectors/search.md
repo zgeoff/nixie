@@ -49,11 +49,11 @@ Endorsement changes no decision yet. The [web fetch](./web-fetch.md#the-tool) to
 code the same way.
 
 The result leaves out what the search cost, because a price in front of the model can steer what it
-searches for. The result record of each search that returns hits holds the hits and `costUSD`, so
-the conversation's event log shows what the search cost. The model still sees that cost when it
-reads the call's entry with `log.read` ([reading the log](../memory/context.md#reading-the-log)),
-because `log.read` shows the whole record. Moving search onto a paid-tool budget is planned in
-[GEO-1813](https://linear.app/zgeoff/issue/GEO-1813).
+searches for. A search that returns hits records its cost under `hidden` in the
+[result record](./tool-calls.md#records), which the model never reads, so the event log shows what
+the search cost. Result records from earlier releases hold `costUSD` inside the result, and
+`log.read` ([reading the log](../memory/context.md#reading-the-log)) drops it. Moving search onto a
+paid-tool budget is planned in [GEO-1813](https://linear.app/zgeoff/issue/GEO-1813).
 
 ## The daily call cap
 

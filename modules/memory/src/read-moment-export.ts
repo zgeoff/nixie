@@ -69,6 +69,7 @@ async function readReadableMoment(
     after: null,
     tokenCap: Number.POSITIVE_INFINITY,
     records: 'all',
+    reader: 'owner',
   });
 
   return {

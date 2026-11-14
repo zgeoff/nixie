@@ -195,9 +195,11 @@ The log holds outside text, such as fetched pages and pastes, so every entry cou
 content to the decision point. A message of the user's reads as a rebuilt session's recent turns
 show it, with each pasted or dropped span in its own block and a marker line for each image, and a
 search matches only the words, never those blocks. A log read never returns an image's bytes, so
-memory learns only what the user wrote. The call's record holds only the event IDs it returned, so a
-forget leaves no readable copy of what the model read, and a forgotten message reads with no text
-and never matches a search.
+memory learns only what the user wrote. A tool entry shows the call's `result` or its `message`
+alone, so a field the tool records under `hidden` never reaches the model, and `moment.read` prints
+a tool result the same way. The call's record holds only the event IDs it returned, so a forget
+leaves no readable copy of what the model read, and a forgotten message reads with no text and never
+matches a search.
 
 The model opens one image with the `log.read_image` tool, by the event ID of the user's message that
 holds it and the image's number in that message. The tool returns the image to the model as image

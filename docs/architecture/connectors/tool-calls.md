@@ -129,5 +129,10 @@ A tool whose input or result repeats text that another key guards gives each rec
 own in place of that text. Each record's erasable fields sit under the record's own key, so a forget
 that destroys the other key would leave the copy readable. The model reads the whole result either
 way. The memory tools use these forms, and [the memory store](../memory/store.md#the-models-tools)
-covers what each one records. The result record can also hold a field the result leaves out: the
+covers what each one records.
+
+The erasable fields of a result record hold the `result` or the `message`, and a tool's `hidden`
+object when it sets one with a key or more: values the server records and the model never reads. The
+model reads back the `result` or the `message` alone, through the reply, `log.read` and
+`moment.read`. A forget erases `hidden` with the record's other fields. The
 [search](./search.md#what-the-result-carries) tool records each search's cost there.

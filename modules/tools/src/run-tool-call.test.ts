@@ -172,6 +172,45 @@ test('it returns the model the whole result and records the record form the tool
   });
 });
 
+test.each([
+  {
+    name: 'stores hidden beside the result',
+    hidden: { costUSD: 0.012 },
+    fields: { result: { text: 'a note' }, hidden: { costUSD: 0.012 } },
+  },
+  {
+    name: 'stores no hidden key for an empty hidden',
+    hidden: {},
+    fields: { result: { text: 'a note' } },
+  },
+])('it $name and returns the model the result alone', async (row) => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () =>
+          Promise.resolve({ status: 'ok', result: { text: 'a note' }, hidden: row.hidden }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(result).toStrictEqual({ content: [], structuredContent: { text: 'a note' } });
+  expect(entries[1]?.record.erasable).toStrictEqual({ status: 'readable', fields: row.fields });
+});
+
 test('it returns the model the images of a direct result as image blocks beside its JSON', async () => {
   const ctx = await setupTest({
     tools: [

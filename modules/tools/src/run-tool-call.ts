@@ -407,9 +407,18 @@ function buildTypedResult(
     outcome: 'result',
     actionID,
     sources: registered.definition.declaration.results,
-    content: { result: typed.record ?? result },
+    content: buildResultFields(typed, result),
     reply: { kind: 'typed', result, images: typed.images ?? [] },
   };
+}
+
+// hidden is stored only when the tool set it to an object with 1 key or more
+function buildResultFields(typed: DirectResult, result: JSONObject): JSONObject {
+  const fields: JSONObject = { result: typed.record ?? result };
+
+  return typed.hidden !== undefined && Object.keys(typed.hidden).length > 0
+    ? { ...fields, hidden: typed.hidden }
+    : fields;
 }
 
 async function runQueued(allowed: AllowedCall): Promise<Settled> {

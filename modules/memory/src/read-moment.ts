@@ -67,6 +67,7 @@ export async function readMoment(
     after: records.after,
     tokenCap: records.tokenCap,
     records: request.records,
+    reader: 'model',
   });
 
   return {

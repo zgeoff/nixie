@@ -452,3 +452,142 @@ test('it cuts a text longer than 2000 characters', async () => {
 
   expect(page.entries).toMatchObject([{ text: 'a'.repeat(2000), isCut: true }]);
 });
+
+test.each([
+  {
+    name: 'a search result without the cost recorded under hidden',
+    erasable: {
+      result: {
+        hits: [{ link: 'L1', title: 'Tide tables', url: 'https://tides.test/a', snippet: null }],
+      },
+      hidden: { costUSD: 0.012 },
+    },
+    sources: { hits: 'untrusted' },
+    words: [],
+    texts: [
+      JSON.stringify({
+        result: {
+          hits: [{ link: 'L1', title: 'Tide tables', url: 'https://tides.test/a', snippet: null }],
+        },
+      }),
+    ],
+  },
+  {
+    name: 'a search result of an earlier release without the cost inside its result',
+    erasable: {
+      result: {
+        hits: [{ link: 'L1', title: 'Tide tables', url: 'https://tides.test/a', snippet: null }],
+        costUSD: 0.012,
+      },
+    },
+    sources: { hits: 'untrusted' },
+    words: [],
+    texts: [
+      JSON.stringify({
+        result: {
+          hits: [{ link: 'L1', title: 'Tide tables', url: 'https://tides.test/a', snippet: null }],
+        },
+      }),
+    ],
+  },
+  {
+    name: 'no entry for a word that sits only under hidden',
+    erasable: {
+      result: {
+        hits: [{ link: 'L1', title: 'Tide tables', url: 'https://tides.test/a', snippet: null }],
+      },
+      hidden: { note: 'zebrafinch' },
+    },
+    sources: { hits: 'untrusted' },
+    words: ['zebrafinch'],
+    texts: [],
+  },
+  {
+    name: 'the entry of log.read as the fields gave it',
+    erasable: { result: { eventIDs: ['e1', 'e2'], next: 'e3' } },
+    sources: { entries: 'untrusted', next: 'owner_data' },
+    words: [],
+    texts: ['{"result":{"eventIDs":["e1","e2"],"next":"e3"}}'],
+  },
+  {
+    name: 'the entry of skill_pending as the fields gave it',
+    erasable: { result: { proposals: [{ proposalID: 'p1' }] } },
+    sources: { proposals: 'untrusted' },
+    words: [],
+    texts: ['{"result":{"proposals":[{"proposalID":"p1"}]}}'],
+  },
+  {
+    name: 'a top-level cost that the sources name',
+    erasable: { result: { costUSD: 3 } },
+    sources: { costUSD: 'owner_data' },
+    words: [],
+    texts: ['{"result":{"costUSD":3}}'],
+  },
+  {
+    name: 'a message alone, which wins over a result',
+    erasable: { message: 'the tool refused', result: { count: 1 }, hidden: { note: 'x' } },
+    sources: {},
+    words: [],
+    texts: ['{"message":"the tool refused"}'],
+  },
+  {
+    name: 'the result when the message is not a string',
+    erasable: { message: 7, result: { count: 1 } },
+    sources: {},
+    words: [],
+    texts: ['{"result":{"count":1}}'],
+  },
+  {
+    name: 'the fields whole when they hold neither a result nor a message',
+    erasable: { note: 'plain', hidden: { count: 2 } },
+    sources: {},
+    words: [],
+    texts: ['{"note":"plain","hidden":{"count":2}}'],
+  },
+  {
+    name: 'a null result',
+    erasable: { result: null },
+    sources: {},
+    words: [],
+    texts: ['{"result":null}'],
+  },
+  {
+    name: 'an array result that holds a cost key untouched',
+    erasable: { result: [{ costUSD: 1 }] },
+    sources: {},
+    words: [],
+    texts: ['{"result":[{"costUSD":1}]}'],
+  },
+  {
+    name: 'a falsy result',
+    erasable: { result: 0 },
+    sources: {},
+    words: [],
+    texts: ['{"result":0}'],
+  },
+])('it shows $name', async (row) => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { outcome: 'result', sources: row.sources },
+      erasable: row.erasable,
+    },
+  ]);
+
+  const page = await readLogPage(ctx.log, {
+    thread: 'conversation',
+    after: 0,
+    from: null,
+    to: null,
+    words: row.words,
+    limit: 20,
+    scanLimit: 500,
+  });
+
+  expect(page.entries.map((entry) => entry.text)).toStrictEqual([...row.texts]);
+});

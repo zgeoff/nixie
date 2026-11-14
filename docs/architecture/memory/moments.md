@@ -93,17 +93,18 @@ ranking.
 
 `moment.read` returns the conversation of the span by default: the user's messages and the model's
 replies, in order. The raw fields of tool calls, tool results and step markers bury those words, so
-they come only in a read that asks for all records, which returns every record in the span. Each
-record comes with its event ID, its kind, its time, its payload, its policy decision, its text and
-its source of content. Either read returns the records as untrusted, so a span that holds outside
-content taints the task that reads it, even when the outside content itself is left out. The payload
-holds what the text leaves out, such as a called tool's name or an action's outcome. A record with
-no source holds only what nixie itself wrote, and a record whose key is gone shows as a gap. Each
-record also says whether it was removed. A gap is removed only when its key is gone and a
-`record.forget_started` record names its sequence, so a record whose key fails to decrypt, or a
-session summary whose key a session cleanup deleted, shows as a gap that is not removed. The read
-looks for `record.forget_started` and never `record.forgotten`, because a crash between the key's
-deletion and `record.forgotten` leaves only the start record.
+they come only in a read that asks for all records, which returns every record in the span. A tool
+result prints as its result or its message alone, as `log.read` prints it. Each record comes with
+its event ID, its kind, its time, its payload, its policy decision, its text and its source of
+content. Either read returns the records as untrusted, so a span that holds outside content taints
+the task that reads it, even when the outside content itself is left out. The payload holds what the
+text leaves out, such as a called tool's name or an action's outcome. A record with no source holds
+only what nixie itself wrote, and a record whose key is gone shows as a gap. Each record also says
+whether it was removed. A gap is removed only when its key is gone and a `record.forget_started`
+record names its sequence, so a record whose key fails to decrypt, or a session summary whose key a
+session cleanup deleted, shows as a gap that is not removed. The read looks for
+`record.forget_started` and never `record.forgotten`, because a crash between the key's deletion and
+`record.forgotten` leaves only the start record.
 
 Each page of `moment.read` stops at a token cap and returns a cursor, because a span over a long
 task holds thousands of records and a moment gathers reflections over time. The first page holds the

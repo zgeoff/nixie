@@ -10,6 +10,7 @@ import { readRecords } from '@heynixie/log';
 import { renderImageMarkers, renderOwnerText } from '@heynixie/sessions';
 import { z } from 'zod';
 import { conversationKinds } from './conversation-kinds';
+import { formatToolEntry } from './format-tool-entry';
 
 export interface LogPageQuery {
   readonly thread: string;
@@ -178,7 +179,7 @@ function buildScannedEntry(record: LogRecord): ScannedEntry {
     };
   }
 
-  const text = record.kind === 'model.reply' ? parseReplyText(fields) : formatToolText(fields);
+  const text = buildEntryText(record, fields);
 
   return {
     entry: { ...base, role: record.kind === 'model.reply' ? 'assistant' : 'tool', text },
@@ -190,16 +191,20 @@ function renderOwnerEntry(record: LogRecord): string {
   return [renderOwnerText(record), ...renderImageMarkers(record)].join('\n');
 }
 
+function buildEntryText(record: LogRecord, fields: JSONObject | null): string | null {
+  if (record.kind === 'model.reply') {
+    return parseReplyText(fields);
+  }
+
+  return fields === null ? null : formatToolEntry(record, fields);
+}
+
 const replyFields = z.object({ text: z.string() });
 
 function parseReplyText(fields: JSONObject | null): string | null {
   const parsed = replyFields.safeParse(fields);
 
   return parsed.success ? parsed.data.text : null;
-}
-
-function formatToolText(fields: JSONObject | null): string | null {
-  return fields === null ? null : JSON.stringify(fields);
 }
 
 // A record's time can step back past a clock change, so each entry is checked against the range.
