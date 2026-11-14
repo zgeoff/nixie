@@ -15,20 +15,20 @@ A rules file maps each rule ID to its rule, and each ID belongs to one rule acro
 `allow-mail-to-team`, because a slug survives a rename of the file and reads well in a record. Every
 field but the outcome is optional, and a field that is missing matches every call:
 
-| Field          | Holds                                                                                  |
-| -------------- | -------------------------------------------------------------------------------------- |
-| `outcome`      | `allow`, `ask` or `deny`                                                               |
-| `tools`        | Tool names or patterns, such as `mail.*`, or a tool variant such as `task.start/atc`   |
-| `effects`      | Declared effects                                                                       |
-| `contexts`     | `conversation`, `task`, `job` or `coding`                                              |
-| `jobs`         | Job IDs                                                                                |
-| `checks`       | Argument checks: an argument path, the operator `eq`, `in` or `matches`, and a value   |
-| `destinations` | Patterns for the call's destinations                                                   |
-| `sources`      | Where the call's content came from: `owner`, `own_data`, `task` or `outside`           |
-| `expires`      | When the rule stops matching, as an ISO date and time; a rule with `mandate` needs one |
-| `mandate`      | The mandate the rule belongs to                                                        |
-| `cel`          | A CEL condition                                                                        |
-| `note`         | The user's own words about the rule                                                    |
+| Field          | Holds                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
+| `outcome`      | `allow`, `ask` or `deny`                                                                                  |
+| `tools`        | Tool names or patterns, such as `mail.*`, or a tool variant such as `task.start/atc`                      |
+| `effects`      | Declared effects                                                                                          |
+| `contexts`     | `conversation`, `task` or `coding`; `task` covers a task that nixie starts and a task run of a definition |
+| `definitions`  | Task definition IDs; the rule matches a task run of one of them                                           |
+| `checks`       | Argument checks: an argument path, the operator `eq`, `in` or `matches`, and a value                      |
+| `destinations` | Patterns for the call's destinations                                                                      |
+| `sources`      | Where the call's content came from: `owner`, `own_data`, `task` or `outside`                              |
+| `expires`      | When the rule stops matching, as an ISO date and time; a rule with `mandate` needs one                    |
+| `mandate`      | The mandate the rule belongs to                                                                           |
+| `cel`          | A CEL condition                                                                                           |
+| `note`         | The user's own words about the rule                                                                       |
 
 The parser refuses an unknown field, an empty list and a pattern with a space, and lists each fault
 with its file, so a typo in a rule never widens what it matches. Each release publishes the format
@@ -39,6 +39,12 @@ committed file, and a test fails while the two differ.
 A pattern uses `*` as its only wildcard and matches the whole text, so `*@example.com` matches every
 address at that domain and nothing longer. Strings compare in Unicode NFC on both sides. One kind of
 wildcard keeps the widening check decidable, which a regular expression would not.
+
+The parser still reads the old names, `jobs` for `definitions` and the context `job` for `task`, and
+a rule that holds both `jobs` and `definitions` is refused, because merging the lists could widen an
+allow rule. The JSON Schema marks the old names as deprecated. nixie stores each rule in the old
+names for one release, with `task` stored as `job` and `task`, so the previous release still reads
+the stored rules and matches the same calls. The export writes the new names.
 
 The parser turns each rule into its canonical form: each list sorted with its duplicates dropped,
 free text in NFC, and the expiry in UTC. Two files that list the same rule in another order
