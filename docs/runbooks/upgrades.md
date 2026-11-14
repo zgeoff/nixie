@@ -28,8 +28,9 @@ notes, and move all 3 pins together.
      that case move `backup.image` too.
 2. Merge the pull request.
 3. Deploy in this order: the backup job, then nixie, then web. **Why:** the backup job reads the
-   snapshot set format of its own release and of the one before, and the web client then only calls
-   an API of its own release or a newer one.
+   snapshot set format of its own release and of the one before. The web client then only calls an
+   API of its own release or a newer one, and a failed nixie step stops the rollout before the web
+   client changes.
 
 ### Deploy on Compose
 
@@ -106,9 +107,9 @@ schema, the revert loses no write.
    ```
 
 2. Merge the pull request.
-3. Deploy in this order: web, then nixie, then the backup job. **Why:** the web client calls only an
-   API of its own release or a newer one, and a failed nixie step then stops the rollout before the
-   web client changes.
+3. Deploy in this order: web, then nixie, then the backup job. **Why:** the web client then only
+   calls an API of its own release or a newer one, and the newer backup job, which reads the
+   snapshot set format of the release before, keeps running until nixie has moved back.
 
 On Compose, follow [Deploy on Compose](#deploy-on-compose) with `web` first, then `nixie`, then the
 backup service. On the Kubernetes manifests, apply `web.yaml` and wait for its rollout, then apply
