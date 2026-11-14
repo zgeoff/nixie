@@ -54,8 +54,12 @@ are. A message that states the item's fact would make nixie keep the item at onc
    ```
 
    Expect: one item in the "Pending proposals" list, with an Approve button. Note the item's text.
-   On `preview`, when the list is empty, the model proposed nothing: skip the rest and `done`, and
-   report the empty list with the snapshot.
+   On `preview`, when that list is empty, skip the rest and `done`. Report the snapshot, and which
+   case it shows:
+   - The "Pending actions" list holds "Run memory.remember (note).": nixie's policy held the model's
+     call as an action. Approving an action runs nothing yet, so the item never reaches the memory
+     page.
+   - Neither list holds an item: the model proposed nothing.
 
 5. Approve the proposal. The disabled "Approve selected" button never matches this command.
 
