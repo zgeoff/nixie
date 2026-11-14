@@ -32,7 +32,18 @@ test('it leaves the attachment of another record readable', async () => {
     unreadable.sequence,
   ]);
 
-  expect(attachments.get(readable.sequence)).not.toStrictEqual({ status: 'unreadable' });
+  const readableAttachments = attachments.get(readable.sequence);
+
+  expect(readableAttachments?.status).toBe('readable');
+
+  if (readableAttachments?.status !== 'readable') {
+    throw new Error('expected the other record attachment to be readable');
+  }
+
+  expect(
+    readableAttachments.attachments.map((bytes) => new TextDecoder().decode(bytes)),
+  ).toStrictEqual(['harbour-photo']);
+
   expect(attachments.get(unreadable.sequence)).toStrictEqual({ status: 'unreadable' });
 });
 
