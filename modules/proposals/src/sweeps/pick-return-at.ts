@@ -33,7 +33,7 @@ export function pickReturnAt(
   const isEndTomorrow = isWrapping && local.minutes >= start;
   const endDay = Date.UTC(local.year, local.month - 1, local.day) + (isEndTomorrow ? dayMs : 0);
 
-  return toZonedInstant(endDay + end * minuteMs, zone);
+  return toZonedInstant(endDay + end * minuteMs, zone, deferUntil);
 }
 
 function toMinutes(time: string): number {
@@ -71,15 +71,15 @@ function toWallClock(at: number, zone: string): WallClock {
   };
 }
 
-// The instant whose wall clock in the zone reads `wall` (a wall-clock time written as if it were
-// UTC). A time the clock repeats takes its earlier instant, and a time the clock skips takes the
-// instant the skip lands it on, as Temporal's 'compatible' disambiguation does.
-function toZonedInstant(wall: number, zone: string): number {
+// The first instant from `notBefore` on whose wall clock in the zone reads `wall` (written as if it
+// were UTC). A time the clock skips takes the instant the skip lands it on, as Temporal's
+// 'compatible' disambiguation does.
+function toZonedInstant(wall: number, zone: string, notBefore: number): number {
   const offsetBefore = toOffsetMs(wall - dayMs, zone);
   const offsetAfter = toOffsetMs(wall + dayMs, zone);
 
   const matches = [wall - offsetBefore, wall - offsetAfter].filter(
-    (instant) => toOffsetMs(instant, zone) === wall - instant,
+    (instant) => instant >= notBefore && toOffsetMs(instant, zone) === wall - instant,
   );
 
   return matches.length === 0 ? wall - offsetBefore : Math.min(...matches);

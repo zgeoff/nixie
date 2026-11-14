@@ -64,6 +64,12 @@ test.each<[string, number, { start: string; end: string }, number]>([
     Date.UTC(2026, 10, 1, 5, 30),
   ],
   [
+    'it takes the later of the 2 instants when the asked time falls between them as the clocks go back',
+    Date.UTC(2026, 10, 1, 6, 15),
+    { start: '00:00', end: '01:30' },
+    Date.UTC(2026, 10, 1, 6, 30),
+  ],
+  [
     'it moves an end time the clocks skip to the time the skip lands on',
     Date.UTC(2026, 2, 8, 5, 30),
     { start: '00:00', end: '02:30' },
