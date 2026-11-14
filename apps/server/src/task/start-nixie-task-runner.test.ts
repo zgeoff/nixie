@@ -223,6 +223,7 @@ test("it gives a stranger's tool run the task tools, the clock and the silent en
   expect(tools).toIncludeSameMembers([
     'tasks.list',
     'task.message',
+    'task.report',
     'time.now',
     'turn.end_silently',
   ]);

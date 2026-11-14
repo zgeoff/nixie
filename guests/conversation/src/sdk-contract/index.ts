@@ -13,6 +13,8 @@ export { runOverflowForkProbe } from './run-overflow-fork-probe';
 export { runOverflowProbe } from './run-overflow-probe';
 export { runPinnedCoreProbe } from './run-pinned-core-probe';
 export { runPrecompactProbe } from './run-precompact-probe';
+export type { ReportFieldsRun } from './run-report-fields-probe';
+export { runReportFieldsProbe } from './run-report-fields-probe';
 export { runResumeAtProbe } from './run-resume-at-probe';
 export { runSystemBlocksProbe } from './run-system-blocks-probe';
 

@@ -189,3 +189,114 @@ test('it renders a brief record in the inbox with its text', async () => {
     ),
   ).toInclude('Find 3 quiet cafes near the station.');
 });
+
+test('it lists and reads a started task whose log holds task run records, a report shape and task run IDs on its calls', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.created',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        taskID: 't4m2',
+        isConversation: false,
+        state: 'ready',
+        startedBy: 'conversation',
+        startStep: 'conversation:1',
+        options: {
+          model: null,
+          profile: null,
+          persona: 'none',
+          memory: 'none',
+          tools: ['tasks.list', 'task.message', 'task.report'],
+          report: 'wake',
+          limits: { turns: 25, dollars: 2 },
+          reportShape: {
+            type: 'object',
+            additionalProperties: false,
+            properties: { city: { type: 'string' } },
+            required: ['city'],
+          },
+        },
+        briefMessageID: 'm7k2',
+      },
+      erasable: { name: 'Cafe scout' },
+    },
+    {
+      kind: 'task.run_opened',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        taskID: 't4m2',
+        runID: 'a3f9c2d4-1111-4222-8333-444455556666',
+        openedByStep: 't4m2:1',
+        origin: { kind: 'brief', sequence: null },
+        definitionID: null,
+        definitionHash: null,
+        triggerKey: null,
+        carriesRunID: null,
+        briefID: null,
+        report: { mode: 'wake', target: 'conversation' },
+        reportShape: null,
+        limits: { turns: 25, dollars: 2, calls: {} },
+      },
+    },
+    {
+      kind: 'task.failed_turn_spent',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        taskID: 't4m2',
+        dollars: 0.01,
+        taskRunID: 'a3f9c2d4-1111-4222-8333-444455556666',
+      },
+    },
+    {
+      kind: 'task.run_report_requested',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        taskID: 't4m2',
+        runID: 'a3f9c2d4-1111-4222-8333-444455556666',
+        stepKey: 't4m2:1',
+        reportID: 'r8d2',
+      },
+      erasable: { summary: 'Found two cafes.', fields: { city: 'Lyon' } },
+    },
+    {
+      kind: 'task.run_ended',
+      definitions,
+      thread: 't4m2',
+      payload: {
+        taskID: 't4m2',
+        runID: 'a3f9c2d4-1111-4222-8333-444455556666',
+        cause: 'reported',
+        detail: {},
+        endedBy: 'step:t4m2:1',
+        definitionID: null,
+        triggerKey: null,
+        carriesRunID: null,
+        used: { turns: 1, dollars: 0.01, calls: {} },
+        reportID: 'r8d2',
+        reportTo: 'conversation',
+        delivery: 'wake',
+      },
+      erasable: { body: 'Found two cafes.' },
+    },
+  ]);
+
+  const directory: readonly TaskProfile[] = [];
+
+  const messaging = await readTaskDirectory(ctx.tasks.context, { directory });
+
+  const entries = await readRecords(ctx.tasks.context.log, {
+    afterSequence: 0,
+    thread: 't4m2',
+  });
+
+  expect(messaging.directory.map((profile) => profile.taskID)).toStrictEqual(['t4m2']);
+  expect(entries).toHaveLength(5);
+});
