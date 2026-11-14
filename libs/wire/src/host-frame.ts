@@ -43,8 +43,15 @@ export type TurnProfile = z.infer<typeof turnProfileSchema>;
 
 const toolRouteSchema = z.object({ url: z.url(), token: z.string().min(1) }).readonly();
 
-// The guest stops a turn after this many model API calls, or runs it to its end at null.
-const turnLimitsSchema = z.object({ modelCalls: z.int().positive().nullable() }).readonly();
+// The guest stops a turn after this many model API calls, or runs it to its end at null. It sets
+// the runtime's wait for one tool call to toolCallWaitMs milliseconds, or leaves the runtime's own
+// timeout at null.
+const turnLimitsSchema = z
+  .object({
+    modelCalls: z.int().positive().nullable(),
+    toolCallWaitMs: z.int().positive().nullable(),
+  })
+  .readonly();
 
 const turnFrameSchema = z
   .object({

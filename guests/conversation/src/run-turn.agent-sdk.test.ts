@@ -1047,7 +1047,7 @@ test('it ends a turn at its last chain entry when the model calls reach the turn
   await runTurn(
     buildMockTurnFrame({
       profile: { baseURL: ctx.model.url },
-      limits: { modelCalls: 1 },
+      limits: { modelCalls: 1, toolCallWaitMs: null },
       input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
     }),
     ctx.deps,

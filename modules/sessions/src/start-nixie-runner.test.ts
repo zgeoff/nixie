@@ -1867,7 +1867,10 @@ test('it caps each task turn at 100 model calls', async () => {
 
   await ctx.runNextStep(runner);
 
-  expect(ctx.guest.turns[0]?.limits).toStrictEqual({ modelCalls: 100 });
+  expect(ctx.guest.turns[0]?.limits).toStrictEqual({
+    modelCalls: 100,
+    toolCallWaitMs: null,
+  });
 });
 
 test('it sleeps the imp of a task whose turn reached its dollar limit with work left', async () => {

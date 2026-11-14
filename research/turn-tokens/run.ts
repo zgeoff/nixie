@@ -356,7 +356,7 @@ async function runGuestSession(
         tools: { url: server.config.url, token: 'unused' },
         resume: session.resume,
         systemPrompt: session.systemPrompt,
-        limits: { modelCalls: null },
+        limits: { modelCalls: null, toolCallWaitMs: null },
         input: session.input,
       },
       {

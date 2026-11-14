@@ -9,7 +9,7 @@ export interface TurnFrameOverrides {
   readonly resume?: TurnFrame['resume'];
   readonly systemPrompt?: string;
   readonly input?: TurnFrame['input'];
-  readonly limits?: TurnFrame['limits'];
+  readonly limits?: Partial<TurnFrame['limits']>;
 }
 
 export function buildMockTurnFrame(overrides: TurnFrameOverrides = {}): TurnFrame {
@@ -33,6 +33,6 @@ export function buildMockTurnFrame(overrides: TurnFrameOverrides = {}): TurnFram
     resume: overrides.resume ?? null,
     systemPrompt: overrides.systemPrompt ?? faker.lorem.sentence(),
     input: overrides.input ?? [{ uuid: faker.string.uuid(), text: faker.lorem.sentence() }],
-    limits: overrides.limits ?? { modelCalls: null },
+    limits: { modelCalls: null, toolCallWaitMs: null, ...overrides.limits },
   };
 }

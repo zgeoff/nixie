@@ -25,6 +25,10 @@ export interface HarnessDescriptor {
   // the MCP _meta key under which the guest sends the model's tool-use ID on each tool call
   readonly toolUseMetaKey: string | null;
 
+  // how long the harness's runtime waits for one tool call, in milliseconds: 900,000 on a harness
+  // whose probe passed, null on any other harness
+  readonly toolCallWaitMs: number | null;
+
   // the paths, relative to the folder that holds a session, that a replaced sandbox carries; null
   // when the harness keeps no session a new sandbox can resume
   readonly listSessionFiles: ((point: SessionPoint) => readonly string[]) | null;

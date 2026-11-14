@@ -112,6 +112,7 @@ export async function startConversationRunner(
     endpoint,
     model,
     turnProfile: harness.toTurnProfile(options.profile.profile),
+    toolCallWaitMs: harness.toolCallWaitMs,
     memorySettings: { ...defaultMemorySettings, ...options.memorySettings },
     compaction: { ...defaultCompaction, ...options.compaction },
     status: options.status ?? buildDefaultStatus(),

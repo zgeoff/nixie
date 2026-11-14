@@ -126,6 +126,7 @@ test("it gives the session's tools a token for the step that runs it, and stops 
   ]);
 
   expect(ctx.sandboxes.turns[0]?.tools.token).toBe('step-token-1');
+  expect(ctx.sandboxes.turns[0]?.limits).toStrictEqual({ modelCalls: null, toolCallWaitMs: null });
 });
 
 test('it starts each session fresh with the prompt as its one message', async () => {

@@ -27,6 +27,9 @@ export const agentSDKHarness: HarnessDescriptor = {
   imageKey: 'conversation',
   toolUseMetaKey: 'claudecode/toolUseId',
 
+  // stays null until the Agent SDK probe passes
+  toolCallWaitMs: null,
+
   // The CLI keeps a session's transcript, and a folder of the files its tools wrote beside it.
   listSessionFiles: (point) => [`${point.sessionID}.jsonl`, `${point.sessionID}/`],
 };

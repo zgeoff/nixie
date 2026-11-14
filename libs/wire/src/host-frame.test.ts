@@ -89,11 +89,100 @@ test.each([
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: null,
     systemPrompt: 'You are nixie.',
-    limits: { modelCalls },
+    limits: { modelCalls, toolCallWaitMs: null },
     input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['limits', 'modelCalls'] });
+});
+
+test.each([
+  ['900000 milliseconds', 900_000],
+  ['null', null],
+])('it accepts a turn frame whose tool call wait is %s', (_case, toolCallWaitMs) => {
+  const result = hostFrameSchema.safeParse({
+    type: 'turn',
+    profile: {
+      harness: 'agent-sdk',
+      model: 'claude-test-1',
+      baseURL: 'https://models.example.test',
+      effort: 'medium',
+      authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
+    },
+    tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+    resume: null,
+    systemPrompt: 'You are nixie.',
+    limits: { modelCalls: 40, toolCallWaitMs },
+    input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
+  });
+
+  expect(result.data).toStrictEqual({
+    type: 'turn',
+    profile: {
+      harness: 'agent-sdk',
+      model: 'claude-test-1',
+      baseURL: 'https://models.example.test',
+      effort: 'medium',
+      authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
+    },
+    tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+    resume: null,
+    systemPrompt: 'You are nixie.',
+    limits: { modelCalls: 40, toolCallWaitMs },
+    input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
+  });
+});
+
+test('it refuses a turn frame with no tool call wait', () => {
+  const result = hostFrameSchema.safeParse({
+    type: 'turn',
+    profile: {
+      harness: 'agent-sdk',
+      model: 'claude-test-1',
+      baseURL: 'https://models.example.test',
+      effort: 'medium',
+      authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
+    },
+    tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+    resume: null,
+    systemPrompt: 'You are nixie.',
+    limits: { modelCalls: null },
+    input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['limits', 'toolCallWaitMs'] });
+});
+
+test.each([
+  ['zero', 0],
+  ['a negative number', -3],
+  ['a fraction', 2.5],
+])('it refuses a turn frame whose tool call wait is %s', (_case, toolCallWaitMs) => {
+  const result = hostFrameSchema.safeParse({
+    type: 'turn',
+    profile: {
+      harness: 'agent-sdk',
+      model: 'claude-test-1',
+      baseURL: 'https://models.example.test',
+      effort: 'medium',
+      authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
+    },
+    tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+    resume: null,
+    systemPrompt: 'You are nixie.',
+    limits: { modelCalls: null, toolCallWaitMs },
+    input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['limits', 'toolCallWaitMs'] });
 });
 
 test('it accepts an interrupt frame', () => {
