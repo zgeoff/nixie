@@ -16,7 +16,8 @@ export type SystemMessageType =
   | 'task-messages'
   | 'task-continue'
   | 'task-limit'
-  | 'approval';
+  | 'approval'
+  | 'restore';
 
 export interface SystemMessage {
   readonly type: SystemMessageType;
