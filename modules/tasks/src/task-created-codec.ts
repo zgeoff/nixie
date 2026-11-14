@@ -12,5 +12,6 @@ export const taskCreatedCodec = defineRecordCodec(
     startedBy: z.string().exactOptional(),
     startStep: z.string().exactOptional(),
     options: taskRunOptionsSchema.exactOptional(),
+    briefMessageID: z.string().exactOptional(),
   }),
 );

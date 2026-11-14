@@ -33,7 +33,7 @@ const startArguments = z.object({
 
 export function buildTaskStartTool(
   context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
-  messaging: Pick<TaskMessaging, 'ownerName'>,
+  messaging: Pick<TaskMessaging, 'hopLimit' | 'ownerName'>,
   bounds: TaskStartBounds,
 ): ToolDefinition {
   const owner = messaging.ownerName ?? 'the owner';
@@ -84,6 +84,7 @@ export function buildTaskStartTool(
         name: input.name,
         brief: input.brief,
         options: plan.options,
+        hopLimit: messaging.hopLimit,
         stepRunID: tool.run.stepRunID ?? null,
       });
 

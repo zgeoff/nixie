@@ -6,15 +6,26 @@ import { buildTasksListTool } from './build-tasks-list-tool';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { createSystemTask } from './create-system-task';
+import { readInbox } from './read-inbox';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
 import { seedStartedTask } from './test-utils/seed-started-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTestTaskMessage } from './test-utils/write-test-task-message';
+import type { TaskClaim } from './types';
 import { writeStepCommit } from './write-step-commit';
 import { writeTaskControl } from './write-task-control';
 
-function setupTest() {
-  return startTestTasks();
+async function setupTest() {
+  const tasks = await startTestTasks();
+
+  return {
+    ...tasks,
+    readUnreadSequences: async (claim: TaskClaim) => {
+      const inbox = await readInbox(tasks.context, claim.lease.workID);
+
+      return inbox.map((record) => record.sequence);
+    },
+  };
 }
 
 test('it lists the tasks other than the caller, with each last activity in UTC', async () => {
@@ -25,8 +36,20 @@ test('it lists the tasks other than the caller, with each last activity in UTC',
 
   const tool = buildTasksListTool(ctx.context, {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
   });
 
@@ -74,7 +97,13 @@ test('it lists a started task with the name and brief it started with', async ()
 
   const tool = buildTasksListTool(ctx.context, {
     directory: [
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
   });
 
@@ -108,8 +137,20 @@ test('it lists only as many tasks as the limit asks for', async () => {
 
   const tool = buildTasksListTool(ctx.context, {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'critic', name: 'Critic', brief: 'Checks plans.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'critic',
+        name: 'Critic',
+        brief: 'Checks plans.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
     ],
   });
 
@@ -154,7 +195,13 @@ test('it lists each task with the model it runs on', async () => {
 
   const tool = buildTasksListTool(ctx.context, {
     directory: [
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
   });
 
@@ -200,7 +247,13 @@ test.each([
 
     const messaging = {
       directory: [
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     };
@@ -225,7 +278,11 @@ test.each([
       wake: true,
     });
 
-    await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [] });
+    await writeStepCommit(ctx.context, claim, {
+      next: 'wait',
+      records: [],
+      acknowledged: await ctx.readUnreadSequences(claim),
+    });
 
     const tool = buildTasksListTool(ctx.context, messaging);
 
@@ -264,7 +321,13 @@ test.each([
 
     const messaging = {
       directory: [
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     };
@@ -299,7 +362,11 @@ test.each([
       wake: false,
     });
 
-    await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [] });
+    await writeStepCommit(ctx.context, claim, {
+      next: 'wait',
+      records: [],
+      acknowledged: await ctx.readUnreadSequences(claim),
+    });
 
     const tool = buildTasksListTool(ctx.context, messaging);
 
@@ -332,7 +399,13 @@ test('it lists a finished task under done within the limit, behind a newer idle 
 
   const messaging = {
     directory: [
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
   };
@@ -367,7 +440,11 @@ test('it lists a finished task under done within the limit, behind a newer idle 
     wake: false,
   });
 
-  await writeStepCommit(ctx.context, finished, { next: 'wait', records: [], acknowledged: [] });
+  await writeStepCommit(ctx.context, finished, {
+    next: 'wait',
+    records: [],
+    acknowledged: await ctx.readUnreadSequences(finished),
+  });
 
   const idle = await claimTask(ctx.context, {
     holder: 'runner-a',
@@ -377,7 +454,11 @@ test('it lists a finished task under done within the limit, behind a newer idle 
 
   invariant(idle);
 
-  await writeStepCommit(ctx.context, idle, { next: 'wait', records: [], acknowledged: [] });
+  await writeStepCommit(ctx.context, idle, {
+    next: 'wait',
+    records: [],
+    acknowledged: await ctx.readUnreadSequences(idle),
+  });
 
   const tool = buildTasksListTool(ctx.context, messaging);
 
@@ -435,9 +516,27 @@ test.each([
 
     const tool = buildTasksListTool(ctx.context, {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'critic', name: 'Critic', brief: 'Checks plans.', isWokenByMessages: true },
-        { taskID: 'sorter', name: 'Sorter', brief: 'Sorts the mail.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'critic',
+          name: 'Critic',
+          brief: 'Checks plans.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'sorter',
+          name: 'Sorter',
+          brief: 'Sorts the mail.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
       ],
     });
 
@@ -475,9 +574,27 @@ test.each([
 
     const messaging = {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'critic', name: 'Critic', brief: 'Checks plans.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'critic',
+          name: 'Critic',
+          brief: 'Checks plans.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     };
@@ -510,8 +627,17 @@ test.each([
       wake: false,
     });
 
-    await writeStepCommit(ctx.context, planner, { next: 'wait', records: [], acknowledged: [] });
-    await writeStepCommit(ctx.context, critic, { next: 'wait', records: [], acknowledged: [] });
+    await writeStepCommit(ctx.context, planner, {
+      next: 'wait',
+      records: [],
+      acknowledged: await ctx.readUnreadSequences(planner),
+    });
+
+    await writeStepCommit(ctx.context, critic, {
+      next: 'wait',
+      records: [],
+      acknowledged: await ctx.readUnreadSequences(critic),
+    });
 
     const tool = buildTasksListTool(ctx.context, messaging);
 

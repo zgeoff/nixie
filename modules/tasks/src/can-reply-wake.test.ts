@@ -11,12 +11,19 @@ test.each([
     canReplyWake(
       {
         directory: [
-          { taskID: 'planner', name: 'Planner', brief: 'Plans.', isWokenByMessages: true },
+          {
+            taskID: 'planner',
+            name: 'Planner',
+            brief: 'Plans.',
+            isWokenByMessages: true,
+            speaker: 'plain_task',
+          },
           {
             taskID: 'memory-writer',
             name: 'Memory writer',
             brief: 'Saves.',
             isWokenByMessages: false,
+            speaker: 'plain_task',
           },
         ],
         hopLimit: 3,

@@ -6,10 +6,17 @@ test('it tells the receiver the held messages, its cause, and that its reply wak
     renderLimitedSummary(
       {
         directory: [
-          { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+          {
+            taskID: 'planner',
+            name: 'Planner',
+            brief: 'Plans the week.',
+            isWokenByMessages: true,
+            speaker: 'plain_task',
+          },
         ],
         hopLimit: 20,
         ownerName: 'Robin',
+        agentName: null,
       },
       { senderID: 'planner', count: 3, wake: { hop: 0, cause: { kind: 'owner' } } },
     ),
@@ -23,11 +30,24 @@ test('it tells the receiver its reply will not wake a sender at the limit', () =
     renderLimitedSummary(
       {
         directory: [
-          { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-          { taskID: 'critic', name: 'Critic', brief: 'Checks plans.', isWokenByMessages: true },
+          {
+            taskID: 'planner',
+            name: 'Planner',
+            brief: 'Plans the week.',
+            isWokenByMessages: true,
+            speaker: 'plain_task',
+          },
+          {
+            taskID: 'critic',
+            name: 'Critic',
+            brief: 'Checks plans.',
+            isWokenByMessages: true,
+            speaker: 'plain_task',
+          },
         ],
         hopLimit: 20,
         ownerName: 'Robin',
+        agentName: null,
       },
       {
         senderID: 'planner',
@@ -49,10 +69,17 @@ test.each([
     renderLimitedSummary(
       {
         directory: [
-          { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+          {
+            taskID: 'planner',
+            name: 'Planner',
+            brief: 'Plans the week.',
+            isWokenByMessages: true,
+            speaker: 'plain_task',
+          },
         ],
         hopLimit: 20,
         ownerName: 'Robin',
+        agentName: null,
       },
       { senderID: 'planner', count: 2, wake: { hop: 0, cause: { kind } } },
     ),

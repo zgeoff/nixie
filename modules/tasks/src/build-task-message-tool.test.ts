@@ -31,11 +31,24 @@ test('it sends the message and answers with its ID, its hop and that it woke the
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task',
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation',
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   });
 
   const outcome = await tool.run(
@@ -66,11 +79,24 @@ test('it tells the sender, in a note, why a message past the hop limit did not w
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task',
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation',
+      },
     ],
     hopLimit: 2,
     ownerName: 'Robin',
+    agentName: null,
   });
 
   const outcome = await tool.run(
@@ -106,16 +132,24 @@ test('it tells the sender of a question to a task on its own schedule that a rep
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task',
+      },
       {
         taskID: 'memory-writer',
         name: 'Memory writer',
         brief: 'Saves memory.',
         isWokenByMessages: false,
+        speaker: 'plain_task',
       },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   });
 
   const outcome = await tool.run(
@@ -151,11 +185,24 @@ test("it refuses on-behalf-of IDs that are not the owner's messages, naming them
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task',
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation',
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   });
 
   const outcome = await tool.run(
@@ -188,10 +235,17 @@ test('it refuses a message to a task the caller cannot message, pointing at task
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task',
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   });
 
   const outcome = await tool.run(
@@ -217,11 +271,24 @@ test('it refuses a call that comes from no step, and sends nothing', async () =>
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task',
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation',
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   });
 
   const outcome = await tool.run(
@@ -266,10 +333,17 @@ test("it sends the conversation's message to a started task, with no note for a 
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation',
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   });
 
   const outcome = await tool.run(
@@ -309,10 +383,17 @@ test("it writes only the task message for the conversation's message about an un
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation',
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   });
 
   await tool.run(
@@ -353,10 +434,17 @@ test.each([
 
     const tool = buildTaskMessageTool(ctx.context, {
       directory: [
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation',
+        },
       ],
       hopLimit: 20,
       ownerName: 'Robin',
+      agentName: null,
     });
 
     const outcome = await tool.run(
@@ -391,10 +479,17 @@ test('it sends no report to the starter of a task started with no report', async
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation',
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   });
 
   const outcome = await tool.run(
@@ -412,5 +507,5 @@ test('it sends no report to the starter of a task started with no report', async
     message: 'you were started to send Conversation no report, so nixie sent nothing',
   });
 
-  expect(sent).toStrictEqual([]);
+  expect(sent.map((entry) => entry.record.payload['kind'])).toStrictEqual(['request']);
 });
