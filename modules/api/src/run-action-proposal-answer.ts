@@ -1,3 +1,4 @@
+import type { LegacyCaller } from './answer-legacy-proposal';
 import { answerLegacyProposal } from './answer-legacy-proposal';
 import type { ProposalAPIContext } from './build-proposal-core-deps';
 import type { ActionProposalAnswer, ActionProposalResult } from './write-action-proposal-answer';
@@ -7,10 +8,14 @@ import type { ActionProposalAnswer, ActionProposalResult } from './write-action-
 export async function runActionProposalAnswer(
   context: ProposalAPIContext,
   request: ActionProposalAnswer,
+  caller?: LegacyCaller,
 ): Promise<ActionProposalResult> {
   const settlement = await answerLegacyProposal(
     context,
-    { runInForceSeed: () => Promise.resolve() },
+    {
+      runInForceSeed: () => Promise.resolve(),
+      ...(caller === undefined ? {} : { caller }),
+    },
     'action',
     {
       proposalID: request.proposalID,

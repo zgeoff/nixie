@@ -1,5 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import type { RuleContext, RuleProposalAnswer } from '@heynixie/definitions';
+import type { LegacyCaller } from './answer-legacy-proposal';
 import { answerLegacyProposal } from './answer-legacy-proposal';
 
 interface RuleAnswerErrorOptions {
@@ -14,8 +15,11 @@ export async function runRuleProposalAnswer(
   context: RuleContext,
   answer: RuleProposalAnswer,
   errors: RuleAnswerErrors,
+  caller?: LegacyCaller,
 ): Promise<{ readonly proposalID: string }> {
-  const settlement = await answerLegacyProposal(context, context, 'rule_change', {
+  const parts = caller === undefined ? context : { runInForceSeed: context.runInForceSeed, caller };
+
+  const settlement = await answerLegacyProposal(context, parts, 'rule_change', {
     proposalID: answer.proposalID,
     choice: answer.answer === 'approve' ? 'approve' : 'decline',
     ...(answer.answer === 'reject' ? { note: answer.reason } : {}),
