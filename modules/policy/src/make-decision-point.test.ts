@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { migrationsPlugin } from '@heynixie/db';
 import { buildPolicyCall } from './test-utils/build-policy-call';
 import { buildRuleEntry } from './test-utils/build-rule-entry';
 import {
@@ -366,6 +367,7 @@ test('it asks about test.send and allows actions.log in the release bundle, whic
     target: 'bun',
     naming: 'policy.js',
     define: { NIXIE_TEST_BUILD: 'false' },
+    plugins: [migrationsPlugin],
   });
 
   await writeFile(
