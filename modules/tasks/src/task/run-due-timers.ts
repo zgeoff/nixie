@@ -1,0 +1,77 @@
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { waitAtFaultPoint } from '../lease/wait-at-fault-point';
+import type { TasksContext, TasksTables } from '../types';
+import { timerFiredCodec } from './codec/timer-fired-codec';
+
+export async function runDueTimers(context: TasksContext): Promise<number> {
+  const due = await context.log.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('timers')
+    .select(['timer_id', 'task_id', 'due_at'])
+    .where('fired_at', 'is', null)
+    .where('withdrawn_sequence', 'is', null)
+    .where('due_at', '<=', context.clock.now())
+    .orderBy('due_at')
+    .execute();
+
+  const fired = { count: 0 };
+
+  for (const timer of due) {
+    const didFire = await writeTimerFired(context, timer);
+
+    fired.count += didFire ? 1 : 0;
+  }
+
+  return fired.count;
+}
+
+interface DueTimer {
+  readonly timer_id: string;
+  readonly task_id: string;
+  readonly due_at: number;
+}
+
+async function writeTimerFired(context: TasksContext, timer: DueTimer): Promise<boolean> {
+  const faultContext = { kind: 'task', id: timer.task_id } as const;
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('timer.fire.before', faultContext);
+  }
+
+  const didFire = await withWriteTransaction(context.log.writer, async (tx) => {
+    const pending = await tx
+      .$extendTables<TasksTables>()
+      .selectFrom('timers')
+      .select('timer_id')
+      .where('timer_id', '=', timer.timer_id)
+      .where('fired_at', 'is', null)
+      .where('withdrawn_sequence', 'is', null)
+      .executeTakeFirst();
+
+    if (pending === undefined) {
+      return false;
+    }
+
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: 'timer.fired',
+        definitions: context.definitions(),
+        thread: timer.task_id,
+        payload: timerFiredCodec.encode({
+          timerID: timer.timer_id,
+          taskID: timer.task_id,
+          dueAt: timer.due_at,
+          firedAt: context.clock.now(),
+        }),
+      },
+    ]);
+
+    return true;
+  });
+
+  if (NIXIE_TEST_BUILD && didFire) {
+    await waitAtFaultPoint('inbox.write.after', faultContext);
+  }
+
+  return didFire;
+}

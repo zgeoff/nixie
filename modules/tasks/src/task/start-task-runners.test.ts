@@ -1,0 +1,351 @@
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
+import { buildRecordedCommits } from '@heynixie/log/test-utils';
+import { waitForCondition } from '@heynixie/testing';
+import { writeStepCommit } from '../step/write-step-commit';
+import { seedConversationStep } from '../test-utils/seed-conversation-step';
+import { seedTask } from '../test-utils/seed-task';
+import { startTestTasks } from '../test-utils/start-test-tasks';
+import type { RunStep, StepErrored, StepResult, TasksTables } from '../types';
+import { createTask } from './create-task';
+import { claimTask } from './projection/claim-task';
+import { writeInboxRecords } from './projection/write-inbox-records';
+import { startTaskRunners } from './start-task-runners';
+
+async function setupTest() {
+  const tasks = await startTestTasks();
+
+  const db = tasks.writer.db.$extendTables<TasksTables>();
+
+  return { ...tasks, db };
+}
+
+test('it runs 3 steps at once by default', async () => {
+  const ctx = await setupTest();
+
+  const held = Promise.withResolvers<void>();
+
+  const running = new Set<string>();
+
+  await Promise.all(['a', 'b', 'c', 'd'].map((brief) => createTask(ctx.context, brief)));
+
+  const runners = startTaskRunners(ctx.context, {
+    runStep: async (input): Promise<StepResult> => {
+      running.add(input.taskID);
+
+      await held.promise;
+
+      return { next: 'done', records: [], acknowledged: [] };
+    },
+    onStepErrored: () => {},
+    onError: () => {},
+    logger: () => {},
+  });
+
+  onTestFinished(async () => {
+    held.resolve();
+
+    await runners.stop(0);
+  });
+
+  await waitForCondition(() => running.size === 3 && ctx.clock.countSleepers() === 4);
+
+  const waiting = await ctx.db
+    .selectFrom('tasks')
+    .select('task_id')
+    .where('state', '=', 'ready')
+    .execute();
+
+  expect(running.size).toBe(3);
+  expect(waiting).toHaveLength(1);
+});
+
+test('it runs a claimed step and commits its result', async () => {
+  const ctx = await setupTest();
+  const taskID = await createTask(ctx.context, 'tidy the inbox');
+
+  const runners = startTaskRunners(ctx.context, {
+    runStep: () => Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
+    onStepErrored: () => {},
+    onError: () => {},
+    logger: () => {},
+  });
+
+  onTestFinished(() => runners.stop(0));
+
+  await waitForCondition(async () => {
+    const task = await ctx.db
+      .selectFrom('tasks')
+      .select('state')
+      .where('task_id', '=', taskID)
+      .executeTakeFirstOrThrow();
+
+    return task.state === 'done';
+  });
+
+  expect(runners).toBeObject();
+});
+
+test('it runs a task created while every runner sleeps without waiting for the poll', async () => {
+  const ctx = await setupTest();
+
+  const ran = mock<RunStep>(() =>
+    Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
+  );
+
+  const runners = startTaskRunners(ctx.context, {
+    runStep: ran,
+    onStepErrored: () => {},
+    onError: () => {},
+    logger: () => {},
+  });
+
+  onTestFinished(() => runners.stop(0));
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 4);
+
+  const createdAt = ctx.clock.now();
+
+  const taskID = await createTask(ctx.context, 'water the ferns');
+
+  await waitForCondition(() => ran.mock.calls.length === 1);
+
+  expect(ran).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ taskID }));
+  expect(ctx.clock.now()).toBe(createdAt);
+});
+
+test('it stops waking on commits once stopped', async () => {
+  const ctx = await setupTest();
+
+  const ran = mock(() => {});
+
+  const runners = startTaskRunners(ctx.context, {
+    runStep: () => {
+      ran();
+
+      return Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] });
+    },
+    onStepErrored: () => {},
+    onError: () => {},
+    logger: () => {},
+  });
+
+  onTestFinished(() => runners.stop(0));
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 4);
+
+  await runners.stop(0);
+
+  await createTask(ctx.context, 'sweep the porch');
+
+  expect(ran).not.toHaveBeenCalled();
+});
+
+test('it removes its commit listener once stopped', async () => {
+  const ctx = await setupTest();
+
+  const recorded = buildRecordedCommits();
+
+  const runners = startTaskRunners(
+    {
+      ...ctx.context,
+      log: { ...ctx.context.log, writer: { ...ctx.context.log.writer, commits: recorded.commits } },
+    },
+    {
+      runStep: () => Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
+      onStepErrored: () => {},
+      onError: () => {},
+      logger: () => {},
+    },
+  );
+
+  await runners.stop(0);
+
+  expect(recorded.calls).toStrictEqual(['add commit', 'remove commit']);
+});
+
+test('it reports a step that throws once its error record commits', async () => {
+  const ctx = await setupTest();
+
+  const failure = new Error('the model profile is unreachable');
+
+  const onStepErrored = mock<(errored: StepErrored) => void>();
+
+  const taskID = await createTask(ctx.context, 'tidy the inbox');
+
+  const runners = startTaskRunners(ctx.context, {
+    runStep: () => Promise.reject(failure),
+    onStepErrored,
+    onError: () => {},
+    logger: () => {},
+  });
+
+  onTestFinished(() => runners.stop(0));
+
+  await waitForCondition(() => onStepErrored.mock.calls.length === 1);
+
+  const errored = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.step_errored'],
+  });
+
+  expect(errored).toHaveLength(1);
+
+  expect(onStepErrored.mock.calls).toStrictEqual([
+    [
+      {
+        taskID,
+        stepKey: `${taskID}:1`,
+        errors: 1,
+        errorLimit: 3,
+        nextState: 'ready',
+        retryAt: 1_030_000,
+        error: failure,
+      },
+    ],
+  ]);
+});
+
+test('it fires a due timer on its next poll', async () => {
+  const ctx = await setupTest();
+
+  await createTask(ctx.context, 'check back in a minute');
+
+  const claim = await claimTask(ctx.context, { holder: 'setup', leaseMs: 60_000 }).then(
+    (found) => found ?? Promise.reject(new Error('the setup claim found no task')),
+  );
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: 1_060_000 }],
+  });
+
+  const runners = startTaskRunners(ctx.context, {
+    runStep: () => Promise.resolve<StepResult>({ next: 'wait', records: [], acknowledged: [] }),
+    onStepErrored: () => {},
+    onError: () => {},
+    logger: () => {},
+  });
+
+  onTestFinished(() => runners.stop(0));
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 4);
+
+  ctx.clock.advance(60_000);
+
+  await waitForCondition(async () => {
+    const timer = await ctx.db.selectFrom('timers').select('fired_at').executeTakeFirstOrThrow();
+
+    return timer.fired_at === 1_060_000;
+  });
+
+  expect(ctx.clock.now()).toBe(1_060_000);
+});
+
+test('it runs a started task through the started step', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const ran = mock<RunStep>(() =>
+    Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
+  );
+
+  const runners = startTaskRunners(ctx.context, {
+    runStep: () => Promise.reject(new Error('the started task reached the other step')),
+    started: { runStep: ran, size: 1 },
+    onStepErrored: () => {},
+    onError: () => {},
+    logger: () => {},
+  });
+
+  onTestFinished(() => runners.stop(0));
+
+  await waitForCondition(() => ran.mock.calls.length === 1);
+
+  expect(ran).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ taskID }));
+});
+
+test('it claims a message to the conversation while every claim loop of the started tasks is busy', async () => {
+  const ctx = await setupTest();
+
+  const held = Promise.withResolvers<void>();
+
+  const starter = await seedConversationStep(ctx.context);
+
+  await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides.',
+  });
+
+  await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Moon phases',
+    brief: 'List the full moons.',
+  });
+
+  await writeStepCommit(ctx.context, starter.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [starter.messageSequence],
+  });
+
+  const started = new Set<string>();
+
+  // A step that left the message unread would leave the conversation ready, and it would run again.
+  const conversation = mock<RunStep>((input) =>
+    Promise.resolve<StepResult>({
+      next: 'wait',
+      records: [],
+      acknowledged: input.inbox.map((record) => record.sequence),
+    }),
+  );
+
+  const runners = startTaskRunners(ctx.context, {
+    runStep: conversation,
+    started: {
+      runStep: async (input) => {
+        started.add(input.taskID);
+
+        await held.promise;
+
+        return { next: 'wait', records: [], acknowledged: [] };
+      },
+      size: 2,
+    },
+    onStepErrored: () => {},
+    onError: () => {},
+    logger: () => {},
+  });
+
+  onTestFinished(async () => {
+    held.resolve();
+
+    await runners.stop(0);
+  });
+
+  await waitForCondition(() => started.size === 2);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      erasable: { text: 'Is it raining?' },
+    },
+  ]);
+
+  await waitForCondition(() => conversation.mock.calls.length === 1);
+
+  expect(conversation).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ taskID: 'conversation' }),
+  );
+});

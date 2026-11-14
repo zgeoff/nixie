@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant';
-import { claimLease } from '../claim-lease';
+import { claimLease } from '../lease/claim-lease';
 import type { Lease, LeaseKind, TasksContext } from '../types';
 
 export interface TestLeaseRequest {

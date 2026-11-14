@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readTaskSetup } from '../read-task-setup';
+import { readTaskSetup } from '../task/read-task-setup';
 import type { TasksTables } from '../types';
 import { seedClosedTask } from './seed-closed-task';
 import { seedConversationStep } from './seed-conversation-step';

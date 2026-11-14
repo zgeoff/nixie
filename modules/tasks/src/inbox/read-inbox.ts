@@ -1,0 +1,30 @@
+import type { LogRecord } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
+import type { TasksContext, TasksTables } from '../types';
+import { isInboxRecord } from '../utils/is-inbox-record';
+
+export async function readInbox(
+  context: Pick<TasksContext, 'log'>,
+  taskID: string,
+): Promise<readonly LogRecord[]> {
+  const task = await context.log.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('read_cursor')
+    .where('task_id', '=', taskID)
+    .executeTakeFirstOrThrow();
+
+  const inbox: LogRecord[] = [];
+  const cursor = { after: task.read_cursor, done: false };
+
+  while (!cursor.done) {
+    const page = await readRecords(context.log, { afterSequence: cursor.after, thread: taskID });
+
+    inbox.push(...page.map((entry) => entry.record).filter((record) => isInboxRecord(record)));
+
+    cursor.after = page.at(-1)?.record.sequence ?? cursor.after;
+    cursor.done = page.length === 0;
+  }
+
+  return inbox;
+}

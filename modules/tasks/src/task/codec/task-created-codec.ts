@@ -1,0 +1,17 @@
+import { defineRecordCodec } from '@heynixie/log';
+import { z } from 'zod';
+import { taskRunOptionsSchema } from '../../limit/task-run-options-schema';
+import { taskStateSchema } from '../../utils/task-state-schema';
+
+export const taskCreatedCodec = defineRecordCodec(
+  'task.created',
+  z.object({
+    taskID: z.string(),
+    isConversation: z.boolean(),
+    state: taskStateSchema,
+    startedBy: z.string().exactOptional(),
+    startStep: z.string().exactOptional(),
+    options: taskRunOptionsSchema.exactOptional(),
+    briefMessageID: z.string().exactOptional(),
+  }),
+);

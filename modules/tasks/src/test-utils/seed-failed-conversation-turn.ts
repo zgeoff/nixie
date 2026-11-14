@@ -1,9 +1,9 @@
 import invariant from 'tiny-invariant';
-import { claimTask } from '../claim-task';
-import { createConversationTask } from '../create-conversation-task';
+import { createConversationTask } from '../conversation/create-conversation-task';
+import { writeStepError } from '../step/write-step-error';
+import { claimTask } from '../task/projection/claim-task';
+import { writeInboxRecords } from '../task/projection/write-inbox-records';
 import type { TasksContext } from '../types';
-import { writeInboxRecords } from '../write-inbox-records';
-import { writeStepError } from '../write-step-error';
 
 export async function seedFailedConversationTurn(context: TasksContext): Promise<void> {
   await createConversationTask(context);

@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
-import { createTask } from '../create-task';
+import { createTask } from '../task/create-task';
+import { writeTaskControl } from '../task/write-task-control';
 import type { RunStep } from '../types';
-import { writeTaskControl } from '../write-task-control';
 import { runTaskSteps } from './run-task-steps';
 import { startTestTasks } from './start-test-tasks';
 

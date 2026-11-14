@@ -1,5 +1,5 @@
+import { writeTaskControl } from '../task/write-task-control';
 import type { TasksContext } from '../types';
-import { writeTaskControl } from '../write-task-control';
 import type { StartedTaskSeed } from './seed-task';
 import { seedTask } from './seed-task';
 

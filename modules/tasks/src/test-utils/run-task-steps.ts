@@ -1,6 +1,6 @@
-import { claimTask } from '../claim-task';
-import { runDueTimers } from '../run-due-timers';
-import { runTaskStep } from '../run-task-step';
+import { claimTask } from '../task/projection/claim-task';
+import { runDueTimers } from '../task/run-due-timers';
+import { runTaskStep } from '../task/run-task-step';
 import type { RunStep, TaskClaim, TasksContext, TasksTables } from '../types';
 
 export interface TaskStepsOptions {

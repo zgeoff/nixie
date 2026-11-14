@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { claimTask } from '../claim-task';
-import { createConversationTask } from '../create-conversation-task';
-import { createSystemTask } from '../create-system-task';
+import { createConversationTask } from '../conversation/create-conversation-task';
+import { createSystemTask } from '../task/create-system-task';
+import { claimTask } from '../task/projection/claim-task';
 import type { TasksTables } from '../types';
 import { startTestTasks } from './start-test-tasks';
 import { writeTestTaskMessage } from './write-test-task-message';

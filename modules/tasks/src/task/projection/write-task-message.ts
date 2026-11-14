@@ -1,0 +1,224 @@
+import { createShortID } from '@heynixie/db';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { Transaction } from 'kysely';
+import { sql } from 'kysely';
+import { z } from 'zod';
+import { writeInboxRecordsInTransaction } from '../../inbox/write-inbox-records-in-transaction';
+import { readLeasedStepHop } from '../../step/read-leased-step-hop';
+import type { TaskMessaging, TasksContext, TasksTables } from '../../types';
+import { parseStepRunID } from '../../utils/parse-step-run-id';
+import { taskMessageCodec } from '../../utils/task-message-codec';
+import { taskExchangeLimitedCodec } from '../codec/task-exchange-limited-codec';
+import type {
+  TaskMessageFacts,
+  TaskMessageHold,
+  TaskMessageRefusal,
+  TaskMessageRequest,
+} from '../message/plan-task-message';
+import { planTaskMessage } from '../message/plan-task-message';
+import { toEventID } from '../to-event-id';
+
+export type TaskMessageOutcome =
+  | {
+      readonly status: 'sent';
+      readonly messageID: string;
+      readonly hop: number;
+      readonly woke: boolean;
+      readonly hold: TaskMessageHold;
+    }
+  | { readonly status: 'refused'; readonly refusal: TaskMessageRefusal };
+
+export interface TaskMessageWrite extends TaskMessageRequest {
+  readonly stepRunID: string | null;
+}
+
+export function writeTaskMessage(
+  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
+  messaging: Pick<TaskMessaging, 'directory' | 'hopLimit'>,
+  request: TaskMessageWrite,
+): Promise<TaskMessageOutcome> {
+  return withWriteTransaction(context.log.writer, async (tx) => {
+    const step = request.stepRunID === null ? null : parseStepRunID(request.stepRunID);
+
+    const senderHop =
+      step === null ? null : await readLeasedStepHop(tx, request.from, step, context.clock.now());
+
+    if (step === null || senderHop === null) {
+      return { status: 'refused', refusal: { reason: 'stale_step' } };
+    }
+
+    const facts = await readFacts(tx, request, senderHop);
+
+    const plan = planTaskMessage(request, facts, messaging);
+
+    if (plan.status === 'refused') {
+      return plan;
+    }
+
+    const messageID = createShortID();
+    const definitions = context.definitions();
+
+    await writeInboxRecordsInTransaction(tx, context, [
+      {
+        kind: 'task_message',
+        definitions,
+        thread: request.to,
+        payload: taskMessageCodec.encode({
+          messageID,
+          from: request.from,
+          to: request.to,
+          kind: request.kind,
+          replyTo: request.replyTo,
+          onBehalfOf: [...plan.onBehalfOf],
+          hop: plan.hop,
+          hopLimit: messaging.hopLimit,
+          wake: request.wake,
+          woke: plan.woke,
+          opensWait: plan.opensWait,
+          source: `task:${request.from}`,
+        }),
+        erasable: { body: request.body },
+      },
+    ]);
+
+    const isNoticeDue =
+      plan.hold === 'hop_limit' && !(await probeNotice(tx, request, step.stepKey));
+
+    if (isNoticeDue) {
+      await writeRecordsInTransaction(tx, context.log, [
+        {
+          kind: 'task.exchange_limited',
+          definitions,
+          thread: request.from,
+          payload: taskExchangeLimitedCodec.encode({
+            messageID,
+            stepKey: step.stepKey,
+            from: request.from,
+            to: request.to,
+            hops: plan.hop - 1,
+            waiting: await readOpenWait(tx, request.from, request.to),
+          }),
+        },
+      ]);
+    }
+
+    return { status: 'sent', messageID, hop: plan.hop, woke: plan.woke, hold: plan.hold };
+  });
+}
+
+async function readFacts(
+  tx: Transaction<unknown>,
+  request: TaskMessageRequest,
+  senderHop: number,
+): Promise<TaskMessageFacts> {
+  const db = tx.$extendTables<TasksTables>();
+
+  const receiver = await db
+    .selectFrom('tasks')
+    .select('state')
+    .where('task_id', '=', request.to)
+    .executeTakeFirst();
+
+  const reply =
+    request.replyTo === null
+      ? undefined
+      : await db
+          .selectFrom('task_messages')
+          .select('message_id')
+          .where('message_id', '=', request.replyTo)
+          .where('to_task', '=', request.from)
+          .executeTakeFirst();
+
+  const isCreatedBriefReply =
+    request.replyTo === null || reply !== undefined
+      ? false
+      : await probeCreatedBriefReply(db, request);
+
+  const sequences = request.onBehalfOf
+    .map((eventID) => Number(toEventID(eventID)))
+    .filter((sequence) => Number.isSafeInteger(sequence));
+
+  const owned =
+    sequences.length === 0
+      ? []
+      : await db
+          .selectFrom('records')
+          .select('sequence')
+          .where('sequence', 'in', sequences)
+          .where('kind', '=', 'owner_message')
+          .execute();
+
+  return {
+    senderHop,
+    receiverState: receiver?.state ?? null,
+    isReplyToKnown: reply !== undefined || isCreatedBriefReply,
+    ownerMessageIDs: new Set(owned.map((row) => String(row.sequence))),
+  };
+}
+
+// A task that the release before started has no brief record, so its brief's ID is its own task
+// ID. Remove this when no open task lacks a briefMessageID.
+async function probeCreatedBriefReply(
+  db: Transaction<TasksTables>,
+  request: TaskMessageRequest,
+): Promise<boolean> {
+  if (request.replyTo !== request.from) {
+    return false;
+  }
+
+  const sender = await db
+    .selectFrom('tasks')
+    .innerJoin('records', 'records.sequence', 'tasks.created_sequence')
+    .select([
+      'tasks.started_by',
+      sql`json_extract(records.payload, '$.briefMessageID')`.as('brief_message_id'),
+    ])
+    .where('tasks.task_id', '=', request.from)
+    .executeTakeFirst();
+
+  return (
+    sender?.started_by === request.to &&
+    z.string().nullable().parse(sender.brief_message_id) === null
+  );
+}
+
+async function probeNotice(
+  tx: Transaction<unknown>,
+  request: TaskMessageRequest,
+  stepKey: string,
+): Promise<boolean> {
+  const notice = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('records')
+    .select('sequence')
+    .where('kind', '=', 'task.exchange_limited')
+    .where('thread', '=', request.from)
+    .where(sql`json_extract(payload, '$.stepKey')`, '=', stepKey)
+    .where(sql`json_extract(payload, '$.to')`, '=', request.to)
+    .executeTakeFirst();
+
+  return notice !== undefined;
+}
+
+async function readOpenWait(
+  tx: Transaction<unknown>,
+  first: string,
+  second: string,
+): Promise<{ readonly taskID: string; readonly onTaskID: string } | null> {
+  const wait = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('task_messages')
+    .select(['from_task', 'to_task'])
+    .where('wait_state', '=', 'open')
+    .where((eb) =>
+      eb.or([
+        eb.and([eb('from_task', '=', first), eb('to_task', '=', second)]),
+        eb.and([eb('from_task', '=', second), eb('to_task', '=', first)]),
+      ]),
+    )
+    .orderBy('sent_sequence', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+
+  return wait === undefined ? null : { taskID: wait.from_task, onTaskID: wait.to_task };
+}

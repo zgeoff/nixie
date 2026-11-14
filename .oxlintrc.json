@@ -30,13 +30,7 @@
     "zgeoff/feature-folders": [
       "error",
       {
-        "pending": [
-          "apps/server",
-          "apps/web",
-          "modules/memory",
-          "modules/sessions",
-          "modules/tasks"
-        ]
+        "pending": ["apps/server", "apps/web", "modules/memory", "modules/sessions"]
       }
     ],
     // the import boundaries: each outside system has one package that may import it, and every
