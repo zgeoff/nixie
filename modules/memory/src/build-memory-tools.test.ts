@@ -1,4 +1,6 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
+import { buildShortIDFromUUID } from '@heynixie/db';
+import type { JSONObject } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
@@ -256,11 +258,18 @@ test('it returns a proposal with the photo sentence for a fact from an image of 
     buildMockToolContext(),
   );
 
+  const [proposal] = await ctx.memory.store.proposals.listPending();
+
+  invariant(proposal);
+
   expect(outcome).toStrictEqual({
     status: 'ok',
+    hidden: {
+      uuids: { [buildShortIDFromUUID(proposal.proposalID)]: proposal.proposalID },
+    },
     result: {
       status: 'proposed',
-      proposalID: expect.toBeString(),
+      proposalID: buildShortIDFromUUID(proposal.proposalID),
       reason:
         'from_photo: Saved as a proposal for the owner to review. It comes from a photo, and a memory from a photo waits for their review.',
       merged: false,
@@ -1305,3 +1314,62 @@ test.each([
 
   expect(check).toMatchObject({ isValid: false });
 });
+
+test.each([
+  ['memory.remember', { text: 'Keeps a brass compass' }],
+  ['memory.edit', { version: 1, text: 'Keeps a silver compass' }],
+  ['memory.retire', { version: 1 }],
+  ['memory.pin', { version: 1 }],
+])(
+  'it shows the short ID of the proposal that %s makes, as memory.pending shows it, and hides its UUID',
+  async (name, input) => {
+    const ctx = await setupTest();
+
+    const item = await ctx.memory.store.remember({
+      text: 'Keeps a copper compass',
+      provenance: {
+        origin: 'owner',
+        source: 'owner',
+        taskID: null,
+        proposalID: null,
+        checks: null,
+      },
+    });
+
+    const call = (tool: string, toolInput: JSONObject) =>
+      runToolCall(
+        { tool, input: toolInput, toolUseID: null },
+        {
+          runID: 'run-1',
+          thread: 'conversation',
+          tools: [tool],
+          model: { model: 'test-model', profile: 'standard' },
+        },
+        ctx.toolCallOptions,
+      );
+
+    const writeInput = name === 'memory.remember' ? input : { itemID: item.itemID, ...input };
+
+    const written = await call(name, writeInput);
+    const pending = await ctx.memory.store.proposals.listPending();
+
+    const [proposal] = pending;
+
+    invariant(proposal);
+
+    const shortID = buildShortIDFromUUID(proposal.proposalID);
+
+    const listed = await call('memory.pending', {});
+    const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+    expect(written.structuredContent).toMatchObject({ status: 'proposed', proposalID: shortID });
+    expect(listed.structuredContent).toMatchObject({ proposals: [{ proposalID: shortID }] });
+
+    expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
+      erasable: {
+        status: 'readable',
+        fields: { hidden: { uuids: { [shortID]: proposal.proposalID } } },
+      },
+    });
+  },
+);

@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
+import { buildShortIDFromUUID } from '@heynixie/db';
 import { buildTestClock } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { buildEditTool } from './build-edit-tool';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
@@ -78,11 +80,18 @@ test.each(['conversation', 'task-1'])(
       .where('item_id', '=', item.itemID)
       .executeTakeFirstOrThrow();
 
+    const [proposal] = await memory.store.proposals.listPending();
+
+    invariant(proposal);
+
     expect(outcome).toStrictEqual({
       status: 'ok',
+      hidden: {
+        uuids: { [buildShortIDFromUUID(proposal.proposalID)]: proposal.proposalID },
+      },
       result: {
         status: 'proposed',
-        proposalID: expect.toBeString(),
+        proposalID: buildShortIDFromUUID(proposal.proposalID),
         reason:
           'subject_change: Saved as a proposal for the owner to review. It changes whose fact the item is, and every subject change waits for their review.',
         merged: false,
@@ -186,11 +195,18 @@ test('it proposes an edit with no quote when your allow rule names only memory.r
     buildMockToolContext(),
   );
 
+  const [proposal] = await memory.store.proposals.listPending();
+
+  invariant(proposal);
+
   expect(outcome).toStrictEqual({
     status: 'ok',
+    hidden: {
+      uuids: { [buildShortIDFromUUID(proposal.proposalID)]: proposal.proposalID },
+    },
     result: {
       status: 'proposed',
-      proposalID: expect.toBeString(),
+      proposalID: buildShortIDFromUUID(proposal.proposalID),
       reason:
         "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or neither the owner's last 20 messages nor the message its eventID names contains it.",
       merged: false,

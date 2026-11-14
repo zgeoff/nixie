@@ -1,3 +1,4 @@
+import { buildShortIDFromUUID } from '@heynixie/db';
 import type { Log } from '@heynixie/log';
 import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/sessions';
 import type { MemoryTables, ProposalOrigin } from './types';
@@ -33,7 +34,7 @@ export function buildProposalMergeKind(log: Pick<Log, 'writer'>): EventKind<Prop
           ? (settings.ownerName ?? 'The owner')
           : proposerWords[detail.origin];
 
-      return `${proposer} proposed the same memory again; it merged into your pending memory proposal ${detail.proposalID}, which still waits for ${owner}'s review.`;
+      return `${proposer} proposed the same memory again; it merged into your pending memory proposal ${buildShortIDFromUUID(detail.proposalID)}, which still waits for ${owner}'s review.`;
     },
   };
 }

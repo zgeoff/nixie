@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildShortIDFromUUID } from '@heynixie/db';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
 import { buildTestClock } from '@heynixie/testing';
@@ -447,7 +448,7 @@ test('it leaves items a forget began out before the cap, so a later event still 
 
   expect(note?.split('\n').slice(1)).toStrictEqual([
     expect.toEndWith(
-      ` · Avery approved your memory proposal ${proposal.proposalID}: "Avery has two cats."`,
+      ` · Avery approved your memory proposal ${buildShortIDFromUUID(proposal.proposalID)}: "Avery has two cats."`,
     ),
   ]);
 });

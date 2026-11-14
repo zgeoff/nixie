@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildShortIDFromUUID } from '@heynixie/db';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -954,7 +955,7 @@ test('it shows the conversation your reason for a proposal you rejected in the w
   expect(ctx.guest.turns.at(-1)?.input).toMatchObject([
     {
       text: expect.toInclude(
-        `rejected your memory proposal ${proposal.proposalID}. Reason: "only on weekends, not every day".`,
+        `rejected your memory proposal ${buildShortIDFromUUID(proposal.proposalID)}. Reason: "only on weekends, not every day".`,
       ),
     },
   ]);

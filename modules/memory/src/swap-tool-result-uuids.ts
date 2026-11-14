@@ -1,10 +1,14 @@
+import { buildShortIDFromUUID } from '@heynixie/db';
 import { isRecordObject } from './is-record-object';
 import { isUUIDShaped } from './is-uuid-shaped';
 import type { ShortIDKind, ShortIDLookup } from './swapped-keys';
 import { swappedKeys } from './swapped-keys';
 
-// A stored result of an earlier release can hold the UUID of a moment, an item or a change. The
-// model reads its short ID instead, and reads no key at all when no live row gives one.
+// A stored result of an earlier release can hold the UUID of a moment, an item, a change or a
+// proposal. The model reads its short ID instead, and reads no key at all when no live row gives one.
+// A proposal's short ID derives from its UUID, so it needs no row.
+const proposalIDKey = 'proposalID';
+
 export function swapToolResultUUIDs(result: unknown, lookup: ShortIDLookup): unknown {
   if (Array.isArray(result)) {
     return result.map((element) => swapToolResultUUIDs(element, lookup));
@@ -17,6 +21,10 @@ export function swapToolResultUUIDs(result: unknown, lookup: ShortIDLookup): unk
   // fromEntries defines each field as an own property, so a field named __proto__ survives.
   return Object.fromEntries(
     Object.entries(result).flatMap(([key, value]): [string, unknown][] => {
+      if (key === proposalIDKey && isUUIDShaped(value)) {
+        return [[key, buildShortIDFromUUID(value.toLowerCase())]];
+      }
+
       const rule = Object.hasOwn(swappedKeys, key) ? swappedKeys[key] : undefined;
 
       if (rule === undefined) {
