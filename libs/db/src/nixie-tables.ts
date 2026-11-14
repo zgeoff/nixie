@@ -477,6 +477,18 @@ export interface NixieTables {
     readonly wait_state: string;
     readonly sent_sequence: number;
   };
+  readonly task_runs: {
+    readonly run_id: string;
+    readonly task_id: string;
+    readonly opened_sequence: number;
+    readonly started_at: number;
+    readonly definition_id: string | null;
+    readonly opened: string;
+    readonly report_id: string | null;
+    readonly ended_sequence: number | null;
+    readonly ended_at: number | null;
+    readonly ended: string | null;
+  };
   readonly tasks: {
     readonly task_id: string;
     readonly is_conversation: number;
