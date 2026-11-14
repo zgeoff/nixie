@@ -63,8 +63,8 @@ test('it answers one turn from the main bundle in a folder with no node_modules'
     tools: { url: tools.config.url, token: 'imp-placeholder' },
   });
 
-  guest.stdin.write(encodeFrame(encodeTurnFrame(turn)));
-  guest.stdin.end();
+  await guest.stdin.write(encodeFrame(encodeTurnFrame(turn)));
+  await guest.stdin.end();
 
   const [stdout, exitCode] = await Promise.all([new Response(guest.stdout).bytes(), guest.exited]);
 
@@ -100,8 +100,8 @@ test('it answers one check from the check bundle in a folder with no node_module
 
   const bytes = new TextEncoder().encode(JSON.stringify(request));
 
-  guest.stdin.write(encodeFrame(bytes));
-  guest.stdin.end();
+  await guest.stdin.write(encodeFrame(bytes));
+  await guest.stdin.end();
 
   const stdout = await new Response(guest.stdout).bytes();
 
