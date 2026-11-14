@@ -1,8 +1,9 @@
 /* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
 import { expect, test } from 'bun:test';
 import { removeSummaryKeys } from '@heynixie/compaction';
-import { writeRecords } from '@heynixie/log';
+import { readRecordAttachments, writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { readMomentSpanPage } from './read-moment-span-page';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -345,16 +346,28 @@ test('it lists no image of an owner message that was forgotten', async () => {
 test('it lists the images of a readable owner message whose attachments are unreadable', async () => {
   const ctx = await setupTest();
 
-  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
-    thread: 'conversation',
-    text: 'one shelf photo',
-    spans: [],
-    images: ['image/png'],
-  });
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'owner',
+      payload: { images: [{ mediaType: 'image/png' }] },
+      erasable: { text: 'one shelf photo', spans: [] },
+      attachments: [new TextEncoder().encode('shelf-photo')],
+    },
+  ]);
 
-  const entry = await ctx.readOnlyEntry(sequence, ctx.memory.deploymentKey);
+  invariant(message);
 
-  expect(entry.images).toStrictEqual([{ n: 1, mediaType: 'image/png' }]);
+  await sql`drop trigger record_attachments_refuse_update;
+    update record_attachments set sealed = randomblob(64)`.execute(ctx.memory.writer.db);
+
+  const attachments = await readRecordAttachments(ctx.memory.log, [message.sequence]);
+  const entry = await ctx.readOnlyEntry(message.sequence, ctx.memory.deploymentKey);
+
+  expect(attachments.get(message.sequence)).toStrictEqual({ status: 'unreadable' });
+  expect([entry.isGap, entry.images]).toStrictEqual([false, [{ n: 1, mediaType: 'image/png' }]]);
 });
 
 test('it lists no image of a record that is not an owner message', async () => {
