@@ -231,7 +231,7 @@ test('it opens a new session with a pinned item and the line that says where it 
 
   expect(turn.input[0]?.text.replace(/ v1 · \d{1,2} \w{3} · /u, ' v1 · <day> · ')).toMatch(
     new RegExp(
-      String.raw`^<system-message type="pinned-memory" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\nAbout the owner:\n- Goes by Sam\n  ${shortID} v1 · <day> · the owner said this\n<\/system-message id="\k<blockID>">\n\n<system-message type="status"`,
+      String.raw`^<system-message type="status" id="[\da-f]{12}" at="[^"]+">\n[\s\S]*?<\/system-message id="[\da-f]{12}">\n\n<system-message type="pinned-memory" id="(?<blockID>[\da-f]{12})" at="[^"]+">\n[^\n]+\nAbout the owner:\n- Goes by Sam\n  ${shortID} v1 · <day> · the owner said this\n<\/system-message id="\k<blockID>">\n\n`,
       'u',
     ),
   );

@@ -12,7 +12,7 @@ async function setupTest() {
   return { tasks: await startTestTasks() };
 }
 
-test('it opens a first session with the pinned memory and the status, in that order, and no summary or recent turns', async () => {
+test('it opens a first session with the status and the pinned memory, in that order, and no summary or recent turns', async () => {
   const ctx = await setupTest();
 
   const opening = await readSessionOpening(ctx.tasks.context, {
@@ -34,9 +34,9 @@ test('it opens a first session with the pinned memory and the status, in that or
     [...opening.blocks.join('\n').matchAll(/<system-message type="(?<type>[a-z-]+)"/gu)].map(
       (match) => match.groups?.['type'],
     ),
-  ).toStrictEqual(['pinned-memory', 'status']);
+  ).toStrictEqual(['status', 'pinned-memory']);
 
-  expect(opening.blocks.at(1)).toInclude(
+  expect(opening.blocks.at(0)).toInclude(
     '- Start: a new session. Earlier history is in the event log.\n- Model: claude-test-1\n',
   );
 
@@ -54,7 +54,7 @@ test('it opens a first session with the pinned memory and the status, in that or
   });
 });
 
-test('it opens a rebuild with no summary with the pinned memory, the status and the recent turns, in that order', async () => {
+test('it opens a rebuild with no summary with the status, the pinned memory and the recent turns, in that order', async () => {
   const ctx = await setupTest();
 
   const [asked] = await writeRecords(ctx.tasks.context.log, [
@@ -91,9 +91,9 @@ test('it opens a rebuild with no summary with the pinned memory, the status and 
     [...opening.blocks.join('\n').matchAll(/<system-message type="(?<type>[a-z-]+)"/gu)].map(
       (match) => match.groups?.['type'],
     ),
-  ).toStrictEqual(['pinned-memory', 'status', 'recent-turns']);
+  ).toStrictEqual(['status', 'pinned-memory', 'recent-turns']);
 
-  expect(opening.blocks.at(1)).toInclude(
+  expect(opening.blocks.at(0)).toInclude(
     '- Start: a rebuild, because the earlier session was lost. Earlier history is in the event log.\n',
   );
 
@@ -205,9 +205,9 @@ test('it opens a rebuild after a forget erased the summary with the status that 
     [...opening.blocks.join('\n').matchAll(/<system-message type="(?<type>[a-z-]+)"/gu)].map(
       (match) => match.groups?.['type'],
     ),
-  ).toStrictEqual(['pinned-memory', 'status', 'recent-turns']);
+  ).toStrictEqual(['status', 'pinned-memory', 'recent-turns']);
 
-  expect(opening.blocks.at(1)).toInclude(
+  expect(opening.blocks.at(0)).toInclude(
     '- Start: a rebuild after a forget. The forget erased the summary of earlier sessions, so the gap is deliberate. Earlier history is in the event log.\n',
   );
 
@@ -259,7 +259,7 @@ test('it opens with the newest readable summary in its slot and only the turns a
     [...opening.blocks.join('\n').matchAll(/<system-message type="(?<type>[a-z-]+)"/gu)].map(
       (match) => match.groups?.['type'],
     ),
-  ).toStrictEqual(['pinned-memory', 'status', 'summary', 'recent-turns']);
+  ).toStrictEqual(['status', 'pinned-memory', 'summary', 'recent-turns']);
 
   expect(opening.blocks.at(2)).toInclude('\nThey asked after a parcel.\n');
   expect(opening.blocks.at(3)).toInclude('] owner: It came.');
@@ -697,7 +697,7 @@ test('it gives the same opening for two rebuilds from one log, with the clock, t
 
   expect(first.record).toMatchObject({ kind: 'rebuild', reason: null, lostSessionID: null });
 
-  expect(first.blocks.at(1)).toInclude(
+  expect(first.blocks.at(0)).toInclude(
     'Start: a rebuild, because the earlier session was not kept.',
   );
 });

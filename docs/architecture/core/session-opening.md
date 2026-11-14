@@ -22,15 +22,15 @@ A new session opens with six slots, from what defines the model to the current t
    [skill pin](./skills.md#the-pin) moves, or when a restart changes the
    [catalog's cap](./skills.md#the-catalog). Between those changes it stays the stable head of the
    cached prefix.
-2. **Pinned memory.** The pinned core as it stands when the session opens, each item with the line
+2. **Status.** A readout taken when the session opens.
+3. **Pinned memory.** The pinned core as it stands when the session opens, each item with the line
    that says where it came from, or a line that says nothing is pinned.
-3. **Status.** A readout taken when the session opens.
 4. **Summary.** The newest summary that is still readable.
 5. **Recent turns.** The user's messages and the replies after that summary, with the events over
    the same span of the log, memory changes included.
 6. **The current turn.** The retrieved items, the turn's own notes and the user's messages.
 
-Slots 2 to 5 render as system messages, of types `pinned-memory`, `status`, `summary` and
+Slots 2 to 5 render as system messages, of types `status`, `pinned-memory`, `summary` and
 `recent-turns`, before the current turn's blocks in the session's first user message. Each turn
 resumes on a fork that copies the whole history, so the first message needs no store of its own. A
 pin therefore leaves the system prompt and the cached prefix of the whole history as they were. A
@@ -45,9 +45,9 @@ closes it, and the session after it opens with the whole pinned core again.
 
 The builder reads the newest summary that is still readable, then the thread's messages and replies
 after the sequence that summary covers, newest back to the rebuild budget. That one read gives every
-start its slots. The first session finds no summary and no turns, so it opens with the pinned memory
-and the status alone. A rebuild after a lost or a full session, or after a persona change, finds the
-turns after the newest summary. A forget erases every summary, so a rebuild after a forget finds
+start its slots. The first session finds no summary and no turns, so it opens with the status and
+the pinned memory alone. A rebuild after a lost or a full session, or after a persona change, finds
+the turns after the newest summary. A forget erases every summary, so a rebuild after a forget finds
 none and reads turns back to the budget. A session that opens after a compaction finds a summary
 that covers every turn, so its slot 5 is empty.
 
@@ -78,7 +78,7 @@ recent turns, not the time since the last turn.
 
 A replayed event follows the events block's rules, so an approval quotes its version through a
 recall of that version alone, and an item a forget began never returns through the replay. The
-pinned-core change note is never replayed, because slot 2 renders the current core. A session with
+pinned-core change note is never replayed, because slot 3 renders the current core. A session with
 no recent turn replays nothing.
 
 ## Status
@@ -107,11 +107,11 @@ time or a count, so the opening record holds them with no free text.
 ## The brief
 
 A started task's opening holds its brief as a `<task-message>` envelope, placed after the status and
-before the summary. A started task's opening reads the status before the memory blocks. The brief
-shows there when no earlier session read it and the turn's inbox does not hold it, and it shows
-again in every rebuilt session, so the task never loses what it is for. A brief the turn's batch
-already holds renders there only. A task that started on the release before the brief became a
-message has its brief in its creation record, and its first session renders it from there.
+before the summary. The brief shows there when no earlier session read it and the turn's inbox does
+not hold it, and it shows again in every rebuilt session, so the task never loses what it is for. A
+brief the turn's batch already holds renders there only. A task that started on the release before
+the brief became a message has its brief in its creation record, and its first session renders it
+from there.
 
 ## The opening record
 

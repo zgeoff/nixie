@@ -83,9 +83,9 @@ memory:
 
 ### Where the block sits
 
-- Every session opening, the conversation's and a task's, holds `pinned-memory`, `memory-index`,
-  `status`, `summary` and `recent-turns`, in that order: the built order of `readSessionOpening`
-  with the index after the pinned core. nixie omits an empty block.
+- Every session opening, the conversation's and a task's, holds `status`, `pinned-memory`,
+  `memory-index`, `summary` and `recent-turns`, in that order, with the index after the pinned core.
+  nixie omits an empty block.
 - A task with `memory: none` gets no memory block, and the sessions module calls no `readIndex` for
   it.
 - The blocks of a later turn keep their built order.

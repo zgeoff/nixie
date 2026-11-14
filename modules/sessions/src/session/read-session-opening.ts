@@ -113,12 +113,9 @@ export async function readSessionOpening(
     mint,
   );
 
-  // A started task reads its status first, then its memory, then its brief. The conversation has no
-  // brief and keeps the order of its opening, which puts the pinned memory before the status.
-  const readout = query.brief === null ? [memoryBlock, statusBlock] : [statusBlock, memoryBlock];
-
   const blocks = [
-    ...readout,
+    statusBlock,
+    memoryBlock,
     brief.pinned === null
       ? null
       : renderBriefEnvelope(brief.pinned, query.times, query.messaging, mint),
