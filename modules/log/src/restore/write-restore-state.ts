@@ -25,7 +25,10 @@ export async function writeRestoreState(
   if (next.state === 'none') {
     await files.removeFile(marker);
   } else if (next.state === 'replacing') {
+    // A restore run again over holding truncates the payload, and only a sync of the file itself
+    // keeps a power loss from bringing the payload back beside a half-moved pair.
     await files.writeFile(marker, '');
+    await files.writeFileToDisk(marker);
   } else {
     await writeHoldingMarker(files, marker, next.pending);
   }

@@ -136,6 +136,32 @@ test('it moves from holding to replacing', async () => {
   expect(state).toStrictEqual({ state: 'replacing' });
 });
 
+test('it fails before a restore moves on when the emptied holding marker cannot reach the disk', async () => {
+  const ctx = await setupTest();
+
+  const pending = {
+    version: 1,
+    recoveryID: 'recovery-a',
+    restoredAt: 2000,
+    backupTakenAt: 1000,
+  } as const;
+
+  await writeFile(join(ctx.dataDir, 'restore-incomplete'), JSON.stringify(pending));
+
+  const write = writeRestoreState(
+    {
+      ...localDataStorage.files,
+      writeFileToDisk: () => Promise.reject(new Error('EIO: i/o error, fsync')),
+    },
+    ctx.dataDir,
+    { state: 'replacing' },
+  );
+
+  await write.catch(() => {});
+
+  expect(write).rejects.toThrowWithMessage(Error, 'EIO: i/o error, fsync');
+});
+
 test('it moves from holding to none', async () => {
   const ctx = await setupTest();
 
