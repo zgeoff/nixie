@@ -1,52 +1,62 @@
-export type { ActionProposalFacts, ActionProposalInput } from './build-action-proposal-input';
-export { buildActionProposalInput } from './build-action-proposal-input';
-export type { ConsentFacts, ConsentOptions } from './check-consent';
-export { applyEffectOverride } from './apply-effect-override';
-export type { EffectOverrideResult } from './apply-effect-override';
-export { checkConsent, consentCheckerTimeoutMs } from './check-consent';
-export { consentCheckerPrompt } from './consent-checker-prompt';
-export { actionAnsweredCodec } from './action-answered-codec';
-export { actionLapsedCodec } from './action-lapsed-codec';
-export { actionProposedCodec } from './action-proposed-codec';
-export { actionProposalLapseMs } from './action-proposal-lapse-ms';
-export type { PendingActionProposal } from './read-pending-action-proposals';
-export { readPendingActionProposals } from './read-pending-action-proposals';
-export type { ActionProposalState } from './read-action-proposals';
-export { readActionProposals } from './read-action-proposals';
-export { writeActionProposalLapses } from './write-action-proposal-lapses';
-export { knownContactsProjection } from './known-contacts-projection';
-export type { KnownContactEntry } from './read-known-contacts';
-export { readKnownContactIDs, readKnownContacts } from './read-known-contacts';
-export type { ContactContext, ContactMark, ContactMarkResult } from './write-contact-marked';
-export { writeContactMarked } from './write-contact-marked';
-export { writeContactUnmarked } from './write-contact-unmarked';
-export { effectNames } from './effect-names';
-export { getFixedRules } from './get-fixed-rules';
-export type { DecisionPointOptions } from './make-decision-point';
-export { makeDecisionPoint } from './make-decision-point';
+export type {
+  ActionProposalFacts,
+  ActionProposalInput,
+} from './action/build-action-proposal-input';
+
+export { buildActionProposalInput } from './action/build-action-proposal-input';
+export type { ConsentFacts, ConsentOptions } from './consent/check-consent';
+export { applyEffectOverride } from './effect/apply-effect-override';
+export type { EffectOverrideResult } from './effect/apply-effect-override';
+export { checkConsent, consentCheckerTimeoutMs } from './consent/check-consent';
+export { consentCheckerPrompt } from './consent/consent-checker-prompt';
+export { actionAnsweredCodec } from './action/action-answered-codec';
+export { actionLapsedCodec } from './action/action-lapsed-codec';
+export { actionProposedCodec } from './action/action-proposed-codec';
+export { actionProposalLapseMs } from './action/action-proposal-lapse-ms';
+export type { PendingActionProposal } from './action/read-pending-action-proposals';
+export { readPendingActionProposals } from './action/read-pending-action-proposals';
+export type { ActionProposalState } from './action/read-action-proposals';
+export { readActionProposals } from './action/read-action-proposals';
+export { writeActionProposalLapses } from './action/write-action-proposal-lapses';
+export { knownContactsProjection } from './contact/known-contacts-projection';
+export type { KnownContactEntry } from './contact/read-known-contacts';
+export { readKnownContactIDs, readKnownContacts } from './contact/read-known-contacts';
+
+export type {
+  ContactContext,
+  ContactMark,
+  ContactMarkResult,
+} from './contact/write-contact-marked';
+
+export { writeContactMarked } from './contact/write-contact-marked';
+export { writeContactUnmarked } from './contact/write-contact-unmarked';
+export { effectNames } from './utils/effect-names';
+export { getFixedRules } from './rule/get-fixed-rules';
+export type { DecisionPointOptions } from './rule/make-decision-point';
+export { makeDecisionPoint } from './rule/make-decision-point';
 
 export {
   decisionDeadlineMs,
   faultSentence,
   makeFaultSafeDecisionPoint,
-} from './make-fault-safe-decision-point';
+} from './rule/make-fault-safe-decision-point';
 
-export type { PolicyConfig } from './policy-config-schema';
-export { policyConfigSchema } from './policy-config-schema';
-export type { EffectOverrideProblem, ParsedEffectOverrides } from './parse-effect-overrides';
-export { parseEffectOverrides } from './parse-effect-overrides';
-export { parseRule } from './parse-rule';
-export type { ParsedRuleFiles, RuleFileEntry, RuleFileProblem } from './parse-rule-files';
-export { parseRuleFiles } from './parse-rule-files';
-export type { PolicyRecordKind } from './policy-record-kind';
-export { pickRuleChange } from './pick-rule-change';
-export type { RuleVerdict } from './pick-rule-outcome';
-export { pickRuleOutcome } from './pick-rule-outcome';
-export { renderRule } from './render-rule';
-export { toRuleForm, toStoredRuleForm } from './to-rule-form';
-export type { ReplayOptions, ReplayRecord } from './replay-decision';
-export { replayDecision } from './replay-decision';
-export { toStoredDecision } from './to-stored-decision';
+export type { PolicyConfig } from './policy/policy-config-schema';
+export { policyConfigSchema } from './policy/policy-config-schema';
+export type { EffectOverrideProblem, ParsedEffectOverrides } from './effect/parse-effect-overrides';
+export { parseEffectOverrides } from './effect/parse-effect-overrides';
+export { parseRule } from './rule/parse-rule';
+export type { ParsedRuleFiles, RuleFileEntry, RuleFileProblem } from './rule/parse-rule-files';
+export { parseRuleFiles } from './rule/parse-rule-files';
+export type { PolicyRecordKind } from './policy/policy-record-kind';
+export { pickRuleChange } from './rule/pick-rule-change';
+export type { RuleVerdict } from './rule/pick-rule-outcome';
+export { pickRuleOutcome } from './rule/pick-rule-outcome';
+export { renderRule } from './rule/render-rule';
+export { toRuleForm, toStoredRuleForm } from './rule/to-rule-form';
+export type { ReplayOptions, ReplayRecord } from './rule/replay-decision';
+export { replayDecision } from './rule/replay-decision';
+export { toStoredDecision } from './rule/to-stored-decision';
 
 export type {
   AskCause,
@@ -76,10 +86,10 @@ export type {
   StageProgress,
 } from './types';
 
-export type { AlwaysAllowFacts, AlwaysAllowRule } from './build-always-allow-rule';
-export { buildAlwaysAllowRule } from './build-always-allow-rule';
-export { buildActionProposalSentence } from './build-action-proposal-sentence';
-export type { ActionHandlerDeps } from './make-action-proposal-handler';
-export { makeActionProposalHandler } from './make-action-proposal-handler';
-export { mapActionProposalRecord } from './map-action-proposal-record';
-export { alwaysAskEffects } from './always-ask-effects';
+export type { AlwaysAllowFacts, AlwaysAllowRule } from './rule/build-always-allow-rule';
+export { buildAlwaysAllowRule } from './rule/build-always-allow-rule';
+export { buildActionProposalSentence } from './action/build-action-proposal-sentence';
+export type { ActionHandlerDeps } from './action/make-action-proposal-handler';
+export { makeActionProposalHandler } from './action/make-action-proposal-handler';
+export { mapActionProposalRecord } from './action/map-action-proposal-record';
+export { alwaysAskEffects } from './effect/always-ask-effects';

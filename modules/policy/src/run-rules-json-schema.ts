@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { buildRulesJSONSchema } from './build-rules-json-schema';
+import { buildRulesJSONSchema } from './rule/build-rules-json-schema';
 
 const path = join(import.meta.dir, '..', 'definitions-rules.schema.json');
 

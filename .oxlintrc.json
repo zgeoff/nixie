@@ -37,7 +37,6 @@
           "modules/definitions",
           "modules/log",
           "modules/memory",
-          "modules/policy",
           "modules/sessions",
           "modules/skills",
           "modules/tasks"

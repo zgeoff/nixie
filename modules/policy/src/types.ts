@@ -6,10 +6,10 @@ import type {
   JSONObject,
 } from '@heynixie/log';
 import type { z } from 'zod';
-import type { effectNames } from './effect-names';
-import type { ruleBodySchema } from './rule-body-schema';
-import type { ruleContexts } from './rule-contexts';
-import type { ruleSources } from './rule-sources';
+import type { ruleBodySchema } from './rule/rule-body-schema';
+import type { ruleContexts } from './rule/rule-contexts';
+import type { ruleSources } from './rule/rule-sources';
+import type { effectNames } from './utils/effect-names';
 
 export type Effect = (typeof effectNames)[number];
 

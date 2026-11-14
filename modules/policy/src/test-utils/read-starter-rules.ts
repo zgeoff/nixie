@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseRuleFiles } from '../parse-rule-files';
+import { parseRuleFiles } from '../rule/parse-rule-files';
 import type { RuleEntry } from '../types';
 
 const starterPath = join(
