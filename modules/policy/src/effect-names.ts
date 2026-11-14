@@ -2,6 +2,7 @@ export const effectNames = [
   'read',
   'fetch',
   'note',
+  'memory_write',
   'write',
   'delete',
   'send',

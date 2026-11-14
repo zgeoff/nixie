@@ -4,6 +4,24 @@ import type { Rule, RuleCall } from './types';
 
 test.each<[string, Rule, Partial<RuleCall>, boolean]>([
   [
+    'a deny that lists memory_write catches a call that declares note',
+    { id: 'deny-memory', outcome: 'deny', effects: ['memory_write'] },
+    { effects: ['note'] },
+    true,
+  ],
+  [
+    'an ask that lists memory_write catches a call that declares note',
+    { id: 'ask-memory', outcome: 'ask', effects: ['memory_write'] },
+    { effects: ['read', 'note'] },
+    true,
+  ],
+  [
+    'an allow that lists memory_write covers no call that declares note',
+    { id: 'allow-memory', outcome: 'allow', effects: ['memory_write'] },
+    { effects: ['note'] },
+    false,
+  ],
+  [
     'an allow covers a send whose every destination matches',
     {
       id: 'allow-team-mail',
