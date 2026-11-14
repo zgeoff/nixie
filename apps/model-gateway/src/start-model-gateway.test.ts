@@ -457,5 +457,5 @@ test('it refuses to start when its capture spool is not a folder it can write', 
     waitForDrainDeadline: () => Promise.resolve(),
   });
 
-  await expect(starting).rejects.toThrow();
+  expect(starting).rejects.toThrow();
 });

@@ -52,7 +52,7 @@ test('it returns a key that WebCrypto imports as a P-256 public key', async () =
     [],
   );
 
-  await expect(imported).resolves.toBeDefined();
+  expect(imported).resolves.toBeDefined();
 });
 
 test('it returns null for a segment with no dot', async () => {

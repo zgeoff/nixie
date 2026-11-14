@@ -149,7 +149,7 @@ test('it throws at its start when the spool folder is missing', async () => {
 
   await rm(ctx.spool, { recursive: true });
 
-  await expect(ctx.startSpool()).rejects.toThrow();
+  expect(ctx.startSpool()).rejects.toThrow();
 });
 
 test('it throws at its start when the spool is a regular file', async () => {
@@ -158,7 +158,7 @@ test('it throws at its start when the spool is a regular file', async () => {
   await rm(ctx.spool, { recursive: true });
   await writeFile(ctx.spool, 'x');
 
-  await expect(ctx.startSpool()).rejects.toThrow();
+  expect(ctx.startSpool()).rejects.toThrow();
 });
 
 test('it answers yes to the ask for its own folder', async () => {
@@ -314,7 +314,9 @@ test('it counts the files nixie left in the folder against the byte limit and fr
 
   const left = await readdir(ctx.spool);
 
-  const kinds = left.map((name) => parseSpoolFileName(name)?.kind).toSorted();
+  const kinds = left
+    .map((name) => parseSpoolFileName(name)?.kind ?? '')
+    .toSorted((first, second) => first.localeCompare(second));
 
   expect(kinds).toStrictEqual(['cap', 'miss']);
 });

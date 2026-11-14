@@ -84,7 +84,7 @@ test('it holds an ephemeral key of 65 bytes that imports, and an IV of 12 bytes'
   expect(key?.length).toBe(65);
   expect(iv?.length).toBe(12);
 
-  await expect(
+  expect(
     crypto.subtle.importKey(
       'raw',
       key ?? new Uint8Array(),

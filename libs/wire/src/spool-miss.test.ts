@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { spoolMissSchema } from './spool-miss';
 
 test('it accepts the committed miss', async () => {
-  const miss = await Bun.file(
+  const miss: unknown = await Bun.file(
     join(import.meta.dir, '..', 'turn-input-formats', '1', 'spool-miss.json'),
   ).json();
 
