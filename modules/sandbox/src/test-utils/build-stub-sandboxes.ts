@@ -58,7 +58,6 @@ export function buildStubSandboxes(): StubSandboxes {
   return {
     adapter: {
       id: 'stub',
-      boundary: 'process',
       create: (spec) => {
         const sandbox = buildSandbox(spec);
 

@@ -1,5 +1,5 @@
 import type { SkillExportText } from '@heynixie/definitions';
-import type { GitHubDefinitionsOptions } from '@heynixie/definitions-github';
+import type { GitHubDefinitionsOptions } from '@heynixie/definitions-repo-github';
 import type { DeploymentConfig } from './deployment-config-schema';
 
 export interface DefinitionsExportSettings {

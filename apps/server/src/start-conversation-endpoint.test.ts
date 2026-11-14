@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { githubAPIURL } from '@heynixie/definitions-github/mocks';
+import { githubAPIURL } from '@heynixie/definitions-repo-github/mocks';
 import { kagiAPIURL, kagiStore } from '@heynixie/search-kagi/mocks';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';

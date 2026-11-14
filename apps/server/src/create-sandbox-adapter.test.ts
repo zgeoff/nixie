@@ -32,7 +32,7 @@ test('it wires the test sandbox, the process double, when the configuration sele
     hostEnv: {},
   });
 
-  expect(adapter).toMatchObject({ id: 'process', boundary: 'process' });
+  expect(adapter).toMatchObject({ id: 'process' });
 });
 
 test('it wires the imp adapter in a test build when the configuration selects imp', async () => {
@@ -52,7 +52,7 @@ test('it wires the imp adapter in a test build when the configuration selects im
     hostEnv: {},
   });
 
-  expect(adapter).toMatchObject({ id: 'imp', boundary: 'microvm' });
+  expect(adapter).toMatchObject({ id: 'imp' });
 });
 
 test('it refuses the test sandbox in a release build', async () => {

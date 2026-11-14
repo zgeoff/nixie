@@ -15,7 +15,7 @@ no boundary of its own: every module reads and writes it through the one writer.
 apps/       deployables: the server, the web client, the model gateway and the backup job
 modules/    domain modules, one package each
 guests/     programs that run inside a sandbox and ship in a sandbox image
-adapters/   implementations of nixie's own interfaces that reach one outside system
+adapters/   providers that reach one outside system each
 libs/       shared code that belongs to no domain
 ```
 
@@ -28,10 +28,9 @@ libs/       shared code that belongs to no domain
   the host that every model request of a deployment it guards passes through.
 - **`apps/backup-job`** is [the backup job](deployment/backups.md#the-backup-job), which ships
   nixie's snapshot sets with restic from its own image and holds the backup credentials.
-- **An adapter** implements one of
-  [nixie's own interfaces](../design/platform/README.md#nixies-own-interfaces) against one outside
-  system, and its name is `<interface>-<system>`, such as `sandbox-imp`. An implementation that
-  reaches nothing outside nixie, such as the path definitions source, stays in its module.
+- **An adapter** is a provider that reaches one outside system, as a package named
+  `<interface>-<system>`, such as `sandbox-imp`. [The ports doc](ports.md) holds the rules for
+  ports, providers and adapters.
 - **A guest** holds the code a sandbox image runs. It depends only on `libs/wire`, and speaks to
   nixie through those wire formats over the sandbox's route back to nixie.
 
@@ -155,6 +154,7 @@ The other packages each hold one piece the modules and apps share:
 
 - `guests/conversation` runs the conversation's turns through the Agent SDK.
 - `guests/fetch` runs the web fetch inside the fetch sandbox.
+- `adapters/definitions-repo-github` is the definitions repo on GitHub's API.
 - `adapters/sandbox-imp` is the sandbox adapter on imp.
 - `adapters/search-kagi` is the search tool's provider on Kagi's search API.
 - `adapters/encoder-onnx` is the memory module's text encoder, which runs a pinned embedding model

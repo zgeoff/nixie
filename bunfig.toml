@@ -62,6 +62,6 @@ preload = [
   "./libs/testing/src/restore-native-web-socket.ts",
   "./libs/mock-server/src/start-mock-server.ts",
   "./apps/web/src/mocks/test-preload.ts",
-  "./adapters/definitions-github/src/mocks/test-preload.ts",
+  "./adapters/definitions-repo-github/src/mocks/test-preload.ts",
   "./adapters/search-kagi/src/mocks/test-preload.ts",
 ]

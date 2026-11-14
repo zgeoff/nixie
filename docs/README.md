@@ -37,6 +37,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   topology, the data and the cross-cutting rules, on one page
 - [Code layout](architecture/code-layout.md) — the workspace folders, the packages, the boundary
   tags and import zones, the module packages, and the tests, test builds and checks
+- [Ports](architecture/ports.md) — the terms and the 13 rules for ports, providers and adapters, and
+  where the code departs from them
 
 ### Core
 

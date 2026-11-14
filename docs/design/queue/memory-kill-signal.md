@@ -40,7 +40,7 @@ const adapter = watchMemoryKills(built, { log });
 ```
 
 ```ts
-// sandbox module. The returned adapter has the id and the boundary of the adapter it wraps.
+// sandbox module. The returned adapter has the id of the adapter it wraps.
 export declare function watchMemoryKills(
   adapter: SandboxAdapter,
   options: { readonly log: Logger; readonly readTimeoutMs?: number }, // default 2000

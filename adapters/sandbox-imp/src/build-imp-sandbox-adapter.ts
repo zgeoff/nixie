@@ -60,7 +60,6 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
 
   return {
     id: 'imp',
-    boundary: 'microvm',
     create: (spec) =>
       createImpSandbox(options, spec, {
         addImage,

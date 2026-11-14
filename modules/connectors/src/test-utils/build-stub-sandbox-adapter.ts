@@ -48,7 +48,6 @@ export function buildStubSandboxAdapter(
 
   return {
     id: 'stub',
-    boundary: 'process',
     created,
     destroyed,
     spawned,

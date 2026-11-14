@@ -43,7 +43,6 @@ export interface SandboxSpec {
 
 export interface SandboxAdapter {
   readonly id: string;
-  readonly boundary: 'microvm' | 'container' | 'process';
   readonly create: (spec: SandboxSpec) => Promise<Sandbox>;
   readonly read: (id: string) => Promise<Sandbox | null>;
 

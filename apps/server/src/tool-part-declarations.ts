@@ -1,4 +1,4 @@
-import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-github';
+import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildKagiSearch } from '@heynixie/search-kagi';
 import { buildActions } from './build-actions';

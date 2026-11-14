@@ -17,7 +17,7 @@ test('it builds the fake guest behind the adapter', async () => {
     toolTarget: server.endpoint.getToolTarget,
   });
 
-  expect(fake.sandboxes).toMatchObject({ id: 'stub-guest', boundary: 'process' });
+  expect(fake.sandboxes).toMatchObject({ id: 'stub-guest' });
 });
 
 test('it retires the sandboxes an owner holds, which the owner then replaces', async () => {

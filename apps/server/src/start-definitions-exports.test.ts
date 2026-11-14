@@ -18,7 +18,7 @@ import {
   githubStore,
   readMockFiles,
   writeMockBranchFile,
-} from '@heynixie/definitions-github/mocks';
+} from '@heynixie/definitions-repo-github/mocks';
 import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { promptsOverrideProposedCodec, writePromptProposalAnswer } from '@heynixie/prompts';
