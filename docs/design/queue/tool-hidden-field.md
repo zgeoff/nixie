@@ -10,7 +10,8 @@
 A tool returns values that the server records and the model never reads under `hidden`, beside its
 result or its error message. `log.read` prints only what the call showed the model, so a search's
 cost and a memory tool's UUIDs stay out of the model's view. The search tool is the first user, and
-the short IDs work is the second: [short IDs in tool records](short-ids-in-tool-records.md).
+the short IDs work is the second:
+[short IDs in tool records](../../architecture/core/database.md#short-ids).
 
 Terms used here: the result record is the `tool_result` record that the tool runner writes; the
 tool's `record` is the optional object a tool returns beside its result, which the result record

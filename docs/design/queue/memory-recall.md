@@ -161,9 +161,9 @@ interface RecallRequest {
 - `leftOut` never lists an ID the store does not return for another reason: an unknown ID, a
   forgotten item, a retired item without `includeRetired`, or an item outside `subjects`.
 - The stored `tool_result` of a recall adds `leftOut`, and `lines` for a topic page, and holds IDs
-  by [the rule for short IDs in tool records](short-ids-in-tool-records.md), which names who applies
-  it to `leftOut`. It holds no `searched`, so the query text stays out of the record as built. Its
-  moment IDs are the links the result kept.
+  by [the rule for short IDs in tool records](../../architecture/core/database.md#short-ids). It
+  holds no `searched`, so the query text stays out of the record as built. Its moment IDs are the
+  links the result kept.
 
 ### The cap
 

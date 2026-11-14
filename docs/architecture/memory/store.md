@@ -391,10 +391,11 @@ declare `read` and `note` and run direct.
 
 `memory.pending` lists every pending proposal, the model's own and the note-taker's, so the model
 knows what it proposed after a compaction drops the turn it proposed in, and never proposes a change
-that already waits. Each entry gives the proposal's text, its review reason, its age, and who noted
-it in the words the model reads elsewhere: the conversation reads as the model itself, and the
-memory writer as the note-taker. The tool lists and never answers, because only the user approves or
-rejects a proposal. Its result takes outside content as its source, as a recall result does.
+that already waits. Each entry names the proposal by its short ID and gives its text, its review
+reason, its age, and who noted it in the words the model reads elsewhere: the conversation reads as
+the model itself, and the memory writer as the note-taker. The tool lists and never answers, because
+only the user approves or rejects a proposal. Its result takes outside content as its source, as a
+recall result does.
 
 The records of a memory tool call never hold an item's text, so a forget leaves no readable copy in
 them. A recall's result record lists each item and version it returned, as the recall's own record
