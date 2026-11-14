@@ -143,8 +143,10 @@ has no pair. After the databases move, the restore empties the backup staging fo
 folder, under the backup job's staging lock, and writes the restore note. A set staged from the
 replaced database must never publish. When a backup job pass holds the lock, the restore fails with
 its marker in place, and the operator stops the backup job and runs the restore again. A rerun
-writes the same note. The restore refuses to run without `--yes`, because the data written since the
-backup is lost.
+writes the same note. The operator stops the backup job before a restore, and keeps it stopped until
+a restore succeeds, because the restore never keeps a job run from starting: a job run after a
+failed restore can publish a set staged from the replaced database. The restore refuses to run
+without `--yes`, because the data written since the backup is lost.
 
 The two databases move one at a time, so a restore that stops between them leaves a pair from two
 backups. The restore writes a marker into the data directory before the first database moves and
