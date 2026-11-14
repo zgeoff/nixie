@@ -397,3 +397,18 @@ test('it fits the page limit when 100 unknown IDs of the longest length are name
 
   expect(page.bytes).toBeLessThanOrEqual(recallPageLimitBytes);
 });
+
+test('it fits the page limit when 100 unknown IDs padded with control characters are named', async () => {
+  const ctx = await setupTest();
+
+  const itemIDs = Array.from({ length: 100 }, (_, index) =>
+    `${index}`.padEnd(64, String.fromCodePoint(1)),
+  );
+
+  expect(ctx.tool.parseInput({ itemIDs }).isValid).toBe(true);
+
+  const page = await ctx.readPage({ itemIDs });
+
+  expect(page.bytes).toBeLessThanOrEqual(recallPageLimitBytes);
+  expect(page.isValid).toMatchObject({ isValid: true });
+});

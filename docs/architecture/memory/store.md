@@ -215,9 +215,10 @@ recall that finds nothing returns an empty `items` list with `searched`, and app
 holds for every caller of the store's recall, the turn search included. The stored tool record holds
 `leftOut` by item ID and no `searched`, so the query text stays out of it.
 
-An ID in `itemIDs` is at most 64 characters, so the echoed search always fits the page limit. A call
-passes `query` or `itemIDs`, never both, and passes `after` with neither. The tool refuses anything
-else before it calls the store, so a refused call writes no record.
+An ID in `itemIDs` is at most 64 characters, and `searched` drops trailing IDs until its escaped
+size is at most 4,000 bytes, so the echoed search always fits the page limit. A call passes `query`
+or `itemIDs`, never both, and passes `after` with neither. The tool refuses anything else before it
+calls the store, so a refused call writes no record.
 
 ### The indexes
 

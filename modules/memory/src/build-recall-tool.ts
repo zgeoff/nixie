@@ -21,8 +21,7 @@ import type {
   RecalledVersion,
 } from './types';
 
-// Long enough for a UUID. The result echoes each ID twice at the most, so 100 of them still fit the
-// page limit.
+// Long enough for a UUID.
 const itemIDMaxLength = 64;
 
 const recallInput = {
@@ -386,12 +385,32 @@ function toPastVersionJSON(
 
 const searchedQueryLength = 200;
 
+// JSON escaping can grow a character to 6 bytes, so the echoed search is cut by its escaped size.
+const searchedLimitBytes = 4000;
+
 function buildSearched(input: RecallInput): JSONObject {
-  return {
+  const searched = {
     ...(input.query === undefined ? {} : { query: input.query.slice(0, searchedQueryLength) }),
     ...(input.itemIDs === undefined ? {} : { itemIDs: input.itemIDs }),
     ...(input.subjects === undefined ? {} : { subjects: input.subjects }),
   };
+
+  if (searched.itemIDs === undefined) {
+    return searched;
+  }
+
+  // Drop IDs from the end until the escaped echo fits, so the envelope never passes the page limit.
+  let count = searched.itemIDs.length;
+
+  while (
+    count > 0 &&
+    Buffer.byteLength(JSON.stringify({ ...searched, itemIDs: searched.itemIDs.slice(0, count) })) >
+      searchedLimitBytes
+  ) {
+    count -= 1;
+  }
+
+  return { ...searched, itemIDs: searched.itemIDs.slice(0, count) };
 }
 
 function buildRecallRequest(
@@ -417,15 +436,19 @@ const shortIDLength = 10;
 function measureEnvelope(input: RecallInput, searched: JSONObject): number {
   const isList = input.query === undefined && input.itemIDs === undefined;
   const limit = Math.min(input.limit ?? recallLimits.default, recallLimits.max);
-  const queryIDs = Array.from({ length: limit }, () => 'x'.repeat(shortIDLength));
-  const unlistedIDs = isList ? [] : queryIDs;
+  const namedCount = input.itemIDs?.length ?? limit;
+
+  // `leftOut` lists short IDs only, so a long ID the model passed never reaches it.
+  const unlistedIDs = isList
+    ? []
+    : Array.from({ length: namedCount }, () => 'x'.repeat(shortIDLength));
 
   return Buffer.byteLength(
     JSON.stringify({
       items: [],
       next: isList ? '9'.repeat(20) : null,
       searched,
-      leftOut: { count: 999_999, itemIDs: input.itemIDs ?? unlistedIDs, versions: 999_999 },
+      leftOut: { count: 999_999, itemIDs: unlistedIDs, versions: 999_999 },
     }),
   );
 }
