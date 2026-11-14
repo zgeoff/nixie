@@ -73,8 +73,8 @@ test('it lets a schema older than the pause migration open again after the gate 
   const accepted = await runMigrations(ctx.db, { schema: olderSchema, copyDir: ctx.directory });
 
   expect(accepted).toStrictEqual({
-    from: pauseMigrationVersion,
-    to: pauseMigrationVersion,
+    from: nixieSchema.migrations.length,
+    to: nixieSchema.migrations.length,
     copyPath: null,
   });
 });
