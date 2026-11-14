@@ -90,18 +90,19 @@ test('it completes a turn that calls a tool from the test sandbox the configurat
   );
 });
 
-test('it refuses to start on a key no module reads, and exits 1', async () => {
+test('it warns of a key no module reads and starts', async () => {
   const nixie = await startSpawnedNixie({ extraConfig: ['tasks:', '  runner: 5'] });
 
   const server = nixie.harness.start();
 
-  const exit = await server.exited;
-  const failure = await server.waitForLogEvent('command.failed');
+  const warning = await server.waitForLogEvent('config.unknown_key');
 
-  expect(exit).toStrictEqual({ code: 1, signal: null });
+  await server.waitForLogEvent('ready');
 
-  expect(failure).toMatchObject({
-    command: 'serve',
-    message: expect.toInclude('tasks: Unrecognized key: "runner"'),
-  });
+  server.signal('SIGTERM');
+
+  const run = await server.waitForExit();
+
+  expect(run.exit).toStrictEqual({ code: 0, signal: null });
+  expect(warning).toMatchObject({ level: 'warn', key: 'tasks.runner' });
 });

@@ -994,16 +994,21 @@ test('it logs its info events, its stop included, at the default level', async (
   expect(nixie.readLogEvents()).toPartiallyContain({ event: 'stopped', level: 'info' });
 });
 
-test('it refuses to start on a key no module reads, and exits 1', async () => {
+test('it warns of a key no module reads and starts', async () => {
   const nixie = await startInProcessNixie({ extraConfig: ['tasks:', '  runner: 5'] });
+
+  await nixie.waitForLogEvent('ready');
+
+  nixie.signalStop();
+
   const exitCode = await nixie.exited;
-  const failure = await nixie.waitForLogEvent('command.failed');
 
-  expect(exitCode).toBe(1);
+  expect(exitCode).toBe(0);
 
-  expect(failure).toMatchObject({
-    command: 'serve',
-    message: expect.toInclude('tasks: Unrecognized key: "runner"'),
+  expect(nixie.readLogEvents()).toPartiallyContain({
+    event: 'config.unknown_key',
+    level: 'warn',
+    key: 'tasks.runner',
   });
 });
 
