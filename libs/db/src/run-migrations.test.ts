@@ -4,7 +4,12 @@ import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sql } from 'kysely';
+import { closeToOlderReaders } from './close-to-older-readers';
+import { nixieSchema } from './nixie-schema';
+import { pauseMigrationVersion } from './pause-migration-version';
+import { reopenToOlderReaders } from './reopen-to-older-readers';
 import { runMigrations } from './run-migrations';
+import { SchemaTooNewError } from './schema-too-new-error';
 import { startDatabase } from './start-database';
 import type { BuildSchema, Migration } from './types';
 
@@ -462,4 +467,73 @@ test('it lets the build before read a database that a failed upgrade left betwee
   });
 
   expect(report).toStrictEqual({ from: 2, to: 2, copyPath: null });
+});
+
+test('it refuses a schema older than the pause migration while a pause holds the gate closed', async () => {
+  const ctx = await setupTest();
+
+  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
+
+  await ctx.db.transaction().execute((tx) => closeToOlderReaders(tx, pauseMigrationVersion));
+
+  const run = runMigrations(ctx.db, {
+    schema: {
+      migrations: nixieSchema.migrations.slice(0, pauseMigrationVersion - 1),
+      oldestReader: 35,
+    },
+    copyDir: ctx.directory,
+  });
+
+  await Promise.allSettled([run]);
+
+  expect(run).rejects.toBeInstanceOf(SchemaTooNewError);
+});
+
+test('it keeps a closed gate closed when a migration runs, and reopens to the migration value', async () => {
+  const ctx = await setupTest();
+
+  await runMigrations(ctx.db, { schema: nixieSchema, copyDir: ctx.directory });
+
+  await ctx.db.transaction().execute((tx) => closeToOlderReaders(tx, pauseMigrationVersion));
+
+  await runMigrations(ctx.db, {
+    schema: {
+      migrations: [
+        ...nixieSchema.migrations,
+        {
+          name: 'a later migration',
+          up: async (tx) => {
+            await sql`create table later_notes (id text primary key)`.execute(tx);
+          },
+        },
+      ],
+      oldestReader: 40,
+    },
+    copyDir: ctx.directory,
+  });
+
+  const closed = await sql`select oldest_reader, open_oldest_reader from schema_version`.execute(
+    ctx.db,
+  );
+
+  await ctx.db.transaction().execute((tx) => reopenToOlderReaders(tx));
+
+  const reopened = await sql`select oldest_reader, open_oldest_reader from schema_version`.execute(
+    ctx.db,
+  );
+
+  const olderRelease = await runMigrations(ctx.db, {
+    schema: {
+      migrations: nixieSchema.migrations.slice(0, pauseMigrationVersion - 1),
+      oldestReader: 35,
+    },
+    copyDir: ctx.directory,
+  });
+
+  expect(closed.rows).toStrictEqual([
+    { oldest_reader: pauseMigrationVersion, open_oldest_reader: 40 },
+  ]);
+
+  expect(reopened.rows).toStrictEqual([{ oldest_reader: 40, open_oldest_reader: null }]);
+  expect(olderRelease.to).toBe(nixieSchema.migrations.length + 1);
 });
