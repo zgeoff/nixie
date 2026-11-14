@@ -1,6 +1,5 @@
 import type { LogTables, PendingRestore, TaskToCheck } from '@heynixie/log';
 import {
-  parseJSONObject,
   pauseNixieInTransaction,
   recoveryStartedCodec,
   withWriteTransaction,
@@ -11,6 +10,7 @@ import type { Transaction } from 'kysely';
 import { writeInboxRecordsInTransaction } from '../inbox/write-inbox-records-in-transaction';
 import type { TaskState, TasksContext, TasksTables } from '../types';
 import { conversationTaskID } from '../utils/conversation-task-id';
+import { readRecoveryStarted } from './read-recovery-started';
 import { recoveryNoticeCodec } from './recovery-notice-codec';
 
 export interface RestorePauseOptions {
@@ -106,13 +106,9 @@ async function readStoredToCheck(
     return null;
   }
 
-  const record = await db
-    .selectFrom('records')
-    .select('payload')
-    .where('sequence', '=', recovery.started_sequence)
-    .executeTakeFirstOrThrow();
+  const started = await readRecoveryStarted(tx, recovery.started_sequence);
 
-  return recoveryStartedCodec.decode(parseJSONObject(record.payload)).toCheck.length;
+  return started.toCheck.length;
 }
 
 interface TaskRow {

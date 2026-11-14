@@ -45,6 +45,5 @@ export const testBuildIDs: readonly string[] = [
   'test.inbox_read',
   'test.send runs as an action',
   'releaseWriterLock',
-  'resumeNixie',
   'the tool relay has no TCP address',
 ];

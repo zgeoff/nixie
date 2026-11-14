@@ -1,5 +1,4 @@
 import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
-import { resumeNixieInTransaction, withWriteTransaction } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { createTask, writeInboxRecords, writeTaskControl } from '@heynixie/tasks';
 import type { HarnessLink } from '@heynixie/testing';
@@ -45,17 +44,6 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
     const outcome = await writeTaskControl(context, request);
 
     return outcome.status === 'controlled' ? outcome.sequence : null;
-  });
-
-  link.registerOperation('resumeNixie', schemas.resumeNixie, async () => {
-    await withWriteTransaction(context.log.writer, (tx) =>
-      resumeNixieInTransaction(tx, context.log, {
-        by: 'harness',
-        definitions: context.definitions(),
-      }),
-    );
-
-    return null;
   });
 
   link.registerOperation('releaseWriterLock', schemas.releaseWriterLock, () => {

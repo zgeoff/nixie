@@ -13,7 +13,6 @@ export function buildNixieOperationSchemas() {
       control: z.enum(['pause', 'resume', 'stop', 'restart', 'close', 'interrupt']),
     }),
     releaseWriterLock: z.null(),
-    resumeNixie: z.null(),
   };
 }
 

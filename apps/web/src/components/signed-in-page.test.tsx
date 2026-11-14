@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { pauseStore } from '../mocks/pause-store';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -56,4 +57,21 @@ test('it shows the backup notice above the page of a live session', async () => 
   const notice = await rendered.findByRole('alert');
 
   expect(notice).toHaveTextContent(/^nixie found a failed backup at /u);
+});
+
+test('it shows the pause banner above the page of a live session while nixie is paused', async () => {
+  await createDeviceSession();
+
+  await pauseStore.pauses.create({ cause: 'owner' });
+
+  const rendered = render(
+    <SignedInPage onRefresh={() => {}} session="live">
+      <p>Stub page</p>
+    </SignedInPage>,
+  );
+
+  const banner = await rendered.findByRole('region', { name: 'nixie is paused' });
+
+  expect(banner).toBeVisible();
+  expect(rendered.getByText('Stub page')).toBeVisible();
 });

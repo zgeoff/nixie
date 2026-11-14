@@ -228,6 +228,18 @@ their outcome. The dashboard offers the confirm only once that list loads, so th
 an action unseen. A close asks first too, because a closed task takes no more messages. The
 conversation offers no close.
 
+While nixie is paused, every signed-in page shows a banner with the cause in words, a restore, you
+or the spending limit, and since when, beside a Resume nixie button that acts at once. A restore
+pause also lists each task that the restore left to check, with a link to the task, its state at the
+backup, whether a step was running, and its actions without an outcome. The client polls the pause
+state on a timer and when the window gains focus, and reads the task list again when that state
+changes. The dashboard shows a Pause nixie button while nothing pauses nixie, and neither button
+asks to confirm.
+
+A ready, running, waiting or paused task that nixie's pause stops shows as paused by nixie and
+offers its own Resume, which runs that task alone. A done, stopped, failed or closed task shows its
+own state and no extra Resume.
+
 A task's page at `/tasks/<task_id>` shows that task's thread in the conversation view, under a
 header with the task's name, state and controls. The page reads that task on its own and never from
 the task list, which keeps only the most recently active tasks. Its composer sends to that thread,

@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import { nixieRunnerControls } from '@heynixie/task-control';
 import { Collection } from '@msw/data';
 import { z } from 'zod';
+import { pauseStore } from './pause-store';
 
 const counter = { lastSequence: 0 };
 
@@ -516,6 +517,8 @@ export const store = {
     ]) {
       collection.clear();
     }
+
+    pauseStore.reset();
 
     counter.lastSequence = 0;
   },

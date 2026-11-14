@@ -267,3 +267,21 @@ test('it keeps a log segment out of the path of every procedure that is not depr
 
   expect(current).toSatisfyAll((path: string) => !/\/log(?:[/?]|$)/u.test(path));
 });
+
+test('it declares a missing device session and a reused action ID for a nixie pause and resume', () => {
+  expect(contract.nixie.pause['~orpc'].errorMap).toContainAllKeys([
+    'UNAUTHORIZED',
+    'CLIENT_ACTION_ID_REUSED',
+  ]);
+
+  expect(contract.nixie.resume['~orpc'].errorMap).toContainAllKeys([
+    'UNAUTHORIZED',
+    'CLIENT_ACTION_ID_REUSED',
+  ]);
+});
+
+test('it refuses a nixie pause without its client action ID', () => {
+  expect(contract.nixie.pause['~orpc'].inputSchema?.safeParse({}).error?.issues).toPartiallyContain(
+    { path: ['clientActionID'] },
+  );
+});

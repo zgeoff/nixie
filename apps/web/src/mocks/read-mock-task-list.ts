@@ -1,3 +1,4 @@
+import { probeMockTaskPaused } from './probe-mock-task-paused';
 import { store } from './store';
 
 export function readMockTaskList() {
@@ -21,6 +22,7 @@ export function readMockTaskList() {
         brief: task.brief,
         controls: [...task.controls],
         isPauseRequested: task.isPauseRequested,
+        isPausedByNixie: probeMockTaskPaused(task.taskID),
         isTakingMessages: task.isTakingMessages,
         lastActivityAt: task.lastActivityAt,
         name: task.name,

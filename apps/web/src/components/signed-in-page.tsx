@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import type { SessionState } from '../conversation/read-session-state';
 import { BackupNotice } from './backup-notice';
 import { EnrolForm } from './enrol-form';
+import { PauseBanner } from './pause-banner';
 
 export interface SignedInPageProps {
   readonly session: SessionState;
@@ -31,6 +32,7 @@ export function SignedInPage(props: SignedInPageProps): ReactNode {
   return (
     <>
       <BackupNotice />
+      <PauseBanner />
       {props.children}
     </>
   );

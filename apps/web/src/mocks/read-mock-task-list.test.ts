@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { pauseStore } from './pause-store';
 import { readMockTaskList } from './read-mock-task-list';
 import { store } from './store';
 
@@ -35,6 +36,7 @@ test('it lists each task, most recently active first, with its action counts', a
         brief: 'Order seeds.',
         controls: ['stop'],
         isPauseRequested: false,
+        isPausedByNixie: false,
         isTakingMessages: true,
         lastActivityAt: new Date('2026-10-02T09:00:00Z'),
         name: 'Seed order',
@@ -47,6 +49,7 @@ test('it lists each task, most recently active first, with its action counts', a
         brief: 'Plan the beds.',
         controls: ['pause', 'resume', 'stop', 'restart', 'close', 'interrupt'],
         isPauseRequested: false,
+        isPausedByNixie: false,
         isTakingMessages: true,
         lastActivityAt: new Date('2026-10-01T09:00:00Z'),
         name: 'Garden plan',
@@ -56,4 +59,18 @@ test('it lists each task, most recently active first, with its action counts', a
       },
     ],
   });
+});
+
+test('it marks each task as paused by nixie while the pause holds, except an exempt one', async () => {
+  await store.tasks.create({ taskID: 'k3x9m2p7qa' });
+  await store.tasks.create({ taskID: 'w5n1c8d3ra' });
+  await pauseStore.pauses.create({ cause: 'owner' });
+  await pauseStore.pauseExemptions.create({ taskID: 'w5n1c8d3ra' });
+
+  const marks = readMockTaskList().tasks.map((task) => [task.taskID, task.isPausedByNixie]);
+
+  expect(marks).toIncludeSameMembers([
+    ['k3x9m2p7qa', true],
+    ['w5n1c8d3ra', false],
+  ]);
 });

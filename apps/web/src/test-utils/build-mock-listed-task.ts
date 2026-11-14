@@ -10,6 +10,7 @@ export function buildMockListedTask(overrides: Partial<ListedTask> = {}): Listed
     brief: faker.lorem.sentence(),
     controls: [...nixieRunnerControls],
     isPauseRequested: false,
+    isPausedByNixie: false,
     isTakingMessages: true,
     lastActivityAt: faker.date.recent(),
     name: faker.lorem.words(2),

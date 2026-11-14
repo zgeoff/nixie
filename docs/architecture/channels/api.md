@@ -104,6 +104,28 @@ actions, which a stop cancels, apart from its started ones, which run on to thei
 client shows what a stop does before the user confirms it. While nixie is paused, the resume control
 exempts the task from the pause, so the task runs while the rest stay paused.
 
+## Pausing nixie
+
+`nixie/pause` and `nixie/resume` are checked actions that take only a client action ID. Pause writes
+the pause with the cause `owner` and the session's identity as the actor, and resume ends it. Each
+answers with the pause state that the same transaction reads after the write: the cause, which is
+`restore`, `owner` or `spending`, and since when, or null when nothing pauses nixie. A resume while
+nothing pauses nixie answers null and writes nothing. Replay and reuse of a client action ID work as
+they do for a task control.
+
+`nixie/read` answers the same pause state to any signed-in caller. The pause records sit on no
+thread, so the record stream never carries them, and a client polls this read instead.
+
+`recovery/read` answers the last restore: when it ran, when its backup was taken, and each task it
+left to check, with the task's name, its state at the backup, whether a step was running, and how
+many actions had no outcome. The name comes from the task directory, and falls back to the task ID
+for a task the directory lacks. The read stays available after the resume, and answers null before
+any restore.
+
+Each listed task carries `isPausedByNixie`, true while nixie's pause stops that task and no resume
+of its own has exempted it. The task's `state` stays the state the task holds, so a client that
+predates the field reads the same states.
+
 ## Sending a message
 
 The API writes the user's message as an `owner_message` record in the inbox of the task its thread

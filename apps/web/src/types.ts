@@ -33,6 +33,8 @@ export interface OutboxMessage {
   readonly unreadImages?: number | undefined;
 }
 
+export type PauseCause = NonNullable<ContractOutputs['nixie']['read']['paused']>['cause'];
+
 export type MemoryItem = ContractOutputs['memory']['listItems']['items'][number];
 
 export type ForgetBackup = ReadonlyDeep<ContractOutputs['conversation']['forget']['backup']>;

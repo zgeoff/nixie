@@ -97,3 +97,24 @@ test('it names the tasks that wait on this one', () => {
 
   expect(rendered.getByText('Seed order is waiting on this task')).toBeVisible();
 });
+
+test('it shows a waiting task as paused by nixie while the pause holds it', () => {
+  const garden = buildMockListedTask({
+    isPausedByNixie: true,
+    name: 'Garden plan',
+    state: 'waiting',
+  });
+
+  const rendered = render(<TaskSummary isLinked task={garden} tasks={[garden]} />);
+
+  expect(rendered.getByText('Paused by nixie')).toBeVisible();
+  expect(rendered.queryByText('Waiting')).toBeNull();
+});
+
+test('it shows a done task as done while the pause is on', () => {
+  const garden = buildMockListedTask({ isPausedByNixie: true, name: 'Garden plan', state: 'done' });
+  const rendered = render(<TaskSummary isLinked task={garden} tasks={[garden]} />);
+
+  expect(rendered.getByText('Done')).toBeVisible();
+  expect(rendered.queryByText('Paused by nixie')).toBeNull();
+});

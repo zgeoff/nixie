@@ -7,6 +7,8 @@ import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
 import { memoryViewContract } from './memory-view-contract';
+import { pauseStateSchema } from './pause-state-schema';
+import { recoverySchema } from './recovery-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { ruleContract } from './rule-contract';
 import { signedIn } from './signed-in';
@@ -189,6 +191,7 @@ const listedTaskSchema = z.object({
   brief: z.string(),
   controls: z.array(taskControlSchema),
   isPauseRequested: z.boolean(),
+  isPausedByNixie: z.boolean(),
   isTakingMessages: z.boolean(),
   lastActivityAt: z.date(),
   name: z.string(),
@@ -215,6 +218,10 @@ const taskControl = checkedAction
   })
   .input(z.object({ clientActionID: clientActionIDSchema, taskID: threadSchema }))
   .output(controlledTaskSchema);
+
+const nixieControl = checkedAction
+  .input(z.object({ clientActionID: clientActionIDSchema }))
+  .output(z.object({ paused: pauseStateSchema }));
 
 const backupNoticeSchema = z.object({
   cause: z.enum(['failed', 'missing']),
@@ -365,6 +372,14 @@ export const contract = {
 
     consolidatorStatus: signedIn.output(z.object({ isEnabled: z.boolean() })),
     ...memoryViewContract,
+  },
+  nixie: {
+    read: signedIn.output(z.object({ paused: pauseStateSchema })),
+    pause: nixieControl,
+    resume: nixieControl,
+  },
+  recovery: {
+    read: signedIn.output(z.object({ recovery: recoverySchema })),
   },
   backups: {
     readNotice: signedIn.output(z.object({ notice: backupNoticeSchema.nullable() })),

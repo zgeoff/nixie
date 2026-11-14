@@ -60,7 +60,7 @@ test.each([
 
     const waitingRecords = await ctx.nixie.readRecords();
 
-    await second.request('resumeNixie', null);
+    await runHostCommand(ctx.nixie.configPath, ['resume']);
 
     const resumed = await ctx.nixie.waitForRecord((record) => record.kind === 'nixie.resumed');
 

@@ -4,6 +4,7 @@ import { collectDashboardGroups } from '../task/collect-dashboard-groups';
 import type { ListedTask } from '../task/use-live-task-list';
 import { useLiveTaskList } from '../task/use-live-task-list';
 import type { StartTimer } from '../utils/start-platform-timer';
+import { PauseNixieButton } from './pause-nixie-button';
 import { TaskSummary } from './task-summary';
 
 export interface TaskDashboardProps {
@@ -33,6 +34,7 @@ export function TaskDashboard(props: TaskDashboardProps): ReactNode {
     <main className={page}>
       {props.navigation}
       <h1>Tasks</h1>
+      <PauseNixieButton />
       {listed.unavailable ? (
         <p className={notice} role="status">
           Live updates unavailable

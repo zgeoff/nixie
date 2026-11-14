@@ -5,8 +5,10 @@ import { createHostActionProcedures } from './create-host-action-procedures';
 import { createHostConsolidationProcedures } from './create-host-consolidation-procedures';
 import { createHostContactProcedures } from './create-host-contact-procedures';
 import { createHostItemProcedures } from './create-host-item-procedures';
+import { createHostNixieProcedures } from './create-host-nixie-procedures';
 import { createHostPromptProposalProcedures } from './create-host-prompt-proposal-procedures';
 import { createHostProposalProcedures } from './create-host-proposal-procedures';
+import { createHostRecoveryProcedures } from './create-host-recovery-procedures';
 import { createHostRuleProcedures } from './create-host-rule-procedures';
 import { createHostSessionProcedures } from './create-host-session-procedures';
 import { createHostSkillProposalProcedures } from './create-host-skill-proposal-procedures';
@@ -38,6 +40,10 @@ export function createHostRouter(options: HostRouterOptions) {
     resetConversations: hostImplementer.resetConversations.handler(() =>
       options.runConversationReset(),
     ),
+    nixie: hostImplementer.nixie.use(gated).router(createHostNixieProcedures(options.context)),
+    recovery: hostImplementer.recovery
+      .use(gated)
+      .router(createHostRecoveryProcedures(options.context)),
     tasks: hostImplementer.tasks.use(gated).router(createHostTaskProcedures(options.context)),
     sessions: hostImplementer.sessions
       .use(gated)

@@ -6,6 +6,7 @@ import {
   readOwnerMessageTakers,
   readTaskDirectory,
   readTaskList,
+  readTasksPausedByNixie,
   waitAtFaultPoint,
 } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -111,6 +112,7 @@ async function readListedTasks(context: APIContext, directory: TaskProfiles, lim
 
   const takers = await readOwnerMessageTakers(context, taskIDs);
   const counts = await readActionCounts(context, taskIDs);
+  const pausedByNixie = await readTasksPausedByNixie(context.log.writer.db, taskIDs);
 
   return listed.map((task) => {
     const actions = counts.get(task.id);
@@ -122,6 +124,7 @@ async function readListedTasks(context: APIContext, directory: TaskProfiles, lim
       brief: task.brief,
       controls: [...nixieRunnerControls],
       isPauseRequested: task.isPauseRequested,
+      isPausedByNixie: pausedByNixie.has(task.id),
       isTakingMessages: takers.has(task.id),
       lastActivityAt: task.lastActivityAt,
       name: task.name,
