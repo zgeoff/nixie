@@ -327,6 +327,7 @@ test('it creates the web fetch sandbox and the skill fetch sandbox at the fetch 
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      cacheMs: 0,
       backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
       secretTypedURLCovers: 'redirects',
       secretOwnValues: [],
