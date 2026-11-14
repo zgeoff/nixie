@@ -45,3 +45,23 @@ test('it scrolls a task page to the message that its link names, behind 120 late
     expect(scrolls.mock.contexts).toContain(message);
   });
 });
+
+test('it renders a task page around a record of a kind the page does not know, without throwing', async () => {
+  await createDeviceSession();
+
+  await store.tasks.create({ name: 'Seed order', state: 'waiting', taskID: 'p7hd2wq9zn' });
+
+  await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'Check the seed order.' },
+    thread: 'p7hd2wq9zn',
+  });
+
+  await store.records.create({ kind: 'harbour.unknown_kind', thread: 'p7hd2wq9zn' });
+
+  const rendered = renderRoute('/tasks/p7hd2wq9zn');
+
+  const message = await rendered.findByText('Check the seed order.', {}, { timeout: 4000 });
+
+  expect(message).toBeTruthy();
+});

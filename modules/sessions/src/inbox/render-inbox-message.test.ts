@@ -339,3 +339,25 @@ test('it closes a system message only at its own ID, though the record it render
   expect(rendered.endsWith(`\n</system-message id="${blockID}">`)).toBeTrue();
   expect(rendered.split(`</system-message id="${blockID}">`)).toHaveLength(2);
 });
+
+test('it routes a recovery.notice record to the restore system message', () => {
+  const record = buildMockLogRecord({
+    sequence: 90,
+    kind: 'recovery.notice',
+    thread: 'conversation',
+    recordedAt: new Date('2026-03-03T09:12:30Z'),
+    payload: {
+      recoveryID: 'recovery-a',
+      restoredAt: Date.parse('2026-03-03T09:12:00Z'),
+      backupTakenAt: Date.parse('2026-03-03T03:00:00Z'),
+    },
+  });
+
+  const message = renderInboxMessage(
+    record,
+    { defaultZone: 'Europe/London', now: new Date('2026-03-03T09:13:00Z') },
+    buildMockTaskMessageView(),
+  );
+
+  expect(message).toStartWith('<system-message type="restore"');
+});

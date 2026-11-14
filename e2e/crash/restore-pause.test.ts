@@ -108,7 +108,7 @@ test.each([
       records
         .filter((record) => record.kind.startsWith('recovery.') || record.kind.startsWith('nixie.'))
         .map((record) => record.kind),
-    ).toStrictEqual(['recovery.started', 'nixie.paused', 'nixie.resumed']);
+    ).toStrictEqual(['recovery.started', 'nixie.paused', 'recovery.notice', 'nixie.resumed']);
 
     expect(oracle).toStrictEqual({
       repeatedStepKeys: [],

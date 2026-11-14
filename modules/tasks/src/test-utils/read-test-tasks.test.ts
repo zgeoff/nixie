@@ -8,7 +8,7 @@ function setupTest() {
   return startTestTasks();
 }
 
-test("it reads each task's ID, state, last inbox sequence and creation sequence, oldest first", async () => {
+test("it reads each task's ID, state, last inbox sequence, retry deadline and creation sequence, oldest first", async () => {
   const ctx = await setupTest();
   const first = await createTask(ctx.context, 'sort the receipts');
   const second = await createTask(ctx.context, 'book the dentist');
@@ -18,8 +18,22 @@ test("it reads each task's ID, state, last inbox sequence and creation sequence,
   const tasks = await readTestTasks(ctx.writer);
 
   expect(tasks).toStrictEqual([
-    { id: first, state: 'running', readCursor: 0, lastInboxSequence: 0, createdSequence: 1 },
-    { id: second, state: 'ready', readCursor: 0, lastInboxSequence: 0, createdSequence: 2 },
+    {
+      id: first,
+      state: 'running',
+      readCursor: 0,
+      lastInboxSequence: 0,
+      claimableAt: 0,
+      createdSequence: 1,
+    },
+    {
+      id: second,
+      state: 'ready',
+      readCursor: 0,
+      lastInboxSequence: 0,
+      claimableAt: 0,
+      createdSequence: 2,
+    },
   ]);
 });
 

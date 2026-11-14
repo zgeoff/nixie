@@ -9,14 +9,19 @@ import {
   resumeNixieInTransaction,
   withWriteTransaction,
 } from '@heynixie/log';
+import { claimTask } from '../task/projection/claim-task';
+import { readTestTasks } from '../test-utils/read-test-tasks';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
+import { seedDoneConversationTask } from '../test-utils/seed-done-conversation-task';
 import { seedDoneTask } from '../test-utils/seed-done-task';
+import { seedFailedConversationTurn } from '../test-utils/seed-failed-conversation-turn';
 import { seedRunningTask } from '../test-utils/seed-running-task';
 import { seedStoppedTask } from '../test-utils/seed-stopped-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { conversationTaskID } from '../utils/conversation-task-id';
 import { probeTaskPaused } from '../utils/probe-task-paused';
 import { installRestorePause } from './install-restore-pause';
+import { recoveryNoticeCodec } from './recovery-notice-codec';
 
 async function setupTest() {
   const pending = {
@@ -42,7 +47,7 @@ async function setupTest() {
     readPauseRecords: () =>
       readRecords(tasks.context.log, {
         afterSequence: 0,
-        kinds: ['recovery.started', 'nixie.paused'],
+        kinds: ['recovery.started', 'nixie.paused', 'recovery.notice'],
       }),
   };
 }
@@ -139,6 +144,8 @@ test('it drops an exemption that the backup held and pauses with the cause resto
 test('it writes the recovery before the pause, in adjacent records', async () => {
   const ctx = await setupTest();
 
+  await seedConversationStep(ctx.context);
+
   await ctx.install([]);
 
   const records = await ctx.readPauseRecords();
@@ -146,6 +153,7 @@ test('it writes the recovery before the pause, in adjacent records', async () =>
   expect(records.map((entry) => entry.record.kind)).toStrictEqual([
     'recovery.started',
     'nixie.paused',
+    'recovery.notice',
   ]);
 
   expect(records[1]?.record.sequence).toBe((records[0]?.record.sequence ?? 0) + 1);
@@ -153,6 +161,8 @@ test('it writes the recovery before the pause, in adjacent records', async () =>
 
 test('it writes nothing for a recovery that is already installed, even after a resume', async () => {
   const ctx = await setupTest();
+
+  await seedConversationStep(ctx.context);
 
   await ctx.install([]);
 
@@ -166,11 +176,12 @@ test('it writes nothing for a recovery that is already installed, even after a r
   const again = await ctx.install([]);
   const records = await ctx.readPauseRecords();
 
-  expect(again).toStrictEqual({ recoveryID: 'recovery-a', toCheck: 0, isNew: false });
+  expect(again).toStrictEqual({ recoveryID: 'recovery-a', toCheck: 1, isNew: false });
 
   expect(records.map((entry) => entry.record.kind)).toStrictEqual([
     'recovery.started',
     'nixie.paused',
+    'recovery.notice',
   ]);
 
   const pause = await ctx.readCurrentPause();
@@ -191,4 +202,110 @@ test('it returns null and writes nothing when no restore is pending', async () =
   const records = await ctx.readPauseRecords();
 
   expect(records).toStrictEqual([]);
+});
+
+test('it writes one notice on the conversation thread with the pending payload', async () => {
+  const ctx = await setupTest();
+
+  await seedConversationStep(ctx.context);
+
+  await ctx.install([]);
+
+  const records = await ctx.readPauseRecords();
+
+  const notices = records.filter((entry) => entry.record.kind === 'recovery.notice');
+
+  expect(notices).toHaveLength(1);
+  expect(notices[0]?.record.thread).toBe(conversationTaskID);
+
+  expect(recoveryNoticeCodec.decode(notices[0]?.record.payload ?? {})).toStrictEqual({
+    recoveryID: 'recovery-a',
+    restoredAt: 2000,
+    backupTakenAt: 1000,
+  });
+});
+
+test('it writes the notice in the same transaction, in the record after the pause', async () => {
+  const ctx = await setupTest();
+
+  await seedConversationStep(ctx.context);
+
+  await ctx.install([]);
+
+  const records = await ctx.readPauseRecords();
+
+  expect(
+    records.map((entry) => entry.record.sequence - (records[0]?.record.sequence ?? 0)),
+  ).toStrictEqual([0, 1, 2]);
+});
+
+test('it leaves the conversation retry deadline unmoved, so no runner claims it for the notice', async () => {
+  const ctx = await setupTest();
+
+  await seedFailedConversationTurn(ctx.context);
+
+  const [before] = await readTestTasks(ctx.writer);
+
+  await ctx.install([]);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    resumeNixieInTransaction(tx, ctx.context.log, {
+      by: 'test',
+      definitions: ctx.context.definitions(),
+    }),
+  );
+
+  const [after] = await readTestTasks(ctx.writer);
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(before?.claimableAt).toBeGreaterThan(0);
+  expect(after).toStrictEqual(before);
+  expect(claim).toBeNull();
+});
+
+test('it writes no second notice for a recovery that is already installed', async () => {
+  const ctx = await setupTest();
+
+  await seedConversationStep(ctx.context);
+
+  await ctx.install([]);
+  await ctx.install([]);
+
+  const records = await ctx.readPauseRecords();
+
+  expect(records.filter((entry) => entry.record.kind === 'recovery.notice')).toHaveLength(1);
+});
+
+test('it writes no notice and still pauses when the conversation does not exist', async () => {
+  const ctx = await setupTest();
+  const result = await ctx.install([]);
+  const records = await ctx.readPauseRecords();
+  const pause = await ctx.readCurrentPause();
+
+  expect(result?.isNew).toBeTrue();
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'recovery.started',
+    'nixie.paused',
+  ]);
+
+  expect(pause).toStrictEqual({ cause: 'restore', recoveryID: 'recovery-a' });
+});
+
+test('it writes no notice and still pauses when the conversation is finished', async () => {
+  const ctx = await setupTest();
+
+  await seedDoneConversationTask(ctx.context);
+
+  await ctx.install([]);
+
+  const records = await ctx.readPauseRecords();
+  const pause = await ctx.readCurrentPause();
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'recovery.started',
+    'nixie.paused',
+  ]);
+
+  expect(pause).toStrictEqual({ cause: 'restore', recoveryID: 'recovery-a' });
 });

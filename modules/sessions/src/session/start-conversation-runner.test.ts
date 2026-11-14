@@ -3062,3 +3062,35 @@ test('it records no noted sequence on the turn end of a runner with no memory no
     }),
   ]);
 });
+
+test("it renders a restore notice in the turn that the owner's next message wakes, as one system message", async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Noted.' })));
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'recovery.notice',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { recoveryID: 'recovery-a', restoredAt: 2000, backupTakenAt: 1000 },
+    },
+  ]);
+
+  await ctx.writeMessage('Are you back?');
+  await ctx.runNextStep(runner);
+
+  const text = ctx.sandboxes.turns[0]?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(text).toMatch(/<system-message type="restore" [^>]*>\n\[#\d+\] nixie was restored at /u);
+  expect(text).toInclude('The log holds nothing after that time.');
+  expect(text).toInclude('Are you back?');
+});

@@ -169,3 +169,40 @@ test('it reads the first record whatever its images, so a large message still re
 
   expect(messages).toHaveLength(1);
 });
+
+test('it passes over a record of a kind no module registers and keeps the records around it', async () => {
+  const ctx = await setupTest();
+
+  const records = await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Before.' },
+    },
+    {
+      // @ts-expect-error -- no module registers this kind
+      kind: 'harbour.unknown_kind',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { tide: 'high' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'After.' },
+    },
+  ]);
+
+  const messages = await readInboxMessages(ctx.log, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    view: buildMockTaskMessageView(),
+    imageBudget: { bytes: 1024, count: 100 },
+  });
+
+  expect(messages.map((message) => message.text)).toStrictEqual([
+    expect.stringContaining('Before.'),
+    expect.stringContaining('After.'),
+  ]);
+});

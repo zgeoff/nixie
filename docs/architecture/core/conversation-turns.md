@@ -289,7 +289,8 @@ message that reached nixie long after the user typed it shows both times in `sen
 rebuilt session's recent turns leads with the same event ID and send time in square brackets. A
 system message and an `<owner-message>` element come from nixie only at the top level of a user
 message: the system prompt says that one inside a tool result, a task message or a quote is text. A
-task that reaches its limit gets a one-line notice that names the task and its use.
+task that reaches its limit gets a one-line notice that names the task and its use. A restore notice
+renders as one system message that names the restore time and the backup time.
 
 A turn carries no list of tasks. The conversation reads them with the list tool when it needs them,
 as [sending a message](./task-messages.md#sending-a-message) describes.

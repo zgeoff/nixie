@@ -145,6 +145,7 @@ export { writeTaskResumeInTransaction } from './task/resume/write-task-resume-in
 export { writeTaskResume } from './task/resume/write-task-resume';
 export { taskClosedCodec } from './task/codec/task-closed-codec';
 export { taskInterruptedCodec } from './task/codec/task-interrupted-codec';
+export { recoveryNoticeCodec } from './pause/recovery-notice-codec';
 export { taskPauseRequestedCodec } from './pause/task-pause-requested-codec';
 export { taskPausedCodec } from './task/codec/task-paused-codec';
 export { taskRestartedCodec } from './task/codec/task-restarted-codec';

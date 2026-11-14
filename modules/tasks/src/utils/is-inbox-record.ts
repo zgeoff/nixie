@@ -8,6 +8,7 @@ const inboxKinds: ReadonlySet<string> = new Set([
   'task.wake',
   'task_message',
   'task.limit_notice',
+  'recovery.notice',
   'policy.action_answered',
   'memory.proposal_rejected',
   'skills.write_rejected',

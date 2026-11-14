@@ -6,8 +6,12 @@ import {
   withWriteTransaction,
   writeRecordsInTransaction,
 } from '@heynixie/log';
+import { isFinishedState } from '@heynixie/task-control';
 import type { Transaction } from 'kysely';
-import type { TasksContext, TasksTables } from '../types';
+import { writeInboxRecordsInTransaction } from '../inbox/write-inbox-records-in-transaction';
+import type { TaskState, TasksContext, TasksTables } from '../types';
+import { conversationTaskID } from '../utils/conversation-task-id';
+import { recoveryNoticeCodec } from './recovery-notice-codec';
 
 export interface RestorePauseOptions {
   readonly pending: PendingRestore | null;
@@ -63,6 +67,24 @@ export function installRestorePause(
       by: null,
       definitions: context.definitions(),
     });
+
+    // A conversation that is gone or finished reads no inbox, which refuses its input.
+    const conversationState = await readConversationState(tx);
+
+    if (conversationState !== null && !isFinishedState(conversationState)) {
+      await writeInboxRecordsInTransaction(tx, context, [
+        {
+          kind: 'recovery.notice',
+          definitions: context.definitions(),
+          thread: conversationTaskID,
+          payload: recoveryNoticeCodec.encode({
+            recoveryID: pending.recoveryID,
+            restoredAt: pending.restoredAt,
+            backupTakenAt: pending.backupTakenAt,
+          }),
+        },
+      ]);
+    }
 
     return { recoveryID: pending.recoveryID, toCheck: toCheck.length, isNew: true };
   });
@@ -142,4 +164,15 @@ function collectTasksToCheck(
       pendingActions: pendingCounts.get(row.taskID) ?? 0,
     }))
     .toSorted((left, right) => left.taskID.localeCompare(right.taskID));
+}
+
+async function readConversationState(tx: Transaction<unknown>): Promise<TaskState | null> {
+  const conversation = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('state')
+    .where('task_id', '=', conversationTaskID)
+    .executeTakeFirst();
+
+  return conversation?.state ?? null;
 }

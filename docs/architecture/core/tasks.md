@@ -59,6 +59,9 @@ Every inbox record wakes the task, except a task message in one of these cases, 
 - its sender sent it with no wake;
 - the hop limit held it back.
 
+The restore notice is the other exception: it is an inbox record that wakes no step. The
+conversation reads it with the user's next message.
+
 The tasks projection keeps the sequence of the newest waking record on the task's row, and a waiting
 task becomes ready in the same transaction that writes the record. The same write ends the
 conversation's retry wait, so the user's next message gets a try at once.

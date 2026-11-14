@@ -701,3 +701,51 @@ test('it gives the same opening for two rebuilds from one log, with the clock, t
     'Start: a rebuild, because the earlier session was not kept.',
   );
 });
+
+test('it rebuilds a session from a thread that holds a record of a kind no module registers, and leaves that record out', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Did the parcel come?' },
+    },
+    {
+      // @ts-expect-error -- no module registers this kind
+      kind: 'harbour.unknown_kind',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { tide: 'high' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'It came at noon.' },
+    },
+  ]);
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'conversation',
+    start: { kind: 'rebuild', reason: 'lost', lostSessionID: 'a-lost-session' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: null,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+  });
+
+  const text = opening.blocks.join('\n');
+
+  expect(text).toInclude('Did the parcel come?');
+  expect(text).toInclude('It came at noon.');
+  expect(text).not.toInclude('harbour.unknown_kind');
+  expect(opening.record.recentRecords).toBe(2);
+});
