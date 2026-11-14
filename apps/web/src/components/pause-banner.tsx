@@ -32,9 +32,8 @@ export function PauseBanner(): ReactNode {
   const read = usePauseState();
   const resume = useNixieControl('resume');
   const paused = read.data?.paused ?? null;
-  const observed = read.data === undefined ? undefined : paused;
 
-  useRefreshTasksOnChange(observed);
+  useRefreshTasksOnRead(read.dataUpdatedAt);
 
   if (paused === null) {
     return null;
@@ -58,31 +57,22 @@ export function PauseBanner(): ReactNode {
   );
 }
 
-interface ObservedPause {
-  readonly cause: string;
-  readonly since: Date;
-}
-
-// Each task shows whether the pause holds it, so a change of the pause changes the list.
-function useRefreshTasksOnChange(paused: ObservedPause | null | undefined): void {
+// Each task shows whether the pause holds it, and a task's own resume from the host or another
+// device leaves the pause as it was. Every fresh read of the pause therefore refreshes the list.
+function useRefreshTasksOnRead(readAt: number): void {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
-  const previous = useRef<string | null | undefined>(undefined);
-  const current = paused === undefined ? undefined : toPauseKey(paused);
+  const previous = useRef<number | null>(null);
 
   useEffect(() => {
-    if (current === undefined) {
+    if (readAt === 0) {
       return;
     }
 
-    if (previous.current !== undefined && previous.current !== current) {
+    if (previous.current !== null && previous.current !== readAt) {
       void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.tasks.key() });
     }
 
-    previous.current = current;
-  }, [current, nixie, queryClient]);
-}
-
-function toPauseKey(paused: ObservedPause | null): string | null {
-  return paused === null ? null : `${paused.cause}@${String(paused.since.getTime())}`;
+    previous.current = readAt;
+  }, [readAt, nixie, queryClient]);
 }

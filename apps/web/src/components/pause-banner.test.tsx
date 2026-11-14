@@ -162,3 +162,52 @@ test('it shows each task as paused when the pause begins after the list loaded',
     expect(row).toHaveTextContent('Paused by nixie');
   });
 });
+
+test('it shows a task as running again when another client resumed it alone', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.tasks.create({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' });
+  await pauseStore.pauses.create({ cause: 'owner' });
+
+  const readLabel = 'Read the pause';
+
+  const PauseReader = (): ReactNode => {
+    const nixie = useNixieClient();
+    const queryClient = useQueryClient();
+
+    return (
+      <button
+        onClick={() => {
+          void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.nixie.key() });
+        }}
+        type="button"
+      >
+        {readLabel}
+      </button>
+    );
+  };
+
+  const rendered = render(
+    <>
+      <PauseBanner />
+      <PauseReader />
+      <TaskDashboard startTimer={ctx.timer.startTimer} />
+    </>,
+  );
+
+  const row = await rendered.findByRole('listitem', { name: 'Garden plan' });
+
+  await waitFor(() => {
+    expect(row).toHaveTextContent('Paused by nixie');
+  });
+
+  // The other client's resume exempts the task and leaves the pause as it was.
+  await pauseStore.pauseExemptions.create({ taskID: 'k3vq8m2xpa' });
+  await ctx.user.click(rendered.getByRole('button', { name: readLabel }));
+
+  await waitFor(() => {
+    expect(row).not.toHaveTextContent('Paused by nixie');
+  });
+});
