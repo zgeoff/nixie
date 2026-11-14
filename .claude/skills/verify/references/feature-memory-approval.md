@@ -57,7 +57,7 @@ item's fact would make nixie keep the item at once, with no proposal.
    bun verify browser snapshot
    ```
 
-   Expect: the "Memory" list holds one collapsed item, which reads as its text, with no buttons.
+   Expect: the "Memory" list holds one collapsed item, which shows the item's text and no buttons.
    Note the text.
 
    On `preview`, the "Memory" list can be empty. Then skip steps 5 and 6, and skip `done`. Report

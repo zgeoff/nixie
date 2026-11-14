@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { proposalAnsweredByMigration } from './0049-proposal-answered-by-migration';
+import { proposalAnsweredByMigration } from './0050-proposal-answered-by-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -46,8 +46,8 @@ async function setupTest() {
   };
 }
 
-test('it is the migration of version 49', () => {
-  expect(nixieSchema.migrations.indexOf(proposalAnsweredByMigration) + 1).toBe(49);
+test('it is the migration of version 50', () => {
+  expect(nixieSchema.migrations.indexOf(proposalAnsweredByMigration) + 1).toBe(50);
 });
 
 test('it fills the answering identity from the closing record of each answered row', async () => {
