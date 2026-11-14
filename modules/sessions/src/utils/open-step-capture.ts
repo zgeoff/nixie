@@ -9,6 +9,7 @@ export interface StepCaptureInput {
   readonly step: StepCaptureStep;
   readonly profile: Pick<ModelProfile, 'id' | 'model' | 'harness' | 'baseURL'>;
   readonly role: ModelRole;
+  readonly isRewritten: boolean;
 }
 
 interface StepCaptureClose {

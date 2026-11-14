@@ -9,8 +9,18 @@ function setupTest(capabilities = harnessCapabilities) {
   return {
     schema: buildModelsConfigSchema<ModelProfile>(
       [
-        { id: 'agent-sdk', profileSchema: agentSDKProfileSchema },
-        { id: 'codex', profileSchema: buildStubCodexProfileSchema() },
+        {
+          id: 'agent-sdk',
+          profileSchema: agentSDKProfileSchema,
+          bind: (profile) => ({
+            rewritesRequests: 'outsideClaude' in profile && profile.outsideClaude === true,
+          }),
+        },
+        {
+          id: 'codex',
+          profileSchema: buildStubCodexProfileSchema(),
+          bind: () => ({ rewritesRequests: false }),
+        },
       ],
       capabilities,
     ),
@@ -237,4 +247,87 @@ test.each([
   expect(result.error?.issues).toStrictEqual([
     expect.objectContaining({ path: ['profiles', 'chat-direct', 'harness'], message: row.message }),
   ]);
+});
+
+test('it refuses the checker role on a profile outside Claude', () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      router: {
+        harness: 'agent-sdk',
+        base_url: 'https://gateway.example/anthropic',
+        credential: 'deployment:gateway',
+        auth_header: 'bearer',
+        model: 'glm-5.3',
+        outside_claude: true,
+        effort: 'low',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 4 },
+      },
+    },
+    roles: { conversation: 'router', checker: 'router' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['roles', 'checker'],
+    message:
+      'the checker role runs on the profile router, which is outside Claude, and a check removes no CLI block',
+  });
+});
+
+test("it refuses an unset checker role when the conversation's profile is outside Claude", () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      router: {
+        harness: 'agent-sdk',
+        base_url: 'https://gateway.example/anthropic',
+        credential: 'deployment:gateway',
+        auth_header: 'bearer',
+        model: 'glm-5.3',
+        outside_claude: true,
+        effort: 'low',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 4 },
+      },
+    },
+    roles: { conversation: 'router' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['roles', 'checker'],
+    message:
+      'the checker role runs on the profile router, which is outside Claude, and a check removes no CLI block',
+  });
+});
+
+test('it loads a profile outside Claude on the conversation role when the checker runs elsewhere', () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      router: {
+        harness: 'agent-sdk',
+        base_url: 'https://gateway.example/anthropic',
+        credential: 'deployment:gateway',
+        auth_header: 'bearer',
+        model: 'glm-5.3',
+        outside_claude: true,
+        effort: 'low',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 4 },
+      },
+      checker: {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'low',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'router', checker: 'checker' },
+  });
+
+  expect(result.success).toBe(true);
 });

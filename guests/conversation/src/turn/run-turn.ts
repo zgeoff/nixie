@@ -2,6 +2,10 @@ import type { SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sd
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, ReportedUsage, SessionPoint } from '@heynixie/wire';
 import { foldAnthropicUsageEvent, parseAnthropicCallUsage } from '@heynixie/wire';
+import type { RequestRewriter } from '../rewrite/start-request-rewriter';
+import { startRequestRewriter } from '../rewrite/start-request-rewriter';
+import type { Refusal } from '../rewrite/wait-for-refusal';
+import { waitForRefusal } from '../rewrite/wait-for-refusal';
 import type { TurnDependencies } from '../types';
 import { buildModelFailure } from './build-model-failure';
 import type { TurnFrame } from './build-query-options';
@@ -16,6 +20,37 @@ import type { TurnInputState } from './read-turn-input';
 import { readTurnInput } from './read-turn-input';
 import { setupTurnDisk } from './setup-turn-disk';
 import { toolServerName } from './tool-server-name';
+
+export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<void> {
+  const rewriter = await startRewriterOrFail(turn, deps);
+
+  if (rewriter === 'failed') {
+    return;
+  }
+
+  try {
+    await runTurnThrough(turn, deps, rewriter);
+  } finally {
+    await rewriter?.stop();
+  }
+}
+
+async function startRewriterOrFail(
+  turn: TurnFrame,
+  deps: TurnDependencies,
+): Promise<RequestRewriter | null | 'failed'> {
+  try {
+    return startRequestRewriter(turn, deps.rewriter);
+  } catch (error) {
+    await deps.emit({
+      type: 'failed',
+      reason: 'error',
+      detail: `the request rewriter could not start: ${String(error)}`,
+    });
+
+    return 'failed';
+  }
+}
 
 interface TurnState extends TurnInputState {
   boundary: SessionPoint | null;
@@ -32,10 +67,20 @@ interface TurnState extends TurnInputState {
 
   // the usage the stream reported so far for the model call in flight
   reported: ReportedUsage;
+
+  readonly refused: Promise<Refusal>;
 }
 
-export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<void> {
-  const options = buildQueryOptions(turn, { env: deps.env, toolServer: deps.toolServer });
+async function runTurnThrough(
+  turn: TurnFrame,
+  deps: TurnDependencies,
+  rewriter: RequestRewriter | null,
+): Promise<void> {
+  const options = buildQueryOptions(turn, {
+    env: deps.env,
+    toolServer: deps.toolServer,
+    ...(rewriter === null ? {} : { rewriterURL: rewriter.url }),
+  });
 
   await setupTurnDisk(options, turn.resume?.sessionID ?? null);
 
@@ -48,6 +93,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
     isInterrupted: false,
     isRetried: false,
     reported: {},
+    refused: waitForRefusal(rewriter),
     toolsReady: Promise.withResolvers(),
     inputFailed: Promise.withResolvers(),
     ended: Promise.withResolvers(),
@@ -127,10 +173,16 @@ async function drainSession(
   const messages = session[Symbol.asyncIterator]();
 
   for (;;) {
-    const next = await Promise.race([messages.next(), state.inputFailed.promise]);
+    const next = await Promise.race([messages.next(), state.inputFailed.promise, state.refused]);
 
     if (next instanceof Error) {
       throw next;
+    }
+
+    if ('refusal' in next) {
+      await deps.emit({ type: 'failed', reason: 'error', detail: next.refusal });
+
+      return;
     }
 
     if (next.done === true) {

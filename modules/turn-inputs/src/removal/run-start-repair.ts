@@ -93,6 +93,7 @@ async function readOpenCapture(
     profile: row.profile,
     model: row.model,
     harness: row.harness,
+    isRewritten: row.is_rewritten === 1,
     source: row.source,
     keyID: row.key_id,
     privateKey,

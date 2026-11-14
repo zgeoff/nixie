@@ -125,6 +125,7 @@ async function runStepSession(
     step: { taskID: run.taskID, stepRunID: session.stepRunID },
     profile,
     role: run.captureRole ?? 'memory-writer',
+    isRewritten: run.harness.rewritesRequests,
   });
 
   const calls = { count: 0 };

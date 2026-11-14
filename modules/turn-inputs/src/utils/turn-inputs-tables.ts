@@ -32,6 +32,7 @@ interface CaptureTable {
   readonly profile: string;
   readonly model: string;
   readonly harness: string;
+  readonly is_rewritten: number;
   readonly source: string;
   readonly key_id: string | null;
   readonly sealed_private_key: Uint8Array<ArrayBuffer> | null;

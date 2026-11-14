@@ -4,10 +4,10 @@ nixie reaches every model through a model profile: a named route to one model on
 endpoint, with the harness that runs its turns, a reference to its credential, the model ID and an
 optional price table. A profile also holds the fields that its harness's loop reads. An Agent SDK
 profile adds the header that credential goes in, the reasoning effort, an optional context cap, a
-prompt cache lifetime and an optional provider pin. Each model role names the profile it uses, so
-moving a role to another model is a change to the deployment configuration and never to code.
-[Conversation turns](./conversation-turns.md) covers how the conversation runs its turns on its
-role's profile.
+prompt cache lifetime, a mark for a model outside Claude and an optional provider pin. Each model
+role names the profile it uses, so moving a role to another model is a change to the deployment
+configuration and never to code. [Conversation turns](./conversation-turns.md) covers how the
+conversation runs its turns on its role's profile.
 
 ## The role map
 
@@ -124,6 +124,33 @@ whose reason is null, sends a turn frame with no `resume` key, and stores no ses
 that overflows fails its step, and the next step opens again from the log. A resumed turn that
 overflows compacts only on a harness that declares `summarize`.
 
+## Models outside Claude
+
+An Agent SDK profile runs a model that is not a Claude model when it states `outside_claude: true`.
+nixie never derives the mark from the model ID. The guest then removes the CLI's own system blocks
+from each model request, so the model sees only nixie's system prompt
+([the request rewriter](./conversation-turns.md#the-request-rewriter)). A profile outside Claude may
+also state a `provider_pin`, and the rewriter then adds a provider order that keeps the prompt cache
+on that one upstream provider.
+
+The schema refuses 3 cases at the config's load:
+
+| Case                                                                                  | Message                                                                                                |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| no `outside_claude`, and a model ID without `claude`                                  | `the model <model> names no Claude model, so the profile must state outside_claude: true or false`     |
+| a `provider_pin` without `outside_claude: true`                                       | `a provider pin changes the request body, which nixie does only for a profile outside Claude`          |
+| the checker role, or the conversation role when `checker` is unset, on such a profile | `the checker role runs on the profile <id>, which is outside Claude, and a check removes no CLI block` |
+
+A profile that states `outside_claude: false` loads whatever its model ID, and its guest runs no
+rewriter. The conversation role may run on a profile outside Claude when the checker role names
+another profile. The context cap check above still applies: a model the CLI's catalog lacks gets the
+smaller window.
+
+List a model in `models.selectable` only after its run of the
+[SDK contract suite](../../runbooks/sdk-contract-suite.md#run-the-suite-on-another-model) and its
+preview check pass. nixie's code checks neither. OpenRouter promises that its Messages endpoint
+works with the CLI only for the models of its Anthropic provider.
+
 ## The context cap
 
 A profile's context cap sets the window nixie's compactor measures a session against
@@ -204,6 +231,6 @@ cache writes and the cache reads, the same tokens the provider counts. A table w
 set prices every response with its base set.
 
 The [model gateway](../policy/model-gateway.md#the-count) is the one built part that calls the call
-cost, and no built part reads the provider pin. The
-[models design](../../design/platform/core/models.md#cost) sets out how the model gateway prices
-each response with the table.
+cost. Only the guest's request rewriter reads the provider pin, and the gateway forwards a request
+body as it came. The [models design](../../design/platform/core/models.md#cost) sets out how the
+model gateway prices each response with the table.

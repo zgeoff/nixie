@@ -14,3 +14,12 @@ test('it runs one turn of the pinned model in the target folder, with no tools a
     env: { CLAUDE_CONFIG_DIR: '/srv/probe' },
   });
 });
+
+test('it runs the model that the run names in its environment', () => {
+  const options = buildProbeOptions({
+    directory: '/srv/probe',
+    env: { NIXIE_SDK_CONTRACT_MODEL: 'glm-test-1' },
+  });
+
+  expect(options.model).toBe('glm-test-1');
+});

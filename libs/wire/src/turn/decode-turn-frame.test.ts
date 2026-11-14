@@ -16,6 +16,7 @@ test('it decodes a turn frame the host sent', () => {
       authHeader: 'x-api-key',
       contextTokens: 400_000,
       cacheTTL: '1h',
+      requestRewrite: null,
     },
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: {
@@ -44,6 +45,7 @@ test('it refuses a turn frame whose input message has no uuid', () => {
       authHeader: 'x-api-key',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
     },
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: null,
@@ -68,6 +70,7 @@ test('it refuses a turn frame with an empty inbox', () => {
       authHeader: 'x-api-key',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
     },
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: null,

@@ -12,6 +12,7 @@ test('it builds a conversation role on one profile at the model URL, with no con
         authHeader: 'x-api-key',
         model: 'claude-test-1',
         effort: 'low',
+        outsideClaude: null,
         providerPin: null,
         contextTokens: null,
         cacheTTL: '5m',

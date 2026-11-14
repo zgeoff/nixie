@@ -21,6 +21,7 @@ export function buildMockSummarizeFrame(overrides: SummarizeFrameOverrides = {})
       authHeader: 'x-api-key',
       contextTokens: null,
       cacheTTL: '5m',
+      requestRewrite: null,
       ...overrides.profile,
     },
     resume: overrides.resume ?? {

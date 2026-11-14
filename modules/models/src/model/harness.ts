@@ -53,6 +53,9 @@ export interface Harness {
   // the HTTP header that carries the model secret
   readonly secretHeader: SecretSpec['header'];
 
+  // whether the guest rewrites each model request, which only a profile outside Claude needs
+  readonly rewritesRequests: boolean;
+
   // 'kept': a session nixie resumes. 'one-off': a session nixie never resumes, such as a check's.
   readonly toTurnProfile: (use: 'kept' | 'one-off') => TurnProfile;
 

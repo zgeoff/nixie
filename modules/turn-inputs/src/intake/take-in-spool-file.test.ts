@@ -13,11 +13,12 @@ async function setupTest(options: Parameters<typeof startTestTurnInputs>[0] = {}
 
   return {
     ...ctx,
-    openStep: (stepRunID = 'step-1@1') =>
+    openStep: (stepRunID = 'step-1@1', isRewritten = false) =>
       ctx.turnInputs.openCapture({
         step: { taskID: 'task-a', stepRunID },
         profile: ctx.profile,
         role: 'task',
+        isRewritten,
       }),
     readSpoolNames: () => readdir(ctx.spoolDir),
     readKeyRows: () => readTestRecordKeyRows(ctx.writer),
@@ -66,6 +67,22 @@ test('it stores a body as one file under the data directory and one stored row',
   const received1 = await ctx.readSpoolNames();
 
   expect(received1).toStrictEqual([]);
+});
+
+test('it marks the stored row of a step that the guest rewrites as rewritten', async () => {
+  const ctx = await setupTest();
+  const capture = await ctx.openStep('step-1@1', true);
+
+  await ctx.writeSpoolFile(capture.baseURL, {
+    counter: 1,
+    body: new TextEncoder().encode('{"model":"glm-test-1"}'),
+  });
+
+  await capture.close({ callFrames: 1 });
+
+  const rows = await ctx.readInputRows();
+
+  expect(rows.map((row) => row.is_rewritten)).toStrictEqual([1]);
 });
 
 test('it opens a stored body byte for byte, a secret that is not an own value included', async () => {

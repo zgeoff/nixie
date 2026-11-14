@@ -10,6 +10,7 @@ export function buildMockModelProfile(overrides: Partial<HarnessProfile> = {}): 
     authHeader: 'x-api-key',
     model: `${faker.lorem.word()}-${faker.number.int({ min: 1, max: 9 })}`,
     effort: 'medium',
+    outsideClaude: null,
     providerPin: null,
     contextTokens: null,
     cacheTTL: '5m',

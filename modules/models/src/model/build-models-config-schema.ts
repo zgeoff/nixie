@@ -5,6 +5,7 @@ import { modelRoles } from '../role/model-roles';
 import { roleNeeds } from '../role/role-needs';
 import type { HarnessProfile, ModelProfile, ModelsConfig, SelectableModel } from '../types';
 import { checkHarnessFit } from './check-harness-fit';
+import type { Harness } from './harness';
 
 type HarnessCapabilities = Readonly<Record<HarnessID, ReadonlySet<HarnessCapability>>>;
 
@@ -15,6 +16,11 @@ export type HarnessProfileSchema<Profile extends ModelProfile = HarnessProfile> 
 export interface HarnessSchemaEntry<Profile extends ModelProfile = HarnessProfile> {
   readonly id: HarnessID;
   readonly profileSchema: HarnessProfileSchema<Profile>;
+
+  // the part of the harness record that a load rule reads
+  readonly bind: (
+    profile: { readonly id: string } & Omit<Profile, 'id'>,
+  ) => Pick<Harness, 'rewritesRequests'>;
 }
 
 const profileIDSchema = z
@@ -144,6 +150,26 @@ export function buildModelsConfigSchema<Profile extends ModelProfile = HarnessPr
             config.roles.task === undefined
               ? `the task role is unset, so tasks run on the conversation's profile ${taskProfileID ?? ''}, which sets no prices`
               : `the task role names the profile ${config.roles.task}, which sets no prices`,
+        });
+      }
+
+      // A check removes no block of the CLI, so a profile outside Claude cannot run it.
+      const checkerProfileID = config.roles.checker ?? config.roles.conversation;
+
+      const checkerProfile =
+        checkerProfileID === undefined ? undefined : config.profiles[checkerProfileID];
+
+      const checkerEntry = entries.find((entry) => entry.id === checkerProfile?.harness);
+
+      if (
+        checkerProfileID !== undefined &&
+        checkerProfile !== undefined &&
+        checkerEntry?.bind({ id: checkerProfileID, ...checkerProfile }).rewritesRequests === true
+      ) {
+        issues.addIssue({
+          code: 'custom',
+          path: ['roles', 'checker'],
+          message: `the checker role runs on the profile ${checkerProfileID}, which is outside Claude, and a check removes no CLI block`,
         });
       }
 

@@ -22,8 +22,22 @@ export function buildContractEnv(
     throw new Error('the SDK contract suite needs ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY');
   }
 
+  const model = source['NIXIE_SDK_CONTRACT_MODEL'];
+  const baseURL = source['NIXIE_SDK_CONTRACT_BASE_URL'];
+
   return {
     ...pickSetVariables(source, passedVariables),
+    ...(baseURL === undefined || baseURL === '' ? {} : { ANTHROPIC_BASE_URL: baseURL }),
+
+    // The probes read the model from here, and the CLI's background calls name a small model that
+    // an endpoint serving one model lacks.
+    ...(model === undefined || model === ''
+      ? {}
+      : {
+          NIXIE_SDK_CONTRACT_MODEL: model,
+          ANTHROPIC_SMALL_FAST_MODEL: model,
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: model,
+        }),
     PATH: source['PATH'] ?? '',
     HOME: configDir,
     CLAUDE_CONFIG_DIR: configDir,

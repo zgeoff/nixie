@@ -250,3 +250,54 @@ test('it leaves the tool server entry as it is for a summarize frame', () => {
     nixie: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
   });
 });
+
+test('it gives the CLI the rewriter URL and exempts loopback from both proxy variables', () => {
+  const options = buildQueryOptions(
+    buildMockTurnFrame({
+      profile: { baseURL: 'https://gateway.example/anthropic', authHeader: 'x-api-key' },
+    }),
+    {
+      env: {
+        HOME: '/home/guest',
+        ANTHROPIC_API_KEY: 'imp-placeholder',
+        HTTPS_PROXY: 'http://proxy.example:3128',
+        NO_PROXY: 'broker.example',
+      },
+      toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+      rewriterURL: 'http://127.0.0.1:41873',
+    },
+  );
+
+  invariant(options.env);
+
+  expect(options.env).toContainEntries([
+    ['ANTHROPIC_BASE_URL', 'http://127.0.0.1:41873'],
+    ['NO_PROXY', 'broker.example,127.0.0.1'],
+    ['no_proxy', '127.0.0.1'],
+  ]);
+});
+
+test('it leaves the proxy variables and the base URL of a profile with no rewriter as they are', () => {
+  const options = buildQueryOptions(
+    buildMockTurnFrame({
+      profile: { baseURL: 'https://gateway.example/anthropic', authHeader: 'x-api-key' },
+    }),
+    {
+      env: {
+        HOME: '/home/guest',
+        ANTHROPIC_API_KEY: 'imp-placeholder',
+        NO_PROXY: 'broker.example',
+      },
+      toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+    },
+  );
+
+  invariant(options.env);
+
+  expect(options.env).toContainEntries([
+    ['ANTHROPIC_BASE_URL', 'https://gateway.example/anthropic'],
+    ['NO_PROXY', 'broker.example'],
+  ]);
+
+  expect(options.env).not.toContainKey('no_proxy');
+});

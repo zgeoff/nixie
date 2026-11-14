@@ -2,9 +2,12 @@
 
 Each probe in [`evals/sdk-contract/`](../../../evals/sdk-contract/) runs the Agent SDK version that
 `bun.lock` pins against the model, and checks one behaviour that nixie's guests or designs rely on,
-so an SDK bump that changes one of them fails the suite. The probes run Haiku 5.5 with options that
-mirror the guest's, in a config directory of their own, and read the stream, the hooks and the
-session transcript rather than the model's prose wherever the SDK exposes the answer.
+so an SDK bump that changes one of them fails the suite. The probes run Haiku 5.5 by default, with
+options that mirror the guest's. `NIXIE_SDK_CONTRACT_MODEL` names another model, and
+`NIXIE_SDK_CONTRACT_BASE_URL` another base URL. With a model set, the suite also sets the CLI's
+small-model variables to it, as the guest does. The probes run in a config directory of their own,
+and read the stream, the hooks and the session transcript rather than the model's prose wherever the
+SDK exposes the answer.
 
 Each probe is a function in the conversation guest's
 [sdk-contract](../../../guests/conversation/src/sdk-contract/) folder. This suite runs it against

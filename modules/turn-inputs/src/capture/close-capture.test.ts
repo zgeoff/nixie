@@ -18,6 +18,7 @@ async function setupTest(options: Parameters<typeof startTestTurnInputs>[0] = {}
         step: { taskID: 'task-a', stepRunID: 'step-1@1' },
         profile: ctx.profile,
         role: 'task',
+        isRewritten: false,
       }),
     readKeyRows: () => readTestRecordKeyRows(ctx.writer),
     readCaptureRows: () =>

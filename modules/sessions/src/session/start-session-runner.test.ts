@@ -384,8 +384,35 @@ test('it opens a capture for the memory-writer role and gives the turn its base 
     expect.objectContaining({
       step: { taskID: 'memory-writer', stepRunID: 'memory-writer:1@1' },
       role: 'memory-writer',
+      isRewritten: false,
     }),
   ]);
 
   expect(ctx.sandboxes.turns[0]?.profile.baseURL).toEndWith('/~in.test-tag');
+});
+
+test('it marks the capture of a step on a profile outside Claude as rewritten', async () => {
+  const ctx = await setupTest();
+
+  const opened: StepCaptureInput[] = [];
+
+  const runner = await ctx.startRunner(
+    {
+      models: buildMockModelsConfig({
+        profiles: { router: { model: 'glm-test-1', outsideClaude: true } },
+      }),
+      credential: 'not-a-real-key',
+    },
+    opened,
+  );
+
+  await runner.runSession({
+    systemPrompt: 'You write memory.',
+    prompt: 'Read the batch.',
+    signal: new AbortController().signal,
+    stepRunID: 'memory-writer:1@1',
+  });
+
+  expect(opened.map((input) => input.isRewritten)).toStrictEqual([true]);
+  expect(ctx.sandboxes.turns[0]?.profile.requestRewrite).toStrictEqual({ providerPin: null });
 });

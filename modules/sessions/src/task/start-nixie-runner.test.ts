@@ -69,6 +69,7 @@ async function setupTest() {
             credential: 'deployment:router',
             auth_header: 'bearer',
             model: 'other-family-test-3',
+            outside_claude: false,
             effort: 'low',
             prices: { input: 3, cache_write: 3, cache_write_1h: 3, cached_input: 0.3, output: 15 },
           },
@@ -796,6 +797,7 @@ test("it runs a task on its chosen model's profile, through that profile's host,
     effort: 'low',
     contextTokens: null,
     cacheTTL: '5m',
+    requestRewrite: null,
     authHeader: 'bearer',
   });
 

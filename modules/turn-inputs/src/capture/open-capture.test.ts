@@ -26,6 +26,7 @@ test('it opens a capture whose base URL carries a tag of the capture', async () 
     step: ctx.step,
     profile: ctx.profile,
     role: 'task',
+    isRewritten: false,
   });
 
   const rowRows = await ctx.readCaptures();
@@ -60,6 +61,7 @@ test('it hands back the own base URL and writes nothing with the log off', async
     step: ctx.step,
     profile: ctx.profile,
     role: 'task',
+    isRewritten: false,
   });
 
   expect(capture.baseURL).toBe(ctx.profile.baseURL);
@@ -88,6 +90,7 @@ test('it opens no capture when a set off lands while the step waits for the lane
     step: ctx.step,
     profile: ctx.profile,
     role: 'task',
+    isRewritten: false,
   });
 
   await setting;
@@ -110,6 +113,7 @@ test('it hands back the own base URL for a role outside the roles', async () => 
     step: ctx.step,
     profile: ctx.profile,
     role: 'memory-writer',
+    isRewritten: false,
   });
 
   expect(capture.baseURL).toBe(ctx.profile.baseURL);
@@ -128,6 +132,7 @@ test('it hands back the own base URL with no turn_input_log section', async () =
     step: ctx.step,
     profile: ctx.profile,
     role: 'task',
+    isRewritten: false,
   });
 
   expect(capture.baseURL).toBe(ctx.profile.baseURL);
@@ -156,6 +161,7 @@ test.each([
     step: ctx.step,
     profile: { ...ctx.profile, baseURL },
     role: 'task',
+    isRewritten: false,
   });
 
   const listed = await ctx.turnInputs.list(10);
@@ -184,6 +190,7 @@ test('it writes one no_capture_point miss for a codex profile', async () => {
     step: ctx.step,
     profile: { ...ctx.profile, harness: 'codex' },
     role: 'task',
+    isRewritten: false,
   });
 
   const listed = await ctx.turnInputs.list(10);
@@ -210,7 +217,12 @@ test('it hands back the own base URL, logs a reason and writes no row when the k
 
   await broken.runStart();
 
-  const capture = await broken.openCapture({ step: ctx.step, profile: ctx.profile, role: 'task' });
+  const capture = await broken.openCapture({
+    step: ctx.step,
+    profile: ctx.profile,
+    role: 'task',
+    isRewritten: false,
+  });
 
   expect(capture.baseURL).toBe(ctx.profile.baseURL);
 
@@ -238,6 +250,7 @@ test('it tags a step when the gateway answers yes at the start', async () => {
     step: ctx.step,
     profile: ctx.profile,
     role: 'task',
+    isRewritten: false,
   });
 
   expect(capture.baseURL).toContain('/~in.');
@@ -258,6 +271,7 @@ test.each([
       step: ctx.step,
       profile: ctx.profile,
       role: 'task',
+      isRewritten: false,
     });
 
     const listed = await ctx.turnInputs.list(10);

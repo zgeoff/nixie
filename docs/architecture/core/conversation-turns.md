@@ -67,6 +67,39 @@ and the turn's own step token, which the guest gives the SDK as an HTTP MCP serv
 before the loop starts. The step token ties each tool call to the step that runs the turn
 ([tool calls](../connectors/tool-calls.md#one-endpoint-per-run)).
 
+### The request rewriter
+
+The CLI puts 2 blocks of its own ahead of nixie's system prompt in every request: a billing header
+and an identity line. A model outside Claude reads the identity line as the first words of its
+persona, so a frame whose profile carries `requestRewrite` starts a loopback request rewriter before
+the CLI. The guest gives the CLI the rewriter's address as its base URL and adds `127.0.0.1` to
+`NO_PROXY` and `no_proxy`, so the sandbox's proxy never carries the CLI's hop to the rewriter. A
+frame with a null `requestRewrite` starts no listener and gives the CLI the profile's own base URL,
+so a Claude request reaches upstream as the CLI built it.
+
+The rewriter sends each request to the frame's whole base URL, then to the path and query the CLI
+used, through the sandbox's proxy, so the credential broker adds the credential as it does for the
+CLI.
+
+- A `POST` of a messages request keeps the shortest run of system blocks at the end of the list
+  whose text, joined, equals the frame's system prompt, and drops every block ahead of it. Each kept
+  block goes on as it came, with its cache marker. With a provider pin, the request also gains a
+  provider order, with fallbacks off.
+- A `POST` of a token count loses the blocks the same way and gains no provider order.
+- A `GET` of the model list goes on as it came.
+- The rewriter refuses every other request, and every request whose system prompt is not a list of
+  text blocks or holds no tail equal to nixie's prompt. It holds no list of the CLI's wordings.
+
+A refusal sends the CLI a 400 in the Messages error shape and sends nothing upstream. The first
+refusal stands, and the rewriter refuses each later request with it. The guest ends the turn, or the
+summary, with one `failed` frame whose reason is `error` and whose detail is the refusal's text.
+When the listener cannot bind, the guest sends `failed` with the bind error and never starts the
+CLI. The guest stops the rewriter after the CLI exits. A failed or refused upstream response reaches
+the CLI as it came.
+
+The checker's query runs no rewriter, so the config refuses a checker role on a profile outside
+Claude.
+
 The guest ends the turn with a failure when nixie's server is not connected, because a loop without
 its tools would answer from the model alone, and its replies could claim actions that never ran. The
 CLI builds its first model request from the servers connected when the turn's first message arrives.

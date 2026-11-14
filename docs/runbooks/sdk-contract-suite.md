@@ -63,6 +63,29 @@ never calls the model. With it and neither credential variable set, every probe 
 
 After a push to the pull request, run the suite again at the new head. Post a new comment.
 
+## Run the suite on another model
+
+Run the suite on a model outside Claude before you list that model in `models.selectable`. The suite
+reads the model from `NIXIE_SDK_CONTRACT_MODEL` and the base URL from `NIXIE_SDK_CONTRACT_BASE_URL`,
+and sets the CLI's small-model variables to the model. With neither variable set, it runs Haiku 5.5
+on the default endpoint.
+
+1. In an imp, read the model's credential from the `nixie` vault item `openrouter-test`, field
+   `credential`, into the sandbox's secret for the model host. Never print it.
+2. Run the probes with the model and its pinned provider:
+
+   ```bash
+   ANTHROPIC_AUTH_TOKEN=imp-broker-placeholder NIXIE_SDK_CONTRACT=1 \
+     NIXIE_SDK_CONTRACT_MODEL=<model> NIXIE_SDK_CONTRACT_BASE_URL=<base_url> \
+     bun run test:model-api
+   ```
+
+   `<model>` is the model ID the aggregator takes, and `<base_url>` is the aggregator's Anthropic
+   Messages base URL.
+
+3. Name each failing probe in the pull request. A model that fails a probe stays out of
+   `models.selectable`.
+
 ## Act on a failing probe
 
 A probe that fails on a new SDK version shows that a behaviour nixie relies on changed.

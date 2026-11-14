@@ -24,6 +24,7 @@ export async function runConversationStep(
     step: { taskID: input.taskID, stepRunID: buildStepRunID(input) },
     profile: conversation.profile.profile,
     role: conversation.frame.kind === 'task' ? 'task' : 'conversation',
+    isRewritten: conversation.harness.rewritesRequests,
   });
 
   const calls = { count: 0 };

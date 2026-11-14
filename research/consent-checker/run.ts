@@ -300,6 +300,7 @@ function buildProfile(defaults: RoleProfile) {
     authHeader: 'bearer' as const,
     contextTokens: null,
     cacheTTL: '5m' as const,
+    requestRewrite: null,
   };
 }
 
