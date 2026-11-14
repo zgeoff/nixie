@@ -1,4 +1,3 @@
-/* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { memoryExportSchema } from './memory-export-schema';
@@ -338,7 +337,7 @@ test.each([6, 7])(
       'records' in moment ? moment.records.map((record) => record.images) : [],
     );
 
-    expect(lists).toSatisfyAll((images) => images.length === 0);
+    expect(lists).toStrictEqual(lists.map(() => []));
   },
 );
 
@@ -383,9 +382,9 @@ test('it reads the span records of a version 5 file with no images', () => {
     ],
   });
 
-  expect(
-    file.moments.flatMap((moment) => ('records' in moment ? moment.records : [])),
-  ).toSatisfyAll((record) => record.images.length === 0);
+  const records = file.moments.flatMap((moment) => ('records' in moment ? moment.records : []));
+
+  expect(records.map((record) => record.images)).toStrictEqual(records.map(() => []));
 });
 
 test('it rejects a version 7 span record that carries an image list', async () => {

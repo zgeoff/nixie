@@ -54,7 +54,7 @@ test('it opens a photo of a kept moment, found through moment.read, with log.rea
           const momentID = [...seen.matchAll(/momentID\\*":\\*"(?<id>[a-z0-9]+)/gu)].at(-1)
             ?.groups?.['id'];
 
-          invariant(momentID, 'the request holds no momentID');
+          invariant(momentID !== undefined, 'the request holds no momentID');
 
           return { momentID };
         },
@@ -68,7 +68,10 @@ test('it opens a photo of a kept moment, found through moment.read, with log.rea
           const eventID = [...seen.matchAll(/eventID\\*":\\*"(?<id>\d+)/gu)].at(-1)?.groups?.['id'];
           const number = /images\\*":\[\{\\*"n\\*":(?<number>\d+)/u.exec(seen)?.groups?.['number'];
 
-          invariant(eventID && number, 'the request holds no image pointer');
+          invariant(
+            eventID !== undefined && number !== undefined,
+            'the request holds no image pointer',
+          );
 
           return { eventID, number: Number(number) };
         },

@@ -1,4 +1,3 @@
-/* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
 import { expect, mock, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
@@ -293,7 +292,7 @@ test('it opens the photo that a moment.read record points to, by its eventID and
     (found) => found.groups?.['number'],
   );
 
-  invariant(eventID);
+  invariant(eventID !== undefined);
 
   const outcome = await ctx.tool.run(
     {
@@ -405,7 +404,7 @@ test('it refuses a photo that a moment.read record points to when the moment is 
     (found) => found.groups?.['number'],
   );
 
-  invariant(eventID);
+  invariant(eventID !== undefined);
 
   const outcome = await ctx.tool.run(
     {
