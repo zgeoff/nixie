@@ -2,10 +2,10 @@ import { ORPCError } from '@orpc/client';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { useMemoryForget } from '../memory/use-memory-forget';
 import { css } from '../styled-system/css';
 import type { ForgetPreview as ForgetPreviewData, MemoryItem } from '../types';
-import { useMemoryForget } from '../use-memory-forget';
-import { useNixieClient } from '../use-nixie-client';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { MemoryVersionList } from './memory-version-list';
 
 export interface MemoryForgetControlProps {

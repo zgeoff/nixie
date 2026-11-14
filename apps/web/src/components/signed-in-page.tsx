@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
-import type { SessionState } from '../read-session-state';
+import type { SessionState } from '../conversation/read-session-state';
 import { BackupNotice } from './backup-notice';
 import { EnrolForm } from './enrol-form';
 

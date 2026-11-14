@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import userEvent from '@testing-library/user-event';
-import { MicrophoneContext } from '../microphone-context';
 import { buildStubMicrophone } from '../test-utils/build-stub-microphone';
 import { render } from '../test-utils/render';
+import { MicrophoneContext } from '../utils/microphone-context';
 import { VoiceTypingControl } from './voice-typing-control';
 
 test('it offers to turn on voice typing when the browser has not asked for the microphone', async () => {

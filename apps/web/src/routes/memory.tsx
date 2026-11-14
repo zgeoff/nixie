@@ -4,7 +4,7 @@ import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { MemoryView } from '../components/memory-view';
 import { SignedInPage } from '../components/signed-in-page';
-import { readRouteSession } from '../read-route-session';
+import { readRouteSession } from '../conversation/read-route-session';
 import { css } from '../styled-system/css';
 
 interface MemorySearch {

@@ -4,7 +4,7 @@ import { buildQueryUtils } from '@heynixie/contract';
 import { QueryClient } from '@tanstack/react-query';
 import { createRouter } from '@tanstack/react-router';
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query';
-import { getClient } from './get-client';
+import { getClient } from './client/get-client';
 import { routeTree } from './routeTree.gen';
 
 export function getRouter() {

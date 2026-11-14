@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { formatMemoryDate } from '../format-memory-date';
-import { formatMemoryProvenance } from '../format-memory-provenance';
+import { formatMemoryDate } from '../memory/format-memory-date';
+import { formatMemoryProvenance } from '../memory/format-memory-provenance';
 import { css } from '../styled-system/css';
 import type { MemoryItem } from '../types';
 import { MemoryItemHistory } from './memory-item-history';

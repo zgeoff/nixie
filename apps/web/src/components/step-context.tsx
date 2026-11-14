@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import type { CompactionActivity, ContextActivity } from '../build-activity';
-import { formatCompaction } from '../format-compaction';
-import { formatContext } from '../format-context';
+import type { CompactionActivity, ContextActivity } from '../conversation/build-activity';
+import { formatCompaction } from '../conversation/format-compaction';
+import { formatContext } from '../conversation/format-context';
 import { StepSection } from './step-section';
 
 export interface StepContextProps {

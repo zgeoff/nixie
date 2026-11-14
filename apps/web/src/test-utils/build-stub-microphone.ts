@@ -1,4 +1,8 @@
-import type { Microphone, MicrophonePermission, MicrophoneStream } from '../microphone-context';
+import type {
+  Microphone,
+  MicrophonePermission,
+  MicrophoneStream,
+} from '../utils/microphone-context';
 
 type StubMicrophoneAnswer = 'allow' | 'block' | 'dismiss' | 'missing';
 

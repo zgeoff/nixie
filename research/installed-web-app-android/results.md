@@ -184,8 +184,8 @@ EditContext ships on Chrome for Android from 121
 ### What nixie does
 
 The composer records `inputType`, `data` and the selection on each `beforeinput`
-([use-pending-input.ts:18](../../apps/web/src/use-pending-input.ts#L18)). The span logic labels a
-single `insertText` or `insertCompositionText` of several words as unknown
+([use-pending-input.ts:18](../../apps/web/src/task/use-pending-input.ts#L18)). The span logic labels
+a single `insertText` or `insertCompositionText` of several words as unknown
 ([pick-span-source.ts:27](../../libs/contract/src/span/pick-span-source.ts#L27)), so a clipboard
 chip, a keyboard's own undo and a dictated phrase fail closed. The
 [paste spans spike](../paste-spans/results.md#android-gboard-in-chrome) ran Gboard in Chrome on a
@@ -209,9 +209,9 @@ paste spans spike left out.
   ([manifest updates](https://web.dev/articles/manifest-updates)).
 - **Background sync.** The `sync` event fires once the network returns, with the app closed. The
   outbox keeps unsent messages in `localStorage`
-  ([use-stored-outbox.ts:83](../../apps/web/src/use-stored-outbox.ts#L83)), which a service worker
-  cannot read, so background sending needs the outbox in IndexedDB. Periodic sync needs an installed
-  app and lets Chrome pick the interval
+  ([use-stored-outbox.ts:83](../../apps/web/src/outbox/use-stored-outbox.ts#L83)), which a service
+  worker cannot read, so background sending needs the outbox in IndexedDB. Periodic sync needs an
+  installed app and lets Chrome pick the interval
   ([periodic background sync](https://developer.chrome.com/docs/capabilities/periodic-background-sync)).
 - **Manifest shortcuts.** A long press on the icon offers the manifest's shortcuts, such as the
   approval digest and a new message; MDN lists `shortcuts` on Chrome for Android from 84

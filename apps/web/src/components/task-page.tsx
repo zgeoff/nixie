@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import type { StartTimer } from '../start-platform-timer';
-import type { ListedTask } from '../use-live-task-list';
-import { useLiveTaskList } from '../use-live-task-list';
-import { useNixieClient } from '../use-nixie-client';
+import type { ListedTask } from '../task/use-live-task-list';
+import { useLiveTaskList } from '../task/use-live-task-list';
+import type { StartTimer } from '../utils/start-platform-timer';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { Conversation } from './conversation';
 import { TaskSummary } from './task-summary';
 

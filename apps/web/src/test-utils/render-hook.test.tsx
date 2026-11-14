@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { useQuery } from '@tanstack/react-query';
 import { waitFor } from '@testing-library/react';
-import { useNixieClient } from '../use-nixie-client';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { createDeviceSession } from './create-device-session';
 import { renderHook } from './render-hook';
 

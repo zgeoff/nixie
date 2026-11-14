@@ -1,9 +1,9 @@
 import type { ReactNode, Ref } from 'react';
 import { match } from 'ts-pattern';
-import type { TaskMessageActivity } from '../build-activity';
-import { buildTaskHref } from '../build-task-href';
+import type { TaskMessageActivity } from '../conversation/build-activity';
 import { css } from '../styled-system/css';
-import { useTaskName } from '../use-task-name';
+import { buildTaskHref } from '../task/build-task-href';
+import { useTaskName } from '../task/use-task-name';
 
 export type TaskMessageLayout = 'line' | 'block';
 

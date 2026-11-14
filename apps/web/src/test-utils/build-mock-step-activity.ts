@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import type { StepActivity } from '../build-activity';
+import type { StepActivity } from '../conversation/build-activity';
 
 export function buildMockStepActivity(overrides: Partial<StepActivity> = {}): StepActivity {
   return {

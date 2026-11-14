@@ -3,7 +3,6 @@ import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
 import invariant from 'tiny-invariant';
-import { MicrophoneContext } from '../microphone-context';
 import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { buildStubMicrophone } from '../test-utils/build-stub-microphone';
@@ -11,6 +10,7 @@ import { buildStubTimer } from '../test-utils/build-stub-timer';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
+import { MicrophoneContext } from '../utils/microphone-context';
 import { Conversation } from './conversation';
 
 function setupTest() {

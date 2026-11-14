@@ -3,8 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { RenderResult } from '@testing-library/react';
 import { render as renderWithTestingLibrary } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { buildBrowserClient } from '../build-browser-client';
-import { NixieClientContext } from '../nixie-client-context';
+import { buildBrowserClient } from '../client/build-browser-client';
+import { NixieClientContext } from '../utils/nixie-client-context';
 
 interface ProvidersProps {
   readonly children: ReactNode;

@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { formatProposalOutcome } from '../format-proposal-outcome';
+import { formatProposalOutcome } from '../proposal/format-proposal-outcome';
+import type { ProposalAnswers } from '../proposal/use-proposal-answers';
+import { useProposalAnswers } from '../proposal/use-proposal-answers';
 import { css } from '../styled-system/css';
 import type { MemoryProposal } from '../types';
-import { useNixieClient } from '../use-nixie-client';
-import type { ProposalAnswers } from '../use-proposal-answers';
-import { useProposalAnswers } from '../use-proposal-answers';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { ActionProposals } from './action-proposals';
 import { ProposalCard } from './proposal-card';
 import { ProposalSelectionBar } from './proposal-selection-bar';

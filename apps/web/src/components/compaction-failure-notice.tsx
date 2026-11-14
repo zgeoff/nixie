@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { findCompactionFailure } from '../find-compaction-failure';
+import { findCompactionFailure } from '../conversation/find-compaction-failure';
+import type { LiveRecord } from '../conversation/use-live-records';
 import { css } from '../styled-system/css';
-import type { LiveRecord } from '../use-live-records';
 
 export interface CompactionFailureNoticeProps {
   readonly records: readonly LiveRecord[];

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useConversationPage } from '../use-conversation-page';
+import { useConversationPage } from '../conversation/use-conversation-page';
 
 export interface ConversationPageSizeProps {
   readonly label: string;

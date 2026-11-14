@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import type { StepActivity, ToolActivity } from '../build-activity';
-import { formatStepSummary } from '../format-step-summary';
+import type { StepActivity, ToolActivity } from '../conversation/build-activity';
+import { formatStepSummary } from '../conversation/format-step-summary';
 import { css } from '../styled-system/css';
 import { ClippedText } from './clipped-text';
 import { CompactionMarker } from './compaction-marker';

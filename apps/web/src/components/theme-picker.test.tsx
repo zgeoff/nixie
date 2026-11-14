@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { buildThemeScript } from '../build-theme-script';
 import { render } from '../test-utils/render';
 import { runHeadScript } from '../test-utils/run-head-script';
 import { updateSystemColorScheme } from '../test-utils/update-system-color-scheme';
+import { buildThemeScript } from '../theme/build-theme-script';
 import { ThemePicker } from './theme-picker';
 
 test('it follows the system setting when the device stores no choice', async () => {

@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { buildWordDiff } from '../build-word-diff';
-import { formatMemoryChecks } from '../format-memory-checks';
-import { formatMemoryDate } from '../format-memory-date';
-import { formatMemoryProvenance } from '../format-memory-provenance';
-import { splitEvidenceMessage } from '../split-evidence-message';
+import { buildWordDiff } from '../conversation/build-word-diff';
+import { splitEvidenceMessage } from '../conversation/split-evidence-message';
+import { formatMemoryChecks } from '../memory/format-memory-checks';
+import { formatMemoryDate } from '../memory/format-memory-date';
+import { formatMemoryProvenance } from '../memory/format-memory-provenance';
 import { css } from '../styled-system/css';
 import type { MemoryVersion } from '../types';
 import { MessageImage } from './message-image';

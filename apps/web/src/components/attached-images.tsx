@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
+import type { AttachedImage } from '../image/use-attached-images';
 import { css } from '../styled-system/css';
-import type { AttachedImage } from '../use-attached-images';
 import { ImageThumbnail } from './image-thumbnail';
 
 export interface AttachedImagesProps {

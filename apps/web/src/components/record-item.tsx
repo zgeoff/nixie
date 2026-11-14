@@ -1,8 +1,8 @@
 import { forgettableKinds } from '@heynixie/contract';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import type { LiveRecord } from '../conversation/use-live-records';
 import { css } from '../styled-system/css';
-import type { LiveRecord } from '../use-live-records';
 import { ForgetControl } from './forget-control';
 import { MessageImages } from './message-images';
 import { ReplyText } from './reply-text';

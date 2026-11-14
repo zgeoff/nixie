@@ -1,10 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import type { ConversationFailure } from '../find-conversation-failure';
-import { findConversationFailure } from '../find-conversation-failure';
+import type { ConversationFailure } from '../conversation/find-conversation-failure';
+import { findConversationFailure } from '../conversation/find-conversation-failure';
+import type { LiveRecord } from '../conversation/use-live-records';
 import { css } from '../styled-system/css';
-import type { LiveRecord } from '../use-live-records';
-import { useNixieClient } from '../use-nixie-client';
+import { useNixieClient } from '../utils/use-nixie-client';
 
 export interface ConversationFailureNoticeProps {
   readonly records: readonly LiveRecord[];

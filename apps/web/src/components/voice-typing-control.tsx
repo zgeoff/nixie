@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { match } from 'ts-pattern';
+import { useMicrophoneAccess } from '../microphone/use-microphone-access';
 import { css } from '../styled-system/css';
-import { useMicrophoneAccess } from '../use-microphone-access';
 
 const control = css({ color: 'textMuted', fontSize: 'sm' });
 

@@ -2,8 +2,8 @@ import { Link, createFileRoute, useLocation, useRouter } from '@tanstack/react-r
 import type { ReactNode } from 'react';
 import { SignedInPage } from '../components/signed-in-page';
 import { TaskPage } from '../components/task-page';
-import { parseLinkedMessage } from '../parse-linked-message';
-import { readRouteSession } from '../read-route-session';
+import { parseLinkedMessage } from '../conversation/parse-linked-message';
+import { readRouteSession } from '../conversation/read-route-session';
 import { css } from '../styled-system/css';
 
 export const Route = createFileRoute('/tasks/$taskID')({

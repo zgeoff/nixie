@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { useIsHydrated } from '../use-is-hydrated';
-import type { LiveRecord } from '../use-live-records';
+import { useIsHydrated } from '../conversation/use-is-hydrated';
+import type { LiveRecord } from '../conversation/use-live-records';
 import { markerRule } from './marker-rule';
 
 export interface ResetMarkerProps {

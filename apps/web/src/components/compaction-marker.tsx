@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import type { CompactionActivity } from '../build-activity';
-import { formatCompaction } from '../format-compaction';
+import type { CompactionActivity } from '../conversation/build-activity';
+import { formatCompaction } from '../conversation/format-compaction';
 import { markerRule } from './marker-rule';
 
 export interface CompactionMarkerProps {

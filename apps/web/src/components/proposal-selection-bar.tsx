@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import type { ProposalAnswers } from '../proposal/use-proposal-answers';
 import { css } from '../styled-system/css';
 import type { MemoryProposal } from '../types';
-import type { ProposalAnswers } from '../use-proposal-answers';
 
 export interface ProposalSelectionBarProps {
   readonly proposals: readonly MemoryProposal[];

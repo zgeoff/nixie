@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { LiveRecord } from '../use-live-records';
+import type { LiveRecord } from '../conversation/use-live-records';
 import { markerRule } from './marker-rule';
 
 export interface StopMarkerProps {

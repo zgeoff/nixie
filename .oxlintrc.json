@@ -26,13 +26,6 @@
     ],
     "zgeoff/seed-only": "error",
     "zgeoff/test-beside-seed": "error",
-    // the list holds the packages not yet folded and shrinks as each is folded
-    "zgeoff/feature-folders": [
-      "error",
-      {
-        "pending": ["apps/web"]
-      }
-    ],
     // the import boundaries: each outside system has one package that may import it, and every
     // import names its module where the zones can see it
     "zgeoff/import-zones": [
