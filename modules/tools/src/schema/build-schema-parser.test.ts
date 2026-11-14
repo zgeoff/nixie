@@ -48,3 +48,20 @@ test('it repeats neither a value nor a key that the call sent', () => {
   expect(check.isValid).toBeFalse();
   expect(JSON.stringify(check)).not.toContain(marker);
 });
+
+test('it repeats no part of a key that the call sent, whatever characters the key holds', () => {
+  const marker = 'MARKER-7f3a';
+
+  const parse = buildSchemaParser({
+    type: 'object',
+    properties: { fields: { type: 'object', additionalProperties: { type: 'number' } } },
+  });
+
+  const check = parse({
+    fields: { [`prefix ${marker}`]: 'bad', [`a, data/${marker} must`]: 'bad' },
+  });
+
+  expect(check.isValid).toBeFalse();
+  expect(JSON.stringify(check)).not.toContain(marker);
+  expect(JSON.stringify(check)).not.toContain('prefix');
+});

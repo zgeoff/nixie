@@ -1,25 +1,23 @@
-import type { JsonSchemaValidator } from '@modelcontextprotocol/server';
-import { AjvJsonSchemaValidator } from '@modelcontextprotocol/server/validators/ajv';
+import { addFormats } from '@modelcontextprotocol/server/validators/ajv';
+import type { ErrorObject, ValidateFunction } from 'ajv';
+import Ajv2020 from 'ajv/dist/2020';
 import type { JsonSchema, SchemaCheck } from '../types';
 
-const compiler: { validator: AjvJsonSchemaValidator | null } = { validator: null };
+const compiler: { ajv: Ajv2020 | null } = { ajv: null };
 
 // Ajv compiles each schema to code, and a start registers every tool while a turn calls few, so
 // each schema compiles on its first parse. A schema that cannot compile throws on that parse.
 export function buildSchemaParser(schema: JsonSchema): (value: unknown) => SchemaCheck {
-  const parser: { validate: JsonSchemaValidator<unknown> | null } = { validate: null };
+  const parser: { validate: ValidateFunction | null } = { validate: null };
   const names = collectSchemaNames(schema);
 
   return (value) => {
-    compiler.validator ??= new AjvJsonSchemaValidator();
+    compiler.ajv ??= buildAjv();
+    parser.validate ??= compiler.ajv.compile(schema);
 
-    parser.validate ??= compiler.validator.getValidator(schema);
-
-    const result = parser.validate(value);
-
-    return result.valid
+    return parser.validate(value)
       ? { isValid: true }
-      : { isValid: false, errors: redactErrors(result.errorMessage, names) };
+      : { isValid: false, errors: buildErrorText(parser.validate.errors ?? [], names) };
   };
 }
 
@@ -55,15 +53,38 @@ function collectNames(node: unknown, names: Set<string>): void {
   }
 }
 
-// The validator prints the path of each fault, and a path can hold a key that the call sent when the
-// schema accepts extra keys. A name that the schema itself declares, or an array index, stays.
-function redactErrors(errors: string, names: ReadonlySet<string>): string {
-  return errors.replaceAll(/data(?<path>(?:\/[^\s,]*)?)/gu, (_match, path: string) => {
-    const segments = path
-      .split('/')
-      .filter((segment) => segment !== '')
-      .map((segment) => (/^\d+$/u.test(segment) || names.has(segment) ? segment : '*'));
-
-    return segments.length === 0 ? 'data' : `data/${segments.join('/')}`;
+function buildAjv(): Ajv2020 {
+  const ajv = new Ajv2020({
+    strict: false,
+    validateFormats: true,
+    validateSchema: false,
+    allErrors: true,
   });
+
+  addFormats(ajv);
+
+  return ajv;
+}
+
+// A path can hold a key that the call sent, so a name that the schema declares and an array index
+// stay in it and any other key reads as *. A rejected key name has its own message, which the text
+// replaces.
+function buildErrorText(errors: readonly ErrorObject[], names: ReadonlySet<string>): string {
+  return errors
+    .map((error) => {
+      const segments = error.instancePath
+        .split('/')
+        .filter((segment) => segment !== '')
+        .map((segment) => decodePointerSegment(segment))
+        .map((segment) => (/^\d+$/u.test(segment) || names.has(segment) ? segment : '*'));
+
+      const path = segments.length === 0 ? 'data' : `data/${segments.join('/')}`;
+
+      return `${path} ${error.keyword === 'propertyNames' ? 'has a key name that is invalid' : (error.message ?? 'is invalid')}`;
+    })
+    .join(', ');
+}
+
+function decodePointerSegment(segment: string): string {
+  return segment.replaceAll('~1', '/').replaceAll('~0', '~');
 }
