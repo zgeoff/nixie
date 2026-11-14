@@ -168,3 +168,52 @@ test('it refuses a report from a step whose lease expired', async () => {
 
   expect(requests).toStrictEqual([]);
 });
+
+test('it accepts a matching report after a call whose fields failed the shape, and the failed call ended nothing', async () => {
+  const ctx = await setupTest();
+
+  const started = await ctx.startTask({
+    properties: { city: { type: 'string' } },
+    required: ['city'],
+  });
+
+  await started.callReport({ summary: 'Done.', fields: { city: 42 } });
+
+  const ended = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.run_ended'],
+  });
+
+  const second = await started.callReport({ summary: 'Done.', fields: { city: 'Lyon' } });
+  const requests = await ctx.readRequests();
+
+  expect(ended).toStrictEqual([]);
+  expect(second).toStrictEqual({ status: 'ok', result: { reportID: expect.toBeString() } });
+  expect(requests).toHaveLength(1);
+});
+
+test('it accepts a summary alone from a task that declares no report shape', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.startTask();
+  const outcome = await started.callReport({ summary: 'High tide is at 06:42.' });
+  const requests = await ctx.readRequests();
+
+  expect(outcome).toStrictEqual({ status: 'ok', result: { reportID: expect.toBeString() } });
+
+  expect(requests.map((entry) => entry.record.erasable)).toStrictEqual([
+    { status: 'readable', fields: { summary: 'High tide is at 06:42.' } },
+  ]);
+});
+
+test('it records an empty input for a call, so the call record holds neither the summary nor the fields', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildTaskReportTool(ctx.context);
+
+  const recorded = tool.recordInput?.({
+    summary: 'High tide is at 06:42.',
+    fields: { city: 'Lyon' },
+  });
+
+  expect(recorded).toStrictEqual({});
+});

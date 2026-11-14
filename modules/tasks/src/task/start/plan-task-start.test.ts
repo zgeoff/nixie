@@ -187,6 +187,27 @@ test('it plans limits at the max', () => {
   });
 });
 
+test('it refuses a report shape that uses a keyword outside the table', () => {
+  expect(
+    planTaskStart(
+      {
+        reportShape: {
+          properties: { city: { type: 'string', pattern: '^[A-Z]' } },
+        },
+      },
+      { tools: ['tasks.list', 'task.message'], memory: 'none', persona: 'default' },
+      buildMockTaskStartBounds(),
+      buildTestRunSettings(),
+    ),
+  ).toStrictEqual({
+    status: 'refused',
+    refusal: {
+      reason: 'report_shape',
+      fault: { fault: 'keyword', path: 'city', keyword: 'pattern' },
+    },
+  });
+});
+
 test('it refuses a stranger that reads memory', () => {
   expect(
     planTaskStart(

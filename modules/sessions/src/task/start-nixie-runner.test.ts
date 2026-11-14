@@ -2256,6 +2256,49 @@ test('it sleeps the imp of a task whose turn reached its dollar limit with work 
   expect(slept).toHaveLength(1);
 });
 
+test('it writes one limit record per limit end, and the record of a carried task run holds the use and totals of the whole piece of work', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { limits: { turns: 1, dollars: 2 } },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { turns: 2 } });
+
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'And the evening tide.');
+  await ctx.runNextStep(runner);
+
+  const reached = await ctx.readKinds('task.limit_reached');
+
+  expect(ctx.guest.turns).toHaveLength(2);
+
+  expect(reached.map((record) => record.payload)).toStrictEqual([
+    {
+      taskID,
+      stepKey: `${taskID}:2`,
+      used: { turns: 1, dollars: 0 },
+      limits: { turns: 1, dollars: 2 },
+    },
+    {
+      taskID,
+      stepKey: `${taskID}:4`,
+      used: { turns: 2, dollars: 0 },
+      limits: { turns: 2, dollars: 2 },
+    },
+  ]);
+});
+
 test('it runs the next turn of a task paused at its turn limit once the limit is raised', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();

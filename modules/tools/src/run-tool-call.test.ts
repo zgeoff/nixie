@@ -1732,6 +1732,72 @@ test('it counts no call that came back invalid toward the cap', async () => {
   expect(second).toStrictEqual({ content: [], structuredContent: { text: 'edited' } });
 });
 
+test('it counts no call that came back with an error toward the cap', async () => {
+  const ran = mock(() => Promise.resolve({ status: 'error' as const, message: 'no such moment' }));
+
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'moment.edit', run: ran })],
+  });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['moment.edit'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 1 } },
+  };
+
+  await runToolCall(
+    { tool: 'moment.edit', input: { query: 'a' }, toolUseID: 'toolu_1' },
+    run,
+    ctx.options,
+  );
+
+  await runToolCall(
+    { tool: 'moment.edit', input: { query: 'a' }, toolUseID: 'toolu_2' },
+    run,
+    ctx.options,
+  );
+
+  expect(ran).toHaveBeenCalledTimes(2);
+});
+
+test('it runs the other tools of the next step of a task run whose cap denied a call', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({ name: 'moment.edit' }),
+      buildMockToolDefinition({ name: 'moment.find' }),
+    ],
+  });
+
+  const base = {
+    thread: 'task-1',
+    tools: ['moment.edit', 'moment.find'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 1 } },
+  };
+
+  await runToolCall(
+    { tool: 'moment.edit', input: { query: 'a' }, toolUseID: 'toolu_1' },
+    { ...base, runID: 'run-1' },
+    ctx.options,
+  );
+
+  await runToolCall(
+    { tool: 'moment.edit', input: { query: 'a' }, toolUseID: 'toolu_2' },
+    { ...base, runID: 'run-1' },
+    ctx.options,
+  );
+
+  const next = await runToolCall(
+    { tool: 'moment.find', input: { query: 'a' }, toolUseID: 'toolu_3' },
+    { ...base, runID: 'run-2' },
+    ctx.options,
+  );
+
+  expect(next).toStrictEqual({ content: [], structuredContent: { text: 'a note' } });
+});
+
 test('it counts a call only against the task run that made it', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'moment.edit' })] });
 

@@ -9,7 +9,7 @@ import { writeTaskControl } from '../task/write-task-control';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
-import type { TaskRunOptions } from '../types';
+import type { StartedClaim, TaskRunOptions } from '../types';
 import { readEndedRuns } from './read-ended-runs';
 import { readOpenRun } from './read-open-run';
 
@@ -29,6 +29,12 @@ async function setupTest() {
 
       return taskID;
     },
+    startTaskBy: (by: StartedClaim) =>
+      seedTask(tasks.context, {
+        starter: by,
+        name: 'Ferry times',
+        brief: 'Find the first ferry on Sunday.',
+      }),
     claim: async (taskID: string) => {
       const claim = await claimTask(tasks.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
 
@@ -254,4 +260,123 @@ test('it opens a task run that carries the limit-ended one, with the raised tota
   expect(open?.opened.carriesRunID).toBe(first?.runID ?? null);
   expect(open?.opened.origin.kind).toBe('raise');
   expect(open?.opened.limits).toStrictEqual({ turns: 3, dollars: 2, calls: {} });
+});
+
+test.each([
+  ['wake', 'wake', 1],
+  ['next_turn', 'next_turn', 1],
+  ['none', 'kept', 0],
+] as const)(
+  'it delivers a report under the mode %s as %s',
+  async (mode, delivery, messageCount) => {
+    const ctx = await setupTest();
+    const taskID = await ctx.startTask({ report: mode });
+    const claim = await ctx.claim(taskID);
+
+    await writeStepCommit(ctx.context, claim, {
+      next: 'done',
+      records: [],
+      acknowledged: [],
+      run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+    });
+
+    const [ended] = await ctx.readEnded(taskID);
+    const messages = await ctx.readKinds('task_message');
+
+    expect(ended?.ended?.record.delivery).toBe(delivery);
+
+    expect(messages.filter((message) => message.payload['kind'] === 'report')).toHaveLength(
+      messageCount,
+    );
+  },
+);
+
+test('it writes the summary nixie made and the missing fields when a task with a shape stops at its limit', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.startTask({
+    limits: { turns: 1, dollars: 2 },
+    reportShape: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { highTide: { type: 'string' }, lowTide: { type: 'string' } },
+      required: ['highTide'],
+    },
+  });
+
+  const claim = await ctx.claim(taskID);
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'continue',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', limit: { meter: 'turns', used: 1, limit: 1 } },
+  });
+
+  const [ended] = await ctx.readKinds('task.run_ended');
+  const reports = await ctx.readKinds('task_message');
+
+  expect(ended?.erasable).toStrictEqual({
+    status: 'readable',
+    fields: {
+      body: [
+        'report:',
+        '  summary: The run stopped at its 1 turns limit before it wrote a summary.',
+        '  missing:',
+        '    - highTide',
+        '    - lowTide',
+      ].join('\n'),
+    },
+  });
+
+  expect(
+    reports.filter((report) => report.payload['kind'] === 'report').map((report) => report.thread),
+  ).toStrictEqual(['conversation']);
+});
+
+test('it delivers a report to a starter that already sent its own report, with a wake', async () => {
+  const ctx = await setupTest();
+  const parentID = await ctx.startTask();
+  const parent = await ctx.claim(parentID);
+  const childID = await ctx.startTaskBy(parent);
+
+  await writeStepCommit(ctx.context, parent, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', report: { summary: 'I started the ferry task.' } },
+  });
+
+  const child = await ctx.claim(childID);
+
+  await writeStepCommit(ctx.context, child, {
+    next: 'done',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', report: { summary: 'The first ferry leaves at 07:10.' } },
+  });
+
+  const [ended] = await ctx.readEnded(childID);
+  const messages = await ctx.readKinds('task_message');
+
+  expect(ended?.ended?.record.delivery).toBe('wake');
+
+  expect(
+    messages
+      .filter((message) => message.payload['kind'] === 'report')
+      .map((message) => message.thread),
+  ).toStrictEqual(['conversation', parentID]);
+});
+
+test('it delivers the report of a stopped task run with a wake when its newest step is inside the hop limit', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.startTask();
+
+  await ctx.claim(taskID);
+
+  await writeTaskControl(ctx.context, { taskID, control: 'stop' });
+
+  const [ended] = await ctx.readEnded(taskID);
+
+  expect(ended?.ended?.record.delivery).toBe('wake');
 });
