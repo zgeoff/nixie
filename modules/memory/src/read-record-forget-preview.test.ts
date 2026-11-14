@@ -3,6 +3,7 @@ import { removeRecordKey } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { readRecordForgetPreview } from './read-record-forget-preview';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
+import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { createQuotedProposal } from './test-utils/create-quoted-proposal';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
@@ -95,6 +96,44 @@ test('it lists each item that quotes the record with its current text, and a pen
       { itemID: quoted.proposal.itemID, text: 'The owner keeps bees.' },
     ].toSorted((left, right) => left.itemID.localeCompare(right.itemID)),
   });
+});
+
+test('it lists an item that only 2 proposals quote once, with its current text', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Walks to work',
+    provenance: buildMockProvenance(),
+  });
+
+  const rejected = await createQuotedProposal(ctx.memory, {
+    message: 'I cycle to work now, or drive.',
+    text: 'Cycles to work',
+    quote: 'I cycle to work',
+    target: item,
+  });
+
+  await ctx.memory.store.proposals.reject({
+    proposalID: rejected.proposal.proposalID,
+    actionHash: rejected.proposal.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const pending = await ctx.memory.store.writes.remember({
+    text: 'Drives to work',
+    quote: 'or drive',
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(pending.status === 'proposed');
+
+  const preview = await readRecordForgetPreview(ctx.memory.log, {
+    thread: 'conversation',
+    sequence: rejected.recordSequence,
+  });
+
+  expect(preview.memoryItems).toStrictEqual([{ itemID: item.itemID, text: 'Walks to work' }]);
 });
 
 test('it leaves out an item whose text does not read', async () => {

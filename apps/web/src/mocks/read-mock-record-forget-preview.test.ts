@@ -41,3 +41,24 @@ test('it counts the live moments that hold the record and lists the items and pe
     ].toSorted((left, right) => left.itemID.localeCompare(right.itemID)),
   });
 });
+
+test('it lists an item that only 2 proposals quote once, with its current text', async () => {
+  const item = await store.memoryItems.create({ versions: [{ text: 'Walks to work' }] });
+
+  await store.memoryProposals.create({
+    evidence: { end: 5, sequence: 7, start: 0, message: null },
+    itemID: item.itemID,
+    status: 'rejected',
+    text: 'Cycles to work',
+  });
+
+  await store.memoryProposals.create({
+    evidence: { end: 5, sequence: 7, start: 0, message: null },
+    itemID: item.itemID,
+    text: 'Drives to work',
+  });
+
+  const preview = readMockRecordForgetPreview('conversation', 7);
+
+  expect(preview.memoryItems).toStrictEqual([{ itemID: item.itemID, text: 'Walks to work' }]);
+});

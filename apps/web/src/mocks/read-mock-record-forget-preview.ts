@@ -19,34 +19,34 @@ export function readMockRecordForgetPreview(
     ),
   );
 
+  const quotingProposals = store.memoryProposals.findMany((query) =>
+    query.where((proposal) => proposal.evidence?.sequence === sequence),
+  );
+
+  const proposalItemIDs = new Set(quotingProposals.map((proposal) => proposal.itemID));
+
   const items = store.memoryItems.findMany((query) =>
     query.where(
       (item) =>
         (item.state === 'active' || item.state === 'retired') &&
-        item.versions.some((version) => version.evidence?.sequence === sequence) &&
-        !item.versions.some((version) => version.isUnreadable),
+        (item.versions.some((version) => version.evidence?.sequence === sequence) ||
+          proposalItemIDs.has(item.itemID)) &&
+        item.versions.at(-1)?.isUnreadable !== true,
     ),
   );
 
-  const quotingItemIDs = new Set(items.map((item) => item.itemID));
   const knownItemIDs = new Set(store.memoryItems.all().map((item) => item.itemID));
+  const newItemTexts = new Map<string, string>();
 
-  const proposals = store.memoryProposals.findMany((query) =>
-    query.where(
-      (proposal) =>
-        proposal.evidence?.sequence === sequence &&
-        !quotingItemIDs.has(proposal.itemID) &&
-        (knownItemIDs.has(proposal.itemID)
-          ? store.memoryItems
-              .all()
-              .some(
-                (item) =>
-                  item.itemID === proposal.itemID &&
-                  (item.state === 'active' || item.state === 'retired'),
-              )
-          : proposal.status === 'pending'),
-    ),
-  );
+  for (const proposal of quotingProposals) {
+    if (
+      proposal.status === 'pending' &&
+      !knownItemIDs.has(proposal.itemID) &&
+      !newItemTexts.has(proposal.itemID)
+    ) {
+      newItemTexts.set(proposal.itemID, proposal.text);
+    }
+  }
 
   return {
     momentCount: moments.length,
@@ -55,7 +55,7 @@ export function readMockRecordForgetPreview(
         itemID: item.itemID,
         text: item.versions.at(-1)?.text ?? '',
       })),
-      ...proposals.map((proposal) => ({ itemID: proposal.itemID, text: proposal.text })),
+      ...[...newItemTexts].map(([itemID, text]) => ({ itemID, text })),
     ].toSorted((left, right) => left.itemID.localeCompare(right.itemID)),
   };
 }
