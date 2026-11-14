@@ -4,7 +4,8 @@ import { match } from 'ts-pattern';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
-import { toPauseResponse, toPauseState } from './to-pause-state';
+import { toPauseResponse } from './to-pause-response';
+import { toPauseState } from './to-pause-state';
 import type { CheckedNixieControlResult, NixieControl } from './write-checked-nixie-control';
 import { writeCheckedNixieControl } from './write-checked-nixie-control';
 

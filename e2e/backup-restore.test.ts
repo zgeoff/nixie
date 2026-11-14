@@ -89,13 +89,11 @@ test('it backs up a running server and restores it into an empty data directory 
   const checked = recoverySchema.parse(JSON.parse(recovery.stdout));
   const recorded = startedSchema.parse(started.payload);
 
-  const expected = recorded.toCheck.map((task) => ({
-    taskID: task.taskID,
-    name: task.taskID === 'conversation' ? 'Conversation' : task.taskID,
-  }));
+  expect(checked.recovery.toCheck).toStrictEqual([
+    { taskID: 'conversation', name: 'Conversation' },
+  ]);
 
-  expect(checked.recovery.toCheck.length).toBeGreaterThan(0);
-  expect(checked.recovery.toCheck).toStrictEqual(expected);
+  expect(recorded.toCheck.map((task) => task.taskID)).toStrictEqual(['conversation']);
 
   expect(
     restartedRecords

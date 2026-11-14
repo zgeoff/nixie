@@ -1,9 +1,9 @@
-import type { Kysely } from 'kysely';
+import type { Transaction } from 'kysely';
 import type { LogTables, Pause } from '../types';
 import { pauseCauseSchema } from './pause-cause-schema';
 
-export async function readPause(db: Kysely<unknown>): Promise<Pause | null> {
-  const row = await db
+export async function readPause(tx: Transaction<unknown>): Promise<Pause | null> {
+  const row = await tx
     .$extendTables<LogTables>()
     .selectFrom('nixie_pause')
     .select(['cause', 'recovery_id'])

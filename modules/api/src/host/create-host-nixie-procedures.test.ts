@@ -1,21 +1,15 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { createRouterClient } from '@orpc/server';
-import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestAPI } from '../test-utils/start-test-api';
-import {
-  createHostNixieProcedures,
-  createHostRecoveryProcedures,
-} from './create-host-nixie-procedures';
+import { createHostNixieProcedures } from './create-host-nixie-procedures';
 
 async function setupTest() {
   const api = await startTestAPI();
 
   return {
     ...api,
-    seed: buildSeeder(api),
     nixie: createRouterClient(createHostNixieProcedures(api.context)),
-    recovery: createRouterClient(createHostRecoveryProcedures(api.context)),
     readNixieRecords: () =>
       readRecords(api.context.log, {
         afterSequence: 0,
@@ -59,11 +53,4 @@ test('#resume gives null and writes nothing while nixie runs', async () => {
 
   expect(resumed).toStrictEqual({ paused: null });
   expect(records).toStrictEqual([]);
-});
-
-test('#read gives null before any restore', async () => {
-  const ctx = await setupTest();
-  const read = await ctx.recovery.read();
-
-  expect(read).toStrictEqual({ recovery: null });
 });

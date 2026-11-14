@@ -1,11 +1,14 @@
 import { expect, test } from 'bun:test';
-import { act, waitFor, within } from '@testing-library/react';
+import { useQueryClient } from '@tanstack/react-query';
+import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { pauseStore } from '../mocks/pause-store';
 import { store } from '../mocks/store';
 import { buildStubTimer } from '../test-utils/build-stub-timer';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
+import { useNixieClient } from '../utils/use-nixie-client';
 import { PauseBanner } from './pause-banner';
 import { TaskDashboard } from './task-dashboard';
 
@@ -123,21 +126,37 @@ test('it shows each task as paused when the pause begins after the list loaded',
 
   await store.tasks.create({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' });
 
+  // Only the read of the pause runs again, so the list changes only through the banner.
+  const readLabel = 'Read the pause';
+
+  const PauseReader = (): ReactNode => {
+    const nixie = useNixieClient();
+    const queryClient = useQueryClient();
+
+    return (
+      <button
+        onClick={() => {
+          void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.nixie.key() });
+        }}
+        type="button"
+      >
+        {readLabel}
+      </button>
+    );
+  };
+
   const rendered = render(
     <>
       <PauseBanner />
+      <PauseReader />
       <TaskDashboard startTimer={ctx.timer.startTimer} />
     </>,
   );
 
-  await rendered.findByRole('listitem', { name: 'Garden plan' });
-  await pauseStore.pauses.create({ cause: 'owner' });
-
-  act(() => {
-    globalThis.dispatchEvent(new Event('visibilitychange'));
-  });
-
   const row = await rendered.findByRole('listitem', { name: 'Garden plan' });
+
+  await pauseStore.pauses.create({ cause: 'owner' });
+  await ctx.user.click(rendered.getByRole('button', { name: readLabel }));
 
   await waitFor(() => {
     expect(row).toHaveTextContent('Paused by nixie');

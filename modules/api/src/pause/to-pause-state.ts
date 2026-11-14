@@ -8,7 +8,3 @@ export interface PauseState {
 export function toPauseState(pause: PauseSince | null): PauseState | null {
   return pause === null ? null : { cause: pause.cause, since: pause.since };
 }
-
-export function toPauseResponse(paused: PauseState | null) {
-  return paused === null ? null : { cause: paused.cause, since: new Date(paused.since) };
-}

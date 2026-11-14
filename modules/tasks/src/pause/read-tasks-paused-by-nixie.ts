@@ -1,4 +1,4 @@
-import { readPause } from '@heynixie/log';
+import { readPauseSince } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import type { TasksTables } from '../types';
 
@@ -8,7 +8,7 @@ export async function readTasksPausedByNixie(
   db: Kysely<unknown>,
   taskIDs: readonly string[],
 ): Promise<ReadonlySet<string>> {
-  const pause = await readPause(db);
+  const pause = await readPauseSince(db);
 
   if (pause === null || taskIDs.length === 0) {
     return new Set();
