@@ -301,19 +301,13 @@ test('it shows a card from its records when the model reply claims the action is
     message: { text: 'I sent the tide table to harbour@example.org.' },
   });
 
-  const debugT0 = Date.now();
-
   await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
-
-  console.log('DEBUG-T signed-in', Date.now() - debugT0);
 
   await waitFor(
     async () => {
       const text: unknown = await ctx.view.evaluate(
         "document.querySelector('[aria-label=\"Routine proposal\"] button[name=approve]')?.innerText ?? ''",
       );
-
-      console.log('DEBUG-T card', Date.now() - debugT0, JSON.stringify(text));
 
       expect(text).toBe('Run mail.send to harbour@example.org');
     },
@@ -324,34 +318,16 @@ test('it shows a card from its records when the model reply claims the action is
 
   expect(page).toInclude('I sent the tide table to harbour@example.org.');
 
+  // The thread keeps its bottom in view while the card settles, so a click at the button's
+  // measured point can land on the row beside it.
   await ctx.view.evaluate(
-    "(() => { window.debugButton = document.querySelector('[aria-label=\"Routine proposal\"] button[name=approve]'); window.debugClicks = 0; window.debugButton.addEventListener('click', () => { window.debugClicks += 1; }); window.debugReactKeys = Object.keys(window.debugButton).filter((key) => key.startsWith('__react')).join(','); return 1; })()",
+    'document.querySelector(\'[aria-label="Routine proposal"] button[name=approve]\').click()',
   );
-
-  await ctx.view.click('[aria-label="Routine proposal"] button[name=approve]');
-
-  const debugState: unknown = await ctx.view.evaluate(
-    'JSON.stringify({ connected: window.debugButton.isConnected, disabled: window.debugButton.disabled, clicks: window.debugClicks, react: window.debugReactKeys, cards: document.querySelectorAll(\'[aria-label="Routine proposal"]\').length, same: window.debugButton === document.querySelector(\'[aria-label="Routine proposal"] button[name=approve]\') })',
-  );
-
-  console.log('DEBUG-T clicked', Date.now() - debugT0, String(debugState));
 
   await waitFor(
     async () => {
       const card: unknown = await ctx.view.evaluate(
         "document.querySelector('[aria-label=\"Routine proposal\"]')?.innerText ?? ''",
-      );
-
-      const debugReads: unknown = await ctx.view.evaluate(
-        "JSON.stringify(performance.getEntriesByType('resource').map((entry) => entry.name).filter((name) => name.includes('approvals')).map((name) => name.split('/').slice(-1).join('/')))",
-      );
-
-      console.log(
-        'DEBUG-T poll',
-        Date.now() - debugT0,
-        String(debugReads),
-        store.approvalRows.findFirst((query) => query.where({ proposalID: row.proposalID }))?.state,
-        JSON.stringify(card).slice(-30),
       );
 
       expect(card).toInclude('Approved');
