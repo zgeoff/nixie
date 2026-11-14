@@ -246,3 +246,47 @@ test('it applies an edit that quotes a message outside the window by its event I
     result: { status: 'applied', itemID: shortID, version: 2 },
   });
 });
+
+test('it fills the subject of an edit that leaves it out from the item, in the arguments the rules read', async () => {
+  const memory = await startTestMemory();
+  const item = await createMemoryItem(memory.store, { text: 'Lives on Elm Street' });
+  const shortID = await readItemShortID(memory.log, item.itemID);
+
+  const input = { itemID: shortID, version: 1, text: 'Lives on Oak Avenue' };
+
+  const facts = await buildEditTool(memory.store).resolvePolicyFacts?.(
+    input,
+    buildMockToolContext(),
+  );
+
+  expect(facts).toStrictEqual({
+    status: 'ok',
+    sources: ['outside'],
+    args: { ...input, subject: 'owner' },
+  });
+});
+
+test('it keeps the subject an edit names in the arguments the rules read', async () => {
+  const memory = await startTestMemory();
+  const item = await createMemoryItem(memory.store, { text: 'Lives on Elm Street' });
+
+  const input = { itemID: item.itemID, version: 1, text: 'Is a nickname', subject: 'shared' };
+
+  const facts = await buildEditTool(memory.store).resolvePolicyFacts?.(
+    input,
+    buildMockToolContext(),
+  );
+
+  expect(facts).toMatchObject({ status: 'ok', args: { subject: 'shared' } });
+});
+
+test('it returns the error of an edit of an item that does not exist, as the facts', async () => {
+  const memory = await startTestMemory();
+
+  const facts = await buildEditTool(memory.store).resolvePolicyFacts?.(
+    { itemID: crypto.randomUUID(), version: 1, text: 'Lives on Oak Avenue' },
+    buildMockToolContext(),
+  );
+
+  expect(facts).toMatchObject({ status: 'error', message: expect.toStartWith('no memory item') });
+});

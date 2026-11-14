@@ -100,3 +100,98 @@ test('it describes memory.remember with no word about pinning, and takes no pin 
   expect(tool.description).not.toMatch(/\bpin/iu);
   expect(JSON.stringify(tool.input)).not.toInclude('"pin"');
 });
+
+test('it reads the sources of a remember from the quote in text the owner typed', async () => {
+  const memory = await startTestMemory();
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const input = { text: 'Takes coffee black', quote: 'I take my coffee black' };
+
+  const facts = await buildRememberTool(memory.store).resolvePolicyFacts?.(
+    input,
+    buildMockToolContext(),
+  );
+
+  expect(facts).toStrictEqual({ status: 'ok', sources: ['owner'], args: input });
+});
+
+test.each<['typed' | 'pasted', string, Record<string, string>]>([
+  [
+    'pasted',
+    'a quote in a pasted span',
+    { text: 'Takes coffee black', quote: 'I take my coffee black' },
+  ],
+  ['typed', 'no quote', { text: 'Takes coffee black' }],
+  ['typed', 'a quote the thread never held', { text: 'Likes jazz', quote: 'I like jazz' }],
+  [
+    'typed',
+    'a self-note whose quote the owner typed',
+    { text: 'I like quiet mornings', subject: 'self', quote: 'I take my coffee black' },
+  ],
+])(
+  'it reads the source outside when the message is %s, for %s',
+  async (spanSource, _title, input) => {
+    const memory = await startTestMemory();
+
+    await writeOwnerMessageRecord(memory.log, {
+      thread: 'conversation',
+      text: 'I take my coffee black',
+      spans: [{ start: 0, end: 22, source: spanSource }],
+    });
+
+    const facts = await buildRememberTool(memory.store).resolvePolicyFacts?.(
+      input,
+      buildMockToolContext(),
+    );
+
+    expect(facts).toStrictEqual({ status: 'ok', sources: ['outside'], args: input });
+  },
+);
+
+test('it adds the source task to a remember that a task run makes', async () => {
+  const memory = await startTestMemory();
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'task-1',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const input = { text: 'Takes coffee black', quote: 'I take my coffee black' };
+
+  const facts = await buildRememberTool(memory.store).resolvePolicyFacts?.(
+    input,
+    buildMockToolContext({ thread: 'task-1' }),
+  );
+
+  expect(facts).toStrictEqual({ status: 'ok', sources: ['owner', 'task'], args: input });
+});
+
+test('it reads the source outside for a write from a photo, whatever its quote', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const input = {
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    image: { eventID: String(photo), number: 1 },
+  };
+
+  const facts = await buildRememberTool(memory.store).resolvePolicyFacts?.(
+    input,
+    buildMockToolContext(),
+  );
+
+  expect(facts).toStrictEqual({ status: 'ok', sources: ['outside'], args: input });
+});

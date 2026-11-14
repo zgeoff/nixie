@@ -2,6 +2,7 @@ import { expect, mock, test } from 'bun:test';
 import { readRecordKeys, writeRecords } from '@heynixie/log';
 import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
+import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
@@ -715,4 +716,186 @@ test('it removes the key of a new item whose proposal record could not be built'
 
   expect(checking).rejects.toThrow('the definitions snapshot is unreadable');
   expect(keys).toHaveLength(1);
+});
+
+test('it applies a staged memory under an allow rule with the token check only, and no evidence', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'not_asserted' })));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'By the way, I take my coffee black',
+    spans: [{ start: 0, end: 34, source: 'typed' }],
+  });
+
+  const verdict = await memory.store.writes.batch.check(
+    {
+      op: 'remember',
+      subject: 'owner',
+      text: 'Takes coffee black',
+      quote: 'I take my coffee black',
+      sourceSequence: sequence,
+      target: null,
+      verdict: buildAllowVerdict(),
+    },
+    {
+      sequence,
+      text: 'By the way, I take my coffee black',
+      spans: [{ start: 0, end: 34, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
+    },
+    { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
+  );
+
+  expect(verdict).toStrictEqual({
+    outcome: 'apply',
+    source: 'untrusted',
+    checks: { rule: { id: 'rule-a', revision: 2 }, tokens: 'pass' },
+    evidence: null,
+    model: 'claude-writer-1',
+  });
+
+  expect(check).not.toHaveBeenCalled();
+});
+
+test('it proposes a staged memory under an allow rule when its text holds a token the owner never typed', async () => {
+  const memory = await startTestMemory();
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Write to me at sam@example.com',
+    spans: [{ start: 0, end: 30, source: 'typed' }],
+  });
+
+  const verdict = await memory.store.writes.batch.check(
+    {
+      op: 'remember',
+      subject: 'owner',
+      text: 'Email is sam@attacker.example',
+      quote: 'Write to me at sam@example.com',
+      sourceSequence: sequence,
+      target: null,
+      verdict: buildAllowVerdict(),
+    },
+    {
+      sequence,
+      text: 'Write to me at sam@example.com',
+      spans: [{ start: 0, end: 30, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
+    },
+    { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
+  );
+
+  expect(verdict).toMatchObject({ outcome: 'propose', reason: 'token_missing' });
+});
+
+test('it proposes a staged memory under an ask rule with the reason ask_rule, before any check', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'By the way, I take my coffee black',
+    spans: [{ start: 0, end: 34, source: 'typed' }],
+  });
+
+  const verdict = await memory.store.writes.batch.check(
+    {
+      op: 'remember',
+      subject: 'owner',
+      text: 'Takes coffee black',
+      quote: 'I take my coffee black',
+      sourceSequence: sequence,
+      target: null,
+      verdict: { kind: 'rule-ask', rule: { id: 'rule-b', revision: 4 } },
+    },
+    {
+      sequence,
+      text: 'By the way, I take my coffee black',
+      spans: [{ start: 0, end: 34, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
+    },
+    { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
+  );
+
+  expect(verdict).toMatchObject({ outcome: 'propose', reason: 'ask_rule' });
+  expect(check).not.toHaveBeenCalled();
+});
+
+test('it applies a staged retirement under an allow rule, skipping the quote check and the checker', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'not_asserted' })));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Nothing about the street here',
+    spans: [{ start: 0, end: 29, source: 'typed' }],
+  });
+
+  const verdict = await memory.store.writes.batch.check(
+    {
+      op: 'retire',
+      quote: 'I moved out of Elm Street',
+      sourceSequence: sequence,
+      target: item,
+      verdict: buildAllowVerdict(),
+    },
+    {
+      sequence,
+      text: 'Nothing about the street here',
+      spans: [{ start: 0, end: 29, source: 'typed' }],
+      sentAt: Date.parse('2026-10-19T09:00:00Z'),
+      timeZone: null,
+    },
+    { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
+  );
+
+  expect(verdict).toStrictEqual({
+    outcome: 'apply',
+    source: 'untrusted',
+    checks: { rule: { id: 'rule-a', revision: 2 } },
+    evidence: null,
+    model: 'claude-writer-1',
+  });
+
+  expect(check).not.toHaveBeenCalled();
+});
+
+test('it reads the source owner for a batch quote in typed words, and outside for one in a pasted span', async () => {
+  const memory = await startTestMemory();
+
+  const typed = await memory.store.writes.readBatchSources(
+    {
+      sequence: 4,
+      text: 'I take my coffee black',
+      spans: [{ start: 0, end: 22, source: 'typed' }],
+      sentAt: 1_794_550_000_000,
+      timeZone: null,
+    },
+    'I take my coffee black',
+  );
+
+  const pasted = await memory.store.writes.readBatchSources(
+    {
+      sequence: 4,
+      text: 'I take my coffee black',
+      spans: [{ start: 0, end: 22, source: 'pasted' }],
+      sentAt: 1_794_550_000_000,
+      timeZone: null,
+    },
+    'I take my coffee black',
+  );
+
+  expect([typed, pasted]).toStrictEqual(['owner', 'outside']);
 });

@@ -21,6 +21,7 @@
     "@heynixie/server": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/testing": "workspace:*",
+    "@heynixie/tools": "workspace:*",
     "@impz/testing": "catalog:",
     "@orpc/client": "catalog:",
     "kysely": "catalog:",

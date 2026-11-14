@@ -17,6 +17,8 @@ export { registerFaultPointAction } from './register-fault-point-action';
 export type { MemoryTestRecordKind } from './memory-test-record-kind';
 export { readApprovalRecords } from './read-approval-records';
 export { readItemShortID } from './read-item-short-id';
+export { readVersionChecks } from './read-version-checks';
+export { writeOwnerMessageRecord } from './write-owner-message-record';
 export type { TestMemory, TestMemoryOptions } from './start-test-memory';
 export { startTestMemory } from './start-test-memory';
 export { startNextTestMemory } from './start-next-test-memory';

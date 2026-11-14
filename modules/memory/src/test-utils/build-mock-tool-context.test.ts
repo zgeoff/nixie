@@ -24,3 +24,7 @@ test('it applies overrides on top of the defaults', () => {
     },
   });
 });
+
+test('it carries the verdict it is given', () => {
+  expect(buildMockToolContext({}, { kind: 'gate' }).verdict).toStrictEqual({ kind: 'gate' });
+});

@@ -1,9 +1,11 @@
 import { expect, mock, test } from 'bun:test';
 import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
+import { readVersionChecks } from '../test-utils/read-version-checks';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
@@ -487,4 +489,111 @@ test('it seals a retirement proposal with the item text you review', async () =>
     text: 'Lives on Elm Street',
     quote: 'forget my old street',
   });
+});
+
+test('it retires an item at once under an allow rule, with the rule in the checks and neither the intent quote check nor the checker', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'not_asserted' })));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await memory.store.writes.retire({
+    target: item,
+    caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict(),
+  });
+
+  const history = await memory.store.readHistory(item.itemID);
+  const checks = await readVersionChecks(memory, item.itemID);
+
+  expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+  expect(history?.versions.at(-1)).toMatchObject({ change: 'retired', origin: 'conversation' });
+  expect(checks.at(-1)).toStrictEqual({ rule: { id: 'rule-a', revision: 2 } });
+  expect(check).not.toHaveBeenCalled();
+});
+
+test('it proposes a retirement under an ask rule with the reason ask_rule, though the owner asked for it', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: buildMockProvenance(),
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I moved out of Elm Street last week',
+    spans: [{ start: 0, end: 36, source: 'typed' }],
+  });
+
+  await memory.store.recall({ query: 'Elm', thread: 'conversation' });
+
+  const outcome = await memory.store.writes.retire({
+    target: item,
+    intentQuote: 'I moved out of Elm Street',
+    caller: buildMockWriteCaller(),
+    verdict: { kind: 'rule-ask', rule: { id: 'rule-b', revision: 4 } },
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'ask_rule' });
+  expect(check).not.toHaveBeenCalled();
+});
+
+test('it runs every check on a retirement whose verdict is gate', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await memory.store.writes.retire({
+    target: item,
+    caller: buildMockWriteCaller(),
+    verdict: { kind: 'gate' },
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'ambiguous_target' });
+});
+
+test('it reads the sources of a retirement from its intent quote, and adds task for a task run', async () => {
+  const memory = await startTestMemory();
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I moved out of Elm Street last week',
+    spans: [{ start: 0, end: 36, source: 'typed' }],
+  });
+
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: buildMockProvenance(),
+  });
+
+  const owner = await memory.store.writes.readRetireSources({
+    target: item,
+    intentQuote: 'I moved out of Elm Street',
+    caller: buildMockWriteCaller(),
+  });
+
+  const outside = await memory.store.writes.readRetireSources({
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+
+  const task = await memory.store.writes.readRetireSources({
+    target: item,
+    intentQuote: 'I moved out of Elm Street',
+    caller: buildMockWriteCaller({ origin: 'task' }),
+  });
+
+  expect(owner).toStrictEqual(['owner']);
+  expect(outside).toStrictEqual(['outside']);
+  expect(task).toStrictEqual(['owner', 'task']);
 });
