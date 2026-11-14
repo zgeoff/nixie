@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.71.0](https://github.com/zgeoff/nixie/compare/v0.70.2...v0.71.0) (2026-11-14)
+
+
+### Features
+
+* **approvals:** answer every proposal through one approval record ([#1051](https://github.com/zgeoff/nixie/issues/1051)) ([087d692](https://github.com/zgeoff/nixie/commit/087d69206b6ee9040b6c0c5790634d13a19db868))
+* **backup-job:** add the fetch and snapshots commands ([#1061](https://github.com/zgeoff/nixie/issues/1061)) ([fd10441](https://github.com/zgeoff/nixie/commit/fd104415b2374ece1d245384fface71c267ffaca))
+* **backup-job:** number each publish in both backup repositories ([#1055](https://github.com/zgeoff/nixie/issues/1055)) ([ac6ccc2](https://github.com/zgeoff/nixie/commit/ac6ccc2f8bcea950425049550a0e395b332c63c1))
+* **backup:** hold the backup schedule while a restore pause holds ([#1074](https://github.com/zgeoff/nixie/issues/1074)) ([ba32ae7](https://github.com/zgeoff/nixie/commit/ba32ae7e60cc68dae4c299e0fc6691e5e5b27483))
+* **connectors:** ask before each fetch redirect ([#1044](https://github.com/zgeoff/nixie/issues/1044)) ([b6aa706](https://github.com/zgeoff/nixie/commit/b6aa706389eecaed5ee095db186cc11057ecbdda))
+* **connectors:** rewrite noisy fetch URLs and retry the named page ([#1047](https://github.com/zgeoff/nixie/issues/1047)) ([f44d2db](https://github.com/zgeoff/nixie/commit/f44d2dbbbd2f04197c4c06d4da2bbb0f15c4c65e))
+* **log:** restore the fetched backup pair and write the restore note ([#1068](https://github.com/zgeoff/nixie/issues/1068)) ([f9e5e78](https://github.com/zgeoff/nixie/commit/f9e5e78642aad2a65f117d5a18c5b79963e085d9))
+* **memory:** mark a removed record in the moment and the thread ([#1043](https://github.com/zgeoff/nixie/issues/1043)) ([14a5762](https://github.com/zgeoff/nixie/commit/14a5762d08282ff89dbcaf3f1a83350e554964fb))
+* **memory:** recall by subject and cap a recall page before its record ([#1045](https://github.com/zgeoff/nixie/issues/1045)) ([cafdbc0](https://github.com/zgeoff/nixie/commit/cafdbc0a11cd2de480bd4149aacf0e3e4113619e))
+* **memory:** show the model each proposal by its derived short ID ([#1071](https://github.com/zgeoff/nixie/issues/1071)) ([418edb6](https://github.com/zgeoff/nixie/commit/418edb6ac684d37662acdbf715cf428d59248054))
+* **memory:** show the photos in a kept moment to the model ([#1067](https://github.com/zgeoff/nixie/issues/1067)) ([278b41a](https://github.com/zgeoff/nixie/commit/278b41a011ef64073ae39bb1f5339cc87ee853c9))
+* **memory:** store short ids in the moment and recall records ([#1060](https://github.com/zgeoff/nixie/issues/1060)) ([f941b82](https://github.com/zgeoff/nixie/commit/f941b82122984832571cc9fd852282f637dbd803))
+* **model-gateway:** capture tagged model requests to a sealed spool ([#1046](https://github.com/zgeoff/nixie/issues/1046)) ([5cdfcc2](https://github.com/zgeoff/nixie/commit/5cdfcc2c7a731ea9d65b533c5a852583b121a8cc))
+* **models:** declare each harness's tool-call wait in the turn frame ([#1059](https://github.com/zgeoff/nixie/issues/1059)) ([236aeba](https://github.com/zgeoff/nixie/commit/236aebaf4b8327384ced36f7aaa2c063ebb1a266))
+* **models:** list each harness in the models config error ([#1075](https://github.com/zgeoff/nixie/issues/1075)) ([fad955c](https://github.com/zgeoff/nixie/commit/fad955c90176b52ef0f92abd5e8e28914b6a883b))
+* **models:** put every harness behind one record and one frame encoder ([#1069](https://github.com/zgeoff/nixie/issues/1069)) ([cc877d4](https://github.com/zgeoff/nixie/commit/cc877d438dbcc70923a0ae5a25b945b62c8af2ed))
+* **pause:** add the pause tables and refuse claims of paused work ([#1070](https://github.com/zgeoff/nixie/issues/1070)) ([ca7b31b](https://github.com/zgeoff/nixie/commit/ca7b31b7708a9b9970e904bec498727b33a74918))
+* **policy:** decide every tool call through the full decision point ([#1041](https://github.com/zgeoff/nixie/issues/1041)) ([bb32752](https://github.com/zgeoff/nixie/commit/bb32752c6f42f498fb863730f4e4e3af88a810b6))
+* **policy:** name task definitions in rules with definitions ([#1062](https://github.com/zgeoff/nixie/issues/1062)) ([d99dc40](https://github.com/zgeoff/nixie/commit/d99dc4000ed140d03db17853038b19d3cd4e4911))
+* **sandbox:** drive image schemas and workflows from one tuple of image keys ([#1072](https://github.com/zgeoff/nixie/issues/1072)) ([8def0b1](https://github.com/zgeoff/nixie/commit/8def0b15a57b3bddef204919be7ab7517295f53b))
+* **tasks:** let a started task get the memory write tools ([#1035](https://github.com/zgeoff/nixie/issues/1035)) ([c0fb024](https://github.com/zgeoff/nixie/commit/c0fb0247566fa7bd142600dc62db640549835087))
+* **tasks:** resume one task while nixie is paused ([#1073](https://github.com/zgeoff/nixie/issues/1073)) ([45eb275](https://github.com/zgeoff/nixie/commit/45eb275c7dcfd25ecef3b5103df38395d9a4e773))
+* **tasks:** write a started task's brief as its first message ([#1049](https://github.com/zgeoff/nixie/issues/1049)) ([c18483d](https://github.com/zgeoff/nixie/commit/c18483d82b4094a163251e980321fffab2218dc2))
+* **tools:** keep a search's cost out of what the model reads ([#1052](https://github.com/zgeoff/nixie/issues/1052)) ([1229fe9](https://github.com/zgeoff/nixie/commit/1229fe9480da684449aee57acee5b3a47fd25b2c))
+* **tools:** record the cost of a search that a forget refuses ([#1057](https://github.com/zgeoff/nixie/issues/1057)) ([a7e9797](https://github.com/zgeoff/nixie/commit/a7e9797c6d769a55271bc14d3e1b201be7257f19))
+* **turn-inputs:** log the exact input of each model request ([#1053](https://github.com/zgeoff/nixie/issues/1053)) ([1894021](https://github.com/zgeoff/nixie/commit/18940213e3bfd1508ba39b42ca9440b8b8894722))
+* **verify:** add the verify cli with local and preview targets ([#1066](https://github.com/zgeoff/nixie/issues/1066)) ([f293655](https://github.com/zgeoff/nixie/commit/f2936553c1e97859dfe1806c3d0f2835effad911))
+* **web:** preview what removing a record affects ([#1048](https://github.com/zgeoff/nixie/issues/1048)) ([a6bf0ba](https://github.com/zgeoff/nixie/commit/a6bf0baad727fbe33ffb8f276cd3bc49a99ce865))
+* **wire:** carry the wait a rate-limited fetch reply asks for ([#1039](https://github.com/zgeoff/nixie/issues/1039)) ([2e57c17](https://github.com/zgeoff/nixie/commit/2e57c17dd148ba598ca730028175397296fd2163))
+
+
+### Bug Fixes
+
+* **deps:** update tanstack-query monorepo to v5.107.1 ([#1042](https://github.com/zgeoff/nixie/issues/1042)) ([885a598](https://github.com/zgeoff/nixie/commit/885a5987d20753f25cdbeb36078eb23a5073fe6e))
+* **sessions:** clean the task session of a forgotten record ([#1032](https://github.com/zgeoff/nixie/issues/1032)) ([52f162c](https://github.com/zgeoff/nixie/commit/52f162c3de553c6a276699b24cc1e884a4125041))
+* **sessions:** stop a task turn at its dollar limit when late spend lands ([#1050](https://github.com/zgeoff/nixie/issues/1050)) ([d7dea65](https://github.com/zgeoff/nixie/commit/d7dea6512c06e8850fbffaa7378dbf0977107c2d))
+
 ## [0.70.2](https://github.com/zgeoff/nixie/compare/v0.70.1...v0.70.2) (2026-11-13)
 
 
