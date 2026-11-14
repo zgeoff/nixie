@@ -1,10 +1,14 @@
 import { expect, mock, test } from 'bun:test';
-import { readRecordKeys, readRecords } from '@heynixie/log';
+import { readRecordKeys, readRecords, writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
+import { recordForgetStartedCodec } from '@heynixie/memory';
 import { writeImageOfferRecord } from '@heynixie/memory/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import { runPendingRecordForgets } from './run-pending-record-forgets';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
 import { createDeviceSession } from './test-utils/create-device-session';
+import { seedTaskStartCall } from './test-utils/seed-task-start-call';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { CleanupRecordSessions } from './types';
 import { writeOwnerMessage } from './write-owner-message';
@@ -124,4 +128,117 @@ test('it skips the session cleanup of a record already forgotten', async () => {
   );
 
   expect(cleanupSessions).not.toHaveBeenCalled();
+});
+
+test("it finishes a brief's forget on the pending-forget rerun after a crash that destroyed only the brief's key", async () => {
+  const ctx = await setupTest();
+
+  const started = await seedTaskStartCall(ctx.context, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: recordForgetStartedCodec.kind,
+      definitions: ctx.context.definitions(),
+      thread: started.taskID,
+      payload: recordForgetStartedCodec.encode({ recordSequence: started.briefSequence }),
+    },
+  ]);
+
+  await removeTestRecordKey(ctx.context.log, started.briefSequence);
+
+  const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
+
+  await runPendingRecordForgets({ ...ctx.context, readSessionCleanup: () => cleanupSessions });
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    sequences: [started.callSequence, started.resultSequence],
+  });
+
+  const forgotten = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['record.forgotten'],
+  });
+
+  expect(entries.map((entry) => entry.record.erasable.status)).toStrictEqual([
+    'shredded',
+    'readable',
+  ]);
+
+  expect(cleanupSessions.mock.calls).toStrictEqual([
+    [{ recordSequence: started.briefSequence }],
+    [{ recordSequence: started.callSequence }],
+  ]);
+
+  expect(forgotten).toHaveLength(1);
+});
+
+test('it removes the key of each recorded start call of a brief that a rerun of the starting step left', async () => {
+  const ctx = await setupTest();
+
+  const started = await seedTaskStartCall(ctx.context, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const [rerunCall] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: { callID: 'call-2', runID: 'conversation', toolUseID: null, tool: 'task.start' },
+      erasable: { input: { name: 'Tide tables', brief: 'Find the high tides for Saturday.' } },
+    },
+  ]);
+
+  invariant(rerunCall);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_result',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      parent: rerunCall.sequence,
+      payload: {
+        callID: 'call-2',
+        runID: 'conversation',
+        toolUseID: null,
+        outcome: 'result',
+        actionID: null,
+        sources: {},
+      },
+      erasable: { result: { taskID: started.taskID, name: 'Tide tables', note: 'Started.' } },
+    },
+  ]);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: recordForgetStartedCodec.kind,
+      definitions: ctx.context.definitions(),
+      thread: started.taskID,
+      payload: recordForgetStartedCodec.encode({ recordSequence: started.briefSequence }),
+    },
+  ]);
+
+  const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
+
+  await runRecordForgetCleanup(
+    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
+    started.briefSequence,
+  );
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    sequences: [started.callSequence, rerunCall.sequence],
+  });
+
+  expect(entries.map((entry) => entry.record.erasable.status)).toStrictEqual([
+    'shredded',
+    'shredded',
+  ]);
+
+  expect(cleanupSessions).toHaveBeenCalledTimes(3);
 });

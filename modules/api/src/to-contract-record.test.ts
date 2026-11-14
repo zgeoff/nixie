@@ -782,6 +782,7 @@ test('it carries a task message with its sender named from the directory', () =>
         name: 'Garden plan',
         brief: 'Plan the beds.',
         isWokenByMessages: true,
+        speaker: 'plain_task' as const,
       },
     ],
   };
@@ -859,8 +860,15 @@ test('it renders an exchange notice that names both tasks and links to the recei
         name: 'Garden plan',
         brief: 'Plan the beds.',
         isWokenByMessages: true,
+        speaker: 'plain_task' as const,
       },
-      { taskID: 'w5n1c8d3ra', name: 'Seed order', brief: 'Order seeds.', isWokenByMessages: true },
+      {
+        taskID: 'w5n1c8d3ra',
+        name: 'Seed order',
+        brief: 'Order seeds.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
     ],
   };
 

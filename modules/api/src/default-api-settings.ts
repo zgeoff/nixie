@@ -15,6 +15,7 @@ export const defaultAPISettings: APISettings = {
       name: 'Conversation',
       brief: 'Talks with the owner and answers each message.',
       isWokenByMessages: true,
+      speaker: 'conversation',
     },
   ],
 };
