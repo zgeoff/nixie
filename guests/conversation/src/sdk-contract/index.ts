@@ -14,6 +14,13 @@ export { runOverflowProbe } from './run-overflow-probe';
 export { runPinnedCoreProbe } from './run-pinned-core-probe';
 export { runPrecompactProbe } from './run-precompact-probe';
 export { runResumeAtProbe } from './run-resume-at-probe';
+
+export {
+  runToolCallWaitProbe,
+  toolCallWaitProbeText,
+  toolCallWaitProbeToolName,
+} from './run-tool-call-wait-probe';
+
 export { runToolListProbe } from './run-tool-list-probe';
 export { runToolOutputProbe } from './run-tool-output-probe';
 export type { InputStream } from './start-input-stream';

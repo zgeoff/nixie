@@ -1,6 +1,7 @@
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import type { HostFrame } from '@heynixie/wire';
 import { toolOutputLimitTokens } from '@heynixie/wire';
+import { buildToolServerEntry } from './build-tool-server-entry';
 import { getConfigDir } from './get-config-dir';
 import { getHome } from './get-home';
 import { getWorkDir } from './get-work-dir';
@@ -46,7 +47,7 @@ export function buildQueryOptions(
       // Without a lifetime, the CLI writes 5-minute cache entries on an API-key or bearer profile.
       promptCacheTtl: turn.profile.cacheTTL,
     },
-    mcpServers: context.toolServer === null ? {} : { [toolServerName]: context.toolServer },
+    mcpServers: buildMcpServers(turn, context.toolServer),
     systemPrompt: { type: 'custom', prompt: turn.systemPrompt, snapshot: false },
     cwd: getWorkDir(home),
     env: buildQueryEnv(turn, context.env, home),
@@ -71,6 +72,19 @@ function pickMaxTurns(
   return turn.type === 'turn' && turn.limits.modelCalls !== null
     ? { maxTurns: turn.limits.modelCalls }
     : {};
+}
+
+function buildMcpServers(
+  turn: TurnFrame | SummarizeFrame,
+  toolServer: McpServerConfig | null,
+): Record<string, McpServerConfig> {
+  if (toolServer === null) {
+    return {};
+  }
+
+  const toolCallWaitMs = turn.type === 'turn' ? turn.limits.toolCallWaitMs : null;
+
+  return { [toolServerName]: buildToolServerEntry(toolServer, toolCallWaitMs) };
 }
 
 const passedVariables = [

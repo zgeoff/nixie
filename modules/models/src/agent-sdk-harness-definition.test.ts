@@ -28,7 +28,7 @@ test('it binds the Agent SDK record, which speaks the Anthropic Messages API', (
     guest: { package: 'conversation', entries: { turn: 'main', check: 'check' } },
     imageKey: 'conversation',
     toolUseMetaKey: 'claudecode/toolUseId',
-    toolCallWaitMs: null,
+    toolCallWaitMs: 900_000,
     capabilities: harnessCapabilities['agent-sdk'],
   });
 });
