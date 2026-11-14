@@ -416,6 +416,42 @@ test('it reads the log level the server section sets', async () => {
   expect(config.server.logLevel).toBe('warn');
 });
 
+test('it reads the quiet hours and the defer settings the file sets', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'quiet_hours: { start: "22:00", end: "07:00" }',
+      'approvals:',
+      '  defer: { default_minutes: 30, evening_at: "19:00" }',
+      'models:',
+      '  profiles:',
+      '    chat-direct:',
+      '      harness: agent-sdk',
+      '      base_url: https://api.anthropic.com',
+      '      credential: deployment:anthropic',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: medium',
+      '      prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 }',
+      '  roles:',
+      '    conversation: chat-direct',
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect({ quiet: config.quiet_hours, defer: config.approvals.defer }).toStrictEqual({
+    quiet: { start: '22:00', end: '07:00' },
+    defer: { default_minutes: 30, evening_at: '19:00', morning_at: '08:00' },
+  });
+});
+
 test('it refuses a log level nixie has no name for', async () => {
   const ctx = await setupTest();
 
