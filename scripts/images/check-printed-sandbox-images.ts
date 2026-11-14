@@ -30,12 +30,12 @@ async function runCLI(): Promise<void> {
 
   process.stdout.write(printed);
 
-  const images = Object.entries(sandboxImagesSchema.parse(JSON.parse(printed))).map(
-    ([kind, image]) => ({ kind, name: image.name, ref: image.ref }),
+  const images = Object.entries(sandboxImagesSchema.parse(JSON.parse(printed))).flatMap(
+    ([key, image]) => (image === undefined ? [] : [{ key, name: image.name, ref: image.ref }]),
   );
 
   const writtenManifest: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  const refs = Object.fromEntries(images.map((image) => [image.kind, image.ref]));
+  const refs = Object.fromEntries(images.map((image) => [image.key, image.ref]));
 
   if (!Bun.deepEquals(refs, writtenManifest)) {
     console.log(`::error::nixie prints other sandbox images than ${manifestPath}`);
@@ -46,12 +46,12 @@ async function runCLI(): Promise<void> {
   }
 
   const misnamed = images.filter(
-    (image) => !new RegExp(`^nixie-${image.kind}-[0-9a-f]{12}$`, 'u').test(image.name),
+    (image) => !new RegExp(`^nixie-${image.key}-[0-9a-f]{12}$`, 'u').test(image.name),
   );
 
   if (misnamed.length > 0) {
     console.log(
-      `::error::nixie names a sandbox image other than nixie-<kind>-<12 hex digits>: ${misnamed.map((image) => image.name).join(', ')}`,
+      `::error::nixie names a sandbox image other than nixie-<key>-<12 hex digits>: ${misnamed.map((image) => image.name).join(', ')}`,
     );
 
     process.exitCode = 1;

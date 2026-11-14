@@ -69,6 +69,98 @@ test('it exits 1 from sandbox-manifest on a manifest the server refuses', async 
   );
 });
 
+test('it prints only the needed images from sandbox-manifest --needed', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  const exitCode = await runCLI(
+    [
+      'sandbox-manifest',
+      '--needed',
+      '--manifest',
+      files.manifestPath,
+      '--config',
+      files.configPath,
+    ],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(0);
+
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      JSON.stringify({
+        conversation: {
+          name: 'nixie-conversation-cccccccccccc',
+          ref: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
+        },
+        fetch: {
+          name: 'nixie-fetch-ffffffffffff',
+          ref: `ghcr.io/example/nixie-fetch@sha256:${'f'.repeat(64)}`,
+        },
+      }),
+    ],
+  ]);
+});
+
+test('it exits 1 from sandbox-manifest --needed on a manifest that lacks the fetch image', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  await writeFile(
+    files.manifestPath,
+    JSON.stringify({ conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}` }),
+  );
+
+  const exitCode = await runCLI(
+    [
+      'sandbox-manifest',
+      '--needed',
+      '--manifest',
+      files.manifestPath,
+      '--config',
+      files.configPath,
+    ],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(1);
+  expect(ctx.io.print).not.toHaveBeenCalled();
+
+  expect(ctx.io.log).toHaveBeenCalledExactlyOnceWith('command.failed', {
+    command: 'sandbox-manifest',
+    error: 'Error',
+    message:
+      'nixie refuses to start: the web_fetch part needs the fetch image, and the sandbox manifest holds conversation',
+  });
+});
+
+test('it prints every image from sandbox-manifest on a manifest that lacks the fetch image', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:9', {
+    config: [],
+    secrets: [],
+  });
+
+  await writeFile(
+    files.manifestPath,
+    JSON.stringify({ conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}` }),
+  );
+
+  const exitCode = await runCLI(['sandbox-manifest', '--manifest', files.manifestPath], ctx.io);
+
+  expect(exitCode).toBe(0);
+});
+
 test('it prints the readiness report and exits 1 from health when the server answers degraded', async () => {
   const ctx = await setupTest();
 

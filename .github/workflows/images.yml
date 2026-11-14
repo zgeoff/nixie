@@ -125,9 +125,7 @@ jobs:
       - name: Write the sandbox manifest
         id: manifest
         env:
-          CONVERSATION:
-            ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
-          FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
+          STEPS: ${{ toJSON(steps) }}
         run: bun run --silent ci:images:write-sandbox-manifest
 
       - name: Build the nixie image
@@ -155,17 +153,12 @@ jobs:
         run: docker run --rm --network none --read-only "$NIXIE" check-encoder
 
       - name: Pull each sandbox image with no credentials
-        env:
-          CONVERSATION:
-            ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
-          FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
-        run: .github/scripts/check-public-pulls.sh "$CONVERSATION" "$FETCH"
+        run: |
+          mapfile -t refs < <(jq -r '.[]' apps/server/sandbox-manifest.json)
+          .github/scripts/check-public-pulls.sh "${refs[@]}"
 
       - name: Tag every image, twice, and keep each digest
         env:
-          CONVERSATION:
-            ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
-          FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
           BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
           NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
           WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
@@ -178,9 +171,6 @@ jobs:
 
       - name: Build release.json, check each image it names, and rehearse its upload
         env:
-          CONVERSATION:
-            ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
-          FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
           BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
           NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
           WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}

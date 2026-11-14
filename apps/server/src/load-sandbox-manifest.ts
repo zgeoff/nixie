@@ -1,15 +1,16 @@
 import { readFile } from 'node:fs/promises';
-import type { SandboxImage } from '@heynixie/sandbox';
+import type { SandboxImage, SandboxImageKey } from '@heynixie/sandbox';
+import { sandboxImageKeys } from '@heynixie/sandbox';
 import { z } from 'zod';
-import type { sandboxImagesSchema } from './sandbox-images-schema';
+import { buildImageShape } from './build-image-shape';
 
-const refSchema = z
+export const imageRefSchema = z
   .string()
   .regex(/^[^\s@]+@sha256:[\da-f]{64}$/u, 'an image reference pinned by digest');
 
-const manifestSchema = z.strictObject({ conversation: refSchema, fetch: refSchema });
+const manifestSchema = buildImageShape(sandboxImageKeys, imageRefSchema, 'optional');
 
-export type SandboxImages = Readonly<z.infer<typeof sandboxImagesSchema>>;
+export type SandboxImages = Readonly<Partial<Record<SandboxImageKey, SandboxImage>>>;
 
 export async function loadSandboxManifest(path: string): Promise<SandboxImages> {
   const text = await readFile(path, 'utf8');
@@ -22,14 +23,21 @@ export async function loadSandboxManifest(path: string): Promise<SandboxImages> 
     throw new Error(`nixie refuses the sandbox manifest in ${path}:\n${issues.join('\n')}`);
   }
 
-  return {
-    conversation: buildImage('conversation', result.data.conversation),
-    fetch: buildImage('fetch', result.data.fetch),
-  };
+  const images: Partial<Record<SandboxImageKey, SandboxImage>> = {};
+
+  for (const key of sandboxImageKeys) {
+    const ref = result.data[key];
+
+    if (ref !== undefined) {
+      images[key] = buildImage(key, ref);
+    }
+  }
+
+  return images;
 }
 
-function buildImage(kind: string, ref: string): SandboxImage {
+function buildImage(key: SandboxImageKey, ref: string): SandboxImage {
   const digest = ref.slice(ref.indexOf('@sha256:') + '@sha256:'.length);
 
-  return { name: `nixie-${kind}-${digest.slice(0, 12)}`, ref };
+  return { name: `nixie-${key}-${digest.slice(0, 12)}`, ref };
 }

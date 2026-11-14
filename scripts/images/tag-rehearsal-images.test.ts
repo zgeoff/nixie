@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { $ } from 'bun';
@@ -17,8 +17,15 @@ function setupTest() {
 
   writeFileSync(callsPath, '');
   writeFileSync(summaryPath, '');
+  mkdirSync(join(directory, 'apps', 'server'), { recursive: true });
+
+  writeFileSync(
+    join(directory, 'apps', 'server', 'sandbox-manifest.json'),
+    '{"conversation":"r/nixie-conversation@sha256:aa11","fetch":"r/nixie-fetch@sha256:bb22"}\n',
+  );
 
   return {
+    repoPath: directory,
     binPath: join(directory, 'bin'),
     callsPath,
     summaryPath,
@@ -32,11 +39,10 @@ test('it tags every image twice, sandbox images first and nixie last', async () 
   createStubProgram(join(ctx.binPath, 'bash'), { callsPath: ctx.callsPath });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
+    .cwd(ctx.repoPath)
     .env({
       PATH: ctx.binPath,
       GITHUB_STEP_SUMMARY: ctx.summaryPath,
-      CONVERSATION: 'r/nixie-conversation@sha256:aa11',
-      FETCH: 'r/nixie-fetch@sha256:bb22',
       BACKUP: 'r/nixie-backup@sha256:ab12',
       WEB: 'r/nixie-web@sha256:cc33',
       NIXIE: 'r/nixie@sha256:dd44',
@@ -61,11 +67,10 @@ test('it lists each image and its digest in the summary', async () => {
   createStubProgram(join(ctx.binPath, 'bash'), { callsPath: ctx.callsPath });
 
   await $`${process.execPath} ${ctx.scriptPath}`
+    .cwd(ctx.repoPath)
     .env({
       PATH: ctx.binPath,
       GITHUB_STEP_SUMMARY: ctx.summaryPath,
-      CONVERSATION: 'r/nixie-conversation@sha256:aa11',
-      FETCH: 'r/nixie-fetch@sha256:bb22',
       BACKUP: 'r/nixie-backup@sha256:ab12',
       WEB: 'r/nixie-web@sha256:cc33',
       NIXIE: 'r/nixie@sha256:dd44',
@@ -98,11 +103,10 @@ test('it stops, and writes no summary, when the first tag run fails', async () =
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
+    .cwd(ctx.repoPath)
     .env({
       PATH: ctx.binPath,
       GITHUB_STEP_SUMMARY: ctx.summaryPath,
-      CONVERSATION: 'r/nixie-conversation@sha256:aa11',
-      FETCH: 'r/nixie-fetch@sha256:bb22',
       BACKUP: 'r/nixie-backup@sha256:ab12',
       WEB: 'r/nixie-web@sha256:cc33',
       NIXIE: 'r/nixie@sha256:dd44',

@@ -8,6 +8,10 @@ type ImageParts = Pick<ServerParts, 'images' | 'log' | 'state'> & {
 export async function registerSandboxImages(parts: ImageParts): Promise<void> {
   // The sandbox runtime pulls one image at a time, so the images are added one after another.
   for (const image of Object.values(parts.images)) {
+    if (image === undefined) {
+      continue;
+    }
+
     try {
       await parts.tools.adapter.addImage(image);
     } catch (error) {

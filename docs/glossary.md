@@ -68,22 +68,22 @@ one person a nixie deployment works for, and the architecture docs call that per
 
 ## Connectors and sandboxes
 
-| Term             | Meaning                                                                                                                                                            |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| connector        | nixie's code for one outside service                                                                                                                               |
-| external server  | Any MCP server that is not part of nixie's code                                                                                                                    |
-| coding adapter   | How nixie starts and steers coding sessions, with atc first                                                                                                        |
-| sandbox adapter  | How nixie runs sandboxed work, with imp as the reference and containers as an alternative                                                                          |
-| imp              | A sandboxed microVM, from the imp project, that runs workers, the conversation and code runs                                                                       |
-| test sandbox     | The test-build sandbox adapter that runs each guest as a local process, with no isolation                                                                          |
-| guest program    | A program nixie starts in a guest: the guest turn, the sandbox check, the guest purge, the guest summary, the fetcher or a code run's program                      |
-| memory kill      | The guest's kernel killing one of its processes because the guest used more memory than its sandbox's size                                                         |
-| size row         | A row of `sandboxSizes`, which belongs to a role and never to a sandbox kind or an image, planned in [GEO-2417](https://linear.app/zgeoff/issue/GEO-2417)          |
-| image key        | A key of `sandboxImageKeys`, which names one sandbox image and never a sandbox kind or a size row, planned in [GEO-2582](https://linear.app/zgeoff/issue/GEO-2582) |
-| sandbox manifest | The file in the nixie image that maps each image key to its image ref, pinned by digest                                                                            |
-| grant            | A credential that imp's broker injects into one imp, so the guest sees only a placeholder                                                                          |
-| binding          | The link between a connector and the credential it uses                                                                                                            |
-| disconnect       | Stop nixie's use of a credential it cannot delete at its source                                                                                                    |
+| Term             | Meaning                                                                                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| connector        | nixie's code for one outside service                                                                                                                      |
+| external server  | Any MCP server that is not part of nixie's code                                                                                                           |
+| coding adapter   | How nixie starts and steers coding sessions, with atc first                                                                                               |
+| sandbox adapter  | How nixie runs sandboxed work, with imp as the reference and containers as an alternative                                                                 |
+| imp              | A sandboxed microVM, from the imp project, that runs workers, the conversation and code runs                                                              |
+| test sandbox     | The test-build sandbox adapter that runs each guest as a local process, with no isolation                                                                 |
+| guest program    | A program nixie starts in a guest: the guest turn, the sandbox check, the guest purge, the guest summary, the fetcher or a code run's program             |
+| memory kill      | The guest's kernel killing one of its processes because the guest used more memory than its sandbox's size                                                |
+| size row         | A row of `sandboxSizes`, which belongs to a role and never to a sandbox kind or an image, planned in [GEO-2417](https://linear.app/zgeoff/issue/GEO-2417) |
+| image key        | A key of `sandboxImageKeys`, which names one sandbox image and never a sandbox kind or a size row                                                         |
+| sandbox manifest | The file in the nixie image that maps each image key to its image ref, pinned by digest                                                                   |
+| grant            | A credential that imp's broker injects into one imp, so the guest sees only a placeholder                                                                 |
+| binding          | The link between a connector and the credential it uses                                                                                                   |
+| disconnect       | Stop nixie's use of a credential it cannot delete at its source                                                                                           |
 
 ## Views and records
 

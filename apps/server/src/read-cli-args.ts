@@ -17,6 +17,7 @@ export type ParsedCLIArgs =
 const CLI_OPTIONS = {
   config: { type: 'string', default: '/etc/nixie/config.yaml' },
   manifest: { type: 'string', default: '/app/sandbox-manifest.json' },
+  needed: { type: 'boolean', default: false },
 
   encoder: { type: 'string', default: '/app/encoder' },
   sops: { type: 'string', default: '/usr/local/bin/sops' },

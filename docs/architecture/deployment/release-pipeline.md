@@ -94,9 +94,37 @@ is, so a re-run finishes a partly tagged release. A manual run of the workflow s
 tag, because each attestation names the commit of the run that made it. The manual run rebuilds the
 release from that commit and refuses a version that any image already carries.
 
-The sandbox manifest maps each sandbox kind to its image by digest, and no commit holds it. A
-committed manifest would need a second commit after the images exist, so the nixie image would come
-from a different commit than its sandbox images.
+The sandbox manifest maps each image key to its image by digest, and no commit holds it. A committed
+manifest would need a second commit after the images exist, so the nixie image would come from a
+different commit than its sandbox images.
+
+### Image keys
+
+The tuple `sandboxImageKeys` in the sandbox module holds one key per sandbox image, and
+`sandboxImageRecords` gives each key its registry package and Dockerfile. Three outputs hold a field
+per key, each built by `buildImageShape` from the tuple, so no schema writes a key out:
+
+| Output                                        | Keys     | Each value                                          |
+| --------------------------------------------- | -------- | --------------------------------------------------- |
+| the sandbox manifest, in the nixie image      | optional | `<registry>/<repository>@sha256:<digest>`           |
+| `nixie sandbox-manifest`                      | optional | `{ name, ref }`, with no other field                |
+| `sandboxImages` in `release.json`, `format` 1 | required | `<registry>/<repository>:<version>@sha256:<digest>` |
+
+At start, nixie adds only the images that it needs: one for the harness of each configured profile
+(the profile each model role resolves to, and each profile a selectable model names), and one for
+each key that a part declaration names. It refuses to start, before any part starts, when the
+manifest lacks one of them, and the refusal names each missing image and what needs it.
+
+A pull request that adds an image holds:
+
+1. the Dockerfile, the key and its record;
+2. its job in the release workflow, listed in the `needs` of the `sandbox-manifest` job;
+3. its build step in the Images workflow, whose `id` is the key;
+4. the harness record or part declaration that uses it.
+
+A unit test reads both workflows and fails when a key has no release job or no Images step, or when
+a job or step builds another image or Dockerfile than the key's record. The scripts that gather the
+manifest read the tuple, so no workflow step or script names a key.
 
 ## The release contract
 

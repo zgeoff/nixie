@@ -24,11 +24,13 @@ async function runCLI(): Promise<void> {
   const migrationsPath = join(runnerTemp, 'migrations.json');
   const configSchemaPath = join(runnerTemp, 'config-schema.json');
   const releasePath = join(runnerTemp, 'release.json');
+  const sandboxManifestPath = join(runnerTemp, 'sandbox-manifest.json');
 
+  writeFileSync(sandboxManifestPath, `${getStepEnv(process.env, 'SANDBOX_MANIFEST')}\n`);
   writeFileSync(migrationsPath, `${getStepEnv(process.env, 'MIGRATIONS')}\n`);
   writeFileSync(configSchemaPath, `${getStepEnv(process.env, 'CONFIG_SCHEMA')}\n`);
 
-  await $`bun ${releaseManifestPath} --version ${getStepEnv(process.env, 'VERSION')} --commit ${getStepEnv(process.env, 'SHA')} --server ${getStepEnv(process.env, 'NIXIE')} --web ${getStepEnv(process.env, 'WEB')} --conversation ${getStepEnv(process.env, 'CONVERSATION')} --fetch ${getStepEnv(process.env, 'FETCH')} --backup ${getStepEnv(process.env, 'BACKUP')} --migrations ${migrationsPath} --config-schema ${configSchemaPath} --out ${releasePath}`;
+  await $`bun ${releaseManifestPath} --version ${getStepEnv(process.env, 'VERSION')} --commit ${getStepEnv(process.env, 'SHA')} --server ${getStepEnv(process.env, 'NIXIE')} --web ${getStepEnv(process.env, 'WEB')} --sandbox-manifest ${sandboxManifestPath} --backup ${getStepEnv(process.env, 'BACKUP')} --migrations ${migrationsPath} --config-schema ${configSchemaPath} --out ${releasePath}`;
   await $`bash .github/scripts/publish-release-assets.sh ${tag} ${releasePath}`;
 
   appendFileSync(

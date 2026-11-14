@@ -88,9 +88,9 @@ test("it runs the task that the conversation starts in a worker imp it owns, and
 
   const [taskTurn] = ctx.readTaskTurns();
 
-  expect(sandboxes.map((sandbox) => [sandbox.spec.kind, sandbox.spec.owner])).toStrictEqual([
-    ['worker', taskID],
-  ]);
+  expect(
+    sandboxes.map((sandbox) => [sandbox.spec.kind, sandbox.spec.owner, sandbox.spec.image]),
+  ).toStrictEqual([['worker', taskID, 'nixie-conversation-cccccccccccc']]);
 
   expect(taskTurn?.owner).toBe(taskID);
   expect(taskTurn?.frame.profile.baseURL).toStartWith('http://127.0.0.1:4040');

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { $ } from 'bun';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
+import { parseSandboxManifest } from '../lib/read-sandbox-manifest.ts';
 import { writeStepValues } from '../lib/write-step-values.ts';
 import { buildReleaseNoteComparisons } from './build-release-note-comparisons.ts';
 
@@ -27,9 +28,10 @@ async function runCLI(): Promise<void> {
   const sha = getStepEnv(process.env, 'SHA');
   const runnerTemp = getStepEnv(process.env, 'RUNNER_TEMP');
 
-  const images = ['CONVERSATION', 'FETCH', 'BACKUP', 'NIXIE', 'WEB'].map((name) =>
-    getStepEnv(process.env, name),
-  );
+  const images = [
+    ...Object.values(parseSandboxManifest(getStepEnv(process.env, 'SANDBOX_MANIFEST'))),
+    ...['BACKUP', 'NIXIE', 'WEB'].map((name) => getStepEnv(process.env, name)),
+  ];
 
   const bodyPath = join(runnerTemp, 'body.md');
   const migrationsPath = join(runnerTemp, 'migrations.json');

@@ -15,3 +15,9 @@ test('it keys each image name by its key in the sandbox manifest', () => {
     fetch: 'nixie-fetch-0123456789ab',
   });
 });
+
+test('it leaves out an image that the manifest lacks', () => {
+  expect(
+    toImageNames({ fetch: { name: 'nixie-fetch-0123456789ab', ref: 'registry.test/fetch:1' } }),
+  ).toStrictEqual({ fetch: 'nixie-fetch-0123456789ab' });
+});

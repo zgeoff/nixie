@@ -8,7 +8,7 @@ import { getSandboxRootDir } from './get-sandbox-root-dir';
 import { refreshDefinitions } from './refresh-definitions';
 import type { ServerPartValues } from './server-part-values';
 import { startConversationEndpoint } from './start-conversation-endpoint';
-import { startWebFetch } from './start-web-fetch';
+import { startWebFetchPart } from './start-web-fetch-part';
 import type { AnyPartDeclaration } from './types';
 
 export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
@@ -38,25 +38,13 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'web_fetch',
     needs: ['inputs', 'context', 'sandbox_adapter'],
-    start: async (parts) => {
-      const options = parts.get('inputs').options;
-      const sandbox = options.sandbox;
-      const publicEgress = sandbox.adapter === 'imp' ? sandbox.imp.publicEgress : null;
-      const testFetchArgv = NIXIE_TEST_BUILD ? (options.harness?.fetchArgv ?? null) : null;
-
-      const webFetch = startWebFetch({
+    images: () => ['fetch'],
+    start: (parts) =>
+      startWebFetchPart({
+        options: parts.get('inputs').options,
         adapter: parts.get('sandbox_adapter'),
-        image: options.images.fetch.name,
-        ...(testFetchArgv === null ? {} : { argv: testFetchArgv }),
-        deniedRanges: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
-        config: options.config.web_fetch,
         log: parts.get('context').apiContext.log,
-      });
-
-      await options.cleanup.defer(() => webFetch.stop());
-
-      return webFetch;
-    },
+      }),
   },
   {
     name: 'actions',
