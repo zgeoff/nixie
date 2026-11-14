@@ -44,6 +44,43 @@ A call names a page in one of these ways, and the tool refuses any other mix of 
 A call never gives both `part` and `find`. [Pages and parts](#pages-and-parts) covers the page ID,
 `part` and `find`.
 
+## Known sites
+
+A page of some sites carries more noise than content, so the tool fetches the site's raw or JSON
+form of the same page. Before the fetch, `rewriteFetchURL` checks the URL against 5 rules:
+
+| Rule                | Matches                                              | Fetches                                                                 |
+| ------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------- |
+| `github-blob`       | `github.com/<owner>/<repo>/blob/<ref>/<path>`        | `raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>`                 |
+| `github-tree`       | `github.com/<owner>/<repo>/tree/<ref>/<path>`        | `api.github.com/repos/<owner>/<repo>/contents/<path>?ref=<ref>`         |
+| `npm-package`       | `www.npmjs.com/package/<name>`, with `/v/<version>`  | `registry.npmjs.org/<name>/<version or latest>`, one version's document |
+| `pypi-project`      | `pypi.org/project/<name>/`, with a version           | `pypi.org/pypi/<name>[/<version>]/json`                                 |
+| `wikipedia-article` | `<lang>.wikipedia.org/wiki/<title>`, mobile host too | `<lang>.wikipedia.org/w/rest.php/v1/page/<title>/html`                  |
+
+A URL matches a rule only when all of these hold:
+
+- The host is exactly the rule's host. A Wikipedia host is `<lang>.wikipedia.org` or
+  `<lang>.m.wikipedia.org`, where `<lang>` is not `www` or `m`.
+- The URL names no explicit port, `:443` and `:80` included.
+- The URL has no query string, except `?plain=1` on a `github-blob` URL.
+- The path has the shape in the table, with no empty segment. `npm-package` and `pypi-project` allow
+  one trailing slash.
+
+The rewrite drops the fragment and any user name or password, and copies each path segment as the
+URL holds it, with no decoding or encoding. A scoped npm name keeps its slash as `%2F`. A URL that
+matches no rule, or that is no URL, is fetched as named. The tool never rewrites a root page of a
+repository, an issue or a pull request.
+
+The fallback fetches the named URL when the rewritten URL fails. It runs only when a rule rewrote
+the URL and the first fetch returned a 404, or a rate limit: a 429, a 503, or a 403 whose headers
+ask for a wait, each with no blocked reason. A 200, a refused or failed fetch and a blocked page
+never run it. The fallback fetches the named URL as named and never runs twice, so its reply is the
+call's result, a 404 or a rate limit included.
+
+The tool stores the page of the one fetch that ends the call. After a fallback, only the named URL's
+page is stored, never the body of the first fetch's 404 or rate limit. The result's `url` is the URL
+the fetch ended at, so a rewritten fetch shows the rewritten URL. The tool's description says so.
+
 ## Link IDs
 
 Each link in a page's text reads as a short ID that the conversation session numbers, such as
@@ -210,6 +247,12 @@ sends each fetch these limits:
 | the number of redirects                         | the deployment config  | the deployment config                                                 |
 | the bytes of text returned                      | 3 times the body limit | the file size limit                                                   |
 
+The fetcher asks for markdown first, with the header
+`text/markdown, text/html;q=0.9, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.7`. A site
+that answers `text/markdown` returns its text as sent, like any other text type, and the reply has
+no link marks, so the page has no link IDs. A server of this release that runs an older fetch image
+only lacks the header, so the server and the image roll out in either order.
+
 The web fetch tool asks for text up to 3 times its body limit, because one body byte decodes to at
 most 3 bytes of UTF-8 text, so its text stops only where the body does.
 
@@ -247,15 +290,17 @@ the main element because a site's main element often holds toolbars around the a
 
 The readable text marks where each link ends, so the model can follow a link to the next page. The
 fetcher writes a mark after the text of each link in the main content and lists each mark's target,
-resolved against the page's final URL, beside the text, and nixie writes each mark as the link's ID.
-A mark is the link's index between two private-use characters, and the fetcher strips both
-characters from the page's own text, so a page cannot forge a mark. After the main content comes a
-list headed "Other links on this page", which holds the links from the rest of the page, such as its
-navigation, asides, header and footer. The list holds each target once, leaves out a target the main
-content shows, and stops at a fixed count, so a page of menus cannot fill the text limit. The list
-comes last, so a page cut at the text limit loses its list before its article. A link to the page
-itself, to a fragment of it, or through a scheme other than `https` and `http`, such as
-`javascript:`, keeps only its text and gets no mark, because the model has nothing to fetch there.
+resolved against the href of the page's first `<base>` element that has one, else the page's final
+URL, beside the text, and nixie writes each mark as the link's ID. A mark is the link's index
+between two private-use characters, and the fetcher strips both characters from the page's own text,
+so a page cannot forge a mark. After the main content comes a list headed "Other links on this
+page", which holds the links from the rest of the page, such as its navigation, asides, header and
+footer. The list holds each target once, leaves out a target the main content shows, and stops at a
+fixed count, so a page of menus cannot fill the text limit. The list comes last, so a page cut at
+the text limit loses its list before its article. A link to the page itself, which the fetcher
+compares against the page's final URL, to a fragment of it, or through a scheme other than `https`
+and `http`, such as `javascript:`, keeps only its text and gets no mark, because the model has
+nothing to fetch there.
 
 Another text type returns as it arrived, in the charset its content type names. An `image/*` type
 returns its body whole, within the image limit, for nixie to read

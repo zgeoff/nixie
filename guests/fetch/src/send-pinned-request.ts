@@ -25,6 +25,10 @@ export interface PinnedRequestOptions {
 }
 
 const userAgent = 'Mozilla/5.0 (compatible; nixie-fetch/1.0)';
+
+const acceptHeader =
+  'text/markdown, text/html;q=0.9, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.7';
+
 const webDefaultPorts: DefaultPorts = { http: 80, https: 443 };
 
 export function sendPinnedRequest(
@@ -45,7 +49,7 @@ export function sendPinnedRequest(
     lookup: makePinnedLookup(target.address),
     headers: {
       'user-agent': userAgent,
-      accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
+      accept: acceptHeader,
       'accept-encoding': 'gzip, deflate, br',
     },
     signal: options.signal,

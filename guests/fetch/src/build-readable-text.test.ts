@@ -349,3 +349,23 @@ test('it returns no text from a script left open', () => {
     buildReadableText('<p>shown</p><script>var a = "hidden', new URL('https://example.test/')),
   ).toStrictEqual({ text: 'shown', links: [] });
 });
+
+test('it resolves a relative link against the href of the first base element', () => {
+  const html =
+    '<head><base href="//wiki.test/wiki/"><base href="https://other.test/"></head><body><main><p>See <a href="./Tide_(disambiguation)">tides</a>.</p></main></body>';
+
+  expect(buildReadableText(html, new URL('https://wiki.test/api/page/Tide/html'))).toStrictEqual({
+    text: 'See tides \u{E000}0\u{E001}.',
+    links: ['https://wiki.test/wiki/Tide_(disambiguation)'],
+  });
+});
+
+test('it resolves links against the page URL when the base href is no http URL', () => {
+  const html =
+    '<head><base href="data:text/plain,x"></head><body><main><p><a href="next">next</a></p></main></body>';
+
+  expect(buildReadableText(html, new URL('https://wiki.test/a/b'))).toStrictEqual({
+    text: 'next \u{E000}0\u{E001}',
+    links: ['https://wiki.test/a/next'],
+  });
+});
