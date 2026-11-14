@@ -1,18 +1,15 @@
 import { expect, test } from 'bun:test';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { ContractClient } from '@heynixie/contract';
-import { clientHeaderName } from '@heynixie/contract';
+import { pendingRestoreSchema } from '@heynixie/log';
 import {
   createTestClient,
   runHostCommand,
   sendClientMessage,
   startSpawnedNixie,
 } from '@heynixie/server/test-utils';
-import { createORPCClient } from '@orpc/client';
-import { RPCLink } from '@orpc/client/fetch';
 
-test('it backs up a running server and restores it into an empty data directory through the nixie executable, and the restarted server reads its messages with the deployment key', async () => {
+test('it backs up a running server and restores it into an empty data directory through the nixie executable, and the restarted server refuses to start on the finished restore', async () => {
   const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
@@ -41,27 +38,16 @@ test('it backs up a running server and restores it into an empty data directory 
 
   const restarted = nixie.harness.start();
 
-  const listening = await restarted.waitForLogEvent('http.listening');
-
-  await restarted.waitForLogEvent('ready');
-
-  const client = createORPCClient<ContractClient>(
-    new RPCLink({
-      url: `http://127.0.0.1:${String(listening['port'])}/rpc`,
-      headers: { [clientHeaderName]: 'test', authorization: `Bearer ${api.token}` },
-    }),
-  );
-
-  const page = await client.conversation.read({ thread: 'conversation' });
+  const exit = await restarted.exited;
+  const marker = await Bun.file(join(nixie.dataDir, 'restore-incomplete')).text();
 
   expect(backup.exitCode).toBe(0);
   expect(backup.stdout).toStartWith('copied nixie.db\ncopied keys.db\n');
   expect(backup.stdout).toInclude(`nixie backed up nixie.db and keys.db into ${target} in `);
   expect(restore.exitCode).toBe(0);
   expect(restore.stdout).toInclude(`nixie restored nixie.db and keys.db from ${target}\n`);
-
-  expect(page.records.map((record) => record.message?.text)).toIncludeAllMembers([
-    'Plum-message-7QK2',
-    'Quince-reply-4ZT9',
-  ]);
+  expect(pendingRestoreSchema.safeParse(JSON.parse(marker)).success).toBeTrue();
+  expect(exit.code).not.toBe(0);
+  expect(restarted.readOutput()).not.toInclude('"event":"ready"');
+  expect(restarted.readOutput()).toInclude('holds a finished restore');
 });

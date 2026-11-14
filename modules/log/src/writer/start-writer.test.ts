@@ -237,6 +237,81 @@ test('it refuses to start on a data directory whose restore stopped before it fi
   expect(names).toStrictEqual(['restore-incomplete']);
 });
 
+test('it refuses a caller that does not install the restore on a data directory that holds a finished restore, and releases the lock', async () => {
+  const ctx = await setupTest();
+
+  const pending = {
+    version: 1,
+    recoveryID: 'recovery-a',
+    restoredAt: 2000,
+    backupTakenAt: 1000,
+  } as const;
+
+  await writeFile(join(ctx.dataDir, 'restore-incomplete'), JSON.stringify(pending));
+
+  const start = startWriter({ dataDir: ctx.dataDir });
+
+  await start.catch(() => {});
+
+  const lock = claimWriterLock(ctx.dataDir);
+
+  onTestFinished(() => {
+    lock.release();
+  });
+
+  const names = await readdir(ctx.dataDir);
+
+  expect(start).rejects.toThrowWithMessage(
+    Error,
+    `the data directory ${ctx.dataDir} holds a finished restore that only the server's start installs, so this process does not start on it`,
+  );
+
+  expect(names).toStrictEqual(['restore-incomplete']);
+});
+
+test('it starts the caller that installs the restore on a finished restore, with its payload', async () => {
+  const ctx = await setupTest();
+
+  const pending = {
+    version: 1,
+    recoveryID: 'recovery-a',
+    restoredAt: 2000,
+    backupTakenAt: 1000,
+  } as const;
+
+  await writeFile(join(ctx.dataDir, 'restore-incomplete'), JSON.stringify(pending));
+
+  const writer = await startWriter({ dataDir: ctx.dataDir, installsRestorePause: true });
+
+  onTestFinished(() => writer.stop());
+
+  expect(writer.pendingRestore).toStrictEqual(pending);
+});
+
+test('it refuses the caller that installs the restore on a restore that stopped before it finished', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'restore-incomplete'), '');
+
+  const start = startWriter({ dataDir: ctx.dataDir, installsRestorePause: true });
+
+  await start.catch(() => {});
+
+  expect(start).rejects.toThrowWithMessage(
+    Error,
+    `a restore of the data directory ${ctx.dataDir} stopped before it finished, so its databases may come from two backups; run nixie restore again`,
+  );
+});
+
+test('it starts with no pending restore on a data directory without a marker', async () => {
+  const ctx = await setupTest();
+  const writer = await startWriter({ dataDir: ctx.dataDir });
+
+  onTestFinished(() => writer.stop());
+
+  expect(writer.pendingRestore).toBeNull();
+});
+
 test('it releases the lock when it cannot read whether a restore stopped', async () => {
   const ctx = await setupTest();
 
@@ -244,7 +319,7 @@ test('it releases the lock when it cannot read whether a restore stopped', async
     dataDir: ctx.dataDir,
     files: {
       ...localDataStorage.files,
-      probeFile: () =>
+      readText: () =>
         Promise.reject(
           Object.assign(new Error('EACCES: permission denied, stat'), { code: 'EACCES' }),
         ),

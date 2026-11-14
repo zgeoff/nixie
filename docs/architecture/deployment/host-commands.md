@@ -152,11 +152,16 @@ failed restore can publish a set staged from the replaced database. The restore 
 without `--yes`, because the data written since the backup is lost.
 
 The two databases move one at a time, so a restore that stops between them leaves a pair from two
-backups. The restore writes a marker into the data directory before the first database moves and
-removes it after the restore note is written, and a server refuses to start while the marker is
-there, until a restore runs to the end. The backup command refuses the marker too. A lock file in
-the data directory keeps a backup and a restore apart, because the writer lock cannot: backups share
-the lock, and a restore holds it alone, so neither copies a pair that the other is replacing.
+backups. The restore writes a marker in the state `replacing` into the data directory before the
+first database moves. After the restore note is written, it writes the pending restore's ID, its
+time and the backup's newest record time to a second file and renames that file over the marker,
+which puts the marker in the state `holding` and leaves a marker in place at every instant. A server
+refuses to start on `replacing`, and starts on `holding` only through the install at the next start
+([GEO-2564](https://linear.app/zgeoff/issue/GEO-2564)). Until the install lands, a restored server
+refuses to start. The backup command refuses `replacing` and copies the pair on `holding`. A lock
+file in the data directory keeps a backup and a restore apart, because the writer lock cannot:
+backups share the lock, and a restore holds it alone, so neither copies a pair that the other is
+replacing.
 
 ## Memory
 

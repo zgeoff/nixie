@@ -6,6 +6,7 @@ import { nixieSchema, runMigrations, startDatabase, syncPauseGate } from '@heyni
 import { getDataFilePath } from '../data/get-data-file-path';
 import { startKeyStore } from '../key/start-key-store';
 import { claimWriterEpoch } from '../record/claim-writer-epoch';
+import type { PendingRestore } from '../restore/pending-restore';
 import { readRestoreState } from '../restore/read-restore-state';
 import type { ReadFilesystemType, Writer } from '../types';
 import type { DataFileSystem } from '../utils/data-storage';
@@ -20,6 +21,9 @@ export interface StartWriterOptions {
   readonly readFilesystemType?: ReadFilesystemType;
   readonly files?: DataFileSystem;
 
+  // Only the server passes true: a data directory that holds a finished restore starts for it alone.
+  readonly installsRestorePause?: boolean;
+
   readonly clock?: Clock;
 
   readonly keyStoreBusyTimeoutMs?: number | undefined;
@@ -29,9 +33,14 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
   requireLocalFilesystem(options.dataDir, options.readFilesystemType ?? statfsSync);
 
   const lock = claimWriterLock(options.dataDir);
+  let pendingRestore: PendingRestore | null = null;
 
   try {
-    await requireFinishedRestore(options.files ?? localDataStorage.files, options.dataDir);
+    pendingRestore = await requireFinishedRestore(
+      options.files ?? localDataStorage.files,
+      options.dataDir,
+      options.installsRestorePause === true,
+    );
   } catch (error) {
     lock.release();
     throw error;
@@ -57,6 +66,7 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
       db,
       keys,
       epoch,
+      pendingRestore,
       clock: options.clock ?? systemClock,
       commits: new EventTarget(),
       migration,
@@ -69,14 +79,30 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
   }
 }
 
-async function requireFinishedRestore(files: DataFileSystem, dataDir: string): Promise<void> {
+async function requireFinishedRestore(
+  files: DataFileSystem,
+  dataDir: string,
+  installsRestorePause: boolean,
+): Promise<PendingRestore | null> {
   const restore = await readRestoreState(files, dataDir);
 
-  if (restore === 'replacing') {
+  if (restore.state === 'replacing') {
     throw new Error(
       `a restore of the data directory ${dataDir} stopped before it finished, so its databases may come from two backups; run nixie restore again`,
     );
   }
+
+  if (restore.state === 'holding') {
+    if (!installsRestorePause) {
+      throw new Error(
+        `the data directory ${dataDir} holds a finished restore that only the server's start installs, so this process does not start on it`,
+      );
+    }
+
+    return restore.pending;
+  }
+
+  return null;
 }
 
 function makeStopOnce(

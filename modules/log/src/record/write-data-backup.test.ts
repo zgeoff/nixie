@@ -309,3 +309,27 @@ test('it refuses a data directory whose restore stopped before it finished, and 
 
   expect(existsSync(ctx.directory)).toBeFalse();
 });
+
+test('it copies the pair of a data directory that holds a finished restore', async () => {
+  const ctx = await setupTest();
+
+  await sql`create table items (id text primary key)`.execute(ctx.log);
+  await sql`create table record_keys (key_id text primary key)`.execute(ctx.keys);
+
+  await writeFile(
+    join(ctx.dataDir, 'restore-incomplete'),
+    JSON.stringify({ version: 1, recoveryID: 'recovery-a', restoredAt: 2000, backupTakenAt: 1000 }),
+  );
+
+  const backup = await writeDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    onCopied: () => {},
+  });
+
+  const files = await readdir(ctx.directory);
+
+  expect(backup).toStrictEqual({ files: ['nixie.db', 'keys.db'], attempts: 1 });
+  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db']);
+});

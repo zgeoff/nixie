@@ -1,8 +1,9 @@
-// The restore marker in the data directory holds the state: no marker is none, and the marker is
-// replacing. A restore that stops part way leaves replacing, and the next restore starts from it.
-export type RestoreState = 'none' | 'replacing';
+// No marker is none, an empty marker or one that does not parse is replacing, and one that parses as
+// a PendingRestore is holding. A restore that stops part way leaves replacing.
+export type RestoreState = 'none' | 'replacing' | 'holding';
 
 export const restoreMoves: Readonly<Record<RestoreState, readonly RestoreState[]>> = {
   none: ['replacing'],
-  replacing: ['replacing', 'none'],
+  replacing: ['replacing', 'holding', 'none'],
+  holding: ['replacing', 'none'],
 };
