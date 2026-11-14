@@ -19,6 +19,8 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'recovery.step.3': 'recovery.step.',
   'recovery.step.4': 'recovery.step.',
   'recovery.step.5': 'recovery.step.',
+  'recovery.pause.committed': 'recovery.pause.committed',
+  'recovery.pause.marker_cleared': 'recovery.pause.marker_cleared',
   'sigterm.grace': 'sigterm.grace',
   'memory.recall.ranked': 'memory.recall.ranked',
   'memory.recall.checked': 'memory.recall.checked',
@@ -43,5 +45,6 @@ export const testBuildIDs: readonly string[] = [
   'test.inbox_read',
   'test.send runs as an action',
   'releaseWriterLock',
+  'resumeNixie',
   'the tool relay has no TCP address',
 ];

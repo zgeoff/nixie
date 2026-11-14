@@ -1,7 +1,10 @@
+import { readTasksWithPendingActions } from '@heynixie/actions';
+import { removeRestoreMarker } from '@heynixie/log';
+import { installRestorePause } from '@heynixie/tasks';
 import { startConversationImp } from '../conversation/start-conversation-imp';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { registerSandboxImages } from '../sandbox/register-sandbox-images';
-import type { AnyPartDeclaration, ServerParts } from '../types';
+import type { AnyPartDeclaration, PartReader, ServerParts } from '../types';
 import { makeRetriedStart } from './make-retried-start';
 import { runRecoverySteps } from './run-recovery-steps';
 import type { ServerPartValues } from './server-part-values';
@@ -13,8 +16,13 @@ export const recoveryPartDeclarations: readonly AnyPartDeclaration<ServerPartVal
     start: makeRetriedStart('first_seed', requireFirstSeed),
   },
   {
+    name: 'restore_pause',
+    needs: ['server_parts', 'first_seed'],
+    start: makeRetriedStart('restore_pause', installPauseAndClearMarker),
+  },
+  {
     name: 'recovery',
-    needs: ['inputs', 'server_parts', 'first_seed'],
+    needs: ['inputs', 'server_parts', 'first_seed', 'restore_pause'],
     start: makeRetriedStart('recovery', async (parts, reader) => {
       await runRecoverySteps(parts);
 
@@ -49,5 +57,45 @@ async function requireFirstSeed(parts: ServerParts): Promise<void> {
 
   if (seeded.status === 'refused') {
     throw seeded.error;
+  }
+}
+
+async function installPauseAndClearMarker(
+  parts: ServerParts,
+  reader: PartReader<ServerPartValues>,
+): Promise<void> {
+  const writer = reader.get('inputs').options.writer;
+
+  const installed = await installRestorePause(parts.context, {
+    pending: writer.pendingRestore,
+    readTasksWithPendingActions,
+  });
+
+  if (installed === null) {
+    return;
+  }
+
+  parts.log('restore.paused', {
+    recoveryID: installed.recoveryID,
+    toCheck: installed.toCheck,
+    isNew: installed.isNew,
+  });
+
+  if (NIXIE_TEST_BUILD) {
+    await reader.get('inputs').options.harness?.link.waitAtFaultPoint('recovery.pause.committed', {
+      kind: 'recovery',
+      id: null,
+    });
+  }
+
+  await removeRestoreMarker(writer.dataDir);
+
+  if (NIXIE_TEST_BUILD) {
+    await reader
+      .get('inputs')
+      .options.harness?.link.waitAtFaultPoint('recovery.pause.marker_cleared', {
+        kind: 'recovery',
+        id: null,
+      });
   }
 }

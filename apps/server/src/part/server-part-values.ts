@@ -28,6 +28,7 @@ export interface ServerPartValues {
   readonly reset: ServerResetControl;
   readonly host_commands: void;
   readonly first_seed: void;
+  readonly restore_pause: void;
   readonly recovery: void;
   readonly add_images: void;
   readonly conversation_imp: ConversationImp;
