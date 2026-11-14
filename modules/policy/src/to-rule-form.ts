@@ -33,15 +33,26 @@ export function toStoredRuleForm(rule: Rule): JSONObject {
     ...Object.fromEntries(kept),
     ...(form.contexts === undefined
       ? {}
-      : { contexts: toSortedSet(form.contexts.flatMap((context) => toStoredContexts(context))) }),
+      : {
+          contexts: toSortedSet(
+            form.contexts.flatMap((context) =>
+              toStoredContexts(context, form.definitions !== undefined),
+            ),
+          ),
+        }),
     ...(form.definitions === undefined ? {} : { jobs: form.definitions }),
   };
 }
 
 // The release before reads `task` as only a task nixie starts, so a definition's task run needs
-// `job` beside it to keep matching the same calls.
-function toStoredContexts(context: RuleContext): readonly string[] {
-  return context === 'task' ? ['job', 'task'] : [context];
+// `job` beside it to keep matching the same calls. A rule that names definitions matches no task
+// nixie starts, so `job` alone matches the same calls and keeps the form the release before wrote.
+function toStoredContexts(context: RuleContext, hasDefinitions: boolean): readonly string[] {
+  if (context !== 'task') {
+    return [context];
+  }
+
+  return hasDefinitions ? ['job'] : ['job', 'task'];
 }
 
 function toSortedText(items: readonly string[]): string[] {

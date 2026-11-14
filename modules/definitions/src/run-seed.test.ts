@@ -1462,11 +1462,11 @@ test('it stores a rule in the old names and keeps the hash the release before ga
         toCanonicalJSON({
           id: 'ask-triage',
           outcome: 'ask',
-          contexts: ['job', 'task'],
+          contexts: ['job'],
           jobs: ['inbox-triage'],
         }),
       ),
-      rule: '{"id":"ask-triage","outcome":"ask","contexts":["job","task"],"jobs":["inbox-triage"]}',
+      rule: '{"id":"ask-triage","outcome":"ask","contexts":["job"],"jobs":["inbox-triage"]}',
     },
   ]);
 });
@@ -1480,13 +1480,13 @@ test('it records no new revision for a rules file in the old names whose rows th
 
   await writeFile(
     join(ctx.root, 'rules', 'triage.yaml'),
-    'ask-triage:\n  outcome: ask\n  contexts: [job, task]\n  jobs: [inbox-triage]\n',
+    'ask-triage:\n  outcome: ask\n  contexts: [job]\n  jobs: [inbox-triage]\n',
   );
 
   const oldForm = {
     id: 'ask-triage',
     outcome: 'ask',
-    contexts: ['job', 'task'],
+    contexts: ['job'],
     jobs: ['inbox-triage'],
   };
 

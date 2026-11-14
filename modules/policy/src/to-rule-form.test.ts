@@ -46,7 +46,7 @@ test('it turns free text into NFC and the expiry into UTC', () => {
   });
 });
 
-test('it writes the stored form in the old names, with task beside job', () => {
+test('it writes the stored form in the old names, with job for a rule that names definitions', () => {
   const stored = toStoredRuleForm({
     id: 'ask-triage',
     outcome: 'ask',
@@ -57,9 +57,15 @@ test('it writes the stored form in the old names, with task beside job', () => {
   expect(stored).toStrictEqual({
     id: 'ask-triage',
     outcome: 'ask',
-    contexts: ['coding', 'job', 'task'],
+    contexts: ['coding', 'job'],
     jobs: ['evening', 'morning'],
   });
+});
+
+test('it writes task beside job for a task context with no definitions', () => {
+  const stored = toStoredRuleForm({ id: 'ask-tasks', outcome: 'ask', contexts: ['task'] });
+
+  expect(stored).toStrictEqual({ id: 'ask-tasks', outcome: 'ask', contexts: ['job', 'task'] });
 });
 
 test('it leaves a rule with no definitions or task context as its form', () => {

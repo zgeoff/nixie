@@ -269,7 +269,7 @@ test('it stores a runtime rule in the old names that the release before reads', 
 
   expect(versions.rows).toStrictEqual([
     {
-      rule: '{"id":"ask-triage","outcome":"ask","contexts":["job","task"],"jobs":["inbox-triage"]}',
+      rule: '{"id":"ask-triage","outcome":"ask","contexts":["job"],"jobs":["inbox-triage"]}',
     },
   ]);
 });

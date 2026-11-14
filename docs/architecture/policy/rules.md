@@ -43,8 +43,13 @@ wildcard keeps the widening check decidable, which a regular expression would no
 The parser still reads the old names, `jobs` for `definitions` and the context `job` for `task`, and
 a rule that holds both `jobs` and `definitions` is refused, because merging the lists could widen an
 allow rule. The JSON Schema marks the old names as deprecated. nixie stores each rule in the old
-names for one release, with `task` stored as `job` and `task`, so the previous release still reads
-the stored rules and matches the same calls. The export writes the new names.
+names for one release, so the previous release still reads the stored rules and matches the same
+calls: a rule that names definitions stores `task` as `job`, and any other rule stores it as `job`
+and `task`. The export writes the new names.
+
+Because `task` covers both kinds of task, an old rule with the context `job` and no `jobs` now also
+matches a task that nixie starts from chat, and an old rule with the context `task` and no `jobs`
+now also matches a definition's task run. Name the definitions in a rule that must stay narrow.
 
 The parser turns each rule into its canonical form: each list sorted with its duplicates dropped,
 free text in NFC, and the expiry in UTC. Two files that list the same rule in another order
