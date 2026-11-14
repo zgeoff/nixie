@@ -15,8 +15,8 @@ import { runHostCommands } from '../test-utils/run-host-commands';
 import { sendClientMessage } from '../test-utils/send-client-message';
 import { startInProcessNixie } from '../test-utils/start-in-process-nixie';
 import { startTestControlSocket } from '../test-utils/start-test-control-socket';
-import { readCLIArgs } from '../utils/read-cli-args';
 import { createMemoryCommands } from './create-memory-commands';
+import { readCLIArgs } from './read-cli-args';
 
 async function setupTest() {
   const nixie = await startInProcessNixie();

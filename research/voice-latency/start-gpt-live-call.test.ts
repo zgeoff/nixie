@@ -1,5 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { waitForCondition } from '../../libs/testing/src/utils/wait-for-condition.ts';
+import { waitForCondition } from '../../libs/testing/src/wait/wait-for-condition.ts';
 import { startGptLiveCall } from './start-gpt-live-call.ts';
 import { startStubVoiceServer } from './test-utils/start-stub-voice-server.ts';
 

@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { waitForCondition } from '../utils/wait-for-condition';
 import { startScriptedModel } from './start-scripted-model';
+import { waitForCondition } from './wait-for-condition';
 
 function setupTest() {
   const model = startScriptedModel();

@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { collectMigrationFileNames } from '../utils/collect-migration-file-names';
-import { parseMigrationFileName } from '../utils/parse-migration-file-name';
+import { collectMigrationFileNames } from '../migration/collect-migration-file-names';
+import { parseMigrationFileName } from '../migration/parse-migration-file-name';
 import { nixieSchema } from './nixie-schema';
 
 test('it loads the released migrations from their files in released order, each numbered by its position', async () => {

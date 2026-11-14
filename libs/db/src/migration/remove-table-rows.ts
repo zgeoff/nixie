@@ -1,7 +1,7 @@
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { readQueryRows } from './read-query-rows';
+import { readQueryRows } from '../read-query-rows';
 
 // A trigger that refuses a delete still refuses it here, so the caller drops such triggers in the
 // same transaction first.

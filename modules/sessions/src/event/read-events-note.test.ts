@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildEventRegistry } from '../utils/build-event-registry';
+import { buildEventRegistry } from './build-event-registry';
 import { readEventsNote } from './read-events-note';
 
 test('it lists the events of a stub kind added through the registry alone', async () => {

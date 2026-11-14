@@ -8,8 +8,8 @@ import {
   hostFrameSchema,
   makeFrameDecoder,
 } from '@heynixie/wire';
-import { getHome } from '../utils/get-home';
 import type { TurnFrame } from './build-query-options';
+import { getHome } from './get-home';
 import { removeSessionState } from './remove-session-state';
 import { runSummary } from './run-summary';
 import { runTurn } from './run-turn';

@@ -8,7 +8,7 @@ import { createTestClaim } from '../test-utils/create-test-claim';
 import { createTestConversationClaim } from '../test-utils/create-test-conversation-claim';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { TasksTables } from '../types';
-import { StepFailedError } from '../utils/step-failed-error';
+import { StepFailedError } from './step-failed-error';
 import { writeStepError } from './write-step-error';
 
 async function setupTest() {

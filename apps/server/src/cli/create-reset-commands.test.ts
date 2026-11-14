@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import invariant from 'tiny-invariant';
 import { buildRecordingHostTransport } from '../test-utils/build-recording-host-transport';
 import { startTestControlSocket } from '../test-utils/start-test-control-socket';
-import { readCLIArgs } from '../utils/read-cli-args';
 import { createResetCommands } from './create-reset-commands';
+import { readCLIArgs } from './read-cli-args';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-reset-'));

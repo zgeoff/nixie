@@ -5,7 +5,7 @@ import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { startTestLog } from '../test-utils/start-test-log';
 import type { LogTables } from '../types';
-import { StaleWriterError } from '../utils/stale-writer-error';
+import { StaleWriterError } from '../writer/stale-writer-error';
 import { readRecords } from './read-records';
 import { removeThreadKeys } from './remove-thread-keys';
 import { writeRecords } from './write-records';

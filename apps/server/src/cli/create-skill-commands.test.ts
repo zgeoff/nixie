@@ -11,8 +11,8 @@ import { createTestClient } from '../test-utils/create-test-client';
 import { runHostCommand } from '../test-utils/run-host-command';
 import { startInProcessNixie } from '../test-utils/start-in-process-nixie';
 import { startTestControlSocket } from '../test-utils/start-test-control-socket';
-import { readCLIArgs } from '../utils/read-cli-args';
 import { createSkillCommands } from './create-skill-commands';
+import { readCLIArgs } from './read-cli-args';
 import { runCLI } from './run-cli';
 
 async function setupTest() {

@@ -13,8 +13,8 @@ import { buildRecordingHostTransport } from '../test-utils/build-recording-host-
 import { runHostCommand } from '../test-utils/run-host-command';
 import { runHostCommands } from '../test-utils/run-host-commands';
 import { startTestControlSocket } from '../test-utils/start-test-control-socket';
-import { readCLIArgs } from '../utils/read-cli-args';
 import { createConsolidationCommands } from './create-consolidation-commands';
+import { readCLIArgs } from './read-cli-args';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-diff-'));

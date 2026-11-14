@@ -9,10 +9,10 @@ import type { ConversationRun, SessionFrame, SessionStep } from '../types';
 import { isTaskWorkCut } from '../utils/is-task-work-cut';
 import { openStepCapture } from '../utils/open-step-capture';
 import { parseSessionBoundary } from '../utils/parse-session-boundary';
-import { pickSessionPosition } from '../utils/pick-session-position';
 import type { SessionMarks } from '../utils/read-session-marks';
 import { readSessionMarks } from '../utils/read-session-marks';
 import { isStepTurnCut } from './is-step-turn-cut';
+import { pickSessionPosition } from './pick-session-position';
 
 // One capture covers the whole step: a threshold compaction, the turn, an overflow compaction and a
 // rebuilt turn all share it. The step closes it with the count of model calls it made.

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
+import { StepFailedError } from '../step/step-failed-error';
 import { writeStepCommit } from '../step/write-step-commit';
 import { writeStepError } from '../step/write-step-error';
 import { claimTask } from '../task/projection/claim-task';
@@ -8,7 +9,6 @@ import { createTestConversationClaim } from '../test-utils/create-test-conversat
 import { seedFailedConversationTurn } from '../test-utils/seed-failed-conversation-turn';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { TasksTables } from '../types';
-import { StepFailedError } from '../utils/step-failed-error';
 import { createConversationTask } from './create-conversation-task';
 import { writeConversationRetryInTransaction } from './write-conversation-retry-in-transaction';
 

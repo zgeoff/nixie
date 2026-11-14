@@ -1,4 +1,4 @@
-export { buildEventRegistry } from './utils/build-event-registry';
+export { buildEventRegistry } from './event/build-event-registry';
 export { buildModelStatus } from './session/build-model-status';
 export { buildSilentEndTool } from './turn/build-silent-end-tool';
 export { buildStartStatus } from './session/build-start-status';

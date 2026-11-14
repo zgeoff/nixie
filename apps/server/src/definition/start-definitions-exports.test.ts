@@ -24,10 +24,10 @@ import type { Logger } from '@heynixie/logger';
 import { promptsOverrideProposedCodec, writePromptProposalAnswer } from '@heynixie/prompts';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { buildCleanup } from '../server/build-cleanup';
 import { loadServerInputs } from '../server/load-server-inputs';
 import { startTestLog } from '../test-utils/start-test-log';
 import { writeBootFiles } from '../test-utils/write-boot-files';
-import { buildCleanup } from '../utils/build-cleanup';
 import { startDefinitionsExports } from './start-definitions-exports';
 
 async function setupTest() {

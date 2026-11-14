@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { startControlSocket } from '../part/start-control-socket';
 import { buildAPIGate } from '../utils/build-api-gate';
-import { startControlSocket } from '../utils/start-control-socket';
 import { sendHostRequest } from './send-host-request';
 
 async function setupTest() {

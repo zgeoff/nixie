@@ -4,7 +4,6 @@ import { readRecordKeys } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { readConsolidationSummary } from '../consolidation/read-consolidation-summary';
 import type { MemoryTables, StoreParts, VersionRef } from '../types';
-import { decodeChangeComment } from '../utils/change/decode-change-comment';
 import { decodeChangeText } from '../utils/change/decode-change-text';
 import { parseChangeInputs } from '../utils/change/parse-change-inputs';
 import type {
@@ -16,6 +15,7 @@ import type {
   ConsolidationTables,
 } from '../utils/memory-consolidations';
 import { readVersionTexts } from '../version/read-version-texts';
+import { decodeChangeComment } from './decode-change-comment';
 
 export async function readPendingDiff(parts: StoreParts): Promise<ConsolidationDiff | null> {
   const db = parts.context.log.writer.db.$extendTables<ConsolidationTables & MemoryTables>();

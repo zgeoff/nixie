@@ -8,9 +8,9 @@ import {
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
+import { writeSessionRevocation } from '../utils/write-session-revocation';
 import type { MemoryChangeAction } from './write-memory-change';
 import { writeMemoryChange } from './write-memory-change';
-import { writeSessionRevocation } from './write-session-revocation';
 
 async function setupTest() {
   const api = await startTestAPI();

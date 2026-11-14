@@ -1,8 +1,8 @@
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { buildShortIDFromUUID } from '../migration/build-short-id-from-uuid';
-import { readQueryRows } from '../migration/read-query-rows';
+import { buildShortIDFromUUID } from '../build-short-id-from-uuid';
+import { readQueryRows } from '../read-query-rows';
 import type { Migration } from '../types';
 
 export const memoryConsolidationCommentsMigration: Migration = {

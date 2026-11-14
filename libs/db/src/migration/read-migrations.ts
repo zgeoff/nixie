@@ -1,9 +1,9 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Migration } from '../types';
-import { collectMigrationFileNames } from '../utils/collect-migration-file-names';
 import type { MigrationFile } from './build-migrations';
 import { buildMigrations } from './build-migrations';
+import { collectMigrationFileNames } from './collect-migration-file-names';
 
 export async function readMigrations(directory: string): Promise<readonly Migration[]> {
   const entries = await readdir(directory);

@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { waitForCondition } from '../../../libs/testing/src/utils/wait-for-condition.ts';
+import { waitForCondition } from '../../../libs/testing/src/wait/wait-for-condition.ts';
 import { startStubVoiceServer } from './start-stub-voice-server.ts';
 
 test('it answers the first client message with the script and records what the client sent', async () => {

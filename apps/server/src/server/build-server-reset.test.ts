@@ -2,7 +2,7 @@ import { expect, mock, test } from 'bun:test';
 import { defaultAPISettings } from '@heynixie/api';
 import { runTestSeed } from '../test-utils/run-test-seed';
 import { startTestServer } from '../test-utils/start-test-server';
-import { buildCleanup } from '../utils/build-cleanup';
+import { buildCleanup } from './build-cleanup';
 import { buildServerReset } from './build-server-reset';
 
 async function setupTest() {

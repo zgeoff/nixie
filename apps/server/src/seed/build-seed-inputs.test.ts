@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { buildDefinitionsSnapshot } from '@heynixie/definitions';
 import type { ToolDefinition } from '@heynixie/tools';
 import { buildTestModelsConfig } from '../test-utils/build-test-models-config';
-import { buildLogConnector } from '../utils/build-log-connector';
+import { buildLogConnector } from '../test/build-log-connector';
 import { buildSeedInputs } from './build-seed-inputs';
 
 test("it puts the queue check's tool declaration in the policy, beside the conversation's tools", () => {

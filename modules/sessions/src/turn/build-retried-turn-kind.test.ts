@@ -1,9 +1,9 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { buildEventRegistry } from '../event/build-event-registry';
 import { readEventsNote } from '../event/read-events-note';
 import { startTestTasks } from '../test-utils/start-test-tasks';
-import { buildEventRegistry } from '../utils/build-event-registry';
 import { buildRetriedTurnKind } from './build-retried-turn-kind';
 
 async function setupTest() {

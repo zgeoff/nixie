@@ -1,8 +1,8 @@
 import { canMoveProposal, proposalLapseMs } from '@heynixie/proposals';
 import type { SkillProposalAnswer, SkillProposalState } from '../types';
-import { SkillProposalClosedError } from '../utils/skill-proposal-closed-error';
-import { SkillProposalHashError } from '../utils/skill-proposal-hash-error';
-import { SkillProposalNotFoundError } from '../utils/skill-proposal-not-found-error';
+import { SkillProposalClosedError } from './skill-proposal-closed-error';
+import { SkillProposalHashError } from './skill-proposal-hash-error';
+import { SkillProposalNotFoundError } from './skill-proposal-not-found-error';
 import { SkillProposalStaleError } from './skill-proposal-stale-error';
 
 export interface AnswerFacts {

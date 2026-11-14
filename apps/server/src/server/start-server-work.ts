@@ -4,7 +4,7 @@ import { serverPartDeclarations } from '../part/server-part-declarations';
 import type { ServerPartValues } from '../part/server-part-values';
 import { startPartGraph } from '../part/start-part-graph';
 import type { AnyPartDeclaration, Cleanup, PartGraph } from '../types';
-import { buildCleanup } from '../utils/build-cleanup';
+import { buildCleanup } from './build-cleanup';
 import type { Server, ServerPartsOptions } from './start-server';
 
 export async function startServerWork(options: ServerPartsOptions): Promise<Server> {

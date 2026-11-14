@@ -6,8 +6,8 @@ import { startTestMemory } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
 import { buildRecordingHostTransport } from '../test-utils/build-recording-host-transport';
 import { startTestControlSocket } from '../test-utils/start-test-control-socket';
-import { readCLIArgs } from '../utils/read-cli-args';
 import { createSubjectCommands } from './create-subject-commands';
+import { readCLIArgs } from './read-cli-args';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-subjects-'));

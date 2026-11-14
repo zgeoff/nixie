@@ -1,6 +1,6 @@
-import { defineSealedCodec } from './codec/define-sealed-codec';
-import type { RatingNotePlace } from './codec/sealed-codec';
-import { sealedTextSchema } from './schema/sealed-text-schema';
+import { defineSealedCodec } from '../utils/codec/define-sealed-codec';
+import type { RatingNotePlace } from '../utils/codec/sealed-codec';
+import { sealedTextSchema } from '../utils/schema/sealed-text-schema';
 
 const ratingNote = defineSealedCodec('rating-note/', sealedTextSchema);
 

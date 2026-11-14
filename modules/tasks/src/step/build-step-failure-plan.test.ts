@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { StepFailedError } from '../utils/step-failed-error';
 import { buildStepFailurePlan } from './build-step-failure-plan';
+import { StepFailedError } from './step-failed-error';
 
 test.each([
   {

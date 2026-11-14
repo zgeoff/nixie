@@ -2,7 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import type { PartRefresh } from '@heynixie/ops';
 import { checkDisk, startPartRefresh } from '@heynixie/ops';
 import type { SandboxAdapter } from '@heynixie/sandbox';
-import type { RefreshedPart } from '../utils/build-readiness-checks';
+import type { RefreshedPart } from './build-readiness-checks';
 
 // impd measures the memory of each awake imp to answer, which can take longer than a probe waits,
 // so readiness reads the last report of this refresh instead of calling impd.

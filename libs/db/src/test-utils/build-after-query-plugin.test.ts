@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { startDatabase } from '../database/start-database';
-import { readQueryRows } from '../migration/read-query-rows';
+import { readQueryRows } from '../read-query-rows';
 import { buildAfterQueryPlugin } from './build-after-query-plugin';
 
 async function setupTest() {

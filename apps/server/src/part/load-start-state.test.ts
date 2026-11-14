@@ -5,9 +5,9 @@ import { join } from 'node:path';
 import { systemClock } from '@heynixie/clock';
 import { getDataFilePath, startWriter } from '@heynixie/log';
 import { StepFailedError, createConversationTask } from '@heynixie/tasks';
+import { buildReadinessChecks } from '../server/build-readiness-checks';
 import { sendTestMessage } from '../test-utils/send-test-message';
 import { startTestLog } from '../test-utils/start-test-log';
-import { buildReadinessChecks } from '../utils/build-readiness-checks';
 import { loadStartState } from './load-start-state';
 
 async function setupTest() {

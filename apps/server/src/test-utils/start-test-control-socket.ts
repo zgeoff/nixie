@@ -2,8 +2,8 @@ import { onTestFinished } from 'bun:test';
 import type { HostRouterOptions } from '@heynixie/api';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { startControlSocket } from '../part/start-control-socket';
 import { buildAPIGate } from '../utils/build-api-gate';
-import { startControlSocket } from '../utils/start-control-socket';
 
 export interface TestControlSocketOptions {
   readonly path: string;

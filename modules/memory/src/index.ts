@@ -198,7 +198,7 @@ export { renderCheckerInput } from './checker/render-checker-input';
 export type { ShownItem, SpeakerNames, WriterPromptInput } from './writer/render-writer-prompt';
 export { renderWriterPrompt } from './writer/render-writer-prompt';
 export type { MemoryRecordKind } from './record/memory-record-kind';
-export { memoryRatedCodec } from './utils/codec/memory-rated-codec';
+export { memoryRatedCodec } from './memory/memory-rated-codec';
 export { momentKeptCodec } from './moment/codec/moment-kept-codec';
 export { recordForgetStartedCodec } from './record/record-forget-started-codec';
 export { readAllRemovedSequences } from './record/read-all-removed-sequences';
@@ -214,4 +214,4 @@ export type {
 } from './memory/make-memory-proposal-handler';
 
 export { makeMemoryProposalHandler } from './memory/make-memory-proposal-handler';
-export { mapMemoryProposalRecord } from './utils/record/map-memory-proposal-record';
+export { mapMemoryProposalRecord } from './proposal/map-memory-proposal-record';

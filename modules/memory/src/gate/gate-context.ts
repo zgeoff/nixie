@@ -12,8 +12,8 @@ import type {
   VersionRef,
   WriteInTransaction,
 } from '../types';
-import type { reviewReasons } from '../utils/review-reasons';
 import type { WriterGate } from '../writer/writer-model';
+import type { reviewReasons } from './review-reasons';
 
 export type { ContentGateRequest, ContentGateResult } from './content-gate-request';
 

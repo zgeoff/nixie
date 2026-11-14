@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { startDatabase } from '../database/start-database';
+import { readQueryRows } from '../read-query-rows';
 import type { BuildSchema } from '../types';
-import { readQueryRows } from './read-query-rows';
 import { runMigrations } from './run-migrations';
 
 // SQLite lets a text primary key hold null, but every table fills its key, so a primary key counts

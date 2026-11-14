@@ -1,6 +1,6 @@
 import type { HostContractClient } from '@heynixie/contract';
 import { ORPCError } from '@orpc/client';
-import { buildHostClient } from '../utils/build-host-client';
+import { buildHostClient } from './build-host-client';
 
 export async function sendHostRequest<T>(
   socketPath: string,

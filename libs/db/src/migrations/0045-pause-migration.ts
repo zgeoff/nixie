@@ -1,6 +1,6 @@
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { readQueryRows } from '../migration/read-query-rows';
+import { readQueryRows } from '../read-query-rows';
 import type { Migration } from '../types';
 
 export const pauseMigration: Migration = {

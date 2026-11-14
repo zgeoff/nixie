@@ -3,9 +3,9 @@ import { buildActionQueue } from '@heynixie/actions';
 import type { ActionConnector } from '@heynixie/connectors';
 import type { Logger } from '@heynixie/logger';
 import type { TasksContext } from '@heynixie/tasks';
-import type { LogConnector } from '../utils/build-log-connector';
-import { buildLogConnector } from '../utils/build-log-connector';
 import { buildTestSendTool } from '../utils/build-test-send-tool';
+import type { LogConnector } from './build-log-connector';
+import { buildLogConnector } from './build-log-connector';
 import { buildTestConnector } from './build-test-connector';
 
 export interface Actions extends ActionQueueBridge {

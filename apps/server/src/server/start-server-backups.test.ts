@@ -4,8 +4,8 @@ import { writeTestBackupReceipt } from '@heynixie/backup/test-utils';
 import { startTestLog } from '@heynixie/log/test-utils';
 import type { Logger } from '@heynixie/logger';
 import { waitForCondition } from '@heynixie/testing';
-import { buildReadinessChecks } from '../utils/build-readiness-checks';
 import { buildStartState } from '../utils/build-start-state';
+import { buildReadinessChecks } from './build-readiness-checks';
 import { startServerBackups } from './start-server-backups';
 
 async function setupTest() {

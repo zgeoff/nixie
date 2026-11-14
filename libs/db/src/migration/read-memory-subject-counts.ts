@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { readQueryRows } from './read-query-rows';
+import { readQueryRows } from '../read-query-rows';
 
 export interface SubjectCount {
   readonly owner: number;

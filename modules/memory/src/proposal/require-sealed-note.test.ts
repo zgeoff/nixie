@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
+import { decodeRatingNote } from '../memory/decode-rating-note';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { createMemoryItem } from '../test-utils/create-memory-item';
 import { startTestMemory } from '../test-utils/start-test-memory';
-import { decodeRatingNote } from '../utils/decode-rating-note';
 import { MemoryRatingError } from '../utils/error/memory-rating-error';
 import { readItemKey } from '../utils/item/read-item-key';
 import { requireSealedNote } from './require-sealed-note';

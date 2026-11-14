@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import { readCLIArgs } from '../cli/read-cli-args';
 import { buildRecordingHostTransport } from '../test-utils/build-recording-host-transport';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestControlSocket } from '../test-utils/start-test-control-socket';
-import { readCLIArgs } from '../utils/read-cli-args';
 import { createTaskCommands } from './create-task-commands';
 
 async function setupTest() {

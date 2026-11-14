@@ -1,7 +1,7 @@
 // oxlint-disable @stylistic/lines-around-comment -- turbo reads @boundaries-ignore only on the line above an import, and the import sort keeps no blank line there
 import { expect, mock, test } from 'bun:test';
 // @boundaries-ignore a spike imports the repo's condition wait by path
-import { waitForCondition } from '../../../libs/testing/src/utils/wait-for-condition.ts';
+import { waitForCondition } from '../../../libs/testing/src/wait/wait-for-condition.ts';
 import type { QueueOutput } from './run-budgeted-queue.ts';
 import { runBudgetedQueue } from './run-budgeted-queue.ts';
 import { buildStubAnswerTable } from './test-utils/build-stub-answer-table.ts';

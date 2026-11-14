@@ -3,7 +3,7 @@ import { systemClock } from '@heynixie/clock';
 import { createHealthApp } from '@heynixie/ops';
 import { SandboxHostError } from '@heynixie/sandbox';
 import { ModelAPIError, ModelAuthError } from '@heynixie/sessions';
-import { buildReadinessChecks } from '../utils/build-readiness-checks';
+import { buildReadinessChecks } from '../server/build-readiness-checks';
 import { buildStartState } from '../utils/build-start-state';
 import { makeConversationFailureMarker } from './make-conversation-failure-marker';
 

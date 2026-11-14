@@ -1,6 +1,6 @@
 import { match } from 'ts-pattern';
 import type { Effect, Rule, RuleCall, RuleCheck } from '../types';
-import { isPatternMatch } from '../utils/is-pattern-match';
+import { isPatternMatch } from './is-pattern-match';
 
 export function isRuleMatch(rule: Rule, call: RuleCall): boolean {
   const isAllow = rule.outcome === 'allow';

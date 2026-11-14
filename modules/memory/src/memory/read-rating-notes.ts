@@ -1,8 +1,8 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { memoryRatedCodec } from '../utils/codec/memory-rated-codec';
-import { decodeRatingNote } from '../utils/decode-rating-note';
 import { readItemKey } from '../utils/item/read-item-key';
+import { decodeRatingNote } from './decode-rating-note';
+import { memoryRatedCodec } from './memory-rated-codec';
 
 export interface RatingNoteRef {
   readonly sequence: number;

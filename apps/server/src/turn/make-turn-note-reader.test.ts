@@ -4,10 +4,10 @@ import { startTestMemoryStore } from '@heynixie/memory/test-utils';
 import { recordSkillPin, skillsReloadedCodec } from '@heynixie/skills';
 import { conversationTaskID, createConversationTask, getTaskName } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import { startConversation } from '../conversation/start-conversation';
 import { buildConversationDriver } from '../test-utils/build-conversation-driver';
 import { buildTestModelsConfig } from '../test-utils/build-test-models-config';
 import { startTestServer } from '../test-utils/start-test-server';
-import { startConversation } from '../utils/start-conversation';
 import { makeTurnNoteReader } from './make-turn-note-reader';
 
 async function setupTest() {

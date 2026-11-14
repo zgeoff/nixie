@@ -1,9 +1,9 @@
 import { use, useEffect, useReducer } from 'react';
 import type { EventFrom, SnapshotFrom } from 'xstate';
 import { initialTransition, transition } from 'xstate';
-import type { Microphone } from '../utils/microphone-context';
-import { MicrophoneContext } from '../utils/microphone-context';
 import { microphoneAccessMachine } from './microphone-access-machine';
+import type { Microphone } from './microphone-context';
+import { MicrophoneContext } from './microphone-context';
 
 type MicrophoneAccessSnapshot = SnapshotFrom<typeof microphoneAccessMachine>;
 

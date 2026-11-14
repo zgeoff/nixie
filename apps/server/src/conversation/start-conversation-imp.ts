@@ -15,10 +15,10 @@ import { toImageNames } from '../sandbox/to-image-names';
 import { makeTurnNoteReader } from '../turn/make-turn-note-reader';
 import type { ServerParts } from '../types';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
-import { startConversation } from '../utils/start-conversation';
 import { toSessionDefinitions } from '../utils/to-session-definitions';
 import { buildVersionStatus } from './build-version-status';
 import { makeConversationReadinessStep } from './make-conversation-readiness-step';
+import { startConversation } from './start-conversation';
 
 export interface ConversationImp {
   readonly runStep: RunStep;

@@ -9,8 +9,8 @@ import { pauseNixieInTransaction } from '../pause/pause-nixie-in-transaction';
 import { runLogReset } from '../record/run-log-reset';
 import { withWriteTransaction } from '../record/with-write-transaction';
 import { startTestLog } from '../test-utils/start-test-log';
-import { localDataStorage } from '../utils/local-data-storage';
 import { claimWriterLock } from './claim-writer-lock';
+import { localDataStorage } from './local-data-storage';
 import { startWriter } from './start-writer';
 
 async function setupTest() {

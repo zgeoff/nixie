@@ -1,8 +1,8 @@
 import type { Kysely } from 'kysely';
 import type { DefinitionsTables, SkillVersion } from '../types';
 import type { OverlaidSkill } from '../utils/build-skill-overlay';
-import { storedSkillFilesSchema } from '../utils/stored-skill-files-schema';
-import { storedSkillFrontmatterSchema } from '../utils/stored-skill-frontmatter-schema';
+import { storedSkillFilesSchema } from './stored-skill-files-schema';
+import { storedSkillFrontmatterSchema } from './stored-skill-frontmatter-schema';
 
 export type SnapshotSkill = SkillVersion & OverlaidSkill;
 

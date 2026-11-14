@@ -1,4 +1,4 @@
-export { buildShortIDFromUUID } from './migration/build-short-id-from-uuid';
+export { buildShortIDFromUUID } from './build-short-id-from-uuid';
 export { closeToOlderReaders } from './migration/close-to-older-readers';
 export { createDatabaseCopy } from './database/create-database-copy';
 export { createShortID } from './migration/create-short-id';
@@ -7,7 +7,7 @@ export { migrationsPlugin } from './migration/migrations-plugin';
 export { nixieSchema } from './schema/nixie-schema';
 export type { MigrationSummary } from './migration/build-migration-summary';
 export type { MigrationReport, RunMigrationsOptions } from './migration/run-migrations';
-export { readQueryRows } from './migration/read-query-rows';
+export { readQueryRows } from './read-query-rows';
 export { removeTableRows } from './migration/remove-table-rows';
 export { runMigrations } from './migration/run-migrations';
 export { startDatabase } from './database/start-database';

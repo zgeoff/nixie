@@ -7,7 +7,7 @@ import { startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { claimBackupLock } from '../data/claim-backup-lock';
-import { localDataStorage } from '../utils/local-data-storage';
+import { localDataStorage } from '../writer/local-data-storage';
 import { writeDataBackup } from './write-data-backup';
 
 async function setupTest() {

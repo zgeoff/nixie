@@ -15,9 +15,9 @@ import {
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import { SkillProposalClosedError } from '../utils/skill-proposal-closed-error';
-import { SkillProposalHashError } from '../utils/skill-proposal-hash-error';
-import { SkillProposalNotFoundError } from '../utils/skill-proposal-not-found-error';
+import { SkillProposalClosedError } from '../proposal/skill-proposal-closed-error';
+import { SkillProposalHashError } from '../proposal/skill-proposal-hash-error';
+import { SkillProposalNotFoundError } from '../proposal/skill-proposal-not-found-error';
 import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 import { writeSkillProposalAnswer } from './write-skill-proposal-answer';

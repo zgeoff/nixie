@@ -1,9 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
+import { getSandboxRootDir } from '../part/get-sandbox-root-dir';
 import { readTestBundle } from '../test-utils/read-test-bundle';
 import { startTestServer } from '../test-utils/start-test-server';
-import { getSandboxRootDir } from '../utils/get-sandbox-root-dir';
 import { createSandboxAdapter } from './create-sandbox-adapter';
 
 async function setupTest() {

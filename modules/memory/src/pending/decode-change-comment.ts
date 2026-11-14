@@ -1,5 +1,5 @@
-import { defineSealedCodec } from '../codec/define-sealed-codec';
-import { sealedTextSchema } from '../schema/sealed-text-schema';
+import { defineSealedCodec } from '../utils/codec/define-sealed-codec';
+import { sealedTextSchema } from '../utils/schema/sealed-text-schema';
 
 const changeComment = defineSealedCodec('consolidation-comment/', sealedTextSchema);
 

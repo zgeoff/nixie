@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { BunPlugin } from 'bun';
-import { collectMigrationFileNames } from '../utils/collect-migration-file-names';
+import { collectMigrationFileNames } from './collect-migration-file-names';
 import { renderBundledMigrations } from './render-bundled-migrations';
 
 const schemaPath = join(import.meta.dir, '..', 'schema', 'nixie-schema.ts');

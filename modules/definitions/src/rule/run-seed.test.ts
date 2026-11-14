@@ -9,6 +9,7 @@ import invariant from 'tiny-invariant';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
 import { createPathSource } from '../definition/create-path-source';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
+import { readSnapshotToolEffects } from '../seed/read-snapshot-tool-effects';
 import { checkSkillFiles } from '../skill/check-skill-files';
 import { loadSnapshotSkills } from '../skill/load-snapshot-skills';
 import { writeSkillExportState } from '../skill/write-skill-export-state';
@@ -17,13 +18,12 @@ import { createStubGitSyncWorktree } from '../test-utils/create-stub-git-sync-wo
 import { buildContentHash } from '../utils/build-content-hash';
 import { buildSHA256 } from '../utils/build-sha256';
 import { DefinitionsParseError } from '../utils/definitions-parse-error';
-import { readSnapshotToolEffects } from '../utils/read-snapshot-tool-effects';
-import { ruleFiresProjection } from '../utils/rule-fires-projection';
 import { toCanonicalJSON } from '../utils/to-canonical-json';
 import { readWrittenSkills } from '../written/read-written-skills';
 import { writeWrittenSkill } from '../written/write-written-skill';
 import { writeWrittenSkillState } from '../written/write-written-skill-state';
 import { readRulesInForce } from './read-rules-in-force';
+import { ruleFiresProjection } from './rule-fires-projection';
 import { runSeed } from './run-seed';
 
 async function setupTest(config: { readonly projections?: readonly Projection[] } = {}) {

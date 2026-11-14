@@ -3,7 +3,7 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import invariant from 'tiny-invariant';
-import { localDataStorage } from '../utils/local-data-storage';
+import { localDataStorage } from '../writer/local-data-storage';
 import { claimBackupLock } from './claim-backup-lock';
 
 async function setupTest() {

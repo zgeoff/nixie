@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
+import { encodeChangeComment } from '../change/encode-change-comment';
+import { encodeChangeText } from '../diff/encode-change-text';
 import { decodeChangeComment } from './decode-change-comment';
-import { encodeChangeComment } from './encode-change-comment';
-import { encodeChangeText } from './encode-change-text';
 
 async function setupTest() {
   const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [

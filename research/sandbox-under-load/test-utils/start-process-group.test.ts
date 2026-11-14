@@ -7,7 +7,7 @@ import { readDescendants } from '../../../libs/testing/src/wait/read-descendants
 // @boundaries-ignore a spike imports the repo's process helpers by path
 import { stopProcesses } from '../../../libs/testing/src/wait/stop-processes';
 // @boundaries-ignore a spike imports the repo's condition wait by path
-import { waitForCondition } from '../../../libs/testing/src/utils/wait-for-condition';
+import { waitForCondition } from '../../../libs/testing/src/wait/wait-for-condition';
 import { startProcessGroup } from './start-process-group';
 
 async function setupTest() {

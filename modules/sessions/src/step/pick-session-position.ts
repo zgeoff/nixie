@@ -2,7 +2,7 @@ import { isCompactionDue } from '@heynixie/compaction';
 import type { HarnessSession } from '@heynixie/models';
 import type { HarnessCapability, SessionPoint } from '@heynixie/wire';
 import type { SessionPosition } from '../types';
-import type { SessionMarks } from './read-session-marks';
+import type { SessionMarks } from '../utils/read-session-marks';
 
 export interface SessionPositionInput {
   readonly marks: Pick<

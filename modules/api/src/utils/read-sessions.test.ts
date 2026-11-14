@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
+import { writeSessionRevocation } from '../utils/write-session-revocation';
 import { readSessions } from './read-sessions';
-import { writeSessionRevocation } from './write-session-revocation';
 
 function setupTest() {
   return startTestAPI();

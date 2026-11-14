@@ -1,8 +1,8 @@
 import type { Definitions, RecordInput } from '@heynixie/log';
 import { planBackoffDelay } from '@heynixie/retry';
 import { buildPausedRecord } from '../task/record/build-paused-record';
-import { StepFailedError } from '../utils/step-failed-error';
 import { taskStepErroredCodec } from '../utils/task-step-errored-codec';
+import { StepFailedError } from './step-failed-error';
 
 export interface StepErrorOptions {
   readonly maxStepErrors: number;

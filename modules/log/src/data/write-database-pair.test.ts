@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import { sql } from 'kysely';
-import { localDataStorage } from '../utils/local-data-storage';
+import { localDataStorage } from '../writer/local-data-storage';
 import { writeDatabasePair } from './write-database-pair';
 
 async function setupTest() {

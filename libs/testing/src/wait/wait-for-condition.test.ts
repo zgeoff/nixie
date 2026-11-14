@@ -1,5 +1,5 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
-import { buildTestClock } from './build-test-clock';
+import { buildTestClock } from '../harness/build-test-clock';
 import { waitForCondition } from './wait-for-condition';
 
 test('it resolves once the condition holds', async () => {

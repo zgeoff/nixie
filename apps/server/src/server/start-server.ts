@@ -9,7 +9,7 @@ import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
 import type { SandboxImages } from '../sandbox/load-sandbox-manifest';
 import type { SandboxSettings } from '../sandbox/resolve-sandbox-settings';
 import type { Cleanup, ServerParts } from '../types';
-import { buildCleanup } from '../utils/build-cleanup';
+import { buildCleanup } from './build-cleanup';
 import type { CrashHarness } from './join-crash-harness';
 import type { Secrets } from './load-secrets';
 import { loadServerInputs } from './load-server-inputs';

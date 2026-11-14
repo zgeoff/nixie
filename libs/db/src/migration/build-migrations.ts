@@ -1,5 +1,5 @@
 import type { Migration } from '../types';
-import { parseMigrationFileName } from '../utils/parse-migration-file-name';
+import { parseMigrationFileName } from './parse-migration-file-name';
 
 export interface MigrationFile {
   readonly fileName: string;

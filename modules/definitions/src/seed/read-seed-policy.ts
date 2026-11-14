@@ -6,7 +6,7 @@ import { readApprovedEffectRemovals } from '../rule/read-approved-effect-removal
 import type { DefinitionsInForce, RuleInForce, SnapshotPolicy } from '../types';
 import type { HeldEffects } from '../utils/pick-seed-effects';
 import { pickSeedEffects } from '../utils/pick-seed-effects';
-import { readSnapshotToolEffects } from '../utils/read-snapshot-tool-effects';
+import { readSnapshotToolEffects } from './read-snapshot-tool-effects';
 
 export interface SeedPolicyInput {
   readonly base: SnapshotPolicy;

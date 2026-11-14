@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { localDataStorage } from '../utils/local-data-storage';
+import { localDataStorage } from '../writer/local-data-storage';
 import { readRestoreState } from './read-restore-state';
 
 async function setupTest() {

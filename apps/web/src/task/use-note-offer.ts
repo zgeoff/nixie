@@ -1,6 +1,6 @@
 import { use, useState, useSyncExternalStore } from 'react';
 import { z } from 'zod';
-import { NoteOfferStorageContext } from '../utils/note-offer-storage-context';
+import { NoteOfferStorageContext } from './note-offer-storage-context';
 
 export interface NoteOffer {
   readonly isOpen: boolean;

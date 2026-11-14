@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
+import { StepFailedError } from '../step/step-failed-error';
 import { writeStepError } from '../step/write-step-error';
 import { claimTask } from '../task/projection/claim-task';
 import { writeInboxRecords } from '../task/projection/write-inbox-records';
 import { createTestClaim } from '../test-utils/create-test-claim';
 import { createTestConversationClaim } from '../test-utils/create-test-conversation-claim';
 import { startTestTasks } from '../test-utils/start-test-tasks';
-import { StepFailedError } from '../utils/step-failed-error';
 import { createConversationTask } from './create-conversation-task';
 import { readConversationErrors } from './read-conversation-errors';
 

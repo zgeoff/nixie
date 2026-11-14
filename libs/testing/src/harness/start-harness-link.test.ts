@@ -2,7 +2,7 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { buildStubHarnessChannel } from '../test-utils/build-stub-harness-channel';
-import { waitForCondition } from '../utils/wait-for-condition';
+import { waitForCondition } from '../wait/wait-for-condition';
 import { startHarnessLink } from './start-harness-link';
 
 test('it starts the clock at the time the harness passed', () => {

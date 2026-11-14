@@ -12,12 +12,12 @@ import {
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { readCLIArgs } from '../cli/read-cli-args';
 import { buildRecordingHostTransport } from '../test-utils/build-recording-host-transport';
 import { createTestClient } from '../test-utils/create-test-client';
 import { runHostCommand } from '../test-utils/run-host-command';
 import { startInProcessNixie } from '../test-utils/start-in-process-nixie';
 import { startTestControlSocket } from '../test-utils/start-test-control-socket';
-import { readCLIArgs } from '../utils/read-cli-args';
 import { createPromptCommands } from './create-prompt-commands';
 
 test('it lists a prompt proposal, approves it into a pull request, and the next turn names the pull request', async () => {

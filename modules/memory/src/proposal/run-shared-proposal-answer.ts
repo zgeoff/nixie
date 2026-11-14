@@ -17,7 +17,7 @@ import type { StoreParts } from '../types';
 import { MemoryProposalNotFoundError } from '../utils/error/memory-proposal-not-found-error';
 import { ProposalClosedError } from '../utils/error/proposal-closed-error';
 import { ProposalHashError } from '../utils/error/proposal-hash-error';
-import { mapMemoryProposalRecord } from '../utils/record/map-memory-proposal-record';
+import { mapMemoryProposalRecord } from './map-memory-proposal-record';
 import { writeProposalApproval } from './write-proposal-approval';
 import { writeProposalRejection } from './write-proposal-rejection';
 

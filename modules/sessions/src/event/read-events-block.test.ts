@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildEventRegistry } from '../utils/build-event-registry';
+import { buildEventRegistry } from './build-event-registry';
 import { readEventsBlock } from './read-events-block';
 
 test('it counts every event the range held, those past the cap of 10 included', async () => {

@@ -1,10 +1,10 @@
 import { expect, mock, test } from 'bun:test';
 import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
+import { NoteOfferStorageContext } from '../task/note-offer-storage-context';
 import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
-import { NoteOfferStorageContext } from '../utils/note-offer-storage-context';
 import { ConversationList } from './conversation-list';
 
 function setupTest() {

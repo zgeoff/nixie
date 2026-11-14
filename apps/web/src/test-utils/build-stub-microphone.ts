@@ -2,7 +2,7 @@ import type {
   Microphone,
   MicrophonePermission,
   MicrophoneStream,
-} from '../utils/microphone-context';
+} from '../microphone/microphone-context';
 
 type StubMicrophoneAnswer = 'allow' | 'block' | 'dismiss' | 'missing';
 

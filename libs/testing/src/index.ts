@@ -4,14 +4,14 @@ export type { StubCheck } from './wait/build-stub-check';
 export { buildStubCheck } from './wait/build-stub-check';
 export type { RunTemplateOptions } from './wait/create-run-template';
 export { createRunTemplate } from './wait/create-run-template';
-export type { TestClock } from './utils/build-test-clock';
-export { buildTestClock } from './utils/build-test-clock';
+export type { TestClock } from './harness/build-test-clock';
+export { buildTestClock } from './harness/build-test-clock';
 export type { WorkTracker } from './harness/build-work-tracker';
 export { buildWorkTracker } from './harness/build-work-tracker';
 export type { GatedCall, GatedCallOptions } from './wait/make-gated-call';
 export { makeGatedCall } from './wait/make-gated-call';
-export type { WaitForConditionOptions } from './utils/wait-for-condition';
-export { waitForCondition } from './utils/wait-for-condition';
+export type { WaitForConditionOptions } from './wait/wait-for-condition';
+export { waitForCondition } from './wait/wait-for-condition';
 
 export type {
   ScriptedModel,

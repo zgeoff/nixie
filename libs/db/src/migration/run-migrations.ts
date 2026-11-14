@@ -5,9 +5,9 @@ import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createDatabaseCopy } from '../database/create-database-copy';
+import { readQueryRows } from '../read-query-rows';
 import { SchemaTooNewError } from '../schema/schema-too-new-error';
 import type { BuildSchema, Migration, StoredSchema } from '../types';
-import { readQueryRows } from './read-query-rows';
 
 export interface RunMigrationsOptions {
   readonly schema: BuildSchema;

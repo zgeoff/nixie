@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import { requireSandboxSpec } from '../process/require-sandbox-spec';
 import { buildMockGrantSpec } from '../test-utils/build-mock-grant-spec';
-import { requireSandboxSpec } from '../utils/require-sandbox-spec';
 import { buildSandboxSpec } from './build-sandbox-spec';
 
 test.each([

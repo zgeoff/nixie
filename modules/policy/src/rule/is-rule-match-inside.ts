@@ -1,7 +1,7 @@
 import { match } from 'ts-pattern';
 import type { Rule, RuleCheck } from '../types';
-import { isPatternMatch } from '../utils/is-pattern-match';
 import { isPatternInside } from './is-pattern-inside';
+import { isPatternMatch } from './is-pattern-match';
 
 export function isRuleMatchInside(inner: Rule, outer: Rule): boolean {
   return (

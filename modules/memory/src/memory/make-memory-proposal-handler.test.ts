@@ -4,11 +4,11 @@ import type { ProposalAnswerInput } from '@heynixie/proposals';
 import { answerProposal, buildProposalsProjection } from '@heynixie/proposals';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { mapMemoryProposalRecord } from '../proposal/map-memory-proposal-record';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { createProposal } from '../test-utils/create-proposal';
 import { startTestMemory } from '../test-utils/start-test-memory';
-import { mapMemoryProposalRecord } from '../utils/record/map-memory-proposal-record';
 import { makeMemoryProposalHandler } from './make-memory-proposal-handler';
 
 async function setupTest() {

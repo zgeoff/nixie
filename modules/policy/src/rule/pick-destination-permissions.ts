@@ -1,6 +1,6 @@
 import type { DestinationPermission } from '@heynixie/log';
 import type { CallDestination, KnownContact, Rule } from '../types';
-import { isPatternMatch } from '../utils/is-pattern-match';
+import { isPatternMatch } from './is-pattern-match';
 
 export interface PermissionSources {
   readonly ownerDestinations: readonly string[];

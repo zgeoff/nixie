@@ -9,8 +9,8 @@ import { claimWriterEpoch } from '../record/claim-writer-epoch';
 import { readRestoreState } from '../restore/read-restore-state';
 import type { ReadFilesystemType, Writer } from '../types';
 import type { DataFileSystem } from '../utils/data-storage';
-import { localDataStorage } from '../utils/local-data-storage';
 import { claimWriterLock } from './claim-writer-lock';
+import { localDataStorage } from './local-data-storage';
 import { requireLocalFilesystem } from './require-local-filesystem';
 import { requireWriterEpoch } from './require-writer-epoch';
 

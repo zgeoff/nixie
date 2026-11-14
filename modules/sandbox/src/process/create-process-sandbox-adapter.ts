@@ -9,11 +9,11 @@ import type {
   SandboxSpec,
   ToolTargetResolver,
 } from '../types';
-import { requireSandboxSpec } from '../utils/require-sandbox-spec';
 import { buildProcessSandbox } from './build-process-sandbox';
 import type { ProcessState } from './build-process-state';
 import { buildProcessState } from './build-process-state';
 import { pickBrokerEnv } from './pick-broker-env';
+import { requireSandboxSpec } from './require-sandbox-spec';
 import { stopGraceMs } from './stop-grace-ms';
 
 export interface ProcessSandboxOptions {

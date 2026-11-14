@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { systemClock } from '@heynixie/clock';
 import { buildTestClock } from '@heynixie/testing';
+import { buildStartState } from '../utils/build-start-state';
 import { buildReadinessChecks } from './build-readiness-checks';
-import { buildStartState } from './build-start-state';
 
 test('it reports the imp host with the refresh report while impd does not answer', async () => {
   const state = buildStartState({ isReady: true, reason: null });

@@ -8,8 +8,8 @@ import { formatBackupFile, getBackupSetDir, restoreNoteSchema } from '@heynixie/
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { claimBackupLock } from '../data/claim-backup-lock';
-import { localDataStorage } from '../utils/local-data-storage';
 import { claimWriterLock } from '../writer/claim-writer-lock';
+import { localDataStorage } from '../writer/local-data-storage';
 import { restoreDataBackup } from './restore-data-backup';
 
 async function setupTest() {

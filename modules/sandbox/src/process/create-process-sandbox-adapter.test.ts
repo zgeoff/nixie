@@ -10,9 +10,9 @@ import { setupTestRecorder } from '../test-utils/setup-test-recorder';
 import { startStubToolEndpoint } from '../test-utils/start-stub-tool-endpoint';
 import { writeMemoryKills } from '../test-utils/write-memory-kills';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from '../types';
-import { SandboxSpecRefusedError } from '../utils/sandbox-spec-refused-error';
 import { createProcessSandboxAdapter } from './create-process-sandbox-adapter';
 import { memoryKillsPath } from './memory-kills-path';
+import { SandboxSpecRefusedError } from './sandbox-spec-refused-error';
 
 interface SetupConfig {
   readonly killGraceMs?: number;

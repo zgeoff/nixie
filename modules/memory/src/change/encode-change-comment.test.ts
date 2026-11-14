@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { decodeChangeComment } from './decode-change-comment';
+import { decodeChangeComment } from '../pending/decode-change-comment';
 import { encodeChangeComment } from './encode-change-comment';
 
 async function setupTest() {

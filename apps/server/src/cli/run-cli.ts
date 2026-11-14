@@ -6,8 +6,6 @@ import { startServer } from '../server/start-server';
 import { createTaskCommands } from '../task/create-task-commands';
 import { createTurnInputCommands } from '../turn/create-turn-input-commands';
 import type { CLIFlags, CLIIO, Command, HostTransport } from '../types';
-import { readCLIArgs } from '../utils/read-cli-args';
-import type { ParsedCLIArgs } from '../utils/read-cli-args';
 import { buildBackupCommands } from './build-backup-commands';
 import { checkEncoder } from './check-encoder';
 import { createConsolidationCommands } from './create-consolidation-commands';
@@ -18,6 +16,8 @@ import { createRuleCommands } from './create-rule-commands';
 import { createSessionCommands } from './create-session-commands';
 import { createSkillCommands } from './create-skill-commands';
 import { createSubjectCommands } from './create-subject-commands';
+import { readCLIArgs } from './read-cli-args';
+import type { ParsedCLIArgs } from './read-cli-args';
 import { resolveSocketPath } from './resolve-socket-path';
 import { sendHostRequest } from './send-host-request';
 

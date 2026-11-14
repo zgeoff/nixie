@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { bindHarness } from '@heynixie/models';
 import { buildMockModelProfile } from '@heynixie/models/test-utils';
-import { pickSessionPosition } from '../utils/pick-session-position';
+import { pickSessionPosition } from '../step/pick-session-position';
 import { canSessionTake } from './can-session-take';
 import { sessionTransitions } from './session-transitions';
 

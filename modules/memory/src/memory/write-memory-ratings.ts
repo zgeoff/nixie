@@ -4,9 +4,9 @@ import { readItemIDMap } from '../item/read-item-id-map';
 import { requireSealedNote } from '../proposal/require-sealed-note';
 import { readLatestRecall } from '../recall/read-latest-recall';
 import type { StoreParts } from '../types';
-import { memoryRatedCodec } from '../utils/codec/memory-rated-codec';
 import { MemoryRatingError } from '../utils/error/memory-rating-error';
 import { readShortIDs } from '../utils/read-short-ids';
+import { memoryRatedCodec } from './memory-rated-codec';
 import type { MemoryRating, RateRequest } from './memory-rating';
 
 export async function writeMemoryRatings(parts: StoreParts, request: RateRequest): Promise<void> {

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { reviewReasons } from '../utils/review-reasons';
 import { defaultGateLimits } from './default-gate-limits';
 import { renderReviewReason } from './render-review-reason';
+import { reviewReasons } from './review-reasons';
 
 test("it renders each reason's full sentence with the owner's name and pronouns", () => {
   const gate = {

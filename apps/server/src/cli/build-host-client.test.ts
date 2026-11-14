@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
-import { buildAPIGate } from './build-api-gate';
+import { startControlSocket } from '../part/start-control-socket';
+import { buildAPIGate } from '../utils/build-api-gate';
 import { buildHostClient } from './build-host-client';
-import { startControlSocket } from './start-control-socket';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-control-'));

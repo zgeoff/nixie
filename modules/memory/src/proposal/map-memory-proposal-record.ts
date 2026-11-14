@@ -1,7 +1,7 @@
 import { buildShortIDFromUUID } from '@heynixie/db';
 import type { EnvelopeRecord } from '@heynixie/log';
 import type { ProposalChange } from '@heynixie/proposals';
-import { parseProposalRecord } from './parse-proposal-record';
+import { parseProposalRecord } from '../utils/record/parse-proposal-record';
 
 export function mapMemoryProposalRecord(record: EnvelopeRecord): ProposalChange | null {
   const parsed = parseProposalRecord(record);

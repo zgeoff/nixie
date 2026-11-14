@@ -1,7 +1,7 @@
 import type { Log } from '@heynixie/log';
-import { encodeRatingNote } from '../utils/encode-rating-note';
 import { MemoryRatingError } from '../utils/error/memory-rating-error';
 import { readItemKey } from '../utils/item/read-item-key';
+import { encodeRatingNote } from './encode-rating-note';
 
 interface RatingNote {
   readonly ratingID: string;

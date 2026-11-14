@@ -8,7 +8,7 @@ import type { Cleanup } from '../types';
 import type { APIGate } from '../utils/build-api-gate';
 import type { ConversationReset } from '../utils/run-conversation-reset';
 import type { ServerReset } from '../utils/run-server-reset';
-import { startControlSocket } from '../utils/start-control-socket';
+import { startControlSocket } from './start-control-socket';
 
 export interface HostCommandsOptions {
   readonly dataDir: string;

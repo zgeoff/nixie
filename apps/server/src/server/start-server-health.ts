@@ -4,8 +4,8 @@ import type { Logger } from '@heynixie/logger';
 import { checkDatabase, createHealthApp } from '@heynixie/ops';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { Cleanup } from '../types';
-import { buildReadinessChecks } from '../utils/build-readiness-checks';
 import type { StartState } from '../utils/build-start-state';
+import { buildReadinessChecks } from './build-readiness-checks';
 import { startReadinessRefresh } from './start-readiness-refresh';
 
 export interface ServerHealthOptions {

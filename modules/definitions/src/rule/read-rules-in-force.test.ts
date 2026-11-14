@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, writeRecords } from '@heynixie/log';
 import { createPathSource } from '../definition/create-path-source';
-import { ruleFiresProjection } from '../utils/rule-fires-projection';
 import { readRulesInForce } from './read-rules-in-force';
+import { ruleFiresProjection } from './rule-fires-projection';
 import { runSeed } from './run-seed';
 
 async function setupTest() {

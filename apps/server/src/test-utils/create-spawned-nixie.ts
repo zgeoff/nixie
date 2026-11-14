@@ -33,7 +33,7 @@ import {
 } from '@heynixie/testing';
 import { z } from 'zod';
 import type { NixieOperationArgs } from '../part/build-nixie-operation-schemas';
-import { getSandboxRootDir } from '../utils/get-sandbox-root-dir';
+import { getSandboxRootDir } from '../part/get-sandbox-root-dir';
 import { approveStarterRules } from './approve-starter-rules';
 import { buildAdvanceHelpers } from './build-advance-helpers';
 import { readDataFiles } from './read-data-files';

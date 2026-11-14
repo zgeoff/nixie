@@ -1,7 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import type { HealthChecks, PartRefresh, PartReport } from '@heynixie/ops';
-import { buildBackupsReport } from './build-backups-report';
-import type { StartState } from './build-start-state';
+import { buildBackupsReport } from '../utils/build-backups-report';
+import type { StartState } from '../utils/build-start-state';
 
 export type RefreshedPart = 'imp_runtime' | 'disk';
 

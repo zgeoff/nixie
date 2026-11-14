@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { waitForCondition } from '../utils/wait-for-condition';
 import { startProviderDouble } from './start-provider-double';
+import { waitForCondition } from './wait-for-condition';
 
 function setupTest() {
   const provider = startProviderDouble();

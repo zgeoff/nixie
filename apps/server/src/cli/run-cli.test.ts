@@ -6,9 +6,9 @@ import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
 import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
 import { startTestMemory } from '@heynixie/memory/test-utils';
+import { startControlSocket } from '../part/start-control-socket';
 import { writeBootFiles } from '../test-utils/write-boot-files';
 import { buildAPIGate } from '../utils/build-api-gate';
-import { startControlSocket } from '../utils/start-control-socket';
 import { runCLI } from './run-cli';
 
 async function setupTest() {

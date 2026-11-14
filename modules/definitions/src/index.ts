@@ -101,7 +101,7 @@ export type {
 
 export { writeResetSeed } from './seed/write-reset-seed';
 export { ruleStoreTables } from './seed/rule-store-tables';
-export { ruleFiresProjection } from './utils/rule-fires-projection';
+export { ruleFiresProjection } from './rule/rule-fires-projection';
 export type { RuleInForceEntry } from './rule/read-rules-in-force';
 export { readRulesInForce } from './rule/read-rules-in-force';
 export type { SnapshotPolicyRead } from './snapshot/read-snapshot-policy';

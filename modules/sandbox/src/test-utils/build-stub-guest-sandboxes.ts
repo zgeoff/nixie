@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import type { CheckReply, CheckRequest, GuestFrame, HostFrame } from '@heynixie/wire';
 import { memoryKillsPath } from '../process/memory-kills-path';
 import { parseMemoryKillsFile } from '../process/parse-memory-kills-file';
+import { requireSandboxSpec } from '../process/require-sandbox-spec';
 import { createSandboxID } from '../sandbox/create-sandbox-id';
 import type {
   FileSpec,
@@ -13,7 +14,6 @@ import type {
   SandboxRecorder,
   SandboxSpec,
 } from '../types';
-import { requireSandboxSpec } from '../utils/require-sandbox-spec';
 import type { StubGuestDisk } from './build-stub-guest-disk';
 import { buildStubGuestDisk } from './build-stub-guest-disk';
 import { runStubGuestSummary } from './run-stub-guest-summary';

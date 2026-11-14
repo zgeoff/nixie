@@ -1,9 +1,9 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import { z } from 'zod';
+import { readQueryRows } from '../read-query-rows';
 import { closeToOlderReaders } from './close-to-older-readers';
 import { pauseMigrationVersion } from './pause-migration-version';
-import { readQueryRows } from './read-query-rows';
 import { reopenToOlderReaders } from './reopen-to-older-readers';
 
 export async function syncPauseGate(db: Kysely<unknown>): Promise<void> {

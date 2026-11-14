@@ -1,8 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { probeProcessGone } from '../process/probe-process-gone';
-import { waitForCondition } from '../utils/wait-for-condition';
 import { stopProcesses } from '../wait/stop-processes';
+import { waitForCondition } from '../wait/wait-for-condition';
 import { startNixieProcess } from './start-nixie-process';
 
 function setupTest() {

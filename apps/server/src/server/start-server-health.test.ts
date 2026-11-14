@@ -6,8 +6,8 @@ import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { RuntimeReport } from '@heynixie/sandbox';
 import { buildStubCheck, buildTestClock, waitForCondition } from '@heynixie/testing';
-import { buildCleanup } from '../utils/build-cleanup';
 import { buildStartState } from '../utils/build-start-state';
+import { buildCleanup } from './build-cleanup';
 import { startServerHealth } from './start-server-health';
 
 async function setupTest() {

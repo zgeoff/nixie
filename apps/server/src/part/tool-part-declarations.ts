@@ -7,7 +7,7 @@ import { createSandboxAdapter } from '../sandbox/create-sandbox-adapter';
 import { buildActions } from '../test/build-actions';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool } from '../utils/build-test-send-tool';
-import { getSandboxRootDir } from '../utils/get-sandbox-root-dir';
+import { getSandboxRootDir } from './get-sandbox-root-dir';
 import type { ServerPartValues } from './server-part-values';
 import { startWebFetchPart } from './start-web-fetch-part';
 

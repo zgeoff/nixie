@@ -2,7 +2,7 @@ import { copyFile, mkdir, open, rename, rm, writeFile } from 'node:fs/promises';
 import { claimFileLock } from '@heynixie/async';
 import { createDatabaseCopy, startDatabase } from '@heynixie/db';
 import { localBackupFileReads } from '@heynixie/wire';
-import type { DataStorage } from './data-storage';
+import type { DataStorage } from '../utils/data-storage';
 
 export const localDataStorage: DataStorage = {
   startDatabase,

@@ -5,8 +5,8 @@ import type { TasksContext } from '@heynixie/tasks';
 import { createConversationTask } from '@heynixie/tasks';
 import type { ScriptedModel } from '@heynixie/testing';
 import { startScriptedModel } from '@heynixie/testing';
-import type { ConversationOptions } from '../utils/start-conversation';
-import { startConversation } from '../utils/start-conversation';
+import type { ConversationOptions } from '../conversation/start-conversation';
+import { startConversation } from '../conversation/start-conversation';
 import type { TestServer } from './start-test-server';
 
 export interface TestConversation {

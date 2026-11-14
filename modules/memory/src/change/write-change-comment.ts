@@ -2,7 +2,6 @@ import { buildShortIDFromUUID } from '@heynixie/db';
 import { readRecordKeys, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import type { StoreParts } from '../types';
-import { encodeChangeComment } from '../utils/change/encode-change-comment';
 import { ConsolidationChangeClosedError } from '../utils/error/consolidation-change-closed-error';
 import { ConsolidationChangeNotFoundError } from '../utils/error/consolidation-change-not-found-error';
 import type {
@@ -11,6 +10,7 @@ import type {
   ConsolidationTables,
 } from '../utils/memory-consolidations';
 import { memoryConsolidatorTaskID } from '../utils/memory-consolidator-task-id';
+import { encodeChangeComment } from './encode-change-comment';
 
 export async function writeChangeComment(
   parts: StoreParts,

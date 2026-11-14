@@ -1,7 +1,7 @@
 import { setTimeout as waitForDelay } from 'node:timers/promises';
 import type { McpServerStatus, Query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame } from '@heynixie/wire';
-import { toolServerName } from '../utils/tool-server-name';
+import { toolServerName } from './tool-server-name';
 
 // The CLI builds its first model request from the servers connected at that point, so the check
 // runs before the turn's first message.
