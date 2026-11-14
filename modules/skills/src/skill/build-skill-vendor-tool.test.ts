@@ -10,8 +10,8 @@ import { waitForCondition } from '@heynixie/testing';
 import type { FetchReply } from '@heynixie/wire';
 import { $ } from 'bun';
 import invariant from 'tiny-invariant';
+import { createStubGitHubRepo } from '../test-utils/create-stub-github-repo';
 import { buildSkillVendorTool } from './build-skill-vendor-tool';
-import { createStubGitHubRepo } from './test-utils/create-stub-github-repo';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();

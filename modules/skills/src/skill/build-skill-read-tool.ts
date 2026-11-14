@@ -1,9 +1,9 @@
 import { normalize } from 'node:path/posix';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
+import type { SkillToolsContext } from '../types';
 import type { TaskSkill } from './load-or-pin-task-skills';
 import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
-import type { SkillToolsContext } from './types';
 
 const readArguments = z.object({ name: z.string(), path: z.string().optional() });
 

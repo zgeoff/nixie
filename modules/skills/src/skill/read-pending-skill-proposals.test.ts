@@ -11,8 +11,8 @@ import {
 import { startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 import { readPendingSkillProposals } from './read-pending-skill-proposals';
-import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();

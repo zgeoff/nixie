@@ -15,11 +15,11 @@ import {
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { SkillProposalClosedError } from '../utils/skill-proposal-closed-error';
+import { SkillProposalHashError } from '../utils/skill-proposal-hash-error';
+import { SkillProposalNotFoundError } from '../utils/skill-proposal-not-found-error';
+import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
-import { SkillProposalClosedError } from './skill-proposal-closed-error';
-import { SkillProposalHashError } from './skill-proposal-hash-error';
-import { SkillProposalNotFoundError } from './skill-proposal-not-found-error';
-import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 import { writeSkillProposalAnswer } from './write-skill-proposal-answer';
 
 async function setupTest() {

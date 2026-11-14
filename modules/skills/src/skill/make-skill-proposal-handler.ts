@@ -9,11 +9,11 @@ import type {
 } from '@heynixie/proposals';
 import { proposalLapseMs } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
+import { SkillProposalCheckError } from '../proposal/skill-proposal-check-error';
+import type { SkillAnswerContext, SkillProposalAnswer } from '../types';
+import { skillsWriteLapsedCodec } from '../write/skills-write-lapsed-codec';
 import { readCurrentSkillHashes } from './read-current-skill-hashes';
 import { readSkillProposals } from './read-skill-proposals';
-import { SkillProposalCheckError } from './skill-proposal-check-error';
-import { skillsWriteLapsedCodec } from './skills-write-lapsed-codec';
-import type { SkillAnswerContext, SkillProposalAnswer } from './types';
 import { writeSkillProposalDecision } from './write-skill-proposal-answer';
 
 export function makeSkillProposalHandler(context: SkillAnswerContext): ProposalKindHandler {

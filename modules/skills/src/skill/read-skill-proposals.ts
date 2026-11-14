@@ -1,9 +1,9 @@
 import type { LogTables } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import { skillProposalOutcomes } from './skill-proposal-outcomes';
-import { skillProposalSchema } from './skill-proposal-schema';
-import type { SkillProposalState } from './types';
+import { skillProposalOutcomes } from '../proposal/skill-proposal-outcomes';
+import type { SkillProposalState } from '../types';
+import { skillProposalSchema } from '../utils/skill-proposal-schema';
 
 const proposalIDColumn = sql`json_extract(payload, '$.proposalID')`;
 

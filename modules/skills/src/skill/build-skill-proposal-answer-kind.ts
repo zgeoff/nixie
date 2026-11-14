@@ -4,9 +4,9 @@ import type { ProposalOutcome } from '@heynixie/proposals';
 import { proposalLapseMs } from '@heynixie/proposals';
 import type { EventKind } from '@heynixie/sessions';
 import { z } from 'zod';
+import { skillProposalOutcomes } from '../proposal/skill-proposal-outcomes';
+import { skillsWriteApprovedCodec } from '../write/skills-write-approved-codec';
 import { readSkillProposals } from './read-skill-proposals';
-import { skillProposalOutcomes } from './skill-proposal-outcomes';
-import { skillsWriteApprovedCodec } from './skills-write-approved-codec';
 
 export interface SkillProposalAnswerEvent {
   readonly proposalID: string;

@@ -5,12 +5,8 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { writeThreadRecordInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
-import { findAnswerRefusal } from './find-answer-refusal';
-import { readCurrentSkillHashes } from './read-current-skill-hashes';
-import { readSkillProposals } from './read-skill-proposals';
-import { SkillProposalCheckError } from './skill-proposal-check-error';
-import { skillsWriteApprovedCodec } from './skills-write-approved-codec';
-import { skillsWriteRejectedCodec } from './skills-write-rejected-codec';
+import { findAnswerRefusal } from '../proposal/find-answer-refusal';
+import { SkillProposalCheckError } from '../proposal/skill-proposal-check-error';
 import type {
   SkillAnswerContext,
   SkillFile,
@@ -18,7 +14,11 @@ import type {
   SkillProposalAnswerResult,
   SkillProposalContext,
   SkillProposalState,
-} from './types';
+} from '../types';
+import { skillsWriteApprovedCodec } from '../write/skills-write-approved-codec';
+import { skillsWriteRejectedCodec } from '../write/skills-write-rejected-codec';
+import { readCurrentSkillHashes } from './read-current-skill-hashes';
+import { readSkillProposals } from './read-skill-proposals';
 
 export async function writeSkillProposalAnswer(
   context: SkillAnswerContext,

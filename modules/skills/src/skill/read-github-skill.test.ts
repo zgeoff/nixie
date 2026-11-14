@@ -3,8 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { $ } from 'bun';
+import { createStubGitHubRepo } from '../test-utils/create-stub-github-repo';
 import { readGitHubSkill } from './read-github-skill';
-import { createStubGitHubRepo } from './test-utils/create-stub-github-repo';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'nixie-github-skill-'));

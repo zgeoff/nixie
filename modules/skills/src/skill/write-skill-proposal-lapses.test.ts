@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
-import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
+import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 import { writeSkillProposalLapses } from './write-skill-proposal-lapses';
 
 async function setupTest() {

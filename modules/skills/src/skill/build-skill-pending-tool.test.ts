@@ -7,9 +7,9 @@ import { readRecords, startWriter, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
+import { skillsWriteApprovedCodec } from '../write/skills-write-approved-codec';
+import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 import { buildSkillTools } from './build-skill-tools';
-import { skillsWriteApprovedCodec } from './skills-write-approved-codec';
-import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 import { writeSkillProposalAnswer } from './write-skill-proposal-answer';
 import { writeSkillProposalLapses } from './write-skill-proposal-lapses';
 

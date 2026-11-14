@@ -5,8 +5,8 @@ import { writeRecords } from '@heynixie/log';
 import { checkUntypedToken, defaultGateLimits } from '@heynixie/memory';
 import type { ToolCall, ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
 import { z } from 'zod';
-import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
-import type { SkillToolsContext } from './types';
+import type { SkillToolsContext } from '../types';
+import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 
 export function buildSkillWriteTool(context: SkillToolsContext): ToolDefinition {
   return {

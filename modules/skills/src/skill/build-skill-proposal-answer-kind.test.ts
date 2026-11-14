@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, writeRecords } from '@heynixie/log';
 import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
+import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 import { buildSkillProposalAnswerKind } from './build-skill-proposal-answer-kind';
-import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();

@@ -1,10 +1,10 @@
 import type { EnvelopeRecord } from '@heynixie/log';
 import type { ProposalChange } from '@heynixie/proposals';
 import { proposalLapseMs } from '@heynixie/proposals';
-import { skillsWriteApprovedCodec } from './skills-write-approved-codec';
-import { skillsWriteLapsedCodec } from './skills-write-lapsed-codec';
-import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
-import { skillsWriteRejectedCodec } from './skills-write-rejected-codec';
+import { skillsWriteApprovedCodec } from '../write/skills-write-approved-codec';
+import { skillsWriteLapsedCodec } from '../write/skills-write-lapsed-codec';
+import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
+import { skillsWriteRejectedCodec } from '../write/skills-write-rejected-codec';
 
 export function mapSkillProposalRecord(record: EnvelopeRecord): ProposalChange | null {
   if (record.kind === skillsWriteProposedCodec.kind) {

@@ -1,8 +1,8 @@
 import { formatAge } from '@heynixie/clock';
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
+import type { PendingSkillProposal, SkillToolsContext } from '../types';
 import { readPendingSkillProposals } from './read-pending-skill-proposals';
-import type { PendingSkillProposal, SkillToolsContext } from './types';
 
 const pendingOutput = {
   type: 'object',

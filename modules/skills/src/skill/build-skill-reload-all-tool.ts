@@ -1,7 +1,7 @@
 import type { ToolDefinition } from '@heynixie/tools';
+import type { SkillToolsContext } from '../types';
 import { runSkillReload } from './run-skill-reload';
 import { skillReloadOutput } from './skill-reload-output';
-import type { SkillToolsContext } from './types';
 
 export function buildSkillReloadAllTool(context: SkillToolsContext): ToolDefinition {
   return {

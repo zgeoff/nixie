@@ -1,8 +1,8 @@
 import { loadSkillVersions, readDefinitionsInForce } from '@heynixie/definitions';
 import { proposalLapseMs, readProposalLapses } from '@heynixie/proposals';
+import type { PendingSkillProposal, SkillProposalContext, SkillProposalState } from '../types';
 import { readCurrentSkillHashes } from './read-current-skill-hashes';
 import { readSkillProposals } from './read-skill-proposals';
-import type { PendingSkillProposal, SkillProposalContext, SkillProposalState } from './types';
 
 export async function readPendingSkillProposals(
   context: Pick<SkillProposalContext, 'log' | 'clock'>,

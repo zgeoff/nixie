@@ -1,8 +1,8 @@
 import { writeWrittenSkillBase, writeWrittenSkillState } from '@heynixie/definitions';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { match } from 'ts-pattern';
+import type { SkillAnswerContext } from '../types';
 import { skillsWrittenResolvedCodec } from './skills-written-resolved-codec';
-import type { SkillAnswerContext } from './types';
 
 export interface WrittenSkillResolution {
   readonly approvalID: string;

@@ -3,7 +3,7 @@ import type { DefinitionsInForce, SkillOrigin } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
 import type { ProposalContext, ProposalOutcome } from '@heynixie/proposals';
 import type { ToolRun } from '@heynixie/tools';
-import type { skillsWriteProposedCodec } from './skills-write-proposed-codec';
+import type { skillsWriteProposedCodec } from './write/skills-write-proposed-codec';
 
 export interface SkillToolsContext {
   readonly log: Log;

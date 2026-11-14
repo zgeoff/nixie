@@ -1,8 +1,8 @@
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import type { SkillToolsContext } from '../types';
 import { runSkillReload } from './run-skill-reload';
 import { skillReloadOutput } from './skill-reload-output';
-import type { SkillToolsContext } from './types';
 
 const reloadArguments = z.object({ name: z.string() });
 
