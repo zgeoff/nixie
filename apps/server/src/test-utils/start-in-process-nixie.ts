@@ -158,6 +158,25 @@ async function startFirstRun(
       `TIMING pid=${process.pid} ${label} at=${Math.round(performance.now() - s0)} t=${Math.round(performance.now())}`,
     );
 
+  const lag = { max: 0, total: 0, last: performance.now() };
+
+  const lagTimer = setInterval(() => {
+    const now = performance.now();
+    const drift = now - lag.last - 50;
+
+    lag.max = Math.max(lag.max, drift);
+    lag.total += Math.max(0, drift);
+    lag.last = now;
+  }, 50);
+
+  stack.defer(() => {
+    clearInterval(lagTimer);
+
+    console.error(
+      `TIMING pid=${process.pid} end at=${Math.round(performance.now() - s0)} lagmax=${Math.round(lag.max)} lagtotal=${Math.round(lag.total)}`,
+    );
+  });
+
   const directory = await mkdtemp(join(tmpdir(), 'nixie-main-'));
 
   stack.defer(() => rm(directory, { recursive: true, force: true }));
