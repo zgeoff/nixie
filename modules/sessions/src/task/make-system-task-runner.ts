@@ -12,6 +12,7 @@ import type {
   SandboxImageKey,
   SandboxLimits,
 } from '@heynixie/sandbox';
+import { sandboxSizes } from '@heynixie/sandbox';
 import invariant from 'tiny-invariant';
 import type { StepCapturePort } from '../utils/open-step-capture';
 import { buildGuestCommand } from './build-guest-command';
@@ -61,7 +62,7 @@ export function makeSystemTaskRunner<Options extends SystemTaskOptions, Task ext
         role: spec.role,
         profile,
         image: getHarnessImage(options.images, harness.imageKey),
-        limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
+        limits: sandboxSizes.systemTask,
         command: buildGuestCommand(options.sandboxes, harness.guest, spec.entry),
         defer: (stop) => {
           started.defer(stop);
