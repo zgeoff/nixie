@@ -1,8 +1,7 @@
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { recordForgottenCodec, removeImageOfferKeys } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
-import type { BriefStartCall } from './read-brief-start-calls';
-import { readBriefStartCalls } from './read-brief-start-calls';
+import { readForgetStartCalls } from './read-forget-start-calls';
 import { readRecordForget } from './read-record-forget';
 import type { APIContext, APITables } from './types';
 
@@ -16,7 +15,7 @@ export async function runRecordForgetCleanup(
     return;
   }
 
-  const startCalls = await readBriefStartCalls(context, recordSequence);
+  const startCalls = await readForgetStartCalls(context, recordSequence);
   const thread = await removeForgottenKey(context, recordSequence);
 
   for (const call of startCalls) {
@@ -33,7 +32,7 @@ export async function runRecordForgetCleanup(
 
   // Each destroyed record names its own cleanup, so the sessions of the started task and of the
   // starter both rebuild.
-  for (const sequence of [recordSequence, ...startCalls.map((call) => call.sequence)]) {
+  for (const sequence of [recordSequence, ...startCalls]) {
     await cleanupSessions({ recordSequence: sequence });
   }
 
@@ -64,9 +63,16 @@ async function removeForgottenKey(context: APIContext, recordSequence: number): 
   return target.thread;
 }
 
-async function removeCallKey(context: APIContext, call: BriefStartCall): Promise<void> {
-  if (call.keyID !== null) {
-    await removeRecordKey(context.log, call.keyID);
+async function removeCallKey(context: APIContext, callSequence: number): Promise<void> {
+  const call = await context.log.writer.db
+    .$extendTables<APITables>()
+    .selectFrom('records')
+    .select('key_id')
+    .where('sequence', '=', callSequence)
+    .executeTakeFirst();
+
+  if (call !== undefined && call.key_id !== null) {
+    await removeRecordKey(context.log, call.key_id);
   }
 }
 

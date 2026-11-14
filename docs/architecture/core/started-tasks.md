@@ -106,7 +106,9 @@ a message to it wakes it again, and the user closes it when its work is done.
 A session opening after the first pins the brief as a message right after its status, as the
 [session opening](./session-opening.md#the-brief) describes, so a rebuilt session still reads what
 the task is for. A forget of the brief erases the brief and the starter's recorded `task.start`
-call, which holds the same text, and rebuilds the sessions of both tasks.
+call, which holds the same text, and rebuilds the sessions of both tasks. The forget finds those
+calls when it starts, while the brief is still readable, and its start record keeps their sequences,
+so a rerun after a crash erases the same calls.
 
 ## The listed state
 

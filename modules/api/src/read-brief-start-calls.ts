@@ -5,18 +5,13 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import type { APIContext, APITables } from './types';
 
-export interface BriefStartCall {
-  readonly sequence: number;
-  readonly keyID: string | null;
-}
-
-// The starter's recorded task.start call holds the brief's text in its input. The call keeps no
-// task ID, so the search runs through its result, which names the task. A rerun of the starting
-// step can leave more than one such call.
+// The call keeps no task ID, so the search runs through its result, which names the task. A call
+// with no result matches only by the brief's text, so the search must run while the brief is still
+// readable.
 export async function readBriefStartCalls(
   context: Pick<APIContext, 'log'>,
   brief: number,
-): Promise<readonly BriefStartCall[]> {
+): Promise<readonly number[]> {
   const db = context.log.writer.db.$extendTables<APITables>();
 
   const message = await db
@@ -98,8 +93,7 @@ export async function readBriefStartCalls(
   );
 
   // A crash after the start committed and before its result did leaves a call with no result. Such a
-  // call names the task by its input alone: the same name, and the same brief while the brief is
-  // still readable.
+  // call names the task by its input alone: the same name and the same brief.
   const answered = new Set(results.map((result) => result.parent));
 
   const unanswered = calls.filter((call) => !answered.has(call.sequence));
@@ -121,18 +115,9 @@ export async function readBriefStartCalls(
     }
   }
 
-  const sequences = [...started].filter((sequence) => sequence !== null);
-
-  if (sequences.length === 0) {
-    return [];
-  }
-
-  return db
-    .selectFrom('records')
-    .select(['sequence', 'key_id as keyID'])
-    .where('sequence', 'in', sequences)
-    .orderBy('sequence')
-    .execute();
+  return [...started]
+    .filter((sequence) => sequence !== null)
+    .toSorted((left, right) => left - right);
 }
 
 const startResultSchema = z.object({ taskID: z.string() });
@@ -186,15 +171,11 @@ async function readStartIdentity(
 const startInputSchema = z.object({ name: z.string(), brief: z.string() });
 
 function isInputOfTask(erasable: ErasableFields, identity: StartIdentity): boolean {
-  if (erasable.status !== 'readable' || identity.name === null) {
+  if (erasable.status !== 'readable' || identity.name === null || identity.brief === null) {
     return false;
   }
 
   const input = startInputSchema.safeParse(erasable.fields['input']).data;
 
-  if (input?.name.trim() !== identity.name) {
-    return false;
-  }
-
-  return identity.brief === null || input.brief === identity.brief;
+  return input?.name.trim() === identity.name && input.brief === identity.brief;
 }
