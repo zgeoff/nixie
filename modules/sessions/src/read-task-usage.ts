@@ -28,6 +28,13 @@ interface UsageCount {
   readonly pause: HeldPause | null;
 }
 
+export interface TaskUsageRead {
+  readonly used: TaskLimits;
+
+  // the sequence of the last record the read went through, or 0 when it read none
+  readonly throughSequence: number;
+}
+
 // A turn counts toward both limits, and a summary of the session counts only toward the dollars. A
 // turn that left no turn record, such as one whose guest failed, counts its dollars through the
 // limit record its pause wrote, or through its failed turn's spend when it reached no limit.
@@ -35,7 +42,7 @@ export async function readTaskUsage(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
   prices: ModelPrices | null,
-): Promise<TaskLimits> {
+): Promise<TaskUsageRead> {
   let count: UsageCount = { used: { turns: 0, dollars: 0 }, pause: null };
   let afterSequence = 0;
   let isLastPage = false;
@@ -64,7 +71,7 @@ export async function readTaskUsage(
     isLastPage = page.length < pageSize;
   }
 
-  return buildUsageWithPause(count);
+  return { used: buildUsageWithPause(count), throughSequence: afterSequence };
 }
 
 // A retry takes its step's key, so each pause settles at its own step's end: the step's error,

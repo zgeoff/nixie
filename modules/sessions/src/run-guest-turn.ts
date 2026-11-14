@@ -29,7 +29,7 @@ export interface GuestTurnSpec {
   readonly readRecallMark?: () => Promise<number>;
 
   // runs on each model API call the guest reports, before the host reads the guest's next frame
-  readonly onCall?: (usage: ModelCallUsage) => void;
+  readonly onCall?: (usage: ModelCallUsage) => Promise<void>;
 }
 
 export interface GuestTurn {
@@ -162,7 +162,8 @@ async function readTurn(
     const frame = decodeTurnFrame(guestFrameSchema, message);
 
     if (frame.type === 'call') {
-      spec.onCall?.(frame.usage);
+      await spec.onCall?.(frame.usage);
+
       continue;
     }
 

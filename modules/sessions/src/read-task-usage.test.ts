@@ -3,6 +3,7 @@ import { writeRecords } from '@heynixie/log';
 import { modelSessionSummarizedCodec, modelTurnEndedCodec } from '@heynixie/models';
 import {
   claimTask,
+  taskFailedTurnSpentCodec,
   taskLimitReachedCodec,
   taskLimitsRaisedCodec,
   taskStepCommittedCodec,
@@ -73,7 +74,7 @@ test("it counts a task's turns, and prices both its turns and the summaries of i
     },
   ]);
 
-  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+  const usage = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
@@ -81,7 +82,7 @@ test("it counts a task's turns, and prices both its turns and the summaries of i
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 1, dollars: 4.5 });
+  expect(usage.used).toStrictEqual({ turns: 1, dollars: 4.5 });
 });
 
 test("it prices a turn's cache reads at the cached rate and its cache writes at the longer lifetime's rate", async () => {
@@ -110,7 +111,7 @@ test("it prices a turn's cache reads at the cached rate and its cache writes at 
     },
   ]);
 
-  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+  const usage = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
@@ -118,7 +119,7 @@ test("it prices a turn's cache reads at the cached rate and its cache writes at 
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 1, dollars: 6.3 });
+  expect(usage.used).toStrictEqual({ turns: 1, dollars: 6.3 });
 });
 
 test('it counts and prices a turn recorded before turns kept their image count', async () => {
@@ -145,7 +146,7 @@ test('it counts and prices a turn recorded before turns kept their image count',
     },
   ]);
 
-  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+  const usage = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
@@ -153,7 +154,7 @@ test('it counts and prices a turn recorded before turns kept their image count',
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 1, dollars: 3 });
+  expect(usage.used).toStrictEqual({ turns: 1, dollars: 3 });
 });
 
 test('it counts no dollars for a summary recorded with no usage', async () => {
@@ -176,7 +177,7 @@ test('it counts no dollars for a summary recorded with no usage', async () => {
     },
   ]);
 
-  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+  const usage = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
@@ -184,7 +185,7 @@ test('it counts no dollars for a summary recorded with no usage', async () => {
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 0, dollars: 0 });
+  expect(usage.used).toStrictEqual({ turns: 0, dollars: 0 });
 });
 
 test('it counts the dollars that a pause recorded for a turn that left no turn record', async () => {
@@ -204,7 +205,7 @@ test('it counts the dollars that a pause recorded for a turn that left no turn r
     },
   ]);
 
-  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+  const usage = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
@@ -212,7 +213,7 @@ test('it counts the dollars that a pause recorded for a turn that left no turn r
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
+  expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
 });
 
 test('it counts the dollars of a failed turn, and no turn', async () => {
@@ -236,7 +237,7 @@ test('it counts the dollars of a failed turn, and no turn', async () => {
     maxRetryDelayMs: 0,
   });
 
-  const used = await readTaskUsage(ctx.tasks.context, taskID, {
+  const usage = await readTaskUsage(ctx.tasks.context, taskID, {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
@@ -244,7 +245,7 @@ test('it counts the dollars of a failed turn, and no turn', async () => {
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
+  expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
 });
 
 test('it counts the dollars of a failed turn that reached the limit once, past its pause', async () => {
@@ -276,7 +277,7 @@ test('it counts the dollars of a failed turn that reached the limit once, past i
     maxRetryDelayMs: 0,
   });
 
-  const used = await readTaskUsage(ctx.tasks.context, taskID, {
+  const usage = await readTaskUsage(ctx.tasks.context, taskID, {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
@@ -284,7 +285,7 @@ test('it counts the dollars of a failed turn that reached the limit once, past i
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
+  expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
 });
 
 test('it counts a turn whose pause came before its turn record once', async () => {
@@ -337,7 +338,7 @@ test('it counts a turn whose pause came before its turn record once', async () =
     },
   ]);
 
-  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+  const usage = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
@@ -345,7 +346,7 @@ test('it counts a turn whose pause came before its turn record once', async () =
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 1, dollars: 3 });
+  expect(usage.used).toStrictEqual({ turns: 1, dollars: 3 });
 });
 
 test.each([
@@ -434,7 +435,7 @@ test.each([
     },
   ]);
 
-  const used = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
+  const usage = await readTaskUsage(ctx.tasks.context, 'tide-tables', {
     input: 3,
     cacheWrite: 3.75,
     cacheWrite1h: 6,
@@ -442,5 +443,28 @@ test.each([
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 1, dollars });
+  expect(usage.used).toStrictEqual({ turns: 1, dollars });
+});
+
+test('it reports the sequence of the last record it read through', async () => {
+  const ctx = await setupTest();
+
+  const [, second] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: taskFailedTurnSpentCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      payload: taskFailedTurnSpentCodec.encode({ taskID: 'tide-tables', dollars: 0.01 }),
+    },
+    {
+      kind: taskFailedTurnSpentCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-tables',
+      payload: taskFailedTurnSpentCodec.encode({ taskID: 'tide-tables', dollars: 0.02 }),
+    },
+  ]);
+
+  const read = await readTaskUsage(ctx.tasks.context, 'tide-tables', null);
+
+  expect(read.throughSequence).toBe(second?.sequence ?? 0);
 });

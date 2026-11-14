@@ -170,11 +170,13 @@ writes the spend record in its place. When the spend record fails to write too, 
 `task.turn_spend_unrecorded` error event with the task's ID and the dollars, and the count leaves
 that spend out.
 
-A step that lost its lease writes its spend record after another runner may have taken the step. A
-turn that the other runner started before the record landed gets a budget without that spend, so the
-task can pass its dollar limit by up to one turn's spend. When that turn reaches the limit, the
-runner counts the task's turns and dollars again before it writes the limit record, so the limit
-record includes the late spend.
+A step that lost its lease can write its spend record after another runner has taken the step. On
+each priced call, the turn's budget reads the spend records written on the task since the turn's
+usage read, and lowers the dollars left by them. The turn therefore stops at the dollar limit even
+when that late spend lands during the turn. A profile with no prices reads nothing. When the read
+fails, the step fails, and its retry counts the task's use again from the log. When a turn reaches
+the limit, the runner counts the task's turns and dollars again before it writes the limit record,
+so the limit record includes the late spend.
 
 The interrupt leaves the turn's work not done, so the task keeps that work for the raise, as
 [interrupted work](#interrupted-work) describes.

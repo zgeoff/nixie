@@ -1649,7 +1649,7 @@ test('it counts the spend of a task turn whose commit lost its lease to another 
     maxRetryDelayMs: 300_000,
   });
 
-  const used = await readTaskUsage(ctx.context, taskID, {
+  const usage = await readTaskUsage(ctx.context, taskID, {
     input: 3,
     cacheWrite: 3,
     cacheWrite1h: 3,
@@ -1658,7 +1658,7 @@ test('it counts the spend of a task turn whose commit lost its lease to another 
   });
 
   expect(taken.holder).toBe('runner-b');
-  expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
+  expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
 });
 
 test('it counts once the spend of a task turn at its dollar limit whose commit lost its lease after its pause', async () => {
@@ -1705,7 +1705,7 @@ test('it counts once the spend of a task turn at its dollar limit whose commit l
     maxRetryDelayMs: 300_000,
   });
 
-  const used = await readTaskUsage(ctx.context, taskID, {
+  const usage = await readTaskUsage(ctx.context, taskID, {
     input: 3,
     cacheWrite: 3,
     cacheWrite1h: 3,
@@ -1713,10 +1713,10 @@ test('it counts once the spend of a task turn at its dollar limit whose commit l
     output: 15,
   });
 
-  expect(used).toStrictEqual({ turns: 0, dollars: 0.03 });
+  expect(usage.used).toStrictEqual({ turns: 0, dollars: 0.03 });
 });
 
-test('it pauses a task turn at its dollar limit with the counts that include a spend recorded while the turn ran', async () => {
+test('it interrupts a task turn at its own spend that, with a spend recorded after the turn started, reaches the dollar limit', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
 
@@ -1728,23 +1728,37 @@ test('it pauses a task turn at its dollar limit with the counts that include a s
 
   const runner = await ctx.startRunner();
 
-  ctx.guest.addKindReplies('worker', {
-    text: 'Checking the tides.',
-    usage: {
-      uncachedInputTokens: 10_000,
-      cacheReadTokens: 0,
-      cacheWrite5mTokens: 0,
-      cacheWrite1hTokens: 0,
-      outputTokens: 0,
-    },
-    gate: async () => {
-      await writeFailedTurnSpend(ctx.context, { taskID, dollars: 0.01 });
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.writeMessage(taskID, 'And the evening tide?');
 
-      await waitForCondition(() =>
-        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
-      );
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      text: 'The morning tide is at six.',
+      usage: {
+        uncachedInputTokens: 3334,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+      gate: () => writeFailedTurnSpend(ctx.context, { taskID, dollars: 0.01 }),
     },
-  });
+    {
+      text: 'The evening tide is at seven.',
+      usage: {
+        uncachedInputTokens: 3334,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+      gate: () =>
+        waitForCondition(() =>
+          ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+        ),
+    },
+  );
 
   await ctx.runNextStep(runner);
 
@@ -1752,7 +1766,7 @@ test('it pauses a task turn at its dollar limit with the counts that include a s
 
   expect(notice?.payload).toStrictEqual({
     taskID,
-    used: { turns: 1, dollars: 0.04 },
+    used: { turns: 1, dollars: expect.toBeWithin(0.03, 0.0301) },
     limits: { turns: 25, dollars: 0.03 },
   });
 });
