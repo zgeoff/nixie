@@ -41,9 +41,12 @@ other setting the file leaves out takes the default its part names.
 section owns that section's schema: a module for its own settings, the imp adapter for the imp
 section, and the server for its own, the user's and the sandbox adapter's. Each package therefore
 validates the settings it reads, and one root schema still refuses the file as a whole before any
-part starts. Every object in the schema is strict, so nixie refuses an unknown key as it refuses an
-invalid value, and a typo never passes as a default. The error lists the path of each key it
-refuses.
+part starts. Every object in the schema is strict, so an editor flags an unknown key. The loader
+removes each unknown key and parses again, and the server logs a `config.unknown_key` warning that
+names the key's path at start. A newer release's key therefore never stops an older release from
+starting. The cost: a mistyped key passes with the default of the setting it meant, and only the
+warning shows it. A key inside a union branch that the schema reports as one invalid union still
+refuses the file. The error lists the path of each other fault it refuses.
 
 A setting that names a secret holds a reference of the form `deployment:<name>`, which names an
 entry in the secrets file. A model profile's credential and the search key accept only that form.
