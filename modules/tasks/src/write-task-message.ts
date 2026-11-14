@@ -2,6 +2,7 @@ import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
+import { z } from 'zod';
 import { parseStepRunID } from './parse-step-run-id';
 import type {
   TaskMessageFacts,
@@ -128,6 +129,11 @@ async function readFacts(
           .where('to_task', '=', request.from)
           .executeTakeFirst();
 
+  const isCreatedBriefReply =
+    request.replyTo === null || reply !== undefined
+      ? false
+      : await probeCreatedBriefReply(db, request);
+
   const sequences = request.onBehalfOf
     .map((eventID) => Number(toEventID(eventID)))
     .filter((sequence) => Number.isSafeInteger(sequence));
@@ -145,9 +151,35 @@ async function readFacts(
   return {
     senderHop,
     receiverState: receiver?.state ?? null,
-    isReplyToKnown: reply !== undefined,
+    isReplyToKnown: reply !== undefined || isCreatedBriefReply,
     ownerMessageIDs: new Set(owned.map((row) => String(row.sequence))),
   };
+}
+
+// A task that the release before started has no brief record, so its brief's ID is its own task
+// ID. Remove this when no open task lacks a briefMessageID.
+async function probeCreatedBriefReply(
+  db: Transaction<TasksTables>,
+  request: TaskMessageRequest,
+): Promise<boolean> {
+  if (request.replyTo !== request.from) {
+    return false;
+  }
+
+  const sender = await db
+    .selectFrom('tasks')
+    .innerJoin('records', 'records.sequence', 'tasks.created_sequence')
+    .select([
+      'tasks.started_by',
+      sql`json_extract(records.payload, '$.briefMessageID')`.as('brief_message_id'),
+    ])
+    .where('tasks.task_id', '=', request.from)
+    .executeTakeFirst();
+
+  return (
+    sender?.started_by === request.to &&
+    z.string().nullable().parse(sender.brief_message_id) === null
+  );
 }
 
 async function probeNotice(

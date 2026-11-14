@@ -32,7 +32,10 @@ refuses these, with the refusal as the tool's answer:
 - a reply to an unknown message;
 - an on-behalf-of ID that is not one of the user's messages.
 
-The record's body is erasable.
+The record's body is erasable. A task's brief is the first message of its thread: a message of kind
+`request` at hop 0 from the task that started it, which the start writes in the same transaction as
+the task's creation record. A reply to a brief answers the starter, and the reply is known without
+the starter naming it.
 
 A message write checks the sender's lease in its own transaction, as a step commit does. The tool
 call carries the ID of the step that made it, and the write refuses the call when the task has
@@ -55,11 +58,10 @@ them waits on the other.
 A message that wakes nobody starts no step, and a step never counts it as unread work that makes the
 task ready, so such messages never loop the receiver through empty steps. The receiver reads them in
 its next step. In that step, the messages that the hop limit held back appear under one summary line
-per sender, which counts them and shows whether a reply would wake the sender. A message that its
-sender sent with no wake gets no summary line. A conversation turn that is already running receives
-a message at once, as it receives every inbox record that lands during the turn, so the read cursor
-never meets a gap. That turn keeps the hop it was claimed with, so a reply from it wakes the sender
-only when the turn's own hop allows.
+per sender, which counts them. A message that its sender sent with no wake gets no summary line. A
+conversation turn that is already running receives a message at once, as it receives every inbox
+record that lands during the turn, so the read cursor never meets a gap. That turn keeps the hop it
+was claimed with, so a reply from it wakes the sender only when the turn's own hop allows.
 
 ## Message waits
 

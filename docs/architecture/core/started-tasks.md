@@ -9,10 +9,12 @@ options, the nixie runner that runs its steps, and its limits.
 
 The conversation starts a task with a name and a brief. The start checks the step's lease as a
 message write does, and writes the task's creation record in the ready state under a
-[short ID](./database.md#short-ids), with the name and brief in its erasable fields. The creation
-record holds which task started it, and the tasks projection keeps that on the task's row, so the
-directory finds every started task. A forget of the name leaves the task listed under its ID. The
-creation record holds the task's [start options](#start-options) in its plain payload too.
+[short ID](./database.md#short-ids), with the name in its erasable fields, and the brief as the
+task's first [message](./task-messages.md): a `task_message` record on the task's thread, written in
+the same transaction, which the creation record names by its message ID. The creation record holds
+which task started it, and the tasks projection keeps that on the task's row, so the directory finds
+every started task. A forget of the name leaves the task listed under its ID. The creation record
+holds the task's [start options](#start-options) in its plain payload too.
 
 The creation record also holds the step key of the step that started the task. After a crash, that
 step runs again under the same key, and its model can call the start again. The start then gives
@@ -88,18 +90,25 @@ step runs the same turn code as the conversation's steps, with these changes:
   instructions parts are empty. A deployment can
   [override any of these parts](./prompts.md#overrides-from-the-definitions).
 - A task started with `memory: read` gets the pinned memory and memory retrieval in its turn, as the
-  conversation does. Its retrieval searches for its brief on its first turn, and for the body of
-  each task message it receives. Any other task gets neither.
+  conversation does. Its retrieval searches for the body of each task message it receives, its brief
+  included. Any other task gets neither.
 - The task's tools are the ones its start recorded. Each call goes through the
   [decision point](../policy/decision-point.md), as the conversation's tool calls do.
 
-The brief is in the task's creation record, and no inbox record holds it. So the task's first
-session opens with a start note as its input. The note tells the model to do what the brief asks,
-and to send the result to the task that started it, as a task message of kind `report`, unless the
-start set `report: none`. After the step that sends the report, the task waits: a message to it
-wakes it again, and the user closes it when its work is done. When the guest loses the task's
-session, the next step [opens a new one](./session-opening.md) from the task's thread and the
-messages it sent.
+The brief is an unread inbox message, so the task's first turn takes it as its input, in the
+`<task-message>` envelope, and takes no message behind it in that turn. The next step reads the
+messages that wait. A task's plain text goes to nobody: it reaches its starter only through a
+`task.message` call. When the model ends a turn with text and no call, the text stays in its notes.
+The task prompt tells it to send the result to the task that started it, as a task message of kind
+`report`, unless the start set `report: none`. After the step that sends the report, the task waits:
+a message to it wakes it again, and the user closes it when its work is done.
+
+A session opening after the first pins the brief as a message right after its status, as the
+[session opening](./session-opening.md#the-brief) describes, so a rebuilt session still reads what
+the task is for. A forget of the brief erases the brief and the starter's recorded `task.start`
+call, which holds the same text, and rebuilds the sessions of both tasks. The forget finds those
+calls when it starts, while the brief is still readable, and its start record keeps their sequences,
+so a rerun after a crash erases the same calls.
 
 ## The listed state
 
@@ -116,10 +125,10 @@ the last task message it sent:
 A task in any other task state lists under that state. The list tool also gives each task's model,
 or null for a task on the `task` role's profile.
 
-A started task can wait with unread input, or with a brief that no session read. Only a waking inbox
-record moves a waiting task to ready, so such a task never runs. At each server start, after the
-server writes the conversation task and before any claim, it moves each such task to ready. A task
-that the user paused or stopped keeps its state.
+A started task can wait with unread input, such as its brief. Only a waking inbox record moves a
+waiting task to ready, so such a task never runs. At each server start, after the server writes the
+conversation task and before any claim, it moves each such task to ready. A task that the user
+paused or stopped keeps its state.
 
 ## Limits
 

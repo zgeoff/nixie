@@ -104,12 +104,24 @@ time is labelled as the time the session started, because each input that starts
 own stamp, and the model must never read the status time as the time now. Every value is a name, a
 time or a count, so the opening record holds them with no free text.
 
+## The brief
+
+A started task's opening holds its brief as a `<task-message>` envelope, placed after the status and
+before the summary. A started task's opening reads the status before the memory blocks. The brief
+shows there when no earlier session read it and the turn's inbox does not hold it, and it shows
+again in every rebuilt session, so the task never loses what it is for. A brief the turn's batch
+already holds renders there only. A task that started on the release before the brief became a
+message has its brief in its creation record, and its first session renders it from there.
+
 ## The opening record
 
 The step writes one session-opened record for every new session, in the same commit as the turn. Its
 payload holds the kind of start and its reason, the session it replaced when the step knew one, the
 sequence of the summary it used, the count of records and events in slot 5, each status value under
-its entry's name, and the hashes of the persona and the policy in force when the session opened.
+its entry's name, the hashes of the persona and the policy in force when the session opened, and the
+sequence of the brief the opening accounted for, or null when the task has none. A started task
+whose newest opening has no such field opened before briefs were messages, so its next step rebuilds
+the session once.
 
 Retrieval counts what a session holds from this record, as
 [per-turn retrieval](../memory/context.md#per-turn-retrieval) explains. The record commits after

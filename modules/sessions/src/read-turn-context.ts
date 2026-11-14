@@ -1,11 +1,11 @@
 import type { LogRecord } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
-import type { TaskReport } from '@heynixie/tasks';
-import { match } from 'ts-pattern';
+import type { TaskBrief } from '@heynixie/tasks';
 import { formatMessageTime } from './format-message-time';
 import { isCoreChanged } from './is-core-changed';
 import type { TurnRetrieval } from './read-turn-retrieval';
 import { readTurnRetrieval } from './read-turn-retrieval';
+import { renderBriefEnvelope } from './render-brief-envelope';
 import { renderCoreChanges } from './render-core-changes';
 import { renderPinnedMemory } from './render-pinned-memory';
 import { renderSessionPrompt } from './render-session-prompt';
@@ -16,7 +16,6 @@ import type {
   MemoryItem,
   MemoryLineOptions,
   MemoryRef,
-  SessionFrame,
 } from './types';
 
 export interface TurnContextQuery {
@@ -27,6 +26,9 @@ export interface TurnContextQuery {
   readonly skillCatalog: string | null;
 
   readonly batch: readonly LogRecord[];
+
+  // the task's own brief, or null for a task with none
+  readonly brief: TaskBrief | null;
   readonly previousCore: readonly MemoryRef[] | null;
 
   readonly isNewSession: boolean;
@@ -96,12 +98,12 @@ export async function readTurnContext(
     pinnedMemory,
     preamble: renderTurnPreamble(
       {
-        start: pickStartNote(frame, query),
         continuation: query.isContinuation ? continuationNote : null,
         changes,
         retrieval,
         thread: query.taskID,
         at,
+        brief: pickPreambleBrief(run, query, lines),
       },
       lines,
     ),
@@ -138,33 +140,16 @@ async function readCoreChanges(
   return renderCoreChanges(previousCore, pinned.core, { ...pinned.lines, unpinnedShortIDs, use });
 }
 
-// A started task opens its first session with no message in its inbox, so this note gives the
-// turn its input.
-function pickStartNote(frame: SessionFrame, query: TurnContextQuery): string | null {
-  return match(frame)
-    .with({ kind: 'conversation' }, () => null)
-    .with({ kind: 'task' }, (task) =>
-      query.isFirstSession ? renderTaskStartNote(task.startedBy, task.report) : null,
-    )
-    .exhaustive();
-}
-
-function renderTaskStartNote(startedBy: string, report: TaskReport): string {
-  const start = 'Your task starts now: do what the brief in your instructions asks.';
-
-  return match(report)
-    .with(
-      'wake',
-      'next_turn',
-      () =>
-        `${start} When you have the result, send it with task.message to ${startedBy}, the task that started you, with the kind report.`,
-    )
-    .with(
-      'none',
-      () =>
-        `${start} The task that started you, ${startedBy}, asked for no report, so send it none.`,
-    )
-    .exhaustive();
+// A brief that the release before wrote sits in no inbox record, so the first turn carries it as
+// the last block of its preamble.
+function pickPreambleBrief(
+  run: Pick<ConversationRun, 'messaging'>,
+  query: TurnContextQuery,
+  lines: MemoryLineOptions,
+): string | null {
+  return query.brief?.origin === 'created' && query.isFirstSession
+    ? renderBriefEnvelope(query.brief, lines, run.messaging)
+    : null;
 }
 
 function toMemoryRef(item: MemoryItem): MemoryRef {

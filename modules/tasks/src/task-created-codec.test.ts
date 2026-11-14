@@ -31,6 +31,24 @@ test('it decodes the task that started a task', () => {
   });
 });
 
+test('it decodes the ID of the message that holds the brief of a started task', () => {
+  const payload = taskCreatedCodec.encode({
+    taskID: 'k3x9m2p7qa',
+    isConversation: false,
+    state: 'ready',
+    startedBy: 'conversation',
+    briefMessageID: 'm7k2',
+  });
+
+  expect(taskCreatedCodec.decode(payload)).toStrictEqual({
+    taskID: 'k3x9m2p7qa',
+    isConversation: false,
+    state: 'ready',
+    startedBy: 'conversation',
+    briefMessageID: 'm7k2',
+  });
+});
+
 test('it refuses a state outside the task states', () => {
   expect(() =>
     taskCreatedCodec.decode({ taskID: 'task-1', isConversation: false, state: 'sleeping' }),

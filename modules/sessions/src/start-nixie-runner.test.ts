@@ -1,6 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readLinkTarget } from '@heynixie/connectors';
 import { seedWebFetchLinks } from '@heynixie/connectors/test-utils';
+import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
 import {
   claimTask,
@@ -104,7 +105,7 @@ async function setupTest() {
       },
       compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 },
       defaultZone: 'UTC',
-      messaging: { directory: [], hopLimit: 20, ownerName: 'Robin' },
+      messaging: { directory: [], hopLimit: 20, ownerName: 'Robin', agentName: null },
       log: (event) => {
         events.push(event);
       },
@@ -178,6 +179,15 @@ async function setupTest() {
       });
     },
     readKinds: (kind: string) => readRecordsByKind(host.context.log, kind),
+    writeLegacyOpening: (taskID: string) =>
+      writeRecords(host.context.log, [
+        {
+          kind: 'model.session_opened',
+          definitions: host.context.definitions(),
+          thread: taskID,
+          payload: {},
+        },
+      ]),
   };
 }
 
@@ -338,6 +348,26 @@ test('it refuses to end a task turn that holds a message from you silently, and 
   });
 });
 
+test("it keeps a task's plain text on its own thread, with no message to its starter and no channel", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addReplies({ text: 'The morning tide is at 06:10.' });
+
+  await ctx.runNextStep(runner);
+
+  const replies = await ctx.readKinds('model.reply');
+  const messages = await ctx.readKinds('task_message');
+
+  expect(replies.map((record) => [record.thread, record.erasable.status])).toStrictEqual([
+    [taskID, 'readable'],
+  ]);
+
+  expect(messages.map((record) => record.payload['kind'])).toStrictEqual(['request']);
+});
+
 test("it runs a started task's first step in a worker imp that the task owns", async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
@@ -380,7 +410,7 @@ test("it runs a started task's tool run on its own ID with the tools it is given
   ]);
 });
 
-test("it opens a started task's first session under the task prompt, with a start note as its input and no persona or memory", async () => {
+test("it opens a started task's first session under the task prompt, with its brief as the first message in the envelope and no start note, persona or memory", async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
   const taskID = await ctx.seedTask(starter);
@@ -392,16 +422,61 @@ test("it opens a started task's first session under the task prompt, with a star
   const input = turn?.input.map((message) => message.text).join('\n') ?? '';
 
   expect(turn?.profile.model).toBe('claude-test-errands');
+  expect(turn?.systemPrompt).toStartWith('You are "Tide tables", a task working for Robin.');
+  expect(turn?.systemPrompt).not.toInclude('You are Pip.');
 
-  expect(turn?.systemPrompt).toStartWith(
-    'You are "Tide tables", one of the tasks that nixie runs for Robin.',
+  expect(input).toMatch(
+    /<task-message id="\w+" from="task: conversation" kind="request" sent="[^"]+" fence="(?<fence>\w+)">\nFind the high tides for Saturday\.\n<\/task-message fence="\k<fence>">$/u,
   );
 
-  expect(turn?.systemPrompt).not.toInclude('You are Pip.');
-  expect(input).toInclude('<system-message type="task-start"');
-  expect(input).toInclude('send it with task.message to conversation');
+  expect(input).not.toInclude('task-start');
   expect(input).not.toInclude('pinned-memory');
   expect(ctx.guest.received.map((received) => received.owner)).toStrictEqual([taskID]);
+});
+
+test('it gives a task started with the persona and no memory no memory block, and a message that waits behind its brief the next turn, with no new wake', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter, { persona: 'default', memory: 'none' });
+
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const [first, second] = ctx.guest.turns;
+  const firstInput = first?.input.map((message) => message.text).join('\n') ?? '';
+  const secondInput = second?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(firstInput).not.toInclude('pinned-memory');
+  expect(firstInput).toInclude('Find the high tides for Saturday.');
+  expect(firstInput).not.toInclude('Only the morning tide, please.');
+  expect(secondInput).toInclude('Only the morning tide, please.');
+  expect(secondInput).not.toInclude('Find the high tides for Saturday.');
+});
+
+test("it rebuilds a started task's session once, with its brief in the new session, when the newest opening carries no brief mark", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seedConversationStep();
+  const taskID = await ctx.seedTask(starter);
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeLegacyOpening(taskID);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'And the evening one.');
+  await ctx.runNextStep(runner);
+
+  const [, rebuilt, resumed] = ctx.guest.turns;
+  const rebuiltInput = rebuilt?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(rebuilt?.resume).toBeNull();
+  expect(rebuiltInput.split('Find the high tides for Saturday.')).toHaveLength(2);
+  expect(rebuiltInput).toInclude('Only the morning tide, please.');
+  expect(resumed?.resume?.sessionID).toBeString();
 });
 
 test('it sleeps the imp of a step that waits, and wakes the same imp for the next message', async () => {
@@ -476,7 +551,7 @@ test('it destroys the imp of an idle task when the task closes, with no further 
   expect(ctx.guest.turns).toHaveLength(1);
 });
 
-test("it compacts a started task's session under the task prompt, with its name and brief and no persona", async () => {
+test("it compacts a started task's session under the task prompt, with its name and no persona", async () => {
   const ctx = await setupTest();
   const starter = await ctx.seedConversationStep();
 
@@ -492,10 +567,9 @@ test("it compacts a started task's session under the task prompt, with its name 
   const prompts = ctx.guest.summaries.map((summary) => summary.systemPrompt);
 
   expect(prompts).toStrictEqual([
-    expect.stringContaining('You are "Tide tables", one of the tasks that nixie runs'),
+    expect.stringContaining('You are "Tide tables", a task working for'),
   ]);
 
-  expect(prompts.join('')).toInclude('Find the high tides for Saturday.');
   expect(prompts.join('')).not.toInclude('You are Pip.');
 });
 
@@ -574,7 +648,13 @@ test('it rebuilds the session of a task whose imp is gone with the messages the 
     ctx.context,
     {
       directory: [
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation',
+        },
       ],
       hopLimit: 20,
     },
@@ -840,7 +920,7 @@ test('it runs the brief of a task that reads memory when a forget comes before i
   const [turn] = ctx.guest.turns;
   const input = turn?.input.map((message) => message.text).join('\n') ?? '';
 
-  expect(input).toInclude('Your task starts now');
+  expect(input).toInclude('Find the high tides for Saturday.');
 });
 
 test('it purges the guest of a task that reads memory when a forget aborts its first turn', async () => {

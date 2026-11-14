@@ -302,8 +302,20 @@ test('it releases the waits a stopped task opened and keeps the waits on it', as
 
   const messaging = {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
   };
@@ -366,8 +378,20 @@ test('it releases every wait of a closed task', async () => {
 
   const messaging = {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
   };

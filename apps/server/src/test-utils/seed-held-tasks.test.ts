@@ -27,6 +27,7 @@ function setupTest() {
         name: taskID,
         brief: 'A held task.',
         isWokenByMessages: true,
+        speaker: 'plain_task' as const,
       }));
 
       const listed = await readTaskList(data.context, { directory }, { callerID: null, limit: 10 });
@@ -65,5 +66,8 @@ test('it leaves one held started task waiting with a message unread, and one hel
     [held.pausedID, 'paused'],
   ]);
 
-  expect(tasks.unreadKinds).toStrictEqual([['owner_message'], ['owner_message']]);
+  expect(tasks.unreadKinds).toStrictEqual([
+    ['task_message', 'owner_message'],
+    ['task_message', 'owner_message'],
+  ]);
 });

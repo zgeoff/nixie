@@ -32,7 +32,7 @@ async function setupTest(options: TestMemoryOptions = {}) {
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',
-    messaging: { directory: [], hopLimit: 20, ownerName: null },
+    messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
   };
 
   return { memory, clock, parts };

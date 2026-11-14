@@ -6,12 +6,19 @@ test('it tells the owner who waits on whom in an exchange that reached the limit
     renderExchangeNotice(
       {
         directory: [
-          { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+          {
+            taskID: 'planner',
+            name: 'Planner',
+            brief: 'Plans the week.',
+            isWokenByMessages: true,
+            speaker: 'plain_task',
+          },
           {
             taskID: 'conversation',
             name: 'Conversation',
             brief: 'Talks.',
             isWokenByMessages: true,
+            speaker: 'conversation',
           },
         ],
       },
@@ -35,7 +42,13 @@ test('it tells the owner nothing waits on them when no question is open', () => 
     renderExchangeNotice(
       {
         directory: [
-          { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+          {
+            taskID: 'planner',
+            name: 'Planner',
+            brief: 'Plans the week.',
+            isWokenByMessages: true,
+            speaker: 'plain_task',
+          },
         ],
       },
       {

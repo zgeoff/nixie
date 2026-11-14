@@ -2,7 +2,7 @@ import { readSessionSummary } from '@heynixie/compaction';
 import type { LogTables } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { modelSessionOpenedCodec } from '@heynixie/models';
-import type { TasksContext } from '@heynixie/tasks';
+import type { TaskMessaging, TasksContext } from '@heynixie/tasks';
 import { readRecentTurns } from './read-recent-turns';
 import type { MessageTimeOptions } from './types';
 
@@ -15,6 +15,7 @@ export interface HeldMessagesQuery {
 
   readonly rebuildTokens: number;
   readonly times: MessageTimeOptions;
+  readonly messaging: TaskMessaging;
 }
 
 export async function readHeldMessages(
@@ -49,6 +50,7 @@ async function readRecentStart(
     afterSequence: summary?.throughSequence ?? 0,
     tokens: query.rebuildTokens,
     times: query.times,
+    messaging: query.messaging,
   });
 
   return recent.at(0)?.record.sequence ?? query.beforeSequence;

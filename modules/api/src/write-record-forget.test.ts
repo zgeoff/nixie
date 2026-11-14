@@ -10,6 +10,7 @@ import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { readThreadPage } from './read-thread-page';
 import { createDeviceSession } from './test-utils/create-device-session';
+import { seedTaskStartCall } from './test-utils/seed-task-start-call';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { CleanupRecordSessions } from './types';
 import { writeOwnerMessage } from './write-owner-message';
@@ -450,4 +451,140 @@ test('it refuses a forget from a session revoked after the call resolved it', as
 
   expect(result).toStrictEqual({ status: 'unauthorized' });
   expect(message?.erasable.status).toBe('readable');
+});
+
+test("it forgets a started task's brief with the starter's recorded task.start call, and rebuilds the sessions of both", async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const started = await seedTaskStartCall(ctx.context, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
+
+  const result = await writeRecordForget(
+    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
+    laptop.caller,
+    {
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      thread: started.taskID,
+      sequence: started.briefSequence,
+    },
+  );
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    sequences: [started.callSequence, started.resultSequence, started.briefSequence],
+  });
+
+  const [call, brief, outcome] = entries.map((entry) => entry.record);
+
+  expect(result).toStrictEqual({ status: 'forgotten', forgottenAt: expect.toBeNumber() });
+  expect(brief?.erasable).toStrictEqual({ status: 'shredded' });
+  expect(call?.erasable).toStrictEqual({ status: 'shredded' });
+  expect(outcome?.erasable.status).toBe('readable');
+
+  expect(cleanupSessions.mock.calls).toStrictEqual([
+    [{ recordSequence: started.briefSequence }],
+    [{ recordSequence: started.callSequence }],
+  ]);
+});
+
+test("it leaves the text of another started task's call readable when it forgets a brief", async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const first = await seedTaskStartCall(ctx.context, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const [other] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { callID: 'call-2', runID: 'conversation', toolUseID: null, tool: 'task.start' },
+      erasable: { input: { name: 'Moon phases', brief: 'List the moon phases for May.' } },
+    },
+  ]);
+
+  invariant(other);
+
+  await writeRecordForget(
+    { ...ctx.context, readSessionCleanup: () => () => Promise.resolve() },
+    laptop.caller,
+    {
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      thread: first.taskID,
+      sequence: first.briefSequence,
+    },
+  );
+
+  const [kept] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    sequences: [other.sequence],
+  });
+
+  expect(kept?.record.erasable).toStrictEqual({
+    status: 'readable',
+    fields: { input: { name: 'Moon phases', brief: 'List the moon phases for May.' } },
+  });
+});
+
+test('it forgets a task message that is no brief with no call of the starter', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const started = await seedTaskStartCall(ctx.context, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const [report] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'r7k2',
+        from: started.taskID,
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: `task:${started.taskID}`,
+      },
+      erasable: { body: 'The high tide is at 06:10.' },
+    },
+  ]);
+
+  invariant(report);
+
+  const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
+
+  await writeRecordForget(
+    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
+    laptop.caller,
+    {
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      thread: 'conversation',
+      sequence: report.sequence,
+    },
+  );
+
+  const [call] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    sequences: [started.callSequence],
+  });
+
+  expect(call?.record.erasable.status).toBe('readable');
+  expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ recordSequence: report.sequence });
 });

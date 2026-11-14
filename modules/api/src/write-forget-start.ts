@@ -6,7 +6,7 @@ import { probeForgettableRecord } from './probe-forgettable-record';
 import { readRecordForget } from './read-record-forget';
 import type { APIContext } from './types';
 
-interface ForgetTarget {
+export interface ForgetTarget {
   readonly thread: string;
   readonly sequence: number;
 }
@@ -15,6 +15,7 @@ export async function writeForgetStart(
   tx: Transaction<unknown>,
   context: APIContext,
   input: ForgetTarget,
+  startCallSequences: readonly number[],
 ): Promise<number | null> {
   if (!(await probeForgettableRecord(tx, input))) {
     return null;
@@ -34,7 +35,10 @@ export async function writeForgetStart(
       kind: recordForgetStartedCodec.kind,
       definitions: context.definitions(),
       thread: input.thread,
-      payload: recordForgetStartedCodec.encode({ recordSequence: input.sequence }),
+      payload: recordForgetStartedCodec.encode({
+        recordSequence: input.sequence,
+        ...(startCallSequences.length === 0 ? {} : { startCallSequences: [...startCallSequences] }),
+      }),
     },
   ]);
 

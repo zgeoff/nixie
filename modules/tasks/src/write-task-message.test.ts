@@ -1,12 +1,15 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildStepRunID } from './build-step-run-id';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { createSystemTask } from './create-system-task';
+import { buildStartedDirectory } from './test-utils/build-started-directory';
 import { makeStubStep } from './test-utils/make-stub-step';
 import { runTaskSteps } from './test-utils/run-task-steps';
+import { seedConversationStep } from './test-utils/seed-conversation-step';
+import { seedStartedTask } from './test-utils/seed-started-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTestTaskMessage } from './test-utils/write-test-task-message';
 import type { TasksTables } from './types';
@@ -38,8 +41,20 @@ test('it refuses a message from a step whose task another runner reclaimed, and 
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -78,8 +93,20 @@ test('it refuses a message from a step whose lease expired, and writes nothing',
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -112,8 +139,20 @@ test('it delivers a message to the task it names and wakes it', async () => {
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -177,8 +216,20 @@ test('it leaves the receiver waiting for its next wake when the sender asks for 
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -218,8 +269,20 @@ test('it holds a message for a task that runs on its own schedule, with no wake'
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: false },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: false,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -254,7 +317,13 @@ test('it refuses a message to the sender itself', async () => {
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -283,7 +352,13 @@ test('it refuses a message to a task the directory does not list', async () => {
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -321,8 +396,20 @@ test('it refuses a message to a task that has finished', async () => {
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'gardener', name: 'Gardener', brief: 'Waters.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'gardener',
+          name: 'Gardener',
+          brief: 'Waters.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -354,8 +441,20 @@ test('it refuses a reply to a message that was never sent to the sender', async 
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -387,8 +486,20 @@ test("it refuses on-behalf-of IDs that do not name the owner's messages", async 
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -433,8 +544,20 @@ test("it stores on-behalf-of IDs that name the owner's messages", async () => {
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 20,
     },
@@ -470,8 +593,20 @@ test('it delivers a message past the hop limit without a wake and tells the owne
 
   const messaging = {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 3,
   };
@@ -547,8 +682,20 @@ test('it tells the owner nothing waits when the message past the limit asks noth
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
       hopLimit: 3,
     },
@@ -576,8 +723,20 @@ test('it stops waking a chain of tasks that message each other at the hop limit'
 
   const messaging = {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'critic', name: 'Critic', brief: 'Checks plans.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'critic',
+        name: 'Critic',
+        brief: 'Checks plans.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
     ],
     hopLimit: 3,
   };
@@ -650,8 +809,20 @@ test('it starts the count again when the owner writes to a task in a held exchan
 
   const messaging = {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 1,
   };
@@ -725,8 +896,20 @@ test('it starts the count again when a timer wakes a task in a held exchange', a
 
   const messaging = {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'critic', name: 'Critic', brief: 'Checks plans.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'critic',
+        name: 'Critic',
+        brief: 'Checks plans.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
     ],
     hopLimit: 1,
   };
@@ -789,4 +972,152 @@ test('it starts the count again when a timer wakes a task in a held exchange', a
     { to: 'planner', hop: 1, woke: true },
     { to: 'critic', hop: 2, woke: false },
   ]);
+});
+
+test('it sends a reply to the brief of the sender to its starter, with no wait opened or closed', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  const [brief] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task_message'],
+  });
+
+  const briefMessageID = brief?.record.payload['messageID'];
+
+  invariant(typeof briefMessageID === 'string');
+
+  const outcome = await writeTestTaskMessage(ctx.context, buildStartedDirectory(taskID), {
+    from: taskID,
+    to: 'conversation',
+    kind: 'reply',
+    body: 'Which harbour?',
+    replyTo: briefMessageID,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  const waits = await ctx.db
+    .selectFrom('task_messages')
+    .select(['kind', 'wait_state'])
+    .orderBy('sent_sequence')
+    .execute();
+
+  expect(outcome).toStrictEqual({
+    status: 'sent',
+    messageID: expect.toBeString(),
+    hop: 1,
+    woke: true,
+    hold: 'none',
+  });
+
+  expect(waits).toStrictEqual([
+    { kind: 'request', wait_state: 'none' },
+    { kind: 'reply', wait_state: 'none' },
+  ]);
+});
+
+test.each([
+  ['the sender own task ID', 'sender', 'conversation', 'sent'],
+  ['the ID of another task', 'other', 'conversation', 'refused'],
+  ['the sender own task ID, to a task that did not start it', 'sender', 'other', 'refused'],
+] as const)(
+  'it handles a reply to a brief of the release before with replyTo as %s',
+  async (_case, replyTo, to, status) => {
+    const ctx = await setupTest();
+
+    await seedConversationStep(ctx.context);
+    await createSystemTask(ctx.context, 'other');
+
+    await writeRecords(ctx.context.log, [
+      {
+        kind: 'task.created',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'k3x9m2p7qa',
+        payload: {
+          taskID: 'k3x9m2p7qa',
+          isConversation: false,
+          state: 'ready',
+          startedBy: 'conversation',
+        },
+        erasable: { name: 'Tide tables', brief: 'Find the high tides.' },
+      },
+    ]);
+
+    const claim = await claimTask(ctx.context, {
+      holder: 'runner-b',
+      leaseMs: 60_000,
+      taskID: 'k3x9m2p7qa',
+    });
+
+    invariant(claim);
+
+    const outcome = await writeTestTaskMessage(
+      ctx.context,
+      {
+        ...buildStartedDirectory('k3x9m2p7qa'),
+        directory: [
+          ...buildStartedDirectory('k3x9m2p7qa').directory,
+          {
+            taskID: 'other',
+            name: 'Other',
+            brief: 'Other.',
+            isWokenByMessages: true,
+            speaker: 'plain_task' as const,
+          },
+        ],
+      },
+      {
+        from: 'k3x9m2p7qa',
+        to,
+        kind: 'reply',
+        body: 'Which harbour?',
+        replyTo: replyTo === 'sender' ? 'k3x9m2p7qa' : 'other',
+        onBehalfOf: [],
+        wake: true,
+      },
+    );
+
+    expect(outcome.status).toBe(status);
+  },
+);
+
+test('it refuses a reply that names the sender own task ID once the sender has a brief record', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedStartedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  const outcome = await writeTestTaskMessage(ctx.context, buildStartedDirectory(taskID), {
+    from: taskID,
+    to: 'conversation',
+    kind: 'reply',
+    body: 'Which harbour?',
+    replyTo: taskID,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'unknown_reply', messageID: taskID },
+  });
 });

@@ -1,8 +1,9 @@
 import type { LogRecord } from '@heynixie/log';
 import type { SystemMessageType } from '@heynixie/wire';
 import { renderSystemMessage } from '@heynixie/wire';
-import { formatMessageStamp } from './format-message-stamp';
+import { findSessionLabel } from './find-session-label';
 import { formatMessageTime } from './format-message-time';
+import { formatMessageWhen } from './format-message-when';
 import { renderApprovalAnswer } from './render-approval-answer';
 import { renderLimitNotice } from './render-limit-notice';
 import { renderOwnerText } from './render-owner-text';
@@ -16,7 +17,7 @@ export function renderInboxMessage(
   view: TaskMessageView,
 ): string {
   if (record.kind === 'owner_message') {
-    return `[${formatMessageStamp(record, times)}] ${renderOwnerText(record)}`;
+    return renderOwnerMessage(record, times, view.messaging.ownerName);
   }
 
   if (record.kind === 'task_message') {
@@ -32,7 +33,7 @@ export function renderInboxMessage(
   }
 
   if (record.kind === 'task.limit_notice') {
-    return renderLimitNotice(record, times, view.messaging.ownerName);
+    return renderLimitNotice(record, times);
   }
 
   if (record.kind === 'policy.action_answered') {
@@ -40,6 +41,33 @@ export function renderInboxMessage(
   }
 
   return `A ${record.kind} record arrived: ${JSON.stringify(record.payload)}`;
+}
+
+// The id is the event ID that a task passes in on-behalf-of. The session label of a message from a
+// device you named shows beside its time.
+function renderOwnerMessage(
+  record: LogRecord,
+  times: MessageTimeOptions,
+  ownerName: string | null,
+): string {
+  const label = findSessionLabel(record);
+
+  const attributes = [
+    ['id', String(record.sequence)],
+    ['from', ownerName ?? 'the owner'],
+    ['sent', formatMessageWhen(record, times)],
+    ...(label === null ? [] : [['session', label]]),
+  ];
+
+  return [
+    `<owner-message ${attributes.map(([name, value]) => `${name}="${escapeAttribute(value ?? '')}"`).join(' ')}>`,
+    renderOwnerText(record),
+    '</owner-message>',
+  ].join('\n');
+}
+
+function escapeAttribute(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
 }
 
 type RecordMessageType = Extract<SystemMessageType, 'timer' | 'outcome'>;

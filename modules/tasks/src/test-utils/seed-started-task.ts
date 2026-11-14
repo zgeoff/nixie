@@ -9,6 +9,7 @@ export interface StartedTaskSeed {
   readonly name: string;
   readonly brief: string;
   readonly options?: Partial<TaskRunOptions>;
+  readonly hopLimit?: number;
 }
 
 export async function seedStartedTask(
@@ -29,6 +30,7 @@ export async function seedStartedTask(
       limits: { turns: 25, dollars: 2 },
       ...seed.options,
     },
+    hopLimit: seed.hopLimit ?? 6,
     stepRunID: buildStepRunID(seed.starter),
   });
 

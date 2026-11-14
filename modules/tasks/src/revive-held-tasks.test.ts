@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
+import { readInbox } from './read-inbox';
 import { reviveHeldTasks } from './revive-held-tasks';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
 import { seedStartedTask } from './test-utils/seed-started-task';
@@ -13,6 +14,7 @@ import { writeTaskControl } from './write-task-control';
 interface HeldStep {
   readonly next: 'hold' | 'wait';
   readonly sessionBoundary?: string;
+  readonly isInboxRead?: boolean;
 }
 
 async function setupTest() {
@@ -39,7 +41,14 @@ async function setupTest() {
 
     invariant(claim, 'a started task is ready');
 
-    await writeStepCommit(tasks.context, claim, { ...step, records: [], acknowledged: [] });
+    const inbox = await readInbox(tasks.context, claim.lease.workID);
+
+    await writeStepCommit(tasks.context, claim, {
+      next: step.next,
+      records: [],
+      acknowledged: step.isInboxRead === true ? inbox.map((record) => record.sequence) : [],
+      ...(step.sessionBoundary === undefined ? {} : { sessionBoundary: step.sessionBoundary }),
+    });
   };
 
   return {
@@ -127,7 +136,12 @@ test('it leaves a started task that waits on its session with every message read
     brief: 'Find tides.',
   });
 
-  await ctx.commitNextStep({ next: 'wait', sessionBoundary: '{"sessionID":"s1"}' });
+  await ctx.commitNextStep({
+    next: 'wait',
+    sessionBoundary: '{"sessionID":"s1"}',
+    isInboxRead: true,
+  });
+
   await ctx.reviveHeldTasks();
 
   const state = await ctx.readState(taskID);

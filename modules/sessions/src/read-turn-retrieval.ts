@@ -65,12 +65,12 @@ export async function readTurnRetrieval(
 
 // A started task's work arrives as its brief and as messages from other tasks, where the
 // conversation's arrives as the user's messages.
-function collectQueryText(
-  run: Pick<ConversationRun, 'frame' | 'messaging'>,
-  query: TurnContextQuery,
-): string {
+function collectQueryText(run: Pick<ConversationRun, 'frame'>, query: TurnContextQuery): string {
   const isTask = run.frame.kind === 'task';
-  const brief = isTask && query.isFirstSession ? findTaskBrief(run, query.taskID) : null;
+
+  // A brief record is in the batch, so its message counts there.
+  const brief =
+    isTask && query.isFirstSession && query.brief?.origin === 'created' ? query.brief.body : null;
 
   const messages = query.batch.flatMap((record) => {
     const message = findMessageText(record, isTask);
@@ -79,10 +79,6 @@ function collectQueryText(
   });
 
   return [...(brief === null ? [] : [brief]), ...messages].join('\n');
-}
-
-function findTaskBrief(run: Pick<ConversationRun, 'messaging'>, taskID: string): string | null {
-  return run.messaging.directory.find((entry) => entry.taskID === taskID)?.brief ?? null;
 }
 
 function findMessageText(record: LogRecord, isTask: boolean): string | null {
@@ -133,6 +129,7 @@ async function readRetrievedMessages(
     ),
     rebuildTokens: settings.rebuildTokens,
     times: search.times,
+    messaging: run.messaging,
   });
 
   const result = await run.memory().recallMessages({

@@ -27,7 +27,11 @@ test('it starts a task with its name and brief, and tells the model how its repo
     'Plan the vegetable beds for spring.',
   );
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: 'Robin' }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: 'Robin' },
+    buildMockTaskStartBounds(),
+  );
 
   const outcome = await tool.run(
     buildMockToolCall({
@@ -45,7 +49,7 @@ test('it starts a task with its name and brief, and tells the model how its repo
 
   const records = await readRecords(ctx.context.log, {
     afterSequence: 0,
-    kinds: ['task.created'],
+    kinds: ['task.created', 'task_message'],
   });
 
   expect(outcome).toStrictEqual({
@@ -73,15 +77,21 @@ test('it starts a task with its name and brief, and tells the model how its repo
         state: 'ready',
         startedBy: 'conversation',
       },
+      erasable: { status: 'readable', fields: { name: 'Garden plan' } },
+    },
+    {
+      kind: 'task_message',
+      thread: task.task_id,
+      payload: { from: 'conversation', to: task.task_id, kind: 'request', hop: 0, hopLimit: 20 },
       erasable: {
         status: 'readable',
-        fields: { name: 'Garden plan', brief: 'Plan four raised beds for a spring sowing.' },
+        fields: { body: 'Plan four raised beds for a spring sowing.' },
       },
     },
   ]);
 });
 
-test("it writes only the task's creation record for a start from the conversation with an unread message", async () => {
+test("it writes only the task's creation record and its brief for a start from the conversation with an unread message", async () => {
   const ctx = await setupTest();
 
   const claim = await createTestConversationClaim(
@@ -91,7 +101,11 @@ test("it writes only the task's creation record for a start from the conversatio
 
   const before = await readRecords(ctx.context.log, { afterSequence: 0 });
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: 'Robin' }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: 'Robin' },
+    buildMockTaskStartBounds(),
+  );
 
   await tool.run(
     buildMockToolCall({
@@ -105,14 +119,18 @@ test("it writes only the task's creation record for a start from the conversatio
     afterSequence: before.at(-1)?.record.sequence ?? 0,
   });
 
-  expect(written.map((entry) => entry.record.kind)).toStrictEqual(['task.created']);
+  expect(written.map((entry) => entry.record.kind)).toStrictEqual(['task.created', 'task_message']);
 });
 
 test('it gives the started task a short ID', async () => {
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: null }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
 
   const outcome = await tool.run(
     buildMockToolCall({
@@ -132,7 +150,11 @@ test('it gives a repeated start of the same name in one step the task the first 
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: null }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
 
   const call = buildMockToolCall({
     tool: 'task.start',
@@ -160,7 +182,11 @@ test('it gives two overlapping starts of the same name in one step one task', as
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: null }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
 
   const call = buildMockToolCall({
     tool: 'task.start',
@@ -187,7 +213,11 @@ test('it starts a second task for another name in the same step', async () => {
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: null }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
 
   const run = buildMockToolContext({
     run: { thread: 'conversation', stepRunID: buildStepRunID(claim) },
@@ -222,7 +252,11 @@ test('it starts nothing for a call from a step that lost its task', async () => 
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: null }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
 
   await ctx.db
     .updateTable('leases')
@@ -255,7 +289,11 @@ test('it refuses a task with a blank name', async () => {
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: null }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
 
   const outcome = await tool.run(
     buildMockToolCall({
@@ -272,7 +310,11 @@ test('it refuses a task with a blank brief', async () => {
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: null }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
 
   const outcome = await tool.run(
     buildMockToolCall({ tool: 'task.start', input: { name: 'Parcel', brief: '' } }),
@@ -287,7 +329,7 @@ test('it shows the model each selectable model as an enum value, with its descri
 
   const tool = buildTaskStartTool(
     ctx.context,
-    { ownerName: null },
+    { hopLimit: 20, ownerName: null },
     buildMockTaskStartBounds({
       models: [
         { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
@@ -316,7 +358,11 @@ test('it shows the model each selectable model as an enum value, with its descri
 test('it shows the model no model choice when no model is selectable', async () => {
   const ctx = await setupTest();
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: null }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
 
   expect(tool.input['properties']).not.toContainKey('model');
 });
@@ -327,7 +373,7 @@ test('it starts a stranger on a selectable model with the tools it asks for, and
 
   const tool = buildTaskStartTool(
     ctx.context,
-    { ownerName: null },
+    { hopLimit: 20, ownerName: null },
     buildMockTaskStartBounds({
       models: [
         { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
@@ -438,7 +484,7 @@ test.each([
 
   const tool = buildTaskStartTool(
     ctx.context,
-    { ownerName: null },
+    { hopLimit: 20, ownerName: null },
     buildMockTaskStartBounds({
       models: [
         { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
@@ -490,7 +536,11 @@ test.each(['mcp__nixie__memory_recall', 'memory.recall'])(
     const ctx = await setupTest();
     const claim = await createTestConversationClaim(ctx.context, 'Plan the beds from my notes.');
 
-    const tool = buildTaskStartTool(ctx.context, { ownerName: null }, buildMockTaskStartBounds());
+    const tool = buildTaskStartTool(
+      ctx.context,
+      { hopLimit: 20, ownerName: null },
+      buildMockTaskStartBounds(),
+    );
 
     const outcome = await tool.run(
       buildMockToolCall({
@@ -555,7 +605,11 @@ test('it starts nothing that reads memory for a started task that does not', asy
 
   invariant(claim);
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: 'Robin' }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: 'Robin' },
+    buildMockTaskStartBounds(),
+  );
 
   const outcome = await tool.run(
     buildMockToolCall({
@@ -605,7 +659,11 @@ test('it starts nothing with the persona for a started task that runs with none'
 
   invariant(claim);
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: 'Robin' }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: 'Robin' },
+    buildMockTaskStartBounds(),
+  );
 
   const outcome = await tool.run(
     buildMockToolCall({
@@ -644,7 +702,11 @@ test('it tells the model that a task started with no report sends none', async (
   const ctx = await setupTest();
   const claim = await createTestConversationClaim(ctx.context, 'Tidy the seed list.');
 
-  const tool = buildTaskStartTool(ctx.context, { ownerName: 'Robin' }, buildMockTaskStartBounds());
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: 'Robin' },
+    buildMockTaskStartBounds(),
+  );
 
   const outcome = await tool.run(
     buildMockToolCall({

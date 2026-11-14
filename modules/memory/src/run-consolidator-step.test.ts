@@ -43,7 +43,7 @@ async function setupTest() {
         getPrompts: () => prompts,
         ownerName: null,
         defaultZone: 'UTC',
-        messaging: { directory: [], hopLimit: 20, ownerName: null },
+        messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
         onError: (error) => {
           errors.push(error);
         },
@@ -152,7 +152,7 @@ test('it shows a waiting task message to its next session and reads it there', a
   expect(session.model.runSession).toHaveBeenCalledWith(
     expect.objectContaining({
       prompt: expect.stringMatching(
-        /\n\nMessages to you from other tasks:\n\n<task-message id="k3vq8m2xpa" [^>]+>\nThis message is from another task, not from the owner\.\nMerge the two choir notes\.\n<\/task-message block="\w+">$/u,
+        /\n\nMessages to you from other tasks:\n\n<task-message id="k3vq8m2xpa" [^>]+>\nMerge the two choir notes\.\n<\/task-message fence="\w+">$/u,
       ),
     }),
   );

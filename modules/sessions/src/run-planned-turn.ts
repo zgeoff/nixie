@@ -1,4 +1,4 @@
-import type { StepInput } from '@heynixie/tasks';
+import type { StepInput, TaskBrief } from '@heynixie/tasks';
 import { ownerMessageCodec } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
 import type { CompletedTurn } from './build-step-result';
@@ -19,6 +19,12 @@ export interface SessionTurn {
   readonly input: StepInput;
   readonly definitions: SessionDefinitions;
   readonly context: TurnContext;
+
+  // the task's own brief, or null for a task with none
+  readonly brief: TaskBrief | null;
+
+  // whether the task has opened no session yet
+  readonly isFirstSession: boolean;
 
   readonly invalidatedThrough: number;
 
@@ -80,6 +86,10 @@ function readOpening(
     times,
     zone: findNewestZone(turn.input.inbox),
     pinnedMemory: turn.context.pinnedMemory,
+    brief: turn.brief,
+    isFirstSession: turn.isFirstSession,
+    messaging: turn.run.messaging,
+    inbox: turn.input.inbox,
     model: turn.run.profile.profile.model,
     status: turn.run.status,
     ...(turn.run.readTurnNote === undefined ? {} : { readTurnNote: turn.run.readTurnNote }),

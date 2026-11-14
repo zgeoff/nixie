@@ -50,7 +50,7 @@ async function setupTest() {
     getPrompts: () => ({}),
     ownerName: 'Marisol',
     defaultZone: 'UTC',
-    messaging: { directory: [], hopLimit: 20, ownerName: 'Marisol' },
+    messaging: { directory: [], hopLimit: 20, ownerName: 'Marisol', agentName: null },
     onError: (error) => {
       throw error;
     },

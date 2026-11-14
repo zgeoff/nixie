@@ -45,7 +45,7 @@ export async function createWriterProposal(
       ownerName: null,
       assistantName: null,
       defaultZone: 'UTC',
-      messaging: { directory: [], hopLimit: 20, ownerName: null },
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
       ...createStubWriterSession({
         op: 'remember',
         subject: request.subject ?? 'owner',

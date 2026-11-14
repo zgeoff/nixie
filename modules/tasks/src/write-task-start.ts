@@ -5,12 +5,14 @@ import { parseStepRunID } from './parse-step-run-id';
 import { readLeasedStepHop } from './read-leased-step-hop';
 import { taskCreatedCodec } from './task-created-codec';
 import type { TaskRunOptions, TasksContext, TasksTables } from './types';
+import { writeBriefMessageInTransaction } from './write-brief-message-in-transaction';
 
 export interface TaskStartRequest {
   readonly from: string;
   readonly name: string;
   readonly brief: string;
   readonly options: TaskRunOptions;
+  readonly hopLimit: number;
   readonly stepRunID: string | null;
 }
 
@@ -83,6 +85,8 @@ async function writeStartAttempt(
     const taskID = earlier.taskID ?? createShortID();
 
     if (earlier.taskID === null) {
+      const briefMessageID = createShortID();
+
       await writeRecordsInTransaction(tx, context.log, [
         {
           kind: 'task.created',
@@ -95,10 +99,19 @@ async function writeStartAttempt(
             startedBy: request.from,
             startStep: step.stepKey,
             options: request.options,
+            briefMessageID,
           }),
-          erasable: { name: request.name, brief: request.brief },
+          erasable: { name: request.name },
         },
       ]);
+
+      await writeBriefMessageInTransaction(tx, context, {
+        messageID: briefMessageID,
+        from: request.from,
+        to: taskID,
+        hopLimit: request.hopLimit,
+        body: request.brief,
+      });
     }
 
     return { status: 'started', taskID };

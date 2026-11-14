@@ -94,12 +94,14 @@ test('it reads the actions each stop cancelled and the names of the started task
         name: 'Conversation',
         brief: 'Talks with the owner and answers each message.',
         isWokenByMessages: true,
+        speaker: 'conversation',
       },
       {
         taskID: 'k3x9m2p7qa',
         name: 'Garden plan',
         brief: 'Plan the beds.',
         isWokenByMessages: true,
+        speaker: 'plain_task',
       },
     ],
   });

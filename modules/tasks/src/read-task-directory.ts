@@ -1,4 +1,6 @@
 import { readRecords } from '@heynixie/log';
+import { readTaskBriefs } from './read-task-briefs';
+import { taskCreatedCodec } from './task-created-codec';
 import type { TaskMessaging, TaskProfile, TasksContext, TasksTables } from './types';
 
 export async function readTaskDirectory<Messaging extends Pick<TaskMessaging, 'directory'>>(
@@ -23,18 +25,25 @@ export async function readTaskDirectory<Messaging extends Pick<TaskMessaging, 'd
     limit: rows.length,
   });
 
-  const fields = new Map(created.map((entry) => [entry.record.sequence, entry.record.erasable]));
+  const records = new Map(created.map((entry) => [entry.record.sequence, entry.record]));
+
+  const briefs = await readTaskBriefs(
+    context,
+    rows.map((row) => row.task_id),
+  );
 
   const started = rows.map((row): TaskProfile => {
-    const erasable = fields.get(row.created_sequence);
+    const record = records.get(row.created_sequence);
+    const erasable = record?.erasable;
     const name = erasable?.status === 'readable' ? erasable.fields['name'] : undefined;
-    const brief = erasable?.status === 'readable' ? erasable.fields['brief'] : undefined;
+    const options = record === undefined ? null : taskCreatedCodec.tryDecodePartial(record.payload);
 
     return {
       taskID: row.task_id,
-      name: typeof name === 'string' ? name : `Task ${row.task_id}`,
-      brief: typeof brief === 'string' ? brief : '',
+      name: typeof name === 'string' ? name : row.task_id,
+      brief: briefs.get(row.task_id)?.body ?? '',
       isWokenByMessages: true,
+      speaker: options?.options?.persona === 'default' ? 'persona_task' : 'plain_task',
     };
   });
 

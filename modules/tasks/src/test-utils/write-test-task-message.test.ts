@@ -23,8 +23,20 @@ test("it sends the message as the sender's step that holds its lease now", async
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task',
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation',
+        },
       ],
       hopLimit: 20,
     },

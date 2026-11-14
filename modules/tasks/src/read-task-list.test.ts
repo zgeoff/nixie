@@ -27,9 +27,27 @@ test('it lists the other tasks in the directory, the most recently active first'
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-        { taskID: 'critic', name: 'Critic', brief: 'Checks plans.', isWokenByMessages: true },
-        { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'critic',
+          name: 'Critic',
+          brief: 'Checks plans.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks.',
+          isWokenByMessages: true,
+          speaker: 'conversation' as const,
+        },
       ],
     },
     { callerID: 'conversation', limit: 20 },
@@ -71,7 +89,13 @@ test.each([
     ctx.context,
     {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
       ],
     },
     { callerID, limit: 20 },
@@ -86,7 +110,13 @@ test('it lists each task with the model it started on and the kind of the last m
 
   const messaging = {
     directory: [
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
   };
@@ -114,7 +144,13 @@ test('it lists each task with the model it started on and the kind of the last m
     ctx.context,
     {
       directory: [
-        { taskID, name: 'Second look', brief: 'Find the weak points.', isWokenByMessages: true },
+        {
+          taskID,
+          name: 'Second look',
+          brief: 'Find the weak points.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
       ],
     },
     { callerID: 'conversation', limit: 20 },
@@ -139,8 +175,20 @@ test('it shows a task that asked a question as waiting on the task it asked', as
 
   const messaging = {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
   };
@@ -186,12 +234,19 @@ test.each(['question', 'request'] as const)(
 
     const messaging = {
       directory: [
-        { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
+        {
+          taskID: 'planner',
+          name: 'Planner',
+          brief: 'Plans the week.',
+          isWokenByMessages: true,
+          speaker: 'plain_task' as const,
+        },
         {
           taskID: 'memory-writer',
           name: 'Memory writer',
           brief: 'Saves memory.',
           isWokenByMessages: false,
+          speaker: 'plain_task' as const,
         },
       ],
       hopLimit: 20,
@@ -244,8 +299,20 @@ test('it clears the wait when the asked task replies to the question, by its ID'
 
   const messaging = {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
   };
@@ -314,8 +381,20 @@ test('it clears the wait when the task that asked finishes', async () => {
 
   const messaging = {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
   };
@@ -363,8 +442,20 @@ test('it clears the wait when the asked task stops on its errors', async () => {
 
   const messaging = {
     directory: [
-      { taskID: 'planner', name: 'Planner', brief: 'Plans the week.', isWokenByMessages: true },
-      { taskID: 'critic', name: 'Critic', brief: 'Checks plans.', isWokenByMessages: true },
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'critic',
+        name: 'Critic',
+        brief: 'Checks plans.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
     ],
     hopLimit: 20,
   };

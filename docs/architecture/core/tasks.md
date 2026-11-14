@@ -17,7 +17,7 @@ are not built. The [glossary](../../glossary.md) defines a task run and a lease.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> ready: a task is created with its brief
+  [*] --> ready: a task is created with its brief message
   [*] --> waiting: the conversation is created
   ready --> running: a runner claims a step
   running --> ready: the step commits with work left, or throws

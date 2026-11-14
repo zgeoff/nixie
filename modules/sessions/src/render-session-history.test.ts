@@ -1,13 +1,18 @@
 import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import { renderSessionHistory } from './render-session-history';
+import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
 
 test('it renders nothing for a thread with no earlier turn', () => {
   expect(
-    renderSessionHistory([], {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
+    renderSessionHistory(
+      [],
+      {
+        defaultZone: 'Australia/Sydney',
+        now: new Date('2026-10-13T05:00:00Z'),
+      },
+      buildMockTaskMessageView(),
+    ),
   ).toBeNull();
 });
 
@@ -46,6 +51,7 @@ test('it renders the recent turns in order after a heading, each line with its e
         defaultZone: 'Australia/Sydney',
         now: new Date('2026-10-12T20:16:00Z'),
       },
+      buildMockTaskMessageView(),
     ),
   ).toMatchInlineSnapshot(`
     "The most recent turns before this session, oldest first, word for word. Older turns are in the event log.

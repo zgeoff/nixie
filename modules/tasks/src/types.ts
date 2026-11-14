@@ -61,7 +61,13 @@ export interface TaskProfile {
   readonly name: string;
   readonly brief: string;
   readonly isWokenByMessages: boolean;
+
+  // who a message from the task speaks as: the conversation, a task with the persona, or a task
+  // without it
+  readonly speaker: TaskSpeaker;
 }
+
+export type TaskSpeaker = 'conversation' | 'persona_task' | 'plain_task';
 
 export type TaskPersona = 'default' | 'none';
 
@@ -106,6 +112,7 @@ export interface TaskMessaging {
   readonly directory: readonly TaskProfile[];
   readonly hopLimit: number;
   readonly ownerName: string | null;
+  readonly agentName: string | null;
 }
 
 export interface StepErrored {

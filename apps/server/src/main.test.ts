@@ -264,7 +264,7 @@ test('it shows the model when each message was sent, in its own zone or the defa
       input: [
         {
           text: expect.stringMatching(
-            /\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney · laptop\] Hi\.$/u,
+            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney" session="laptop">\nHi\.\n<\/owner-message>$/u,
           ),
         },
       ],
@@ -273,7 +273,7 @@ test('it shows the model when each message was sent, in its own zone or the defa
       input: [
         {
           text: expect.stringMatching(
-            /\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo · laptop\] Just landed\.$/u,
+            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo" session="laptop">\nJust landed\.\n<\/owner-message>$/u,
           ),
         },
       ],
@@ -322,7 +322,7 @@ test('it shows the model when you typed a message that reached nixie over 2 minu
       input: [
         {
           text: expect.stringMatching(
-            /\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo · laptop\] Back home\.$/u,
+            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo" session="laptop">\nBack home\.\n<\/owner-message>$/u,
           ),
         },
       ],
@@ -331,7 +331,7 @@ test('it shows the model when you typed a message that reached nixie over 2 minu
       input: [
         {
           text: expect.stringMatching(
-            /\[#\d+ · typed (?:\w{3} \d{1,2} \w{3}(?: \d{4})?, )?\d{2}:\d{2}, sent \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo · laptop\] Book the dentist\.$/u,
+            /<owner-message id="\d+" from="[^"]+" sent="typed (?:\w{3} \d{1,2} \w{3}(?: \d{4})?, )?\d{2}:\d{2}, sent \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo" session="laptop">\nBook the dentist\.\n<\/owner-message>$/u,
           ),
         },
       ],
@@ -367,7 +367,7 @@ test('it shows the model the label you set on a session through the session comm
       input: [
         {
           text: expect.stringMatching(
-            /\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney · work PC\] Hi\.$/u,
+            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney" session="work PC">\nHi\.\n<\/owner-message>$/u,
           ),
         },
       ],
@@ -437,9 +437,9 @@ test('it applies a remembered fact cited by the event ID its stamp showed, with 
   );
 
   const eventID = Number(
-    /\[#(?<eventID>\d+) · [^\]]+\] My bike lock/u.exec(JSON.stringify(ctx.guest.turns))?.groups?.[
-      'eventID'
-    ],
+    /<owner-message id=\\"(?<eventID>\d+)\\"[^>]*>\\nMy bike lock/u.exec(
+      JSON.stringify(ctx.guest.turns),
+    )?.groups?.['eventID'],
   );
 
   ctx.guest.addReplies(

@@ -35,7 +35,7 @@ test('it renders the system prompt with the session prompt override in force', a
         recallMessages: () => Promise.resolve({ messages: [] }),
       }),
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null },
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -44,6 +44,7 @@ test('it renders the system prompt with the session prompt override in force', a
       prompts: { session: { parts: {}, template: '{{ persona }}\n{{ parts.safety }}' } },
       skillCatalog: null,
       batch: [],
+      brief: null,
       previousCore: null,
       isNewSession: true,
       isFirstSession: true,
@@ -92,10 +93,12 @@ test("it puts no task board in the conversation's turn, with a started task in t
             name: 'Garden plan',
             brief: 'Plan the beds.',
             isWokenByMessages: true,
+            speaker: 'plain_task',
           },
         ],
         hopLimit: 20,
         ownerName: null,
+        agentName: null,
       },
     },
     {
@@ -104,6 +107,7 @@ test("it puts no task board in the conversation's turn, with a started task in t
       prompts: {},
       skillCatalog: null,
       batch: [],
+      brief: null,
       previousCore: null,
       isNewSession: false,
       isFirstSession: false,
@@ -150,7 +154,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
       frame: { kind: 'conversation' } as const,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null },
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -159,6 +163,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
       prompts: {},
       skillCatalog: null,
       batch: [],
+      brief: null,
       previousCore: [{ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01', version: 1 }],
       isNewSession: false,
       isFirstSession: false,
@@ -205,7 +210,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
       frame: { kind: 'conversation' } as const,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null },
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -214,6 +219,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
       prompts: {},
       skillCatalog: null,
       batch: [],
+      brief: null,
       previousCore: [{ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01', version: 1 }],
       isNewSession: false,
       isFirstSession: false,
@@ -225,7 +231,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
   expect(context.preamble.join('\n')).toInclude('Pinned memory now: 1 item, 31 of 2000 tokens.');
 });
 
-test("it renders a started task's first turn with the task prompt, a start note, and no memory or board", async () => {
+test("it renders a started task's first turn with the task prompt, no start note, and no memory or board", async () => {
   const ctx = await setupTest();
 
   const context = await readTurnContext(
@@ -240,10 +246,12 @@ test("it renders a started task's first turn with the task prompt, a start note,
             name: 'Tide tables',
             brief: 'Find the high tides for Saturday.',
             isWokenByMessages: true,
+            speaker: 'plain_task',
           },
         ],
         hopLimit: 20,
         ownerName: 'Robin',
+        agentName: null,
       },
       defaultZone: 'UTC',
     },
@@ -253,6 +261,7 @@ test("it renders a started task's first turn with the task prompt, a start note,
       prompts: {},
       skillCatalog: null,
       batch: [],
+      brief: null,
       previousCore: null,
       isNewSession: true,
       isFirstSession: true,
@@ -261,22 +270,16 @@ test("it renders a started task's first turn with the task prompt, a start note,
   );
 
   expect(context).toStrictEqual({
-    systemPrompt: expect.stringMatching(
-      /^You are "Tide tables", one of the tasks that nixie runs for Robin\./u,
-    ),
+    systemPrompt: expect.stringMatching(/^You are "Tide tables", a task working for Robin\./u),
     pinnedMemory: null,
-    preamble: [
-      expect.stringMatching(
-        /^<system-message type="task-start" [^>]+>\nYour task starts now: do what the brief in your instructions asks\. When you have the result, send it with task\.message to conversation, the task that started you, with the kind report\.\n<\/system-message/u,
-      ),
-    ],
+    preamble: [],
     pinnedCore: [],
     retrieved: [],
     retrievedMessages: [],
   });
 });
 
-test('it tells a task started with no report to send its starter none', async () => {
+test('it puts the brief that a task of the release before holds in its creation record last in the preamble of its first turn', async () => {
   const ctx = await setupTest();
 
   const context = await readTurnContext(
@@ -284,7 +287,7 @@ test('it tells a task started with no report to send its starter none', async ()
       context: ctx.tasks.context,
       frame: { kind: 'task', startedBy: 'conversation', report: 'none' },
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null },
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -293,6 +296,14 @@ test('it tells a task started with no report to send its starter none', async ()
       prompts: {},
       skillCatalog: null,
       batch: [],
+      brief: {
+        origin: 'created',
+        taskID: 'k3x9m2p7qa',
+        from: 'conversation',
+        sequence: 4,
+        sentAt: new Date('2026-10-14T12:00:00Z'),
+        body: 'Find the high tides for Saturday.',
+      },
       previousCore: null,
       isNewSession: true,
       isFirstSession: true,
@@ -302,20 +313,20 @@ test('it tells a task started with no report to send its starter none', async ()
 
   expect(context.preamble).toStrictEqual([
     expect.stringMatching(
-      /^<system-message type="task-start" [^>]+>\nYour task starts now: do what the brief in your instructions asks\. The task that started you, conversation, asked for no report, so send it none\.\n<\/system-message/u,
+      /^<task-message id="k3x9m2p7qa" from="task: conversation" kind="request" sent="[^"]+" fence="(?<fence>\w+)">\nFind the high tides for Saturday\.\n<\/task-message fence="\k<fence>">$/u,
     ),
   ]);
 });
 
-test("it gives a started task's rebuilt session no start note", async () => {
+test('it leaves the brief of a task of the release before out of the preamble once the task has a session', async () => {
   const ctx = await setupTest();
 
   const context = await readTurnContext(
     {
       context: ctx.tasks.context,
-      frame: { kind: 'task', startedBy: 'conversation', report: 'wake' },
+      frame: { kind: 'task', startedBy: 'conversation', report: 'none' },
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null },
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -324,6 +335,42 @@ test("it gives a started task's rebuilt session no start note", async () => {
       prompts: {},
       skillCatalog: null,
       batch: [],
+      brief: {
+        origin: 'created',
+        taskID: 'k3x9m2p7qa',
+        from: 'conversation',
+        sequence: 4,
+        sentAt: new Date('2026-10-14T12:00:00Z'),
+        body: 'Find the high tides for Saturday.',
+      },
+      previousCore: null,
+      isNewSession: true,
+      isFirstSession: false,
+      isContinuation: false,
+    },
+  );
+
+  expect(context.preamble).toStrictEqual([]);
+});
+
+test("it gives a started task's rebuilt session no preamble block", async () => {
+  const ctx = await setupTest();
+
+  const context = await readTurnContext(
+    {
+      context: ctx.tasks.context,
+      frame: { kind: 'task', startedBy: 'conversation', report: 'wake' },
+      memorySettings: ctx.memorySettings,
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      defaultZone: 'UTC',
+    },
+    {
+      taskID: 'k3x9m2p7qa',
+      persona: '',
+      prompts: {},
+      skillCatalog: null,
+      batch: [],
+      brief: null,
       previousCore: null,
       isNewSession: true,
       isFirstSession: false,
@@ -342,7 +389,7 @@ test('it tells a started task whose cut work it carries on to continue that work
       context: ctx.tasks.context,
       frame: { kind: 'task', startedBy: 'conversation', report: 'wake' },
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null },
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -351,6 +398,7 @@ test('it tells a started task whose cut work it carries on to continue that work
       prompts: {},
       skillCatalog: null,
       batch: [],
+      brief: null,
       previousCore: null,
       isNewSession: false,
       isFirstSession: false,

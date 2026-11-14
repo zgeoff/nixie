@@ -1,6 +1,7 @@
 import { withWriteTransaction } from '@heynixie/log';
 import { buildInputHash } from './build-input-hash';
 import { probeLiveIdentity } from './probe-live-identity';
+import { readBriefStartCalls } from './read-brief-start-calls';
 import type { ClientAction } from './read-client-action';
 import { readClientAction } from './read-client-action';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
@@ -25,6 +26,10 @@ export async function writeRecordForget(
   caller: Identity,
   input: RecordForgetInput,
 ): Promise<RecordForgetResult> {
+  // The search reads the brief's text, which the cleanup destroys, so it runs before the forget
+  // starts and the forget's start record keeps what it found.
+  const startCalls = await readBriefStartCalls(context, input.sequence);
+
   const result = await withWriteTransaction(context.log.writer, async (tx) => {
     const [live, earlier] = await Promise.all([
       probeLiveIdentity(tx, context, caller.identityID),
@@ -38,7 +43,7 @@ export async function writeRecordForget(
       return settled;
     }
 
-    const forgottenAt = await writeForgetStart(tx, context, input);
+    const forgottenAt = await writeForgetStart(tx, context, input, startCalls);
 
     if (forgottenAt === null) {
       return { status: 'not_found' } as const;

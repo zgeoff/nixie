@@ -10,7 +10,7 @@ async function setupTest() {
     run: {
       context: tasks.context,
       defaultZone: 'Australia/Sydney',
-      messaging: { directory: [], hopLimit: 20, ownerName: null },
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
       imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
     },
   };

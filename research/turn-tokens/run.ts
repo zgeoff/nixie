@@ -69,7 +69,7 @@ const [role = '', model = '', effort = 'low'] = process.argv.slice(2);
 const proxy = startCountProxy();
 const lines = { ownerName: fixtures.ownerName, defaultZone: 'Europe/Lisbon', now: new Date(fixtures.day) };
 const view = {
-  messaging: { directory: [], hopLimit: 20, ownerName: fixtures.ownerName },
+  messaging: { directory: [], hopLimit: 20, ownerName: fixtures.ownerName, agentName: null },
   wake: { hop: 0, cause: { kind: 'owner' as const } },
 };
 const dir = import.meta.dir;

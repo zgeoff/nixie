@@ -73,7 +73,7 @@ test('it carries each item of a live batch as an events line on the next convers
   invariant(turn?.frame.type === 'turn');
 
   expect(turn.frame.input.map((message) => message.text).join('\n')).toMatch(
-    /(?<listed>- \w{3} \d{1,2} \w{3}, \d{2}:\d{2}, UTC · Remembered \[[^\]]+\]: "You have a pet called \w+\."\n){6}<\/system-message id="[\da-f]{12}">\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\./u,
+    /(?<listed>- \w{3} \d{1,2} \w{3}, \d{2}:\d{2}, UTC · Remembered \[[^\]]+\]: "You have a pet called \w+\."\n){6}<\/system-message id="[\da-f]{12}">\n\n<owner-message id="\d+" [^>]+>\nHi\.\n<\/owner-message>/u,
   );
 });
 

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
+import { readInbox } from './read-inbox';
 import { readStartedTaskIDs } from './read-started-task-ids';
 import type { ConversationStep } from './test-utils/seed-conversation-step';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
@@ -26,7 +27,13 @@ async function setupTest() {
 
       invariant(claim, 'a started task is ready');
 
-      await writeStepCommit(tasks.context, claim, { next: 'done', records: [], acknowledged: [] });
+      const inbox = await readInbox(tasks.context, claim.lease.workID);
+
+      await writeStepCommit(tasks.context, claim, {
+        next: 'done',
+        records: [],
+        acknowledged: inbox.map((record) => record.sequence),
+      });
     },
   };
 }

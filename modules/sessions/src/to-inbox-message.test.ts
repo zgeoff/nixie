@@ -21,7 +21,7 @@ test('it passes each image of your message in base64 after its marker, and leave
 
   expect(message).toStrictEqual({
     uuid: expect.toBeString(),
-    text: '[#48213 · Mon 12 Oct, 21:31, Sydney] Which poster?',
+    text: '<owner-message id="48213" from="the owner" sent="Mon 12 Oct, 21:31, Sydney">\nWhich poster?\n</owner-message>',
     images: [
       { marker: expect.toBeString(), mediaType: 'image/png', data: 'iVBORw==' },
       { marker: expect.toBeString(), mediaType: 'image/jpeg', data: '/9j/4A==' },
@@ -49,7 +49,7 @@ test('it passes a message with no images as its text alone', () => {
     ),
   ).toStrictEqual({
     uuid: expect.toBeString(),
-    text: '[#48213 · Mon 12 Oct, 21:31, Sydney] Only words.',
+    text: '<owner-message id="48213" from="the owner" sent="Mon 12 Oct, 21:31, Sydney">\nOnly words.\n</owner-message>',
   });
 });
 

@@ -7,12 +7,14 @@ test('it reads a task that never opened a session as fresh', () => {
       marks: {
         isInvalidated: false,
         hasOpening: false,
+        isBriefUnmarked: false,
         openedPersonaHash: null,
         isSummarized: false,
         lastContext: null,
       },
       boundary: null,
       personaHash: 'sha256:persona-a',
+      isTask: false,
       threshold: 0.8,
     }),
   ).toStrictEqual({ state: 'fresh', boundary: null });
@@ -24,12 +26,14 @@ test('it reads a session with a summary after its last opening as summarized', (
       marks: {
         isInvalidated: false,
         hasOpening: true,
+        isBriefUnmarked: false,
         openedPersonaHash: null,
         isSummarized: true,
         lastContext: null,
       },
       boundary: null,
       personaHash: 'sha256:persona-a',
+      isTask: false,
       threshold: 0.8,
     }),
   ).toStrictEqual({ state: 'summarized', boundary: null });
@@ -41,6 +45,7 @@ test('it reads an opened session at its boundary under the threshold as resumabl
       marks: {
         isInvalidated: false,
         hasOpening: true,
+        isBriefUnmarked: false,
         openedPersonaHash: 'sha256:persona-a',
         isSummarized: false,
         lastContext: { size: 79_000, window: 100_000 },
@@ -51,6 +56,7 @@ test('it reads an opened session at its boundary under the threshold as resumabl
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
       personaHash: 'sha256:persona-a',
+      isTask: false,
       threshold: 0.8,
     }),
   ).toStrictEqual({
@@ -69,6 +75,7 @@ test('it reads an opened session at its boundary past the threshold as due for c
       marks: {
         isInvalidated: false,
         hasOpening: true,
+        isBriefUnmarked: false,
         openedPersonaHash: 'sha256:persona-a',
         isSummarized: false,
         lastContext: { size: 80_000, window: 100_000 },
@@ -79,6 +86,7 @@ test('it reads an opened session at its boundary past the threshold as due for c
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
       personaHash: 'sha256:persona-a',
+      isTask: false,
       threshold: 0.8,
     }),
   ).toStrictEqual({
@@ -97,6 +105,7 @@ test('it reads a session that a forget invalidated as invalidated, past the thre
       marks: {
         isInvalidated: true,
         hasOpening: true,
+        isBriefUnmarked: false,
         openedPersonaHash: 'sha256:persona-a',
         isSummarized: false,
         lastContext: { size: 90_000, window: 100_000 },
@@ -107,6 +116,7 @@ test('it reads a session that a forget invalidated as invalidated, past the thre
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
       personaHash: 'sha256:persona-a',
+      isTask: false,
       threshold: 0.8,
     }),
   ).toStrictEqual({
@@ -126,12 +136,14 @@ test('it reads a forget with no session open as invalidated', () => {
       marks: {
         isInvalidated: true,
         hasOpening: false,
+        isBriefUnmarked: false,
         openedPersonaHash: null,
         isSummarized: false,
         lastContext: null,
       },
       boundary: null,
       personaHash: 'sha256:persona-a',
+      isTask: false,
       threshold: 0.8,
     }),
   ).toStrictEqual({ state: 'invalidated', boundary: null, cause: 'forget' });
@@ -143,6 +155,7 @@ test('it reads a boundary from before opening records as lost', () => {
       marks: {
         isInvalidated: false,
         hasOpening: false,
+        isBriefUnmarked: false,
         openedPersonaHash: null,
         isSummarized: false,
         lastContext: null,
@@ -153,6 +166,7 @@ test('it reads a boundary from before opening records as lost', () => {
         messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
       },
       personaHash: 'sha256:persona-a',
+      isTask: false,
       threshold: 0.8,
     }),
   ).toStrictEqual({
@@ -171,11 +185,13 @@ test('it reads an opened session under another persona as invalidated by the per
       marks: {
         isInvalidated: false,
         hasOpening: true,
+        isBriefUnmarked: false,
         openedPersonaHash: 'sha256:persona-a',
         isSummarized: false,
         lastContext: { size: 90_000, window: 100_000 },
       },
       personaHash: 'sha256:persona-b',
+      isTask: false,
       boundary: {
         harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
@@ -200,11 +216,13 @@ test('it reads a session that a forget invalidated under another persona as inva
       marks: {
         isInvalidated: true,
         hasOpening: true,
+        isBriefUnmarked: false,
         openedPersonaHash: 'sha256:persona-a',
         isSummarized: false,
         lastContext: null,
       },
       personaHash: 'sha256:persona-b',
+      isTask: false,
       boundary: {
         harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
@@ -229,11 +247,13 @@ test('it reads a session opened before openings kept the persona hash as resumab
       marks: {
         isInvalidated: false,
         hasOpening: true,
+        isBriefUnmarked: false,
         openedPersonaHash: null,
         isSummarized: false,
         lastContext: null,
       },
       personaHash: 'sha256:persona-b',
+      isTask: false,
       boundary: {
         harness: 'agent-sdk',
         sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
@@ -249,4 +269,57 @@ test('it reads a session opened before openings kept the persona hash as resumab
       messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
     },
   });
+});
+
+test('it reads the session of a started task as lost when its opening kept no brief mark, so the next step rebuilds it', () => {
+  expect(
+    pickSessionPosition({
+      marks: {
+        isInvalidated: false,
+        hasOpening: true,
+        isBriefUnmarked: true,
+        openedPersonaHash: null,
+        isSummarized: false,
+        lastContext: null,
+      },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
+        messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
+      },
+      personaHash: 'sha256:persona-a',
+      isTask: true,
+      threshold: 0.8,
+    }),
+  ).toStrictEqual({
+    state: 'lost',
+    boundary: {
+      harness: 'agent-sdk',
+      sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
+      messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
+    },
+  });
+});
+
+test('it leaves the session of the conversation resumable when its opening kept no brief mark', () => {
+  expect(
+    pickSessionPosition({
+      marks: {
+        isInvalidated: false,
+        hasOpening: true,
+        isBriefUnmarked: true,
+        openedPersonaHash: null,
+        isSummarized: false,
+        lastContext: null,
+      },
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
+        messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
+      },
+      personaHash: 'sha256:persona-a',
+      isTask: false,
+      threshold: 0.8,
+    }),
+  ).toMatchObject({ state: 'resumable' });
 });

@@ -3,7 +3,11 @@ export { buildTaskMessageTool } from './build-task-message-tool';
 export { buildTaskStartTool } from './build-task-start-tool';
 export { buildTasksListTool } from './build-tasks-list-tool';
 export { readOwnerMessageTakers } from './read-owner-message-takers';
+export { readTaskBrief } from './read-task-brief';
+export { readTaskBriefs } from './read-task-briefs';
 export { readTaskDirectory } from './read-task-directory';
+export { isBriefRecord } from './is-brief-record';
+export type { TaskBrief } from './task-brief';
 export type { ListedTask } from './read-task-list';
 export { readTaskList } from './read-task-list';
 export type { ConversationRetryOutcome } from './write-conversation-retry-in-transaction';
@@ -112,6 +116,7 @@ export type {
   TaskMessaging,
   TaskProfile,
   TaskRow,
+  TaskSpeaker,
   TaskState,
   TasksContext,
   TasksTables,

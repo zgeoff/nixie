@@ -20,5 +20,8 @@ export const modelSessionOpenedCodec = defineRecordCodec(
     personaHash: z.string(),
     policyHash: z.string(),
     sessionKey: z.uuid().exactOptional(),
+
+    // the sequence of the brief this opening accounted for, or null when the task has none
+    briefSequence: z.int().nullable().exactOptional(),
   }),
 );

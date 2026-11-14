@@ -63,10 +63,12 @@ test('it counts the messages past the hop limit by their sender in one system me
             name: 'Memory writer',
             brief: 'Saves memories.',
             isWokenByMessages: true,
+            speaker: 'plain_task',
           },
         ],
         hopLimit: 20,
         ownerName: 'Robin',
+        agentName: null,
       },
     }),
   );

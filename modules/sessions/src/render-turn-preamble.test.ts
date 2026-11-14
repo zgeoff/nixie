@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { renderTurnPreamble } from './render-turn-preamble';
 
-test('it renders the start note, the continuation note, the change note, the facts, the self-notes, the past messages and the task board in that order', () => {
+test('it renders the continuation note, the change note, the facts, the self-notes, the past messages and the task board in that order', () => {
   const fact = {
     itemID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
     shortID: 'h4ns8w1cpe',
@@ -18,7 +18,6 @@ test('it renders the start note, the continuation note, the change note, the fac
 
   const preamble = renderTurnPreamble(
     {
-      start: 'Your task starts now.',
       continuation: 'Continue the work.',
       changes: '- Unpinned [r2vd6t0jmy]',
       retrieval: {
@@ -36,6 +35,7 @@ test('it renders the start note, the continuation note, the change note, the fac
       },
       thread: 'garden',
       at: 'Wed 14 Oct, 12:00, UTC',
+      brief: null,
     },
     { ownerName: 'Sam', defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
   );
@@ -43,7 +43,6 @@ test('it renders the start note, the continuation note, the change note, the fac
   expect(
     preamble.map((block) => /^<system-message type="(?<type>[\w-]+)"/u.exec(block)?.[1]),
   ).toStrictEqual([
-    'task-start',
     'task-continue',
     'pinned-memory-changes',
     'retrieved-memory',
@@ -56,14 +55,31 @@ test('it leaves out each block with nothing in it', () => {
   expect(
     renderTurnPreamble(
       {
-        start: null,
         continuation: null,
         changes: null,
         retrieval: { items: [], selfNotes: [], messages: [] },
         thread: 'garden',
         at: 'Wed 14 Oct, 12:00, UTC',
+        brief: null,
       },
       { ownerName: null, defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
     ),
   ).toStrictEqual([]);
+});
+
+test('it puts the brief that sits in no inbox record last', () => {
+  const preamble = renderTurnPreamble(
+    {
+      continuation: 'Continue the work.',
+      changes: null,
+      retrieval: { items: [], selfNotes: [], messages: [] },
+      thread: 'garden',
+      at: 'Wed 14 Oct, 12:00, UTC',
+      brief: '<task-message id="t4m2">Find quiet cafes.</task-message>',
+    },
+    { ownerName: null, defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
+  );
+
+  expect(preamble.at(-1)).toBe('<task-message id="t4m2">Find quiet cafes.</task-message>');
+  expect(preamble).toHaveLength(2);
 });
