@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { ContractClient } from '@heynixie/contract';
+import { clientHeaderName } from '@heynixie/contract';
 import { pendingRestoreSchema } from '@heynixie/log';
 import {
   createTestClient,
@@ -8,6 +10,9 @@ import {
   sendClientMessage,
   startSpawnedNixie,
 } from '@heynixie/server/test-utils';
+import { waitForCondition } from '@heynixie/testing';
+import { createORPCClient } from '@orpc/client';
+import { RPCLink } from '@orpc/client/fetch';
 
 test('it backs up a running server and restores it into an empty data directory through the nixie executable, and the restarted server starts paused and takes no step until nixie resumes', async () => {
   const nixie = await startSpawnedNixie();
@@ -45,6 +50,8 @@ test('it backs up a running server and restores it into an empty data directory 
 
   const pending = pendingRestoreSchema.parse(JSON.parse(marker));
   const restarted = nixie.harness.start();
+
+  const listening = await restarted.waitForLogEvent('http.listening');
 
   await restarted.ready;
 
@@ -91,6 +98,8 @@ test('it backs up a running server and restores it into an empty data directory 
     ),
   ).toStrictEqual([]);
 
+  nixie.model.addReplies({ text: 'Fig-reply-8RD3' });
+
   await restarted.request('resumeNixie', null);
 
   const resumed = await nixie.waitForRecord((record) => record.kind === 'nixie.resumed');
@@ -103,13 +112,29 @@ test('it backs up a running server and restores it into an empty data directory 
       record.payload['sequences'].includes(fired.sequence),
   );
 
-  const conversationStep = await nixie.waitForRecord(
-    (record) =>
-      record.kind === 'task.step_started' &&
-      record.thread === 'conversation' &&
-      record.sequence > resumed.sequence,
+  // The restored key store keeps the device session that enrolled before the backup.
+  const restoredClient = createORPCClient<ContractClient>(
+    new RPCLink({
+      url: `http://127.0.0.1:${String(listening['port'])}/rpc`,
+      headers: { [clientHeaderName]: 'test', authorization: `Bearer ${api.token}` },
+    }),
+  );
+
+  // The turn starts the real SDK in a guest process, which outlasts the helper's default wait on
+  // a busy host.
+  await waitForCondition(
+    async () => {
+      const page = await restoredClient.conversation.read({ thread: 'conversation' });
+
+      return page.records.some(
+        (record) =>
+          record.kind === 'model.reply' &&
+          record.sequence > message.sequence &&
+          record.message?.text === 'Fig-reply-8RD3',
+      );
+    },
+    { timeoutMs: 30_000 },
   );
 
   expect(timerStep.sequence).toBeGreaterThan(resumed.sequence);
-  expect(conversationStep.sequence).toBeGreaterThan(message.sequence);
 });

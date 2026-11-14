@@ -1,11 +1,12 @@
 import { mkdirSync, realpathSync } from 'node:fs';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, rm, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createSandboxID } from '../sandbox/create-sandbox-id';
 import type {
   Sandbox,
   SandboxAdapter,
   SandboxRecorder,
+  SandboxRow,
   SandboxSpec,
   ToolTargetResolver,
 } from '../types';
@@ -63,18 +64,35 @@ export function createProcessSandboxAdapter(input: ProcessSandboxOptions): Sandb
     });
   };
 
+  // A data directory replaced under a kept row, such as by a restore, takes the sandbox's folder
+  // with it, as a host can lose an imp with no destroy from nixie.
+  const readRowSandbox = async (row: SandboxRow): Promise<Sandbox | null> => {
+    if (!live.has(row.sandboxID) && !(await probeDirectory(join(options.rootDir, row.sandboxID)))) {
+      await options.recorder.write({
+        event: 'destroyed',
+        sandboxID: row.sandboxID,
+        reason: 'destroyed',
+      });
+
+      return null;
+    }
+
+    return getSandbox(row.sandboxID, row.spec);
+  };
+
   return {
     id: 'process',
     create: (spec) => createProcessSandbox(options, spec, { getSandbox, removeSandbox }),
     read: async (id) => {
       const row = await options.recorder.readRow('process', id);
 
-      return row ? getSandbox(row.sandboxID, row.spec) : null;
+      return row ? readRowSandbox(row) : null;
     },
     list: async (owner) => {
       const rows = await options.recorder.list('process', owner);
+      const sandboxes = await Promise.all(rows.map((row) => readRowSandbox(row)));
 
-      return rows.map((row) => getSandbox(row.sandboxID, row.spec));
+      return sandboxes.filter((sandbox) => sandbox !== null);
     },
 
     addSecret: () => Promise.resolve(),
@@ -89,6 +107,18 @@ function createRealRootDir(rootDir: string): string {
   mkdirSync(rootDir, { recursive: true });
 
   return realpathSync(rootDir);
+}
+
+async function probeDirectory(path: string): Promise<boolean> {
+  const found = await stat(path).catch((error: unknown) => {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return null;
+    }
+
+    throw error;
+  });
+
+  return found?.isDirectory() ?? false;
 }
 
 interface ProcessSandboxes {

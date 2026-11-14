@@ -121,6 +121,26 @@ test('it lets a restarted adapter list and destroy what the last one made', asyn
   expect(hasDirectory).toBeFalse();
 });
 
+test('it reads a recorded sandbox whose folder is gone as destroyed, so its owner gets a new one', async () => {
+  const ctx = await setupTest();
+  const made = await ctx.adapter.create(buildMockSandboxSpec({ owner: 'task-3:step-1' }));
+
+  await rm(join(ctx.rootDir, made.id), { recursive: true, force: true });
+
+  const restarted = ctx.createAdapter();
+
+  const found = await restarted.read(made.id);
+  const listed = await restarted.list('task-3:step-1');
+  const records = await ctx.readSandboxRecords();
+
+  expect(found).toBeNull();
+  expect(listed).toStrictEqual([]);
+
+  expect(
+    records.filter((record) => record.kind === 'sandbox.destroyed').map((record) => record.payload),
+  ).toStrictEqual([{ sandboxID: made.id, reason: 'destroyed' }]);
+});
+
 test.each([
   ['public egress with a grant', 'fetch', { kind: 'public' }],
   [
