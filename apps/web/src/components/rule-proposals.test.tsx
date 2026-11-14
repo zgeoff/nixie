@@ -32,6 +32,28 @@ test('it lists a pending rule change with the sentence before and after each rul
   expect(card).toHaveTextContent('Now: Deny sending mail.After: Ask before sending mail.');
 });
 
+test('it lists the effect that a pending rule change removes from a tool', async () => {
+  await createDeviceSession();
+
+  await store.ruleProposals.create({
+    proposalID: 'p3fx8k1w6z',
+    effectChanges: [
+      {
+        tool: 'mail.draft',
+        remove: ['send'],
+        sentence: 'mail.draft no longer has the send effect.',
+      },
+    ],
+    lapseAt: new Date(2099, 2, 1),
+  });
+
+  const rendered = render(<RuleProposals />);
+
+  const card = await rendered.findByRole('listitem', { name: 'Rule change p3fx8k1w6z' });
+
+  expect(card).toHaveTextContent('mail.draftmail.draft no longer has the send effect.');
+});
+
 test('it says when no rule change waits', async () => {
   await createDeviceSession();
 

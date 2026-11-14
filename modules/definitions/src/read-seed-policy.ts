@@ -36,7 +36,7 @@ export async function readSeedPolicy(
     tools: input.base.tools,
     overrides: input.overrides,
     inForce: previous,
-    approved: await readApprovedEffectRemovals(tx),
+    approved: await readApprovedEffectRemovals(tx, input.inForce?.recordSequence ?? null),
   });
 
   if (effects.status === 'refused') {

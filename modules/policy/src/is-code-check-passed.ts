@@ -3,13 +3,14 @@ import type { KnownContact } from './types';
 export type IsTypedText = (text: string) => boolean;
 
 // Every destination must appear word for word in typed text, or be the destination of the one known
-// contact whose name appears word for word in typed text. A name two contacts share names no one.
+// contact whose name stands alone as a word in typed text. A name two contacts share names no one.
 export function isCodeCheckPassed(
   destinations: readonly string[],
   contacts: readonly KnownContact[],
   isTyped: IsTypedText,
+  isTypedName: IsTypedText,
 ): boolean {
-  const named = collectTypedNames(contacts, isTyped);
+  const named = collectTypedNames(contacts, isTypedName);
 
   return destinations.every(
     (destination) =>

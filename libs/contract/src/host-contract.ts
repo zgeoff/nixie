@@ -290,9 +290,16 @@ const ruleProposalChangeSchema = z.object({
   after: ruleVersionSchema,
 });
 
+const effectChangeSchema = z.object({
+  tool: z.string(),
+  remove: z.array(z.string()),
+  sentence: z.string(),
+});
+
 const pendingRuleProposalSchema = z.object({
   proposalID: z.string(),
   changes: z.array(ruleProposalChangeSchema),
+  effectChanges: z.array(effectChangeSchema),
   createdAt: z.date(),
   lapseAt: z.date(),
 });

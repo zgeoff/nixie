@@ -9,9 +9,16 @@ const ruleChangeSchema = z.object({
   after: ruleVersionSchema,
 });
 
+const effectChangeSchema = z.object({
+  tool: z.string(),
+  remove: z.array(z.string()),
+  sentence: z.string(),
+});
+
 const ruleProposalSchema = z.object({
   proposalID: z.string(),
   changes: z.array(ruleChangeSchema),
+  effectChanges: z.array(effectChangeSchema),
   createdAt: z.date(),
   lapseAt: z.date(),
 });

@@ -1,9 +1,11 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import type { RuleEntry } from '@heynixie/policy';
+import { replayDecision } from '@heynixie/policy';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { buildToolRegistry } from './build-tool-registry';
 import type { ToolCallOptions } from './run-tool-call';
 import { runToolCall } from './run-tool-call';
@@ -267,6 +269,105 @@ test("it records the call's input in the record form the tool gives", async () =
   expect(entries[0]?.record).toMatchObject({
     kind: 'tool_called',
     erasable: { status: 'readable', fields: { input: { keys: ['query'] } } },
+  });
+});
+
+test('it keeps the arguments the decision read, so a replay of a call with a redacted record input decides again', async () => {
+  const denySecret: RuleEntry = {
+    id: 'deny-secret',
+    revision: 1,
+    rule: {
+      id: 'deny-secret',
+      outcome: 'deny',
+      tools: ['notes_write'],
+      checks: [{ arg: 'query', op: 'eq', value: 'secret' }],
+    },
+  };
+
+  const tool = buildMockToolDefinition({
+    name: 'notes_write',
+    declaration: { effects: ['note'] },
+    recordInput: () => ({}),
+  });
+
+  const ctx = await setupTest({ tools: [tool], rules: [denySecret] });
+
+  await runToolCall(
+    { tool: 'notes_write', input: { query: 'secret' }, toolUseID: 'toolu_4' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_write'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const [called] = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const erasable = called?.record.erasable;
+  const decision = called?.record.decision;
+
+  invariant(decision && erasable?.status === 'readable');
+
+  const fields = erasable.fields;
+
+  const replayed = await replayDecision(
+    {
+      findDeclaration: () => tool.declaration,
+      findJobDestinations: () => [],
+      readInputs: () =>
+        Promise.resolve({
+          rules: [denySecret],
+          contacts: [],
+          tools: new Map(),
+          ownerDestinations: [],
+        }),
+    },
+    {
+      tool: 'notes_write',
+      input: z.record(z.string(), z.json()).parse(fields['args']),
+      destinations: [],
+      decision,
+      snapshot: 'sha256:test',
+      at: 1,
+    },
+  );
+
+  expect({ recorded: fields['input'], decision: replayed?.decision.outcome }).toStrictEqual({
+    recorded: {},
+    decision: 'deny',
+  });
+});
+
+test('it hashes the action proposal of an ask over the whole input, whatever the record form drops', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'files_delete',
+        execution: 'queued',
+        declaration: { effects: ['delete'] },
+        recordInput: () => ({}),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'files_delete', input: { query: 'old' }, toolUseID: 'toolu_9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['files_delete'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries[1]?.record).toMatchObject({
+    kind: 'policy.action_proposed',
+    erasable: { status: 'readable', fields: { input: { query: 'old' } } },
   });
 });
 

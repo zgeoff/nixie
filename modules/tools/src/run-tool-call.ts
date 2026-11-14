@@ -166,6 +166,7 @@ function makeCallRecorder(
             }),
             erasable: {
               input,
+              ...(decided === null || recordInput === undefined ? {} : { args: call.input }),
               ...(destinations.length === 0
                 ? {}
                 : {
@@ -198,7 +199,7 @@ function makeCallRecorder(
           tool: call.tool,
           effects: registered.definition.declaration.effects,
           cause,
-          input,
+          input: call.input,
           destinations,
         });
 

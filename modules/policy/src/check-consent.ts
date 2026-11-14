@@ -3,6 +3,7 @@ import { collectConsentMessages } from './collect-consent-messages';
 import { collectConsentSequences } from './collect-consent-sequences';
 import { consentCheckerPrompt } from './consent-checker-prompt';
 import { isCodeCheckPassed } from './is-code-check-passed';
+import { isTypedWord } from './is-typed-word';
 import { renderConsentInput } from './render-consent-input';
 import type {
   ConsentAnswer,
@@ -55,6 +56,7 @@ export async function checkConsent(
     call.destinations.map((destination) => destination.value),
     facts.contacts,
     (text) => messages.some((message) => options.isTypedText(message, text)),
+    (name) => messages.some((message) => isTypedWord(message, name)),
   );
 
   if (!isCodePassed) {

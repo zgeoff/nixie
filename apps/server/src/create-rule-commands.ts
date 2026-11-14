@@ -79,12 +79,14 @@ interface ListedRuleChange {
 
 interface ListedRuleProposal {
   readonly changes: readonly ListedRuleChange[];
+  readonly effectChanges: readonly { readonly sentence: string }[];
 }
 
 function toRuleEntry<Proposal extends ListedRuleProposal>(proposal: Proposal) {
-  const sentence = proposal.changes
-    .map((change) => `${change.ruleID}: ${change.after?.sentence ?? 'removed'}`)
-    .join('\n');
+  const sentence = [
+    ...proposal.changes.map((change) => `${change.ruleID}: ${change.after?.sentence ?? 'removed'}`),
+    ...proposal.effectChanges.map((change) => change.sentence),
+  ].join('\n');
 
   return { kind: 'rule_change' as const, ...proposal, sentence };
 }

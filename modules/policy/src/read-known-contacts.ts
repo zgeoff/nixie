@@ -23,7 +23,9 @@ export async function readKnownContactIDs(db: Kysely<unknown>): Promise<readonly
   return rows.map((row) => row.contact_id);
 }
 
-// A contact whose marking record a forget erased keeps its row and has no details.
+// Without contact IDs, the contacts marked now. With the IDs of a snapshot, those contacts whether
+// or not they were unmarked since, because a call decides under its own snapshot. A contact whose
+// marking record a forget erased keeps its row and has no details.
 export async function readKnownContacts(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   contactIDs?: readonly string[],
@@ -32,7 +34,7 @@ export async function readKnownContacts(
     .$extendTables<PolicyTables>()
     .selectFrom('known_contacts')
     .select(['contact_id', 'marked_sequence'])
-    .where('unmarked_sequence', 'is', null)
+    .$if(contactIDs === undefined, (query) => query.where('unmarked_sequence', 'is', null))
     .$if(contactIDs !== undefined, (query) => query.where('contact_id', 'in', contactIDs ?? []))
     .orderBy('marked_sequence')
     .execute();

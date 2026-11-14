@@ -364,10 +364,17 @@ const ruleChangeSchema = z.object({
   ruleID: z.string(),
 });
 
+const effectChangeSchema = z.object({
+  tool: z.string(),
+  remove: z.array(z.string()),
+  sentence: z.string(),
+});
+
 const ruleProposals = new Collection({
   schema: z.object({
     changes: z.array(ruleChangeSchema).default(() => []),
     createdAt: z.date().default(() => faker.date.recent()),
+    effectChanges: z.array(effectChangeSchema).default(() => []),
     lapseAt: z.date().default(() => faker.date.soon({ days: 14 })),
     proposalID: z.string().default(() => faker.string.alphanumeric(10).toLowerCase()),
     reason: z.string().nullable().default(null),

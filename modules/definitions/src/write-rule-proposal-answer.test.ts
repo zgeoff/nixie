@@ -8,8 +8,10 @@ import invariant from 'tiny-invariant';
 import { createPathSource } from './create-path-source';
 import { readRuleProposals } from './read-rule-proposals';
 import { readRulesInForce } from './read-rules-in-force';
+import { readSnapshotToolEffects } from './read-snapshot-tool-effects';
 import { runInForceSeed } from './run-in-force-seed';
 import { runSeed } from './run-seed';
+import { buildTestToolDeclaration } from './test-utils/build-test-tool-declaration';
 import { writeRuleProposalAnswer } from './write-rule-proposal-answer';
 
 async function setupTest() {
@@ -50,6 +52,22 @@ async function setupTest() {
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),
       }),
+    runMailSeed: () =>
+      runSeed({
+        log,
+        source: createPathSource({ directory: root }),
+        buildPolicy: () => ({ rules: [], tools: [buildTestToolDeclaration('mail.draft')] }),
+      }),
+    mailContext: {
+      log,
+      clock,
+      definitions: () => ({ snapshotHash: 'snapshot-a' }),
+      runInForceSeed: () =>
+        runInForceSeed({
+          log,
+          buildPolicy: () => ({ rules: [], tools: [buildTestToolDeclaration('mail.draft')] }),
+        }),
+    },
     context: {
       log,
       clock,
@@ -352,4 +370,39 @@ test('it asks again about a widening you approved once the definitions narrow it
   const proposals = await ctx.readProposals();
 
   expect(proposals.map((entry) => entry.outcome)).toStrictEqual(['approved', null]);
+});
+
+test('it asks again about an effect removal you approved once the effect is restored and removed again', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'effects'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await ctx.runMailSeed();
+
+  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), 'mail.draft:\n  remove: [send]\n');
+
+  await ctx.runMailSeed();
+
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID !== undefined);
+
+  await writeRuleProposalAnswer(ctx.mailContext, { answer: 'approve', proposalID });
+  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), '# Restored.\n');
+
+  await ctx.runMailSeed();
+
+  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), 'mail.draft:\n  remove: [send]\n');
+
+  const result = await ctx.runMailSeed();
+
+  invariant(result.inForce);
+
+  const effects = await readSnapshotToolEffects(ctx.log.writer.db, result.inForce.snapshotHash);
+
+  expect(effects).toStrictEqual(new Map([['mail.draft', ['send', 'write']]]));
 });

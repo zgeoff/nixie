@@ -16102,6 +16102,31 @@
                               ]
                             }
                           },
+                          "effectChanges": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "tool": {
+                                  "type": "string"
+                                },
+                                "remove": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "sentence": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "tool",
+                                "remove",
+                                "sentence"
+                              ]
+                            }
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -16116,6 +16141,7 @@
                         "required": [
                           "proposalID",
                           "changes",
+                          "effectChanges",
                           "createdAt",
                           "lapseAt"
                         ]

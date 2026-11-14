@@ -222,3 +222,19 @@ test('it shows the checker the call and marks a pasted span', async () => {
       'Call:\n{"tool":"mail.send","effects":["write"],"destinations":["sam@example.org"],"args":{"to":"sam"}}',
   ]);
 });
+
+test('it fails the code check for a contact name that is only the start of a longer typed word', async () => {
+  const ctx = setupTest({
+    messages: [buildTypedMessage(3, 'Send the parcel to Samson', 1_794_550_000_000)],
+    inputs: { contacts: [{ contactID: 'c1', name: 'Sam', destination: 'sam@example.org' }] },
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      turnMessageSequence: 3,
+      destinations: [{ value: 'sam@example.org', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision.consent?.codeCheck).toBe('fail');
+});

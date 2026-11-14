@@ -50,14 +50,16 @@ Stage 5 gives each destination of a call the first permission that holds:
 4. `job`: the job definition that runs the call names the destination. No definition names one yet.
 5. `rule`: an allow rule that matches the call names the destination.
 
-A destination with none of them asks at stage 5 unless consent covers it.
+A destination with none of them asks at stage 5 unless consent covers it. A call reads the contacts
+of its own snapshot, so a contact unmarked since still covers a replay of an earlier call.
 
 ## Consent
 
 Consent has two parts. The code check runs first and needs no model: every destination appears word
-for word in text you typed, or belongs to the one known contact whose name you typed. A pasted or
-dropped span never counts. The checker, a model that sees the call and your message, then answers
-asserted, not asserted or unsure. A failure of the checker counts as unreachable.
+for word in text you typed, or belongs to the one known contact whose name you typed as a word of
+its own: "Sam" is no part of "Samson". A pasted or dropped span never counts. The checker, a model
+that sees the call and your message, then answers asserted, not asserted or unsure. A failure of the
+checker counts as unreachable.
 
 - The turn's message counts with no age limit. A message the task passed on counts when you typed it
   within `policy.consent.link_max_age` hours, 24 by default.
@@ -110,6 +112,10 @@ An effect that joins a tool applies at once. An effect that leaves widens the po
 tool can then pass a rule it did not before, so the tool keeps it until you approve the removal in
 the rule change proposal of that seed. A file that names an unknown tool or effect, removes an
 effect the tool lacks, or adds one it already holds refuses the whole seed.
+
+An approval covers the removal until the next seed applies it. If the effect later returns and a
+file removes it again, the removal waits for a new approval. The proposal lists each removal with a
+sentence, in `nixie proposals list` and on the proposals screen.
 
 The declarations in force, with the overrides applied, are part of the policy that the snapshot hash
 covers ([the definitions](../core/definitions.md#the-snapshot-hash)).

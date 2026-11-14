@@ -135,3 +135,31 @@ test('it keeps the contact but loses its details when a forget removes the marki
     },
   ]);
 });
+
+test('it reads a contact of a snapshot after the contact is unmarked, and lists no unmarked contact otherwise', async () => {
+  const ctx = await setupTest();
+
+  const marked = await writeContactMarked(ctx.context, {
+    destination: 'sam@example.org',
+    name: 'Sam',
+  });
+
+  const snapshotIDs = await readKnownContactIDs(ctx.log.writer.db);
+
+  await writeContactUnmarked(ctx.context, marked.contact.contactID);
+
+  const snapshotContacts = await readKnownContacts(ctx.log, snapshotIDs);
+  const current = await readKnownContacts(ctx.log);
+
+  expect({ snapshotContacts, current }).toStrictEqual({
+    snapshotContacts: [
+      {
+        contactID: marked.contact.contactID,
+        name: 'Sam',
+        destination: 'sam@example.org',
+        markedAt: expect.toBeNumber(),
+      },
+    ],
+    current: [],
+  });
+});
