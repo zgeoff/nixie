@@ -1,11 +1,19 @@
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
-import { toolOutputLimitTokens } from '@heynixie/wire';
+import { recallPageLimitBytes, toolOutputLimitTokens } from '@heynixie/wire';
 import { match } from 'ts-pattern';
 
-export type ToolOutputScenario = 'past-default' | 'at-guest-limit' | 'past-guest-limit' | 'image';
+export type ToolOutputScenario =
+  | 'past-default'
+  | 'at-guest-limit'
+  | 'past-guest-limit'
+  | 'at-page-limit'
+  | 'past-page-limit-cut'
+  | 'recall-shape'
+  | 'image';
 
 export type ToolOutputTool =
   | { readonly kind: 'page'; readonly isTruncated: boolean }
+  | { readonly kind: 'recall' }
   | { readonly kind: 'photo' };
 
 export interface ToolOutputPlan {
@@ -47,6 +55,24 @@ export function buildToolOutputPlan(
       tool: { kind: 'page', isTruncated: false },
       env: guestEnv,
     }))
+    .with('at-page-limit', () => ({
+      prompt: pagePrompt,
+      served: buildFiller(recallPageLimitBytes),
+      tool: { kind: 'page', isTruncated: false },
+      env: guestEnv,
+    }))
+    .with('past-page-limit-cut', () => ({
+      prompt: pagePrompt,
+      served: buildFiller(30_000),
+      tool: { kind: 'page', isTruncated: false },
+      env: guestEnv,
+    }))
+    .with('recall-shape', () => ({
+      prompt: pagePrompt,
+      served: buildRecallShape(150, 130),
+      tool: { kind: 'recall' },
+      env: guestEnv,
+    }))
     .with('image', () => ({
       prompt: 'Call read_photo once for page 1, then reply DONE.',
       served: '{"eventID":"12","number":1}',
@@ -62,4 +88,35 @@ function buildLog(lines: number): string {
     (_, index) =>
       `Log ${index}: the lamp burned [→ https://lighthouses.example/archive/log/${index}/entry]`,
   ).join('\n');
+}
+
+// Lines of 100 characters, each numbered, and the last line ends the text at the length asked for.
+function buildFiller(length: number): string {
+  const lineWidth = 100;
+  const count = Math.ceil(length / lineWidth);
+
+  return Array.from({ length: count }, (_, index) => {
+    const width = index === count - 1 ? length - index * lineWidth : lineWidth - 1;
+
+    return `Log ${index}: `.padEnd(width, 'x');
+  }).join('\n');
+}
+
+// Items in the shape of a recalled item, each padded to the size asked for in its text.
+function buildRecallShape(count: number, itemBytes: number): string {
+  const items = Array.from({ length: count }, (_, index) => {
+    const bare = {
+      itemID: `k${String(index).padStart(9, '0')}`,
+      version: 1,
+      text: '',
+      about: `k${String(index).padStart(9, '0')} v1 · 1 Oct · you noted it`,
+      subject: 'owner',
+    };
+
+    const padding = itemBytes - Buffer.byteLength(JSON.stringify(bare));
+
+    return { ...bare, text: 'q'.repeat(Math.max(padding, 0)) };
+  });
+
+  return JSON.stringify({ items, next: null, searched: {} });
 }

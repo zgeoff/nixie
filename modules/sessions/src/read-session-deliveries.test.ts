@@ -537,3 +537,46 @@ test('it drops the past messages an earlier session placed once an invalidation 
 
   expect(deliveries.messages).toStrictEqual([]);
 });
+
+test('it lists exactly the 3 versions of one recall record that a turn end covers', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await createConversationTask(ctx.tasks.context);
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.step_started',
+      definitions,
+      thread: 'conversation',
+      payload: { taskID: 'conversation', stepKey: 'conversation:1', generation: 1 },
+    },
+    {
+      kind: 'memory.recalled',
+      definitions,
+      thread: 'conversation',
+      payload: {
+        items: [
+          { itemID: 'item-1', version: 1 },
+          { itemID: 'item-1', version: 2 },
+          { itemID: 'item-2', version: 4 },
+        ],
+      },
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions,
+      thread: 'conversation',
+      payload: { retrieved: [] },
+    },
+  ]);
+
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
+
+  expect(delivered.versions).toStrictEqual([
+    { itemID: 'item-1', version: 1 },
+    { itemID: 'item-1', version: 2 },
+    { itemID: 'item-2', version: 4 },
+  ]);
+});

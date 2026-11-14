@@ -40,6 +40,7 @@ export async function runToolOutputProbe(
 function createToolServer(form: ToolOutputTool, text: string): McpSdkServerConfigWithInstance {
   return match(form)
     .with({ kind: 'page' }, (page) => createPageServer(text, page.isTruncated))
+    .with({ kind: 'recall' }, () => createRecallServer(text))
     .with({ kind: 'photo' }, () => createPhotoServer(text))
     .exhaustive();
 }
@@ -54,6 +55,20 @@ function createPageServer(text: string, isTruncated: boolean): McpSdkServerConfi
           content: [],
           structuredContent: { status: 200, text, isTruncated, blocked: null },
         }),
+      ),
+    ],
+  });
+}
+
+function createRecallServer(json: string): McpSdkServerConfigWithInstance {
+  const result = z.record(z.string(), z.unknown()).parse(JSON.parse(json));
+
+  return createSdkMcpServer({
+    name: 'pages',
+    version: '0.0.0',
+    tools: [
+      tool('read_page', 'Reads the lighthouse archive page.', { page: z.number().int() }, () =>
+        Promise.resolve({ content: [], structuredContent: result }),
       ),
     ],
   });
