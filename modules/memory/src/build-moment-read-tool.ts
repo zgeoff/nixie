@@ -155,6 +155,7 @@ function toEntryJSON(entry: MomentSpanEntry): JSONObject {
     decision: entry.decision,
     text: entry.text,
     isGap: entry.isGap,
+    isRemoved: entry.isRemoved,
     isCut: entry.isCut,
   };
 }

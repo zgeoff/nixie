@@ -188,4 +188,5 @@ export type { MemoryRecordKind } from './memory-record-kind';
 export { memoryRatedCodec } from './memory-rated-codec';
 export { momentKeptCodec } from './moment-kept-codec';
 export { recordForgetStartedCodec } from './record-forget-started-codec';
+export { readRemovedSequences } from './read-removed-sequences';
 export { recordForgottenCodec } from './record-forgotten-codec';
