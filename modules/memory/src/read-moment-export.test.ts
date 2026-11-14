@@ -194,3 +194,36 @@ test("it exports a tool call and its result with each record's payload and polic
     },
   ]);
 });
+
+test('it exports the hidden field of a search result', async () => {
+  const ctx = await setupTest();
+
+  const [result] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { outcome: 'result', sources: { hits: 'untrusted' } },
+      erasable: { result: { hits: [] }, hidden: { costUSD: 0.012 } },
+    },
+  ]);
+
+  invariant(result);
+
+  await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: result.sequence,
+    lastSequence: result.sequence,
+    title: 'Looking up tides',
+  });
+
+  const [moment] = await Array.fromAsync(readMomentExport(ctx.memory.log));
+
+  invariant(moment && 'records' in moment);
+
+  expect(moment.records.map((record) => record.text)).toStrictEqual([
+    '{"result":{"hits":[]},"hidden":{"costUSD":0.012}}',
+  ]);
+});

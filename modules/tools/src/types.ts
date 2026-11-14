@@ -29,6 +29,10 @@ interface TypedResult {
 
 export interface DirectResult extends TypedResult {
   readonly images?: readonly ToolImage[];
+
+  // What the server records and the model never reads. Only the tool puts a value here. A tool
+  // never puts text here that a forget of another record must erase.
+  readonly hidden?: JSONObject;
 }
 
 export interface ToolImage {

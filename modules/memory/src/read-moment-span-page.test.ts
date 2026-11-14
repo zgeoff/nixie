@@ -18,6 +18,7 @@ async function setupTest() {
         after: null,
         tokenCap: 6000,
         records: 'all',
+        reader: 'model',
       },
     );
 
@@ -52,6 +53,7 @@ test('it cuts a record larger than the page until the entry, escaped as the read
     after: null,
     tokenCap: 6000,
     records: 'all',
+    reader: 'model',
   });
 
   const [entry] = page.entries;
@@ -84,6 +86,7 @@ test('it leaves out a payload that alone outgrows the page, so the entry still f
     after: null,
     tokenCap: 6000,
     records: 'all',
+    reader: 'model',
   });
 
   const [entry] = page.entries;
@@ -118,6 +121,7 @@ test('it gives each record its payload and its policy decision beside its text',
     after: null,
     tokenCap: 6000,
     records: 'all',
+    reader: 'model',
   });
 
   expect(page.entries).toStrictEqual([
@@ -180,4 +184,53 @@ test('it reads a session summary whose key a cleanup deleted as a gap that is no
   const entry = await ctx.readOnlyEntry(summary.sequence, ctx.memory.deploymentKey);
 
   expect([entry.text, entry.isGap, entry.isRemoved]).toStrictEqual([null, true, false]);
+});
+
+test.each([
+  {
+    reader: 'model' as const,
+    texts: ['{"result":{"hits":[]}}', '{"result":{"hits":[]}}'],
+  },
+  {
+    reader: 'owner' as const,
+    texts: [
+      '{"result":{"hits":[]},"hidden":{"costUSD":0.012}}',
+      '{"result":{"hits":[],"costUSD":0.012}}',
+    ],
+  },
+])('it prints a search result for the $reader as $texts', async (row) => {
+  const ctx = await setupTest();
+
+  const written = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { outcome: 'result', sources: { hits: 'untrusted' } },
+      erasable: { result: { hits: [] }, hidden: { costUSD: 0.012 } },
+    },
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { outcome: 'result', sources: { hits: 'untrusted' } },
+      erasable: { result: { hits: [], costUSD: 0.012 } },
+    },
+  ]);
+
+  invariant(written[0] && written[1]);
+
+  const page = await readMomentSpanPage(ctx.memory.log, {
+    thread: 'conversation',
+    firstSequence: written[0].sequence,
+    lastSequence: written[1].sequence,
+    after: null,
+    tokenCap: 6000,
+    records: 'all',
+    reader: row.reader,
+  });
+
+  expect(page.entries.map((entry) => entry.text)).toStrictEqual([...row.texts]);
 });

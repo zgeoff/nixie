@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { renderOwnerText } from '@heynixie/sessions';
 import { conversationKinds } from './conversation-kinds';
 import { countBatchTokens } from './count-batch-tokens';
+import { formatToolEntry } from './format-tool-entry';
 import type { MomentSpan } from './moment-context';
 import { readRemovedSequences } from './read-removed-sequences';
 
@@ -15,6 +16,10 @@ export interface MomentSpanQuery extends MomentSpan {
   readonly after: number | null;
   readonly tokenCap: number;
   readonly records: MomentSpanRecords;
+
+  // the model reads a tool result as its result or message alone, and the owner's export keeps
+  // every field
+  readonly reader: 'model' | 'owner';
 }
 
 export interface MomentSpanEntry {
@@ -75,7 +80,7 @@ export async function readMomentSpanPage(
     );
 
     for (const read of batch) {
-      const entry = buildSpanEntry(read.record, removed);
+      const entry = buildSpanEntry(read.record, removed, query.reader);
       const cost = countEntryTokens(entry);
 
       if (entries.length > 0 && tokens + cost > query.tokenCap) {
@@ -94,7 +99,11 @@ export async function readMomentSpanPage(
   return { entries, next: null };
 }
 
-function buildSpanEntry(record: LogRecord, removed: ReadonlySet<number>): MomentSpanEntry {
+function buildSpanEntry(
+  record: LogRecord,
+  removed: ReadonlySet<number>,
+  reader: 'model' | 'owner',
+): MomentSpanEntry {
   const erasable = record.erasable;
   const isGap = erasable.status === 'shredded' || erasable.status === 'unreadable';
 
@@ -105,16 +114,24 @@ function buildSpanEntry(record: LogRecord, removed: ReadonlySet<number>): Moment
     source: record.contentSource ?? 'nixie',
     payload: Object.keys(record.payload).length === 0 ? null : record.payload,
     decision: record.decision?.outcome ?? null,
-    text: erasable.status === 'readable' ? renderRecordText(record, erasable.fields) : null,
+    text: erasable.status === 'readable' ? renderRecordText(record, erasable.fields, reader) : null,
     isGap,
     isRemoved: erasable.status === 'shredded' && removed.has(record.sequence),
     isCut: false,
   };
 }
 
-function renderRecordText(record: LogRecord, fields: Readonly<Record<string, unknown>>): string {
+function renderRecordText(
+  record: LogRecord,
+  fields: Readonly<Record<string, unknown>>,
+  reader: 'model' | 'owner',
+): string {
   if (record.kind === 'owner_message') {
     return renderOwnerText(record);
+  }
+
+  if (record.kind === 'tool_result' && reader === 'model') {
+    return formatToolEntry(record, fields);
   }
 
   const text = fields['text'];
