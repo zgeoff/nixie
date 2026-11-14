@@ -311,8 +311,9 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 
 ### What the cutover removes and keeps
 
-- `slice1.read-only` leaves the code. Old records keep its ID, and nixie never gives that ID to a
-  new rule.
+- `slice1.read-only` leaves the code. A migration removes its ID from every stored decision and
+  snapshot and from the rule-fire rows, so no stored row names it, and nixie never gives that ID to
+  a new rule.
 - `slice1.queue-check` stays, as a rule in code that allows `actions.log` alone at stage 7. The
   queue check runs that tool on every start, so it works with any set of allow rules. A deny or an
   ask rule of yours that catches `actions.log` still stops it, at stage 3 or 6.

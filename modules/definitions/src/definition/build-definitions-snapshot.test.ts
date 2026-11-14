@@ -12,14 +12,14 @@ test('it builds the canonical form and its hashes', () => {
     persona: '# Persona\n\nWarm, brief.\n',
     prompts: {},
     policy: {
-      rules: [{ id: 'slice1.read-only', outcome: 'allow', effects: ['read', 'fetch', 'note'] }],
+      rules: [{ id: 'allow-reads', outcome: 'allow', effects: ['read', 'fetch', 'note'] }],
       tools: [{ name: 'web_fetch', effects: ['fetch'], destinations: [] }],
     },
   });
 
   expect(snapshot).toMatchInlineSnapshot(`
     {
-      "form": "{"conversation":{"skills":["tide-tables"]},"jobs":[],"persona":"0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575","policy":{"consent":{},"contacts":[],"rules":[{"effects":["read","fetch","note"],"id":"slice1.read-only","outcome":"allow"}],"tools":[{"destinations":[],"effects":["fetch"],"name":"web_fetch"}]},"skills":[{"name":"pdf-forms","origin":"vendored","skillHash":"b2"},{"name":"tide-tables","origin":"definitions","skillHash":"a1"}]}",
+      "form": "{"conversation":{"skills":["tide-tables"]},"jobs":[],"persona":"0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575","policy":{"consent":{},"contacts":[],"rules":[{"effects":["read","fetch","note"],"id":"allow-reads","outcome":"allow"}],"tools":[{"destinations":[],"effects":["fetch"],"name":"web_fetch"}]},"skills":[{"name":"pdf-forms","origin":"vendored","skillHash":"b2"},{"name":"tide-tables","origin":"definitions","skillHash":"a1"}]}",
       "persona": 
     "# Persona
 
@@ -27,9 +27,9 @@ test('it builds the canonical form and its hashes', () => {
     "
     ,
       "personaVersion": "0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575",
-      "policyHash": "46d747ca22ace0b2f20440e0d5e1ac690c774bab7d731cb77cb84b2105338a1d",
+      "policyHash": "b9796c07c2f3ba58000b2aa073ef491a4321f5469944614944478d51b283a435",
       "prompts": {},
-      "snapshotHash": "a263bed38975462c174b140c7fc5ad3630f38ade0ad7d71206a77eaf466b1498",
+      "snapshotHash": "15628f18c4392c3ac8ff001a032b233ec054b83b2644dd4457829236e20aeba9",
     }
   `);
 });
@@ -38,7 +38,7 @@ test('it gives the same snapshot for the same definitions', () => {
   const input = {
     persona: '# Persona\n',
     prompts: {},
-    policy: { rules: [{ id: 'slice1.read-only' }], tools: [{ name: 'web_fetch', effects: [] }] },
+    policy: { rules: [{ id: 'allow-reads' }], tools: [{ name: 'web_fetch', effects: [] }] },
     skills: [{ name: 'tide-tables', skillHash: 'hash-a', origin: 'definitions' as const }],
     conversationSkills: ['tide-tables'],
   };
@@ -173,7 +173,7 @@ test('it gives declarations with keys in any order the same snapshot hash', () =
     persona: '# Persona\n',
     prompts: {},
     policy: {
-      rules: [{ id: 'slice1.read-only', outcome: 'allow' }],
+      rules: [{ id: 'allow-reads', outcome: 'allow' }],
       tools: [{ name: 'web_fetch', effects: ['fetch'], execution: 'direct' }],
     },
   });
@@ -184,7 +184,7 @@ test('it gives declarations with keys in any order the same snapshot hash', () =
     persona: '# Persona\n',
     prompts: {},
     policy: {
-      rules: [{ outcome: 'allow', id: 'slice1.read-only' }],
+      rules: [{ outcome: 'allow', id: 'allow-reads' }],
       tools: [{ execution: 'direct', effects: ['fetch'], name: 'web_fetch' }],
     },
   });
@@ -200,7 +200,7 @@ test('it sorts the rules by ID and the tools by name', () => {
     persona: '# Persona\n',
     prompts: {},
     policy: {
-      rules: [{ id: 'test.allow-send' }, { id: 'slice1.read-only' }],
+      rules: [{ id: 'test.allow-send' }, { id: 'allow-reads' }],
       tools: [
         { name: 'web_fetch', effects: ['fetch'] },
         { name: 'memory_note', effects: ['note'] },
@@ -210,7 +210,7 @@ test('it sorts the rules by ID and the tools by name', () => {
 
   expect(JSON.parse(snapshot.form)).toMatchObject({
     policy: {
-      rules: [{ id: 'slice1.read-only' }, { id: 'test.allow-send' }],
+      rules: [{ id: 'allow-reads' }, { id: 'test.allow-send' }],
       tools: [{ name: 'memory_note' }, { name: 'web_fetch' }],
     },
   });
@@ -264,9 +264,9 @@ test('it refuses a policy with 2 rules under one ID', () => {
       conversationSkills: [],
       persona: '# Persona\n',
       prompts: {},
-      policy: { rules: [{ id: 'slice1.read-only' }, { id: 'slice1.read-only' }], tools: [] },
+      policy: { rules: [{ id: 'allow-reads' }, { id: 'allow-reads' }], tools: [] },
     }),
-  ).toThrowWithMessage(Error, 'the policy holds 2 entries with id slice1.read-only');
+  ).toThrowWithMessage(Error, 'the policy holds 2 entries with id allow-reads');
 });
 
 test('it refuses a policy with 2 tools under one name', () => {

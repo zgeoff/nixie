@@ -30,7 +30,7 @@ test('it folds a recorded log into the live tables once every projection is drop
       definitions: { snapshotHash: 'sha256:aa11', personaVersion: 'p1' },
       thread: 'conversation',
       parent: 1,
-      decision: { outcome: 'allow', stage: 7, rule: { id: 'slice1.read-only', revision: 1 } },
+      decision: { outcome: 'allow', stage: 7, rule: { id: 'allow-reads', revision: 1 } },
     },
     { kind: 'definitions_seeded', definitions: { snapshotHash: 'sha256:dd44' } },
     { kind: 'task_created', definitions: { snapshotHash: 'sha256:dd44' }, thread: 'task-backlog' },

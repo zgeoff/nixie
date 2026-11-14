@@ -41,7 +41,7 @@ async function setupTest() {
 
 test('it moves the schema to version 35, which the release before cannot read', () => {
   expect(nixieSchema.migrations.indexOf(dropMessageRoutesMigration) + 1).toBe(35);
-  expect(nixieSchema.oldestReader).toBe(35);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(35);
 });
 
 test('it drops the message routes of a database it upgrades, rows and all', async () => {

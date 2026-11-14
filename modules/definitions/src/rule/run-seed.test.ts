@@ -67,7 +67,7 @@ test('it seeds the persona and records the source ID, the revision and the conte
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  const policy = { rules: [{ id: 'slice1.read-only' }], tools: [] };
+  const policy = { rules: [{ id: 'allow-reads' }], tools: [] };
 
   const result = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
 

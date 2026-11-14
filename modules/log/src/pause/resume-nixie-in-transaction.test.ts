@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readQueryRows } from '@heynixie/db';
+import { nixieSchema, readQueryRows } from '@heynixie/db';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { withWriteTransaction } from '../record/with-write-transaction';
@@ -66,7 +66,10 @@ test('it ends the pause and every exemption, and reopens the reader gate', async
   expect(result).toStrictEqual({ wasPaused: true });
   expect(pause).toBeNull();
   expect(exemptions.rows).toStrictEqual([]);
-  expect(gate).toStrictEqual([{ oldest_reader: 35, open_oldest_reader: null }]);
+
+  expect(gate).toStrictEqual([
+    { oldest_reader: nixieSchema.oldestReader, open_oldest_reader: null },
+  ]);
 
   expect(records.rows).toStrictEqual([
     { kind: 'nixie.paused', thread: null },

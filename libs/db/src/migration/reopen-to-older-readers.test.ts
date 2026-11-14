@@ -19,11 +19,17 @@ async function setupTest() {
 
   stack.defer(() => rm(directory, { recursive: true, force: true }));
 
+  // An oldest reader below the pause migration's version, so closing the gate shows in the stored
+  // value whatever the build's own oldest reader is.
+  const openReader = 35;
   const db = startDatabase(join(directory, 'nixie.db'));
 
   stack.defer(() => db.destroy());
 
-  await runMigrations(db, { schema: nixieSchema, copyDir: directory });
+  await runMigrations(db, {
+    schema: { ...nixieSchema, oldestReader: openReader },
+    copyDir: directory,
+  });
 
   const readGate = async () => {
     const result = await sql`select oldest_reader, open_oldest_reader
@@ -35,7 +41,7 @@ async function setupTest() {
   const closeGate = (reader: number) =>
     db.transaction().execute((tx) => closeToOlderReaders(tx, reader));
 
-  return { directory, db, readGate, closeGate };
+  return { directory, db, openReader, readGate, closeGate };
 }
 
 test('it restores the saved value', async () => {
@@ -46,7 +52,7 @@ test('it restores the saved value', async () => {
 
   const gate = await ctx.readGate();
 
-  expect(gate).toStrictEqual([{ oldest_reader: 35, open_oldest_reader: null }]);
+  expect(gate).toStrictEqual([{ oldest_reader: ctx.openReader, open_oldest_reader: null }]);
 });
 
 test('it changes nothing while the gate is open', async () => {
@@ -56,7 +62,7 @@ test('it changes nothing while the gate is open', async () => {
 
   const gate = await ctx.readGate();
 
-  expect(gate).toStrictEqual([{ oldest_reader: 35, open_oldest_reader: null }]);
+  expect(gate).toStrictEqual([{ oldest_reader: ctx.openReader, open_oldest_reader: null }]);
 });
 
 test('it lets a schema older than the pause migration open again after the gate reopens', async () => {
@@ -64,7 +70,7 @@ test('it lets a schema older than the pause migration open again after the gate 
 
   const olderSchema = {
     migrations: nixieSchema.migrations.slice(0, pauseMigrationVersion - 1),
-    oldestReader: 35,
+    oldestReader: ctx.openReader,
   };
 
   await ctx.closeGate(pauseMigrationVersion);
@@ -73,8 +79,8 @@ test('it lets a schema older than the pause migration open again after the gate 
   const accepted = await runMigrations(ctx.db, { schema: olderSchema, copyDir: ctx.directory });
 
   expect(accepted).toStrictEqual({
-    from: pauseMigrationVersion,
-    to: pauseMigrationVersion,
+    from: nixieSchema.migrations.length,
+    to: nixieSchema.migrations.length,
     copyPath: null,
   });
 });

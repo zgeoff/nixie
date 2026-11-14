@@ -34,19 +34,18 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to the version pauseMigrationVersion names, which the release before can still read', async () => {
+test('it moves the schema to the version pauseMigrationVersion names', async () => {
   const ctx = await setupTest();
 
   const stored = await sql`select version, oldest_reader, open_oldest_reader
     from schema_version`.execute(ctx.db);
 
   expect(nixieSchema.migrations.indexOf(pauseMigration) + 1).toBe(pauseMigrationVersion);
-  expect(nixieSchema.oldestReader).toBe(35);
 
   expect(stored.rows).toStrictEqual([
     {
       version: nixieSchema.migrations.length,
-      oldest_reader: 35,
+      oldest_reader: nixieSchema.oldestReader,
       open_oldest_reader: null,
     },
   ]);

@@ -36,9 +36,8 @@ async function setupTest() {
   return { db, directory };
 }
 
-test('it moves the schema to version 39, which the release before can still read', () => {
+test('it moves the schema to version 39', () => {
   expect(nixieSchema.migrations.indexOf(rulesMigration) + 1).toBe(39);
-  expect(nixieSchema.oldestReader).toBe(35);
 });
 
 test('it keeps one runtime change in force per rule', async () => {

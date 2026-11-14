@@ -30,9 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 40, which the release before can still read', () => {
+test('it moves the schema to version 40', () => {
   expect(nixieSchema.migrations.indexOf(ruleExportsMigration) + 1).toBe(40);
-  expect(nixieSchema.oldestReader).toBe(35);
 });
 
 test('it refuses a rule export state outside opened and closed', async () => {
