@@ -40,9 +40,9 @@ checksum, and writes the `complete` marker last, with an fsync of each file and 
 
 nixie stages no set of either kind while it is paused after a restore. The first publish after a
 restore replaces the key snapshot that the restore came from, and nothing undoes that, so staging
-waits until the owner has read the recovery and resumed nixie. The check reads the pause in the
-transaction that inserts the set's row. A pause for the owner or for spending stages as on any day.
-See [the pause](../../design/queue/pause.md).
+waits until the user has read the recovery and resumed nixie. The check reads the pause in the
+transaction that inserts the set's row. A pause with cause `owner` or `spending` stages as on any
+day. See [the pause](../../design/queue/pause.md).
 
 A set that fails before its marker exists, in its copy or in the marker's own write, removes its set
 folder and moves its row to abandoned, so the schedule's next try starts from a clean staging
