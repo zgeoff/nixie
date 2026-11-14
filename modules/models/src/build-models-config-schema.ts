@@ -12,6 +12,12 @@ type HarnessCapabilities = Readonly<Record<HarnessID, ReadonlySet<HarnessCapabil
 export type HarnessProfileSchema<Profile extends ModelProfile = HarnessProfile> =
   z.core.$ZodTypeDiscriminable & z.ZodType<Omit<Profile, 'id'>>;
 
+// What the union reads from each harness definition.
+export interface HarnessSchemaEntry<Profile extends ModelProfile = HarnessProfile> {
+  readonly id: HarnessID;
+  readonly profileSchema: HarnessProfileSchema<Profile>;
+}
+
 const profileIDSchema = z
   .string()
   .regex(/^[a-z0-9][a-z0-9-]*$/u, 'a profile ID is a lowercase slug');
@@ -58,12 +64,18 @@ const taskRunSchema = z
 const limitsSchema = z.strictObject({ taskRun: taskRunSchema.default(taskRunSchema.parse({})) });
 
 export function buildModelsConfigSchema<Profile extends ModelProfile = HarnessProfile>(
-  profileSchemas: readonly [HarnessProfileSchema<Profile>, ...HarnessProfileSchema<Profile>[]],
+  entries: readonly [HarnessSchemaEntry<Profile>, ...HarnessSchemaEntry<Profile>[]],
   capabilities: HarnessCapabilities = harnessCapabilities,
 ) {
-  const profileSchema = z.discriminatedUnion('harness', profileSchemas, {
-    error: (issue) => formatHarnessIssue(issue.path ?? [], issue.input),
-  });
+  const [first, ...rest] = entries;
+  const ids = entries.map((entry) => entry.id);
+
+  // zod builds a union only from a tuple, so the first entry leads it.
+  const profileSchema = z.discriminatedUnion(
+    'harness',
+    [first.profileSchema, ...rest.map((entry) => entry.profileSchema)],
+    { error: (issue) => formatHarnessIssue(issue.path ?? [], issue.input, ids) },
+  );
 
   return z
     .strictObject({
@@ -173,13 +185,21 @@ export function buildModelsConfigSchema<Profile extends ModelProfile = HarnessPr
     }));
 }
 
-function formatHarnessIssue(path: readonly PropertyKey[], input: unknown): string {
+function formatHarnessIssue(
+  path: readonly PropertyKey[],
+  input: unknown,
+  ids: readonly HarnessID[],
+): string {
   const profileID = String(path.at(-2) ?? '');
   const harness = z.object({ harness: z.string() }).safeParse(input).data?.harness;
 
+  const choices = new Intl.ListFormat('en', { type: 'disjunction' }).format(
+    ids.map((id) => `harness: ${id}`),
+  );
+
   return harness === undefined
-    ? `the profile ${profileID} names no harness; add harness: agent-sdk`
-    : `the profile ${profileID} names the harness ${harness}, which nixie does not run; use harness: agent-sdk`;
+    ? `the profile ${profileID} names no harness; add ${choices}`
+    : `the profile ${profileID} names the harness ${harness}, which nixie does not run; use ${choices}`;
 }
 
 interface MisfitCheck {

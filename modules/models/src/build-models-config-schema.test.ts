@@ -8,8 +8,8 @@ import type { ModelProfile } from './types';
 function setupTest() {
   return {
     schema: buildModelsConfigSchema<ModelProfile>([
-      agentSDKProfileSchema,
-      buildStubCodexProfileSchema(),
+      { id: 'agent-sdk', profileSchema: agentSDKProfileSchema },
+      { id: 'codex', profileSchema: buildStubCodexProfileSchema() },
     ]),
   };
 }
@@ -181,7 +181,10 @@ test.each(['conversation', 'task'] as const)(
   'it refuses the %s role on a profile whose harness lacks images',
   (role) => {
     const schema = buildModelsConfigSchema<ModelProfile>(
-      [agentSDKProfileSchema, buildStubCodexProfileSchema()],
+      [
+        { id: 'agent-sdk', profileSchema: agentSDKProfileSchema },
+        { id: 'codex', profileSchema: buildStubCodexProfileSchema() },
+      ],
       {
         ...harnessCapabilities,
         codex: new Set(harnessCapabilities['agent-sdk']).difference(new Set(['images'])),
@@ -206,3 +209,35 @@ test.each(['conversation', 'task'] as const)(
     });
   },
 );
+
+test.each([
+  {
+    name: 'names no harness',
+    profile: {},
+    message: 'the profile chat-direct names no harness; add harness: agent-sdk or harness: codex',
+  },
+  {
+    name: 'names a harness outside the table',
+    profile: { harness: 'gemini' },
+    message:
+      'the profile chat-direct names the harness gemini, which nixie does not run; use harness: agent-sdk or harness: codex',
+  },
+])('it lists every harness in the table when a profile $name', (row) => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        ...row.profile,
+        base_url: 'https://models.example.test',
+        credential: 'deployment:anthropic',
+        model: 'claude-test-1',
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+  });
+
+  expect(result.error?.issues).toStrictEqual([
+    expect.objectContaining({ path: ['profiles', 'chat-direct', 'harness'], message: row.message }),
+  ]);
+});
