@@ -3,9 +3,9 @@ import { createMemoryProcedures } from '../memory/create-memory-procedures';
 import { createMemoryViewRouter } from '../memory/create-memory-view-router';
 import { createNixieProcedures } from '../pause/create-nixie-procedures';
 import { createRecoveryProcedures } from '../pause/create-recovery-procedures';
-import { createRuleProposalProcedures } from '../proposal/create-rule-proposal-procedures';
 import { createConversationProcedures } from '../record/create-conversation-procedures';
 import { createRecordProcedures } from '../record/create-record-procedures';
+import { createRuleProcedures } from '../rule/create-rule-procedures';
 import { createSessionProcedures } from '../session/create-session-procedures';
 import type { APIContext, ReadViewMemory } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
@@ -30,7 +30,7 @@ export function createAPIRouter(
     nixie: createNixieProcedures(context),
     ...createRecordProcedures(context),
     recovery: createRecoveryProcedures(context),
-    rules: createRuleProposalProcedures({ ...context, runInForceSeed }),
+    rules: createRuleProcedures({ ...context, runInForceSeed }),
     sessions: {
       enrol: createEnrolProcedure(context),
       revoke: createRevokeProcedure(context),

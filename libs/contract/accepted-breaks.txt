@@ -3,9 +3,6 @@
 # (docs/architecture/deployment/release-pipeline.md) says when a break belongs here and how to
 # write its line. A line that starts with # is a comment. Each other line names one break,
 # prefixed with the Linear issue that plans it.
-GEO-556: POST /memory/listProposals added the new `other` enum value to the `proposals/items/reason` response property for the response status `200`
-GEO-556: POST /memory/listProposals added the new `self_note` enum value to the `proposals/items/reason` response property for the response status `200`
-GEO-1168: POST /memory/listProposals added the new `from_photo` enum value to the `proposals/items/reason` response property for the response status `200`
 GEO-1114: POST /memory/findItems added the new `lapse` enum value to the `items/items/origin` response property for the response status `200`
 GEO-1114: POST /memory/listItems added the new `lapse` enum value to the `items/items/origin` response property for the response status `200`
 GEO-1114: POST /memory/previewForget added the new `lapse` enum value to the `origin` response property for the response status `200`
@@ -13,15 +10,20 @@ GEO-1114: POST /memory/previewForget added the new `lapse` enum value to the `ve
 GEO-1114: POST /memory/readItem added the new `lapse` enum value to the `origin` response property for the response status `200`
 GEO-1114: POST /memory/readItem added the new `lapse` enum value to the `versions/items/origin` response property for the response status `200`
 GEO-1114: POST /memory/readPinnedCore added the new `lapse` enum value to the `items/items/origin` response property for the response status `200`
-GEO-1170: POST /memory/listProposals added the new `pin` enum value to the `proposals/items/operation` response property for the response status `200`
 GEO-1170: POST /memory/approveProposals added the new `PIN_EDIT` enum value to the `outcomes/items/anyOf[subschema #5]/code` response property for the response status `200`
 GEO-1170: POST /memory/rejectProposals added the new `PIN_EDIT` enum value to the `outcomes/items/anyOf[subschema #5]/code` response property for the response status `200`
-GEO-1353: POST /memory/listProposals added the new `sensitive` enum value to the `proposals/items/reason` response property for the response status `200`
-GEO-1839: POST /memory/listProposals added the new `subject_change` enum value to the `proposals/items/reason` response property for the response status `200`
 GEO-1795: POST /tasks/list added the new `paused` enum value to the `tasks/items/state` response property for the response status `200`
 GEO-1795: POST /tasks/list added the new `stopped` enum value to the `tasks/items/state` response property for the response status `200`
 GEO-1795: POST /tasks/list added the new `closed` enum value to the `tasks/items/state` response property for the response status `200`
 GEO-2092: POST /conversation/move api path removed without deprecation
 GEO-2553: POST /conversation/forget added `subschema #2` to the response body `oneOf` list for the response status `409`
 GEO-1804: POST /approvals/listItems added the new `ask_rule` enum value to the `items/items/body/memory/reason` response property for the response status `200`
-GEO-1804: POST /memory/listProposals added the new `ask_rule` enum value to the `proposals/items/reason` response property for the response status `200`
+GEO-1805: POST /memory/approveProposals api path removed without deprecation
+GEO-1805: POST /memory/listProposals api path removed without deprecation
+GEO-1805: POST /memory/rejectProposals api path removed without deprecation
+GEO-1805: POST /rules/approveActionProposal api path removed without deprecation
+GEO-1805: POST /rules/approveProposal api path removed without deprecation
+GEO-1805: POST /rules/listActionProposals api path removed without deprecation
+GEO-1805: POST /rules/listProposals api path removed without deprecation
+GEO-1805: POST /rules/rejectActionProposal api path removed without deprecation
+GEO-1805: POST /rules/rejectProposal api path removed without deprecation

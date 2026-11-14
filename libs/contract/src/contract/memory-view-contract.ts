@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { memoryExportContract } from './memory-export-contract';
 import { momentContract } from './moment-contract';
-import { proposalOutcomeSchema } from './proposal-outcome-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
@@ -17,7 +16,6 @@ const memoryChange = memoryView.errors(reusedIDErrors).errors({
 });
 
 const itemIDSchema = z.string().min(1).max(200);
-const itemTextSchema = z.string().max(2000).regex(/\S/u);
 const proposalOriginSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
 const originSchema = z.enum([...proposalOriginSchema.options, 'lapse']);
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
@@ -137,27 +135,7 @@ export const memoryProposalSchema = z.object({
   until: z.date().nullable(),
 });
 
-const proposalAnswerSchema = z.object({
-  actionHash: z.string().min(1).max(200),
-  clientActionID: z.uuid(),
-  proposalID: z.string().min(1).max(200),
-});
-
 const revisionTargetSchema = z.object({ itemID: itemIDSchema, version: z.int().positive() });
-
-const approvalAnswerSchema = proposalAnswerSchema.extend({
-  editedText: itemTextSchema.optional(),
-  ignoreCloseMatch: z.boolean().optional(),
-  revisionOf: revisionTargetSchema.optional(),
-});
-
-const rejectionReasonSchema = z.string().max(500).regex(/\S/u);
-
-const rejectionAnswerSchema = proposalAnswerSchema.extend({
-  reason: rejectionReasonSchema.optional(),
-});
-
-const proposalOutcomesSchema = z.object({ outcomes: z.array(proposalOutcomeSchema) });
 const memoryItemDetailSchema = memoryItemSchema.extend({ versions: z.array(memoryVersionSchema) });
 
 const forgetLossSchema = z.object({
@@ -300,24 +278,6 @@ export const memoryViewContract = {
   markSensitive: memoryChange
     .input(z.object({ clientActionID: z.uuid(), isSensitive: z.boolean(), itemID: itemIDSchema }))
     .output(z.object({ isSensitive: z.boolean(), itemID: z.string() })),
-
-  listProposals: memoryView.output(z.object({ proposals: z.array(memoryProposalSchema) })),
-
-  approveProposals: memoryView
-    .input(
-      z.object({
-        answers: z.array(approvalAnswerSchema).min(1).max(50),
-      }),
-    )
-    .output(proposalOutcomesSchema),
-
-  rejectProposals: memoryView
-    .input(
-      z.object({
-        answers: z.array(rejectionAnswerSchema).min(1).max(50),
-      }),
-    )
-    .output(proposalOutcomesSchema),
 
   ...memoryExportContract,
 

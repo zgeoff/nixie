@@ -1,65 +1,54 @@
 import { z } from 'zod';
+import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
-const ruleVersionSchema = z.object({ ruleHash: z.string(), sentence: z.string() }).nullable();
+const ruleIDSchema = z.string().min(1).max(200);
+const revisionSchema = z.int().positive();
 
-const ruleChangeSchema = z.object({
+const ruleSchema = z.object({
   ruleID: z.string(),
-  before: ruleVersionSchema,
-  after: ruleVersionSchema,
-});
-
-const effectChangeSchema = z.object({
-  tool: z.string(),
-  remove: z.array(z.string()),
+  revision: revisionSchema,
   sentence: z.string(),
-});
-
-const ruleProposalSchema = z.object({
-  proposalID: z.string(),
-  changes: z.array(ruleChangeSchema),
-  effectChanges: z.array(effectChangeSchema),
-  createdAt: z.date(),
-  lapseAt: z.date(),
-});
-
-const actionProposalSchema = z.object({
-  proposalID: z.string(),
-  tool: z.string(),
-  sentence: z.string(),
+  outcome: z.enum(['allow', 'ask', 'deny']),
   destinations: z.array(z.string()),
-  createdAt: z.date(),
-  lapseAt: z.date(),
 });
 
-const ruleAnswer = signedIn.errors({
-  NOT_FOUND: { message: 'No rule change proposal has this ID', status: 404 },
-  PROPOSAL_CLOSED: {
-    message: 'The rule change proposal is answered, withdrawn or lapsed',
+const notFound = { NOT_FOUND: { message: 'No rule has this ID', status: 404 } };
+
+const ruleChange = signedIn.errors(reusedIDErrors).errors({
+  ...notFound,
+  CONFLICT: {
+    message: 'The rule changed since the notice showed it',
     status: 409,
+    data: z.object({ revision: revisionSchema }),
+  },
+  NOT_ALLOWED: {
+    message: 'The rule takes no such change',
+    status: 403,
+    data: z.object({ reason: z.enum(['widens', 'empty']) }),
   },
 });
 
-const proposalIDSchema = z.string().min(1).max(200);
+const destinationsSchema = z.array(z.string().regex(/^\S+$/u)).max(100);
 
 export const ruleContract = {
-  listProposals: signedIn.output(z.object({ proposals: z.array(ruleProposalSchema) })),
+  readRule: signedIn
+    .errors(notFound)
+    .input(z.object({ ruleID: ruleIDSchema }))
+    .output(ruleSchema),
 
-  approveProposal: ruleAnswer
-    .input(z.object({ proposalID: proposalIDSchema }))
-    .output(z.object({ proposalID: z.string() })),
+  removeRule: ruleChange
+    .input(z.object({ ruleID: ruleIDSchema, revision: revisionSchema, clientActionID: z.uuid() }))
+    .output(z.object({ ruleID: z.string() })),
 
-  rejectProposal: ruleAnswer
-    .input(z.object({ proposalID: proposalIDSchema, reason: z.string().max(500).regex(/\S/u) }))
-    .output(z.object({ proposalID: z.string() })),
-
-  listActionProposals: signedIn.output(z.object({ proposals: z.array(actionProposalSchema) })),
-
-  approveActionProposal: ruleAnswer
-    .input(z.object({ proposalID: proposalIDSchema }))
-    .output(z.object({ proposalID: z.string() })),
-
-  rejectActionProposal: ruleAnswer
-    .input(z.object({ proposalID: proposalIDSchema, reason: z.string().max(500).regex(/\S/u) }))
-    .output(z.object({ proposalID: z.string() })),
+  editRule: ruleChange
+    .input(
+      z.object({
+        ruleID: ruleIDSchema,
+        revision: revisionSchema,
+        destinations: destinationsSchema,
+        clientActionID: z.uuid(),
+      }),
+    )
+    .output(z.object({ ruleID: z.string(), revision: revisionSchema })),
 };

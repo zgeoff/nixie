@@ -37,6 +37,10 @@ const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.r
 
 export interface RecordLookups {
   readonly cancelledActionIDs: ReadonlySet<string>;
+  readonly proposals: ReadonlyMap<
+    number,
+    { readonly proposalID: string; readonly shortID: string }
+  >;
   readonly removedSequences: ReadonlySet<number>;
   readonly stopCancelledActions: ReadonlyMap<number, readonly ListedAction[]>;
   readonly taskDirectory: readonly TaskProfile[];
@@ -44,6 +48,7 @@ export interface RecordLookups {
 
 const noLookups: RecordLookups = {
   cancelledActionIDs: new Set(),
+  proposals: new Map(),
   removedSequences: new Set(),
   stopCancelledActions: new Map(),
   taskDirectory: [],
@@ -69,6 +74,7 @@ export function toContractRecord(
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
   const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
   const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
+  const proposal = lookups.proposals.get(record.sequence);
 
   return {
     ...toSessionFields(record),
@@ -78,6 +84,7 @@ export function toContractRecord(
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
     ...(moment === undefined ? {} : { moment }),
+    ...(proposal === undefined ? {} : { proposal }),
     ...(rating === undefined ? {} : { rating }),
     ...(recall === undefined ? {} : { recall }),
     recordedAt: record.recordedAt,

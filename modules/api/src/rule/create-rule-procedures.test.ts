@@ -1,0 +1,285 @@
+import { expect, test } from 'bun:test';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { createPathSource, runInForceSeed, runSeed } from '@heynixie/definitions';
+import { ORPCError } from '@orpc/client';
+import { createRouterClient } from '@orpc/server';
+import invariant from 'tiny-invariant';
+import { buildTestClient } from '../test-utils/build-test-client';
+import { createDeviceSession } from '../test-utils/create-device-session';
+import { startTestAPI } from '../test-utils/start-test-api';
+import { createRuleProcedures } from './create-rule-procedures';
+
+async function setupTest() {
+  const api = await startTestAPI();
+
+  const root = join(api.dataDir, 'definitions');
+
+  await mkdir(join(root, 'rules'), { recursive: true });
+  await writeFile(join(root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(root, 'rules', 'mail.yaml'),
+    [
+      'allow-mail:',
+      '  outcome: allow',
+      '  tools: [mail.send]',
+      '  destinations: [harbour@example.org, marina@example.org]',
+      'deny-shell:',
+      '  outcome: deny',
+      '  tools: [shell.run]',
+      '',
+    ].join('\n'),
+  );
+
+  const log = api.context.log;
+
+  await runSeed({
+    log,
+    source: createPathSource({ directory: root }),
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const over = buildTestClient(api.url, laptop.token);
+
+  // A first seed holds its allow rules as a proposal until the user answers it.
+  const listed = await over.approvals.listItems();
+
+  const [item] = listed.items;
+
+  invariant(item);
+
+  await over.approvals.answerProposal({
+    proposalID: item.proposal.proposalID,
+    actionHash: item.proposal.actionHash,
+    choice: 'approve',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  await runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) });
+
+  const procedures = createRuleProcedures({
+    ...api.context,
+    runInForceSeed: () => runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) }),
+  });
+
+  return {
+    // An error that the procedure throws in process holds the whole call's context, so a matcher
+    // that walks it never ends. This keeps only what the contract shows.
+    readRefusal: async (call: Promise<unknown>) => {
+      const refusal = await call.then(
+        () => null,
+        (error: unknown) => (error instanceof ORPCError ? error : null),
+      );
+
+      return refusal === null ? null : { code: refusal.code, data: refusal.data };
+    },
+    client: createRouterClient(procedures, {
+      context: { sessionToken: laptop.token, tokenSource: 'bearer' },
+    }),
+    signedOut: createRouterClient(procedures, {
+      context: { sessionToken: undefined, tokenSource: 'none' },
+    }),
+  };
+}
+
+test('#readRule reads the rule in force with its sentence, outcome, destinations and revision', async () => {
+  const ctx = await setupTest();
+  const rule = await ctx.client.readRule({ ruleID: 'allow-mail' });
+
+  expect(rule).toStrictEqual({
+    ruleID: 'allow-mail',
+    revision: 1,
+    sentence: expect.toInclude('mail.send'),
+    outcome: 'allow',
+    destinations: ['harbour@example.org', 'marina@example.org'],
+  });
+});
+
+test('#readRule refuses a rule that does not exist with NOT_FOUND', async () => {
+  const ctx = await setupTest();
+  const refusal = await ctx.readRefusal(ctx.client.readRule({ ruleID: 'no-such-rule' }));
+
+  expect(refusal).toStrictEqual({
+    code: 'NOT_FOUND',
+    data: undefined,
+  });
+});
+
+test('#readRule refuses a caller with no session with UNAUTHORIZED', async () => {
+  const ctx = await setupTest();
+  const refusal = await ctx.readRefusal(ctx.signedOut.readRule({ ruleID: 'allow-mail' }));
+
+  expect(refusal).toStrictEqual({
+    code: 'UNAUTHORIZED',
+    data: undefined,
+  });
+});
+
+test('#editRule drops a destination from a rule and moves its revision', async () => {
+  const ctx = await setupTest();
+
+  const edited = await ctx.client.editRule({
+    ruleID: 'allow-mail',
+    revision: 1,
+    destinations: ['harbour@example.org'],
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const rule = await ctx.client.readRule({ ruleID: 'allow-mail' });
+
+  expect({ edited, destinations: rule.destinations }).toStrictEqual({
+    edited: { ruleID: 'allow-mail', revision: 2 },
+    destinations: ['harbour@example.org'],
+  });
+});
+
+test('#editRule refuses an edit that adds a destination as widening', async () => {
+  const ctx = await setupTest();
+
+  const edit = ctx.client.editRule({
+    ruleID: 'allow-mail',
+    revision: 1,
+    destinations: ['harbour@example.org', 'marina@example.org', 'quay@example.org'],
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const refusal = await ctx.readRefusal(edit);
+
+  expect(refusal).toStrictEqual({
+    code: 'NOT_ALLOWED',
+    data: { reason: 'widens' },
+  });
+});
+
+test('#editRule refuses an edit that leaves no destination', async () => {
+  const ctx = await setupTest();
+
+  const edit = ctx.client.editRule({
+    ruleID: 'allow-mail',
+    revision: 1,
+    destinations: [],
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const refusal = await ctx.readRefusal(edit);
+
+  expect(refusal).toStrictEqual({ code: 'NOT_ALLOWED', data: { reason: 'empty' } });
+});
+
+test('#editRule refuses a moved revision with CONFLICT and the current revision', async () => {
+  const ctx = await setupTest();
+
+  const edit = ctx.client.editRule({
+    ruleID: 'allow-mail',
+    revision: 7,
+    destinations: ['harbour@example.org'],
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const refusal = await ctx.readRefusal(edit);
+
+  expect(refusal).toStrictEqual({ code: 'CONFLICT', data: { revision: 1 } });
+});
+
+test('#editRule refuses a rule that does not exist with NOT_FOUND', async () => {
+  const ctx = await setupTest();
+
+  const edit = ctx.client.editRule({
+    ruleID: 'no-such-rule',
+    revision: 1,
+    destinations: ['harbour@example.org'],
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const refusal = await ctx.readRefusal(edit);
+
+  expect(refusal).toStrictEqual({ code: 'NOT_FOUND', data: undefined });
+});
+
+test('#removeRule removes an allow rule at the revision shown', async () => {
+  const ctx = await setupTest();
+
+  const removed = await ctx.client.removeRule({
+    ruleID: 'allow-mail',
+    revision: 1,
+    clientActionID: crypto.randomUUID(),
+  });
+
+  expect(removed).toStrictEqual({ ruleID: 'allow-mail' });
+
+  const refusal = await ctx.readRefusal(ctx.client.readRule({ ruleID: 'allow-mail' }));
+
+  expect(refusal).toStrictEqual({
+    code: 'NOT_FOUND',
+    data: undefined,
+  });
+});
+
+test('#removeRule refuses a rule that is not an allow rule as widening', async () => {
+  const ctx = await setupTest();
+
+  const removal = ctx.client.removeRule({
+    ruleID: 'deny-shell',
+    revision: 1,
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const refusal = await ctx.readRefusal(removal);
+
+  expect(refusal).toStrictEqual({
+    code: 'NOT_ALLOWED',
+    data: { reason: 'widens' },
+  });
+});
+
+test('#removeRule refuses a moved revision with CONFLICT and the current revision', async () => {
+  const ctx = await setupTest();
+
+  const removal = ctx.client.removeRule({
+    ruleID: 'allow-mail',
+    revision: 3,
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const refusal = await ctx.readRefusal(removal);
+
+  expect(refusal).toStrictEqual({ code: 'CONFLICT', data: { revision: 1 } });
+});
+
+test('#removeRule settles a retry of a removal that committed with the same result', async () => {
+  const ctx = await setupTest();
+
+  const call = { ruleID: 'allow-mail', revision: 1, clientActionID: crypto.randomUUID() };
+
+  await ctx.client.removeRule(call);
+
+  const retried = await ctx.client.removeRule(call);
+
+  expect(retried).toStrictEqual({ ruleID: 'allow-mail' });
+});
+
+test('#removeRule refuses a client action ID that another change already used', async () => {
+  const ctx = await setupTest();
+
+  const clientActionID = crypto.randomUUID();
+
+  await ctx.client.editRule({
+    ruleID: 'allow-mail',
+    revision: 1,
+    destinations: ['harbour@example.org'],
+    clientActionID,
+  });
+
+  const removal = ctx.client.removeRule({ ruleID: 'allow-mail', revision: 2, clientActionID });
+
+  const refusal = await ctx.readRefusal(removal);
+
+  expect(refusal).toStrictEqual({
+    code: 'CLIENT_ACTION_ID_REUSED',
+    data: undefined,
+  });
+});

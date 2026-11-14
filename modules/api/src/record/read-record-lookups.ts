@@ -1,5 +1,6 @@
 import { readCancelledActionIDs, readStopCancelledActions } from '@heynixie/actions';
 import type { LogRecord } from '@heynixie/log';
+import { readProposalsBySequence } from '@heynixie/proposals';
 import {
   readTaskDirectory,
   taskExchangeLimitedCodec,
@@ -47,6 +48,10 @@ export async function readRecordLookups(
 
   return {
     cancelledActionIDs: await readCancelledActionIDs(context, failedActionIDs),
+    proposals: await readProposalsBySequence(
+      context.log.writer.db,
+      records.map((record) => record.sequence),
+    ),
     removedSequences,
     stopCancelledActions: await readStopCancelledActions(context, stopSequences),
     taskDirectory: named.directory,

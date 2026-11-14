@@ -933,21 +933,20 @@ test('it shows the conversation your reason for a proposal you rejected in the w
 
   await sendClientMessage(api.client, { text: 'I played squash today.' }, 'Noted.');
 
-  const listed = await api.client.memory.listProposals();
+  const listed = await api.client.approvals.listItems();
 
-  const [proposal] = listed.proposals;
+  const [item] = listed.items;
 
-  invariant(proposal);
+  invariant(item);
 
-  await api.client.memory.rejectProposals({
-    answers: [
-      {
-        clientActionID: crypto.randomUUID(),
-        proposalID: proposal.proposalID,
-        actionHash: proposal.actionHash,
-        reason: 'only on weekends, not every day',
-      },
-    ],
+  const proposal = item.proposal;
+
+  await api.client.approvals.answerProposal({
+    clientActionID: crypto.randomUUID(),
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    choice: 'decline',
+    note: 'only on weekends, not every day',
   });
 
   await sendClientMessage(api.client, { text: 'Did you save the squash thing?' }, 'Understood.');

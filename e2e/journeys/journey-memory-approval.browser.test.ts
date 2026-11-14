@@ -12,7 +12,7 @@ async function setupTest() {
   return { ...journey, api };
 }
 
-test('it makes a memory the model proposed active once the user approves it on the proposals page', async () => {
+test('it makes a memory the model proposed active once the user approves it on the approvals page', async () => {
   const ctx = await setupTest();
 
   // a write with no quote from the user's own words waits for the user's review
@@ -37,14 +37,23 @@ test('it makes a memory the model proposed active once the user approves it on t
 
   await waitForPage(
     ctx.view,
-    'document.querySelector(\'li[aria-label="The user keeps bees on the allotment."] button:not([disabled])\') !== null',
+    'document.querySelector(\'li[aria-label="The user keeps bees on the allotment."] summary\') !== null',
   );
 
-  await ctx.view.click('li[aria-label="The user keeps bees on the allotment."] button');
+  await ctx.view.click('li[aria-label="The user keeps bees on the allotment."] summary');
 
   await waitForPage(
     ctx.view,
-    'document.querySelector(\'li[aria-label="The user keeps bees on the allotment."]\') === null',
+    'document.querySelector(\'li[aria-label="The user keeps bees on the allotment."] button[name="approve"]:not([disabled])\') !== null',
+  );
+
+  await ctx.view.click(
+    'li[aria-label="The user keeps bees on the allotment."] button[name="approve"]',
+  );
+
+  await waitForPage(
+    ctx.view,
+    'document.querySelector(\'li[aria-label="The user keeps bees on the allotment."][data-state="approved"]\') !== null',
   );
 
   await ctx.view.navigate(`${ctx.appURL}/memory`);

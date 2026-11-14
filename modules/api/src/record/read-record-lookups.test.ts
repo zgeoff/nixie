@@ -67,6 +67,7 @@ test('it reads the actions each stop cancelled and the names of the started task
 
   expect(lookups).toStrictEqual({
     cancelledActionIDs: new Set(),
+    proposals: new Map(),
     removedSequences: new Set(),
     stopCancelledActions: new Map([
       [stop.sequence, [{ actionID: action.action_id, tool: 'test.send' }]],
