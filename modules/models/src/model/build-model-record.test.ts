@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { removeTestRecordKey, startTestLog } from '@heynixie/log/test-utils';
+import { modelReplyCodec } from '../session/model-reply-codec';
 import { buildModelRecord } from './build-model-record';
-import { modelReplyCodec } from './model-reply-codec';
 
 test('it builds a record of the codec kind whose payload names the model and profile', () => {
   const record = buildModelRecord(

@@ -7,8 +7,8 @@ import type {
   SessionPoint,
   TurnProfile,
 } from '@heynixie/wire';
+import type { ModelProfile } from '../types';
 import type { HarnessProfileSchema } from './build-models-config-schema';
-import type { ModelProfile } from './types';
 
 export type HarnessEntry = 'turn' | 'check';
 

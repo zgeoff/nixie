@@ -1,6 +1,6 @@
 import type { HarnessID } from '@heynixie/wire';
-import type { AgentSDKProfile } from './agent-sdk-harness-definition';
-import type { modelRoles } from './model-roles';
+import type { AgentSDKProfile } from './agent/agent-sdk-harness-definition';
+import type { modelRoles } from './role/model-roles';
 
 export type ModelRole = (typeof modelRoles)[number];
 

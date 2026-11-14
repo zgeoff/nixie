@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import { roleNeeds } from '../role/role-needs';
 import { checkHarnessFit } from './check-harness-fit';
-import { roleNeeds } from './role-needs';
 
 test.each([
   ['conversation', 'agent-sdk', { fits: true, missing: [] }],

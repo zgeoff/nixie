@@ -1,29 +1,29 @@
-export { buildCallCost } from './build-call-cost';
-export type { ModelRecordSource } from './build-model-record';
-export { buildModelRecord } from './build-model-record';
-export type { HarnessFit } from './check-harness-fit';
-export { checkHarnessFit } from './check-harness-fit';
-export { deriveModelSecret } from './derive-model-secret';
-export { modelPricesSchema } from './model-prices-schema';
-export { memoryRefsSchema } from './memory-refs-schema';
-export { modelCompactedCodec } from './model-compacted-codec';
-export { modelCompactionFailedCodec } from './model-compaction-failed-codec';
-export { modelReplyCodec } from './model-reply-codec';
-export { modelSessionCleanupCompletedCodec } from './model-session-cleanup-completed-codec';
-export { modelSessionInvalidatedCodec } from './model-session-invalidated-codec';
-export { modelSessionOpenedCodec } from './model-session-opened-codec';
-export { modelSessionRebuiltCodec } from './model-session-rebuilt-codec';
-export { modelSessionSummarizedCodec } from './model-session-summarized-codec';
-export { modelTurnEndedCodec } from './model-turn-ended-codec';
-export { modelsConfigSchema } from './models-config-schema';
-export { resolveModelCredentials } from './resolve-model-credentials';
-export { getCLIContextWindow } from './get-cli-context-window';
-export type { AgentSDKProfile } from './agent-sdk-harness-definition';
-export { bindHarness, harnesses } from './bind-harness';
-export type { Harness, HarnessEntry, HarnessGuest, HarnessSession } from './harness';
-export { modelRoles } from './model-roles';
-export { resolveRoleProfile } from './resolve-role-profile';
-export { roleNeeds } from './role-needs';
+export { buildCallCost } from './session/build-call-cost';
+export type { ModelRecordSource } from './model/build-model-record';
+export { buildModelRecord } from './model/build-model-record';
+export type { HarnessFit } from './model/check-harness-fit';
+export { checkHarnessFit } from './model/check-harness-fit';
+export { deriveModelSecret } from './model/derive-model-secret';
+export { modelPricesSchema } from './agent/model-prices-schema';
+export { memoryRefsSchema } from './session/memory-refs-schema';
+export { modelCompactedCodec } from './session/model-compacted-codec';
+export { modelCompactionFailedCodec } from './session/model-compaction-failed-codec';
+export { modelReplyCodec } from './session/model-reply-codec';
+export { modelSessionCleanupCompletedCodec } from './session/model-session-cleanup-completed-codec';
+export { modelSessionInvalidatedCodec } from './session/model-session-invalidated-codec';
+export { modelSessionOpenedCodec } from './session/model-session-opened-codec';
+export { modelSessionRebuiltCodec } from './session/model-session-rebuilt-codec';
+export { modelSessionSummarizedCodec } from './session/model-session-summarized-codec';
+export { modelTurnEndedCodec } from './session/model-turn-ended-codec';
+export { modelsConfigSchema } from './model/models-config-schema';
+export { resolveModelCredentials } from './model/resolve-model-credentials';
+export { getCLIContextWindow } from './agent/get-cli-context-window';
+export type { AgentSDKProfile } from './agent/agent-sdk-harness-definition';
+export { bindHarness, harnesses } from './model/bind-harness';
+export type { Harness, HarnessEntry, HarnessGuest, HarnessSession } from './model/harness';
+export { modelRoles } from './role/model-roles';
+export { resolveRoleProfile } from './role/resolve-role-profile';
+export { roleNeeds } from './role/role-needs';
 
 export type {
   HarnessProfile,
@@ -38,4 +38,4 @@ export type {
   TaskRunLimits,
 } from './types';
 
-export type { ModelsRecordKind } from './models-record-kind';
+export type { ModelsRecordKind } from './model/models-record-kind';

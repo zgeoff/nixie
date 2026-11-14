@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { harnessCapabilities } from '@heynixie/wire';
-import { agentSDKProfileSchema } from './agent-sdk-profile-schema';
+import { agentSDKProfileSchema } from '../agent/agent-sdk-profile-schema';
+import { buildStubCodexProfileSchema } from '../test-utils/build-stub-codex-profile-schema';
+import type { ModelProfile } from '../types';
 import { buildModelsConfigSchema } from './build-models-config-schema';
-import { buildStubCodexProfileSchema } from './test-utils/build-stub-codex-profile-schema';
-import type { ModelProfile } from './types';
 
 function setupTest(capabilities = harnessCapabilities) {
   return {

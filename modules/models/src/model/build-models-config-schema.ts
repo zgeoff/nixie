@@ -1,10 +1,10 @@
 import type { HarnessCapability, HarnessID } from '@heynixie/wire';
 import { harnessCapabilities } from '@heynixie/wire';
 import { z } from 'zod';
+import { modelRoles } from '../role/model-roles';
+import { roleNeeds } from '../role/role-needs';
+import type { HarnessProfile, ModelProfile, ModelsConfig, SelectableModel } from '../types';
 import { checkHarnessFit } from './check-harness-fit';
-import { modelRoles } from './model-roles';
-import { roleNeeds } from './role-needs';
-import type { HarnessProfile, ModelProfile, ModelsConfig, SelectableModel } from './types';
 
 type HarnessCapabilities = Readonly<Record<HarnessID, ReadonlySet<HarnessCapability>>>;
 

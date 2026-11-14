@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import { buildMockModelsConfig } from '../test-utils/build-mock-models-config';
 import { resolveModelCredentials } from './resolve-model-credentials';
-import { buildMockModelsConfig } from './test-utils/build-mock-models-config';
 
 test('it resolves each profile credential from the model_credentials entry its reference names', () => {
   const config = buildMockModelsConfig({

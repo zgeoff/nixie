@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
+import { buildMockModelProfile } from '../test-utils/build-mock-model-profile';
 import { bindHarness } from './bind-harness';
 import { deriveModelSecret } from './derive-model-secret';
-import { buildMockModelProfile } from './test-utils/build-mock-model-profile';
 
 test('it derives the frozen secret for a profile host and header', () => {
   const profile = buildMockModelProfile({

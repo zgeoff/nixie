@@ -1,4 +1,4 @@
-import type { ModelSecrets, ModelsConfig, ResolvedProfile } from './types';
+import type { ModelSecrets, ModelsConfig, ResolvedProfile } from '../types';
 
 export function resolveModelCredentials(
   config: ModelsConfig,

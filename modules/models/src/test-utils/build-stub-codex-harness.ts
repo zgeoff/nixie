@@ -1,5 +1,5 @@
 import { harnessCapabilities } from '@heynixie/wire';
-import type { Harness } from '../harness';
+import type { Harness } from '../model/harness';
 
 // A stand-in for a harness with no session. HarnessID is a closed union, so a test cannot name a
 // harness that nixie lacks; the stand-in takes the codex ID and capabilities, and has no session.

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { SecretSpec } from '@heynixie/sandbox';
+import type { ResolvedProfile } from '../types';
 import type { Harness } from './harness';
-import type { ResolvedProfile } from './types';
 
 const secretPrefix = 'nixie-model-';
 

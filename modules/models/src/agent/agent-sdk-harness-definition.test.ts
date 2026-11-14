@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { harnessCapabilities } from '@heynixie/wire';
-import { bindHarness } from './bind-harness';
-import { buildMockModelProfile } from './test-utils/build-mock-model-profile';
+import { bindHarness } from '../model/bind-harness';
+import { buildMockModelProfile } from '../test-utils/build-mock-model-profile';
 
 test.each([
   ['bearer', { ANTHROPIC_AUTH_TOKEN: 'nixie-broker-placeholder' }],

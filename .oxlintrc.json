@@ -42,7 +42,6 @@
           "modules/definitions",
           "modules/log",
           "modules/memory",
-          "modules/models",
           "modules/policy",
           "modules/prompts",
           "modules/sandbox",

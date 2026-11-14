@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ModelPrices, PriceRates } from './types';
+import type { ModelPrices, PriceRates } from '../types';
 
 const priceSchema = z.number().nonnegative();
 

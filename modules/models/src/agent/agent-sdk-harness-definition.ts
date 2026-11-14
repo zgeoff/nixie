@@ -1,9 +1,9 @@
 import type { GrantSpec } from '@heynixie/sandbox';
 import { harnessCapabilities } from '@heynixie/wire';
+import type { HarnessDefinition } from '../model/harness';
+import type { ModelProfile, ReasoningEffort } from '../types';
 import { agentSDKProfileSchema } from './agent-sdk-profile-schema';
 import { getCLIContextWindow } from './get-cli-context-window';
-import type { HarnessDefinition } from './harness';
-import type { ModelProfile, ReasoningEffort } from './types';
 
 const nixieBrokerPlaceholder = 'nixie-broker-placeholder';
 

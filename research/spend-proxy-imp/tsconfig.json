@@ -1,4 +1,4 @@
 {
   "extends": "../tsconfig.base.json",
-  "include": ["**/*.ts", "../../modules/models/src/models-record-kind.ts"]
+  "include": ["**/*.ts", "../../modules/models/src/model/models-record-kind.ts"]
 }

@@ -1,5 +1,5 @@
 import type { ModelCallUsage } from '@heynixie/wire';
-import type { ModelPrices, PriceRates } from './types';
+import type { ModelPrices, PriceRates } from '../types';
 
 export function buildCallCost(usage: ModelCallUsage, prices: ModelPrices): number {
   const rates = pickCallRates(

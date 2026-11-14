@@ -1,6 +1,6 @@
 import type { HarnessCapability, HarnessID } from '@heynixie/wire';
 import { harnessCapabilities } from '@heynixie/wire';
-import type { ModelProfile } from './types';
+import type { ModelProfile } from '../types';
 
 export interface HarnessFit {
   readonly fits: boolean;

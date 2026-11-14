@@ -1,8 +1,8 @@
 import type { HarnessID } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
-import { agentSDKHarnessDefinition } from './agent-sdk-harness-definition';
+import { agentSDKHarnessDefinition } from '../agent/agent-sdk-harness-definition';
+import type { HarnessProfile } from '../types';
 import type { Harness, HarnessDefinition, HarnessSession } from './harness';
-import type { HarnessProfile } from './types';
 
 // Every harness definition. The models config reads each one's profile schema.
 type AnyHarnessDefinition = Omit<HarnessDefinition<HarnessID, HarnessProfile>, 'session'> & {

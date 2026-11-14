@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import type { AgentSDKProfile } from './agent-sdk-harness-definition';
-import { agentSDKHarnessDefinition } from './agent-sdk-harness-definition';
+import type { AgentSDKProfile } from '../agent/agent-sdk-harness-definition';
+import { agentSDKHarnessDefinition } from '../agent/agent-sdk-harness-definition';
 import type { HarnessDefinition } from './harness';
 
 test('it refuses at type-check a definition whose session disagrees with its capabilities', () => {

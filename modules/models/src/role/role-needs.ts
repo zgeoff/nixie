@@ -1,5 +1,5 @@
 import type { HarnessCapability } from '@heynixie/wire';
-import type { ModelRole } from './types';
+import type { ModelRole } from '../types';
 
 export const roleNeeds: Readonly<Record<ModelRole, ReadonlySet<HarnessCapability>>> = {
   conversation: new Set([

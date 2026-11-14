@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import { buildMockModelsConfig } from '../test-utils/build-mock-models-config';
 import { resolveRoleProfile } from './resolve-role-profile';
-import { buildMockModelsConfig } from './test-utils/build-mock-models-config';
 
 test.each([
   ['the role map names', 'checker', 'background'],

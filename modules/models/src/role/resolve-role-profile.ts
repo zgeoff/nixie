@@ -1,4 +1,4 @@
-import type { HarnessProfile, ModelRole, ModelsConfig } from './types';
+import type { HarnessProfile, ModelRole, ModelsConfig } from '../types';
 
 export function resolveRoleProfile(config: ModelsConfig, role: ModelRole): HarnessProfile {
   const profileID = config.roles[role] ?? config.roles.conversation;

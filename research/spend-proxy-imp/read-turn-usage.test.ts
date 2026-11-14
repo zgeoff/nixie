@@ -1,7 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { expect, onTestFinished, test } from 'bun:test';
 // @boundaries-ignore a spike imports the code it measures
-import { modelTurnEndedCodec } from '../../modules/models/src/model-turn-ended-codec.ts';
+import { modelTurnEndedCodec } from '../../modules/models/src/session/model-turn-ended-codec.ts';
 import { readTurnUsage } from './read-turn-usage.ts';
 
 // the reader reads nixie's records table, which no seed in this spike writes, so the test writes
