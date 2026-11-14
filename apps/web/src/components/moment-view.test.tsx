@@ -58,7 +58,7 @@ test('it shows the note with its own date, each reflection with its model and da
   ).toHaveTextContent('The fall was about haste, not the ladder.');
 });
 
-test("it shows the span's messages and replies, and a gap where a record was forgotten", async () => {
+test("it shows the span's messages and replies, a gap where a record has no text, and a removed record worded apart", async () => {
   await createDeviceSession();
 
   await store.records.create({
@@ -75,7 +75,9 @@ test("it shows the span's messages and replies, and a gap where a record was for
     message: { text: 'Keep it in the shed from now on.' },
   });
 
-  const moment = await store.moments.create({ firstSequence: 4, lastSequence: 6 });
+  await store.records.create({ sequence: 7, kind: 'model.reply', isRemoved: true });
+
+  const moment = await store.moments.create({ firstSequence: 4, lastSequence: 7 });
 
   const rendered = render(<MomentView momentID={moment.momentID} onDestroyed={() => {}} />);
 
@@ -89,6 +91,7 @@ test("it shows the span's messages and replies, and a gap where a record was for
     'You · record 4the ladder slipped on the stairs',
     'Record 5: this part is gone. It was forgotten, and the moment keeps its place.',
     'nixie · record 6Keep it in the shed from now on.',
+    'Record 7: this part is removed. Its text was deleted, and the moment keeps its place.',
   ]);
 });
 

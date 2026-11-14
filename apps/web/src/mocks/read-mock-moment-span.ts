@@ -4,7 +4,7 @@ const textKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply'])
 
 const pageSize = 100;
 
-// The mock shows a message whose text a forget removed as a gap.
+// The mock shows a message with no text as a gap, and marks it removed when a forget removed it.
 export function readMockMomentSpan(momentID: string, after?: number) {
   const moment = store.moments.findFirst((query) =>
     query.where((candidate) => candidate.momentID === momentID || candidate.shortID === momentID),
@@ -32,6 +32,7 @@ export function readMockMomentSpan(momentID: string, after?: number) {
   return {
     records: page.map((record) => ({
       isGap: textKinds.has(record.kind) && record.message === undefined,
+      isRemoved: record.isRemoved === true,
       kind: record.kind,
       recordedAt: record.recordedAt,
       sequence: record.sequence,

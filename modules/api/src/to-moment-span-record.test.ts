@@ -11,8 +11,9 @@ test('it carries the text of your message', () => {
     erasable: { status: 'readable', fields: { text: 'the gate squeaks again' } },
   });
 
-  expect(toMomentSpanRecord(record)).toStrictEqual({
+  expect(toMomentSpanRecord(record, new Set())).toStrictEqual({
     isGap: false,
+    isRemoved: false,
     kind: 'owner_message',
     recordedAt: new Date('2026-10-10T12:00:00Z'),
     sequence: 4,
@@ -31,8 +32,9 @@ test('it carries the tool of a call and none of its input', () => {
     erasable: { status: 'readable', fields: { input: { url: 'https://example.com/' } } },
   });
 
-  expect(toMomentSpanRecord(record)).toStrictEqual({
+  expect(toMomentSpanRecord(record, new Set())).toStrictEqual({
     isGap: false,
+    isRemoved: false,
     kind: 'tool_called',
     recordedAt: new Date('2026-10-10T12:00:01Z'),
     sequence: 5,
@@ -52,8 +54,9 @@ test.each([['shredded' as const], ['unreadable' as const]])(
       erasable: { status },
     });
 
-    expect(toMomentSpanRecord(record)).toStrictEqual({
+    expect(toMomentSpanRecord(record, new Set())).toStrictEqual({
       isGap: true,
+      isRemoved: false,
       kind: 'model.reply',
       recordedAt: new Date('2026-10-10T12:00:02Z'),
       sequence: 6,
@@ -72,5 +75,33 @@ test('it marks a record that never held text as no gap', () => {
     erasable: { status: 'none' },
   });
 
-  expect(toMomentSpanRecord(record).isGap).toBe(false);
+  expect(toMomentSpanRecord(record, new Set()).isGap).toBe(false);
+});
+
+test('it marks a shredded record that a forget named as removed, and keeps it a gap', () => {
+  const record = buildMockLogRecord({
+    sequence: 8,
+    recordedAt: new Date('2026-10-10T12:00:04Z'),
+    kind: 'model.reply',
+    thread: 'conversation',
+    erasable: { status: 'shredded' },
+  });
+
+  const read = toMomentSpanRecord(record, new Set([8]));
+
+  expect([read.isGap, read.isRemoved]).toStrictEqual([true, true]);
+});
+
+test('it leaves an unreadable record unmarked even when a forget named it', () => {
+  const record = buildMockLogRecord({
+    sequence: 9,
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    kind: 'model.reply',
+    thread: 'conversation',
+    erasable: { status: 'unreadable' },
+  });
+
+  const read = toMomentSpanRecord(record, new Set([9]));
+
+  expect([read.isGap, read.isRemoved]).toStrictEqual([true, false]);
 });

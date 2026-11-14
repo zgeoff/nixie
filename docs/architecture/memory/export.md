@@ -22,8 +22,10 @@ the snapshot hash of the definitions in force when the export ran, so a reader c
 before it reads the items. Each version also keeps the snapshot hash it was written under, because a
 version's checks only make sense against the definitions that ran them. A change to the shape raises
 the schema version, so a file from an older release holds the version of the shape it was written
-in. The schema reads one older version: a file from before the sensitive mark reads with every item
-not sensitive.
+in. The schema reads every version from 5 up. A file from before the sensitive mark reads with every
+item not sensitive, and a file from before version 7, which adds the removal mark, reads with every
+span record not removed. A file refuses a field that its version predates, and refuses a missing
+field that its version requires.
 
 A version whose key or ciphertext fails exports with no text and no quote, as the memory view shows
 it unreadable. An item a forget began exports as a forgotten one even before the forget's cleanup

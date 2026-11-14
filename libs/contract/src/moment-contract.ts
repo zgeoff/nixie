@@ -88,6 +88,7 @@ const momentDetailSchema = momentSummarySchema.extend({
 
 const spanRecordSchema = z.object({
   isGap: z.boolean(),
+  isRemoved: z.boolean(),
   kind: z.string(),
   recordedAt: z.date(),
   sequence: z.int().nonnegative(),

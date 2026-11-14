@@ -27,6 +27,7 @@ test('it reads a span of more than 100 records a page at a time', async () => {
 test("it reads the span's records of the moment's thread in order, with a forgotten message as a gap", async () => {
   await store.records.create({ sequence: 1, kind: 'owner_message', message: { text: 'before' } });
   await store.records.create({ sequence: 2, kind: 'owner_message' });
+  await store.records.create({ sequence: 6, kind: 'model.reply', isRemoved: true });
   await store.records.create({ sequence: 3, kind: 'owner_message', thread: 'morning-reading' });
 
   await store.records.create({
@@ -37,16 +38,23 @@ test("it reads the span's records of the moment's thread in order, with a forgot
 
   await store.records.create({ sequence: 5, kind: 'model.reply', message: { text: 'Try oil.' } });
 
-  const moment = await store.moments.create({ firstSequence: 2, lastSequence: 5 });
+  const moment = await store.moments.create({ firstSequence: 2, lastSequence: 6 });
 
   const span = readMockMomentSpan(moment.momentID);
 
   expect(
-    span?.records.map((record) => [record.sequence, record.isGap, record.text, record.tool]),
+    span?.records.map((record) => [
+      record.sequence,
+      record.isGap,
+      record.isRemoved,
+      record.text,
+      record.tool,
+    ]),
   ).toStrictEqual([
-    [2, true, null, null],
-    [4, false, null, 'web_fetch'],
-    [5, false, 'Try oil.', null],
+    [2, true, false, null, null],
+    [4, false, false, null, 'web_fetch'],
+    [5, false, false, 'Try oil.', null],
+    [6, true, true, null, null],
   ]);
 });
 

@@ -124,7 +124,7 @@ function toErasedSummary(record: LiveRecord): LiveRecord {
 function toForgottenRecord(record: LiveRecord): LiveRecord {
   const { message: _forgotten, ...rest } = record;
 
-  return rest;
+  return { ...rest, isRemoved: true };
 }
 
 function findStepEndAfterReset(

@@ -3,7 +3,7 @@ import type { StoredMemoryItem } from './to-mock-memory-item';
 
 export function readMockMemoryExport(exportedAt: Date): readonly string[] {
   const header = {
-    schemaVersion: 6,
+    schemaVersion: 7,
     exportedAt: exportedAt.toISOString(),
     snapshotHash: 'sha256:mock',
   };
@@ -111,6 +111,7 @@ function toExportMoment(moment: StoredMoment) {
       decision: null,
       text: record.message?.text ?? null,
       isGap: textKinds.has(record.kind) && record.message === undefined,
+      isRemoved: record.isRemoved === true,
     })),
   };
 }

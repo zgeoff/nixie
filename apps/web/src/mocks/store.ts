@@ -137,6 +137,7 @@ const records = new Collection({
     exchangeNotice: exchangeNoticeSchema.optional(),
 
     forget: forgetSchema.optional(),
+    isRemoved: z.literal(true).optional(),
     kind: z.string().default('owner_message'),
     message: messageSchema.optional(),
     rating: ratingSchema.optional(),

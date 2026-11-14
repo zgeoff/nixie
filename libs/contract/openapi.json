@@ -165,6 +165,9 @@
                               "window"
                             ]
                           },
+                          "isRemoved": {
+                            "const": true
+                          },
                           "isSilentTurn": {
                             "const": true
                           },
@@ -653,6 +656,9 @@
                                 "size",
                                 "window"
                               ]
+                            },
+                            "isRemoved": {
+                              "const": true
                             },
                             "isSilentTurn": {
                               "const": true
@@ -13940,6 +13946,9 @@
                           "isGap": {
                             "type": "boolean"
                           },
+                          "isRemoved": {
+                            "type": "boolean"
+                          },
                           "kind": {
                             "type": "string"
                           },
@@ -13976,6 +13985,7 @@
                         },
                         "required": [
                           "isGap",
+                          "isRemoved",
                           "kind",
                           "recordedAt",
                           "sequence",
@@ -16792,6 +16802,9 @@
                                     "window"
                                   ]
                                 },
+                                "isRemoved": {
+                                  "const": true
+                                },
                                 "isSilentTurn": {
                                   "const": true
                                 },
@@ -17442,6 +17455,9 @@
                                     "size",
                                     "window"
                                   ]
+                                },
+                                "isRemoved": {
+                                  "const": true
                                 },
                                 "isSilentTurn": {
                                   "const": true

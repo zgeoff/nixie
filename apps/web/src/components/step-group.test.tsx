@@ -331,3 +331,50 @@ test('it closes one section of a step and leaves another open', async () => {
   expect(rendered.getByRole('group', { name: 'Memories 0' })).toHaveAttribute('open');
   expect(rendered.getByRole('group', { name: 'Tools 1' })).not.toHaveAttribute('open');
 });
+
+test('it shows a removed tool record as removed, with its result line and no input or content', async () => {
+  const user = userEvent.setup();
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            isRemoved: true,
+            outcome: 'result',
+            tool: 'web_fetch',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText('conversation · web fetch'));
+  await user.click(rendered.getByText('Tools 1'));
+
+  const call = rendered.getByRole('region', { name: 'web_fetch' });
+
+  expect(call.textContent).toBe('web_fetch — removedResult (result)');
+});
+
+test('it shows a tool record that fails to decrypt with its name, no input and no result', async () => {
+  const user = userEvent.setup();
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [{ callID: 'a', tool: 'web_fetch' }],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · /u));
+  await user.click(rendered.getByText('Tools 1'));
+
+  const call = rendered.getByRole('region', { name: 'web_fetch' });
+
+  expect(call.textContent).toBe('web_fetchInputnoneResult (waiting)none');
+});

@@ -1,6 +1,7 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { readRecords } from '@heynixie/log';
 import { apiImplementer } from './api-implementer';
+import { readRemovedRecordSequences } from './read-removed-record-sequences';
 import { requireCaller } from './require-caller';
 import { requireViewMemory } from './require-view-memory';
 import { toContractMomentSummary } from './to-contract-moment-summary';
@@ -95,8 +96,13 @@ export function createMomentReadProcedures(context: APIContext, readMemory: Read
       const page = read.slice(0, spanPageSize);
       const last = page.at(-1);
 
+      const removed = await readRemovedRecordSequences(
+        context,
+        page.map((entry) => entry.record),
+      );
+
       return {
-        records: page.map((entry) => toMomentSpanRecord(entry.record)),
+        records: page.map((entry) => toMomentSpanRecord(entry.record, removed)),
         next: read.length > spanPageSize && last !== undefined ? last.record.sequence : null,
       };
     }),

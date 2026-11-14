@@ -12,6 +12,7 @@ export function toLogRecord(record: StoredRecord): LogRecord {
       ? {}
       : { exchangeNotice: structuredClone(record.exchangeNotice) }),
     ...(record.forget === undefined ? {} : { forget: { ...record.forget } }),
+    ...(record.isRemoved === undefined ? {} : { isRemoved: record.isRemoved }),
     kind: record.kind,
     ...(record.message === undefined ? {} : { message: toLogMessage(record.message) }),
     ...(record.rating === undefined ? {} : { rating: toLogRating(record.rating) }),

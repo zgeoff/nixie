@@ -49,6 +49,7 @@ test('it drops the text of a message once a forget on the live stream names it',
   });
 
   expect(hook.result.current.records.at(0)).toStrictEqual({
+    isRemoved: true,
     kind: 'owner_message',
     recordedAt: message.recordedAt,
     sequence: message.sequence,

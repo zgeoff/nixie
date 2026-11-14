@@ -4,6 +4,7 @@ import { renderOwnerText } from '@heynixie/sessions';
 import { conversationKinds } from './conversation-kinds';
 import { countBatchTokens } from './count-batch-tokens';
 import type { MomentSpan } from './moment-context';
+import { readRemovedSequences } from './read-removed-sequences';
 
 export type MomentSpanRecords = 'conversation' | 'all';
 
@@ -31,6 +32,10 @@ export interface MomentSpanEntry {
 
   // the record's text is gone, so the moment shows a gap
   readonly isGap: boolean;
+
+  // the record's key is gone because a forget removed the record, not because a session cleanup
+  // deleted it. A record whose key fails to decrypt is a gap and is not removed.
+  readonly isRemoved: boolean;
   readonly isCut: boolean;
 }
 
@@ -62,8 +67,15 @@ export async function readMomentSpanPage(
       break;
     }
 
+    const removed = await readRemovedSequences(
+      log.writer.db,
+      batch
+        .filter((read) => read.record.erasable.status === 'shredded')
+        .map((read) => read.record.sequence),
+    );
+
     for (const read of batch) {
-      const entry = buildSpanEntry(read.record);
+      const entry = buildSpanEntry(read.record, removed);
       const cost = countEntryTokens(entry);
 
       if (entries.length > 0 && tokens + cost > query.tokenCap) {
@@ -82,7 +94,7 @@ export async function readMomentSpanPage(
   return { entries, next: null };
 }
 
-function buildSpanEntry(record: LogRecord): MomentSpanEntry {
+function buildSpanEntry(record: LogRecord, removed: ReadonlySet<number>): MomentSpanEntry {
   const erasable = record.erasable;
   const isGap = erasable.status === 'shredded' || erasable.status === 'unreadable';
 
@@ -95,6 +107,7 @@ function buildSpanEntry(record: LogRecord): MomentSpanEntry {
     decision: record.decision?.outcome ?? null,
     text: erasable.status === 'readable' ? renderRecordText(record, erasable.fields) : null,
     isGap,
+    isRemoved: erasable.status === 'shredded' && removed.has(record.sequence),
     isCut: false,
   };
 }

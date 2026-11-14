@@ -18,17 +18,22 @@ const message = css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' });
 export function RecordItem(props: RecordItemProps): ReactNode {
   const [isForgotten, setForgotten] = useState(false);
   const [isForgetOpen, setForgetOpen] = useState(false);
-  const text = isForgotten ? undefined : props.record.message?.text;
+  const isRemoved = isForgotten || props.record.isRemoved === true;
+  const text = isRemoved ? undefined : props.record.message?.text;
   const isYours = props.record.kind === 'owner_message';
   const images = props.record.message?.images?.length ?? 0;
 
-  if (text === undefined && !isForgetOpen) {
+  if (text === undefined && !isRemoved && !isForgetOpen) {
     return null;
   }
+
+  // A forget that has not finished keeps its control on a removed message, so the owner can try again.
+  const hasControl = forgettableKinds.has(props.record.kind) && (!isRemoved || isForgetOpen);
 
   return (
     <li>
       <strong className={speaker}>{isYours ? 'You' : 'nixie'}</strong>{' '}
+      {isRemoved ? '— removed' : null}
       {text !== undefined && isYours ? <span className={message}>{text}</span> : null}
       {text !== undefined && isYours && images > 0 ? (
         <MessageImages
@@ -38,7 +43,7 @@ export function RecordItem(props: RecordItemProps): ReactNode {
         />
       ) : null}
       {text !== undefined && !isYours ? <ReplyText text={text} /> : null}
-      {forgettableKinds.has(props.record.kind) ? (
+      {hasControl ? (
         <ForgetControl
           hasText={text !== undefined}
           onForgotten={() => {

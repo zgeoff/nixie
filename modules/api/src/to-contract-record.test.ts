@@ -363,6 +363,7 @@ test('it shows a failed tool result as cancelled when its action is among the ca
 
   const lookups = {
     cancelledActionIDs: new Set(['action-1']),
+    removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     taskDirectory: [],
   };
@@ -773,6 +774,7 @@ test('it carries a task message with its sender named from the directory', () =>
 
   const lookups = {
     cancelledActionIDs: new Set<string>(),
+    removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     taskDirectory: [
       {
@@ -849,6 +851,7 @@ test('it renders an exchange notice that names both tasks and links to the recei
 
   const lookups = {
     cancelledActionIDs: new Set<string>(),
+    removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     taskDirectory: [
       {
@@ -878,6 +881,7 @@ test('it lists the actions a stop cancelled on its record', () => {
 
   const lookups = {
     cancelledActionIDs: new Set<string>(),
+    removedSequences: new Set<number>(),
     stopCancelledActions: new Map([
       [19, [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }]],
     ]),
@@ -887,4 +891,43 @@ test('it lists the actions a stop cancelled on its record', () => {
   expect(toContractRecord(record, lookups)?.stop).toStrictEqual({
     cancelledActions: [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }],
   });
+});
+
+test('it marks a shredded record that a forget named as removed', () => {
+  const record = buildMockLogRecord({
+    sequence: 12,
+    kind: 'owner_message',
+    thread: 'conversation',
+    erasable: { status: 'shredded' },
+  });
+
+  const lookups = {
+    cancelledActionIDs: new Set<string>(),
+    removedSequences: new Set([12]),
+    stopCancelledActions: new Map(),
+    taskDirectory: [],
+  };
+
+  expect(toContractRecord(record, lookups)?.isRemoved).toBeTrue();
+});
+
+test.each([
+  ['unreadable' as const, new Set([12])],
+  ['shredded' as const, new Set<number>()],
+])('it leaves a %s record that no forget named unmarked', (status, removedSequences) => {
+  const record = buildMockLogRecord({
+    sequence: 12,
+    kind: 'owner_message',
+    thread: 'conversation',
+    erasable: { status },
+  });
+
+  const lookups = {
+    cancelledActionIDs: new Set<string>(),
+    removedSequences,
+    stopCancelledActions: new Map(),
+    taskDirectory: [],
+  };
+
+  expect(toContractRecord(record, lookups)).not.toHaveProperty('isRemoved');
 });
