@@ -87,6 +87,93 @@ names the totals and the limit, so the model client stops instead of retrying. R
 flight when the count crosses the limit finish and count, so the totals can pass the limit by the
 replies that were running at that moment.
 
+## The capture
+
+The gateway copies the exact body of a model request to a spool folder, sealed to a key that only
+nixie holds, so a guest cannot vouch for its own input. The
+[turn-input log design](../../design/queue/turn-input-log.md) describes the nixie side: the tag, the
+intake and the store.
+
+### The tag
+
+A tag is one path segment right after the route, `~in.<captureID>.<key>`. The capture ID is a
+lowercase version 4 UUID, and the key is a P-256 public key, uncompressed, in unpadded base64url.
+The gateway always removes a segment that starts with `~in.` before it matches the endpoint, so the
+endpoint match, the model check and the count see the path as if no tag were there. The 403 and 404
+replies echo the path as sent, tag included, which holds no secret.
+
+The gateway decodes the tag with the wire library, which checks the key's length, its first byte and
+that the point lies on the curve. A tag that fails any check is removed, and the gateway writes no
+file for that request. The tag is not authenticated: a guest could swap its key for another valid
+point, which only makes that capture unreadable to nixie.
+
+### What the gateway copies
+
+With the `capture` config key, the gateway copies a tagged request only when it sends the request
+upstream to `messages` or `responses`. A request that the gateway refuses, and a tagged
+`count_tokens` or `models` request, writes no file. The gateway never changes a body, so a copy
+equals the bytes that the model API received.
+
+The handler takes a counter value for the copy, one per capture ID that runs from 1 while the
+gateway runs, and starts the spool work just before it sends the request. It never waits for the
+spool. When the model API answers, the gateway renames the file to record the response's status,
+before the reply streams. When the model API gives no response, the gateway removes the file. A
+request with no response keeps its counter value, which leaves a gap that nixie counts.
+
+### The spool file
+
+Each file is named `<captureID>.<writer>.<counter>` plus an ending. The writer is 16 random
+lowercase hex characters, new at each start of the gateway. The ending is `.part` while the gateway
+writes, then `.<upstreamStatus>.cap` once the response's status arrives. The wire library owns the
+name grammar, the header, the seal and the open, and committed fixtures pin each of them.
+
+A `.cap` file holds a 4-byte header length, the header as JSON, then the body in AES-256-GCM. The
+header is plain text: it shows a request's time, route, endpoint and size, and nothing of its body.
+The gateway makes a new P-256 key pair for each request, derives the AES key from it and the tag's
+key with ECDH and HKDF-SHA-256, and passes the length bytes and the header bytes as the additional
+data, so a changed header fails the open.
+
+When the gateway cannot write a body, it writes a `.miss` file of plain JSON, with the request's own
+counter value and one reason:
+
+| Reason               | Cause                                                                            |
+| -------------------- | -------------------------------------------------------------------------------- |
+| `queue_full`         | `max_pending` bodies already wait for the spool                                  |
+| `spool_full`         | the `.part`, `.cap` and `.miss` files, with the new file, would pass `max_bytes` |
+| `spool_write_failed` | the folder could not be read, or the file could not be created or renamed        |
+| `seal_failed`        | the seal threw                                                                   |
+
+When the `.miss` write fails too, the gateway logs `capture.miss_failed` with the reason and the
+error's code. No log line holds a byte of a body, a key or a tag.
+
+### The config
+
+```yaml
+capture:
+  spool: /var/lib/nixie/turn-input-spool # an absolute path
+  max_bytes: 536870912 # default
+  max_pending: 16 # default
+```
+
+With no `capture` key, the gateway still removes a tag and writes no file. The deployment creates
+the spool folder, owned by a group that the gateway and nixie share, with mode 0770. At its start,
+the gateway checks that the spool is a directory that it can write and enter, and refuses to start
+when it is not. It never creates the folder or changes its mode. It then removes every `.part` file
+in the spool, whatever its writer, and leaves the `.cap` and `.miss` files. So 2 gateways never
+share one spool.
+
+### The capture ask
+
+A `GET /~capture?spool=<folder>` answers `{ "canCapture": true }` only when the config has the
+`capture` key, the folder resolves to the configured spool, and the gateway can write and enter the
+spool at the time of the ask. Any other ask gets `{ "canCapture": false }`, which never names the
+configured folder. A missing `spool` query gets a 400, and another method a 405. No route ID can
+match `~capture`, and the answer does not depend on the counter store. The wire library holds the
+path and the answer's schema.
+
+nixie tags requests only after a yes, so the gateway takes its release before the nixie release that
+tags requests.
+
 ## Failing closed
 
 The gateway treats a counter store it cannot use, and a count it has lost, as a store that holds no
