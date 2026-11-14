@@ -23,6 +23,8 @@ export { claimBackupLock } from './data/claim-backup-lock';
 export { localDataStorage } from './writer/local-data-storage';
 export type { PendingRestore } from './restore/pending-restore';
 export { pendingRestoreSchema } from './restore/pending-restore';
+export { removeRestoreMarker } from './restore/remove-restore-marker';
+export { recoveryStartedCodec } from './record/recovery-started-codec';
 export type { DataRestore, DataRestoreOptions } from './record/restore-data-backup';
 export { restoreDataBackup } from './record/restore-data-backup';
 export type { DataBackup, DataBackupOptions } from './record/write-data-backup';

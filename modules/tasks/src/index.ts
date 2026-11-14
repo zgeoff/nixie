@@ -153,3 +153,4 @@ export { taskStoppedCodec } from './task/codec/task-stopped-codec';
 export type { StepErrorOptions } from './step/build-step-failure-plan';
 export { writeStepError } from './step/write-step-error';
 export type { TasksRecordKind } from './task/record/tasks-record-kind';
+export { installRestorePause } from './pause/install-restore-pause';

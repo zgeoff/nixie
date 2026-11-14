@@ -13,6 +13,7 @@ export { probeActionUnfinished } from './action/probe-action-unfinished';
 export { readActionCounts } from './action/read-action-counts';
 export { readCancelledActionIDs } from './action/read-cancelled-action-ids';
 export { readStopCancelledActions } from './action/read-stop-cancelled-actions';
+export { readTasksWithPendingActions } from './action/read-tasks-with-pending-actions';
 export type { TaskActions } from './action/read-task-actions';
 export { readTaskActions } from './action/read-task-actions';
 
