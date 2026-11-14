@@ -6,13 +6,13 @@ export interface WriterCounter {
   readonly span: number;
 }
 
-export interface CaptureGap {
+interface CaptureGap {
   readonly writer: string;
   readonly counter: number;
   readonly count: number;
 }
 
-export interface CaptureGaps {
+interface CaptureGaps {
   readonly gaps: readonly CaptureGap[];
 
   // the sum over writers of the highest counter, which is how many requests the gateway sent

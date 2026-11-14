@@ -1,6 +1,6 @@
 import type { ModelProfile, ModelRole } from '@heynixie/models';
 
-export interface StepCaptureStep {
+interface StepCaptureStep {
   readonly taskID: string;
   readonly stepRunID: string;
 }
@@ -11,7 +11,7 @@ export interface StepCaptureInput {
   readonly role: ModelRole;
 }
 
-export interface StepCaptureClose {
+interface StepCaptureClose {
   readonly callFrames: number;
 }
 

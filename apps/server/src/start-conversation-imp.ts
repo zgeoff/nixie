@@ -75,6 +75,7 @@ export async function startConversationImp(
     compaction: parts.config.compaction,
     defaultZone: parts.config.time.default_zone,
     messaging,
+    turnInputs: parts.turnInputs,
     log: parts.log,
   });
 

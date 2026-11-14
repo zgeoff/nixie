@@ -27,7 +27,7 @@ export interface OpenCaptureInput {
   readonly role: ModelRole;
 }
 
-export interface CaptureStep {
+interface CaptureStep {
   readonly callFrames: number;
 }
 

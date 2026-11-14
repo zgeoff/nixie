@@ -19,6 +19,9 @@ export interface ServerResetControl {
 export interface ServerResetControlOptions extends Omit<ServerResetOptions, 'stopWork'> {
   readonly work: Cleanup;
 
+  // removes the request bodies that the turn-input log holds, after the log's own reset
+  readonly runTurnInputsReset: () => Promise<void>;
+
   readonly closeAPI: () => Promise<void>;
 
   readonly readStart: () => Promise<void>;
@@ -44,7 +47,13 @@ export function buildServerReset(options: ServerResetControlOptions): ServerRese
 
       pending.full ??= runLoggedReset(options, {
         mode: 'full',
-        run: runServerReset,
+        run: async (resetOptions) => {
+          const reset = await runServerReset(resetOptions);
+
+          await options.runTurnInputsReset();
+
+          return reset;
+        },
         toFields: (reset) => ({
           lastSequence: reset.lastSequence,
           keptSessions: reset.keptSessions,

@@ -10,6 +10,7 @@ import { runInForceSeedAndWake } from './run-in-force-seed-and-wake';
 import type { ServerPartValues } from './server-part-values';
 import { startHostCommands } from './start-host-commands';
 import { startHTTPServer } from './start-http-server';
+import { startTurnInputs } from './start-turn-inputs';
 import type { AnyPartDeclaration } from './types';
 
 export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
@@ -88,8 +89,13 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
     },
   },
   {
+    name: 'turn_inputs',
+    needs: ['inputs', 'context'],
+    start: (parts) => startTurnInputs(parts),
+  },
+  {
     name: 'server_parts',
-    needs: ['inputs', 'state', 'context', 'tools', 'decisions'],
+    needs: ['inputs', 'state', 'context', 'tools', 'decisions', 'turn_inputs'],
     start: (parts) => {
       const inputs = parts.get('inputs');
       const context = parts.get('context');
@@ -106,13 +112,14 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         decisions: parts.get('decisions'),
         cleanup: inputs.work,
         modelSecrets: inputs.options.secrets.models,
+        turnInputs: parts.get('turn_inputs'),
         onFailure: inputs.onFailure,
       });
     },
   },
   {
     name: 'reset',
-    needs: ['inputs', 'context', 'tools', 'api_gate'],
+    needs: ['inputs', 'context', 'tools', 'api_gate', 'turn_inputs'],
     uses: ['ready'],
     start: (parts) => {
       const inputs = parts.get('inputs');
@@ -122,6 +129,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           context: parts.get('context').apiContext,
           adapter: parts.get('tools').adapter,
           work: inputs.work,
+          runTurnInputsReset: parts.get('turn_inputs').runReset,
           closeAPI: parts.get('api_gate').close,
           readStart: async () => {
             await parts.waitFor('ready');
@@ -134,7 +142,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   },
   {
     name: 'host_commands',
-    needs: ['inputs', 'context', 'reset', 'api_gate'],
+    needs: ['inputs', 'context', 'reset', 'api_gate', 'turn_inputs'],
     uses: ['memory', 'server_parts', 'definitions_exports'],
     start: (parts) => {
       const options = parts.get('inputs').options;
@@ -151,6 +159,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           runReset: parts.get('reset').run,
           runConversationReset: parts.get('reset').runConversations,
           gate: parts.get('api_gate'),
+          turnInputs: parts.get('turn_inputs'),
         },
         options.cleanup,
       );

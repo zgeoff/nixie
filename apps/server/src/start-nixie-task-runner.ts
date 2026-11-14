@@ -27,6 +27,7 @@ export async function startNixieTaskRunner(
     compaction: parts.config.compaction,
     defaultZone: parts.config.time.default_zone,
     messaging: buildTaskMessaging(parts.config),
+    turnInputs: parts.turnInputs,
     log: parts.log,
   });
 

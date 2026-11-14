@@ -18,7 +18,6 @@
     "@heynixie/models": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "kysely": "catalog:",
-    "tiny-invariant": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

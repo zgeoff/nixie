@@ -13,7 +13,7 @@ import { createTurnInputs } from '../create-turn-inputs';
 import { turnInputLogConfigSchema } from '../turn-input-log-config-schema';
 import type { TurnInputsOptions } from '../types';
 
-export interface RecordedLine {
+interface RecordedLine {
   readonly event: string;
   readonly fields: LogFields;
   readonly level: LogLevel | undefined;

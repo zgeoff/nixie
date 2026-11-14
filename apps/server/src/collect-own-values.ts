@@ -3,7 +3,7 @@ import type { secretsSchema } from './secrets-schema';
 
 type SecretsFile = z.infer<typeof secretsSchema>;
 
-export type SecretsEntryName = keyof SecretsFile;
+type SecretsEntryName = keyof SecretsFile;
 
 export interface OwnValueSettings {
   readonly entries: readonly SecretsEntryName[];
