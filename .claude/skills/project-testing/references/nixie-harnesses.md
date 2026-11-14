@@ -25,7 +25,8 @@ in place of the sandbox adapter. A turn starts no guest process and no Agent SDK
   the SDK, and no test catches the drift.
 - Write no migration step: the harness starts on migrated data. It copies each data directory from a
   template that [`writeMigratedData`](../../../../apps/server/src/test-utils/write-migrated-data.ts)
-  migrates. To test the migration itself, open an empty data directory with
+  migrates, which `bun run test:templates` builds before the unit run. To test the migration itself,
+  open an empty data directory with
   [`startWriter`](../../../../modules/log/src/writer/start-writer.ts).
 
 ## A crash suite on the spawned harness

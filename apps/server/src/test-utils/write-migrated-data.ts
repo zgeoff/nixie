@@ -12,10 +12,13 @@ export interface MigratedDataIO {
 
 const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
 
+export type MigratedTemplateIO = Pick<MigratedDataIO, 'createTemplate' | 'startWriter'>;
+
 // Migrating an empty data directory costs an in-process start about 100 ms of CPU, measured on
-// 2 vCPUs, so one writer per run migrates a template that each start copies.
-export async function writeMigratedData(dataDir: string, io: MigratedDataIO): Promise<void> {
-  const template = await io.createTemplate({
+// 2 vCPUs, so one writer per run migrates a template that each start copies. The test script builds
+// it before the workers start, and the options live here so each start computes the same key.
+export function createMigratedTemplate(io: MigratedTemplateIO): Promise<string> {
+  return io.createTemplate({
     name: 'nixie-migrated-data',
     root: repoRoot,
 
@@ -29,6 +32,10 @@ export async function writeMigratedData(dataDir: string, io: MigratedDataIO): Pr
       await writer.stop();
     },
   });
+}
+
+export async function writeMigratedData(dataDir: string, io: MigratedDataIO): Promise<void> {
+  const template = await createMigratedTemplate(io);
 
   await io.copyDirectory(template, dataDir);
 }

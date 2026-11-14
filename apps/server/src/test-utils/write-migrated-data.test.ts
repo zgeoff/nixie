@@ -6,7 +6,7 @@ import { getDataFilePath, startWriter } from '@heynixie/log';
 import type { RunTemplateOptions } from '@heynixie/testing';
 import { createRunTemplate } from '@heynixie/testing';
 import { readDataFiles } from './read-data-files';
-import { writeMigratedData } from './write-migrated-data';
+import { createMigratedTemplate, writeMigratedData } from './write-migrated-data';
 
 async function setupTest() {
   const directory = await mkdtemp(join(tmpdir(), 'migrated-data-'));
@@ -61,4 +61,21 @@ test('it fails when the writer cannot open the folder it migrates', async () => 
       startWriter: (options) => startWriter({ ...options, dataDir: join(options.dataDir, 'gone') }),
     }),
   ).rejects.toMatchObject({ code: 'ENOENT' });
+});
+
+test('it writes a data directory with no migration run by the start when the template exists', async () => {
+  const ctx = await setupTest();
+
+  await createMigratedTemplate(ctx.io);
+
+  await writeMigratedData(ctx.dataDir, {
+    ...ctx.io,
+    startWriter: () => Promise.reject(new Error('a start ran a migration')),
+  });
+
+  const writer = await startWriter({ dataDir: ctx.dataDir });
+
+  onTestFinished(() => writer.stop());
+
+  expect(writer.migration.from).toBe(writer.migration.to);
 });

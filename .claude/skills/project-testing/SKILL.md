@@ -83,9 +83,10 @@ whose script runs `bun test` itself.
 | every other `*.test.ts`: the unit tests                                                            | `bun run test`                                | in `pr.yml`       |
 
 - Run the unit tests through `bun run test`. It first runs `bun run models`, which fetches the
-  memory encoder's model files, and `bun run test:bundles`, which builds nixie's test bundle and its
-  release bundle. To test one file, run those 2 commands once, then `bun test <path>` from the repo
-  root. Without `bun run models`, a bare `bun test` skips the memory encoder's suites. Without
+  memory encoder's model files, `bun run test:bundles`, which builds nixie's test bundle and its
+  release bundle, and `bun run test:templates`, which builds the migrated-data template. To test one
+  file, run those 3 commands once, then `bun test <path>` from the repo root. Without
+  `bun run models`, a bare `bun test` skips the memory encoder's suites. Without
   `bun run test:bundles`, a test builds a missing bundle itself and runs past its limit. Run
   `bun run test:bundles` again after you change a server package, as the Test utils fact defines
   one.
