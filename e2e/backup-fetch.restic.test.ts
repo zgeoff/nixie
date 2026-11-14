@@ -1,16 +1,17 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, open, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getBackupStagingDir, writeSnapshotSet } from '@heynixie/backup';
 import { createStagedSet, readBackupJobBundle } from '@heynixie/backup-job/test-utils';
 import { startDatabase } from '@heynixie/db';
-import { getDataFilePath, localDataStorage } from '@heynixie/log';
+import { getDataFilePath, localDataStorage, restoreDataBackup, writeRecords } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import {
   fetchedPairFile,
   fetchedPairSchema,
   parseBackupFile,
+  restoreNoteSchema,
   unfinishedBackupMarker,
 } from '@heynixie/wire';
 import { $ } from 'bun';
@@ -52,7 +53,28 @@ async function setupTest() {
     return listedSchema.parse(listed);
   };
 
-  return { restic, job, directory, dataEnv, keyEnv, jobEnv, readSnapshots };
+  const readRows = async (folder: string) => {
+    const logCopy = startDatabase(getDataFilePath(join(directory, folder), 'nixie.db'), {
+      readonly: true,
+    });
+
+    const keyCopy = startDatabase(getDataFilePath(join(directory, folder), 'keys.db'), {
+      readonly: true,
+    });
+
+    onTestFinished(() => logCopy.destroy());
+    onTestFinished(() => keyCopy.destroy());
+
+    const records = await sql`select sequence, kind from records order by sequence`.execute(
+      logCopy,
+    );
+
+    const keys = await sql`select key_id from record_keys order by key_id`.execute(keyCopy);
+
+    return { records: records.rows, keys: keys.rows };
+  };
+
+  return { restic, job, directory, dataEnv, keyEnv, jobEnv, readSnapshots, readRows };
 }
 
 test.skipIf(isResticMissing)('it stores and lists the 5 snapshot tags as written', async () => {
@@ -148,5 +170,160 @@ test.skipIf(isResticMissing)(
     expect(parsed.value.relation).toBe('same-publish');
     expect(hasMarker).toBeFalse();
     expect(checks).toStrictEqual([[{ integrity_check: 'ok' }], [{ integrity_check: 'ok' }]]);
+  },
+);
+
+test.skipIf(isResticMissing)(
+  'it restores the fetched pair into a fresh data directory and empties its staging',
+  async () => {
+    const ctx = await setupTest();
+    const log = await startTestLog();
+
+    await writeRecords(log.log, [
+      {
+        kind: 'owner_message',
+        definitions: { snapshotHash: 'sha256:aa11' },
+        thread: 'conversation',
+        payload: { spans: 1 },
+        erasable: { text: 'a note to restore' },
+      },
+    ]);
+
+    await writeSnapshotSet({ writer: log.writer, storage: localDataStorage }, 'scheduled');
+
+    const jobEnv = {
+      ...ctx.jobEnv,
+      NIXIE_BACKUP_STAGING_DIR: getBackupStagingDir(log.dataDir),
+    };
+
+    const target = join(ctx.directory, 'fetched');
+    const restoredDir = join(ctx.directory, 'restored');
+    const restoredStaging = getBackupStagingDir(restoredDir);
+
+    await $`${process.execPath} ${ctx.job} run`.env(jobEnv).quiet();
+    await $`${process.execPath} ${ctx.job} fetch --to ${target}`.env(jobEnv).quiet();
+
+    await mkdir(restoredDir);
+
+    await createStagedSet({
+      stagingDir: restoredStaging,
+      sequence: 7,
+      kind: 'scheduled',
+      isComplete: true,
+    });
+
+    const pairText = await Bun.file(join(target, fetchedPairFile)).text();
+
+    const parsed = parseBackupFile(pairText, fetchedPairSchema);
+
+    invariant('value' in parsed, 'the fetch writes a pair file that parses');
+
+    const restored = await restoreDataBackup({
+      storage: localDataStorage,
+      dataDir: restoredDir,
+      directory: target,
+      stagingDir: restoredStaging,
+      clock: { now: () => 1_800_000_000_000 },
+    });
+
+    const published = await ctx.readRows('fetched');
+    const replaced = await ctx.readRows('restored');
+    const staging = await readdir(restoredStaging);
+    const noteText = await Bun.file(join(restoredStaging, 'restore-note.json')).text();
+
+    const noteJSON: unknown = JSON.parse(noteText);
+    const note = restoreNoteSchema.parse(noteJSON);
+
+    expect(restored).toStrictEqual({ files: ['nixie.db', 'keys.db'], pair: parsed.value });
+    expect(published.records.length).toBeGreaterThan(0);
+    expect(published.keys.length).toBeGreaterThan(0);
+    expect(replaced).toStrictEqual(published);
+    expect(staging).toIncludeSameMembers(['job.lock', 'restore-note.json']);
+    expect(note.keySnapshotID).toBe(parsed.value.key.snapshotID);
+  },
+);
+
+test.skipIf(isResticMissing)(
+  'it replaces nothing when the data snapshot is damaged and the fetch fails',
+  async () => {
+    const ctx = await setupTest();
+    const log = await startTestLog();
+
+    await writeSnapshotSet({ writer: log.writer, storage: localDataStorage }, 'scheduled');
+
+    const jobEnv = {
+      ...ctx.jobEnv,
+      NIXIE_BACKUP_STAGING_DIR: getBackupStagingDir(log.dataDir),
+    };
+
+    const target = join(ctx.directory, 'fetched');
+    const restoredDir = join(ctx.directory, 'restored');
+    const restoredStaging = getBackupStagingDir(restoredDir);
+
+    await $`${process.execPath} ${ctx.job} run`.env(jobEnv).quiet();
+
+    const packRoot = join(ctx.dataEnv.RESTIC_REPOSITORY, 'data');
+
+    const folders = await readdir(packRoot);
+
+    for (const folder of folders) {
+      for (const pack of await readdir(join(packRoot, folder))) {
+        const path = join(packRoot, folder, pack);
+
+        const stats = await stat(path);
+
+        const size = stats.size;
+
+        await chmod(path, 0o600);
+
+        const handle = await open(path, 'r+');
+
+        const garbage = new Uint8Array(Math.max(1, Math.floor(size / 2))).fill(0xff);
+
+        await handle.write(garbage, 0, undefined, Math.floor(size / 4));
+        await handle.close();
+      }
+    }
+
+    const fetch = await $`${process.execPath} ${ctx.job} fetch --to ${target}`
+      .env(jobEnv)
+      .nothrow()
+      .quiet();
+
+    const hasMarker = await Bun.file(join(target, unfinishedBackupMarker)).exists();
+
+    await mkdir(restoredDir);
+    await writeFile(getDataFilePath(restoredDir, 'nixie.db'), 'the live log');
+    await writeFile(getDataFilePath(restoredDir, 'keys.db'), 'the live keys');
+
+    await createStagedSet({
+      stagingDir: restoredStaging,
+      sequence: 7,
+      kind: 'scheduled',
+      isComplete: true,
+    });
+
+    const restore = restoreDataBackup({
+      storage: localDataStorage,
+      dataDir: restoredDir,
+      directory: target,
+      stagingDir: restoredStaging,
+      clock: { now: () => 1_800_000_000_000 },
+    });
+
+    await restore.catch(() => {});
+
+    const liveLog = await Bun.file(getDataFilePath(restoredDir, 'nixie.db')).text();
+    const liveKeys = await Bun.file(getDataFilePath(restoredDir, 'keys.db')).text();
+    const hasRestoreMarker = await Bun.file(join(restoredDir, 'restore-incomplete')).exists();
+    const staging = await readdir(restoredStaging);
+
+    expect(fetch.exitCode).not.toBe(0);
+    expect(hasMarker).toBeTrue();
+    expect(restore).rejects.toThrow();
+    expect(liveLog).toBe('the live log');
+    expect(liveKeys).toBe('the live keys');
+    expect(hasRestoreMarker).toBeFalse();
+    expect(staging).toStrictEqual(['000000000007']);
   },
 );
