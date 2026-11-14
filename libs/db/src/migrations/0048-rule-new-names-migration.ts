@@ -31,19 +31,23 @@ export const ruleNewNamesMigration: Migration = {
         await repointColumn(tx, table, column, ruleHashes);
       }
 
-      await removeOldRuleVersions(tx, ruleHashes);
-
       const proposalHashes = await readProposalHashes(tx, ruleHashes);
 
+      // A log reset deletes the proposal records but keeps the closed hashes, so those follow from
+      // the rule versions that still exist.
+      for (const [oldHash, newHash] of await readClosedProposalHashes(tx, ruleHashes)) {
+        proposalHashes.set(oldHash, newHash);
+      }
+
+      await removeOldRuleVersions(tx, ruleHashes);
       await repointColumn(tx, 'proposals', 'action_hash', proposalHashes);
       await repointColumn(tx, 'closed_rule_proposals', 'proposal_hash', proposalHashes);
       await repointColumn(tx, 'records', 'action_hash', proposalHashes);
 
-      for (const hashes of [ruleHashes, proposalHashes]) {
-        await replaceHashText(tx, 'records', 'payload', hashes);
-        await replaceHashText(tx, 'projection_changes', 'row', hashes);
-      }
+      const movedHashes = new Map([...ruleHashes, ...proposalHashes]);
 
+      await rewriteHashFields(tx, 'records', 'payload', movedHashes);
+      await rewriteHashFields(tx, 'projection_changes', 'row', movedHashes);
       await rewriteDecisions(tx);
       await rewriteSnapshotForms(tx);
     });
@@ -181,12 +185,6 @@ async function repointColumn(
   }
 }
 
-async function removeOldRuleVersions(tx: Transaction<unknown>, hashes: HashMap): Promise<void> {
-  for (const oldHash of hashes.keys()) {
-    await sql`delete from rule_versions where rule_hash = ${oldHash}`.execute(tx);
-  }
-}
-
 const changeSideSchema = z.object({ hash: z.string() }).nullable();
 
 const changeSchema = z.object({
@@ -205,7 +203,10 @@ const proposalPayloadSchema = z.object({
 
 // A rule proposal's hash covers the hashes of the rules it changes. A payload whose hash this
 // recomputation does not reproduce is left as it is.
-async function readProposalHashes(tx: Transaction<unknown>, ruleHashes: HashMap): Promise<HashMap> {
+async function readProposalHashes(
+  tx: Transaction<unknown>,
+  ruleHashes: HashMap,
+): Promise<Map<string, string>> {
   const rows = await readQueryRows(
     sql`select payload from records where kind = 'rules.change_proposed'`,
     tx,
@@ -250,17 +251,136 @@ function buildProposalHash(proposal: ProposalPayload, moved: HashMap): string {
   return buildSHA256(toCanonicalJSON(hashed));
 }
 
-async function replaceHashText(
+// A closed proposal whose records a log reset deleted has only its hash, which cannot be inverted.
+// Each proposal of one rule is rebuilt from the rule versions. A closed proposal of several rules
+// or of held effects has no rebuild.
+async function readClosedProposalHashes(
+  tx: Transaction<unknown>,
+  ruleHashes: HashMap,
+): Promise<HashMap> {
+  const closed = await readQueryRows(
+    sql`select proposal_hash from closed_rule_proposals`,
+    tx,
+    z.object({ proposal_hash: z.string() }),
+  );
+
+  const closedHashes = new Set(closed.map((row) => row.proposal_hash));
+  const hashes = new Map<string, string>();
+
+  if (closedHashes.size === 0) {
+    return hashes;
+  }
+
+  const versions = await readQueryRows(
+    sql`select rule_hash, json_extract(rule, '$.id') as rule_id from rule_versions`,
+    tx,
+    z.object({ rule_hash: z.string(), rule_id: z.string().nullable() }),
+  );
+
+  for (const [moved] of ruleHashes) {
+    const ruleID = versions.find((version) => version.rule_hash === moved)?.rule_id;
+
+    if (ruleID === undefined || ruleID === null) {
+      continue;
+    }
+
+    const sides = [
+      null,
+      ...versions
+        .filter((version) => version.rule_id === ruleID)
+        .map((version) => version.rule_hash),
+    ];
+
+    const pairs = sides
+      .flatMap((before) => sides.map((after) => ({ before, after })))
+      .filter((pair) => pair.before === moved || pair.after === moved);
+
+    for (const pair of pairs) {
+      const proposal = {
+        proposalHash: '',
+        changes: [{ ruleID, before: toSide(pair.before), after: toSide(pair.after) }],
+        effectChanges: [],
+      };
+
+      const oldHash = buildProposalHash(proposal, new Map());
+      const newHash = buildProposalHash(proposal, ruleHashes);
+
+      if (closedHashes.has(oldHash) && newHash !== oldHash) {
+        hashes.set(oldHash, newHash);
+      }
+    }
+  }
+
+  return hashes;
+}
+
+function toSide(hash: string | null): { readonly hash: string } | null {
+  return hash === null ? null : { hash };
+}
+
+async function removeOldRuleVersions(tx: Transaction<unknown>, hashes: HashMap): Promise<void> {
+  for (const oldHash of hashes.keys()) {
+    await sql`delete from rule_versions where rule_hash = ${oldHash}`.execute(tx);
+  }
+}
+
+async function rewriteHashFields(
   tx: Transaction<unknown>,
   table: string,
   column: string,
   hashes: HashMap,
 ): Promise<void> {
-  for (const [oldHash, newHash] of hashes) {
-    await sql`update ${sql.table(table)}
-      set ${sql.id(column)} = replace(${sql.id(column)}, ${oldHash}, ${newHash})
-      where instr(${sql.id(column)}, ${oldHash}) > 0`.execute(tx);
+  const rows = await readQueryRows(
+    sql`select rowid as id, ${sql.id(column)} as text from ${sql.table(table)}
+      where ${sql.id(column)} is not null`,
+    tx,
+    z.object({ id: z.number(), text: z.string() }),
+  );
+
+  for (const row of rows) {
+    if (!(row.text.match(/[0-9a-f]{64}/gu) ?? []).some((found) => hashes.has(found))) {
+      continue;
+    }
+
+    const text = JSON.stringify(moveHashFields(JSON.parse(row.text), hashes));
+
+    if (text !== row.text) {
+      await sql`update ${sql.table(table)} set ${sql.id(column)} = ${text}
+        where rowid = ${row.id}`.execute(tx);
+    }
   }
+}
+
+// The keys that hold a rule or proposal hash in a record payload or a projection row. Only a value
+// under one of these keys is rewritten, so a hash quoted in free text, such as a reason, stays.
+const hashKeys = new Set([
+  'ruleHash',
+  'proposalHash',
+  'actionHash',
+  'hash',
+  'rule_hash',
+  'base_hash',
+  'definitions_hash',
+  'action_hash',
+]);
+
+function moveHashFields(value: unknown, hashes: HashMap): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => moveHashFields(item, hashes));
+  }
+
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        hashKeys.has(key) && typeof item === 'string'
+          ? (hashes.get(item) ?? item)
+          : moveHashFields(item, hashes),
+      ]),
+    );
+  }
+
+  return value;
 }
 
 async function rewriteDecisions(tx: Transaction<unknown>): Promise<void> {

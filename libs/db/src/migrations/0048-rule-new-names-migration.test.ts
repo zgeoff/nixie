@@ -336,6 +336,63 @@ test('it rewrites the rule hash of each record payload and the hash of a rule pr
   expect(closed.rows).toStrictEqual([{ proposal_hash: newProposal }]);
 });
 
+test('it leaves a hash quoted in the free text of a record unchanged', async () => {
+  const ctx = await setupTest();
+
+  const old = 'a'.repeat(64);
+
+  await ctx.writeVersion(old, JSON.stringify({ id: 'r', outcome: 'ask', jobs: ['x'] }));
+
+  const payload = {
+    changeID: 'c',
+    ruleID: 'r',
+    ruleHash: old,
+    sentence: null,
+    changedBy: 'owner',
+    reason: `kept ${old} after review`,
+  };
+
+  await ctx.writeRecord('rules.runtime_changed', payload);
+  await ctx.runMigration();
+
+  const [version] = await ctx.readVersions();
+  const rows = await sql`select payload from records`.execute(ctx.db);
+
+  expect(rows.rows).toStrictEqual([
+    { payload: JSON.stringify({ ...payload, ruleHash: version?.rule_hash }) },
+  ]);
+});
+
+test('it repoints a closed proposal whose records a log reset deleted', async () => {
+  const ctx = await setupTest();
+
+  const old = 'a'.repeat(64);
+
+  await ctx.writeVersion(old, JSON.stringify({ id: 'r', outcome: 'ask', jobs: ['x'] }));
+
+  const oldHasher = new Bun.CryptoHasher('sha256');
+
+  oldHasher.update(JSON.stringify([{ after: old, before: null, ruleID: 'r' }]));
+
+  const oldProposal = oldHasher.digest('hex');
+
+  await sql`insert into closed_rule_proposals (proposal_hash) values (${oldProposal})`.execute(
+    ctx.db,
+  );
+
+  await ctx.runMigration();
+
+  const [version] = await ctx.readVersions();
+
+  const newHasher = new Bun.CryptoHasher('sha256');
+
+  newHasher.update(JSON.stringify([{ after: version?.rule_hash, before: null, ruleID: 'r' }]));
+
+  const closed = await sql`select proposal_hash from closed_rule_proposals`.execute(ctx.db);
+
+  expect(closed.rows).toStrictEqual([{ proposal_hash: newHasher.digest('hex') }]);
+});
+
 test('it rewrites a decision whose recorded context is job and keeps the permission job', async () => {
   const ctx = await setupTest();
 
