@@ -11,6 +11,7 @@ import type { SkillVendorContext } from '@heynixie/skills';
 import { buildTaskMessageTool, buildTaskStartTool, buildTasksListTool } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { buildContactTool } from './build-contact-tool';
 import { buildConversationMemoryTools } from './build-conversation-memory-tools';
 import { buildConversationSkillTools } from './build-conversation-skill-tools';
 import { buildConversationTools } from './build-conversation-tools';
@@ -125,6 +126,7 @@ export async function startConversationEndpoint(
       memory,
     ),
     ...search,
+    buildContactTool(options.context, tools.refreshDefinitions),
     buildSilentEndTool(messaging),
   ];
 

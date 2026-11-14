@@ -88,6 +88,7 @@ rendering of it:
 | Queued, not done  | The action ID, once the wait runs out     | No    |
 | Queued, failed    | The action ID and its reason              | No    |
 | Denied            | The decision point's sentence             | Yes   |
+| Asked             | "Waiting for approval as `<shortID>`"     | No    |
 | Invalid input     | The schema errors                         | Yes   |
 | Tool error        | The tool's message, or what it threw      | Yes   |
 | Result off schema | A refusal with the tool's name            | Yes   |

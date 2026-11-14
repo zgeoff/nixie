@@ -394,3 +394,58 @@ test('it asks about test.send and allows actions.log in the release bundle, whic
   expect(JSON.parse(decided.stdout.toString())).toStrictEqual(['ask9', 'allow7']);
   expect(bundle).not.toInclude('test.allow-send');
 });
+
+test('it asks for a moment.keep that an ask rule names, and lets the starter rules allow the same call', async () => {
+  const asked = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['note'], destinations: [], content: ['title'] }),
+    rules: [buildRuleEntry('ask-moments', { outcome: 'ask', tools: ['moment.keep'] })],
+  });
+
+  const allowed = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['note'], destinations: [], content: ['title'] }),
+    rules: [buildRuleEntry('allow-notes', { outcome: 'allow', effects: ['note'] })],
+  });
+
+  const call = buildPolicyCall({
+    tool: 'moment.keep',
+    toolList: ['moment.keep'],
+    args: { title: 'The ferry rule' },
+  });
+
+  const prompt = await asked.decide(call);
+  const kept = await allowed.decide(call);
+
+  expect([prompt.decision.outcome, prompt.decision.stage]).toStrictEqual(['ask', 6]);
+  expect([kept.decision.outcome, kept.decision.stage]).toStrictEqual(['allow', 7]);
+});
+
+test('it meets stage 5 on a task call with a destination when the run read outside content from a moment', async () => {
+  const ctx = buildTestDecisionPoint({
+    rules: [buildRuleEntry('allow-sends', { outcome: 'allow', effects: ['send'] })],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      context: 'task',
+      sources: ['own_data', 'outside'],
+      destinations: [{ value: 'sam@example.org', replyTarget: false }],
+    }),
+  );
+
+  expect([decided.decision.outcome, decided.decision.stage]).toStrictEqual(['ask', 5]);
+});
+
+test('it refuses a note whose destination is not word for word in the typed message', async () => {
+  const ctx = buildTestDecisionPoint({
+    messages: [buildTypedMessage(7, 'Tell Sam about the ferry', 1_794_550_000_000)],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      destinations: [{ value: 'sam@example.org', replyTarget: false }],
+      turnMessageSequence: 7,
+    }),
+  );
+
+  expect([decided.decision.outcome, decided.decision.stage]).toStrictEqual(['ask', 5]);
+});

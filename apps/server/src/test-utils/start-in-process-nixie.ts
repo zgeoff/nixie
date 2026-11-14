@@ -72,6 +72,13 @@ export interface InProcessNixie extends BootFiles {
 
   readonly readToolNames: (received: ReceivedFrame) => Promise<readonly string[]>;
 
+  // Calls a tool as the guest of a turn does, and returns the result text.
+  readonly callTool: (
+    received: ReceivedFrame,
+    name: string,
+    input: Readonly<Record<string, unknown>>,
+  ) => Promise<string>;
+
   readonly readLogEvents: () => readonly TestLogEvent[];
 
   readonly waitForLogEvent: (event: string) => Promise<TestLogEvent>;
@@ -304,6 +311,16 @@ function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
       return readTestToolNames({
         target: start.host.toolTarget({ id: received.sandboxID, owner: received.owner }),
         token: received.frame.tools.token,
+      });
+    },
+    callTool: (received, name, input) => {
+      invariant(received.frame.type === 'turn', 'only a turn frame carries a tool route');
+
+      return sendTestToolCall({
+        target: start.host.toolTarget({ id: received.sandboxID, owner: received.owner }),
+        token: received.frame.tools.token,
+        name,
+        input,
       });
     },
     readLogEvents: () => events,
