@@ -4,6 +4,7 @@ import { buildKagiSearch } from '@heynixie/search-kagi';
 import { buildActions } from './build-actions';
 import { buildTestSendTool } from './build-test-send-tool';
 import { createSandboxAdapter } from './create-sandbox-adapter';
+import { getSandboxImage } from './get-sandbox-image';
 import { getSandboxRootDir } from './get-sandbox-root-dir';
 import { refreshDefinitions } from './refresh-definitions';
 import type { ServerPartValues } from './server-part-values';
@@ -38,6 +39,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'web_fetch',
     needs: ['inputs', 'context', 'sandbox_adapter'],
+    images: () => ['fetch'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
       const sandbox = options.sandbox;
@@ -46,7 +48,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       const webFetch = startWebFetch({
         adapter: parts.get('sandbox_adapter'),
-        image: options.images.fetch.name,
+        image: getSandboxImage(options.images, 'fetch').name,
         ...(testFetchArgv === null ? {} : { argv: testFetchArgv }),
         deniedRanges: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
         config: options.config.web_fetch,

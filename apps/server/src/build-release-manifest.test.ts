@@ -9,9 +9,11 @@ test('it names each image by its version tag and digest', () => {
       images: {
         server: `ghcr.io/example/nixie@sha256:${'a'.repeat(64)}`,
         web: `ghcr.io/example/nixie-web@sha256:${'b'.repeat(64)}`,
+        backup: `ghcr.io/example/nixie-backup@sha256:${'e'.repeat(64)}`,
+      },
+      sandboxImages: {
         conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
         fetch: `ghcr.io/example/nixie-fetch@sha256:${'d'.repeat(64)}`,
-        backup: `ghcr.io/example/nixie-backup@sha256:${'e'.repeat(64)}`,
       },
       migrations: { since: 'v0.8.2', added: [], readableByReleaseBefore: true },
       configSchema: { since: 'v0.8.2', breaking: ['server.port: changes type to "string"'] },
@@ -54,9 +56,11 @@ test('it builds the same manifest from the same inputs', () => {
     images: {
       server: `ghcr.io/example/nixie@sha256:${'a'.repeat(64)}`,
       web: `ghcr.io/example/nixie-web@sha256:${'b'.repeat(64)}`,
+      backup: `ghcr.io/example/nixie-backup@sha256:${'e'.repeat(64)}`,
+    },
+    sandboxImages: {
       conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
       fetch: `ghcr.io/example/nixie-fetch@sha256:${'d'.repeat(64)}`,
-      backup: `ghcr.io/example/nixie-backup@sha256:${'e'.repeat(64)}`,
     },
     migrations: { since: null, added: [], readableByReleaseBefore: null },
     configSchema: { since: null, breaking: [] },
@@ -72,9 +76,11 @@ test('it keeps the port of a registry host', () => {
     images: {
       server: `registry.test:5000/nixie@sha256:${'a'.repeat(64)}`,
       web: `registry.test:5000/nixie-web@sha256:${'b'.repeat(64)}`,
+      backup: `registry.test:5000/nixie-backup@sha256:${'e'.repeat(64)}`,
+    },
+    sandboxImages: {
       conversation: `registry.test:5000/nixie-conversation@sha256:${'c'.repeat(64)}`,
       fetch: `registry.test:5000/nixie-fetch@sha256:${'d'.repeat(64)}`,
-      backup: `registry.test:5000/nixie-backup@sha256:${'e'.repeat(64)}`,
     },
     migrations: { since: null, added: [], readableByReleaseBefore: null },
     configSchema: { since: null, breaking: [] },
@@ -91,9 +97,11 @@ test('it refuses an image that is not named by its digest', () => {
       images: {
         server: 'ghcr.io/example/nixie:0.9.0',
         web: `ghcr.io/example/nixie-web@sha256:${'b'.repeat(64)}`,
+        backup: `ghcr.io/example/nixie-backup@sha256:${'e'.repeat(64)}`,
+      },
+      sandboxImages: {
         conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
         fetch: `ghcr.io/example/nixie-fetch@sha256:${'d'.repeat(64)}`,
-        backup: `ghcr.io/example/nixie-backup@sha256:${'e'.repeat(64)}`,
       },
       migrations: { since: null, added: [], readableByReleaseBefore: null },
       configSchema: { since: null, breaking: [] },

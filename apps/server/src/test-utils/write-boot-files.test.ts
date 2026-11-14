@@ -137,7 +137,7 @@ test('it writes a sandbox manifest that loads', async () => {
 
   const images = await loadSandboxManifest(files.manifestPath);
 
-  expect(images.fetch.name).toBe('nixie-fetch-ffffffffffff');
+  expect(images.fetch?.name).toBe('nixie-fetch-ffffffffffff');
 });
 
 test('it appends the extra lines to the configuration', async () => {

@@ -2,7 +2,7 @@ import type { CompactionSettings } from '@heynixie/compaction';
 import type { Logger } from '@heynixie/logger';
 import type { ModelSecrets, ModelsConfig } from '@heynixie/models';
 import { bindHarness, resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
-import type { SandboxAdapter } from '@heynixie/sandbox';
+import type { SandboxAdapter, SandboxImageKey } from '@heynixie/sandbox';
 import type {
   ConversationMemory,
   ConversationMemorySettings,
@@ -22,7 +22,7 @@ export interface ConversationOptions {
   readonly tools: Pick<ToolEndpoint, 'startRun'>;
   readonly toolNames: readonly string[];
 
-  readonly images: Readonly<Record<string, string>>;
+  readonly images: Readonly<Partial<Record<SandboxImageKey, string>>>;
 
   readonly getDefinitions: ConversationRunnerOptions['getDefinitions'];
 

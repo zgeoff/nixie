@@ -4,7 +4,7 @@ import type { DefinitionsInForce, DefinitionsSource } from '@heynixie/definition
 import type { Logger } from '@heynixie/logger';
 import type { Encoder } from '@heynixie/memory';
 import type { ModelSecrets } from '@heynixie/models';
-import type { SandboxAdapter } from '@heynixie/sandbox';
+import type { SandboxAdapter, SandboxImageKey } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { SeedInputs } from './build-seed-inputs';
@@ -70,6 +70,7 @@ export interface CLIIO {
 export interface CLIFlags {
   readonly config: string;
   readonly manifest: string;
+  readonly needed: boolean;
   readonly sops: string;
   readonly encoder: string;
   readonly live: boolean;
@@ -141,6 +142,11 @@ export interface PartDeclaration<Values, Name extends keyof Values> {
   readonly name: Name;
   readonly needs: readonly (keyof Values)[];
   readonly uses?: readonly (keyof Values)[];
+
+  // The image keys this part picks for itself, so nixie adds them and refuses to start without
+  // them. A part whose image comes from a harness record declares none: its profile's need
+  // covers it.
+  readonly images?: (config: DeploymentConfig) => readonly SandboxImageKey[];
 
   readonly start: (parts: PartReader<Values>) => Promise<Values[Name]>;
 }

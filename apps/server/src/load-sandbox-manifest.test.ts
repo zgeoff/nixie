@@ -12,7 +12,7 @@ async function setupTest() {
   return { path: join(directory, 'sandbox-manifest.json') };
 }
 
-test('it names each image by its kind and the head of its digest', async () => {
+test('it names each image by its key and the head of its digest', async () => {
   const ctx = await setupTest();
 
   await writeFile(
@@ -53,7 +53,7 @@ test('it refuses an image pinned by tag alone', async () => {
   );
 });
 
-test('it refuses a manifest without the fetch image', async () => {
+test('it loads a manifest that lacks an image', async () => {
   const ctx = await setupTest();
 
   await writeFile(
@@ -61,5 +61,23 @@ test('it refuses a manifest without the fetch image', async () => {
     JSON.stringify({ conversation: `ghcr.io/example/nixie-conversation@sha256:${'a'.repeat(64)}` }),
   );
 
-  expect(loadSandboxManifest(ctx.path)).rejects.toThrow('fetch:');
+  const images = await loadSandboxManifest(ctx.path);
+
+  expect(images).toStrictEqual({
+    conversation: {
+      name: 'nixie-conversation-aaaaaaaaaaaa',
+      ref: `ghcr.io/example/nixie-conversation@sha256:${'a'.repeat(64)}`,
+    },
+  });
+});
+
+test('it refuses a key that is no image key', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    JSON.stringify({ browser: `ghcr.io/example/nixie-browser@sha256:${'a'.repeat(64)}` }),
+  );
+
+  expect(loadSandboxManifest(ctx.path)).rejects.toThrow('nixie refuses the sandbox manifest');
 });

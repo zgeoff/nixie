@@ -1,7 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
+import { sandboxImageKeys } from '@heynixie/sandbox';
 import { z } from 'zod';
+import { buildImageShape } from './build-image-shape';
 import { buildReleaseManifest } from './build-release-manifest';
+import { imageRefSchema } from './load-sandbox-manifest';
 
 const addedMigrationSchema = z.strictObject({ version: z.int().positive(), name: z.string() });
 
@@ -24,8 +27,7 @@ const args = parseArgs({
     commit: required,
     server: required,
     web: required,
-    conversation: required,
-    fetch: required,
+    'sandbox-manifest': required,
     backup: required,
     migrations: required,
     'config-schema': required,
@@ -44,6 +46,11 @@ if (missing.length > 0) {
 
 const migrationsText = await readFile(args.values.migrations, 'utf8');
 const configSchemaText = await readFile(args.values['config-schema'], 'utf8');
+const sandboxManifestText = await readFile(args.values['sandbox-manifest'], 'utf8');
+
+const sandboxImages = buildImageShape(sandboxImageKeys, imageRefSchema, 'required').parse(
+  JSON.parse(sandboxManifestText),
+);
 
 const manifest = buildReleaseManifest({
   version: args.values.version,
@@ -51,10 +58,9 @@ const manifest = buildReleaseManifest({
   images: {
     server: args.values.server,
     web: args.values.web,
-    conversation: args.values.conversation,
-    fetch: args.values.fetch,
     backup: args.values.backup,
   },
+  sandboxImages,
   migrations: migrationSummarySchema.parse(JSON.parse(migrationsText)),
   configSchema: configSchemaSummarySchema.parse(JSON.parse(configSchemaText)),
 });

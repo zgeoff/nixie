@@ -11,6 +11,7 @@ test('it serves with every default when the command line is empty', async () => 
     flags: {
       config: '/etc/nixie/config.yaml',
       manifest: '/app/sandbox-manifest.json',
+      needed: false,
       encoder: '/app/encoder',
       sops: '/usr/local/bin/sops',
       live: false,
@@ -33,6 +34,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '',
         sops: '/bin/sops',
         live: false,
@@ -53,6 +55,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/opt/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -73,9 +76,31 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: true,
+        'as-new': false,
+        'keep-sessions': false,
+        yes: false,
+        'dry-run': false,
+      },
+      args: [],
+    },
+  ],
+  [
+    'sandbox-manifest --needed',
+    ['sandbox-manifest', '--needed'],
+    {
+      kind: 'command',
+      command: 'sandbox-manifest',
+      flags: {
+        config: '/etc/nixie/config.yaml',
+        manifest: '/app/sandbox-manifest.json',
+        needed: true,
+        encoder: '/app/encoder',
+        sops: '/usr/local/bin/sops',
+        live: false,
         'as-new': false,
         'keep-sessions': false,
         yes: false,
@@ -93,6 +118,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/srv/manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -113,6 +139,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -133,6 +160,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -153,6 +181,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -173,6 +202,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -193,6 +223,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -214,6 +245,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -235,6 +267,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -256,6 +289,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -276,6 +310,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -299,6 +334,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -321,6 +357,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -341,6 +378,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -362,6 +400,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -382,6 +421,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -402,6 +442,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -422,6 +463,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -442,6 +484,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -462,6 +505,7 @@ test.each([
       flags: {
         config: '/srv/nixie.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -482,6 +526,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,
@@ -503,6 +548,7 @@ test.each([
       flags: {
         config: '/etc/nixie/config.yaml',
         manifest: '/app/sandbox-manifest.json',
+        needed: false,
         encoder: '/app/encoder',
         sops: '/usr/local/bin/sops',
         live: false,

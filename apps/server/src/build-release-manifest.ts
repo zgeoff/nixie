@@ -1,12 +1,12 @@
 import type { MigrationSummary } from '@heynixie/db';
+import type { SandboxImageKey } from '@heynixie/sandbox';
+import { sandboxImageKeys } from '@heynixie/sandbox';
 import type { z } from 'zod';
-import type { releaseImagesSchema } from './release-images-schema';
+import { releaseImagesSchema } from './release-images-schema';
 
 interface ReleaseImages {
   readonly server: string;
   readonly web: string;
-  readonly conversation: string;
-  readonly fetch: string;
   readonly backup: string;
 }
 
@@ -19,6 +19,7 @@ export interface ReleaseManifestInputs {
   readonly version: string;
   readonly commit: string;
   readonly images: ReleaseImages;
+  readonly sandboxImages: Readonly<Record<SandboxImageKey, string>>;
   readonly migrations: MigrationSummary;
   readonly configSchema: ConfigSchemaSummary;
 }
@@ -30,10 +31,14 @@ export function buildReleaseManifest(inputs: ReleaseManifestInputs) {
       web: toTaggedImage(inputs.images.web, inputs.version),
       backup: toTaggedImage(inputs.images.backup, inputs.version),
     },
-    sandboxImages: {
-      conversation: toTaggedImage(inputs.images.conversation, inputs.version),
-      fetch: toTaggedImage(inputs.images.fetch, inputs.version),
-    },
+    sandboxImages: releaseImagesSchema.shape.sandboxImages.parse(
+      Object.fromEntries(
+        sandboxImageKeys.map((key) => [
+          key,
+          toTaggedImage(inputs.sandboxImages[key], inputs.version),
+        ]),
+      ),
+    ),
   };
 
   return {
