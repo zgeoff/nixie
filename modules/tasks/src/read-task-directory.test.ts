@@ -4,7 +4,7 @@ import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { createSystemTask } from './create-system-task';
 import { readTaskDirectory } from './read-task-directory';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TaskMessaging } from './types';
 
@@ -81,7 +81,7 @@ test.each([
     const ctx = await setupTest();
     const starter = await seedConversationStep(ctx.context);
 
-    const taskID = await seedStartedTask(ctx.context, {
+    const taskID = await seedTask(ctx.context, {
       starter: starter.claim,
       name: 'Tide tables',
       brief: 'Find the high tides for Saturday.',

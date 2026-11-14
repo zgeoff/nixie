@@ -6,7 +6,7 @@ import { claimTask } from './claim-task';
 import { createTask } from './create-task';
 import { startTaskRunners } from './start-task-runners';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { RunStep, StepErrored, StepResult, TasksTables } from './types';
 import { writeInboxRecords } from './write-inbox-records';
@@ -248,7 +248,7 @@ test('it runs a started task through the started step', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -280,13 +280,13 @@ test('it claims a message to the conversation while every claim loop of the star
 
   const starter = await seedConversationStep(ctx.context);
 
-  await seedStartedTask(ctx.context, {
+  await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides.',
   });
 
-  await seedStartedTask(ctx.context, {
+  await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Moon phases',
     brief: 'List the full moons.',

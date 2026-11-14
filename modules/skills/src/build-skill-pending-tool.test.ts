@@ -279,7 +279,7 @@ test('it leaves out a proposal that an approval, a rejection or a lapse closed',
     log: ctx.log,
     clock,
     definitions: () => ({ snapshotHash: 'snapshot-a' }),
-    seedWrittenSkills: () => Promise.resolve(),
+    runInForceSeed: () => Promise.resolve(),
   };
 
   await writeSkillProposalLapses(answers);

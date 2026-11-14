@@ -16,6 +16,8 @@ import invariant from 'tiny-invariant';
 import type { SandboxAdapterOptions } from '../create-sandbox-adapter';
 import { runCLI } from '../run-cli';
 import { approveStarterRules } from './approve-starter-rules';
+import type { BootSeeder } from './build-seeder';
+import { buildBootSeeder } from './build-seeder';
 import { readDataFiles } from './read-data-files';
 import { readTestRecords } from './read-test-records';
 import type { BootFileExtras, BootFiles } from './write-boot-files';
@@ -46,7 +48,7 @@ export interface InProcessNixieOptions {
   readonly isStarterApproved?: boolean;
 
   // Runs on the migrated data before the first start, so a test seeds state without a restart.
-  readonly seedData?: (files: BootFiles) => Promise<void>;
+  readonly beforeStart?: (files: BootFiles, seed: BootSeeder) => Promise<void>;
 }
 
 type TestLogEvent = Readonly<Record<string, unknown>> & {
@@ -178,7 +180,7 @@ async function startFirstRun(
     copyDirectory: (from, to) => cp(from, to, { recursive: true }),
   });
 
-  await options.seedData?.(files);
+  await options.beforeStart?.(files, buildBootSeeder(files));
 
   const host = buildRunHost();
   const toolResults: TestToolResult[] = [];

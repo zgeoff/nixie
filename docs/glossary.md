@@ -106,8 +106,8 @@ one person a nixie deployment works for, and the architecture docs call that per
 | recovery       | One restore, under one recovery ID, planned in [GEO-2564](https://linear.app/zgeoff/issue/GEO-2564)                                                                                      |
 | restore marker | The file `restore-incomplete` in the data directory, which a restore writes first and removes once both databases are in place                                                           |
 | reader gate    | The stored `oldest_reader` value, raised while nixie is paused so that a release without the pause refuses the database, planned in [GEO-2566](https://linear.app/zgeoff/issue/GEO-2566) |
-| test seed      | A function in a module's test utils that puts one record into one state, which is not the definitions seed, planned in [GEO-2565](https://linear.app/zgeoff/issue/GEO-2565)              |
-| seeder         | An object whose members are test seeds, bound to a test's dependencies. The actions module has one, and the others are planned in [GEO-2565](https://linear.app/zgeoff/issue/GEO-2565)   |
+| test seed      | A function in a module's test utils that puts one record into one state, which is not the definitions seed                                                                               |
+| seeder         | An object whose members are test seeds, bound to a test's dependencies. Each module that owns records a test needs has one                                                               |
 
 ## Code
 

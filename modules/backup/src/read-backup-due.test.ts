@@ -1,12 +1,22 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
+import type { JSONObject, RecordKind } from '@heynixie/log';
+import { localDataStorage, withWriteTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { sql } from 'kysely';
 import { readBackupDue } from './read-backup-due';
+import { buildSeeder } from './test-utils/build-seeder';
+
+async function setupTest() {
+  const log = await startTestLog();
+
+  const deps = { log: log.log, context: { writer: log.writer, storage: localDataStorage } };
+
+  return { ...log, seed: buildSeeder(deps) };
+}
 
 test('it reads no set and no forget in a new log', async () => {
-  const log = await startTestLog();
-  const due = await readBackupDue(log.writer);
+  const ctx = await setupTest();
+  const due = await readBackupDue(ctx.writer);
 
   expect(due).toStrictEqual({
     isForgetDue: false,
@@ -16,17 +26,15 @@ test('it reads no set and no forget in a new log', async () => {
 });
 
 test('it reads a forget as due once its record is newer than every set copy', async () => {
-  const log = await startTestLog();
+  const ctx = await setupTest();
+  const forgotten = await ctx.seed.record({ kind: 'memory.forgotten', payload: {} });
 
-  await withWriteTransaction(log.writer, async (tx) => {
-    await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-      values (9, 1798761600000, 'memory.forgotten', 'snapshot-a', '{}')`.execute(tx);
-
+  await withWriteTransaction(ctx.writer, async (tx) => {
     await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
-      values (1, 'scheduled', 'published', 8, 1798761500000)`.execute(tx);
+      values (1, 'scheduled', 'published', ${forgotten.sequence - 1}, 1798761500000)`.execute(tx);
   });
 
-  const due = await readBackupDue(log.writer);
+  const due = await readBackupDue(ctx.writer);
 
   expect(due).toStrictEqual({
     isForgetDue: true,
@@ -35,60 +43,55 @@ test('it reads a forget as due once its record is newer than every set copy', as
   });
 });
 
-test.each([
-  ['a message forget', true, 'record.forgotten', '{"sequence":4,"thread":"thread-a"}'],
+test.each<[string, boolean, RecordKind, JSONObject]>([
+  ['a message forget', true, 'record.forgotten', { sequence: 4, thread: 'thread-a' }],
   [
     'a finished moment destroy',
     true,
     'moment_destroyed',
-    '{"momentID":"moment-a","version":2,"stage":"done"}',
+    { momentID: 'moment-a', version: 2, stage: 'done' },
   ],
   [
     'a reset of the conversations',
     true,
     'log_reset',
-    '{"resetAt":1798761600000,"lastSequence":8,"mode":"conversations","shreddedRecords":3}',
+    { resetAt: 1_798_761_600_000, lastSequence: 8, mode: 'conversations', shreddedRecords: 3 },
   ],
   [
     'a full reset',
     false,
     'log_reset',
-    '{"resetAt":1798761600000,"lastSequence":8,"mode":"full","keptSessions":1}',
+    { resetAt: 1_798_761_600_000, lastSequence: 8, mode: 'full', keptSessions: 1 },
   ],
   [
     'a started moment destroy',
     false,
     'moment_destroyed',
-    '{"momentID":"moment-a","version":2,"stage":"started"}',
+    { momentID: 'moment-a', version: 2, stage: 'started' },
   ],
 ])(
   'it reads whether a forget is due after %s as %p',
   async (_label, isForgetDue, kind, payload) => {
-    const log = await startTestLog();
+    const ctx = await setupTest();
 
-    await withWriteTransaction(log.writer, async (tx) => {
-      await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-      values (9, 1798761600000, ${kind}, 'snapshot-a', ${payload})`.execute(tx);
-    });
+    await ctx.seed.record({ kind, payload });
 
-    const due = await readBackupDue(log.writer);
+    const due = await readBackupDue(ctx.writer);
 
     expect(due.isForgetDue).toBe(isForgetDue);
   },
 );
 
 test('it reads a forget as covered by a set whose copy started after it', async () => {
-  const log = await startTestLog();
+  const ctx = await setupTest();
+  const forgotten = await ctx.seed.record({ kind: 'memory.forgotten', payload: {} });
 
-  await withWriteTransaction(log.writer, async (tx) => {
-    await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-      values (9, 1798761600000, 'memory.forgotten', 'snapshot-a', '{}')`.execute(tx);
-
+  await withWriteTransaction(ctx.writer, async (tx) => {
     await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
-      values (1, 'forget', 'staged', 9, 1798761600000)`.execute(tx);
+      values (1, 'forget', 'staged', ${forgotten.sequence}, 1_798_761_600_000)`.execute(tx);
   });
 
-  const due = await readBackupDue(log.writer);
+  const due = await readBackupDue(ctx.writer);
 
   expect(due).toStrictEqual({
     isForgetDue: false,
@@ -98,17 +101,15 @@ test('it reads a forget as covered by a set whose copy started after it', async 
 });
 
 test('it leaves an abandoned set out, so its forget stays due', async () => {
-  const log = await startTestLog();
+  const ctx = await setupTest();
+  const forgotten = await ctx.seed.record({ kind: 'memory.forgotten', payload: {} });
 
-  await withWriteTransaction(log.writer, async (tx) => {
-    await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
-      values (9, 1798761600000, 'memory.forgotten', 'snapshot-a', '{}')`.execute(tx);
-
+  await withWriteTransaction(ctx.writer, async (tx) => {
     await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
-      values (1, 'forget', 'abandoned', 9, 1798761600000)`.execute(tx);
+      values (1, 'forget', 'abandoned', ${forgotten.sequence}, 1_798_761_600_000)`.execute(tx);
   });
 
-  const due = await readBackupDue(log.writer);
+  const due = await readBackupDue(ctx.writer);
 
   expect(due).toStrictEqual({
     isForgetDue: true,

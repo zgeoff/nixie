@@ -3,7 +3,6 @@ import { claimAction, runActionAttempt } from '@heynixie/actions';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { registerFaultPointAction } from '@heynixie/memory/test-utils';
 import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
-import { seedConversationStep } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { defaultAPISettings } from './default-api-settings';
 import { buildSeeder } from './test-utils/build-seeder';
@@ -189,14 +188,14 @@ test('#tasks.list counts a cancelled action apart from a queued one', async () =
 
   const client = buildTestClient(ctx.url, laptop.token);
 
-  const firstStep = await seedConversationStep(ctx.context);
+  const firstStep = await ctx.seed.conversationStep();
 
   await ctx.seed.action({ step: firstStep.claim });
 
   await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'stop' });
   await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'restart' });
 
-  const secondStep = await seedConversationStep(ctx.context);
+  const secondStep = await ctx.seed.conversationStep();
 
   await ctx.seed.action({ step: secondStep.claim, tool: 'test.archive' });
 
@@ -313,7 +312,7 @@ test('#tasks.readActions lists the queued actions a stop would cancel and the st
 
   const client = buildTestClient(ctx.url, laptop.token);
 
-  const step = await seedConversationStep(ctx.context);
+  const step = await ctx.seed.conversationStep();
   const started = await ctx.seed.action({ step: step.claim, tool: 'test.archive' });
   const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 

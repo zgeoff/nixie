@@ -1,7 +1,7 @@
 import { systemClock } from '@heynixie/clock';
 import type { TasksContext } from '@heynixie/tasks';
 import { claimTask, writeInboxRecords, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
-import { seedConversationStep, seedStartedTask } from '@heynixie/tasks/test-utils';
+import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { startDataLog } from './start-data-log';
 import type { BootFiles } from './write-boot-files';
@@ -24,16 +24,17 @@ export async function seedHeldTasks(
 
   try {
     const context = testLog.context;
+    const seed = buildTaskSeeder({ context });
 
-    const starter = await seedConversationStep(context);
+    const starter = await seed.conversationStep();
 
-    const heldID = await seedStartedTask(context, {
+    const heldID = await seed.task({
       starter: starter.claim,
       name: 'Tide tables',
       brief: 'Find the high tides for Saturday.',
     });
 
-    const pausedID = await seedStartedTask(context, {
+    const pausedID = await seed.task({
       starter: starter.claim,
       name: 'Moon phases',
       brief: 'List the full moons this month.',

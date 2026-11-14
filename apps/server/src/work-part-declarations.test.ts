@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
 import type { HeldTasks } from './test-utils/seed-held-tasks';
-import { seedHeldTasks } from './test-utils/seed-held-tasks';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
@@ -61,8 +60,8 @@ test('it runs a held started task at server start, and leaves a held task that t
 
   const nixie = await startInProcessNixie({
     roleModelURLs: { task: 'http://127.0.0.1:4040' },
-    seedData: async (files) => {
-      const held = await seedHeldTasks(files);
+    beforeStart: async (_files, seed) => {
+      const held = await seed.heldTasks();
 
       seeded.resolve(held);
     },

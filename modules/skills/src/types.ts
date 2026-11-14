@@ -27,7 +27,7 @@ export interface SkillProposalState {
 export type SkillProposalContext = ProposalContext;
 
 export interface SkillAnswerContext extends SkillProposalContext {
-  readonly seedWrittenSkills: () => Promise<void>;
+  readonly runInForceSeed: () => Promise<void>;
 }
 
 export interface SkillFile {

@@ -15,7 +15,7 @@ test('it waits first', () => {
   const poll = createActor(definitionsPollMachine, {
     input: {
       probe: () => Promise.resolve('rev-1'),
-      seed: () => Promise.resolve(true),
+      runSeed: () => Promise.resolve(true),
       clock: ctx.clock,
       intervalMs: 60_000,
       retryDelayMs: 1000,
@@ -40,7 +40,7 @@ test('it moves from waiting to probing once the wait passes', async () => {
   const poll = createActor(definitionsPollMachine, {
     input: {
       probe: () => Promise.withResolvers<never>().promise,
-      seed: () => Promise.resolve(true),
+      runSeed: () => Promise.resolve(true),
       clock: ctx.clock,
       intervalMs: 60_000,
       retryDelayMs: 1000,
@@ -68,7 +68,7 @@ test('it moves from probing back to waiting once the probe ends', async () => {
   const poll = createActor(definitionsPollMachine, {
     input: {
       probe: () => probing.promise,
-      seed: () => Promise.resolve(true),
+      runSeed: () => Promise.resolve(true),
       clock: ctx.clock,
       intervalMs: 60_000,
       retryDelayMs: 1000,
@@ -99,7 +99,7 @@ test('it moves from waiting to stopped at once on a stop', () => {
   const poll = createActor(definitionsPollMachine, {
     input: {
       probe: () => Promise.resolve('rev-1'),
-      seed: () => Promise.resolve(true),
+      runSeed: () => Promise.resolve(true),
       clock: ctx.clock,
       intervalMs: 60_000,
       retryDelayMs: 1000,
@@ -126,7 +126,7 @@ test('it ends the wait when it stops', () => {
   const poll = createActor(definitionsPollMachine, {
     input: {
       probe: () => Promise.resolve('rev-1'),
-      seed: () => Promise.resolve(true),
+      runSeed: () => Promise.resolve(true),
       clock: ctx.clock,
       intervalMs: 60_000,
       retryDelayMs: 1000,
@@ -153,7 +153,7 @@ test('it keeps probing on a stop while a probe runs', async () => {
   const poll = createActor(definitionsPollMachine, {
     input: {
       probe: () => Promise.withResolvers<never>().promise,
-      seed: () => Promise.resolve(true),
+      runSeed: () => Promise.resolve(true),
       clock: ctx.clock,
       intervalMs: 60_000,
       retryDelayMs: 1000,
@@ -185,7 +185,7 @@ test('it moves from probing to stopped once the probe ends after a stop', async 
   const poll = createActor(definitionsPollMachine, {
     input: {
       probe: () => probing.promise,
-      seed: () => Promise.resolve(true),
+      runSeed: () => Promise.resolve(true),
       clock: ctx.clock,
       intervalMs: 60_000,
       retryDelayMs: 1000,

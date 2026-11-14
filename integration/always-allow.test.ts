@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { buildTestClient, createDeviceSession, startTestAPI } from '@heynixie/api/test-utils';
+import { buildTestClient, startTestAPI } from '@heynixie/api/test-utils';
 import {
   createPathSource,
   readDefinitionsInForce,
@@ -13,6 +13,7 @@ import { writeRecords } from '@heynixie/log';
 import type { PolicyCall } from '@heynixie/policy';
 import { buildActionProposalInput, makeDecisionPoint } from '@heynixie/policy';
 import invariant from 'tiny-invariant';
+import { buildSeeder } from './test-utils/build-seeder';
 
 async function setupTest() {
   const api = await startTestAPI();
@@ -28,8 +29,6 @@ async function setupTest() {
     source: createPathSource({ directory: root }),
     buildPolicy: () => ({ rules: [], tools: [] }),
   });
-
-  const laptop = await createDeviceSession(api.context, 'laptop');
 
   const decide = makeDecisionPoint({
     findDeclaration: (tool) =>
@@ -53,7 +52,8 @@ async function setupTest() {
 
   return {
     api,
-    client: buildTestClient(api.url, laptop.token),
+    seed: buildSeeder(api),
+    buildClient: (token: string) => buildTestClient(api.url, token),
     runInForceSeed: () =>
       runInForceSeed({ log: api.context.log, buildPolicy: () => ({ rules: [], tools: [] }) }),
     decideSend: async (body: string) => {
@@ -82,6 +82,10 @@ async function setupTest() {
 
 test('it allows the next matching send with no prompt once you answer an ask with always allow', async () => {
   const ctx = await setupTest();
+  const laptop = await ctx.seed.identity({ deviceName: 'laptop' });
+
+  const client = ctx.buildClient(laptop.token);
+
   const asked = await ctx.decideSend('The mooring fee is paid.');
 
   invariant(asked.decision.cause, 'the first send to an unknown destination asks');
@@ -100,13 +104,13 @@ test('it allows the next matching send with no prompt once you answer an ask wit
     }).record,
   ]);
 
-  const listed = await ctx.client.approvals.listItems();
+  const listed = await client.approvals.listItems();
 
   const [item] = listed.items;
 
   invariant(item, 'the ask lists as a proposal');
 
-  await ctx.client.approvals.answerProposal({
+  await client.approvals.answerProposal({
     proposalID: item.proposal.proposalID,
     actionHash: item.proposal.actionHash,
     choice: 'always_allow',

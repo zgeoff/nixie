@@ -1,2 +1,3 @@
+export type { ConnectorSeederDeps } from './build-connector-seeder';
+export { buildConnectorSeeder } from './build-connector-seeder';
 export { encodeTestImage } from './encode-test-image';
-export { seedWebFetchLinks } from './seed-web-fetch-links';

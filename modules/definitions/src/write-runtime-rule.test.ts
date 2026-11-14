@@ -40,7 +40,7 @@ async function setupTest() {
   return {
     root,
     log,
-    seed: () =>
+    runSeed: () =>
       runSeed({
         log,
         source: createPathSource({ directory: root }),
@@ -66,7 +66,7 @@ test('it puts a runtime change in force as a new revision of its rule', async ()
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const change = await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -98,7 +98,7 @@ test('it records a runtime change with its sentence, who made it and why', async
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const change = await writeRuntimeRule(ctx.context, {
     ruleID: 'deny-shell',
@@ -133,7 +133,7 @@ test('it takes a rule out of force when a runtime change removes it', async () =
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -153,7 +153,7 @@ test('it puts the latest of two runtime changes to one rule in force', async () 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'deny-shell',
@@ -187,7 +187,7 @@ test('it gives a rule a new revision when a runtime change brings back an earlie
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -221,14 +221,14 @@ test('it proposes again without a widening that a runtime change put in force', 
     'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeFile(
     join(ctx.root, 'rules', 'mail.yaml'),
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\nallow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -256,7 +256,7 @@ test('it stores a runtime rule in the old names that the release before reads', 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-triage',

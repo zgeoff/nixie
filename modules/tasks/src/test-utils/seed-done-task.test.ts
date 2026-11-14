@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { readTaskSetup } from '../read-task-setup';
 import type { TasksTables } from '../types';
 import { seedConversationStep } from './seed-conversation-step';
-import { seedHeldTask } from './seed-held-task';
+import { seedDoneTask } from './seed-done-task';
 import { startTestTasks } from './start-test-tasks';
 
 async function setupTest() {
@@ -11,23 +11,37 @@ async function setupTest() {
   return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
 }
 
-test('it leaves a started task paused at the limits it is given', async () => {
+test('it leaves a started task in the done state', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await seedDoneTask(ctx.context, {
     starter: starter.claim,
-    limits: { turns: 3, dollars: 1 },
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
   });
 
   const row = await ctx.db
     .selectFrom('tasks')
-    .select(['state', 'pause_requested'])
+    .select('state')
     .where('task_id', '=', taskID)
     .executeTakeFirstOrThrow();
 
+  expect(row).toStrictEqual({ state: 'done' });
+});
+
+test('it starts the task with the options it is given', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedDoneTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { limits: { turns: 3, dollars: 1 } },
+  });
+
   const setup = await readTaskSetup(ctx.context, taskID);
 
-  expect(row).toStrictEqual({ state: 'paused', pause_requested: 0 });
   expect(setup?.limits).toStrictEqual({ turns: 3, dollars: 1 });
 });

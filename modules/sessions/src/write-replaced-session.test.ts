@@ -6,7 +6,7 @@ import {
   setupTestRecorder,
 } from '@heynixie/sandbox/test-utils';
 import { runTaskStep } from '@heynixie/tasks';
-import { seedConversationStep } from '@heynixie/tasks/test-utils';
+import { buildSeeder } from './test-utils/build-seeder';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeReplacedSession } from './write-replaced-session';
 
@@ -19,12 +19,14 @@ async function setupTest() {
     countTokens: countTextTokens,
   });
 
+  const seed = buildSeeder(tasks);
+
   return {
     context: tasks.context,
     adapter: stub.adapter,
     spec: buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' }),
-    seedSessionBoundary: async (boundary: string) => {
-      const step = await seedConversationStep(tasks.context);
+    writeSessionBoundary: async (boundary: string) => {
+      const step = await seed.conversationStep();
 
       await runTaskStep(tasks.context, step.claim, {
         runStep: () =>
@@ -51,7 +53,7 @@ test('it carries only the session files the harness lists into the replacement s
 
   const sessionID = crypto.randomUUID();
 
-  await ctx.seedSessionBoundary(
+  await ctx.writeSessionBoundary(
     JSON.stringify({ harness: 'agent-sdk', sessionID, messageID: crypto.randomUUID() }),
   );
 
@@ -94,7 +96,7 @@ test('it carries nothing for a harness that keeps no session a new sandbox can r
 
   const sessionID = crypto.randomUUID();
 
-  await ctx.seedSessionBoundary(
+  await ctx.writeSessionBoundary(
     JSON.stringify({ harness: 'agent-sdk', sessionID, messageID: crypto.randomUUID() }),
   );
 

@@ -46,7 +46,7 @@ async function setupTest() {
     log,
     time,
     readProposals: () => readRuleProposals(writer.db),
-    seed: () =>
+    runSeed: () =>
       runSeed({
         log,
         source: createPathSource({ directory: root }),
@@ -88,14 +88,14 @@ test('it puts the widening of a rule change proposal in force once you approve i
     'deny-mail:\n  outcome: deny\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeFile(
     join(ctx.root, 'rules', 'mail.yaml'),
     'deny-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const pending = await ctx.readProposals();
 
@@ -123,7 +123,7 @@ test('it records your approval of a rule change proposal', async () => {
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  const held = await ctx.seed();
+  const held = await ctx.runSeed();
 
   invariant(held.status === 'seeded');
 
@@ -155,14 +155,14 @@ test('it keeps the version in force and records your reason when you reject a ru
     'deny-mail:\n  outcome: deny\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeFile(
     join(ctx.root, 'rules', 'mail.yaml'),
     'deny-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  const held = await ctx.seed();
+  const held = await ctx.runSeed();
 
   invariant(held.status === 'seeded');
 
@@ -216,7 +216,7 @@ test('it refuses an approval of a rule change proposal you rejected', async () =
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const pending = await ctx.readProposals();
 
@@ -246,7 +246,7 @@ test('it refuses an approval of a rule change proposal past its lapse time', asy
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const pending = await ctx.readProposals();
 
@@ -276,7 +276,7 @@ test('it refuses an approval of a rule change proposal that a later seed withdre
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const pending = await ctx.readProposals();
 
@@ -289,7 +289,7 @@ test('it refuses an approval of a rule change proposal that a later seed withdre
     'allow-web:\n  outcome: allow\n  tools: [web.*]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const result = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
 
@@ -311,7 +311,7 @@ test('it asks again about a widening you rejected only once the definitions chan
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const pending = await ctx.readProposals();
 
@@ -322,14 +322,14 @@ test('it asks again about a widening you rejected only once the definitions chan
   await writeRuleProposalAnswer(ctx.context, { answer: 'reject', proposalID, reason: 'Not yet.' });
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nShort replies.\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeFile(
     join(ctx.root, 'rules', 'web.yaml'),
     'allow-web:\n  outcome: allow\n  tools: [web.read]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const proposals = await ctx.readProposals();
 
@@ -347,7 +347,7 @@ test('it asks again about a widening you approved once the definitions narrow it
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const pending = await ctx.readProposals();
 
@@ -358,14 +358,14 @@ test('it asks again about a widening you approved once the definitions narrow it
   await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
   await writeFile(join(ctx.root, 'rules', 'web.yaml'), '# No web rules for now.\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   await writeFile(
     join(ctx.root, 'rules', 'web.yaml'),
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const proposals = await ctx.readProposals();
 

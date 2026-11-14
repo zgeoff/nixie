@@ -18,7 +18,7 @@ test('it seeds the migrated data before nixie first starts', async () => {
   const seeded: string[] = [];
 
   const nixie = await startInProcessNixie({
-    seedData: async (files) => {
+    beforeStart: async (files) => {
       const data = await stat(getDataFilePath(files.dataDir, 'nixie.db'));
 
       const found = data.isFile() ? 'migrated' : 'missing';

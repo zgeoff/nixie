@@ -17,7 +17,7 @@ async function setupTest() {
 
   return {
     log,
-    seed: () =>
+    runSeed: () =>
       runSeed({
         log: server.context.log,
         source: createPathSource({ directory: root }),
@@ -32,7 +32,7 @@ test('it warns and names the first seeds pending proposal when only its allows a
   const ctx = await setupTest();
 
   await ctx.writeRules('allow-reads:\n  outcome: allow\n  effects: [read]\n');
-  await ctx.seed();
+  await ctx.runSeed();
   await ctx.warn();
 
   expect(ctx.log).toHaveBeenCalledExactlyOnceWith(
@@ -48,7 +48,7 @@ test('it warns and names the first seeds pending proposal when only its allows a
 test('it warns with no proposal when the definitions hold no rule', async () => {
   const ctx = await setupTest();
 
-  await ctx.seed();
+  await ctx.runSeed();
   await ctx.warn();
 
   expect(ctx.log).toHaveBeenCalledExactlyOnceWith(
@@ -62,7 +62,7 @@ test('it logs nothing once a rule of the owner is in force', async () => {
   const ctx = await setupTest();
 
   await ctx.writeRules('ask-exports:\n  outcome: ask\n  effects: [export]\n');
-  await ctx.seed();
+  await ctx.runSeed();
   await ctx.warn();
 
   expect(ctx.log).not.toHaveBeenCalled();

@@ -8,7 +8,7 @@ import { createConversationTask } from './create-conversation-task';
 import { createSystemTask } from './create-system-task';
 import { readInbox } from './read-inbox';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTestTaskMessage } from './test-utils/write-test-task-message';
 import type { TaskClaim } from './types';
@@ -180,14 +180,14 @@ test('it lists each task with the model it runs on', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const secondLook = await seedStartedTask(ctx.context, {
+  const secondLook = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Second look',
     brief: 'Find the weak points in the plan.',
     options: { model: 'second-look', profile: 'router-b' },
   });
 
-  const seedList = await seedStartedTask(ctx.context, {
+  const seedsTask = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Seed list',
     brief: 'List the seeds to order for spring.',
@@ -215,7 +215,7 @@ test('it lists each task with the model it runs on', async () => {
     result: {
       tasks: [
         {
-          id: seedList,
+          id: seedsTask,
           name: 'Seed list',
           state: 'ready',
           model: null,
@@ -258,7 +258,7 @@ test.each([
       hopLimit: 20,
     };
 
-    const taskID = await seedStartedTask(ctx.context, {
+    const taskID = await seedTask(ctx.context, {
       starter: starter.claim,
       name: 'Seed list',
       brief: 'List the seeds to order for spring.',
@@ -332,7 +332,7 @@ test.each([
       hopLimit: 20,
     };
 
-    const taskID = await seedStartedTask(ctx.context, {
+    const taskID = await seedTask(ctx.context, {
       starter: starter.claim,
       name: 'Seed list',
       brief: 'List the seeds to order for spring.',
@@ -410,13 +410,13 @@ test('it lists a finished task under done within the limit, behind a newer idle 
     hopLimit: 20,
   };
 
-  const finishedID = await seedStartedTask(ctx.context, {
+  const finishedID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Seed list',
     brief: 'List the seeds to order for spring.',
   });
 
-  const idleID = await seedStartedTask(ctx.context, {
+  const idleID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Bed sizes',
     brief: 'Measure the four raised beds.',

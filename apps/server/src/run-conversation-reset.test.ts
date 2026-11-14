@@ -6,6 +6,7 @@ import type { Logger } from '@heynixie/logger';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import { runConversationReset } from './run-conversation-reset';
+import { buildSeeder } from './test-utils/build-seeder';
 import { runTestSeed } from './test-utils/run-test-seed';
 import { startTestServer } from './test-utils/start-test-server';
 
@@ -21,6 +22,7 @@ async function setupTest() {
   return {
     ...server,
     context,
+    seed: buildSeeder({ context }),
     log: mock<Logger>(),
     removeTurnInputThreads: mock<(threads: readonly string[]) => Promise<void>>(() =>
       Promise.resolve(),
@@ -251,19 +253,10 @@ test('it removes the links that the web fetch tool numbered on the conversation 
 
   await runTestSeed(ctx.context.log, ctx.dataDir);
 
-  await withWriteTransaction(ctx.context.log.writer, async (tx) => {
-    await tx
-      .$extendTables<{
-        web_fetch_links: { session_key: string; number: number; url: string; thread: string };
-      }>()
-      .insertInto('web_fetch_links')
-      .values({
-        session_key: 'session-a',
-        number: 1,
-        url: 'https://pier.test/timetable',
-        thread: 'conversation',
-      })
-      .execute();
+  await ctx.seed.webFetchLinks({
+    sessionKey: 'session-a',
+    thread: 'conversation',
+    urls: ['https://pier.test/timetable'],
   });
 
   await runConversationReset({

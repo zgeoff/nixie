@@ -48,7 +48,7 @@ async function setupTest() {
     root,
     context,
     client: createRouterClient(createHostRuleProcedures(context)),
-    seed: () =>
+    runSeed: () =>
       runSeed({
         log,
         source: createPathSource({ directory: root }),
@@ -86,7 +86,7 @@ test('#list shows each rule in force with its sentence, revision and origin', as
     'deny-shell:\n  outcome: deny\n  tools: [shell.run]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const rules = await ctx.client.list();
 
@@ -114,7 +114,7 @@ test("#conflicts shows nixie's version, the repo's version and the base of each 
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const change = await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -128,7 +128,7 @@ test("#conflicts shows nixie's version, the repo's version and the base of each 
     'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const conflicts = await ctx.client.conflicts();
 
@@ -157,7 +157,7 @@ test("#resolve puts the repo's version in force when you keep the repo's", async
     'ask-mail:\n  outcome: ask\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const change = await writeRuntimeRule(ctx.context, {
     ruleID: 'ask-mail',
@@ -171,7 +171,7 @@ test("#resolve puts the repo's version in force when you keep the repo's", async
     'ask-mail:\n  outcome: deny\n  tools: [mail.send]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const resolved = await ctx.client.resolve({ ruleID: 'ask-mail', keep: 'repo' });
   const rules = await ctx.client.list();
@@ -189,7 +189,7 @@ test('#resolve refuses a rule with no conflict as not found', async () => {
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const resolved = ctx.client.resolve({ ruleID: 'ask-mail', keep: 'nixie' });
 
@@ -209,7 +209,7 @@ test('#proposals.list shows a pending rule change proposal with the sentence of 
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const proposals = await ctx.client.proposals.list();
 
@@ -241,7 +241,7 @@ test('#proposals.approve puts the widening in force', async () => {
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const [pending] = await ctx.client.proposals.list();
 
@@ -265,7 +265,7 @@ test('#proposals.reject leaves the widening out of force', async () => {
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const [pending] = await ctx.client.proposals.list();
 
@@ -298,7 +298,7 @@ test('#proposals.reject refuses a proposal you answered as closed', async () => 
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const [pending] = await ctx.client.proposals.list();
 

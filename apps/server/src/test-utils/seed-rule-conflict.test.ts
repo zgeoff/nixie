@@ -7,7 +7,7 @@ import { startInProcessNixie } from './start-in-process-nixie';
 test('it leaves a conflict on ask-mail for the nixie that starts on the data', async () => {
   const nixie = await startInProcessNixie({
     hasStarterRules: false,
-    seedData: (files) => seedRuleConflict(files),
+    beforeStart: (files) => seedRuleConflict(files),
   });
 
   await nixie.waitForLogEvent('ready');

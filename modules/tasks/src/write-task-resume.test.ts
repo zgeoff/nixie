@@ -12,7 +12,7 @@ import { runDueTimers } from './run-due-timers';
 import { createTestClaim } from './test-utils/create-test-claim';
 import { createTestTaskInState } from './test-utils/create-test-task-in-state';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedHeldTask } from './test-utils/seed-held-task';
+import { seedPausedTask } from './test-utils/seed-paused-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 import { writeInboxRecords } from './write-inbox-records';
@@ -172,7 +172,7 @@ test('it refuses the resume of a limit-held task while nixie is paused, and writ
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await seedPausedTask(ctx.context, {
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });

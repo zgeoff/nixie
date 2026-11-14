@@ -3,11 +3,11 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createTask } from '@heynixie/tasks';
-import { seedConversationStep, seedHeldTask } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { createTaskCommands } from './create-task-commands';
 import { readCLIArgs } from './read-cli-args';
 import { buildRecordingHostTransport } from './test-utils/build-recording-host-transport';
+import { buildSeeder } from './test-utils/build-seeder';
 import { startTestControlSocket } from './test-utils/start-test-control-socket';
 
 async function setupTest() {
@@ -36,9 +36,12 @@ test('it offers one command for each task control', () => {
 test('it raises the limit of the task it names, which resumes it, and prints its state and limits', async () => {
   const ctx = await setupTest();
   const api = await startTestControlSocket({ path: ctx.socketPath });
-  const starter = await seedConversationStep(api.context);
 
-  const taskID = await seedHeldTask(api.context, {
+  const seed = buildSeeder(api);
+
+  const starter = await seed.conversationStep();
+
+  const taskID = await seed.pausedTask({
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });

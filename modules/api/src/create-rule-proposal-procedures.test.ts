@@ -16,7 +16,7 @@ async function setupTest() {
   return {
     api,
     root,
-    seed: () =>
+    runSeed: () =>
       runSeed({
         log: api.context.log,
         source: createPathSource({ directory: root }),
@@ -39,7 +39,7 @@ test('#rules.listProposals lists a pending rule change with the sentence of each
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const listed = await client.rules.listProposals();
 
@@ -76,7 +76,7 @@ test('#rules.approveProposal takes the rule change off the pending list', async 
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const pending = await client.rules.listProposals();
 
@@ -102,7 +102,7 @@ test('#rules.rejectProposal refuses a rule change you already answered as closed
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await ctx.seed();
+  await ctx.runSeed();
 
   const pending = await client.rules.listProposals();
 

@@ -1,14 +1,12 @@
-import { expect, onTestFinished, test } from 'bun:test';
-import { startDatabase } from '@heynixie/db';
-import { getDataFilePath } from '@heynixie/log';
-import type { TasksTables } from '@heynixie/tasks';
+import { expect, test } from 'bun:test';
+import { buildBootSeeder } from './build-seeder';
 import { runOracle } from './run-oracle';
 import { startSpawnedNixie } from './start-spawned-nixie';
 
 async function setupTest() {
   const nixie = await startSpawnedNixie();
 
-  return { nixie };
+  return { nixie, seed: buildBootSeeder(nixie) };
 }
 
 test('it finds nothing wrong in a log that nixie wrote', async () => {
@@ -51,17 +49,7 @@ test('it reports a projection table whose rows a fold of the log does not rebuil
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
   await first.kill();
-
-  const db = startDatabase(getDataFilePath(ctx.nixie.dataDir, 'nixie.db'));
-
-  onTestFinished(() => db.destroy());
-
-  await db
-    .$extendTables<TasksTables>()
-    .updateTable('tasks')
-    .set({ step_errors: 7 })
-    .where('task_id', '=', taskID)
-    .execute();
+  await ctx.seed.driftedTask(taskID);
 
   const oracle = await runOracle(ctx.nixie);
 
@@ -131,17 +119,7 @@ test('it reports a lease that is still held once recovery ran', async () => {
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
   await first.kill();
-
-  const db = startDatabase(getDataFilePath(ctx.nixie.dataDir, 'nixie.db'));
-
-  onTestFinished(() => db.destroy());
-
-  await db
-    .$extendTables<TasksTables>()
-    .updateTable('leases')
-    .set({ holder: 'nixie-gone', expires_at: 9_000_000, epoch: 999 })
-    .where('work_id', '=', taskID)
-    .execute();
+  await ctx.seed.goneHolderLease(taskID);
 
   const oracle = await runOracle(ctx.nixie);
 

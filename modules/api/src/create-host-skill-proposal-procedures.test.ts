@@ -30,18 +30,18 @@ async function setupTest() {
 
   const log = { writer, deploymentKey, projections: [] };
   const clock = buildTestClock(Date.UTC(2026, 2, 3, 10, 0));
-  const seedWrittenSkills = mock(() => Promise.resolve());
+  const runInForceSeed = mock(() => Promise.resolve());
 
   const client = createRouterClient(
     createHostSkillProposalProcedures({
       log,
       clock,
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      seedWrittenSkills,
+      runInForceSeed,
     }),
   );
 
-  return { log, client, seedWrittenSkills };
+  return { log, client, runInForceSeed };
 }
 
 test('#list lists each pending proposal with its files, its token check and the hash an answer binds to', async () => {
@@ -144,7 +144,7 @@ test('#approve records the approval that names you, then seeds the written skill
     },
   ]);
 
-  expect(ctx.seedWrittenSkills).toHaveBeenCalledOnce();
+  expect(ctx.runInForceSeed).toHaveBeenCalledOnce();
 });
 
 test('#approve refuses edited files that fail the seed checks with their code', async () => {
@@ -187,7 +187,7 @@ test('#approve refuses edited files that fail the seed checks with their code', 
     );
 
   expect(refusal).toMatchObject({ code: 'SKILL_CHECK', status: 400 });
-  expect(ctx.seedWrittenSkills).not.toHaveBeenCalled();
+  expect(ctx.runInForceSeed).not.toHaveBeenCalled();
 });
 
 test('#approve refuses a proposal whose base the skill in force moved past with its code', async () => {
@@ -243,7 +243,7 @@ test('#approve refuses a proposal whose base the skill in force moved past with 
     );
 
   expect(refusal).toMatchObject({ code: 'STALE_BASE', status: 409 });
-  expect(ctx.seedWrittenSkills).not.toHaveBeenCalled();
+  expect(ctx.runInForceSeed).not.toHaveBeenCalled();
 });
 
 test('#reject records the rejection with your reason', async () => {

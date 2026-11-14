@@ -17,7 +17,7 @@ import { hostImplementer } from './host-implementer';
 import type { HostRouterOptions } from './types';
 
 export function createHostRouter(options: HostRouterOptions) {
-  const skillContext = { ...options.context, seedWrittenSkills: options.runInForceSeed };
+  const skillContext = { ...options.context, runInForceSeed: options.runInForceSeed };
 
   const promptContext = {
     ...options.context,

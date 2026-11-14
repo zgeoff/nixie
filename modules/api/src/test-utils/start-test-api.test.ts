@@ -4,7 +4,8 @@ import { createAllowedAction } from '@heynixie/actions';
 import { clientHeaderName } from '@heynixie/contract';
 import { writeRecords } from '@heynixie/log';
 import { readWriterStatus } from '@heynixie/memory';
-import { readTestTasks, seedConversationStep } from '@heynixie/tasks/test-utils';
+import { readTestTasks } from '@heynixie/tasks/test-utils';
+import { buildSeeder } from './build-seeder';
 import { buildTestClient } from './build-test-client';
 import { createDeviceSession } from './create-device-session';
 import { startTestAPI } from './start-test-api';
@@ -139,9 +140,12 @@ test('it stops the server and removes the data directory once the test finishes'
 });
 
 test('it reads back an action that the actions module created', async () => {
-  const ctx = await startTestAPI();
+  const api = await startTestAPI();
+
+  const ctx = { ...api, seed: buildSeeder(api) };
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
-  const step = await seedConversationStep(ctx.context);
+  const step = await ctx.seed.conversationStep();
 
   const queued = await createAllowedAction(ctx.context, {
     step: step.claim,

@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { readTaskSetup } from './read-task-setup';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedHeldTask } from './test-utils/seed-held-task';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedPausedTask } from './test-utils/seed-paused-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTaskLimitRaise } from './write-task-limit-raise';
 
@@ -14,7 +14,7 @@ test('it reads the starter, the options and the limits of a started task', async
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find tides.',
@@ -42,7 +42,7 @@ test('it reads the limits of the newest raise', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await seedPausedTask(ctx.context, {
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });

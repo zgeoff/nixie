@@ -49,7 +49,7 @@ test('it leaves one held started task waiting with a message unread, and one hel
   const read = Promise.withResolvers<HeldRead>();
 
   await startInProcessNixie({
-    seedData: async (files) => {
+    beforeStart: async (files) => {
       const held = await seedHeldTasks(files);
       const tasks = await ctx.readHeldTasks(files, held);
 

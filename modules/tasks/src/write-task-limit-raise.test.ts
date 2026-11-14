@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { readTaskSetup } from './read-task-setup';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedHeldTask } from './test-utils/seed-held-task';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedPausedTask } from './test-utils/seed-paused-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTaskControl } from './write-task-control';
 import { writeTaskLimitRaise } from './write-task-limit-raise';
@@ -15,7 +15,7 @@ test('it resumes a task that its limit paused, under the raised limit', async ()
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await seedPausedTask(ctx.context, {
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });
@@ -38,7 +38,7 @@ test('it lets a plain resume through once the limit is raised and the task pause
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await seedPausedTask(ctx.context, {
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });
@@ -60,7 +60,7 @@ test('it raises the limit of a held task that the user stopped, and leaves the t
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await seedPausedTask(ctx.context, {
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });
@@ -81,7 +81,7 @@ test('it restarts a stopped task once its limit is raised', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await seedPausedTask(ctx.context, {
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });
@@ -103,7 +103,7 @@ test('it refuses a raise of a task that its limit does not hold', async () => {
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -122,7 +122,7 @@ test.each([
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await seedPausedTask(ctx.context, {
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });

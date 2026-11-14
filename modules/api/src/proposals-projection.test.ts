@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { nixieSchema } from '@heynixie/db';
+import { nixieSchema, readQueryRows, removeTableRows } from '@heynixie/db';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import {
@@ -13,6 +13,7 @@ import {
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { sql } from 'kysely';
+import { z } from 'zod';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
@@ -81,7 +82,16 @@ async function setupTest() {
     },
     runBackfill: () =>
       withWriteTransaction(api.context.log.writer, async (tx) => {
-        await sql`delete from proposals`.execute(tx);
+        const tables = await readQueryRows(
+          sql`select name from sqlite_master where type = 'table' and name not like 'sqlite\\_%' escape '\\'`,
+          tx,
+          z.object({ name: z.string() }),
+        );
+
+        await removeTableRows(
+          tx,
+          tables.map((table) => table.name).filter((name) => name !== 'proposals'),
+        );
 
         const migration = nixieSchema.migrations.find(
           (entry) => entry.name === 'create the proposals',

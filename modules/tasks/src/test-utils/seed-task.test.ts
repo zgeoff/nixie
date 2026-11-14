@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { readTaskSetup } from '../read-task-setup';
 import type { TasksTables } from '../types';
 import { seedConversationStep } from './seed-conversation-step';
-import { seedStartedTask } from './seed-started-task';
+import { seedTask } from './seed-task';
 import { startTestTasks } from './start-test-tasks';
 
 async function setupTest() {
@@ -15,7 +15,7 @@ test('it leaves a ready task that the starter step started, and the starter as i
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -37,7 +37,7 @@ test('it starts the task with the options it is given over the default ones', as
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',

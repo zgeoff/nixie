@@ -3,7 +3,7 @@ import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
 import { probePauseRequested } from './probe-pause-requested';
 import { seedConversationStep } from './test-utils/seed-conversation-step';
-import { seedStartedTask } from './test-utils/seed-started-task';
+import { seedTask } from './test-utils/seed-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeTaskControl } from './write-task-control';
 
@@ -26,7 +26,7 @@ test('it reads a pause that the user asked for while the task runs', async () =>
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -45,7 +45,7 @@ test('it reads no pause request of a running task that the user left alone', asy
   const ctx = await setupTest();
   const starter = await seedConversationStep(ctx.context);
 
-  const taskID = await seedStartedTask(ctx.context, {
+  const taskID = await seedTask(ctx.context, {
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',

@@ -13,6 +13,7 @@ import {
 } from '@heynixie/memory/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import { buildSeeder } from './test-utils/build-seeder';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
@@ -46,7 +47,14 @@ async function setupTest() {
 
   api.setMemory(memory);
 
-  return { ...api, memory };
+  return {
+    ...api,
+    memory,
+    seed: buildSeeder({
+      context: api.context,
+      memory: { store: memory, log: api.context.log, clock: api.clock },
+    }),
+  };
 }
 
 test('#memory.listProposals lists an edit that moves its item with the subject it has and the subject it moves to', async () => {
@@ -77,16 +85,7 @@ test('#memory.listProposals lists a proposal whose review reason a later release
 
   const client = buildTestClient(ctx.url, laptop.token);
 
-  await ctx.memory.writes.remember({
-    text: 'Keeps a rowing boat at the lake',
-    caller: buildMockWriteCaller(),
-  });
-
-  await ctx.context.log.writer.db
-    .$extendTables<{ memory_proposals: { review_reason: string } }>()
-    .updateTable('memory_proposals')
-    .set({ review_reason: 'quote_too_old' })
-    .execute();
+  await ctx.seed.proposalWithLaterReason({ text: 'Keeps a rowing boat at the lake' });
 
   const listed = await client.memory.listProposals();
 

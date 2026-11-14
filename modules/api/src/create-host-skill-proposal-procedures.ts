@@ -82,7 +82,7 @@ function buildPendingEntry(entry: PendingSkillProposal) {
 function answerSkillProposal(context: SkillAnswerContext, answer: LegacyAnswer) {
   return answerLegacyProposal(
     context,
-    { runInForceSeed: () => context.seedWrittenSkills() },
+    { runInForceSeed: () => context.runInForceSeed() },
     'skill',
     answer,
   );

@@ -10,7 +10,7 @@ export interface DefinitionsProbe {
 export interface DefinitionsPollOptions {
   readonly probe: () => Promise<string>;
 
-  readonly seed: () => Promise<boolean>;
+  readonly runSeed: () => Promise<boolean>;
 
   readonly isRefused?: () => boolean;
 
@@ -127,7 +127,7 @@ async function runProbe(
 
     const needsSeed = isDue || isPending;
 
-    if (needsSeed && !(await options.seed())) {
+    if (needsSeed && !(await options.runSeed())) {
       return { token: null, isFailed: true };
     }
 

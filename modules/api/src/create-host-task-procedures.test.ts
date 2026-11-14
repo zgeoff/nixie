@@ -1,15 +1,19 @@
 import { expect, test } from 'bun:test';
 import { pauseNixieInTransaction, readRecords, withWriteTransaction } from '@heynixie/log';
 import { createConversationTask, createTask } from '@heynixie/tasks';
-import { seedConversationStep, seedHeldTask } from '@heynixie/tasks/test-utils';
 import { createRouterClient } from '@orpc/server';
 import { createHostTaskProcedures } from './create-host-task-procedures';
+import { buildSeeder } from './test-utils/build-seeder';
 import { startTestAPI } from './test-utils/start-test-api';
 
 async function setupTest() {
   const api = await startTestAPI();
 
-  return { ...api, client: createRouterClient(createHostTaskProcedures(api.context)) };
+  return {
+    ...api,
+    client: createRouterClient(createHostTaskProcedures(api.context)),
+    seed: buildSeeder(api),
+  };
 }
 
 test('#stop stops a ready task', async () => {
@@ -93,9 +97,9 @@ test('#interrupt refuses a task with no running step', async () => {
 
 test('#resume refuses a task that its limit paused, naming the raise', async () => {
   const ctx = await setupTest();
-  const starter = await seedConversationStep(ctx.context);
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await ctx.seed.pausedTask({
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });
@@ -113,9 +117,9 @@ test('#resume refuses a task that its limit paused, naming the raise', async () 
 
 test('#raise resumes a task that its limit paused, under the raised limits', async () => {
   const ctx = await setupTest();
-  const starter = await seedConversationStep(ctx.context);
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await ctx.seed.pausedTask({
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });
@@ -145,9 +149,9 @@ test('#raise refuses a task that its limit does not hold', async () => {
 
 test('#raise refuses limits that are not above the old ones', async () => {
   const ctx = await setupTest();
-  const starter = await seedConversationStep(ctx.context);
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await seedHeldTask(ctx.context, {
+  const taskID = await ctx.seed.pausedTask({
     starter: starter.claim,
     limits: { turns: 3, dollars: 1 },
   });

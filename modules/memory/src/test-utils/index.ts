@@ -1,3 +1,5 @@
+export { buildMemorySeeder } from './build-memory-seeder';
+export type { MemorySeederDeps } from './memory-seeder-deps';
 export { buildMockCheckerAnswer } from './build-mock-checker-answer';
 export { buildMockWriteCaller } from './build-mock-write-caller';
 export type { RememberCall } from './build-remember-reply';

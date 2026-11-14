@@ -13,9 +13,9 @@ import {
   writeStepError,
   writeTaskLimitPause,
 } from '@heynixie/tasks';
-import { seedConversationStep, seedStartedTask } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { readTaskUsage } from './read-task-usage';
+import { buildSeeder } from './test-utils/build-seeder';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
@@ -23,6 +23,7 @@ async function setupTest() {
 
   return {
     tasks,
+    seed: buildSeeder(tasks),
     claimStartedTask: async (taskID: string) => {
       const claim = await claimTask(tasks.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
 
@@ -218,9 +219,9 @@ test('it counts the dollars that a pause recorded for a turn that left no turn r
 
 test('it counts the dollars of a failed turn, and no turn', async () => {
   const ctx = await setupTest();
-  const starter = await seedConversationStep(ctx.tasks.context);
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await seedStartedTask(ctx.tasks.context, {
+  const taskID = await ctx.seed.task({
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
@@ -250,9 +251,9 @@ test('it counts the dollars of a failed turn, and no turn', async () => {
 
 test('it counts the dollars of a failed turn that reached the limit once, past its pause', async () => {
   const ctx = await setupTest();
-  const starter = await seedConversationStep(ctx.tasks.context);
+  const starter = await ctx.seed.conversationStep();
 
-  const taskID = await seedStartedTask(ctx.tasks.context, {
+  const taskID = await ctx.seed.task({
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',

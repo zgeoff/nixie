@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
-import { seedConversationStep } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { readRecordLookups } from './read-record-lookups';
 import { buildSeeder } from './test-utils/build-seeder';
@@ -53,7 +52,7 @@ test('it reads the actions each stop cancelled and the names of the started task
     },
   ]);
 
-  const step = await seedConversationStep(ctx.context);
+  const step = await ctx.seed.conversationStep();
   const action = await ctx.seed.action({ step: step.claim });
   const stop = await writeTaskControl(ctx.context, { taskID: 'conversation', control: 'stop' });
 
