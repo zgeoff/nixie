@@ -44,7 +44,7 @@ test('it accepts an ended frame that marks a model API error', () => {
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
-    subtype: 'success',
+    outcome: 'finished',
     stopReason: 'stop_sequence',
     isError: true,
     turns: 1,
@@ -62,7 +62,7 @@ test('it accepts an ended frame from a guest that sends no error mark', () => {
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
-    subtype: 'success',
+    outcome: 'finished',
     stopReason: 'end_turn',
     turns: 1,
     usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
@@ -79,7 +79,7 @@ test('it accepts an ended frame with the context of its last model call', () => 
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
-    subtype: 'success',
+    outcome: 'finished',
     stopReason: 'end_turn',
     turns: 2,
     usage: { inputTokens: 80, outputTokens: 5, cacheReadTokens: 70_000, cacheWriteTokens: 1200 },
@@ -96,7 +96,7 @@ test('it refuses an ended frame whose context window is zero', () => {
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
-    subtype: 'success',
+    outcome: 'finished',
     stopReason: 'end_turn',
     turns: 2,
     usage: { inputTokens: 80, outputTokens: 5, cacheReadTokens: 70_000, cacheWriteTokens: 1200 },
@@ -115,7 +115,7 @@ test('it refuses an ended frame whose error mark is not a boolean', () => {
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
-    subtype: 'success',
+    outcome: 'finished',
     stopReason: 'end_turn',
     isError: 'yes',
     turns: 1,
@@ -135,7 +135,7 @@ test('it accepts an ended frame with the reason the SDK gave for its end', () =>
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
-    subtype: 'success',
+    outcome: 'finished',
     stopReason: 'stop_sequence',
     isError: true,
     terminalReason: 'prompt_too_long',
@@ -153,7 +153,7 @@ test('it refuses an ended frame whose end reason is not a string', () => {
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
-    subtype: 'success',
+    outcome: 'finished',
     stopReason: 'stop_sequence',
     terminalReason: 413,
     turns: 1,
@@ -219,4 +219,56 @@ test('it accepts a failed frame for a credential the model API refused', () => {
   };
 
   expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test('it accepts an ended frame with no session point, from a harness with no session', () => {
+  const frame: GuestFrame = {
+    type: 'ended',
+    outcome: 'stopped',
+    stopReason: null,
+    turns: 1,
+    usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+  };
+
+  expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test('it refuses an ended frame with no outcome', () => {
+  const result = guestFrameSchema.safeParse({
+    type: 'ended',
+    stopReason: 'end_turn',
+    turns: 1,
+    usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['outcome'] });
+});
+
+test('it refuses an ended frame whose outcome is not one of the 5 words', () => {
+  const result = guestFrameSchema.safeParse({
+    type: 'ended',
+    outcome: 'success',
+    stopReason: 'end_turn',
+    turns: 1,
+    usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['outcome'] });
+});
+
+test('it accepts an assistant frame whose message ID is not a UUID', () => {
+  const frame: GuestFrame = { type: 'assistant', messageID: 'msg_01', text: 'Hi', toolUses: [] };
+
+  expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test('it refuses an assistant frame with an empty message ID', () => {
+  const result = guestFrameSchema.safeParse({
+    type: 'assistant',
+    messageID: '',
+    text: 'Hi',
+    toolUses: [],
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['messageID'] });
 });

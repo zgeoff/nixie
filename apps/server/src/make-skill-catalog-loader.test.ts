@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import type { DefinitionsInForce } from '@heynixie/definitions';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { startWriter } from '@heynixie/log';
+import { bindHarness } from '@heynixie/models';
+import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import { loadSkillPin } from '@heynixie/skills';
 import invariant from 'tiny-invariant';
 import { makeSkillCatalogLoader } from './make-skill-catalog-loader';
@@ -67,7 +69,7 @@ test("it renders the catalog of the skills on the conversation's list", async ()
   const load = makeSkillCatalogLoader({
     log: ctx.log,
     readInForce: () => inForce,
-    profile: { model: 'claude-test-1', contextTokens: null },
+    harness: bindHarness(buildMockModelProfile({ model: 'claude-test-1', contextTokens: null })),
     skills: { catalogShare: 0.02 },
   });
 
@@ -101,7 +103,7 @@ test("it caps the catalog at its share of the profile's context window", async (
     log: ctx.log,
     readInForce: () => inForce,
 
-    profile: { model: 'claude-test-1', contextTokens: 2000 },
+    harness: bindHarness(buildMockModelProfile({ model: 'claude-test-1', contextTokens: 2000 })),
     skills: { catalogShare: 0.02 },
   });
 
@@ -134,7 +136,7 @@ test('it keeps a description that a larger configured share leaves room for', as
     log: ctx.log,
     readInForce: () => inForce,
 
-    profile: { model: 'claude-test-1', contextTokens: 2000 },
+    harness: bindHarness(buildMockModelProfile({ model: 'claude-test-1', contextTokens: 2000 })),
     skills: { catalogShare: 0.1 },
   });
 
@@ -168,7 +170,7 @@ test("it caps the catalog at its share of the CLI's window for a profile with no
     readInForce: () => inForce,
 
     // 0.02% of the CLI's 200,000-token window for the model leaves 40 tokens, too few for a line
-    profile: { model: 'claude-test-1', contextTokens: null },
+    harness: bindHarness(buildMockModelProfile({ model: 'claude-test-1', contextTokens: null })),
     skills: { catalogShare: 0.0002 },
   });
 
@@ -202,7 +204,9 @@ test("it keeps a description that the CLI's million-token window leaves room for
     readInForce: () => inForce,
 
     // 0.02% of the CLI's 1,000,000-token window for a [1m] model leaves 200 tokens
-    profile: { model: 'claude-test-1[1m]', contextTokens: null },
+    harness: bindHarness(
+      buildMockModelProfile({ model: 'claude-test-1[1m]', contextTokens: null }),
+    ),
     skills: { catalogShare: 0.0002 },
   });
 
@@ -234,7 +238,7 @@ test("it pins the task to the conversation's list on its first load", async () =
   const load = makeSkillCatalogLoader({
     log: ctx.log,
     readInForce: () => inForce,
-    profile: { model: 'claude-test-1', contextTokens: null },
+    harness: bindHarness(buildMockModelProfile({ model: 'claude-test-1', contextTokens: null })),
     skills: { catalogShare: 0.02 },
   });
 
@@ -253,7 +257,7 @@ test('it renders no catalog before the first seed', async () => {
   const load = makeSkillCatalogLoader({
     log: ctx.log,
     readInForce: () => null,
-    profile: { model: 'claude-test-1', contextTokens: null },
+    harness: bindHarness(buildMockModelProfile({ model: 'claude-test-1', contextTokens: null })),
     skills: { catalogShare: 0.02 },
   });
 

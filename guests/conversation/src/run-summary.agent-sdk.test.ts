@@ -50,6 +50,7 @@ test('it reports the summary with its own chain entry and the token counts of it
   const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
 
   invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
+  invariant(ended.boundary, 'the turn the summary forks from sent no session point');
 
   ctx.model.addReplies({ text: 'Open threads: the gauge read 3.2 metres.' });
 
@@ -93,6 +94,7 @@ test('it sends the instruction after the session history, with no tools, and wri
   const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
 
   invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
+  invariant(ended.boundary, 'the turn the summary forks from sent no session point');
 
   ctx.model.addReplies({ text: 'Open threads: none.' });
 
@@ -118,9 +120,10 @@ test('it sends the instruction after the session history, with no tools, and wri
   expect(request?.body?.tools ?? []).toStrictEqual([]);
   expect(ctx.io.frames).toHaveLength(1);
 
+  const forkedFrom = ended.boundary.sessionID;
+
   expect(ctx.io.frames).toSatisfyAll(
-    (frame: GuestFrame) =>
-      frame.type === 'summarized' && frame.boundary.sessionID !== ended.boundary.sessionID,
+    (frame: GuestFrame) => frame.type === 'summarized' && frame.boundary.sessionID !== forkedFrom,
   );
 });
 
@@ -140,6 +143,7 @@ test('it reports a failed call as a failure and never as a summary', async () =>
   const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
 
   invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
+  invariant(ended.boundary, 'the turn the summary forks from sent no session point');
 
   ctx.model.addReplies({ refusal: 'Overloaded, try again later' });
 
@@ -169,6 +173,7 @@ test('it reports a session to resume that is not on the guest disk as missing', 
   const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
 
   invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
+  invariant(ended.boundary, 'the turn the summary forks from sent no session point');
 
   await runSummary(
     buildMockSummarizeFrame({
@@ -207,6 +212,7 @@ test('it keeps the session it forked from on the guest disk', async () => {
   const ended = ctx.io.frames.splice(0).find((frame) => frame.type === 'ended');
 
   invariant(ended?.type === 'ended', 'the turn the summary forks from did not end');
+  invariant(ended.boundary, 'the turn the summary forks from sent no session point');
 
   ctx.model.addReplies({ text: 'Open threads: none.' });
 
@@ -217,5 +223,7 @@ test('it keeps the session it forked from on the guest disk', async () => {
 
   const files = await readdir(`${ctx.home}/.claude/projects`, { recursive: true });
 
-  expect(files).toSatisfyAny((path: string) => path.endsWith(`/${ended.boundary.sessionID}.jsonl`));
+  const forkedFrom = ended.boundary.sessionID;
+
+  expect(files).toSatisfyAny((path: string) => path.endsWith(`/${forkedFrom}.jsonl`));
 });

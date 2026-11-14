@@ -1,9 +1,11 @@
 import { expect, test } from 'bun:test';
+import { bindHarness } from '@heynixie/models';
+import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { runGuestPurge } from './run-guest-purge';
 
 function setupTest() {
-  return { sandboxes: buildStubSandboxes() };
+  return { sandboxes: buildStubSandboxes(), harness: bindHarness(buildMockModelProfile()) };
 }
 
 test('it completes once the guest reports its session state gone', async () => {
@@ -13,7 +15,7 @@ test('it completes once the guest reports its session state gone', async () => {
     buildMockSandboxSpec({ kind: 'conversation' }),
   );
 
-  await runGuestPurge({ sandbox, command: { argv: ['guest'], env: {} } });
+  await runGuestPurge({ harness: ctx.harness, sandbox, command: { argv: ['guest'], env: {} } });
 
   expect(ctx.sandboxes.purged).toStrictEqual([sandbox.id]);
 });
@@ -29,7 +31,9 @@ test('it fails with the guest failure when the guest exits without removing its 
     { type: 'failed', reason: 'error', detail: 'the session state is still on disk' },
   ]);
 
-  expect(runGuestPurge({ sandbox, command: { argv: ['guest'], env: {} } })).rejects.toThrow(
-    'the conversation guest did not remove its session state: the session state is still on disk',
+  expect(
+    runGuestPurge({ harness: ctx.harness, sandbox, command: { argv: ['guest'], env: {} } }),
+  ).rejects.toThrow(
+    `the ${ctx.harness.guest.package} guest did not remove its session state: the session state is still on disk`,
   );
 });

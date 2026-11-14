@@ -116,3 +116,17 @@ one person a nixie deployment works for, and the architecture docs call that per
 | port     | An interface that one module owns and that has a second real provider in sight, as [the ports doc](architecture/ports.md) defines                                     |
 | provider | One implementation of an interface: a real one does the work in a release, and a fake stands in for it in a test, as [the ports doc](architecture/ports.md) describes |
 | adapter  | A provider that reaches a system outside nixie, as a package of its own, as [the ports doc](architecture/ports.md) describes                                          |
+
+## Harnesses
+
+| Term               | Meaning                                                                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| harness            | The model loop that runs a profile's turns inside a sandbox, such as the Agent SDK                                                           |
+| guest              | The program that runs a harness's loop inside a sandbox, such as the conversation guest of the Agent SDK                                     |
+| model runtime      | The program inside a harness that calls the model API, such as the Claude CLI                                                                |
+| capability         | One thing a harness can do, such as `resume`, from the wire library's `harnessCapabilities`                                                  |
+| harness record     | The `Harness` that `bindHarness` builds from a profile, which host code reads in place of a harness ID                                       |
+| harness definition | The one file in the models module that holds a harness's profile type, its schema and its `bind`                                             |
+| session point      | The place in a harness's own session where the next step resumes                                                                             |
+| turn outcome       | The word in an `ended` frame that tells how a turn ended: `finished`, `stopped`, `limit`, `interrupted` or `overflow`                        |
+| `unkept`           | The session position of a task that has an opening, no summary and no session point its harness owns, which nixie derives and stores nowhere |

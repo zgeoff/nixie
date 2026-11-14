@@ -13,7 +13,7 @@ export const roleNeeds: Readonly<Record<ModelRole, ReadonlySet<HarnessCapability
     'call-usage',
     'context-window',
   ]),
-  task: new Set(['tools', 'fresh-session', 'interrupt', 'turn-limit', 'call-usage']),
+  task: new Set(['tools', 'fresh-session', 'interrupt', 'images', 'turn-limit', 'call-usage']),
   worker: new Set(['tools', 'fresh-session', 'interrupt', 'turn-limit', 'call-usage']),
   checker: new Set(['structured-output']),
   'memory-writer': new Set(['tools', 'fresh-session', 'call-usage']),

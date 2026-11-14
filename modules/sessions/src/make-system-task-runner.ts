@@ -5,7 +5,7 @@ import type {
   ModelsConfig,
   ResolvedProfile,
 } from '@heynixie/models';
-import { getHarness, resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
+import { bindHarness, resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import type { GuestCommand, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import invariant from 'tiny-invariant';
 import { buildGuestCommand } from './build-guest-command';
@@ -50,7 +50,7 @@ export function makeSystemTaskRunner<Options extends SystemTaskOptions, Task ext
 
     try {
       const profile = resolveRoleCredential(options, spec.role);
-      const harness = getHarness(profile.profile.harness);
+      const harness = bindHarness(profile.profile);
 
       const task = await spec.start(options, {
         role: spec.role,

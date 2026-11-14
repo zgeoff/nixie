@@ -6,7 +6,7 @@ import { conversationTaskID } from '@heynixie/tasks';
 import { runGuestPurge } from './run-guest-purge';
 import type { ConversationRun, SessionCleanupCause } from './types';
 
-type CleanupRun = Pick<ConversationRun, 'context' | 'sandbox' | 'command' | 'session'>;
+type CleanupRun = Pick<ConversationRun, 'context' | 'harness' | 'sandbox' | 'command' | 'session'>;
 
 export function runSessionCleanup(run: CleanupRun, cause: SessionCleanupCause): Promise<void> {
   return run.session.withInvalidation(async () => {

@@ -36,10 +36,13 @@ test('it answers a check request with the model verdict in one reply frame', asy
 
   const request = {
     profile: {
+      harness: 'agent-sdk',
       model: 'claude-sonnet-5-5',
       baseURL: ctx.model.url,
       effort: 'low',
       authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
     },
     systemPrompt: 'You check one candidate memory.',
     input: '<owner_message>\nI take my coffee black\n</owner_message>',
@@ -72,10 +75,13 @@ test('it sends a check input of /clear to the model as text, never as a CLI comm
 
   const request = {
     profile: {
+      harness: 'agent-sdk',
       model: 'claude-sonnet-5-5',
       baseURL: ctx.model.url,
       effort: 'low',
       authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
     },
     systemPrompt: 'You check one candidate memory.',
     input: '/clear',

@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test';
 import { once } from 'node:events';
-import { decodeTurnFrame, encodeTurnFrame, guestFrameSchema } from '@heynixie/wire';
+import {
+  decodeTurnFrame,
+  encodeHostFrame,
+  guestFrameSchema,
+  harnessCapabilities,
+} from '@heynixie/wire';
 import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
 import { startStubGuest } from './start-stub-guest';
@@ -12,7 +17,7 @@ test('it ends on a stop while a script never settles', async () => {
     onPurge: () => [],
   });
 
-  await stream.send(encodeTurnFrame(buildMockSummarizeFrame()));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], buildMockSummarizeFrame()));
 
   const exited = await stream.stop();
   const messages = await Array.fromAsync(stream.messages);
@@ -28,7 +33,7 @@ test('it sends the frames a script returns, then exits with code 0', async () =>
     onPurge: () => [],
   });
 
-  await stream.send(encodeTurnFrame(buildMockSummarizeFrame()));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], buildMockSummarizeFrame()));
 
   const messages = await Array.fromAsync(stream.messages);
   const exited = await stream.exit;
@@ -50,8 +55,8 @@ test('it aborts the script guest interrupt signal on an interrupt frame', async 
     onPurge: () => [],
   });
 
-  await stream.send(encodeTurnFrame(buildMockTurnFrame()));
-  await stream.send(encodeTurnFrame({ type: 'interrupt' }));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], buildMockTurnFrame()));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], { type: 'interrupt' }));
 
   const messages = await Array.fromAsync(stream.messages);
 

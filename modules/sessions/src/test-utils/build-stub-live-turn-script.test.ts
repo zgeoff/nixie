@@ -30,7 +30,7 @@ test('it lets a message arrive, then reads the opening messages and the live one
         sessionID: expect.toBeString(),
         messageID: expect.toBeString(),
       },
-      subtype: 'success',
+      outcome: 'finished',
       stopReason: 'end_turn',
       turns: 1,
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },

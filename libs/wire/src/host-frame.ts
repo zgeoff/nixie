@@ -37,7 +37,7 @@ const agentSDKTurnProfileSchema = z
   })
   .readonly();
 
-const turnProfileSchema = z.discriminatedUnion('harness', [agentSDKTurnProfileSchema]);
+export const turnProfileSchema = z.discriminatedUnion('harness', [agentSDKTurnProfileSchema]);
 
 export type TurnProfile = z.infer<typeof turnProfileSchema>;
 
@@ -58,7 +58,7 @@ const turnFrameSchema = z
     type: z.literal('turn'),
     profile: turnProfileSchema,
     tools: toolRouteSchema,
-    resume: sessionPointSchema.nullable(),
+    resume: sessionPointSchema.nullable().optional(),
     systemPrompt: z.string(),
     input: z.array(inboxMessageSchema).min(1).readonly(),
     limits: turnLimitsSchema,

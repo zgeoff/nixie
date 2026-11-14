@@ -1,5 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import { ownerMessageCodec, taskMessageCodec } from '@heynixie/tasks';
+import { mintBlockID } from '@heynixie/wire';
 import { formatMessageStamp } from './format-message-stamp';
 import { formatMessageTime } from './format-message-time';
 import type { HistoryTurn } from './read-recent-turns';
@@ -13,6 +14,7 @@ export function renderHistoryLine(
   turn: HistoryTurn,
   times: MessageTimeOptions,
   view: Pick<TaskMessageView, 'messaging'>,
+  mint: () => string = mintBlockID,
 ): string {
   const record = turn.record;
 
@@ -29,12 +31,12 @@ export function renderHistoryLine(
   if (record.kind === 'task_message') {
     return turn.isSent === true
       ? renderSentHistoryLine(record, times)
-      : renderTaskMessage(record, times, view);
+      : renderTaskMessage(record, times, view, mint);
   }
 
-  const words = `[${formatMessageStamp(record, times)}] owner: ${renderOwnerText(record)}`;
+  const words = `[${formatMessageStamp(record, times)}] owner: ${renderOwnerText(record, mint)}`;
 
-  return [words, ...renderImageMarkers(record)].join('\n');
+  return [words, ...renderImageMarkers(record, mint)].join('\n');
 }
 
 function renderSentHistoryLine(record: LogRecord, times: MessageTimeOptions): string {

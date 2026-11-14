@@ -1,12 +1,13 @@
 # Model profiles
 
-nixie reaches every model through a model profile: a named route to one model on one
-Anthropic-compatible endpoint, with the harness that runs its turns, a reference to its credential,
-the header that credential goes in, the model ID, the reasoning effort, an optional context cap, a
-prompt cache lifetime, an optional provider pin and an optional price table. Each model role names
-the profile it uses, so moving a role to another model is a change to the deployment configuration
-and never to code. [Conversation turns](./conversation-turns.md) covers how the conversation runs
-its turns on its role's profile.
+nixie reaches every model through a model profile: a named route to one model on one model API
+endpoint, with the harness that runs its turns, a reference to its credential, the model ID and an
+optional price table. A profile also holds the fields that its harness's loop reads. An Agent SDK
+profile adds the header that credential goes in, the reasoning effort, an optional context cap, a
+prompt cache lifetime and an optional provider pin. Each model role names the profile it uses, so
+moving a role to another model is a change to the deployment configuration and never to code.
+[Conversation turns](./conversation-turns.md) covers how the conversation runs its turns on its
+role's profile.
 
 ## The role map
 
@@ -49,21 +50,30 @@ Each profile names its harness under the required `harness` key, which has no de
 refuses a profile with no `harness` key, and its error names the profile and the fix,
 `harness: agent-sdk`.
 
-The models module holds one record for each harness that nixie runs. Host code reads the record for
-everything that differs between harnesses, and never branches on a harness ID:
+The models module holds one definition for each harness that nixie runs, in a file of its own.
+`bindHarness` turns a profile into a harness record, and host code reads the record for everything
+that differs between harnesses. It never branches on a harness ID, and it reads a profile only as
+the 6 fields that every profile has. Only a definition's `bind` reads a field of its own profile
+type. The record holds:
 
-- the profile's config schema;
+- the capabilities the harness declares, and the header that carries the model secret;
+- the turn profile for a kept session and for a one-off session, which nixie never resumes, such as
+  a check's;
+- the context window in tokens, or null on a harness without the `context-window` capability;
+- the session, or null on a harness with no session. A session names a stored session point's owner,
+  names the session for the logs and lists the session files;
 - the model grant, and the placeholder credential the guest holds;
 - the guest and the entry file for each of its loops, and the key of its image in the sandbox
   manifest;
 - the model API the harness speaks;
 - the MCP `_meta` key that carries the model's tool-use ID on each tool call;
-- the session files that a replaced sandbox carries, or none when the harness keeps no session that
-  a new sandbox can resume;
 - how long the harness's runtime waits for one tool call, which the host copies into each turn
   frame, or null when the harness declares none.
 
-Only the `agent-sdk` harness has a record, so the schema refuses a profile on any other harness.
+A definition gives a session exactly when the harness declares both `resume` and `resume-at-entry`,
+and the type of the definition enforces it. Only the `agent-sdk` harness has a definition, and its
+profile schema holds only the keys its loop reads, so the schema refuses a profile on any other
+harness and a key it does not read.
 
 The wire library holds every harness ID and the features each harness declares, such as resuming a
 session at an entry or returning structured output. Each role declares the features its loop needs,
@@ -75,7 +85,44 @@ and nixie checks a profile's harness against those needs in 2 places:
 | A task's start    | the chosen selectable model against a task's needs                                                                 | the start writes nothing, and tells the model each missing feature                                         |
 
 The turn profile that the host sends a guest, and each session point, name their harness too. nixie
-reads a stored session point that names no harness as an Agent SDK point.
+reads a stored session point that names no harness as an Agent SDK point. A point that the step's
+harness does not own counts as no point.
+
+### Frames and capabilities
+
+`encodeHostFrame` in the wire library is the host's only encoder of host frames. It takes the
+record's capabilities and the frame, and it throws, before it returns any bytes, when the frame or
+one of its fields needs a capability the harness lacks: a `message` frame needs `live-messages`, an
+`interrupt` frame needs `interrupt`, a `summarize` frame needs `summarize`, a turn frame's `resume`
+key needs `resume`, and a non-null `limits.modelCalls` needs `turn-limit`. The step fails and sends
+nothing. Each role's needs cover every capability its frames can use, including `images` for a role
+whose input can carry an image, so a capability gap fails the config's load, and a throw marks a
+host bug.
+
+### Turn outcomes and the session position
+
+Every guest ends a turn with an `ended` frame that carries an `outcome`, which its guest maps from
+its runtime's own words:
+
+| Outcome       | Meaning                                           |
+| ------------- | ------------------------------------------------- |
+| `finished`    | The model ended the turn                          |
+| `stopped`     | Any other end, such as a refusal or an output cap |
+| `limit`       | The guest stopped the turn at `limits.modelCalls` |
+| `interrupted` | An `interrupt` frame stopped the turn             |
+| `overflow`    | The context passed the model's window             |
+
+The host reads `outcome` on the turn record that the running step built, and never reads the
+harness's own `stopReason` or `terminalReason`, which it only writes. The `ended` frame carries a
+session point exactly when the harness has a session, and a context size only when the harness
+declares `context-window`. A guest that breaks this fails the step.
+
+A step on a harness with no session finds the session position `unkept` at each step after its
+first: the task has an opening, no summary and no session point its harness owns. nixie derives
+`unkept` at each step and stores it nowhere. The step opens a session from the log with a rebuild
+whose reason is null, sends a turn frame with no `resume` key, and stores no session point. A turn
+that overflows fails its step, and the next step opens again from the log. A resumed turn that
+overflows compacts only on a harness that declares `summarize`.
 
 ## The context cap
 
@@ -118,9 +165,9 @@ gateway or an aggregator, and an API key header for Anthropic's own endpoint. Th
 placeholder in the variable that the Agent SDK reads for that header
 ([sandboxes](../connectors/sandboxes.md)).
 
-nixie names each secret by a SHA-256 digest of the profile's ID, the auth header and the model host
-([names in impd](../deployment/impd-names.md#model-secrets)). The credential reaches the sandbox
-host in one of 2 ways:
+nixie names each secret by a SHA-256 digest of the profile's ID, the harness's secret header and the
+model host ([names in impd](../deployment/impd-names.md#model-secrets)). The credential reaches the
+sandbox host in one of 2 ways:
 
 - **The deployment holds the credential.** nixie's decrypted secrets file has no entry `<name>`
   under `model_credentials`, and the deployment adds the secret to the sandbox host under nixie's

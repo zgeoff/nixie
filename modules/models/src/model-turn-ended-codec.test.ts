@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import { defineRecordCodec } from '@heynixie/log';
+import { z } from 'zod';
 import { modelTurnEndedCodec } from './model-turn-ended-codec';
 
 test('it decodes the payload a writer encodes', () => {
@@ -81,4 +83,34 @@ test('it refuses a pinned item version below the first', () => {
       sessionImageCount: 0,
     }),
   ).toThrow(/"path": \[\s+"pinnedCore",\s+0,\s+"version"\s+\]/u);
+});
+
+test('it decodes a payload with outcome under a copy of the codec without the key', () => {
+  const payload = modelTurnEndedCodec.encode({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    outcome: 'finished',
+    stopReason: 'end_turn',
+    turns: 1,
+    inputTokens: 10,
+    outputTokens: 5,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    pinnedCore: [],
+    retrieved: [],
+    invalidatedThrough: 0,
+    sessionImageBytes: 0,
+    sessionImageCount: 0,
+  });
+
+  const lastRelease = defineRecordCodec(
+    'model.turn_ended',
+    z.object({ model: z.string(), profile: z.string(), stopReason: z.string().nullable() }),
+  );
+
+  expect(lastRelease.decode(payload)).toStrictEqual({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    stopReason: 'end_turn',
+  });
 });

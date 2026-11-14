@@ -15,12 +15,7 @@ test('it parses a codex profile with no prices into a profile that sets none', (
     harness: 'codex',
     baseURL: 'https://models.example.test',
     credential: 'deployment:openai',
-    authHeader: 'bearer',
     model: 'gpt-test-1',
-    effort: 'medium',
-    providerPin: null,
-    contextTokens: null,
-    cacheTTL: '5m',
     prices: null,
   });
 });

@@ -105,7 +105,7 @@ function buildHelloTurn(turn: TurnFrame): readonly GuestFrame[] {
         sessionID: crypto.randomUUID(),
         messageID: crypto.randomUUID(),
       },
-      subtype: 'success',
+      outcome: 'finished',
       stopReason: 'end_turn',
       turns: 1,
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },

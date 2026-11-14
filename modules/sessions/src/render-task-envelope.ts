@@ -13,10 +13,13 @@ export interface TaskEnvelope {
   readonly body: string | null;
 }
 
-export function renderTaskEnvelope(envelope: TaskEnvelope): string {
+export function renderTaskEnvelope(
+  envelope: TaskEnvelope,
+  mint: () => string = mintBlockID,
+): string {
   // The body is another model's text, so a fresh random ID that the body cannot guess closes the
   // element.
-  const fence = mintBlockID();
+  const fence = mint();
 
   const attributes: (readonly [string, string])[] = [
     ['id', envelope.id],

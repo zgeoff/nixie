@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const messageSpans = z.array(z.object({ start: z.number(), end: z.number(), source: z.string() }));
 
-export function renderOwnerText(record: LogRecord): string {
+export function renderOwnerText(record: LogRecord, mint: () => string = mintBlockID): string {
   const fields = record.erasable.status === 'readable' ? record.erasable.fields : {};
   const text = fields['text'];
 
@@ -20,7 +20,7 @@ export function renderOwnerText(record: LogRecord): string {
 
   return spans.data
     .toSorted((left, right) => left.start - right.start)
-    .map((span) => renderSpan(text.slice(span.start, span.end), span.source))
+    .map((span) => renderSpan(text.slice(span.start, span.end), span.source, mint))
     .join('');
 }
 
@@ -28,14 +28,14 @@ function isForeignSource(source: string): source is 'pasted' | 'dropped' {
   return source === 'pasted' || source === 'dropped';
 }
 
-function renderSpan(part: string, source: string): string {
+function renderSpan(part: string, source: string, mint: () => string): string {
   if (!isForeignSource(source)) {
     return part;
   }
 
   // Pasted text is untrusted, so each block gets a fresh random ID that a pasted closing tag cannot
   // match.
-  const blockID = mintBlockID();
+  const blockID = mint();
 
   return `<${source} id="${blockID}">${part}</${source} id="${blockID}">`;
 }

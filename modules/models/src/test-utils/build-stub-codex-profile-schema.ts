@@ -15,12 +15,7 @@ export function buildStubCodexProfileSchema() {
       harness: input.harness,
       baseURL: input.base_url,
       credential: input.credential,
-      authHeader: 'bearer' as const,
       model: input.model,
-      effort: 'medium' as const,
-      providerPin: null,
-      contextTokens: null,
-      cacheTTL: '5m' as const,
       prices: input.prices ?? null,
     }));
 }

@@ -18,12 +18,14 @@ export { modelTurnEndedCodec } from './model-turn-ended-codec';
 export { modelsConfigSchema } from './models-config-schema';
 export { resolveModelCredentials } from './resolve-model-credentials';
 export { getCLIContextWindow } from './get-cli-context-window';
-export { getHarness } from './get-harness';
-export type { HarnessDescriptor, HarnessEntry, HarnessGuest } from './harness-descriptor';
+export type { AgentSDKProfile } from './agent-sdk-harness-definition';
+export { bindHarness, harnesses } from './bind-harness';
+export type { Harness, HarnessEntry, HarnessGuest, HarnessSession } from './harness';
 export { resolveRoleProfile } from './resolve-role-profile';
 export { roleNeeds } from './role-needs';
 
 export type {
+  HarnessProfile,
   ModelPrices,
   ModelProfile,
   ModelRole,

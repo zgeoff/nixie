@@ -36,7 +36,7 @@ export function buildStubTurnScript(pick: (turn: TurnFrame) => StubTurnEnd): Stu
           sessionID: crypto.randomUUID(),
           messageID: crypto.randomUUID(),
         },
-        subtype: 'success',
+        outcome: isOverflow ? 'overflow' : 'finished',
         stopReason: isOverflow ? 'stop_sequence' : 'end_turn',
         ...(isOverflow ? { isError: true } : {}),
         ...(end.terminalReason === undefined ? {} : { terminalReason: end.terminalReason }),

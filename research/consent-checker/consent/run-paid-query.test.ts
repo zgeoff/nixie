@@ -18,10 +18,13 @@ test('it gives the answer of a result that succeeded with its cost and timings',
   const reply = await runPaidQuery(
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'high',
         authHeader: 'bearer',
+        contextTokens: null,
+        cacheTTL: '5m',
       },
       systemPrompt: 'You check one tool call.',
       input: 'look up the ferry times',
@@ -56,10 +59,13 @@ test('it keeps the cost of a result that failed', async () => {
   const reply = await runPaidQuery(
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'high',
         authHeader: 'bearer',
+        contextTokens: null,
+        cacheTTL: '5m',
       },
       systemPrompt: 'You check one tool call.',
       input: 'look up the ferry times',
@@ -84,10 +90,13 @@ test('it gives no known cost for a query that ended with no result', async () =>
   const reply = await runPaidQuery(
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'high',
         authHeader: 'bearer',
+        contextTokens: null,
+        cacheTTL: '5m',
       },
       systemPrompt: 'You check one tool call.',
       input: 'look up the ferry times',
@@ -113,10 +122,13 @@ test('it creates the check folder under the home before it starts the query', as
   await runPaidQuery(
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'high',
         authHeader: 'bearer',
+        contextTokens: null,
+        cacheTTL: '5m',
       },
       systemPrompt: 'You check one tool call.',
       input: 'look up the ferry times',
@@ -147,10 +159,13 @@ test('it sends the input under the check guest options and closes the session', 
   await runPaidQuery(
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'high',
         authHeader: 'bearer',
+        contextTokens: null,
+        cacheTTL: '5m',
       },
       systemPrompt: 'You check one tool call.',
       input: 'look up the ferry times',

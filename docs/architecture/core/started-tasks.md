@@ -214,9 +214,9 @@ refuses when no value goes above the limit the task reached or one falls below i
 
 An interrupt from the user or from the dollar limit ends a task's turn at the last entry of its
 Agent SDK session, as [interrupts](./conversation-turns.md#interrupts) describes. When the interrupt
-lands before the model sends `end_turn`, the turn's work is not done, and the task keeps that work
-for a later turn. When the interrupt lands after `end_turn`, the turn has finished its work, and its
-task waits as usual.
+lands before the model ends the turn, the turn's outcome is `interrupted`, its work is not done, and
+the task keeps that work for a later turn. When the interrupt lands after the model ended the turn,
+the outcome is `finished`, and its task waits as usual.
 
 1. The step of the cut turn commits with work left, so the task stays ready, and it writes the turn
    record with `isInterrupted: true`.
@@ -227,9 +227,9 @@ task waits as usual.
    carries `isInterrupted: true`. nixie opens that turn with a `task-continue` system message, in
    which nixie asks the model to continue the work that the interrupt stopped.
 
-Other turns end before `end_turn` too, such as a turn that reached its
-[limit of model calls](./conversation-turns.md#model-calls). Such a turn carries no mark, so its
-task waits for a message.
+Other turns end before the model ends them too, such as a turn that reached its
+[limit of model calls](./conversation-turns.md#model-calls), with the outcome `limit`. Such a turn
+carries no mark, so its task waits for a message.
 
 The turn record lives in the log, so the cut work survives a crash between the 2 steps. When the cut
 turn left the session past the compaction threshold, the next step only writes the summary, and the

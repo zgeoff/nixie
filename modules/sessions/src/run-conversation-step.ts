@@ -65,6 +65,8 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
       personaHash: definitions.personaHash,
       isTask: run.frame.kind === 'task',
       boundary: parseSessionBoundary(input.sessionBoundary),
+      session: run.harness.session,
+      capabilities: run.harness.capabilities,
       threshold: run.compaction.threshold,
     });
 

@@ -1,11 +1,16 @@
 import { expect, test } from 'bun:test';
+import { harnessCapabilities } from '@heynixie/wire';
 import { agentSDKProfileSchema } from './agent-sdk-profile-schema';
 import { buildModelsConfigSchema } from './build-models-config-schema';
 import { buildStubCodexProfileSchema } from './test-utils/build-stub-codex-profile-schema';
+import type { ModelProfile } from './types';
 
 function setupTest() {
   return {
-    schema: buildModelsConfigSchema([agentSDKProfileSchema, buildStubCodexProfileSchema()]),
+    schema: buildModelsConfigSchema<ModelProfile>([
+      agentSDKProfileSchema,
+      buildStubCodexProfileSchema(),
+    ]),
   };
 }
 
@@ -171,3 +176,33 @@ test('it accepts a selectable model on a profile whose harness has everything a 
 
   expect(result.error).toBeUndefined();
 });
+
+test.each(['conversation', 'task'] as const)(
+  'it refuses the %s role on a profile whose harness lacks images',
+  (role) => {
+    const schema = buildModelsConfigSchema<ModelProfile>(
+      [agentSDKProfileSchema, buildStubCodexProfileSchema()],
+      {
+        ...harnessCapabilities,
+        codex: new Set(harnessCapabilities['agent-sdk']).difference(new Set(['images'])),
+      },
+    );
+
+    const result = schema.safeParse({
+      profiles: {
+        'chat-codex': {
+          harness: 'codex',
+          base_url: 'https://models.example.test',
+          credential: 'deployment:openai',
+          model: 'gpt-test-1',
+        },
+      },
+      roles: { conversation: 'chat-codex' },
+    });
+
+    expect(result.error?.issues).toPartiallyContain({
+      path: ['roles', role],
+      message: `the ${role} role runs on the profile chat-codex, whose codex harness lacks images`,
+    });
+  },
+);

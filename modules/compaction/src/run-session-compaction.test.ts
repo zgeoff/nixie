@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
+import { bindHarness } from '@heynixie/models';
+import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import {
   buildMockSandboxSpec,
   buildStubSandboxes,
@@ -13,7 +15,7 @@ async function setupTest() {
 
   const sandboxes = buildStubSandboxes();
 
-  return { log, sandboxes };
+  return { log, sandboxes, harness: bindHarness(buildMockModelProfile()) };
 }
 
 test('it summarizes a task session and returns the summary record through its last turn end', async () => {
@@ -32,6 +34,7 @@ test('it summarizes a task session and returns the summary record through its la
       contextTokens: null,
       cacheTTL: '5m',
     },
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
   } as const;
@@ -100,6 +103,7 @@ test('it sends the summary call the task profile, the system prompt and an instr
       contextTokens: null,
       cacheTTL: '5m',
     },
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
   } as const;
@@ -155,6 +159,7 @@ test('it sends the summary call the compaction template that the definitions ove
       contextTokens: null,
       cacheTTL: '5m',
     },
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
   } as const;
@@ -202,6 +207,7 @@ test('it asks once, on the summary fork, to cut a summary past the cap', async (
       contextTokens: null,
       cacheTTL: '5m',
     },
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
   } as const;
@@ -299,6 +305,7 @@ test('it keeps the long summary and its call usage when the cut fails', async ()
       contextTokens: null,
       cacheTTL: '5m',
     },
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
   } as const;
@@ -379,6 +386,7 @@ test('it returns a failure record with the count in a row when the summary call 
       contextTokens: null,
       cacheTTL: '5m',
     },
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
   } as const;
@@ -442,6 +450,7 @@ test('it throws the abort reason instead of a failure record when the signal abo
       contextTokens: null,
       cacheTTL: '5m',
     },
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
   } as const;

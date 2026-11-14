@@ -33,10 +33,13 @@ test('it stops the guest and sends no request when the timeout fired while the g
       command: { argv: ['bun', 'check.ts'], env: {} },
       request: {
         profile: {
+          harness: 'agent-sdk',
           model: 'claude-sonnet-5-5',
           baseURL: 'https://api.anthropic.com',
           effort: 'low',
           authHeader: 'x-api-key',
+          contextTokens: null,
+          cacheTTL: '5m',
         },
         systemPrompt: 'You check one candidate memory.',
         input: 'the input',
@@ -78,10 +81,13 @@ test('it logs the spawn, reply, CLI and API times of an answered check', async (
     command: { argv: ['bun', 'check.ts'], env: {} },
     request: {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'low',
         authHeader: 'x-api-key',
+        contextTokens: null,
+        cacheTTL: '5m',
       },
       systemPrompt: 'You check one candidate memory.',
       input: 'the input',
@@ -129,10 +135,13 @@ test('it logs the answer and its times when the guest fails to stop after replyi
       command: { argv: ['bun', 'check.ts'], env: {} },
       request: {
         profile: {
+          harness: 'agent-sdk',
           model: 'claude-sonnet-5-5',
           baseURL: 'https://api.anthropic.com',
           effort: 'low',
           authHeader: 'x-api-key',
+          contextTokens: null,
+          cacheTTL: '5m',
         },
         systemPrompt: 'You check one candidate memory.',
         input: 'the input',
@@ -183,10 +192,13 @@ test('it logs an aborted check with no reply, CLI or API time', async () => {
       command: { argv: ['bun', 'check.ts'], env: {} },
       request: {
         profile: {
+          harness: 'agent-sdk',
           model: 'claude-sonnet-5-5',
           baseURL: 'https://api.anthropic.com',
           effort: 'low',
           authHeader: 'x-api-key',
+          contextTokens: null,
+          cacheTTL: '5m',
         },
         systemPrompt: 'You check one candidate memory.',
         input: 'the input',
@@ -233,10 +245,13 @@ test('it logs a check whose guest exited with no reply as an error', async () =>
       command: { argv: ['bun', 'check.ts'], env: {} },
       request: {
         profile: {
+          harness: 'agent-sdk',
           model: 'claude-sonnet-5-5',
           baseURL: 'https://api.anthropic.com',
           effort: 'low',
           authHeader: 'x-api-key',
+          contextTokens: null,
+          cacheTTL: '5m',
         },
         systemPrompt: 'You check one candidate memory.',
         input: 'the input',
@@ -281,10 +296,13 @@ test('it logs a check whose reply frame it cannot read as an error', async () =>
       command: { argv: ['bun', 'check.ts'], env: {} },
       request: {
         profile: {
+          harness: 'agent-sdk',
           model: 'claude-sonnet-5-5',
           baseURL: 'https://api.anthropic.com',
           effort: 'low',
           authHeader: 'x-api-key',
+          contextTokens: null,
+          cacheTTL: '5m',
         },
         systemPrompt: 'You check one candidate memory.',
         input: 'the input',
@@ -329,10 +347,13 @@ test('it logs a failed reply with its reply time and no CLI or API time', async 
       command: { argv: ['bun', 'check.ts'], env: {} },
       request: {
         profile: {
+          harness: 'agent-sdk',
           model: 'claude-sonnet-5-5',
           baseURL: 'https://api.anthropic.com',
           effort: 'low',
           authHeader: 'x-api-key',
+          contextTokens: null,
+          cacheTTL: '5m',
         },
         systemPrompt: 'You check one candidate memory.',
         input: 'the input',

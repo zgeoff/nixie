@@ -1,16 +1,20 @@
 import { expect, test } from 'bun:test';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
-import { buildMockModelProfile } from '@heynixie/models/test-utils';
+import type { Harness } from '@heynixie/models';
+import { buildMockModelProfile, buildStubCodexHarness } from '@heynixie/models/test-utils';
 import type { StubGuestScript } from '@heynixie/sandbox/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
+import { readTestTaskProgress } from '@heynixie/tasks/test-utils';
+import type { InboxMessage } from '@heynixie/wire';
 import type { StepCaptureInput, StepCapturePort } from './open-step-capture';
 import { startConversationRunner } from './start-conversation-runner';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { buildStubTurnScript } from './test-utils/build-stub-turn-script';
 import { runNextStep } from './test-utils/run-next-step';
 import { startTestTasks } from './test-utils/start-test-tasks';
+import { takeGuestMessages } from './test-utils/take-guest-messages';
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
 
@@ -70,9 +74,11 @@ async function setupTest() {
       loadOrPinSkillCatalog: (taskID: string) => Promise<string | null> = () =>
         Promise.resolve(null),
       turnInputs?: StepCapturePort,
+      harness?: Harness,
     ) =>
       startConversationRunner({
         context: tasks.context,
+        ...(harness === undefined ? {} : { harness }),
         profile: { profile, credential: 'not-a-real-key' },
         sandboxes: sandboxes.adapter,
         tools: tools.endpoint,
@@ -103,6 +109,15 @@ async function setupTest() {
         log: () => {},
         ...(turnInputs === undefined ? {} : { turnInputs }),
       }),
+    writeMessage: (text: string) =>
+      writeInboxRecords(tasks.context, [
+        {
+          kind: 'owner_message',
+          definitions: { snapshotHash: 'sha256:test' },
+          thread: 'conversation',
+          erasable: { text },
+        },
+      ]),
     runNextStep: (runner: Runner) => runNextStep(tasks.context, runner.runStep),
     sendMessage: async (runner: Runner, text: string) => {
       const definitions = { snapshotHash: 'sha256:test' };
@@ -569,7 +584,7 @@ test('it fails a turn that overflows a new session, and commits nothing of it', 
   expect(errored).toMatchObject([
     {
       erasable: {
-        fields: { message: 'the conversation turn passed the context window: prompt_too_long' },
+        fields: { message: 'the conversation turn passed the context window' },
       },
     },
   ]);
@@ -801,4 +816,135 @@ test('it runs the step on the profile base URL when the log fails to open a capt
   const turn = ctx.sandboxes.turns.at(-1);
 
   expect(turn?.profile.baseURL).toBe(ctx.profile.baseURL);
+});
+
+test('it opens each later step on a harness with no session as an unkept rebuild, and stores no point', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner(
+    2000,
+    () => Promise.resolve(null),
+    undefined,
+    buildStubCodexHarness(),
+  );
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    { type: 'assistant', messageID: crypto.randomUUID(), text: 'Noted.', toolUses: [] },
+    {
+      type: 'ended',
+      outcome: 'finished',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  await ctx.sendMessage(runner, 'One.');
+  await ctx.sendMessage(runner, 'Two.');
+
+  const openings = await ctx.readKinds('model.session_opened');
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
+
+  expect(openings).toMatchObject([
+    { payload: { kind: 'first', reason: null } },
+    { payload: { kind: 'rebuild', reason: null, lostSessionID: null } },
+  ]);
+
+  expect(task.sessionBoundary).toBeNull();
+
+  expect(ctx.sandboxes.turns.map((turn) => Object.hasOwn(turn, 'resume'))).toStrictEqual([
+    false,
+    false,
+  ]);
+});
+
+test('it fails the step of a turn that overflows on a harness with no session, and opens the next step from the log', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner(
+    2000,
+    () => Promise.resolve(null),
+    undefined,
+    buildStubCodexHarness(),
+  );
+
+  const usage = { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 };
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    { type: 'ended', outcome: 'finished', stopReason: 'end_turn', turns: 1, usage },
+  ]);
+
+  await ctx.sendMessage(runner, 'One.');
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    { type: 'ended', outcome: 'overflow', stopReason: 'end_turn', turns: 1, usage },
+  ]);
+
+  await ctx.sendMessage(runner, 'Two.');
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    { type: 'ended', outcome: 'finished', stopReason: 'end_turn', turns: 1, usage },
+  ]);
+
+  await ctx.sendMessage(runner, 'Three.');
+
+  const errored = await ctx.readKinds('task.step_errored');
+  const openings = await ctx.readKinds('model.session_opened');
+
+  expect(errored).toMatchObject([
+    { erasable: { fields: { message: 'the conversation turn passed the context window' } } },
+  ]);
+
+  expect(ctx.sandboxes.summaries).toStrictEqual([]);
+
+  expect(openings).toMatchObject([
+    { payload: { kind: 'first' } },
+    { payload: { kind: 'rebuild', reason: null } },
+  ]);
+});
+
+test('it sends no live message frame on a harness without live messages, and leaves a message that lands mid-turn for the next step', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner(
+    2000,
+    () => Promise.resolve(null),
+    undefined,
+    buildStubCodexHarness(),
+  );
+
+  const delivered: InboxMessage[] = [];
+
+  ctx.sandboxes.setGuestScript(async (turn, guest) => {
+    await ctx.writeMessage('Are you there?');
+
+    delivered.push(...takeGuestMessages(guest));
+
+    return [
+      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+      {
+        type: 'ended',
+        outcome: 'finished',
+        stopReason: 'end_turn',
+        turns: 1,
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+    ];
+  });
+
+  await ctx.sendMessage(runner, 'Hello.');
+
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
+
+  expect([delivered, task.state]).toStrictEqual([[], 'ready']);
 });

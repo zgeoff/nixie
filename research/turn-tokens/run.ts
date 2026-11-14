@@ -185,7 +185,15 @@ async function runChecker(): Promise<readonly SessionResult[]> {
     // oxlint-disable-next-line no-await-in-loop -- one call at a time keeps the counts apart
     const reply = await runCheckQuery(
       {
-        profile: { model, baseURL: `${proxy.url}/${label}`, effort: effort as Effort, authHeader: 'x-api-key' },
+        profile: {
+          harness: 'agent-sdk',
+          model,
+          baseURL: `${proxy.url}/${label}`,
+          effort: effort as Effort,
+          authHeader: 'x-api-key',
+          contextTokens: null,
+          cacheTTL: '5m',
+        },
         systemPrompt: prompt,
         input: buildCheckerEvalInput(sample, pair, fixtures.ownerName),
       },

@@ -76,19 +76,16 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 
 These are places where the code departs from a rule today. Do not copy them into new code.
 
-- `RunCheck` in the sessions module and `HarnessDescriptor` in the models module live in their
-  provider's module (rule 1).
+- `RunCheck` in the sessions module lives in its provider's module (rule 1).
 - `isTestSandbox` in the sandbox module checks `adapter.id === 'process'`, and the sessions module's
   `buildGuestCommand` calls it (rule 9). The server's web fetch start also calls it, inside the
   composition root.
 - The models config schema's 2 harness messages write `agent-sdk` (rules 9 and 10), until
   [the harness list in the config error](https://linear.app/zgeoff/issue/GEO-2579) lands.
-- The wire lib lists `harnessIDs` and `harnessCapabilities`, `codex` included, and the models
-  module's table has one record, with no test across them (rule 10).
-- Each harness union is assembled by hand, apart from the models module's harness table in
-  `get-harness.ts`. They are the profile schema tuple in
-  `modules/models/src/models-config-schema.ts`, and the wire lib's turn profile schema in
-  `host-frame.ts` and session point schema in `session-point.ts`, which each name an `agent-sdk`
-  member (rule 10).
+- The wire lib lists `harnessIDs` and `harnessCapabilityLists`, `codex` included, and the models
+  module's `harnesses` list has one definition, with no test across them (rule 10).
+- Two harness unions are assembled by hand: the wire lib's turn profile schema in `host-frame.ts`
+  and its session point schema in `session-point.ts`, which each name an `agent-sdk` member (rule
+  10).
 - `pickCapturePlan` in the turn-inputs module checks `profile.harness === 'codex'` to skip the
   capture for a Codex step (rule 9).

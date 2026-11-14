@@ -16,10 +16,13 @@ test('it answers the check request it receives with one reply, then exits with c
 
   const request: CheckRequest = {
     profile: {
+      harness: 'agent-sdk',
       model: 'claude-test-1',
       baseURL: 'http://127.0.0.1:9',
       effort: 'low',
       authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
     },
     systemPrompt: 'You check one candidate memory.',
     input: '<owner_message>\nI walk the dog at seven\n</owner_message>',
@@ -44,10 +47,13 @@ test('it drops the unread reply and settles on a stop after a request', async ()
 
   const request: CheckRequest = {
     profile: {
+      harness: 'agent-sdk',
       model: 'claude-test-1',
       baseURL: 'http://127.0.0.1:9',
       effort: 'low',
       authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
     },
     systemPrompt: 'You check one candidate memory.',
     input: '<owner_message>\nI feed the cat at noon\n</owner_message>',

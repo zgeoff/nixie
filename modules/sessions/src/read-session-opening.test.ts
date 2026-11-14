@@ -644,3 +644,60 @@ test('it pins the brief of a task of the release before in a session that is no 
   expect(first.record.briefSequence).toBe(400);
   expect(rebuilt.record.briefSequence).toBe(400);
 });
+
+test('it gives the same opening for two rebuilds from one log, with the clock, the status lines and the block IDs fixed', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: {
+        text: 'Did the parcel come? ref 42',
+        spans: [
+          { start: 0, end: 21, source: 'typed' },
+          { start: 21, end: 27, source: 'pasted' },
+        ],
+      },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'It came at noon.' },
+    },
+  ]);
+
+  const query = {
+    taskID: 'conversation',
+    start: { kind: 'rebuild', reason: null, lostSessionID: null },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: null,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-11-14T03:00:00Z') },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    model: 'claude-test-1',
+    status: [buildStartStatus(), buildModelStatus()],
+    mintBlockID: () => '6e6978690001',
+  } as const;
+
+  const first = await readSessionOpening(ctx.tasks.context, query);
+  const second = await readSessionOpening(ctx.tasks.context, query);
+
+  expect(second).toStrictEqual(first);
+  expect(first.blocks.at(1)).toInclude('id="6e6978690001"');
+
+  expect(first.blocks.at(2)).toInclude(
+    '<pasted id="6e6978690001">ref 42</pasted id="6e6978690001">',
+  );
+
+  expect(first.record).toMatchObject({ kind: 'rebuild', reason: null, lostSessionID: null });
+
+  expect(first.blocks.at(1)).toInclude(
+    'Start: a rebuild, because the earlier session was not kept.',
+  );
+});

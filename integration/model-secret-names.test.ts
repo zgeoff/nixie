@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { deriveModelSecret, resolveModelCredentials } from '@heynixie/models';
+import { bindHarness, deriveModelSecret, resolveModelCredentials } from '@heynixie/models';
 import { buildImpPort, buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { TEST_TOKEN, startTestImpd } from '@impz/testing';
@@ -63,7 +63,7 @@ test('it uses the secret impd holds under the fixed name of a profile with no cr
 
   invariant(opus);
 
-  await ctx.adapter.addSecret(deriveModelSecret(opus));
+  await ctx.adapter.addSecret(deriveModelSecret(opus, bindHarness(opus.profile)));
 
   const secrets = await ctx.impd.client.secrets.list();
 
@@ -103,7 +103,9 @@ test('it refuses the fixed-name secret of a profile with no credential in the se
 
   invariant(opus);
 
-  expect(ctx.adapter.addSecret(deriveModelSecret(opus))).rejects.toThrow(
+  const secret = deriveModelSecret(opus, bindHarness(opus.profile));
+
+  expect(ctx.adapter.addSecret(secret)).rejects.toThrow(
     'impd holds no secret nixie-model-528d8dae09a6d4f1e0e, and nixie holds no credential to add it under that name',
   );
 });

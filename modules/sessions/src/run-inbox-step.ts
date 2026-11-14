@@ -26,7 +26,7 @@ async function runSessionTurn(step: SessionStep, plan: InboxPlan): Promise<StepR
     return runResumedTurn(step, { boundary: step.position.boundary, plan });
   }
 
-  const start = pickSessionStart(step.position);
+  const start = pickSessionStart(step.position, step.run.harness.session);
 
   if (start.kind === 'rebuild' && start.reason === 'forget') {
     await removeSummaryKeys(step.run.context.log, step.input.taskID);

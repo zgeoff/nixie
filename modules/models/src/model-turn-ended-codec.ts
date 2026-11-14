@@ -1,4 +1,5 @@
 import { defineRecordCodec } from '@heynixie/log';
+import { turnOutcomeSchema } from '@heynixie/wire';
 import { z } from 'zod';
 import { memoryRefsSchema } from './memory-refs-schema';
 import { modelFieldsShape } from './model-fields-shape';
@@ -9,6 +10,7 @@ export const modelTurnEndedCodec = defineRecordCodec(
   'model.turn_ended',
   z.object({
     ...modelFieldsShape,
+    outcome: turnOutcomeSchema.exactOptional(),
     stopReason: z.string().nullable(),
     terminalReason: z.string().exactOptional(),
     turns: z.int(),

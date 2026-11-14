@@ -9,6 +9,8 @@ import { checkToolServer } from './check-tool-server';
 import { commandLifecycleSchema } from './command-lifecycle-schema';
 import { countContextTokens } from './count-context-tokens';
 import { getCompactWindow } from './get-compact-window';
+import { isOverflowReason } from './is-overflow-reason';
+import { pickTurnOutcome } from './pick-turn-outcome';
 import type { TurnInputState } from './read-turn-input';
 import { readTurnInput } from './read-turn-input';
 import { setupTurnDisk } from './setup-turn-disk';
@@ -40,7 +42,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
   const state: TurnState = {
     pending: new Set(),
     boundary: null,
-    committed: turn.resume,
+    committed: turn.resume ?? null,
     contextSize: null,
     compactWindow: getCompactWindow(turn.profile),
     isInterrupted: false,
@@ -396,8 +398,13 @@ function buildEnded(
 
   return {
     type: 'ended',
+    outcome: pickTurnOutcome({
+      subtype: message.subtype,
+      terminalReason: message.terminal_reason,
+      stopReason: message.stop_reason,
+      isInterrupted: state.isInterrupted,
+    }),
     boundary,
-    subtype: message.subtype,
     stopReason: message.stop_reason,
     isError: message.is_error,
     ...(message.terminal_reason === undefined ? {} : { terminalReason: message.terminal_reason }),
@@ -415,16 +422,13 @@ function buildEnded(
   };
 }
 
-const overflowReasons: ReadonlySet<string> = new Set(['blocking_limit', 'prompt_too_long']);
-
 function pickBoundary(
   message: Extract<SDKResultMessage, { subtype: 'success' }>,
   state: TurnState,
 ): SessionPoint | null {
-  const isOverflow =
-    message.terminal_reason !== undefined && overflowReasons.has(message.terminal_reason);
-
-  return isOverflow ? (state.committed ?? state.boundary) : state.boundary;
+  return isOverflowReason(message.terminal_reason)
+    ? (state.committed ?? state.boundary)
+    : state.boundary;
 }
 
 type StreamEventMessage = Extract<SDKMessage, { type: 'stream_event' }>;

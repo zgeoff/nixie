@@ -1,5 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { once } from 'node:events';
+import { bindHarness } from '@heynixie/models';
+import { buildMockModelProfile, buildStubCodexHarness } from '@heynixie/models/test-utils';
 import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import type { InboxMessage } from '@heynixie/wire';
@@ -8,7 +10,10 @@ import invariant from 'tiny-invariant';
 import { runGuestTurn } from './run-guest-turn';
 
 function setupTest() {
-  return { stub: buildStubSandboxes() };
+  return {
+    stub: buildStubSandboxes(),
+    harness: bindHarness(buildMockModelProfile()),
+  };
 }
 
 test('it collects the frames the guest sent for the turn', async () => {
@@ -17,6 +22,7 @@ test('it collects the frames the guest sent for the turn', async () => {
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
 
   const turn = await runGuestTurn({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame({
@@ -31,7 +37,7 @@ test('it collects the frames the guest sent for the turn', async () => {
       { type: 'assistant', messageID: expect.toBeString(), text: 'Hello.', toolUses: [] },
     ],
     read: ['6e697869-0000-8000-8000-000000000002'],
-    ended: [expect.objectContaining({ type: 'ended', subtype: 'success' })],
+    ended: [expect.objectContaining({ type: 'ended', outcome: 'finished' })],
     failure: null,
   });
 });
@@ -45,6 +51,7 @@ test.each([
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
 
   await runGuestTurn({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame({ limits: { toolCallWaitMs } }),
@@ -72,7 +79,7 @@ test('it drops the reads and replies a guest sent after its last result when it 
         sessionID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
         messageID: replyID,
       },
-      subtype: 'success',
+      outcome: 'finished',
       stopReason: 'end_turn',
       turns: 1,
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
@@ -82,6 +89,7 @@ test('it drops the reads and replies a guest sent after its last result when it 
   ]);
 
   const turn = await runGuestTurn({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame({
@@ -121,6 +129,7 @@ test('it keeps every reply of a turn that failed after its last result', async (
   ]);
 
   const turn = await runGuestTurn({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame({
@@ -167,7 +176,7 @@ test('it reports the mark it read at the last result, before a guest that died s
         sessionID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
         messageID: replyID,
       },
-      subtype: 'success',
+      outcome: 'finished',
       stopReason: 'end_turn',
       turns: 1,
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
@@ -176,6 +185,7 @@ test('it reports the mark it read at the last result, before a guest that died s
   ]);
 
   const turn = await runGuestTurn({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame(),
@@ -202,6 +212,7 @@ test('it passes each live message into the running turn', async () => {
   });
 
   const turn = await runGuestTurn({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame({
@@ -232,6 +243,7 @@ test('it sends the guest an interrupt frame when the interrupt signal aborts', a
   });
 
   const turn = await runGuestTurn({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame({
@@ -290,6 +302,7 @@ test('it hands each model call to the caller before it reads the next frame, so 
   });
 
   await runGuestTurn({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame({
@@ -343,6 +356,7 @@ test('it waits for the caller to finish with a model call before it reads the ne
   });
 
   const turn = runGuestTurn({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame({
@@ -391,6 +405,7 @@ test('it throws when the guest exits before it ends or fails its turn', async ()
 
   expect(
     runGuestTurn({
+      harness: ctx.harness,
       sandbox,
       command: { argv: ['guest'], env: {} },
       turn: buildMockTurnFrame({
@@ -400,7 +415,7 @@ test('it throws when the guest exits before it ends or fails its turn', async ()
       signal: new AbortController().signal,
     }),
   ).rejects.toThrow(
-    'the conversation guest exited with code 0 and signal null before it ended its turn: ',
+    `the ${ctx.harness.guest.package} guest exited with code 0 and signal null before it ended its turn: `,
   );
 });
 
@@ -414,6 +429,7 @@ test('it stops the guest and sends no turn when the signal aborted while the gue
   forget.abort(new Error('a forget invalidated the session'));
 
   const turn = runGuestTurn({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame(),
@@ -444,6 +460,7 @@ test('it stops the guest when the step signal aborts', async () => {
 
   expect(
     runGuestTurn({
+      harness: ctx.harness,
       sandbox,
       command: { argv: ['guest'], env: {} },
       turn: buildMockTurnFrame({
@@ -452,5 +469,79 @@ test('it stops the guest when the step signal aborts', async () => {
       messages: [],
       signal: lease.signal,
     }),
-  ).rejects.toThrow('the conversation guest exited with code null and signal SIGTERM');
+  ).rejects.toThrow(
+    `the ${ctx.harness.guest.package} guest exited with code null and signal SIGTERM`,
+  );
+});
+
+test('it sends nothing and fails when the turn frame holds a field its harness does not declare', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  const run = runGuestTurn({
+    harness: buildStubCodexHarness(),
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame({ resume: null }),
+    messages: [],
+    signal: new AbortController().signal,
+  });
+
+  expect(run).rejects.toThrow('resume');
+
+  await Promise.allSettled([run]);
+
+  expect(ctx.stub.turns).toStrictEqual([]);
+});
+
+test('it fails the turn, and sends the guest no live message, on a harness without live-messages', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  ctx.stub.setGuestScript(async (_turn, guest) => {
+    await guest.waitForMessage();
+
+    return [{ type: 'failed', reason: 'error', detail: 'got a message' }];
+  });
+
+  const turn = runGuestTurn({
+    harness: buildStubCodexHarness({ capabilities: new Set(['tools', 'fresh-session', 'resume']) }),
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame(),
+    messages: [{ uuid: '6e697869-0000-8000-8000-000000000003', text: 'And?' }],
+    signal: new AbortController().signal,
+  });
+
+  expect(turn).rejects.toThrow('The harness lacks live-messages');
+});
+
+test('it fails the turn, and sends the guest no interrupt, on a harness without interrupt', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  const interrupt = new AbortController();
+
+  interrupt.abort();
+
+  ctx.stub.setGuestScript(async (_turn, guest) => {
+    await once(guest.interrupt ?? new AbortController().signal, 'abort');
+
+    return [{ type: 'failed', reason: 'error', detail: 'interrupted' }];
+  });
+
+  const turn = runGuestTurn({
+    harness: buildStubCodexHarness({ capabilities: new Set(['tools', 'fresh-session', 'resume']) }),
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame(),
+    messages: [],
+    signal: new AbortController().signal,
+    interrupt: interrupt.signal,
+  });
+
+  expect(turn).rejects.toThrow('The harness lacks interrupt');
 });

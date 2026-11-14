@@ -5,10 +5,13 @@ test('it gives a checker query no tools, no MCP server, no settings, no prompt d
   const options = buildCheckOptions(
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'low',
         authHeader: 'x-api-key',
+        contextTokens: null,
+        cacheTTL: '5m',
       },
       systemPrompt: 'You check one candidate memory.',
       input: 'the input',
@@ -54,10 +57,13 @@ test('it gives a checker query the profile and the auth placeholder, and no othe
   const options = buildCheckOptions(
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'low',
         authHeader: 'x-api-key',
+        contextTokens: null,
+        cacheTTL: '5m',
       },
       systemPrompt: 'You check one candidate memory.',
       input: 'the input',
@@ -85,10 +91,13 @@ test('it asks for the reason before the verdict', () => {
   const options = buildCheckOptions(
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'low',
         authHeader: 'x-api-key',
+        contextTokens: null,
+        cacheTTL: '5m',
       },
       systemPrompt: 'You check one candidate memory.',
       input: 'the input',
@@ -107,10 +116,13 @@ test('it refuses a guest with no HOME', () => {
     buildCheckOptions(
       {
         profile: {
+          harness: 'agent-sdk',
           model: 'claude-sonnet-5-5',
           baseURL: 'https://api.anthropic.com',
           effort: 'low',
           authHeader: 'x-api-key',
+          contextTokens: null,
+          cacheTTL: '5m',
         },
         systemPrompt: 'You check one candidate memory.',
         input: 'the input',
@@ -125,10 +137,13 @@ test('it refuses a guest with no placeholder for the profile auth header', () =>
     buildCheckOptions(
       {
         profile: {
+          harness: 'agent-sdk',
           model: 'claude-sonnet-5-5',
           baseURL: 'https://api.anthropic.com',
           effort: 'low',
           authHeader: 'bearer',
+          contextTokens: null,
+          cacheTTL: '5m',
         },
         systemPrompt: 'You check one candidate memory.',
         input: 'the input',

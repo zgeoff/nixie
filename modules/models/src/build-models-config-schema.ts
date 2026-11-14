@@ -1,13 +1,16 @@
-import type { HarnessCapability } from '@heynixie/wire';
+import type { HarnessCapability, HarnessID } from '@heynixie/wire';
+import { harnessCapabilities } from '@heynixie/wire';
 import { z } from 'zod';
 import { checkHarnessFit } from './check-harness-fit';
 import { modelRoles } from './model-roles';
 import { roleNeeds } from './role-needs';
-import type { ModelProfile, ModelsConfig, SelectableModel } from './types';
+import type { HarnessProfile, ModelProfile, ModelsConfig, SelectableModel } from './types';
+
+type HarnessCapabilities = Readonly<Record<HarnessID, ReadonlySet<HarnessCapability>>>;
 
 // Each harness's profile schema names the harness under the key the union reads.
-export type HarnessProfileSchema = z.core.$ZodTypeDiscriminable &
-  z.ZodType<Omit<ModelProfile, 'id'>>;
+export type HarnessProfileSchema<Profile extends ModelProfile = HarnessProfile> =
+  z.core.$ZodTypeDiscriminable & z.ZodType<Omit<Profile, 'id'>>;
 
 const profileIDSchema = z
   .string()
@@ -54,8 +57,9 @@ const taskRunSchema = z
 
 const limitsSchema = z.strictObject({ taskRun: taskRunSchema.default(taskRunSchema.parse({})) });
 
-export function buildModelsConfigSchema(
-  profileSchemas: readonly [HarnessProfileSchema, ...HarnessProfileSchema[]],
+export function buildModelsConfigSchema<Profile extends ModelProfile = HarnessProfile>(
+  profileSchemas: readonly [HarnessProfileSchema<Profile>, ...HarnessProfileSchema<Profile>[]],
+  capabilities: HarnessCapabilities = harnessCapabilities,
 ) {
   const profileSchema = z.discriminatedUnion('harness', profileSchemas, {
     error: (issue) => formatHarnessIssue(issue.path ?? [], issue.input),
@@ -111,6 +115,7 @@ export function buildModelsConfigSchema(
             profileID: entry.profile,
             profile,
             needs: roleNeeds.task,
+            capabilities,
           });
         }
       }
@@ -143,11 +148,12 @@ export function buildModelsConfigSchema(
             profileID,
             profile,
             needs: roleNeeds[role],
+            capabilities,
           });
         }
       }
     })
-    .transform((config): ModelsConfig => ({
+    .transform((config): ModelsConfig<Profile> => ({
       profiles: Object.fromEntries(
         Object.entries(config.profiles).map(([id, profile]) => [id, { id, ...profile }]),
       ),
@@ -182,10 +188,11 @@ interface MisfitCheck {
   readonly profileID: string;
   readonly profile: Pick<ModelProfile, 'harness'>;
   readonly needs: ReadonlySet<HarnessCapability>;
+  readonly capabilities: HarnessCapabilities;
 }
 
 function addMisfitIssue(issues: z.core.$RefinementCtx, check: MisfitCheck): void {
-  const fit = checkHarnessFit(check.profile, check.needs);
+  const fit = checkHarnessFit(check.profile, check.needs, check.capabilities);
 
   if (!fit.fits) {
     issues.addIssue({

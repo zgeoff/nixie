@@ -1,11 +1,11 @@
-import type { ModelsConfig } from '@heynixie/models';
+import type { ModelProfile, ModelsConfig } from '@heynixie/models';
 import { checkHarnessFit, roleNeeds } from '@heynixie/models';
 import type { TaskStartBounds } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 
 export function buildTaskStartBounds(
-  models: ModelsConfig,
+  models: ModelsConfig<ModelProfile>,
   memoryTools: readonly ToolDefinition[],
   conversationTools: readonly ToolDefinition[],
 ): TaskStartBounds {

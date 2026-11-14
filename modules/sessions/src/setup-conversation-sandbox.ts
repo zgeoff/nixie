@@ -1,5 +1,5 @@
 import type { Logger } from '@heynixie/logger';
-import type { HarnessDescriptor } from '@heynixie/models';
+import type { Harness } from '@heynixie/models';
 import type {
   GuestCommand,
   Sandbox,
@@ -18,7 +18,7 @@ export interface ConversationSandboxSpec {
   readonly image: string;
   readonly limits: SandboxLimits;
   readonly command: GuestCommand;
-  readonly harness: HarnessDescriptor;
+  readonly harness: Harness;
 
   readonly log: Logger;
 }
@@ -44,7 +44,7 @@ export async function setupConversationSandbox(
 
   await writeReplacedSession({
     ...options,
-    listSessionFiles: options.harness.listSessionFiles,
+    listSessionFiles: options.harness.session?.listFiles ?? null,
     replaced,
     target,
   });

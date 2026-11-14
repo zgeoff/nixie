@@ -75,3 +75,16 @@ test('it closes only at its own ID when the body holds a closing tag and a forge
     '',
   ]);
 });
+
+test('it uses the block ID it is given', () => {
+  const rendered = renderSystemMessage(
+    { type: 'events', at: 'Tue 14 Oct, 22:50, Sydney', body: 'a' },
+    '6e6978690001',
+  );
+
+  expect(rendered).toStartWith(
+    '<system-message type="events" id="6e6978690001" at="Tue 14 Oct, 22:50, Sydney">',
+  );
+
+  expect(rendered).toEndWith('</system-message id="6e6978690001">');
+});

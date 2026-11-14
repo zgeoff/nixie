@@ -3,35 +3,53 @@ import { modelTurnEndedCodec } from '@heynixie/models';
 import { hasFinishedTurn } from './has-finished-turn';
 
 test.each([
-  ['end_turn', true],
-  ['tool_use', false],
-  [null, false],
-])('it reads a turn that stopped with %s as finished: %s', (stopReason, isFinished) => {
+  ['finished', true],
+  ['interrupted', false],
+  ['stopped', false],
+  ['limit', false],
+  ['overflow', false],
+] as const)(
+  'it reads a turn that ended with the outcome %s as finished: %s',
+  (outcome, isFinished) => {
+    expect(
+      hasFinishedTurn([
+        {
+          kind: modelTurnEndedCodec.kind,
+          definitions: { snapshotHash: 'sha256:test' },
+          payload: modelTurnEndedCodec.encode({
+            model: 'claude-test',
+            profile: 'task-direct',
+            outcome,
+            stopReason: 'end_turn',
+            turns: 1,
+            inputTokens: 10,
+            outputTokens: 5,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+            pinnedCore: [],
+            retrieved: [],
+            invalidatedThrough: 0,
+            sessionImageBytes: 0,
+            sessionImageCount: 0,
+          }),
+        },
+      ]),
+    ).toBe(isFinished);
+  },
+);
+
+test('it reads a step with no turn record as unfinished', () => {
+  expect(hasFinishedTurn([])).toBeFalse();
+});
+
+test('it reads a turn record with no outcome as unfinished, whatever its stop reason', () => {
   expect(
     hasFinishedTurn([
       {
         kind: modelTurnEndedCodec.kind,
         definitions: { snapshotHash: 'sha256:test' },
-        payload: modelTurnEndedCodec.encode({
-          model: 'claude-test',
-          profile: 'task-direct',
-          stopReason,
-          turns: 1,
-          inputTokens: 10,
-          outputTokens: 5,
-          cacheReadTokens: 0,
-          cacheWriteTokens: 0,
-          pinnedCore: [],
-          retrieved: [],
-          invalidatedThrough: 0,
-          sessionImageBytes: 0,
-          sessionImageCount: 0,
-        }),
+        payload: { model: 'claude-test', profile: 'task-direct', stopReason: 'end_turn' },
       },
     ]),
-  ).toBe(isFinished);
-});
-
-test('it reads a step with no turn record as unfinished', () => {
-  expect(hasFinishedTurn([])).toBeFalse();
+  ).toBeFalse();
 });

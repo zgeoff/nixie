@@ -1,15 +1,17 @@
 import type { Logger } from '@heynixie/logger';
-import type { HarnessDescriptor } from '@heynixie/models';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID, readSessionBoundary } from '@heynixie/tasks';
+import type { SessionPoint } from '@heynixie/wire';
 import { parseSessionBoundary } from './parse-session-boundary';
 import { writeKeptSession } from './write-kept-session';
 
 export interface ReplacedSessionSpec {
   readonly context: TasksContext;
   readonly command: GuestCommand;
-  readonly listSessionFiles: HarnessDescriptor['listSessionFiles'];
+
+  // the paths that a replaced sandbox carries, or null for a harness that keeps no session
+  readonly listSessionFiles: ((point: SessionPoint) => readonly string[]) | null;
   readonly log: Logger;
 
   readonly replaced: readonly Sandbox[];

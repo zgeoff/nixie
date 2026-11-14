@@ -36,7 +36,11 @@ async function runRebuiltTurn(
 
   return runOpenedTurn(opened, {
     source: { definitions: step.run.context.definitions, model: step.run.model },
-    start: { kind: 'rebuild', reason, lostSessionID: session.boundary.sessionID },
+    start: {
+      kind: 'rebuild',
+      reason,
+      lostSessionID: step.run.harness.session?.nameSession(session.boundary) ?? null,
+    },
     before: session.plan.before,
   });
 }
@@ -49,7 +53,14 @@ async function runBoundaryTurn(step: SessionStep, session: ResumedSession): Prom
 
   const ended = resumed.completed.turn.ended.at(-1);
 
-  if (ended !== undefined && resumed.completed.turn.failure === null && isContextOverflow(ended)) {
+  // A harness without summarize cannot compact, so an overflowed turn falls through and fails the
+  // step.
+  if (
+    ended !== undefined &&
+    resumed.completed.turn.failure === null &&
+    isContextOverflow(ended) &&
+    step.run.harness.capabilities.has('summarize')
+  ) {
     return runOverflowCompaction(step, {
       plan: session.plan,
       resume: session.boundary,
@@ -62,6 +73,7 @@ async function runBoundaryTurn(step: SessionStep, session: ResumedSession): Prom
   }
 
   const memory = { ...turn.context, invalidatedThrough: turn.invalidatedThrough };
+  const completed = { ...resumed.completed, harness: step.run.harness, memory };
 
-  return buildStepResult(source, { ...resumed.completed, memory }, session.plan.before);
+  return buildStepResult(source, completed, session.plan.before);
 }
