@@ -1,5 +1,5 @@
 import type { LogFields } from '@heynixie/logger';
-import { runCLI } from '../run-cli';
+import { runCLI } from '../cli/run-cli';
 
 export interface HostCommandRun {
   readonly exitCode: number;

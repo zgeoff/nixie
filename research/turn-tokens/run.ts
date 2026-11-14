@@ -39,7 +39,7 @@ import { renderPinnedMemory } from '../../modules/sessions/src/memory/render-pin
 // @boundaries-ignore a spike imports the code it measures
 import { renderSystemMessage } from '../../libs/wire/src/index';
 // @boundaries-ignore a spike imports the code it measures
-import { buildVersionStatus } from '../../apps/server/src/build-version-status';
+import { buildVersionStatus } from '../../apps/server/src/conversation/build-version-status';
 // @boundaries-ignore a spike imports the code it measures
 import { renderRetrievedItems } from '../../modules/sessions/src/retrieved/render-retrieved-items';
 // @boundaries-ignore a spike imports the code it measures

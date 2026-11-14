@@ -1,0 +1,169 @@
+import { defaultAPISettings } from '@heynixie/api';
+import { buildSeedInputs } from '../seed/build-seed-inputs';
+import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
+import { buildServerReset } from '../server/build-server-reset';
+import { createServerContext } from '../server/create-server-context';
+import { startHTTPServer } from '../server/start-http-server';
+import { startTurnInputs } from '../turn/start-turn-inputs';
+import type { AnyPartDeclaration } from '../types';
+import { buildAPIGate } from '../utils/build-api-gate';
+import { buildTaskMessaging } from '../utils/build-task-messaging';
+import { makeServerDecisions } from '../utils/make-server-decisions';
+import { loadStartState } from './load-start-state';
+import type { ServerPartValues } from './server-part-values';
+import { startHostCommands } from './start-host-commands';
+
+export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
+  {
+    name: 'state',
+    needs: ['inputs'],
+    start: (parts) => loadStartState(parts.get('inputs').options.writer),
+  },
+  {
+    name: 'context',
+    needs: ['inputs'],
+    uses: ['session_cleanup'],
+    start: (parts) => {
+      const options = parts.get('inputs').options;
+
+      return createServerContext(
+        options.writer,
+        options.secrets.deploymentKey,
+        () => parts.find('session_cleanup'),
+        {
+          ...defaultAPISettings,
+          isMemoryWriterEnabled: options.config.memory_writer.isEnabled,
+          isMemoryConsolidatorEnabled: options.config.memory_consolidation.isEnabled,
+          isBackupEnabled: options.config.backup.isEnabled,
+          taskDirectory: buildTaskMessaging(options.config).directory,
+          approvals: {
+            defaultMinutes: options.config.approvals.defer.default_minutes,
+            eveningAt: options.config.approvals.defer.evening_at,
+            morningAt: options.config.approvals.defer.morning_at,
+            quietHours: options.config.quiet_hours ?? null,
+            defaultZone: options.config.time.default_zone,
+          },
+        },
+      );
+    },
+  },
+  {
+    name: 'decisions',
+    needs: ['inputs', 'context'],
+    uses: ['checker'],
+    start: (parts) =>
+      Promise.resolve(
+        makeServerDecisions({
+          log: parts.get('context').apiContext.log,
+          linkMaxAgeMs: parts.get('inputs').options.config.policy.consent.linkMaxAgeMs,
+          readCheck: () => parts.find('checker')?.check ?? null,
+        }),
+      ),
+  },
+  {
+    name: 'api_gate',
+    needs: [],
+    start: () => Promise.resolve(buildAPIGate()),
+  },
+  {
+    name: 'http',
+    needs: ['inputs', 'state', 'context', 'tools', 'api_gate'],
+    uses: ['memory', 'server_parts', 'definitions_exports'],
+    start: async (parts) => {
+      const options = parts.get('inputs').options;
+
+      const port = await startHTTPServer({
+        ...options,
+        state: parts.get('state'),
+        tools: parts.get('tools'),
+        apiContext: parts.get('context').apiContext,
+        gate: parts.get('api_gate'),
+        readMemory: () => parts.find('memory'),
+        runInForceSeed: () =>
+          runInForceSeedAndWake(parts.find('server_parts'), parts.find('definitions_exports')),
+      });
+
+      options.log('http.listening', { port });
+
+      return port;
+    },
+  },
+  {
+    name: 'turn_inputs',
+    needs: ['inputs', 'context'],
+    start: (parts) => startTurnInputs(parts),
+  },
+  {
+    name: 'server_parts',
+    needs: ['inputs', 'state', 'context', 'tools', 'decisions', 'turn_inputs'],
+    start: (parts) => {
+      const inputs = parts.get('inputs');
+      const context = parts.get('context');
+      const tools = parts.get('tools');
+
+      return Promise.resolve({
+        ...inputs.options,
+        ...buildSeedInputs(inputs.options.config, tools),
+        state: parts.get('state'),
+        context: context.apiContext,
+        apiContext: context.apiContext,
+        inForce: context.inForce,
+        tools,
+        decisions: parts.get('decisions'),
+        cleanup: inputs.work,
+        modelSecrets: inputs.options.secrets.models,
+        turnInputs: parts.get('turn_inputs'),
+        onFailure: inputs.onFailure,
+      });
+    },
+  },
+  {
+    name: 'reset',
+    needs: ['inputs', 'context', 'tools', 'api_gate', 'turn_inputs'],
+    uses: ['ready'],
+    start: (parts) => {
+      const inputs = parts.get('inputs');
+
+      return Promise.resolve(
+        buildServerReset({
+          context: parts.get('context').apiContext,
+          adapter: parts.get('tools').adapter,
+          work: inputs.work,
+          runTurnInputsReset: parts.get('turn_inputs').runReset,
+          removeTurnInputThreads: parts.get('turn_inputs').removeThreads,
+          closeAPI: parts.get('api_gate').close,
+          readStart: async () => {
+            await parts.waitFor('ready');
+          },
+          log: inputs.options.log,
+          onFailure: inputs.onFailure,
+        }),
+      );
+    },
+  },
+  {
+    name: 'host_commands',
+    needs: ['inputs', 'context', 'reset', 'api_gate', 'turn_inputs'],
+    uses: ['memory', 'server_parts', 'definitions_exports'],
+    start: (parts) => {
+      const options = parts.get('inputs').options;
+
+      return startHostCommands(
+        {
+          dataDir: options.config.server.dataDir,
+          apiContext: parts.get('context').apiContext,
+          readMemory: () => parts.find('memory'),
+          runInForceSeed: () =>
+            runInForceSeedAndWake(parts.find('server_parts'), parts.find('definitions_exports')),
+          readInForce: parts.get('context').inForce.read,
+          wakeExports: () => parts.find('definitions_exports')?.wake(),
+          runReset: parts.get('reset').run,
+          runConversationReset: parts.get('reset').runConversations,
+          gate: parts.get('api_gate'),
+          turnInputs: parts.get('turn_inputs'),
+        },
+        options.cleanup,
+      );
+    },
+  },
+];

@@ -1,9 +1,9 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { collectBreakingConfigChanges } from './collect-breaking-config-changes';
-import { hasBreakingMarker } from './has-breaking-marker';
-import { renderConfigSchemaNotes } from './render-config-schema-notes';
+import { collectBreakingConfigChanges } from './config/collect-breaking-config-changes';
+import { renderConfigSchemaNotes } from './config/render-config-schema-notes';
+import { hasBreakingMarker } from './part/has-breaking-marker';
 
 const marker = '<!-- nixie: config schema -->';
 

@@ -1,0 +1,72 @@
+import type { Log } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
+import type { EventKind } from '@heynixie/sessions';
+import { z } from 'zod';
+import type { StartChanges } from '../utils/write-start-record';
+
+export interface RestartEvent {
+  readonly version: string;
+  readonly previousVersion: string | null;
+  readonly changes: StartChanges | null;
+}
+
+const readLimit = 1000;
+
+const changesPayload = z.object({
+  addedTools: z.array(z.string()),
+  removedTools: z.array(z.string()),
+  isPersonaUpdated: z.boolean(),
+});
+
+const startPayload = z.object({
+  version: z.string(),
+  previousVersion: z.string().nullable(),
+  changes: changesPayload.nullable().default(null),
+});
+
+export function buildRestartKind(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+): EventKind<RestartEvent> {
+  return {
+    name: 'restart',
+    read: async (range) => {
+      const records = await readRecords(log, {
+        afterSequence: range.after,
+        beforeSequence: range.through + 1,
+        kinds: ['server.started'],
+        limit: readLimit,
+      });
+
+      return records.flatMap((entry) => {
+        const record = entry.record;
+        const payload = startPayload.safeParse(record.payload);
+
+        return payload.success
+          ? [{ sequence: record.sequence, at: record.recordedAt.getTime(), detail: payload.data }]
+          : [];
+      });
+    },
+    render: (detail) => {
+      const restart =
+        detail.previousVersion === null
+          ? `nixie restarted on version ${detail.version}.`
+          : `nixie restarted on version ${detail.version} (was ${detail.previousVersion}).`;
+
+      const changes = detail.changes === null ? [] : formatChanges(detail.changes);
+
+      return changes.length === 0
+        ? restart
+        : `${restart}\n  Changed for you: ${changes.join('; ')}.`;
+    },
+  };
+}
+
+function formatChanges(changes: StartChanges): readonly string[] {
+  return [
+    ...(changes.addedTools.length > 0 ? [`new tools: ${changes.addedTools.join(', ')}`] : []),
+    ...(changes.removedTools.length > 0
+      ? [`removed tools: ${changes.removedTools.join(', ')}`]
+      : []),
+    ...(changes.isPersonaUpdated ? ['persona updated'] : []),
+  ];
+}

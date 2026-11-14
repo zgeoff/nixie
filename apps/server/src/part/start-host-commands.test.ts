@@ -1,0 +1,124 @@
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { startTestAPI } from '@heynixie/api/test-utils';
+import { buildAPIGate } from '../utils/build-api-gate';
+import { buildCleanup } from '../utils/build-cleanup';
+import { buildHostClient } from '../utils/build-host-client';
+import type { ConversationReset } from '../utils/run-conversation-reset';
+import type { ServerReset } from '../utils/run-server-reset';
+import { startHostCommands } from './start-host-commands';
+
+async function setupTest() {
+  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-host-'));
+
+  onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
+
+  const api = await startTestAPI();
+
+  const gate = buildAPIGate();
+  const cleanup = buildCleanup();
+
+  onTestFinished(() => cleanup.stop());
+
+  const runReset = mock<() => Promise<ServerReset>>();
+  const runConversationReset = mock<() => Promise<ConversationReset>>();
+
+  await startHostCommands(
+    {
+      dataDir,
+      apiContext: api.context,
+      readMemory: () => null,
+      runInForceSeed: () => Promise.resolve(),
+      readInForce: () => null,
+      wakeExports: () => {},
+      runReset,
+      runConversationReset,
+      gate,
+    },
+    cleanup,
+  );
+
+  const socketPath = join(dataDir, 'run', 'control.sock');
+
+  return {
+    gate,
+    runReset,
+    runConversationReset,
+    socketPath,
+    client: buildHostClient(socketPath),
+  };
+}
+
+test('it runs the reset of the conversations itself once the gate is closed', async () => {
+  const ctx = await setupTest();
+
+  ctx.runConversationReset.mockResolvedValue({
+    resetAt: new Date(2_000_000),
+    lastSequence: 31,
+    shreddedRecords: 9,
+    backup: { state: 'pending' },
+  });
+
+  await ctx.gate.close();
+
+  const reset = await ctx.client.resetConversations();
+
+  expect(reset).toStrictEqual({
+    resetAt: new Date(2_000_000),
+    lastSequence: 31,
+    shreddedRecords: 9,
+    backup: { state: 'pending' },
+  });
+});
+
+test('it answers a host command while the gate is open', async () => {
+  const ctx = await setupTest();
+  const issued = await ctx.client.sessions.issueCode();
+
+  expect(issued.code).toBeString();
+});
+
+test('it refuses a host command once a reset closes the gate', async () => {
+  const ctx = await setupTest();
+
+  await ctx.gate.close();
+
+  expect(ctx.client.sessions.issueCode()).rejects.toMatchObject({ status: 503 });
+});
+
+test('it runs the reset itself once the gate is closed', async () => {
+  const ctx = await setupTest();
+
+  ctx.runReset.mockResolvedValue({
+    resetAt: new Date(2_000_000),
+    lastSequence: 12,
+    keptSessions: 1,
+  });
+
+  await ctx.gate.close();
+
+  const reset = await ctx.client.reset();
+
+  expect(reset).toStrictEqual({ resetAt: new Date(2_000_000), lastSequence: 12, keptSessions: 1 });
+});
+
+test('it runs a reset sent with a trailing slash once the gate is closed, as oRPC routes it to the reset', async () => {
+  const ctx = await setupTest();
+
+  ctx.runReset.mockResolvedValue({
+    resetAt: new Date(2_000_000),
+    lastSequence: 12,
+    keptSessions: 1,
+  });
+
+  await ctx.gate.close();
+
+  const response = await Bun.fetch('http://localhost/rpc/reset/', {
+    method: 'POST',
+    unix: ctx.socketPath,
+  });
+
+  expect(response.status).toBe(200);
+});

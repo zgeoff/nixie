@@ -3,7 +3,7 @@ import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import type { FetchReply } from '@heynixie/wire';
-import { buildConversationTools } from '../build-conversation-tools';
+import { buildConversationTools } from '../conversation/build-conversation-tools';
 import type { BuildTestServerTools } from './start-test-server';
 
 export interface TestConversationTools {

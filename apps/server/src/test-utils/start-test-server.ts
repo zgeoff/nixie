@@ -9,7 +9,7 @@ import type { StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolDefinition, ToolEndpoint, ToolEndpointOptions } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
-import { getSandboxRootDir } from '../get-sandbox-root-dir';
+import { getSandboxRootDir } from '../utils/get-sandbox-root-dir';
 import { buildTestFakeSandboxes } from './build-test-fake-sandboxes';
 import { createTestSandboxes } from './create-test-sandboxes';
 import { startTestLog } from './start-test-log';

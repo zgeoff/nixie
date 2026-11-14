@@ -2,7 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import { startWriter } from '@heynixie/log';
 import type { Writer } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
-import { buildServerLog } from '../build-server-log';
+import { buildServerLog } from '../server/build-server-log';
 
 interface DataLogOptions {
   readonly dataDir: string;

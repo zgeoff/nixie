@@ -1,0 +1,154 @@
+import { expect, onTestFinished, test } from 'bun:test';
+import { buildSandboxRecorder } from '@heynixie/sandbox';
+import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
+import { readTestBundle } from '../test-utils/read-test-bundle';
+import { startTestServer } from '../test-utils/start-test-server';
+import { getSandboxRootDir } from '../utils/get-sandbox-root-dir';
+import { createSandboxAdapter } from './create-sandbox-adapter';
+
+async function setupTest() {
+  const stack = new AsyncDisposableStack();
+
+  // onTestFinished runs its callbacks first in, first out, so a sandbox on the stack is destroyed
+  // while the server's writer still runs.
+  onTestFinished(() => stack.disposeAsync());
+
+  const server = await startTestServer();
+
+  return { stack, ...server };
+}
+
+test('it wires the test sandbox, the process double, when the configuration selects it', async () => {
+  const ctx = await setupTest();
+
+  const adapter = createSandboxAdapter({
+    recorder: buildSandboxRecorder({
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+    }),
+    toolTarget: ctx.endpoint.getToolTarget,
+    sandbox: { adapter: 'test' },
+    testRootDir: getSandboxRootDir(ctx.dataDir),
+    hostEnv: {},
+  });
+
+  expect(adapter).toMatchObject({ id: 'process' });
+});
+
+test('it wires the imp adapter in a test build when the configuration selects imp', async () => {
+  const ctx = await setupTest();
+
+  const adapter = createSandboxAdapter({
+    recorder: buildSandboxRecorder({
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+    }),
+    toolTarget: ctx.endpoint.getToolTarget,
+    sandbox: {
+      adapter: 'imp',
+      imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
+    },
+    testRootDir: getSandboxRootDir(ctx.dataDir),
+    hostEnv: {},
+  });
+
+  expect(adapter).toMatchObject({ id: 'imp' });
+});
+
+test('it refuses the test sandbox in a release build', async () => {
+  const ctx = await setupTest();
+
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
+  expect(() =>
+    createSandboxAdapter({
+      recorder: buildSandboxRecorder({
+        log: ctx.context.log,
+        definitions: ctx.context.definitions,
+      }),
+      toolTarget: ctx.endpoint.getToolTarget,
+      sandbox: { adapter: 'test' },
+      testRootDir: getSandboxRootDir(ctx.dataDir),
+      hostEnv: {},
+    }),
+  ).toThrowWithMessage(Error, 'a release build holds no test sandbox');
+});
+
+test('it bundles the imp adapter and no part of the process double in a release build', async () => {
+  const bundle = await readTestBundle(false);
+
+  expect(bundle.mainText).toInclude(
+    'public egress without the host addresses in imp.host_addresses',
+  );
+
+  expect(bundle.mainText).not.toInclude('the tool relay has no TCP address');
+});
+
+test('it bundles the process double in a test build', async () => {
+  const bundle = await readTestBundle(true);
+
+  expect(bundle.mainText).toInclude('the tool relay has no TCP address');
+});
+
+test("it routes a guest to its run's endpoint in a test build, passing each chunk as it arrives", async () => {
+  const ctx = await setupTest();
+
+  const model = { model: 'model-a', profile: 'chat-direct' };
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: [],
+    model,
+  });
+
+  const sandbox = await ctx.sandboxes.create(
+    buildMockSandboxSpec({
+      kind: 'conversation',
+      image: 'conversation',
+      owner: 'run-1',
+      egress: { kind: 'none' },
+      grants: [],
+      toolRoute: true,
+    }),
+  );
+
+  ctx.stack.defer(() => sandbox.destroy());
+
+  const route = await sandbox.toolRoute();
+
+  // Bun.fetch skips the preload's interceptor; the open stream's first chunk shows no buffering
+  const response = await Bun.fetch(`${route?.url ?? ''}/mcp`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${run.token}`,
+      accept: 'application/json, text/event-stream',
+      'content-type': 'application/json',
+      'mcp-method': 'subscriptions/listen',
+      'mcp-protocol-version': '2026-07-28',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'subscriptions/listen',
+      params: {
+        notifications: { toolsListChanged: true },
+        _meta: {
+          'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+          'io.modelcontextprotocol/clientInfo': { name: 'claude-code', version: '2.1.293' },
+          'io.modelcontextprotocol/clientCapabilities': {},
+        },
+      },
+    }),
+  });
+
+  const first = await response.body?.pipeThrough(new TextDecoderStream()).getReader().read();
+
+  expect(first?.done).toBeFalse();
+  expect(first?.value).toInclude('notifications/subscriptions/acknowledged');
+});

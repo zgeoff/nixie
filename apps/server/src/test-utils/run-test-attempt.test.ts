@@ -8,8 +8,8 @@ import { logProjections, startWriter } from '@heynixie/log';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { tasksProjections, writeInboxRecords } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
-import { buildActions } from '../build-actions';
-import { makeQueueCheckStep } from '../make-queue-check-step';
+import { makeQueueCheckStep } from '../queue/make-queue-check-step';
+import { buildActions } from '../test/build-actions';
 import { createTestStep } from './create-test-step';
 import { runTestAttempt } from './run-test-attempt';
 

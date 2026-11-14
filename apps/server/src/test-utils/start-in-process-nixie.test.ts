@@ -3,7 +3,7 @@ import { stat } from 'node:fs/promises';
 import { getDataFilePath } from '@heynixie/log';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import { loadDeploymentConfig } from '../load-deployment-config';
+import { loadDeploymentConfig } from '../deployment/load-deployment-config';
 import { createTestClient } from './create-test-client';
 import { startInProcessNixie } from './start-in-process-nixie';
 

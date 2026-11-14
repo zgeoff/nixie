@@ -2,9 +2,9 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadDeploymentConfig } from '../load-deployment-config';
-import { loadSandboxManifest } from '../load-sandbox-manifest';
-import { loadSecrets } from '../load-secrets';
+import { loadDeploymentConfig } from '../deployment/load-deployment-config';
+import { loadSandboxManifest } from '../sandbox/load-sandbox-manifest';
+import { loadSecrets } from '../server/load-secrets';
 import { writeBootFiles } from './write-boot-files';
 
 async function setupTest() {

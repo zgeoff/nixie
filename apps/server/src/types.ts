@@ -7,14 +7,14 @@ import type { ModelSecrets } from '@heynixie/models';
 import type { SandboxAdapter, SandboxImageKey } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { TurnInputs } from '@heynixie/turn-inputs';
-import type { SeedInputs } from './build-seed-inputs';
-import type { StartState } from './build-start-state';
-import type { SandboxAdapterOptions } from './create-sandbox-adapter';
-import type { DeploymentConfig } from './deployment-config-schema';
-import type { CrashHarness } from './join-crash-harness';
-import type { SandboxImages } from './load-sandbox-manifest';
-import type { DecisionPointFactory } from './make-server-decisions';
-import type { Tools } from './tools';
+import type { DeploymentConfig } from './deployment/deployment-config-schema';
+import type { Tools } from './part/tools';
+import type { SandboxAdapterOptions } from './sandbox/create-sandbox-adapter';
+import type { SandboxImages } from './sandbox/load-sandbox-manifest';
+import type { SeedInputs } from './seed/build-seed-inputs';
+import type { CrashHarness } from './server/join-crash-harness';
+import type { StartState } from './utils/build-start-state';
+import type { DecisionPointFactory } from './utils/make-server-decisions';
 
 export interface Cleanup {
   readonly signal: AbortSignal;

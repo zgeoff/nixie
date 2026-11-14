@@ -1,4 +1,4 @@
-import { writeReleaseBundle } from './write-release-bundle';
+import { writeReleaseBundle } from './release/write-release-bundle';
 
 const outdir = process.argv.at(2);
 

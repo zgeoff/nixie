@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
-import { loadDeploymentConfig } from '../load-deployment-config';
+import { loadDeploymentConfig } from '../deployment/load-deployment-config';
 import { startSpawnedNixie } from './start-spawned-nixie';
 
 test('it starts nixie on the crash harness clock at 1,000,000 ms', async () => {

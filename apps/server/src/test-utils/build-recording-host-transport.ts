@@ -1,4 +1,4 @@
-import { sendHostRequest } from '../send-host-request';
+import { sendHostRequest } from '../cli/send-host-request';
 import type { HostTransport } from '../types';
 
 interface HostTransportRecord {

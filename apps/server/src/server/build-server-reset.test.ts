@@ -1,0 +1,314 @@
+import { expect, mock, test } from 'bun:test';
+import { defaultAPISettings } from '@heynixie/api';
+import { runTestSeed } from '../test-utils/run-test-seed';
+import { startTestServer } from '../test-utils/start-test-server';
+import { buildCleanup } from '../utils/build-cleanup';
+import { buildServerReset } from './build-server-reset';
+
+async function setupTest() {
+  const server = await startTestServer();
+
+  return {
+    ...server,
+    context: { ...server.context, settings: defaultAPISettings, readSessionCleanup: () => null },
+    work: buildCleanup(),
+  };
+}
+
+test('it ends the start and stops its work before it resets', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const stopRunners = mock(() => Promise.resolve());
+
+  await ctx.work.defer(stopRunners);
+
+  const answer = await buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  }).run();
+
+  expect(ctx.work.signal.aborted).toBeTrue();
+  expect(stopRunners).toHaveBeenCalledOnce();
+
+  expect(answer).toStrictEqual({
+    resetAt: expect.toBeValidDate(),
+    lastSequence: 1,
+    keptSessions: 0,
+  });
+});
+
+test('it logs the reset and resolves done once the reset finishes', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const log = mock<Parameters<typeof buildServerReset>[0]['log']>();
+
+  const reset = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log,
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  });
+
+  await reset.run();
+
+  expect(Bun.peek.status(reset.done)).toBe('fulfilled');
+
+  expect(log.mock.calls).toStrictEqual([
+    ['reset.started', { mode: 'full' }],
+    ['reset.finished', { mode: 'full', lastSequence: 1, keptSessions: 0 }],
+  ]);
+});
+
+test('it logs a reset of the conversations and resolves done once it finishes', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const log = mock<Parameters<typeof buildServerReset>[0]['log']>();
+
+  const reset = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log,
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  });
+
+  await reset.runConversations();
+
+  expect(Bun.peek.status(reset.done)).toBe('fulfilled');
+
+  expect(log.mock.calls).toStrictEqual([
+    ['reset.started', { mode: 'conversations' }],
+    ['reset.finished', { mode: 'conversations', lastSequence: 2, shreddedRecords: 0 }],
+  ]);
+});
+
+test('it refuses a full reset while a reset of the conversations runs', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const reset = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  });
+
+  const conversations = reset.runConversations();
+  const full = reset.run();
+
+  await Promise.allSettled([conversations, full]);
+
+  expect(full).rejects.toThrowWithMessage(Error, 'a reset of the conversations runs already');
+  expect(conversations).resolves.toMatchObject({ shreddedRecords: 0 });
+});
+
+test('it refuses a reset of the conversations while a full reset runs', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const reset = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  });
+
+  const full = reset.run();
+  const conversations = reset.runConversations();
+
+  await Promise.allSettled([full, conversations]);
+
+  expect(conversations).rejects.toThrowWithMessage(Error, 'a full reset runs already');
+  expect(full).resolves.toMatchObject({ keptSessions: 0 });
+});
+
+test('it answers a request that arrives while a reset runs with that reset', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const reset = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  });
+
+  const first = reset.run();
+  const second = reset.run();
+
+  await Promise.allSettled([first, second]);
+
+  expect(second).toBe(first);
+});
+
+test('it reports a failed reset as the server failing, and never resolves done', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const onFailure = mock<Parameters<typeof buildServerReset>[0]['onFailure']>();
+
+  await ctx.work.defer(() => Promise.reject(new Error('the runners failed to stop')));
+
+  const reset = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure,
+  });
+
+  const run = reset.run();
+
+  await Promise.allSettled([run]);
+
+  expect(run).rejects.toThrowWithMessage(AggregateError, 'a part failed to stop');
+  expect(onFailure).toHaveBeenCalledExactlyOnceWith(expect.any(AggregateError));
+  expect(Bun.peek.status(reset.done)).toBe('pending');
+});
+
+test('it logs a failed reset with the error', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const log = mock<Parameters<typeof buildServerReset>[0]['log']>();
+
+  await ctx.work.defer(() => Promise.reject(new Error('the runners failed to stop')));
+
+  const run = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log,
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  }).run();
+
+  await Promise.allSettled([run]);
+
+  expect(log.mock.calls).toStrictEqual([
+    ['reset.started', { mode: 'full' }],
+    ['reset.failed', { mode: 'full', error: 'AggregateError', message: 'a part failed to stop' }],
+  ]);
+});
+
+test('it waits for a reset in flight to settle, and never rejects with its failure', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  await ctx.work.defer(() => Promise.reject(new Error('the runners failed to stop')));
+
+  const reset = buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  });
+
+  const run = reset.run();
+
+  await reset.waitForSettled();
+
+  expect(Bun.peek.status(run)).toBe('rejected');
+});
+
+test('it closes the API before it stops the work', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const closeAPI = mock(() => Promise.resolve());
+  const stopRunners = mock(() => Promise.resolve());
+
+  await ctx.work.defer(stopRunners);
+
+  await buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset: () => Promise.resolve(),
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI,
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  }).run();
+
+  expect(closeAPI).toHaveBeenCalledBefore(stopRunners);
+});
+
+test('it removes the turn-input bodies after the log reset, and only for a full reset', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const runTurnInputsReset = mock(() => Promise.resolve());
+
+  await buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    runTurnInputsReset,
+    removeTurnInputThreads: () => Promise.resolve(),
+    closeAPI: () => Promise.resolve(),
+    readStart: () => Promise.resolve(),
+    log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
+    onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
+  }).run();
+
+  expect(runTurnInputsReset).toHaveBeenCalledOnce();
+});

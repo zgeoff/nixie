@@ -1,7 +1,7 @@
 import { appendFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { $ } from 'bun';
-import { releaseImagesSchema } from '../../apps/server/src/release-images-schema.ts';
+import { releaseImagesSchema } from '../../apps/server/src/release/release-images-schema.ts';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 

@@ -33,11 +33,11 @@ it left with impd's API: the imps the run created, each named `nixie-<id>`, and 
 
 ## The fetch sandbox tests
 
-The imp tests in `apps/server/src/start-web-fetch.imp.test.ts` run the fetch sandbox on the fetch
-image. The web fetch tool fetches `https://example.com/`, a fetch sandbox reaches `1.1.1.1` over
-TCP, and a direct TCP connection from a fetch sandbox to impd or to each host address fails. The
-direct connections skip the fetcher's own address check, so only the network layer decides them. The
-tests skip unless the variables below are set.
+The imp tests in `apps/server/src/part/start-web-fetch.imp.test.ts` run the fetch sandbox on the
+fetch image. The web fetch tool fetches `https://example.com/`, a fetch sandbox reaches `1.1.1.1`
+over TCP, and a direct TCP connection from a fetch sandbox to impd or to each host address fails.
+The direct connections skip the fetcher's own address check, so only the network layer decides them.
+The tests skip unless the variables below are set.
 
 A target with no listener refuses every connection, so a sandbox's failed connection to it shows
 nothing about isolation. The machine that runs the tests therefore connects to each target first.

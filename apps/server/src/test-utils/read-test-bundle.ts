@@ -1,8 +1,8 @@
 import { join } from 'node:path';
 import { createRunTemplate } from '@heynixie/testing';
 import { z } from 'zod';
-import type { ReleaseBundle } from '../write-release-bundle';
-import { writeReleaseBundle } from '../write-release-bundle';
+import type { ReleaseBundle } from '../release/write-release-bundle';
+import { writeReleaseBundle } from '../release/write-release-bundle';
 
 export interface TestBundle extends ReleaseBundle {
   readonly entry: string;

@@ -1,7 +1,7 @@
 import type { ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 import Ajv2020 from 'ajv/dist/2020';
-import { buildConfigJSONSchema } from '../build-config-json-schema';
+import { buildConfigJSONSchema } from '../config/build-config-json-schema';
 
 const compiled: { validator: ValidateFunction | null } = { validator: null };
 

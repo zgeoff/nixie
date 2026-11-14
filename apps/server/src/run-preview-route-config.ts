@@ -1,5 +1,5 @@
 import { cli } from 'gunshi';
-import { previewRouteCommand } from './preview-route-command';
+import { previewRouteCommand } from './config/preview-route-command';
 
 try {
   await cli(process.argv.slice(2), previewRouteCommand);
