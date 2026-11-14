@@ -74,13 +74,59 @@ repository, an issue or a pull request.
 
 The fallback fetches the named URL when the rewritten URL fails. It runs only when a rule rewrote
 the URL and the first fetch returned a 404, or a rate limit: a 429, a 503, or a 403 whose headers
-ask for a wait, each with no blocked reason. A 200, a refused or failed fetch and a blocked page
-never run it. The fallback fetches the named URL as named and never runs twice, so its reply is the
-call's result, a 404 or a rate limit included.
+ask for a wait, each with no blocked reason, or when [the pause](#pauses) of the rewritten URL's
+host is longer than a call waits. A 200, a refused or failed fetch and a blocked page never run it.
+The fallback fetches the named URL as named and never runs twice, so its reply is the call's result,
+a 404 or a rate limit included.
 
 The tool stores the page of the one fetch that ends the call. After a fallback, only the named URL's
 page is stored, never the body of the first fetch's 404 or rate limit. The result's `url` is the URL
 the fetch ended at, so a rewritten fetch shows the rewritten URL. The tool's description says so.
+
+## Pauses
+
+A host that answers with a rate limit gets a pause, and nixie sends it no fetch until the pause
+ends. The pauses live in a map from a host to the time its pause ends, in the memory of the server
+process. A host is the `host` that the URL parser gives, lowercased and with any port.
+
+Before a fetch, `runPageFetch` reads the pause of the sent URL's host. This happens in each pass,
+before the fetch queue, so a wait never holds up a fetch of another host:
+
+- With no pause, the fetch goes on.
+- With a pause of `backoff_wait_ms` or less, the call waits out the pause and then fetches.
+- With a longer pause, the call sends no request. A rewritten URL takes the fallback, and any other
+  URL ends the call with a tool error,
+  `<host> asked for a pause, so fetch it again in <seconds> seconds`, where `<seconds>` is the time
+  left rounded up to a whole second. nixie stores nothing for it.
+
+After a fetch, a reply with a status and no blocked reason sets a pause when its status is 429 or
+503, or when it carries `retryAfterMs`. A 2xx reply that carries `retryAfterMs` returns and stores
+its page, and pauses its host, with no fallback. The pause lasts `retryAfterMs`, or `backoff_ms`
+when the reply names none, and never passes `backoff_cap_ms`. A `retryAfterMs` of 0 sets no pause,
+and a new pause never shortens one that is set. A reply with a blocked reason sets no pause, because
+a site's bot protection is not a rate limit.
+
+The pause goes on the host of the reply's final URL. When the final host differs from the sent URL's
+host, the pause goes on the sent host too. nixie never checks a redirect hop against the pauses, so
+a redirect into a paused host costs one more rate-limit reply.
+
+A rule that keeps the named URL's host, such as `pypi-project`, pauses that host with a rate-limit
+reply on the rewritten URL. The fallback then waits out a short pause, or ends with the pause error
+for a long one.
+
+The `web_fetch` section of the deployment config holds the 3 keys, each a whole number of 0 or more:
+
+| Key               | Default | Sets                                    |
+| ----------------- | ------- | --------------------------------------- |
+| `backoff_ms`      | 30000   | the pause when the reply names none     |
+| `backoff_cap_ms`  | 300000  | the longest pause                       |
+| `backoff_wait_ms` | 5000    | the longest pause that a call waits out |
+
+nixie stores no pause in the database, so a restart drops every pause, which costs one more
+rate-limit reply. A forget that ends a session clears every pause before the session's cleanup
+finishes, because a host name can show what a forgotten conversation read. This covers the
+conversation's cleanup, each task's cleanup and the reset of the conversations. The reader of a
+skill's files takes no pause.
 
 ## Link IDs
 

@@ -28,6 +28,7 @@ export async function startNixieTaskRunner(
     defaultZone: parts.config.time.default_zone,
     messaging: buildTaskMessaging(parts.config),
     turnInputs: parts.turnInputs,
+    clearFetchPauses: parts.tools.webFetch.clearPauses,
     log: parts.log,
   });
 

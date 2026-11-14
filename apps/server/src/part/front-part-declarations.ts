@@ -131,6 +131,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           work: inputs.work,
           runTurnInputsReset: parts.get('turn_inputs').runReset,
           removeTurnInputThreads: parts.get('turn_inputs').removeThreads,
+          clearFetchPauses: parts.get('tools').webFetch.clearPauses,
           closeAPI: parts.get('api_gate').close,
           readStart: async () => {
             await parts.waitFor('ready');

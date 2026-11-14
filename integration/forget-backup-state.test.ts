@@ -123,6 +123,7 @@ async function setupTest() {
         stopWork: () => Promise.resolve(),
         log: () => {},
         removeTurnInputThreads: () => Promise.resolve(),
+        clearFetchPauses: () => {},
       }),
     gate: { runCall: (call) => call() },
   });
@@ -141,6 +142,7 @@ async function setupTest() {
         stopWork: () => Promise.resolve(),
         log: () => {},
         removeTurnInputThreads: () => Promise.resolve(),
+        clearFetchPauses: () => {},
       }),
     gate: { runCall: (call) => call() },
   });

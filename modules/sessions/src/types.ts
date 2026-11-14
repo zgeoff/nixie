@@ -184,6 +184,9 @@ export interface ConversationRun {
 
   readonly session: SessionGuard;
 
+  // empties the web fetch pause of every host; a forget runs it so a host name outlives no session
+  readonly clearFetchPauses: () => void;
+
   readonly log: Logger;
 }
 

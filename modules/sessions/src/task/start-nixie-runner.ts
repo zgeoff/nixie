@@ -1,8 +1,6 @@
-import type { CompactionSettings } from '@heynixie/compaction';
 import { removeSummaryKeys } from '@heynixie/compaction';
 import { removeWebFetchThread } from '@heynixie/connectors';
 import { subscribeToRecordCommits, writeRecords } from '@heynixie/log';
-import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import type { Harness, ResolvedProfile } from '@heynixie/models';
 import {
@@ -19,10 +17,8 @@ import type {
   StepInput,
   StepResult,
   TaskLimits,
-  TaskMessaging,
   TaskRunOptions,
   TaskSetup,
-  TasksContext,
 } from '@heynixie/tasks';
 import {
   probePauseRequested,
@@ -32,7 +28,7 @@ import {
   startedTaskDefaultTools,
   writeTaskLimitPause,
 } from '@heynixie/tasks';
-import type { RunEndpoint, ToolEndpoint, ToolRunModel } from '@heynixie/tools';
+import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { Actor } from 'xstate';
 import { createActor } from 'xstate';
@@ -43,13 +39,7 @@ import { buildDefaultStatus } from '../session/build-default-status';
 import { runConversationStep } from '../step/run-conversation-step';
 import { silentEndToolName } from '../turn/build-silent-end-tool';
 import { countEndedTurns } from '../turn/count-ended-turns';
-import type {
-  ConversationMemory,
-  ConversationMemorySettings,
-  ConversationRun,
-  SessionCleanupCause,
-  SessionDefinitions,
-} from '../types';
+import type { ConversationRun, SessionCleanupCause } from '../types';
 import { createWorkerSandbox } from '../utils/create-worker-sandbox';
 import type { SessionGuard } from '../utils/make-session-guard';
 import { makeSessionGuard } from '../utils/make-session-guard';
@@ -59,8 +49,9 @@ import { buildGuestCommand } from './build-guest-command';
 import type { CallBudget } from './create-call-budget';
 import { createCallBudget } from './create-call-budget';
 import { getHarnessImage } from './get-harness-image';
-import type { SystemTaskOptions, SystemTaskSession } from './make-system-task-runner';
+import type { SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
+import type { NixieRunnerOptions } from './nixie-runner-options';
 import { isGuestPurged } from './pick-cleaned-task-ids';
 import { planTaskStep } from './plan-task-step';
 import { planTaskTurnEnd } from './plan-task-turn-end';
@@ -68,22 +59,6 @@ import { readCleanedTaskIDs } from './read-cleaned-task-ids';
 import { readLateSpend } from './read-late-spend';
 import { readTaskUsage } from './read-task-usage';
 import { writeTaskTurnSpend } from './write-task-turn-spend';
-
-export interface NixieRunnerOptions extends SystemTaskOptions {
-  readonly context: TasksContext;
-
-  readonly tools: Pick<ToolEndpoint, 'startRun'>;
-
-  readonly getDefinitions: () => SessionDefinitions;
-
-  readonly memory: () => ConversationMemory;
-  readonly memorySettings: ConversationMemorySettings;
-  readonly compaction: CompactionSettings;
-  readonly defaultZone: string;
-  readonly messaging: TaskMessaging;
-
-  readonly log: Logger;
-}
 
 export interface NixieRunner {
   readonly runStep: RunStep;
@@ -541,6 +516,7 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     messaging: options.messaging,
     imageBudget: sessionImageBudget,
     session: buildHeldSessionGuard(parts.invalidated),
+    clearFetchPauses: options.clearFetchPauses,
     log: options.log,
   };
 }
@@ -549,6 +525,8 @@ async function runTaskSessionCleanup(
   runner: TaskRunner,
   cause: SessionCleanupCause,
 ): Promise<void> {
+  runner.options.clearFetchPauses();
+
   const cleaned = await readCleanedTaskIDs(runner.options.context, cause);
 
   for (const taskID of cleaned) {

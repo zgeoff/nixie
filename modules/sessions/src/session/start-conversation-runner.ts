@@ -54,6 +54,8 @@ export interface ConversationRunnerOptions {
 
   readonly turnInputs?: StepCapturePort;
 
+  readonly clearFetchPauses: ConversationRun['clearFetchPauses'];
+
   readonly log: ConversationSandboxSpec['log'];
 }
 

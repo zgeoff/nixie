@@ -59,6 +59,7 @@ async function setupTest() {
         () => memory,
       ),
       memory: () => memory,
+      clearFetchPauses: () => {},
       log: mock<Parameters<typeof startConversation>[0]['log']>(),
     });
 

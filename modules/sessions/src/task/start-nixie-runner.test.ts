@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { readLinkTarget } from '@heynixie/connectors';
 import type { Definitions, RecordInput } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
@@ -23,8 +23,8 @@ import { buildStubToolEndpoint } from '../test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from '../test-utils/read-records-by-kind';
 import { runNextStep } from '../test-utils/run-next-step';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
+import type { NixieRunnerOptions } from './nixie-runner-options';
 import { readTaskUsage } from './read-task-usage';
-import type { NixieRunnerOptions } from './start-nixie-runner';
 import { startNixieRunner } from './start-nixie-runner';
 
 async function setupTest() {
@@ -34,6 +34,7 @@ async function setupTest() {
 
   const tools = buildStubToolEndpoint();
   const events: string[] = [];
+  const clearFetchPauses = mock<() => void>();
 
   const noMemory = buildStubMemory({
     pinned: [],
@@ -103,6 +104,7 @@ async function setupTest() {
       compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 },
       defaultZone: 'UTC',
       messaging: { directory: [], hopLimit: 20, ownerName: 'Robin', agentName: null },
+      clearFetchPauses,
       log: (event) => {
         events.push(event);
       },
@@ -119,6 +121,7 @@ async function setupTest() {
     runs: tools.runs,
     steps: tools.steps,
     events,
+    clearFetchPauses,
     startRunner,
     seed: buildSeeder(host),
     writeMessage: (taskID: string, text: string) =>
@@ -942,6 +945,15 @@ test('it searches memory for the body of a task message to a task that reads mem
   const queries = memory.recall.mock.calls.map(([request]) => request.query);
 
   expect(queries.at(-1)).toBe('Only the morning tide at the harbour.');
+});
+
+test('it clears every web fetch pause on a forget', async () => {
+  const ctx = await setupTest();
+  const runner = await ctx.startRunner();
+
+  await runner.cleanupSessions({ itemID: 'item-bees' });
+
+  expect(ctx.clearFetchPauses).toHaveBeenCalledOnce();
 });
 
 test('it purges and invalidates the session of a task that reads memory on a forget, so its next turn opens a new one', async () => {
