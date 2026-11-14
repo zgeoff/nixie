@@ -1,4 +1,4 @@
-import type { ContentSource, Decision, JSONObject } from '@heynixie/log';
+import type { ContentSource, Decision, JSONObject, WriteTransaction } from '@heynixie/log';
 import type {
   AllowingRule,
   CallDestination,
@@ -55,9 +55,28 @@ interface TypedResult {
 export interface DirectResult extends TypedResult {
   readonly images?: readonly ToolImage[];
 
+  // Sealed under the result record's key, in order, as the record's attachments. They never enter
+  // the result's payload or its erasable text.
+  readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
+
+  // Runs inside the write transaction of the result record, with that record's sequence, so what it
+  // writes commits or rolls back with the record. A ToolResultRefusedError it throws rolls the
+  // record back and writes an error result in its place.
+  readonly writeBeside?: (tx: WriteTransaction, resultSequence: number) => Promise<void>;
+
   // What the server records and the model never reads. Only the tool puts a value here. A tool
   // never puts text here that a forget of another record must erase.
   readonly hidden?: JSONObject;
+}
+
+// Thrown by a result's writeBeside to refuse the write: the record rolls back, and the call's
+// result becomes an error with this message.
+export class ToolResultRefusedError extends Error {
+  constructor(message: string) {
+    super(message);
+
+    this.name = 'ToolResultRefusedError';
+  }
 }
 
 export interface ToolImage {

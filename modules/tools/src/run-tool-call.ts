@@ -1,5 +1,12 @@
-import type { ContentSource, Decision, Definitions, JSONObject, Log } from '@heynixie/log';
-import { withWriteTransaction, writeRecords, writeRecordsInTransaction } from '@heynixie/log';
+import type {
+  ContentSource,
+  Decision,
+  Definitions,
+  JSONObject,
+  Log,
+  WriteTransaction,
+} from '@heynixie/log';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { CallDestination, DecisionPoint, PolicyDecision } from '@heynixie/policy';
 import {
   buildActionProposalInput,
@@ -15,6 +22,7 @@ import { resolveCallDestinations } from './policy-call/resolve-call-destinations
 import { resolveCallPolicyFacts } from './policy-call/resolve-call-policy-facts';
 import { toolCalledCodec } from './tool-called-codec';
 import { toolResultCodec } from './tool-result-codec';
+import { ToolResultRefusedError } from './types';
 import type {
   ActionQueue,
   DirectResult,
@@ -135,6 +143,12 @@ interface Settled {
         readonly images: readonly ToolImage[];
       }
     | { readonly kind: 'text'; readonly text: string; readonly isError: boolean };
+
+  // sealed under the result record's key, in order
+  readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
+
+  // runs in the transaction that writes the result record
+  readonly writeBeside?: (tx: WriteTransaction, resultSequence: number) => Promise<void>;
 }
 
 interface CallPolicy {
@@ -258,26 +272,50 @@ function makeCallRecorder(
         return { sequence: written.sequence, shortID: proposal.shortID, isCapped: false };
       }),
     writeResult: async (callSequence, settled) => {
-      const contentSource = pickLeastTrusted(Object.values(settled.sources));
+      const writeSettled = async (toWrite: Settled): Promise<void> => {
+        const contentSource = pickLeastTrusted(Object.values(toWrite.sources));
+        const writeBeside = toWrite.writeBeside;
 
-      await writeRecords(options.log, [
-        {
-          kind: 'tool_result',
-          definitions,
-          thread: run.thread,
-          parent: callSequence,
-          payload: toolResultCodec.encode({
-            ...ids,
-            outcome: settled.outcome,
-            actionID: settled.actionID,
-            sources: settled.sources,
-          }),
-          erasable: settled.content,
-          ...(contentSource === null ? {} : { contentSource }),
-        },
-      ]);
+        await withWriteTransaction(options.log.writer, async (tx) => {
+          const [written] = await writeRecordsInTransaction(tx, options.log, [
+            {
+              kind: 'tool_result',
+              definitions,
+              thread: run.thread,
+              parent: callSequence,
+              payload: toolResultCodec.encode({
+                ...ids,
+                outcome: toWrite.outcome,
+                actionID: toWrite.actionID,
+                sources: toWrite.sources,
+              }),
+              erasable: toWrite.content,
+              ...(toWrite.attachments === undefined ? {} : { attachments: toWrite.attachments }),
+              ...(contentSource === null ? {} : { contentSource }),
+            },
+          ]);
 
-      return toCallToolResult(settled);
+          invariant(written, 'the log wrote no record for the tool result');
+
+          await writeBeside?.(tx, written.sequence);
+        });
+      };
+
+      try {
+        await writeSettled(settled);
+
+        return toCallToolResult(settled);
+      } catch (error) {
+        if (!(error instanceof ToolResultRefusedError)) {
+          throw error;
+        }
+
+        const refused = buildMessage('error', error.message, { source: 'untrusted' });
+
+        await writeSettled(refused);
+
+        return toCallToolResult(refused);
+      }
     },
   };
 }
@@ -322,28 +360,6 @@ function toCallToolResult(settled: Settled): CallToolResult {
   };
 }
 
-// A tool missing from the run's list skips the schema, so its errors never show the tool to the
-// model, and the decision point denies the call.
-function checkListedInput(
-  registered: RegisteredTool | null,
-  call: ToolCall,
-  run: ToolRun,
-): SchemaCheck {
-  return registered !== null && run.tools.includes(call.tool)
-    ? registered.parseInput(call.input)
-    : { isValid: true };
-}
-
-async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
-  const written = await recorder.writeCall(null);
-
-  // the errors repeat the input's own keys, which the model chose
-  return recorder.writeResult(
-    written.sequence,
-    buildMessage('invalid', errors, { source: 'untrusted' }),
-  );
-}
-
 interface MessageOptions {
   readonly source?: ContentSource;
   readonly isError?: boolean;
@@ -374,6 +390,28 @@ function renderCallCapRefusal(run: ToolRun, tool: string): string {
   const cap = run.taskRun?.calls[tool] ?? 0;
 
   return callCapRefusal.replace('{n}', String(cap)).replace('{tool}', tool);
+}
+
+// A tool missing from the run's list skips the schema, so its errors never show the tool to the
+// model, and the decision point denies the call.
+function checkListedInput(
+  registered: RegisteredTool | null,
+  call: ToolCall,
+  run: ToolRun,
+): SchemaCheck {
+  return registered !== null && run.tools.includes(call.tool)
+    ? registered.parseInput(call.input)
+    : { isValid: true };
+}
+
+async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
+  const written = await recorder.writeCall(null);
+
+  // the errors repeat the input's own keys, which the model chose
+  return recorder.writeResult(
+    written.sequence,
+    buildMessage('invalid', errors, { source: 'untrusted' }),
+  );
 }
 
 interface DecidedCall {
@@ -513,6 +551,8 @@ function buildTypedResult(
     sources: registered.definition.declaration.results,
     content: buildResultFields(typed, result),
     reply: { kind: 'typed', result, images: typed.images ?? [] },
+    ...(typed.attachments === undefined ? {} : { attachments: typed.attachments }),
+    ...(typed.writeBeside === undefined ? {} : { writeBeside: typed.writeBeside }),
   };
 }
 
