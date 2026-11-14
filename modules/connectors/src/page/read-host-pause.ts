@@ -9,6 +9,11 @@ export async function readHostPause(
   fetching: PageFetch,
   url: string,
 ): Promise<PausedOutcome | null> {
+  // A URL that does not parse has no host to pause, and the fetch refuses it.
+  if (!URL.canParse(url)) {
+    return null;
+  }
+
   const host = readFetchHost(url);
   const leftMs = fetching.backoff.readPause(host);
 

@@ -422,6 +422,19 @@ test('it pauses the host of a 200 that carries a wait, and stores the rewritten 
   expect(ctx.backoff.readPause('pypi.org')).toBe(3000);
 });
 
+test('it passes a URL that does not parse to the fetch, and returns its refusal', async () => {
+  const ctx = await setupTest(() => ({
+    kind: 'refused',
+    reason: 'the URL is not valid',
+    isGated: false,
+  }));
+
+  const outcome = await ctx.runFetch('not a url');
+
+  expect(ctx.requestedURLs).toStrictEqual(['not a url']);
+  expect(outcome).toStrictEqual({ status: 'error', message: 'the URL is not valid' });
+});
+
 test('it sets no pause for a 404', async () => {
   const ctx = await setupTest((url) => buildMockPageReply(url, { status: 404, text: 'Not here' }));
 

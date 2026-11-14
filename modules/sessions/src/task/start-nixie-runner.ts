@@ -525,14 +525,17 @@ async function runTaskSessionCleanup(
   runner: TaskRunner,
   cause: SessionCleanupCause,
 ): Promise<void> {
-  runner.options.clearFetchPauses();
+  try {
+    const cleaned = await readCleanedTaskIDs(runner.options.context, cause);
 
-  const cleaned = await readCleanedTaskIDs(runner.options.context, cause);
-
-  for (const taskID of cleaned) {
-    await resolveTaskGuard(runner, taskID).withInvalidation(() =>
-      cleanTaskSession(runner, taskID, cause),
-    );
+    for (const taskID of cleaned) {
+      await resolveTaskGuard(runner, taskID).withInvalidation(() =>
+        cleanTaskSession(runner, taskID, cause),
+      );
+    }
+  } finally {
+    // A turn that was in flight can set a pause until it drains, so the clear comes last.
+    runner.options.clearFetchPauses();
   }
 }
 

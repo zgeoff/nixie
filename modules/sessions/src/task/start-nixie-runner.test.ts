@@ -956,6 +956,52 @@ test('it clears every web fetch pause on a forget', async () => {
   expect(ctx.clearFetchPauses).toHaveBeenCalledOnce();
 });
 
+test('it clears every web fetch pause only after an in-flight turn of a task has ended on a forget', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Checking the tides.', gate: () => held.promise });
+
+  const step = ctx.runNextStepWithNoRetryDelay(runner);
+
+  await waitForCondition(() => ctx.guest.turns.length === 1);
+
+  const clearedDuringTurn: boolean[] = [];
+  let hasStepEnded = false;
+
+  ctx.clearFetchPauses.mockImplementation(() => {
+    clearedDuringTurn.push(!hasStepEnded);
+  });
+
+  const cleanup = runner.cleanupSessions({ itemID: 'item-bees' });
+
+  const watch = (async () => {
+    await step;
+
+    hasStepEnded = true;
+  })();
+
+  await cleanup;
+  await watch;
+
+  expect(clearedDuringTurn).toStrictEqual([false]);
+});
+
 test('it purges and invalidates the session of a task that reads memory on a forget, so its next turn opens a new one', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();
