@@ -145,11 +145,12 @@ another version fails to decrypt.
 ## Recall
 
 Recall takes a query, a list of item IDs, or neither, which lists every active item a page at a time
-in the order they were created. It returns each item's text exactly as stored, with its ID, version,
-origin, source, date, the quote the gate checked and the model that wrote it, and with its history
-it returns every version. A recall never summarizes, so the user can check an answer about memory
-against the items themselves, and the quote lets the model check a summary against the words it came
-from.
+in the order they were created. Each of the three can name `subjects`, and the recall then returns
+only the items of those subjects. It returns each item's text exactly as stored, with its ID,
+version, origin, source, date, the quote the gate checked and the model that wrote it, and with its
+history it returns every version. A recall never summarizes, so the user can check an answer about
+memory against the items themselves, and the quote lets the model check a summary against the words
+it came from.
 
 ```mermaid
 flowchart LR
@@ -180,6 +181,42 @@ the items of every other subject leave the ranking before its limit applies. A r
 sensitive items out in the same way, and it checks the mark again under the delivery lock, so an
 item marked after the ranking never reaches the caller. The record's search mode is hybrid, keyword
 with no encoder, or keyword fallback while the vector index rebuilds.
+
+### The page limit
+
+The conversation's `memory.recall` returns a page that fits a limit in UTF-8 bytes, because the
+Agent SDK's command-line program cuts a longer tool result at a place the host cannot learn. The
+limit is `recallPageLimitBytes` in `libs/wire`, 2 bytes a token of the tool-output limit, less 4,000
+bytes for the rest of the result. Text outside English or full of links comes to under 3 bytes a
+token, which is why the limit allows only 2.
+
+The store cuts the page, and it cuts under the delivery lock, before it appends the recall record.
+The tool passes the byte budget, which is the limit less the largest the result can take outside its
+items, and a function that measures each item exactly as the tool returns it. The store keeps each
+item while the measured bytes, with a byte for each comma, fit the budget, and stops at the first
+item that does not fit. It always keeps the first item. The record lists exactly the item versions
+the result holds, so a later `memory.retire` of an item the page left out finds no record of it and
+goes to review. A request with no budget cuts nothing, and the note-taker's and the consolidator's
+recall tools pass none.
+
+When the first item alone passes the budget, the store keeps its current version and the newest past
+versions that fit, and the tool drops the item's moment links from the end until the result fits. A
+current version that passes the budget on its own comes back and is recorded whole.
+
+The result says what the page left out. `leftOut` holds the count of omitted items, their IDs and
+the number of omitted past versions, and appears only when something is left out. For a query, the
+IDs are the matches the cut dropped, in rank order. For a call with `itemIDs`, they are the named
+IDs past the limit and the items the cut dropped, in the order named, and only IDs that the store
+would have returned. For the plain list, `leftOut` gives a count only, and `next` starts at the
+first omitted item. Recalling the IDs in `leftOut` reads the items.
+
+`searched` copies the call's query (its first 200 characters) or item IDs, and its subjects. A
+recall that finds nothing returns an empty `items` list with `searched`, and appends no record. That
+holds for every caller of the store's recall, the turn search included. The stored tool record holds
+`leftOut` by item ID and no `searched`, so the query text stays out of it.
+
+A call passes `query` or `itemIDs`, never both, and passes `after` with neither. The tool refuses
+anything else before it calls the store, so a refused call writes no record.
 
 ### The indexes
 
