@@ -372,6 +372,16 @@
       "name": "@heynixie/retry",
       "version": "0.0.0",
     },
+    "libs/secret-scan": {
+      "name": "@heynixie/secret-scan",
+      "version": "0.0.0",
+      "dependencies": {
+        "re2js": "catalog:",
+        "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
+      },
+    },
     "libs/task-control": {
       "name": "@heynixie/task-control",
       "version": "0.0.0",
@@ -1050,6 +1060,7 @@
     "kysely": "0.29.8",
     "msw": "2.15.0",
     "onnxruntime-node": "1.31.1",
+    "re2js": "2.9.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-markdown": "10.1.0",
@@ -1290,6 +1301,8 @@
     "@heynixie/sandbox-imp": ["@heynixie/sandbox-imp@workspace:adapters/sandbox-imp"],
 
     "@heynixie/search-kagi": ["@heynixie/search-kagi@workspace:adapters/search-kagi"],
+
+    "@heynixie/secret-scan": ["@heynixie/secret-scan@workspace:libs/secret-scan"],
 
     "@heynixie/server": ["@heynixie/server@workspace:apps/server"],
 
@@ -3134,6 +3147,8 @@
     "range-parser": ["range-parser@1.3.0", "", {}, "sha512-hek2mFQpPuI4E1BBKrSto+BU3e3x4xuarsbiwr3+lf7p44juvFMV0XFWQAP3xUyqXA4RrXLIoaSUGbSt056ZMw=="],
 
     "raw-body": ["raw-body@3.0.2", "", { "dependencies": { "bytes": "~3.1.2", "http-errors": "~2.0.1", "iconv-lite": "~0.7.0", "unpipe": "~1.0.0" } }, "sha512-K5zQjDllxWkf7Z5xJdV0/B0WTNqx6vxG70zJE4N0kBs4LovmEYWJzQGxC9bS9RAKu3bgM40lrd5zoLJ12MQ5BA=="],
+
+    "re2js": ["re2js@2.9.1", "", {}, "sha512-JIT3bEEUZTOR2YS1walNEIfH4cF/cQeZcBUFq7ldqO6lR6g0X5CBq/S8rsa9omzZcsNf8qc36jCkWpKKtncrZg=="],
 
     "react": ["react@19.3.1", "", {}, "sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw=="],
 
