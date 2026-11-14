@@ -1,4 +1,11 @@
-import type { ContentSource, JSONObject, Log, LogRecord, RecordKind } from '@heynixie/log';
+import type {
+  ContentSource,
+  JSONObject,
+  Log,
+  LogRecord,
+  RecordKind,
+  RecordWithChanges,
+} from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { renderOwnerText } from '@heynixie/sessions';
 import { conversationKinds } from './conversation-kinds';
@@ -6,6 +13,8 @@ import { countBatchTokens } from './count-batch-tokens';
 import { formatToolEntry } from './format-tool-entry';
 import type { MomentSpan } from './moment-context';
 import { readRemovedSequences } from './read-removed-sequences';
+import { readToolShortIDs } from './read-tool-short-ids';
+import type { ShortIDLookup } from './swapped-keys';
 
 export type MomentSpanRecords = 'conversation' | 'all';
 
@@ -79,8 +88,10 @@ export async function readMomentSpanPage(
         .map((read) => read.record.sequence),
     );
 
+    const lookup = await readBatchShortIDs(log, batch, query.reader);
+
     for (const read of batch) {
-      const entry = buildSpanEntry(read.record, removed, query.reader);
+      const entry = buildSpanEntry(read.record, removed, { reader: query.reader, lookup });
       const cost = countEntryTokens(entry);
 
       if (entries.length > 0 && tokens + cost > query.tokenCap) {
@@ -99,10 +110,33 @@ export async function readMomentSpanPage(
   return { entries, next: null };
 }
 
+const emptyLookup: ShortIDLookup = { moment: new Map(), item: new Map(), change: new Map() };
+
+// The owner's export keeps every field as stored, so it reads no short ID.
+function readBatchShortIDs(
+  log: Pick<Log, 'writer'>,
+  batch: readonly RecordWithChanges[],
+  reader: 'model' | 'owner',
+): Promise<ShortIDLookup> {
+  if (reader === 'owner') {
+    return Promise.resolve(emptyLookup);
+  }
+
+  return readToolShortIDs(
+    log,
+    batch.map((read) => read.record),
+  );
+}
+
+interface SpanRender {
+  readonly reader: 'model' | 'owner';
+  readonly lookup: ShortIDLookup;
+}
+
 function buildSpanEntry(
   record: LogRecord,
   removed: ReadonlySet<number>,
-  reader: 'model' | 'owner',
+  render: SpanRender,
 ): MomentSpanEntry {
   const erasable = record.erasable;
   const isGap = erasable.status === 'shredded' || erasable.status === 'unreadable';
@@ -114,7 +148,7 @@ function buildSpanEntry(
     source: record.contentSource ?? 'nixie',
     payload: Object.keys(record.payload).length === 0 ? null : record.payload,
     decision: record.decision?.outcome ?? null,
-    text: erasable.status === 'readable' ? renderRecordText(record, erasable.fields, reader) : null,
+    text: erasable.status === 'readable' ? renderRecordText(record, erasable.fields, render) : null,
     isGap,
     isRemoved: erasable.status === 'shredded' && removed.has(record.sequence),
     isCut: false,
@@ -124,14 +158,14 @@ function buildSpanEntry(
 function renderRecordText(
   record: LogRecord,
   fields: Readonly<Record<string, unknown>>,
-  reader: 'model' | 'owner',
+  render: SpanRender,
 ): string {
   if (record.kind === 'owner_message') {
     return renderOwnerText(record);
   }
 
-  if (record.kind === 'tool_result' && reader === 'model') {
-    return formatToolEntry(record, fields);
+  if (record.kind === 'tool_result' && render.reader === 'model') {
+    return formatToolEntry(record, fields, render.lookup);
   }
 
   const text = fields['text'];

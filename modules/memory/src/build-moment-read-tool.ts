@@ -1,6 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildHiddenUUIDs } from './build-hidden-uuids';
 import type { MomentStore } from './build-moment-store';
 import type { MomentCursor } from './pick-moment-page';
 import type { MomentRead } from './read-moment';
@@ -93,12 +94,13 @@ export function buildMomentReadTool(moments: Pick<MomentStore, 'read'>): ToolDef
         status: 'ok',
         result: toReadJSON(read, next),
         record: {
-          momentID: read.row.moment_id,
+          momentID: read.row.short_id,
           version: read.row.version,
           reflectionIDs: read.reflections.map((reflection) => reflection.reflectionID),
           eventIDs: read.records.map((entry) => String(entry.sequence)),
           next,
         },
+        ...buildHiddenUUIDs([[read.row.short_id, read.row.moment_id]]),
       };
     },
   };

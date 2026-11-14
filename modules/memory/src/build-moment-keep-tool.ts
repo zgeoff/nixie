@@ -1,6 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildHiddenUUIDs } from './build-hidden-uuids';
 import { buildMomentCaller } from './build-moment-caller';
 import type { MomentStore } from './build-moment-store';
 import { makeInputRecorder } from './make-input-recorder';
@@ -77,7 +78,8 @@ export function buildMomentKeepTool(
       return {
         status: 'ok',
         result: { momentID: kept.shortID, keptThisWeek: count.total, reflection: 'pending' },
-        record: { momentID: kept.momentID, version: kept.version, keptThisWeek: count.total },
+        record: { momentID: kept.shortID, version: kept.version, keptThisWeek: count.total },
+        ...buildHiddenUUIDs([[kept.shortID, kept.momentID]]),
       };
     },
   };

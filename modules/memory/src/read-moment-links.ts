@@ -4,6 +4,8 @@ import { readMomentText } from './read-moment-text';
 
 export interface MomentLink {
   readonly momentID: string;
+
+  readonly momentUUID: string;
   readonly title: string;
 }
 
@@ -20,7 +22,12 @@ export async function readMomentLinks(
     .$extendTables<MomentTables>()
     .selectFrom('moment_links')
     .innerJoin('moments', 'moments.moment_id', 'moment_links.moment_id')
-    .select(['moment_links.item_id', 'moments.short_id', 'moments.title_sequence'])
+    .select([
+      'moment_links.item_id',
+      'moments.moment_id',
+      'moments.short_id',
+      'moments.title_sequence',
+    ])
     .where('moment_links.item_id', 'in', itemIDs)
     .where('moments.state', '=', 'active')
     .orderBy('moment_links.linked_sequence')
@@ -38,7 +45,7 @@ export async function readMomentLinks(
     if (typeof title === 'string') {
       links.set(row.item_id, [
         ...(links.get(row.item_id) ?? []),
-        { momentID: row.short_id, title },
+        { momentID: row.short_id, momentUUID: row.moment_id, title },
       ]);
     }
   }

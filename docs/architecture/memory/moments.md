@@ -112,18 +112,22 @@ note, the reflections follow under the same cursor, and then the records. A sing
 record larger than a page arrives cut to fit it. Every page repeats the title, so a title long
 enough to crowd out the rest of the page arrives cut as well.
 
-The records of a moment tool call hold references only: moment IDs, versions and event IDs. Each
-call record leaves out the title, the reflection and the search words, and each result record lists
-what the call returned by ID. A destroy therefore leaves no readable copy of the moment's text in
-them.
+The records of a moment tool call hold references only: moment short IDs, versions and event IDs.
+Each call record leaves out the title, the reflection and the search words, and each result record
+lists what the call returned by short ID. The UUID behind each short ID sits under the result's
+`hidden.uuids`, which the model never reads, and a call that maps no ID stores no `hidden`. A
+destroy therefore leaves no readable copy of the moment's text in them. When `moment.read` or
+`log.read` prints a result record that an earlier release stored with a UUID, it swaps in the short
+ID, as [reading the log](./context.md#reading-the-log) says.
 
 ## Reading moments back
 
 `memory.recall` returns each item's links to active moments as short IDs and titles, and its result
-record holds the linked moments' IDs only. The tool descriptions of `memory.recall` and
-`moment.read` tell the model to read a linked moment when the reason behind a fact matters. Per-turn
-retrieval calls the store's recall directly, without the links that the `memory.recall` tool adds,
-and never searches moments, so a turn never receives moment text that way.
+record holds the item and the linked moments' short IDs only, with their UUIDs under `hidden`. The
+tool descriptions of `memory.recall` and `moment.read` tell the model to read a linked moment when
+the reason behind a fact matters. Per-turn retrieval calls the store's recall directly, without the
+links that the `memory.recall` tool adds, and never searches moments, so a turn never receives
+moment text that way.
 
 nixie counts the moments kept over the week before an instant, across every thread, and leaves out
 destroyed ones. The count shows in three places and never blocks a keep:

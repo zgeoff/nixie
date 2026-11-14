@@ -1179,7 +1179,10 @@ test('it gives the model a recalled item and leaves no readable copy once the it
   expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
     erasable: {
       status: 'readable',
-      fields: { result: { items: [{ itemID: item.itemID, version: 1 }], next: null } },
+      fields: {
+        result: { items: [{ itemID: shortID, version: 1 }], next: null },
+        hidden: { uuids: { [shortID]: item.itemID } },
+      },
     },
   });
 

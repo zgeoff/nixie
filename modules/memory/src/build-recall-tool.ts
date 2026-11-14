@@ -5,6 +5,7 @@ import { renderMemoryLine } from '@heynixie/sessions';
 import type { ToolCall, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { recallPageLimitBytes } from '@heynixie/wire';
 import { z } from 'zod';
+import { buildHiddenUUIDs } from './build-hidden-uuids';
 import type { MomentStore } from './build-moment-store';
 import { makeInputRecorder } from './make-input-recorder';
 import { readItemIDs } from './read-item-ids';
@@ -13,7 +14,6 @@ import { recallLimits } from './recall-limits';
 import type { StartedMemoryStore } from './start-memory-store';
 import type {
   ItemIDStore,
-  OmittedItem,
   RecallOmitted,
   RecallRequest,
   RecallResult,
@@ -273,8 +273,9 @@ async function runRecallCall(
     record: {
       items: result.items.map((item, index) => toItemRecord(item, fitted.links[index] ?? [])),
       next: result.next,
-      ...buildLeftOut(result.omitted, 'itemID'),
+      ...buildLeftOut(result.omitted),
     },
+    ...buildHiddenUUIDs(collectRecallUUIDs(result, fitted.links)),
   };
 }
 
@@ -464,11 +465,11 @@ function buildBody(
     items: entries.map((entry) => entry.json),
     ...(isEmpty ? {} : { next: result.next }),
     searched,
-    ...buildLeftOut(result.omitted, 'shortID'),
+    ...buildLeftOut(result.omitted),
   };
 }
 
-function buildLeftOut(omitted: RecallOmitted, idKey: keyof OmittedItem): JSONObject {
+function buildLeftOut(omitted: RecallOmitted): JSONObject {
   if (omitted.count === 0 && omitted.versions === 0) {
     return {};
   }
@@ -476,7 +477,7 @@ function buildLeftOut(omitted: RecallOmitted, idKey: keyof OmittedItem): JSONObj
   return {
     leftOut: {
       count: omitted.count,
-      itemIDs: omitted.items.map((item) => item[idKey]),
+      itemIDs: omitted.items.map((item) => item.shortID),
       versions: omitted.versions,
     },
   };
@@ -509,8 +510,21 @@ function fitFirstItem(body: JSONObject, oversized: OversizedItem): FittedResult 
 // The record names each linked moment by ID only, so a destroy leaves no copy of its title here.
 function toItemRecord(item: RecalledItem, links: readonly MomentLink[]): JSONObject {
   return {
-    itemID: item.itemID,
+    itemID: item.shortID,
     version: item.version,
     ...(links.length === 0 ? {} : { momentIDs: links.map((link) => link.momentID) }),
   };
+}
+
+function collectRecallUUIDs(
+  result: RecallResult,
+  links: readonly (readonly MomentLink[])[],
+): (readonly [string, string])[] {
+  return [
+    ...result.items.map((item) => [item.shortID, item.itemID] as const),
+    ...result.omitted.items.map((item) => [item.shortID, item.itemID] as const),
+    ...links.flatMap((itemLinks) =>
+      itemLinks.map((link) => [link.momentID, link.momentUUID] as const),
+    ),
+  ];
 }

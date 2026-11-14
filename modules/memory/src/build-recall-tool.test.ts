@@ -68,7 +68,13 @@ async function setupTest() {
       const bytes = Buffer.byteLength(JSON.stringify(outcome.result));
       const isValid = tool.parseOutput(outcome.result);
 
-      return { ...pageSchema.parse(outcome.result), bytes, record: outcome.record, isValid };
+      return {
+        ...pageSchema.parse(outcome.result),
+        bytes,
+        record: outcome.record,
+        hidden: outcome.hidden,
+        isValid,
+      };
     },
     retireOutcome: (input: JSONObject) =>
       retireTool.definition.run(
@@ -310,7 +316,7 @@ test.each([
   expect(records).toStrictEqual([]);
 });
 
-test('it stores the omitted item IDs in the record and keeps the searched query out of it', async () => {
+test('it stores the short IDs of the shown and omitted items in the record, maps them to UUIDs under hidden, and keeps the searched query out of it', async () => {
   const ctx = await setupTest();
 
   const uuids: string[] = [];
@@ -344,13 +350,26 @@ test('it stores the omitted item IDs in the record and keeps the searched query 
 
   const record = recordSchema.parse(page.record);
   const recordedIDs = record.items.map((item) => item.itemID);
-  const isKnown = (itemID: string) => uuids.includes(itemID);
+  const shownIDs = page.items.map((item) => item.itemID);
+  const shortIDs = [...recordedIDs, ...record.leftOut.itemIDs];
 
-  expect(recordedIDs).toSatisfyAll(isKnown);
-  expect(record.leftOut.itemIDs).toSatisfyAll(isKnown);
+  const expectedUUIDs = await ctx.readUUIDs(shortIDs);
+
+  expect(recordedIDs).toStrictEqual(shownIDs);
+  expect(page.hidden).toStrictEqual({ uuids: Object.fromEntries(expectedUUIDs) });
+  expect([...expectedUUIDs.values()]).toSatisfyAll((uuid: string) => uuids.includes(uuid));
+  expect(expectedUUIDs.size).toBe(20);
+  expect(JSON.stringify(record)).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/u);
   expect(record.leftOut.count).toBe(page.leftOut?.count ?? -1);
   expect(record.leftOut.versions).toBe(0);
   expect(record.leftOut.itemIDs).toHaveLength(page.leftOut?.itemIDs.length ?? 0);
+});
+
+test('it stores no hidden field when a recall maps no item', async () => {
+  const ctx = await setupTest();
+  const page = await ctx.readPage({ query: 'kayak note' });
+
+  expect(page.hidden).toBeUndefined();
 });
 
 test('it returns an empty items list with its search and no other key when nothing matches', async () => {

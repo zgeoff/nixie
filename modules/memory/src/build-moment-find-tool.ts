@@ -1,6 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildHiddenUUIDs } from './build-hidden-uuids';
 import type { MomentStore } from './build-moment-store';
 import { makeInputRecorder } from './make-input-recorder';
 import { parseUTCTime } from './parse-utc-time';
@@ -104,11 +105,14 @@ export function buildMomentFindTool(moments: Pick<MomentStore, 'readMatches'>): 
         result: { moments: page.matches.map((match) => toMatchJSON(match)), next },
         record: {
           moments: page.matches.map((match) => ({
-            momentID: match.row.moment_id,
+            momentID: match.row.short_id,
             version: match.row.version,
           })),
           next,
         },
+        ...buildHiddenUUIDs(
+          page.matches.map((match) => [match.row.short_id, match.row.moment_id] as const),
+        ),
       };
     },
   };
