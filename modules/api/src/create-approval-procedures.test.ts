@@ -2,7 +2,8 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
-import { readRecords } from '@heynixie/log';
+import type { LogTables } from '@heynixie/log';
+import { readRecords, removeRecordKey, writeRecords } from '@heynixie/log';
 import {
   defaultGateLimits,
   defaultOwnerPronouns,
@@ -10,8 +11,9 @@ import {
   startMemoryStore,
 } from '@heynixie/memory';
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
+import { buildActionProposalInput } from '@heynixie/policy';
 import { runProposalLapses, runProposalReturns } from '@heynixie/proposals';
-import { createConversationTask } from '@heynixie/tasks';
+import { createConversationTask, readInbox } from '@heynixie/tasks';
 import { buildProposalCoreDeps } from './build-proposal-core-deps';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
@@ -357,4 +359,126 @@ test('#approvals.answerProposal puts the note of a declined memory proposal in t
       entry.record.erasable.status === 'readable' ? entry.record.erasable.fields : null,
     ]),
   ).toStrictEqual([['conversation', { reason: 'Not something to remember.' }]]);
+});
+
+test('#approvals.listItems lists the open rows in the digest order, and leaves out closed, lapsed and erased rows', async () => {
+  const ctx = await setupTest();
+  const before = await ctx.client.approvals.listItems();
+
+  const ruleChange = before.items[0]?.proposal.shortID ?? 'missing';
+  const log = ctx.api.context.log;
+
+  const ask = (thread: string, cause: 'always_ask' | 'no_rule', to: string) =>
+    buildActionProposalInput({
+      definitions: ctx.api.context.definitions(),
+      thread,
+      callSequence: 1,
+      tool: cause === 'always_ask' ? 'shop.buy' : 'mail.send',
+      effects: cause === 'always_ask' ? ['spend'] : ['send'],
+      cause,
+      input: { to },
+      destinations: [{ value: to, replyTarget: false }],
+    });
+
+  const routine = ask('reports', 'no_rule', 'harbour@example.org');
+  const alwaysAsk = ask('conversation', 'always_ask', 'chandlery@example.org');
+  const deferred = ask('conversation', 'no_rule', 'marina@example.org');
+  const declined = ask('conversation', 'no_rule', 'boatyard@example.org');
+  const lapsed = ask('conversation', 'no_rule', 'ferry@example.org');
+  const erased = ask('conversation', 'no_rule', 'pier@example.org');
+
+  const written = await writeRecords(log, [
+    routine.record,
+    alwaysAsk.record,
+    deferred.record,
+    declined.record,
+    { ...lapsed.record, payload: { ...lapsed.record.payload, lapsesAt: ctx.api.clock.now() - 1 } },
+    erased.record,
+  ]);
+
+  const erasedKey = await log.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('key_id')
+    .where('sequence', '=', written.at(-1)?.sequence ?? 0)
+    .executeTakeFirstOrThrow();
+
+  await removeRecordKey(log, erasedKey.key_id ?? 'missing');
+
+  await ctx.memory.writes.remember({
+    text: 'Keeps a rowing boat at the lake',
+    caller: buildMockWriteCaller(),
+  });
+
+  const open = await ctx.client.approvals.listItems();
+
+  const findHash = (shortID: string) =>
+    open.items.find((item) => item.proposal.shortID === shortID)?.proposal.actionHash ?? 'missing';
+
+  await ctx.client.approvals.answerProposal({
+    proposalID: deferred.shortID,
+    actionHash: findHash(deferred.shortID),
+    choice: 'defer',
+    deferUntil: new Date(ctx.api.clock.now() + 2 * 60 * 60 * 1000),
+    clientActionID: crypto.randomUUID(),
+  });
+
+  await ctx.client.approvals.answerProposal({
+    proposalID: declined.shortID,
+    actionHash: findHash(declined.shortID),
+    choice: 'decline',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const listed = await ctx.client.approvals.listItems();
+
+  expect(listed.items.map((item) => [item.group, item.proposal.shortID])).toStrictEqual([
+    ['always_ask', alwaysAsk.shortID],
+    ['routine', ruleChange],
+    ['routine', routine.shortID],
+    ['memory', expect.any(String)],
+    ['deferred', deferred.shortID],
+  ]);
+});
+
+test('#approvals.answerProposal puts the note of a declined action in the inbox of the task that asked', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.api.context);
+
+  const proposed = buildActionProposalInput({
+    definitions: ctx.api.context.definitions(),
+    thread: 'conversation',
+    callSequence: 1,
+    tool: 'mail.send',
+    effects: ['send'],
+    cause: 'no_rule',
+    input: { to: 'harbour@example.org' },
+    destinations: [{ value: 'harbour@example.org', replyTarget: false }],
+  });
+
+  await writeRecords(ctx.api.context.log, [proposed.record]);
+
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === proposed.shortID);
+
+  await ctx.client.approvals.answerProposal({
+    proposalID: proposed.shortID,
+    actionHash: item?.proposal.actionHash ?? 'missing',
+    choice: 'decline',
+    note: 'The harbour office is closed this week.',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const inbox = await readInbox(ctx.api.context, 'conversation');
+
+  expect(
+    inbox
+      .filter((record) => record.kind === 'policy.action_answered')
+      .map((record) => [
+        record.payload['answer'],
+        record.erasable.status === 'readable' ? record.erasable.fields['reason'] : null,
+      ]),
+  ).toStrictEqual([['declined', 'The harbour office is closed this week.']]);
 });

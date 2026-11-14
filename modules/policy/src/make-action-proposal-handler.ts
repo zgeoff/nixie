@@ -87,20 +87,22 @@ async function readProposedRecords(
 }
 
 function toBody(record: LogRecord | undefined): ProposalBody | null {
-  if (record === undefined) {
+  const erasable = record === undefined ? null : findErasable(record);
+
+  // A forget shreds the arguments and destinations, and a card without them shows another action.
+  if (record === undefined || erasable === null) {
     return null;
   }
 
   const payload = actionProposedCodec.decode(record.payload);
-  const erasable = findErasable(record);
-  const destinations = erasable?.destinations.map((destination) => destination.value) ?? [];
+  const destinations = erasable.destinations.map((destination) => destination.value);
 
   return {
     sentence: buildActionProposalSentence(payload.tool, payload.effects, destinations),
     fields: Object.fromEntries(
-      Object.entries(erasable?.input ?? {}).map(([name, value]) => [name, toFieldText(value)]),
+      Object.entries(erasable.input).map(([name, value]) => [name, toFieldText(value)]),
     ),
-    ruleSentence: erasable?.ruleSentence ?? null,
+    ruleSentence: erasable.ruleSentence ?? null,
   };
 }
 
