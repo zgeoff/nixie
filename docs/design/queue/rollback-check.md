@@ -7,7 +7,8 @@
 A rollback returns a deployment to an earlier release, which then starts on the data directory and
 the config that the newer release wrote. The rollback check is one cheap CI test of that start: CI
 starts the build under check on a fresh data directory, stops it, and starts the previous release on
-that data directory and the same `config.yaml`. The previous release must reach ready.
+that data directory and the same `config.yaml`. The previous release must reach ready, as the
+constraints below define.
 
 Terms:
 
@@ -32,6 +33,7 @@ const result = await runRollbackCheck({ previous, build });
 
 type RollbackCheckResult =
   | { verdict: 'pass'; previous: string } // previous: the release's v* tag
+  | { verdict: 'declared'; previous: string; oldestReader: number; previousWrites: number }
   | { verdict: 'fail'; previous: string; output: string }; // output: its stderr and log lines
 ```
 
@@ -53,12 +55,26 @@ type RollbackCheckResult =
 - A previous release built before this rule refuses an unknown config key or an unknown field in a
   definition or rules file. The check passes against it only while the test's config, definitions
   and rules hold nothing that release lacks.
-- A migration never drops a column in the release that stops using it: one release stops reading the
-  column, and the next release drops it, so the previous release always starts on the new data.
+- A migration may drop a column in the release that stops using it, because one release per change
+  is the standing rule. A migration that makes the previous release unable to read the data raises
+  `oldestReader`, which declares the break, and the migration check already forces that declaration.
+  The previous release then refuses the data directory by design.
 - The check runs on a data directory that nixie left unpaused. A release without the pause refuses a
   data directory that nixie left paused, as [the pause](pause.md) designs.
-- The check passes when the previous release reaches ready. It fails when the previous release exits
-  first or does not reach ready in time, and prints the release's output.
+- Ready means that the previous release logs `http.listening` and that its `/health/ready` report
+  shows the `database` part ready. The `definitions` part, which reports that no seed has applied
+  yet, and the parts that need impd may stay unready. The build under check must meet the same rule
+  on its start.
+- The check passes, with the verdict `pass`, when the previous release reaches ready. It fails, with
+  its output, when the previous release exits first, does not reach ready in time, or listens with
+  its database part unready.
+- The verdict is `declared`, and the check accepts it, when the previous release exits before it
+  listens with the schema refusal
+  `database schema S needs a build that writes schema R or later, and this build writes schema W`,
+  where R equals the `oldestReader` of the build under check and W is lower than R. A refusal that
+  looks declared while the build's `oldestReader` does not exceed W is a `fail`. While the verdict
+  is `declared`, the check cannot see config or rules faults. That blind spot ends when the next
+  release becomes the previous release.
 - The check takes no step between the 2 starts. It never edits the config or the data directory.
 - The check uses the test doubles of `startSpawnedNixie`: a scripted model and a temporary data
   directory. It never sends a message to the agent of a production deployment.

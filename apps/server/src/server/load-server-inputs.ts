@@ -3,7 +3,7 @@ import { startONNXEncoder } from '@heynixie/encoder-onnx';
 import { makeThresholdLogger } from '@heynixie/logger';
 import { resolveOwnerConfig } from '../config/resolve-owner-config';
 import { resolveDefinitionsExport } from '../definition/resolve-definitions-export';
-import { loadDeploymentConfig } from '../deployment/load-deployment-config';
+import { readDeploymentConfig } from '../deployment/read-deployment-config';
 import { listImageNeeds } from '../part/list-image-needs';
 import { serverPartDeclarations } from '../part/server-part-declarations';
 import { loadSandboxManifest } from '../sandbox/load-sandbox-manifest';
@@ -21,7 +21,14 @@ export type ServerInputs = Pick<
 };
 
 export async function loadServerInputs(options: ServerOptions): Promise<ServerInputs> {
-  const loaded = await loadDeploymentConfig(options.configPath);
+  const read = await readDeploymentConfig(options.configPath);
+
+  const loaded = read.config;
+  const log = makeThresholdLogger(options.log, loaded.server.logLevel);
+
+  for (const key of read.unknownKeys) {
+    log('config.unknown_key', { key }, 'warn');
+  }
 
   const secrets = await loadSecrets({
     path: loaded.server.secretsFile,
@@ -47,7 +54,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
     sandbox,
     definitionsExport,
     search,
-    log: makeThresholdLogger(options.log, loaded.server.logLevel),
+    log,
     encoder,
   };
 }

@@ -1,5 +1,6 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
+import type { RuleFileWarning } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import { buildDefinitionRule } from '../definition/build-definition-rule';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
@@ -25,6 +26,9 @@ import { readRuleProposalChange } from './read-rule-proposal-change';
 
 export interface SeedOptions {
   readonly log: Log;
+
+  // Takes each rule field this release does not know
+  readonly onRuleWarning?: (warning: RuleFileWarning) => void;
   readonly source: DefinitionsSource;
 
   readonly buildPolicy: (prompts: PromptOverrides) => SnapshotPolicy;
@@ -51,6 +55,10 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     const inForce = await readDefinitionsInForce(options.log.writer.db);
 
     return { status: 'refused', error: read, inForce };
+  }
+
+  for (const warning of read.parsed.ruleWarnings) {
+    options.onRuleWarning?.(warning);
   }
 
   return withWriteTransaction(options.log.writer, async (tx) => {

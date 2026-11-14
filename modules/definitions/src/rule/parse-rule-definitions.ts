@@ -1,10 +1,11 @@
-import type { RuleFileEntry } from '@heynixie/policy';
+import type { RuleFileEntry, RuleFileWarning } from '@heynixie/policy';
 import { parseRuleFiles } from '@heynixie/policy';
 import { DefinitionsParseError } from '../utils/definitions-parse-error';
 
 export interface RuleDefinitions {
   readonly rules: readonly RuleFileEntry[];
   readonly paths: ReadonlySet<string>;
+  readonly warnings: readonly RuleFileWarning[];
 }
 
 const ruleFilePattern = /^rules\/.+\.ya?ml$/u;
@@ -24,5 +25,5 @@ export function parseRuleDefinitions(
     throw new DefinitionsParseError(parsed.problems);
   }
 
-  return { rules: parsed.rules, paths: new Set(files.keys()) };
+  return { rules: parsed.rules, paths: new Set(files.keys()), warnings: parsed.warnings };
 }

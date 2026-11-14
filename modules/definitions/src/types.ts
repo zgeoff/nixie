@@ -1,6 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
-import type { EffectOverride, RuleFileEntry, RuleForm } from '@heynixie/policy';
+import type { EffectOverride, RuleFileEntry, RuleFileWarning, RuleForm } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { Generated, Kysely, Transaction } from 'kysely';
 
@@ -91,6 +91,7 @@ export interface ParsedDefinitions {
   readonly conversationSkills: readonly string[];
   readonly prompts: PromptOverrides;
   readonly rules: readonly RuleFileEntry[];
+  readonly ruleWarnings: readonly RuleFileWarning[];
   readonly effects: ReadonlyMap<string, EffectOverride>;
   readonly unapplied: readonly string[];
 }

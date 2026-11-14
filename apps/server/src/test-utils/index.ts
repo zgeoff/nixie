@@ -21,4 +21,5 @@ export { writeSeedMessages } from './write-seed-messages';
 export { writeReleaseBundle } from '../release/write-release-bundle';
 export { formatReleaseStartOutcome } from './format-release-start-outcome';
 export { readPreviousReleaseBuild } from './read-previous-release-build';
+export type { ReleaseStartOutcome } from './read-release-start-outcome';
 export { readReleaseStartOutcome } from './read-release-start-outcome';

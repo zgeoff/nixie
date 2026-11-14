@@ -51,6 +51,7 @@ test('it parses each rule with the file that holds it, sorted by ID', () => {
         },
       },
     ],
+    warnings: [],
   });
 });
 
@@ -58,6 +59,7 @@ test('it parses an empty rule file as no rules', () => {
   expect(parseRuleFiles(new Map([['rules/empty.yaml', '# nothing yet\n']]))).toStrictEqual({
     status: 'parsed',
     rules: [],
+    warnings: [],
   });
 });
 
@@ -82,7 +84,10 @@ test('it refuses an ID that two files hold', () => {
 
 test.each([
   ['a file that is not YAML', 'allow-reads: [unclosed\n'],
-  ['an unknown field', 'allow-reads:\n  outcome: allow\n  effect: [read]\n'],
+  [
+    'an unknown field inside a check',
+    'ask-x:\n  outcome: ask\n  checks:\n    - { arg: to, op: eq, value: x, extra: 1 }\n',
+  ],
   ['an unknown outcome', 'allow-reads:\n  outcome: maybe\n'],
   ['an ID with capitals', 'Allow-Reads:\n  outcome: allow\n'],
   ['an empty tool list', 'allow-none:\n  outcome: allow\n  tools: []\n'],
@@ -141,5 +146,60 @@ test('it reads the old names jobs and job as definitions and task', () => {
         rule: { id: 'ask-x', outcome: 'ask', contexts: ['task'], definitions: ['morning'] },
       },
     ],
+    warnings: [],
   });
 });
+
+test('it skips an allow rule that holds an unknown field, and warns', () => {
+  const parsed = parseRuleFiles(
+    new Map([
+      [
+        'rules/x.yaml',
+        'allow-x:\n  outcome: allow\n  effect: [read]\nallow-y:\n  outcome: allow\n  effects: [read]\n',
+      ],
+    ]),
+  );
+
+  expect(parsed).toStrictEqual({
+    status: 'parsed',
+    rules: [{ path: 'rules/x.yaml', rule: { id: 'allow-y', outcome: 'allow', effects: ['read'] } }],
+    warnings: [{ path: 'rules/x.yaml', ruleID: 'allow-x', field: 'effect', action: 'skipped' }],
+  });
+});
+
+test('it refuses a file whose allow rule holds an unknown field and a bad checks entry', () => {
+  const parsed = parseRuleFiles(
+    new Map([
+      [
+        'rules/x.yaml',
+        'allow-x:\n  outcome: allow\n  future: true\n  checks:\n    - { arg: to, op: eq, value: x, extra: 1 }\n',
+      ],
+    ]),
+  );
+
+  expect(parsed.status).toBe('refused');
+});
+
+test.each(['ask', 'deny'])(
+  'it drops the unknown field of a %s rule and keeps the rest',
+  (outcome) => {
+    const parsed = parseRuleFiles(
+      new Map([
+        [
+          'rules/x.yaml',
+          `${outcome}-x:\n  outcome: ${outcome}\n  tools: [mail.send]\n  risk: high\n`,
+        ],
+      ]),
+    );
+
+    expect(parsed).toStrictEqual({
+      status: 'parsed',
+      rules: [
+        { path: 'rules/x.yaml', rule: { id: `${outcome}-x`, outcome, tools: ['mail.send'] } },
+      ],
+      warnings: [
+        { path: 'rules/x.yaml', ruleID: `${outcome}-x`, field: 'risk', action: 'dropped' },
+      ],
+    });
+  },
+);

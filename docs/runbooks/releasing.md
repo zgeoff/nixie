@@ -109,9 +109,10 @@ Expect `Verification succeeded!` and the release commit in the output. A private
 
 A deployment takes releases in milestones and skips the releases between them, so it meets a feature
 only once the whole feature is built. A rollback goes back to the last release that the deployment
-ran, which can be several releases back. Before a rollback, remove the config keys that the target
-release does not know. An older release refuses to start on a config file with a key it does not
-know.
+ran, which can be several releases back. A release built after the unknown-key rule warns on a
+config key it does not know and starts, so a rollback to one needs no edit to the config. A release
+built before that rule refuses to start on such a key, so remove the keys that release does not know
+before a rollback to it.
 
 ## Repair a failed release
 

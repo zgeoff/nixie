@@ -85,3 +85,28 @@ test('it gives the images that the profiles and the parts need', async () => {
 
   expect(Object.keys(inputs.images)).toStrictEqual(['conversation', 'fetch']);
 });
+
+test('it logs a warning that names each config key it does not know', async () => {
+  const ctx = await setupTest();
+
+  const log = mock<Logger>();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: ['modles: {}', 'tasks:', '  runner: 5'],
+    secrets: [],
+  });
+
+  await loadServerInputs({
+    configPath: files.configPath,
+    manifestPath: files.manifestPath,
+    sopsArgv: [files.sopsPath],
+    log,
+  });
+
+  const warnings = log.mock.calls.filter(([event]) => event === 'config.unknown_key');
+
+  expect(warnings).toStrictEqual([
+    ['config.unknown_key', { key: 'modles' }, 'warn'],
+    ['config.unknown_key', { key: 'tasks.runner' }, 'warn'],
+  ]);
+});

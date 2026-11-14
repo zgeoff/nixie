@@ -46,7 +46,14 @@ export { policyConfigSchema } from './policy/policy-config-schema';
 export type { EffectOverrideProblem, ParsedEffectOverrides } from './effect/parse-effect-overrides';
 export { parseEffectOverrides } from './effect/parse-effect-overrides';
 export { parseRule } from './rule/parse-rule';
-export type { ParsedRuleFiles, RuleFileEntry, RuleFileProblem } from './rule/parse-rule-files';
+
+export type {
+  ParsedRuleFiles,
+  RuleFileEntry,
+  RuleFileProblem,
+  RuleFileWarning,
+} from './rule/parse-rule-files';
+
 export { parseRuleFiles } from './rule/parse-rule-files';
 export type { PolicyRecordKind } from './policy/policy-record-kind';
 export { pickRuleChange } from './rule/pick-rule-change';

@@ -11,10 +11,17 @@ export type ReleaseStartOutcome =
       readonly outcome: 'started';
       readonly readyStatus: number;
       readonly readyBody: string;
+      readonly output: string;
     }
   | {
       readonly outcome: 'refused';
       readonly exit: NixieExit;
+      readonly output: string;
+    }
+  | {
+      readonly outcome: 'timeout';
+      readonly stage: 'listening' | 'ready';
+      readonly timeoutMs: number;
       readonly output: string;
     };
 
@@ -28,8 +35,8 @@ type FirstEvent =
   | { readonly kind: 'timeout' };
 
 // A release started on a data directory either logs http.listening, which follows the database
-// open and its migrations, or exits before it. A start that does neither within the wait throws
-// with the process output, and so does a health answer that takes longer than the wait.
+// open and its migrations, or exits before it. A start that does neither within the wait is a
+// timeout result with the process output, and so is a health answer that takes longer than the wait.
 export async function readReleaseStartOutcome(
   nixie: ReleaseProcess,
   options: ReadReleaseStartOutcomeOptions,
@@ -47,9 +54,12 @@ export async function readReleaseStartOutcome(
   ]);
 
   if (first.kind === 'timeout') {
-    throw new Error(
-      `the release neither listened nor exited within ${String(options.timeoutMs)} ms:\n${nixie.readOutput()}`,
-    );
+    return {
+      outcome: 'timeout',
+      stage: 'listening',
+      timeoutMs: options.timeoutMs,
+      output: nixie.readOutput(),
+    };
   }
 
   if (first.kind === 'exited') {
@@ -62,11 +72,18 @@ export async function readReleaseStartOutcome(
       signal: AbortSignal.timeout(options.timeoutMs),
     });
 
-    return { outcome: 'started', readyStatus: ready.status, readyBody: await ready.text() };
-  } catch (error) {
-    throw new Error(
-      `the release listened but /health/ready gave no answer within ${String(options.timeoutMs)} ms:\n${nixie.readOutput()}`,
-      { cause: error },
-    );
+    return {
+      outcome: 'started',
+      readyStatus: ready.status,
+      readyBody: await ready.text(),
+      output: nixie.readOutput(),
+    };
+  } catch {
+    return {
+      outcome: 'timeout',
+      stage: 'ready',
+      timeoutMs: options.timeoutMs,
+      output: nixie.readOutput(),
+    };
   }
 }

@@ -30,8 +30,11 @@ field but the outcome is optional, and a field that is missing matches every cal
 | `cel`          | A CEL condition                                                                                           |
 | `note`         | The user's own words about the rule                                                                       |
 
-The parser refuses an unknown field, an empty list and a pattern with a space, and lists each fault
-with its file, so a typo in a rule never widens what it matches. Each release publishes the format
+The parser refuses an empty list, a pattern with a space and an unknown field inside a check, and
+lists each fault with its file. A rule that holds an unknown top-level field fails closed, so a
+newer release's field never stops an older release from seeding: the seed skips an allow rule whole,
+so it matches nothing, and drops only the field from an ask or a deny rule, so the rule matches
+more. The seed logs a warning that names the rule and the field. Each release publishes the format
 as a JSON Schema, the `definitions-rules.schema.json` asset, which the same schema the parser uses
 generates. After a change to the format, `bun run --cwd modules/policy rules-schema` rewrites the
 committed file, and a test fails while the two differ.

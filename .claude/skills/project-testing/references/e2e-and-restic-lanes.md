@@ -54,24 +54,30 @@ bundle lane. A file needs each build whose function in the last column it import
   release bundle is the one nixie ships, with the test-only code left out. The `release` path is the
   bundle's entry file. The suite writes its own release bundle, as
   [`write-release-bundle.test.ts`](../../../../e2e/write-release-bundle.test.ts) does.
-- To check that the previous release starts on data the checked-out code wrote, write a test in the
-  root `e2e/` folder, as [`previous-release.test.ts`](../../../../e2e/previous-release.test.ts)
-  does. The previous release is the newest `v*` tag reachable from `HEAD`, other than a tag on
-  `HEAD` itself. With no such tag, `readPreviousReleaseBuild` throws.
-  1. Pass the `entry` that `await readTestBundle(false)` returns, the checkout's release bundle, to
-     `startSpawnedNixie` as its `release` path. It writes the config and returns `nixie` without
-     starting a process.
-  2. Start the checkout with `nixie.harness.start()`, and wait for its `http.listening` log event.
-     The database is open by then.
-  3. Send the process SIGTERM. Expect: it exits with code 0.
-  4. Start the previous release on the same config and data directory with
-     `nixie.harness.startRelease(entry)`. `entry` is the path that `readPreviousReleaseBuild`
-     returns. Expect: its `http.listening` event, or an exit before it.
-- Make the previous release's bundle before such a test with `bun run test:previous-release-build`.
-  The build lives in
-  [`read-previous-release-build.ts`](../../../../apps/server/src/test-utils/read-previous-release-build.ts).
-  Of the lane commands, only `bun run test:e2e` runs it first. Its cache folder is named by the tag,
-  so a new `v*` tag, or a change to that file, leaves the build missing.
+- To check that the previous release starts on data the checked-out code wrote, write the test in
+  the root `e2e/` folder, as [`rollback-check.test.ts`](../../../../e2e/rollback-check.test.ts)
+  does:
+  1. Get the previous release with `readPreviousReleaseBuild()`. It takes the newest `v*` tag
+     reachable from `HEAD`, other than a tag on `HEAD` itself. With no such tag it throws: run
+     `git fetch --tags` first.
+  2. Pass it to `runRollbackCheck`, from
+     [`run-rollback-check.ts`](../../../../e2e/src/test-utils/run-rollback-check.ts). The check
+     starts the checkout's release bundle, then the previous release on the same data.
+  3. Expect the result's `verdict` to be `pass` or `declared`:
+     - `pass`: the previous release logged `http.listening`, and its `/health/ready` report shows
+       the `database` part ready. The lane runs no imp daemon, so the parts that need one stay
+       unready.
+     - `declared`: the previous release refused the database, because this build raised
+       `oldestReader` in [`nixie-schema.ts`](../../../../libs/db/src/schema/nixie-schema.ts) above
+       the schema version the previous release writes. You raise it when you add a migration the
+       release before cannot read, so expect this refusal.
+     - `fail`: any other outcome. Print the result's `output`, the previous release's own output.
+- To run such a file alone, run `bun run test:bundles` and `bun run test:previous-release-build`
+  first. `bun run test:e2e` runs both itself. The previous release's build is cached in a folder
+  named by its tag and a hash of
+  [`read-previous-release-build.ts`](../../../../apps/server/src/test-utils/read-previous-release-build.ts),
+  which holds the build steps. Run `test:previous-release-build` again after a new `v*` tag or an
+  edit to that file.
 
 ## Journeys
 
