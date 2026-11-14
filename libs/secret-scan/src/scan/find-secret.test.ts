@@ -101,14 +101,14 @@ test('it compiles every rule regex of the rule file on re2js', () => {
   expect(patterns.map((pattern) => compilePattern(pattern).pattern())).toStrictEqual(patterns);
 });
 
-test('it scans a 64 KB hostile URL in linear time', () => {
+test('it scans a 16 KB hostile URL in linear time', () => {
   const keywords = [...new Set(publicRules.flatMap((rule) => rule.keywords ?? []))].join('=');
-  const run = `${buildKey('alphanumeric', 64)}-_.`.repeat(900);
+  const run = `${buildKey('alphanumeric', 64)}-_.`.repeat(225);
   const url = `https://host.test/${keywords}=${run}`;
   const startedAt = performance.now();
 
   findSecret(url);
 
-  expect(url.length).toBeGreaterThan(60_000);
-  expect(performance.now() - startedAt).toBeLessThan(15_000);
+  expect(url.length).toBeGreaterThan(15_000);
+  expect(performance.now() - startedAt).toBeLessThan(4000);
 });

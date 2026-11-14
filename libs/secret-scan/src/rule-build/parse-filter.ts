@@ -169,24 +169,24 @@ interface CallParts {
 }
 
 function parseCall(call: CallParts, ctx: ParseContext): FilterClause | null {
-  const args = splitTopLevel(call['args'], ',').map((arg) => arg.trim());
+  const args = splitTopLevel(call.args, ',').map((arg) => arg.trim());
   const target = pickTarget(args[0]);
 
   if (target === null) {
     return null;
   }
 
-  if (call['name'] === 'entropy') {
-    if (target !== 'secret' || args.length !== 1 || call.isNegated || call['limit'] === undefined) {
+  if (call.name === 'entropy') {
+    if (target !== 'secret' || args.length !== 1 || call.isNegated || call.limit === undefined) {
       return null;
     }
 
-    return { kind: 'entropy', limit: Number(call['limit']), isInclusive: call['bound'] === '<=' };
+    return { kind: 'entropy', limit: Number(call.limit), isInclusive: call.bound === '<=' };
   }
 
   const [, list] = args;
 
-  if (args.length !== 2 || list === undefined || call['limit'] !== undefined) {
+  if (args.length !== 2 || list === undefined || call.limit !== undefined) {
     return null;
   }
 
@@ -199,7 +199,7 @@ function parseCall(call: CallParts, ctx: ParseContext): FilterClause | null {
     .filter((item) => item !== '')
     .map((item) => parseStringLiteral(item, ctx));
 
-  if (call['name'] === 'matchesAny') {
+  if (call.name === 'matchesAny') {
     return { kind: 'matches', target, patterns: items, isNegated: call.isNegated };
   }
 
