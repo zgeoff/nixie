@@ -119,6 +119,12 @@ export interface RecordKinds {
 
 export type RecordKind = keyof RecordKinds;
 
+// A module adds each kind whose records carry erasable fields. A kind outside it takes none.
+// oxlint-disable-next-line typescript/no-empty-interface -- modules merge their kinds in
+export interface ErasableRecordKinds {}
+
+export type ErasableRecordKind = Extract<RecordKind, keyof ErasableRecordKinds>;
+
 export interface RecordCodec<Kind extends RecordKind, Payload, PartialPayload = Partial<Payload>> {
   readonly kind: Kind;
   readonly encode: (payload: Payload) => Payload;
@@ -127,8 +133,7 @@ export interface RecordCodec<Kind extends RecordKind, Payload, PartialPayload = 
   readonly tryDecodePartial: (payload: JSONObject) => PartialPayload | null;
 }
 
-export interface RecordInput {
-  readonly kind: RecordKind;
+interface RecordInputFields {
   readonly definitions: Definitions;
   readonly thread?: string;
   readonly stepKey?: string;
@@ -138,10 +143,19 @@ export interface RecordInput {
   readonly promptCause?: PromptCause;
   readonly approval?: Approval;
   readonly payload?: JSONObject;
-  readonly erasable?: JSONObject;
 
   readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
 }
+
+export type RecordInput =
+  | (RecordInputFields & {
+      readonly kind: Exclude<RecordKind, ErasableRecordKind>;
+      readonly erasable?: never;
+    })
+  | (RecordInputFields & {
+      readonly kind: ErasableRecordKind;
+      readonly erasable?: JSONObject;
+    });
 
 export interface EnvelopeRecord {
   readonly sequence: number;

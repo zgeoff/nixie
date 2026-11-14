@@ -56,6 +56,8 @@ export type {
   EnvelopeRecord,
   RecordRow,
   ErasableFields,
+  ErasableRecordKind,
+  ErasableRecordKinds,
   JSONObject,
   JSONValue,
   Log,

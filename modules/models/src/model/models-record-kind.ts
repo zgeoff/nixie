@@ -9,7 +9,15 @@ export type ModelsRecordKind =
   | 'model.session_summarized'
   | 'model.session_cleanup_completed';
 
+export type ModelsErasableRecordKind =
+  | 'model.reply'
+  | 'model.session_summarized'
+  | 'model.compaction_failed';
+
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry
   interface RecordKinds extends Record<ModelsRecordKind, true> {}
+
+  // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry
+  interface ErasableRecordKinds extends Record<ModelsErasableRecordKind, true> {}
 }

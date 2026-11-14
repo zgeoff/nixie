@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import type { JSONObject, RecordKind } from '@heynixie/log';
+import type { ErasableRecordKind, JSONObject, RecordKind } from '@heynixie/log';
 import { localDataStorage, withWriteTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { sql } from 'kysely';
@@ -43,7 +43,7 @@ test('it reads a forget as due once its record is newer than every set copy', as
   });
 });
 
-test.each<[string, boolean, RecordKind, JSONObject]>([
+test.each<[string, boolean, Exclude<RecordKind, ErasableRecordKind>, JSONObject]>([
   ['a message forget', true, 'record.forgotten', { sequence: 4, thread: 'thread-a' }],
   [
     'a finished moment destroy',

@@ -197,16 +197,12 @@ function buildFailedRecord(
   request: CompactionRequest,
   error: unknown,
 ): RecordInput {
-  const record = buildModelRecord(source, modelCompactionFailedCodec, {
+  return buildModelRecord(source, modelCompactionFailedCodec, {
     payload: {
       trigger: request.trigger,
       failures: request.failures + 1,
       ...(request.contextSize === null ? {} : { contextSize: request.contextSize }),
     },
+    message: error instanceof Error ? error.message : String(error),
   });
-
-  return {
-    ...record,
-    erasable: { message: error instanceof Error ? error.message : String(error) },
-  };
 }

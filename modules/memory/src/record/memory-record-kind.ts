@@ -38,7 +38,18 @@ export type MemoryRecordKind =
   | 'record.forget_started'
   | 'record.forgotten';
 
+export type MemoryErasableRecordKind =
+  | 'memory.image_offered'
+  | 'memory.proposal_rejected'
+  | 'memory.self_note_flagged'
+  | 'memory.writer_failed'
+  | 'moment_edited'
+  | 'moment_kept';
+
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry
   interface RecordKinds extends Record<MemoryRecordKind, true> {}
+
+  // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry
+  interface ErasableRecordKinds extends Record<MemoryErasableRecordKind, true> {}
 }

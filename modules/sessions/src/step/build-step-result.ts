@@ -1,6 +1,11 @@
 import type { RecordInput } from '@heynixie/log';
 import type { Harness, ModelRecordSource } from '@heynixie/models';
-import { buildModelRecord, modelReplyCodec, modelTurnEndedCodec } from '@heynixie/models';
+import {
+  buildModelEventRecord,
+  buildModelRecord,
+  modelReplyCodec,
+  modelTurnEndedCodec,
+} from '@heynixie/models';
 import type { StepResult } from '@heynixie/tasks';
 import { decodeInboxUUID } from '../inbox/decode-inbox-uuid';
 import { ModelAPIError } from '../turn/model-api-error';
@@ -130,21 +135,19 @@ function buildTurnReasoning(turn: GuestTurn): TurnReasoning {
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
   return [
     ...buildReplyRecords(source, completed),
-    buildModelRecord(source, modelTurnEndedCodec, {
-      payload: {
-        ...buildTurnSummary(completed.turn),
-        ...(completed.isSilent ? { isSilent: true } : {}),
-        pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
-        retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
-        retrievedMessages: [...completed.memory.retrievedMessages],
-        invalidatedThrough: completed.memory.invalidatedThrough,
-        sessionImageBytes: completed.images.bytes,
-        sessionImageCount: completed.images.count,
-        ...(completed.turn.endedMark === undefined
-          ? {}
-          : { recalledThrough: completed.turn.endedMark }),
-        ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
-      },
+    buildModelEventRecord(source, modelTurnEndedCodec, {
+      ...buildTurnSummary(completed.turn),
+      ...(completed.isSilent ? { isSilent: true } : {}),
+      pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
+      retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
+      retrievedMessages: [...completed.memory.retrievedMessages],
+      invalidatedThrough: completed.memory.invalidatedThrough,
+      sessionImageBytes: completed.images.bytes,
+      sessionImageCount: completed.images.count,
+      ...(completed.turn.endedMark === undefined
+        ? {}
+        : { recalledThrough: completed.turn.endedMark }),
+      ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
     }),
   ];
 }

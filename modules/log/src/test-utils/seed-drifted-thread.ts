@@ -1,11 +1,11 @@
 import { sql } from 'kysely';
 import { withWriteTransaction } from '../record/with-write-transaction';
-import type { RecordKind } from '../types';
+import type { ErasableRecordKind } from '../types';
 import type { LogSeederDeps } from './log-seeder-deps';
 import { seedRecord } from './seed-record';
 
 export interface DriftedThreadSeed {
-  readonly kind: RecordKind;
+  readonly kind: ErasableRecordKind;
   readonly thread: string;
 }
 

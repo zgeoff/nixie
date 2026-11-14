@@ -1,6 +1,6 @@
 import type { RecordInput } from '@heynixie/log';
 import type { ModelRecordSource } from '@heynixie/models';
-import { buildModelRecord, modelSessionOpenedCodec } from '@heynixie/models';
+import { buildModelEventRecord, modelSessionOpenedCodec } from '@heynixie/models';
 import type { StepResult } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildStepResult } from '../step/build-step-result';
@@ -30,13 +30,11 @@ export async function runOpenedTurn(turn: SessionTurn, opening: Opening): Promis
     },
     [
       ...opening.before,
-      buildModelRecord(source, modelSessionOpenedCodec, {
-        payload: {
-          ...opened.opening,
-          personaHash: turn.definitions.personaHash,
-          policyHash: turn.definitions.policyHash,
-          sessionKey: turn.sessionKey,
-        },
+      buildModelEventRecord(source, modelSessionOpenedCodec, {
+        ...opened.opening,
+        personaHash: turn.definitions.personaHash,
+        policyHash: turn.definitions.policyHash,
+        sessionKey: turn.sessionKey,
       }),
     ],
   );
