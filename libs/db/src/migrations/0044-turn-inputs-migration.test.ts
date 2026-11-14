@@ -7,7 +7,7 @@ import { buildSqliteWorkerDialect } from '../build-sqlite-worker-dialect';
 import { nixieSchema } from '../nixie-schema';
 import { runMigrations } from '../run-migrations';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { turnInputsMigration } from './0043-turn-inputs-migration';
+import { turnInputsMigration } from './0044-turn-inputs-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -30,8 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 43, which the release before can still read', () => {
-  expect(nixieSchema.migrations.indexOf(turnInputsMigration) + 1).toBe(43);
+test('it moves the schema to version 44, which the release before can still read', () => {
+  expect(nixieSchema.migrations.indexOf(turnInputsMigration) + 1).toBe(44);
   expect(nixieSchema.oldestReader).toBe(35);
 });
 

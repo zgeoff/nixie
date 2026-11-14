@@ -2,7 +2,6 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { $ } from 'bun';
 import { readSpoolBytes } from './read-spool-bytes';
 
 async function setupTest() {
@@ -56,7 +55,7 @@ test('it refuses a FIFO with no writer at once', async () => {
 
   const path = join(ctx.directory, 'a.cap');
 
-  await $`mkfifo ${path}`;
+  Bun.spawnSync(['mkfifo', path]);
 
   const received = await readSpoolBytes(path, 8);
 
