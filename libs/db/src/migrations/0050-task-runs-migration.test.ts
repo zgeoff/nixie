@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { taskRunsMigration } from './0049-task-runs-migration';
+import { taskRunsMigration } from './0050-task-runs-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -39,7 +39,7 @@ async function setupTest() {
 }
 
 test('it keeps the migration at the version that adds the table', () => {
-  expect(nixieSchema.migrations.indexOf(taskRunsMigration) + 1).toBe(49);
+  expect(nixieSchema.migrations.indexOf(taskRunsMigration) + 1).toBe(50);
 });
 
 test('it refuses a second open task run of one task', async () => {
