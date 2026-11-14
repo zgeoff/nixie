@@ -1,5 +1,8 @@
 import { exemptTaskInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
+import { match } from 'ts-pattern';
+import { pickTaskResumeAction } from './pick-task-resume-action';
 import { probeTaskPaused } from './probe-task-paused';
 import type { TasksContext, TasksTables } from './types';
 import type { TaskControlOutcome } from './write-task-control-in-transaction';
@@ -28,18 +31,15 @@ export async function writeTaskResumeInTransaction(
 
   const control = { taskID: request.taskID, control: 'resume' } as const;
 
-  if (task === undefined) {
-    return writeTaskControlInTransaction(tx, context, control);
-  }
-
   const isPausedByNixie = await probeTaskPaused(tx, request.taskID);
 
-  if (!isPausedByNixie) {
-    return writeTaskControlInTransaction(tx, context, control);
-  }
-
-  const isPausedOnItsOwn =
-    task.state === 'paused' || (task.state === 'running' && task.pause_requested === 1);
+  const action = pickTaskResumeAction({
+    task:
+      task === undefined
+        ? null
+        : { state: task.state, isPauseRequested: task.pause_requested === 1 },
+    isPausedByNixie,
+  });
 
   const exemption = {
     taskID: request.taskID,
@@ -47,28 +47,34 @@ export async function writeTaskResumeInTransaction(
     definitions: context.definitions(),
   };
 
-  if (isPausedOnItsOwn) {
-    const outcome = await writeTaskControlInTransaction(tx, context, control);
+  return match(action)
+    .with('control', () => writeTaskControlInTransaction(tx, context, control))
+    .with('control_then_exempt', async () => {
+      const outcome = await writeTaskControlInTransaction(tx, context, control);
 
-    if (outcome.status === 'controlled') {
+      if (outcome.status === 'controlled') {
+        await exemptTaskInTransaction(tx, context.log, exemption);
+      }
+
+      return outcome;
+    })
+    .with('exempt', async () => {
       await exemptTaskInTransaction(tx, context.log, exemption);
-    }
 
-    return outcome;
-  }
+      const exempt = await db
+        .selectFrom('pause_exemptions')
+        .select('exempt_sequence')
+        .where('task_id', '=', request.taskID)
+        .executeTakeFirstOrThrow();
 
-  await exemptTaskInTransaction(tx, context.log, exemption);
+      invariant(task !== undefined, 'an exempted task exists');
 
-  const exempt = await db
-    .selectFrom('pause_exemptions')
-    .select('exempt_sequence')
-    .where('task_id', '=', request.taskID)
-    .executeTakeFirstOrThrow();
-
-  return {
-    status: 'controlled',
-    state: task.state,
-    isPauseRequested: task.pause_requested === 1,
-    sequence: exempt.exempt_sequence,
-  };
+      return {
+        status: 'controlled' as const,
+        state: task.state,
+        isPauseRequested: task.pause_requested === 1,
+        sequence: exempt.exempt_sequence,
+      };
+    })
+    .exhaustive();
 }

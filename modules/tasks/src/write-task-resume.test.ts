@@ -7,6 +7,7 @@ import {
 } from '@heynixie/log';
 import { claimTask } from './claim-task';
 import { createTask } from './create-task';
+import { readInbox } from './read-inbox';
 import { runDueTimers } from './run-due-timers';
 import { createTestClaim } from './test-utils/create-test-claim';
 import { createTestTaskInState } from './test-utils/create-test-task-in-state';
@@ -272,8 +273,41 @@ test('it leaves a timer and an inbox record that wait on a task as they were thr
 
   const after = await readRows();
   const taken = await ctx.claim('runner-b');
+  const inbox = await readInbox(ctx.context, taskID);
 
   expect(exempt).toStrictEqual(before);
   expect(after).toStrictEqual(before);
   expect(taken?.lease.workID).toBe(taskID);
+  expect(inbox.map((record) => record.kind)).toIncludeSameMembers(['owner_message', 'timer.fired']);
+});
+
+test('it resumes a running task that holds a pause request and exempts it while nixie is paused', async () => {
+  const ctx = await setupTest();
+  const task = await createTestTaskInState(ctx.context, 'pause_requested');
+
+  const taskID = task.taskID;
+
+  await ctx.pauseNixie();
+
+  const outcome = await writeTaskResume(ctx.context, { taskID, by: 'host' });
+  const records = await ctx.readControlRecords();
+
+  const row = await ctx.db
+    .selectFrom('tasks')
+    .select('pause_requested')
+    .where('task_id', '=', taskID)
+    .executeTakeFirstOrThrow();
+
+  expect(outcome).toMatchObject({
+    status: 'controlled',
+    state: 'running',
+    isPauseRequested: false,
+  });
+
+  expect(records.map((read) => read.record.kind)).toStrictEqual([
+    'task.resumed',
+    'nixie.task_exempted',
+  ]);
+
+  expect(row.pause_requested).toBe(0);
 });
