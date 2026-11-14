@@ -494,3 +494,54 @@ test('it sends nothing and fails when the turn frame holds a field its harness d
 
   expect(ctx.stub.turns).toStrictEqual([]);
 });
+
+test('it fails the turn, and sends the guest no live message, on a harness without live-messages', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  ctx.stub.setGuestScript(async (_turn, guest) => {
+    await guest.waitForMessage();
+
+    return [{ type: 'failed', reason: 'error', detail: 'got a message' }];
+  });
+
+  const turn = runGuestTurn({
+    harness: buildStubCodexHarness({ capabilities: new Set(['tools', 'fresh-session', 'resume']) }),
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame(),
+    messages: [{ uuid: '6e697869-0000-8000-8000-000000000003', text: 'And?' }],
+    signal: new AbortController().signal,
+  });
+
+  await expect(turn).rejects.toThrow('The harness lacks live-messages');
+});
+
+test('it fails the turn, and sends the guest no interrupt, on a harness without interrupt', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  const interrupt = new AbortController();
+
+  interrupt.abort();
+
+  ctx.stub.setGuestScript(async (_turn, guest) => {
+    await once(guest.interrupt ?? new AbortController().signal, 'abort');
+
+    return [{ type: 'failed', reason: 'error', detail: 'interrupted' }];
+  });
+
+  const turn = runGuestTurn({
+    harness: buildStubCodexHarness({ capabilities: new Set(['tools', 'fresh-session', 'resume']) }),
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame(),
+    messages: [],
+    signal: new AbortController().signal,
+    interrupt: interrupt.signal,
+  });
+
+  await expect(turn).rejects.toThrow('The harness lacks interrupt');
+});

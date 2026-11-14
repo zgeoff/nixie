@@ -27,9 +27,10 @@ export interface SystemMessage {
 
 // The random ID only stops the body from closing the element early. It does not authenticate the
 // element: the system prompt's position rule tells the model which elements come from nixie.
-export function renderSystemMessage(message: SystemMessage): string {
-  const blockID = mintBlockID();
-
+export function renderSystemMessage(
+  message: SystemMessage,
+  blockID: string = mintBlockID(),
+): string {
   return [
     `<system-message type="${message.type}" id="${blockID}" at="${message.at}">`,
     message.body,

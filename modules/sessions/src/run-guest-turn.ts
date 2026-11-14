@@ -58,10 +58,14 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
 
     await stream.send(encodeHostFrame(spec.harness.capabilities, spec.turn));
 
-    void sendMessages(stream, spec);
-    void sendInterrupt(stream, spec);
+    // A frame the harness does not declare is a host contract violation: it sends nothing and fails
+    // the turn. A guest that closed its stream fails a send quietly.
+    const violation = Promise.withResolvers<never>();
 
-    return await readTurn(stream, spec);
+    void reportViolation(sendMessages(stream, spec), violation);
+    void reportViolation(sendInterrupt(stream, spec), violation);
+
+    return await Promise.race([readTurn(stream, spec), violation.promise]);
   } catch (error) {
     await stream.stop();
 
@@ -83,15 +87,30 @@ function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
   };
 }
 
+async function reportViolation(
+  sending: Promise<void>,
+  violation: PromiseWithResolvers<never>,
+): Promise<void> {
+  try {
+    await sending;
+  } catch (error) {
+    violation.reject(error);
+  }
+}
+
 async function sendMessages(
   stream: ExecStream,
   spec: Pick<GuestTurnSpec, 'harness' | 'messages'>,
 ): Promise<void> {
-  try {
-    for await (const message of spec.messages) {
-      await stream.send(encodeHostFrame(spec.harness.capabilities, { type: 'message', message }));
+  for await (const message of spec.messages) {
+    const bytes = encodeHostFrame(spec.harness.capabilities, { type: 'message', message });
+
+    try {
+      await stream.send(bytes);
+    } catch {
+      return;
     }
-  } catch {}
+  }
 }
 
 // A guest that already ended its turn takes no frame, so a late interrupt fails quietly.
@@ -106,8 +125,10 @@ async function sendInterrupt(
   const interrupted = await waitForAbort(spec.interrupt, spec.signal);
 
   if (interrupted) {
+    const bytes = encodeHostFrame(spec.harness.capabilities, { type: 'interrupt' });
+
     try {
-      await stream.send(encodeHostFrame(spec.harness.capabilities, { type: 'interrupt' }));
+      await stream.send(bytes);
     } catch {}
   }
 }

@@ -61,7 +61,9 @@ export function buildStepResult(
     );
   }
 
-  checkEndedContract(completed.harness, last);
+  for (const ended of completed.turn.ended) {
+    checkEndedContract(completed.harness, ended);
+  }
 
   if (isContextOverflow(last)) {
     throw new Error('the conversation turn passed the context window');

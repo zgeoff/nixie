@@ -2,7 +2,7 @@ import { readSessionSummary } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
 import type { TaskBrief, TaskMessaging, TasksContext } from '@heynixie/tasks';
 import type { SystemMessageType } from '@heynixie/wire';
-import { renderSystemMessage } from '@heynixie/wire';
+import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
 import type { StatusRegistry } from './build-status-registry';
 import { formatMessageTime } from './format-message-time';
 import { pickPinnedBrief } from './pick-pinned-brief';
@@ -40,6 +40,9 @@ export interface SessionOpeningQuery {
   readonly inbox: readonly LogRecord[];
   readonly messaging: TaskMessaging;
   readonly readTurnNote?: ConversationRun['readTurnNote'];
+
+  // mints the ID of each system message block; a step passes none, and a test fixes it
+  readonly mintBlockID?: () => string;
 }
 
 export interface OpeningRecord {
@@ -100,12 +103,14 @@ export async function readSessionOpening(
 
   const replayed = await readReplayedNote(context, query, recent);
 
-  const memoryBlock = renderOpeningMessage('pinned-memory', at, query.pinnedMemory);
+  const mint = query.mintBlockID ?? mintBlockID;
+  const memoryBlock = renderOpeningMessage('pinned-memory', at, query.pinnedMemory, mint);
 
   const statusBlock = renderOpeningMessage(
     'status',
     at,
     status.map((read) => `- ${read.line.text}`).join('\n'),
+    mint,
   );
 
   // A started task reads its status first, then its memory, then its brief. The conversation has no
@@ -115,8 +120,13 @@ export async function readSessionOpening(
   const blocks = [
     ...readout,
     brief.pinned === null ? null : renderBriefEnvelope(brief.pinned, query.times, query.messaging),
-    renderOpeningMessage('summary', at, summary?.text ?? null),
-    renderOpeningMessage('recent-turns', at, renderSessionHistory(recent, query.times, query)),
+    renderOpeningMessage('summary', at, summary?.text ?? null, mint),
+    renderOpeningMessage(
+      'recent-turns',
+      at,
+      renderSessionHistory(recent, query.times, query),
+      mint,
+    ),
     replayed?.text ?? null,
   ];
 
@@ -160,6 +170,7 @@ function renderOpeningMessage(
   type: SystemMessageType,
   at: string,
   body: string | null,
+  mint: () => string,
 ): string | null {
-  return body === null ? null : renderSystemMessage({ type, at, body });
+  return body === null ? null : renderSystemMessage({ type, at, body }, mint());
 }

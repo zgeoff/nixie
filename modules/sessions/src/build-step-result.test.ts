@@ -296,3 +296,43 @@ test('it fails a step whose guest broke the contract of its harness', () => {
     ),
   ).toThrow('broke its contract');
 });
+
+test('it fails a step whose earlier ended frame broke the contract, though its last one did not', () => {
+  const ctx = setupTest();
+  const usage = { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 };
+
+  expect(() =>
+    buildStepResult(
+      {
+        definitions: () => ({ snapshotHash: 'sha256:test' }),
+        model: { model: 'claude-test-1', profile: 'chat-direct' },
+      },
+      {
+        turn: {
+          assistants: [],
+          read: [],
+          ended: [
+            {
+              type: 'ended',
+              outcome: 'finished',
+              stopReason: 'end_turn',
+              turns: 1,
+              usage,
+              context: { size: 10, window: 100 },
+            },
+            { type: 'ended', outcome: 'finished', stopReason: 'end_turn', turns: 1, usage },
+          ],
+          failure: null,
+        },
+        sent: new Set<number>(),
+        hasMore: false,
+        notedThrough: null,
+        images: { bytes: 0, count: 0 },
+        isSilent: false,
+        harness: ctx.codex,
+        memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
+      },
+      [],
+    ),
+  ).toThrow('it sent a context size');
+});

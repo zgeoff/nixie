@@ -1,4 +1,4 @@
-import { expect, mock, onTestFinished, spyOn, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
@@ -663,14 +663,6 @@ test('it gives the same opening for two rebuilds from one log, with the clock, t
     },
   ]);
 
-  const randomUUID = spyOn(crypto, 'randomUUID').mockReturnValue(
-    '6e697869-0000-8000-8000-000000000001',
-  );
-
-  onTestFinished(() => {
-    randomUUID.mockRestore();
-  });
-
   const query = {
     taskID: 'conversation',
     start: { kind: 'rebuild', reason: null, lostSessionID: null },
@@ -684,12 +676,14 @@ test('it gives the same opening for two rebuilds from one log, with the clock, t
     pinnedMemory: 'Nothing is pinned in your memory.',
     model: 'claude-test-1',
     status: [buildStartStatus(), buildModelStatus()],
+    mintBlockID: () => '6e6978690001',
   } as const;
 
   const first = await readSessionOpening(ctx.tasks.context, query);
   const second = await readSessionOpening(ctx.tasks.context, query);
 
   expect(second).toStrictEqual(first);
+  expect(first.blocks.at(1)).toInclude('id="6e6978690001"');
   expect(first.record).toMatchObject({ kind: 'rebuild', reason: null, lostSessionID: null });
 
   expect(first.blocks.at(1)).toInclude(
