@@ -1,11 +1,13 @@
 import { expect, test } from 'bun:test';
 import { withWriteTransaction } from '@heynixie/log';
 import { writeTaskControl } from '@heynixie/tasks';
+import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
+import { seedDoneAction } from '../test-utils/seed-done-action';
 import { startTestActions } from '../test-utils/start-test-actions';
-import type { ActionsTables } from '../types';
 import { createAllowedAction } from './create-allowed-action';
 import { readTasksWithPendingActions } from './read-tasks-with-pending-actions';
+import { runActionAttempt } from './run-action-attempt';
 
 async function setupTest() {
   const actions = await startTestActions();
@@ -46,7 +48,7 @@ test('it lists an action whose attempt is open', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const action = await createAllowedAction(ctx.context, {
+  await createAllowedAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -54,16 +56,49 @@ test('it lists an action whose attempt is open', async () => {
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
-  await ctx.writer.db
-    .$extendTables<ActionsTables>()
-    .updateTable('actions')
-    .set({ attempt_count: 1, attempt_open: 1 })
-    .where('action_id', '=', action.actionID)
-    .execute();
+  const lease = await claimTestAction(ctx.context, { holder: 'test', leaseMs: 60_000 });
+
+  const started = Promise.withResolvers<void>();
+  const finish = Promise.withResolvers<void>();
+
+  const attempt = runActionAttempt(ctx.context, lease, {
+    connectors: new Map([
+      [
+        'test.send',
+        {
+          run: async () => {
+            started.resolve();
+
+            await finish.promise;
+
+            return { kind: 'success', result: {} };
+          },
+        },
+      ],
+    ]),
+    leaseMs: 60_000,
+  });
+
+  await started.promise;
 
   const taskIDs = await ctx.readPendingTaskIDs();
 
+  finish.resolve();
+
+  await attempt;
+
   expect(taskIDs).toStrictEqual([step.lease.workID]);
+});
+
+test('it leaves out an action that finished', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await seedDoneAction(ctx.context, { step });
+
+  const taskIDs = await ctx.readPendingTaskIDs();
+
+  expect(taskIDs).toStrictEqual([]);
 });
 
 test('it leaves out an action that a stop cancelled', async () => {

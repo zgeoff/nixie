@@ -79,7 +79,12 @@ test.each([
 
     await third.ready;
 
-    await ctx.nixie.harness.advance(1, { settle: true });
+    const later = await third.request('createTask', { brief: 'Start after the resume.' });
+
+    const laterStep = await ctx.nixie.waitForRecord(
+      (record) => record.stepKey === `${String(later)}:1`,
+    );
+
     await third.kill();
 
     const records = await ctx.nixie.readRecords();
@@ -97,6 +102,7 @@ test.each([
     ).toStrictEqual([]);
 
     expect(step.sequence).toBeGreaterThan(resumed.sequence);
+    expect(laterStep.sequence).toBeGreaterThan(step.sequence);
 
     expect(
       records
