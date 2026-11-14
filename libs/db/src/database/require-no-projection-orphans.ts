@@ -41,7 +41,7 @@ export async function requireNoProjectionOrphans(
       }
     }
 
-    const leaves = buildJSONLeaves(sql.ref('changes.row'));
+    const leaves = buildJSONLeaves(sql.ref('changes.row'), { isNestedDecoded: true });
 
     const changes = await readQueryRows(
       sql`select changes.sequence as sequence, changes.projection as projection,
@@ -94,7 +94,7 @@ async function readColumnReference(
     return null;
   }
 
-  const leaves = buildJSONLeaves(sql`${table}.${ref}`);
+  const leaves = buildJSONLeaves(sql`${table}.${ref}`, { isNestedDecoded: false });
 
   const rows = await readQueryRows(
     sql`select ${column.column_name} || ${leaves.name} as field from ${table}, ${leaves.from}

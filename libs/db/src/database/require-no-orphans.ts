@@ -27,7 +27,7 @@ export async function requireNoOrphans(
     const references = [];
 
     for (const column of scannedColumns) {
-      const leaves = buildJSONLeaves(sql.ref(`records.${column}`));
+      const leaves = buildJSONLeaves(sql.ref(`records.${column}`), { isNestedDecoded: false });
 
       const rows = await readQueryRows(
         sql`select records.sequence as sequence, ${leaves.name} as field

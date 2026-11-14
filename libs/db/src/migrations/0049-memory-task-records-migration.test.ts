@@ -434,3 +434,55 @@ test('it removes the records when only counts, versions and offsets equal a remo
 
   expect(records).toMatchObject([{ kind: 'model.turn_ended' }, { kind: 'owner_message' }]);
 });
+
+test('it refuses a kept projection change whose evidence text starts with whitespace', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({
+    kind: 'memory.notice',
+    thread: 'conversation',
+    payload: { notice: 'batch' },
+  });
+
+  await ctx.writeRecord({ kind: 'owner_message', thread: 'conversation', payload: {} });
+
+  const row = { evidence: ' \n{"recordSequence":1,"start":0,"end":4}' };
+
+  await sql`insert into projection_changes (sequence, projection, row_key, row)
+    values (2, 'example_rows', 'row-1', ${JSON.stringify(row)})`.execute(ctx.db);
+
+  const run = ctx.runMigration();
+
+  await run.catch(() => {});
+
+  const records = await ctx.readRecords();
+
+  expect(run).rejects.toThrow(/through \$\.evidence\.recordSequence/u);
+  expect(records).toHaveLength(2);
+});
+
+test('it removes the records when a kept record only holds JSON-shaped text', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({
+    kind: 'memory.notice',
+    thread: 'conversation',
+    payload: { notice: 'batch' },
+  });
+
+  await ctx.writeRecord({
+    kind: 'prompts.override_proposed',
+    thread: 'conversation',
+    payload: {
+      proposalID: 'p1',
+      promptID: 'session',
+      files: [{ path: 'session.md', text: '{"recordSequence":1}' }],
+    },
+  });
+
+  await ctx.runMigration();
+
+  const records = await ctx.readRecords();
+
+  expect(records).toMatchObject([{ kind: 'prompts.override_proposed' }]);
+});
