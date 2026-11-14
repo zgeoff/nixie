@@ -856,6 +856,7 @@ test('it recalls a version with its quote, its model and the line that says wher
       },
     ],
     next: null,
+    searched: {},
   });
 });
 
@@ -905,6 +906,7 @@ test('it recalls a version made from a photo with the event and number of its im
       },
     ],
     next: null,
+    searched: {},
   });
 });
 
@@ -950,6 +952,7 @@ test('it recalls a version with no quote or model without them', async () => {
       },
     ],
     next: null,
+    searched: {},
   });
 });
 

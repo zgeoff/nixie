@@ -44,6 +44,7 @@ export { renderSystemMessage } from './render-system-message';
 export type { SessionPoint } from './session-point';
 export { sessionPointSchema } from './session-point';
 export { stripLinkMarks } from './strip-link-marks';
+export { recallPageLimitBytes } from './recall-page-limit-bytes';
 export { toolOutputLimitTokens } from './tool-output-limit-tokens';
 export { turnFrameLimitBytes } from './turn-frame-limit-bytes';
 export type { BackupReceipt } from './backup-receipt';

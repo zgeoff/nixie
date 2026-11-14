@@ -45,7 +45,11 @@ test('it starts on a log with no memory', async () => {
   const ctx = await setupTest();
   const result = await ctx.memory.store.recall({});
 
-  expect(result).toStrictEqual({ items: [], next: null });
+  expect(result).toStrictEqual({
+    items: [],
+    next: null,
+    omitted: { items: [], count: 0, versions: 0 },
+  });
 });
 
 test('it rebuilds the vector index from the active items after it starts', async () => {

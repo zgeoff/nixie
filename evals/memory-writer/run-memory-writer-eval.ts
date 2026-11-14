@@ -32,7 +32,11 @@ interface PlannedRun {
   readonly repeat: number;
 }
 
-const emptyStore = { recall: () => Promise.resolve({ items: [], next: null }) };
+const emptyStore = {
+  recall: () =>
+    Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
+};
+
 const jsonObject = z.record(z.string(), z.json()).transform((value): JSONObject => value);
 const directory = import.meta.dir;
 

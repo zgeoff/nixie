@@ -66,7 +66,12 @@ test('#recall returns no moment text to per-turn retrieval when a moment matches
     thread: 'conversation',
   });
 
-  expect(result).toStrictEqual({ items: [], next: null, searchMode: 'hybrid' });
+  expect(result).toStrictEqual({
+    items: [],
+    next: null,
+    omitted: { items: [], count: 0, versions: 0 },
+    searchMode: 'hybrid',
+  });
 });
 
 test('#recallMessages returns no moment text to per-turn retrieval when a moment matches the query by meaning', async () => {
