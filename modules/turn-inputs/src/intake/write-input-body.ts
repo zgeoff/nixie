@@ -91,7 +91,7 @@ function insertWritingRow(
         api: input.header.api,
         endpoint: input.header.endpoint,
         route: input.header.route,
-        is_rewritten: 0,
+        is_rewritten: input.open.isRewritten ? 1 : 0,
         upstream_status: input.upstreamStatus,
         bytes: input.header.bytes,
         key_id: reserved.keyID,

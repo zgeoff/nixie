@@ -60,6 +60,7 @@ test('it closes every open capture on off', async () => {
     step: { taskID: 'task-a', stepRunID: 'step-1@1' },
     profile: ctx.profile,
     role: 'task',
+    isRewritten: false,
   });
 
   await ctx.turnInputs.set({ state: 'off', drop: false });
@@ -89,6 +90,7 @@ test('it opens a capture again after on', async () => {
     step: { taskID: 'task-a', stepRunID: 'step-1@1' },
     profile: ctx.profile,
     role: 'task',
+    isRewritten: false,
   });
 
   expect(capture.baseURL).toContain('/~in.');

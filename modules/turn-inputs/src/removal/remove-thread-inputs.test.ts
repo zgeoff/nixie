@@ -18,6 +18,7 @@ async function setupTest() {
         step: { taskID, stepRunID: `${taskID}-step@1` },
         profile: ctx.profile,
         role: 'task',
+        isRewritten: false,
       });
 
       await ctx.writeSpoolFile(capture.baseURL, { counter: 1, body: new Uint8Array([7]) });
@@ -65,6 +66,7 @@ test('it closes the open capture of a reset thread so a later spool file is not 
     step: { taskID: 'conversation', stepRunID: 'conversation:1@1' },
     profile: ctx.profile,
     role: 'conversation',
+    isRewritten: false,
   });
 
   await ctx.turnInputs.removeThreads(['conversation']);

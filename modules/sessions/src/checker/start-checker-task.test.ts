@@ -66,6 +66,7 @@ test('it runs each check in the check guest on the checker role profile', async 
         authHeader: 'x-api-key',
         contextTokens: null,
         cacheTTL: '5m',
+        requestRewrite: null,
       },
       systemPrompt: 'You check one candidate memory.',
       input: '<owner_message>\nI take my coffee black\n</owner_message>',

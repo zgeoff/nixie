@@ -22,6 +22,7 @@ async function setupTest() {
         step: { taskID: 'task-a', stepRunID: 'step-1@1' },
         profile: ctx.profile,
         role: 'task',
+        isRewritten: false,
       }),
     readCaptureRows: () =>
       getTurnInputsDB(ctx.log).selectFrom('turn_input_captures').selectAll().execute(),

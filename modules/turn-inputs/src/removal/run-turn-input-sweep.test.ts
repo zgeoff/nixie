@@ -13,6 +13,7 @@ async function setupTest(options: Parameters<typeof startTestTurnInputs>[0] = {}
         step: { taskID: 'task-a', stepRunID: `step-${String(counter)}@1` },
         profile: ctx.profile,
         role: 'task',
+        isRewritten: false,
       });
 
       await ctx.writeSpoolFile(capture.baseURL, { counter, body: new Uint8Array(size).fill(7) });
@@ -87,6 +88,7 @@ test('it deletes a miss older than retention.days', async () => {
     step: { taskID: 'task-a', stepRunID: 'step-1@1' },
     profile: ctx.profile,
     role: 'task',
+    isRewritten: false,
   });
 
   await capture.close({ callFrames: 2 });

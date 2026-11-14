@@ -20,6 +20,7 @@ async function setupTest() {
         step: { taskID, stepRunID: `${taskID}-step@1` },
         profile: ctx.profile,
         role: 'task',
+        isRewritten: false,
       });
 
       await ctx.writeSpoolFile(capture.baseURL, { counter, body: new Uint8Array([counter]) });

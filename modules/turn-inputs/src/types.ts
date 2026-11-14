@@ -25,6 +25,9 @@ export interface OpenCaptureInput {
   readonly step: { readonly taskID: string; readonly stepRunID: string };
   readonly profile: Pick<ModelProfile, 'id' | 'model' | 'harness' | 'baseURL'>;
   readonly role: ModelRole;
+
+  // whether the guest rewrites each request of the step, so the log holds the bytes the rewriter sent
+  readonly isRewritten: boolean;
 }
 
 interface CaptureStep {
@@ -46,6 +49,7 @@ export interface OpenCapture {
   readonly profile: string;
   readonly model: string;
   readonly harness: string;
+  readonly isRewritten: boolean;
   readonly source: string;
   readonly keyID: string;
   readonly privateKey: CryptoKey;
