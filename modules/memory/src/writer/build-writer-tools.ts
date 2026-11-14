@@ -1,22 +1,28 @@
+import type { JSONObject } from '@heynixie/log';
 import { untilConventions } from '@heynixie/prompts';
-import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type { PolicyFactsResolution, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
+import type { MemoryWrites } from '../gate/gate-context';
 import { writerSubjects } from '../subject/writer-subjects';
 import type { MemoryStore } from '../types';
 import { parseUntilInput } from '../utils/parse-until-input';
 import { untilInputSchema } from '../utils/schema/until-input-schema';
 import type { WriterStaging } from './create-writer-staging';
 
+export type WriterToolStore = Pick<MemoryStore, 'recall'> & {
+  readonly writes: Pick<MemoryWrites, 'readBatchSources'>;
+};
+
 export function buildWriterTools(
-  store: Pick<MemoryStore, 'recall'>,
+  store: WriterToolStore,
   staging: WriterStaging,
   topItems: number,
 ): readonly ToolDefinition[] {
   return [
     buildRecallTool(store, staging, topItems),
-    buildRememberTool(staging),
-    buildEditTool(staging),
-    buildRetireTool(staging),
+    buildRememberTool(store, staging),
+    buildEditTool(store, staging),
+    buildRetireTool(store, staging),
     buildFlagSelfNoteTool(staging),
   ];
 }
@@ -44,7 +50,7 @@ const recallOutput = {
 const recallArguments = z.object({ query: z.string() });
 
 function buildRecallTool(
-  store: Pick<MemoryStore, 'recall'>,
+  store: WriterToolStore,
   staging: WriterStaging,
   topItems: number,
 ): ToolDefinition {
@@ -114,7 +120,7 @@ const rememberArguments = z.object({
   isSensitive: z.boolean().optional(),
 });
 
-function buildRememberTool(staging: WriterStaging): ToolDefinition {
+function buildRememberTool(store: WriterToolStore, staging: WriterStaging): ToolDefinition {
   return {
     name: 'memory.remember',
     description:
@@ -140,14 +146,23 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
     },
     output: stagedOutput,
     declaration: {
-      effects: ['note'],
+      effects: ['memory_write'],
       destinations: [],
       amount: null,
       content: ['text', 'quote'],
       results: { staged: 'owner_data' },
     },
     execution: 'direct',
-    run: (call) => {
+    resolvePolicyFacts: (rawInput) => {
+      const input = rememberArguments.parse(rawInput);
+
+      return readBatchFacts(store, staging, {
+        rawInput,
+        quote: input.quote,
+        source: input.sourceID,
+      });
+    },
+    run: (call, context) => {
       const input = rememberArguments.parse(call.input);
       const parsed = parseUntilInput(input.until);
 
@@ -166,11 +181,49 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
             itemID: null,
             ...(parsed.until === undefined ? {} : { until: parsed.until }),
             ...(input.isSensitive === true ? { isSensitive: true } : {}),
+            ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
           }),
         ),
       );
     },
   };
+}
+
+interface BatchFactsInput {
+  readonly rawInput: JSONObject;
+  readonly quote: string;
+  readonly source: number;
+
+  // set for a retirement, which leaves the subject to the item
+  readonly itemID?: string;
+}
+
+// The sources come from the quote in the one message the call cites, and a retirement takes its
+// subject from the item the writer was shown.
+async function readBatchFacts(
+  store: WriterToolStore,
+  staging: WriterStaging,
+  facts: BatchFactsInput,
+): Promise<PolicyFactsResolution> {
+  const message = staging.findSource(facts.source);
+
+  const source =
+    message === undefined ? 'outside' : await store.writes.readBatchSources(message, facts.quote);
+
+  if (facts.itemID === undefined) {
+    return { status: 'ok', sources: [source], args: facts.rawInput };
+  }
+
+  const shown = staging.findShown(facts.itemID);
+
+  if (shown === undefined) {
+    return {
+      status: 'error',
+      message: `item ${facts.itemID} is not one you were shown; find it with memory.recall first`,
+    };
+  }
+
+  return { status: 'ok', sources: [source], args: { ...facts.rawInput, subject: shown.subject } };
 }
 
 const stagedResult: ToolOutcome = { status: 'ok', result: { staged: true } };
@@ -188,7 +241,7 @@ const editArguments = z.object({
   until: z.string().nullable().optional(),
 });
 
-function buildEditTool(staging: WriterStaging): ToolDefinition {
+function buildEditTool(store: WriterToolStore, staging: WriterStaging): ToolDefinition {
   return {
     name: 'memory.edit',
     description:
@@ -211,14 +264,23 @@ function buildEditTool(staging: WriterStaging): ToolDefinition {
     },
     output: stagedOutput,
     declaration: {
-      effects: ['note'],
+      effects: ['memory_write'],
       destinations: [],
       amount: null,
       content: ['text', 'quote'],
       results: { staged: 'owner_data' },
     },
     execution: 'direct',
-    run: (call) => {
+    resolvePolicyFacts: (rawInput) => {
+      const input = editArguments.parse(rawInput);
+
+      return readBatchFacts(store, staging, {
+        rawInput,
+        quote: input.quote,
+        source: input.sourceID,
+      });
+    },
+    run: (call, context) => {
       const input = editArguments.parse(call.input);
       const parsed = parseUntilInput(input.until);
 
@@ -236,6 +298,7 @@ function buildEditTool(staging: WriterStaging): ToolDefinition {
             sourceSequence: input.sourceID,
             itemID: input.itemID,
             ...(parsed.until === undefined ? {} : { until: parsed.until }),
+            ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
           }),
         ),
       );
@@ -245,7 +308,7 @@ function buildEditTool(staging: WriterStaging): ToolDefinition {
 
 const retireArguments = z.object({ itemID: z.string(), quote: z.string(), sourceID: z.int() });
 
-function buildRetireTool(staging: WriterStaging): ToolDefinition {
+function buildRetireTool(store: WriterToolStore, staging: WriterStaging): ToolDefinition {
   return {
     name: 'memory.retire',
     description:
@@ -264,14 +327,24 @@ function buildRetireTool(staging: WriterStaging): ToolDefinition {
     },
     output: stagedOutput,
     declaration: {
-      effects: ['note'],
+      effects: ['memory_write'],
       destinations: [],
       amount: null,
       content: ['quote'],
       results: { staged: 'owner_data' },
     },
     execution: 'direct',
-    run: (call) => {
+    resolvePolicyFacts: (rawInput) => {
+      const input = retireArguments.parse(rawInput);
+
+      return readBatchFacts(store, staging, {
+        rawInput,
+        quote: input.quote,
+        source: input.sourceID,
+        itemID: input.itemID,
+      });
+    },
+    run: (call, context) => {
       const input = retireArguments.parse(call.input);
 
       return Promise.resolve(
@@ -281,6 +354,7 @@ function buildRetireTool(staging: WriterStaging): ToolDefinition {
             quote: input.quote,
             sourceSequence: input.sourceID,
             itemID: input.itemID,
+            ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
           }),
         ),
       );

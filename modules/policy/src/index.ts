@@ -59,6 +59,7 @@ export { replayDecision } from './rule/replay-decision';
 export { toStoredDecision } from './rule/to-stored-decision';
 
 export type {
+  AllowingRule,
   AskCause,
   CallDestination,
   ConsentAnswer,
@@ -69,6 +70,7 @@ export type {
   EffectDeclaration,
   EffectOverride,
   KnownContact,
+  MemoryWriteFacts,
   PolicyCall,
   PolicyDecision,
   PolicyInputs,
@@ -77,6 +79,7 @@ export type {
   Rule,
   RuleCall,
   RuleChange,
+  RuleCheck,
   RuleContext,
   RuleEntry,
   RuleForm,

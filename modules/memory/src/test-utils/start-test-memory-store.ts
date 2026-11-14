@@ -3,7 +3,6 @@ import type { TasksContext } from '@heynixie/tasks';
 import { defaultGateLimits } from '../gate/default-gate-limits';
 import type { StartedMemoryStore } from '../memory/start-memory-store';
 import { startMemoryStore } from '../memory/start-memory-store';
-import { findNoAllowRule } from '../moment/find-no-allow-rule';
 import { defaultOwnerPronouns } from '../owner/default-owner-pronouns';
 import type { CleanupSessions } from '../types';
 import { buildStubEncoder } from './build-stub-encoder';
@@ -35,7 +34,6 @@ export async function startTestMemoryStore(
         }),
       clock: context.clock,
       defaultZone: 'UTC',
-      findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,

@@ -15,7 +15,7 @@ import {
   startTestMemory,
   writeModelReplyRecord,
 } from '../test-utils';
-import { makeToolAllowRule } from '../test-utils/make-tool-allow-rule';
+import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
 
@@ -1044,13 +1044,12 @@ test('it keeps writes of the same text with different end times as proposals of 
 test('it applies a write under your allow rule with outside content as its source', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'not_asserted' })));
 
-  const memory = await startTestMemory({
-    gate: { check, findAllowRule: () => Promise.resolve({ ruleID: 'rule-a', revision: 2 }) },
-  });
+  const memory = await startTestMemory({ gate: { check } });
 
   const outcome = await memory.store.writes.remember({
     text: 'Likes jazz',
     caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict(),
   });
 
   invariant(outcome.status === 'applied');
@@ -1062,9 +1061,7 @@ test('it applies a write under your allow rule with outside content as its sourc
 });
 
 test('it proposes a write under your allow rule whose token you never typed', async () => {
-  const memory = await startTestMemory({
-    gate: { findAllowRule: () => Promise.resolve({ ruleID: 'rule-a', revision: 2 }) },
-  });
+  const memory = await startTestMemory();
 
   await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
@@ -1075,59 +1072,182 @@ test('it proposes a write under your allow rule whose token you never typed', as
   const outcome = await memory.store.writes.remember({
     text: 'Email is sam@attacker.example',
     caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict(),
   });
 
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
 });
 
-test('it runs the full gate on an edit when your allow rule names only memory.remember', async () => {
-  const memory = await startTestMemory({
-    gate: { findAllowRule: makeToolAllowRule('memory.remember') },
-  });
+test('it proposes a write under an ask rule with the review reason ask_rule and the rule in its checks', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
 
-  const item = await memory.store.remember({
+  const memory = await startTestMemory({ gate: { check } });
+
+  const outcome = await memory.store.writes.remember({
     text: 'Likes jazz',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const created = await memory.store.writes.remember({
-    text: 'Likes opera',
     caller: buildMockWriteCaller(),
+    verdict: { kind: 'rule-ask', rule: { id: 'rule-b', revision: 4 } },
   });
 
-  const edited = await memory.store.writes.remember({
-    text: 'Likes blues',
-    target: item,
-    caller: buildMockWriteCaller(),
+  const [proposal] = await memory.store.proposals.listPending();
+
+  invariant(proposal);
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_proposals')
+    .select(['review_reason', 'checks', 'source'])
+    .where('proposal_id', '=', proposal.proposalID)
+    .executeTakeFirstOrThrow();
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'ask_rule' });
+
+  expect(row).toStrictEqual({
+    review_reason: 'ask_rule',
+    checks: JSON.stringify({ rule: { id: 'rule-b', revision: 4 } }),
+    source: 'untrusted',
   });
 
-  expect(created).toMatchObject({ status: 'applied' });
-  expect(edited).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+  expect(check).not.toHaveBeenCalled();
 });
 
-test('it runs the full gate on a new item when your allow rule names only memory.edit', async () => {
-  const memory = await startTestMemory({
-    gate: { findAllowRule: makeToolAllowRule('memory.edit') },
-  });
+test('it runs every check on a write whose verdict is gate', async () => {
+  const memory = await startTestMemory();
 
-  const item = await memory.store.remember({
+  const outcome = await memory.store.writes.remember({
     text: 'Likes jazz',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const edited = await memory.store.writes.remember({
-    text: 'Likes blues',
-    target: item,
     caller: buildMockWriteCaller(),
+    verdict: { kind: 'gate' },
   });
 
-  const created = await memory.store.writes.remember({
-    text: 'Likes opera',
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+});
+
+test('it leaves a self-note a proposal under an allow rule that checks no subject', async () => {
+  const memory = await startTestMemory();
+
+  const outcome = await memory.store.writes.remember({
+    text: 'I like quiet mornings',
+    subject: 'self',
     caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict(),
   });
 
-  expect(edited).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
-  expect(created).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'self_note' });
+});
+
+test('it applies a self-note under an allow rule that checks the subject is self, with the rule in its checks', async () => {
+  const memory = await startTestMemory();
+
+  const outcome = await memory.store.writes.remember({
+    text: 'I like quiet mornings',
+    subject: 'self',
+    caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select(['checks'])
+    .where('item_id', '=', outcome.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row.checks).toBe(JSON.stringify({ rule: { id: 'rule-a', revision: 2 }, tokens: 'pass' }));
+});
+
+test('it proposes a self-note with a token you never typed under an allow rule that checks the subject is self', async () => {
+  const memory = await startTestMemory();
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Reach me at sam@attacker.example',
+    subject: 'self',
+    caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
+});
+
+test('it counts a self-note as covered when one of several allow rules checks the subject', async () => {
+  const memory = await startTestMemory();
+
+  const outcome = await memory.store.writes.remember({
+    text: 'I like quiet mornings',
+    subject: 'self',
+    caller: buildMockWriteCaller(),
+    verdict: {
+      kind: 'rule-allow',
+      rules: [
+        { id: 'rule-a', revision: 1, checks: [] },
+        { id: 'rule-b', revision: 5, checks: [{ arg: 'subject', op: 'eq', value: 'self' }] },
+      ],
+    },
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select(['checks'])
+    .where('item_id', '=', outcome.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row.checks).toBe(JSON.stringify({ rule: { id: 'rule-b', revision: 5 }, tokens: 'pass' }));
+});
+
+test('it leaves a self-note from a photo a proposal when no allow rule checks the image, though one checks the subject', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'I liked how the bike looked',
+    subject: 'self',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+    verdict: {
+      kind: 'rule-allow',
+      rules: [{ id: 'rule-a', revision: 1, checks: [{ arg: 'subject', op: 'eq', value: 'self' }] }],
+    },
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed' });
+});
+
+test('it applies a self-note from a photo when allow rules cover both the subject and the image', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'I liked how the bike looked',
+    subject: 'self',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+    verdict: {
+      kind: 'rule-allow',
+      rules: [
+        { id: 'rule-a', revision: 1, checks: [{ arg: 'subject', op: 'eq', value: 'self' }] },
+        { id: 'rule-b', revision: 2, checks: [{ arg: 'image.number', op: 'eq', value: 1 }] },
+      ],
+    },
+  });
+
+  expect(outcome).toMatchObject({ status: 'applied' });
 });
 
 test("it groups a turn's applied writes and proposals under one notice", async () => {
@@ -1624,10 +1744,8 @@ test('it keeps a write from a photo as a proposal of its own beside a pending pr
   expect(pending).toMatchObject([{ reason: 'no_quote' }, { reason: 'from_photo' }]);
 });
 
-test('it leaves a write from a photo a proposal under your allow rule on memory.remember', async () => {
-  const memory = await startTestMemory({
-    gate: { findAllowRule: makeToolAllowRule('memory.remember') },
-  });
+test('it leaves a write from a photo a proposal under an allow rule that checks no image argument', async () => {
+  const memory = await startTestMemory();
 
   const photo = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
@@ -1640,17 +1758,14 @@ test('it leaves a write from a photo a proposal under your allow rule on memory.
     text: 'Rides a green cargo bike',
     image: { messageSequence: photo, image: 1 },
     caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict(),
   });
 
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'from_photo' });
 });
 
-test('it applies a write from a photo under your allow rule that names the image source, with the photo as its source', async () => {
-  const memory = await startTestMemory({
-    gate: {
-      findAllowRule: () => Promise.resolve({ ruleID: 'rule-photo', revision: 3, source: 'image' }),
-    },
-  });
+test('it applies a write from a photo under your allow rule that checks the image argument, with the photo as its source', async () => {
+  const memory = await startTestMemory();
 
   const photo = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
@@ -1663,6 +1778,7 @@ test('it applies a write from a photo under your allow rule that names the image
     text: 'Rides a green cargo bike',
     image: { messageSequence: photo, image: 1 },
     caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict([{ arg: 'image.eventID', op: 'matches', value: '*' }]),
   });
 
   invariant(outcome.status === 'applied');
@@ -1677,7 +1793,7 @@ test('it applies a write from a photo under your allow rule that names the image
   expect(row).toStrictEqual({
     source: 'untrusted',
     checks: JSON.stringify({
-      rule: { id: 'rule-photo', revision: 3 },
+      rule: { id: 'rule-a', revision: 2 },
       tokens: 'pass',
       image: { messageSequence: photo, image: 1 },
     }),
@@ -1685,12 +1801,8 @@ test('it applies a write from a photo under your allow rule that names the image
   });
 });
 
-test('it proposes a write from a photo whose text holds a hidden character, under your allow rule that names the image source', async () => {
-  const memory = await startTestMemory({
-    gate: {
-      findAllowRule: () => Promise.resolve({ ruleID: 'rule-photo', revision: 1, source: 'image' }),
-    },
-  });
+test('it proposes a write from a photo whose text holds a hidden character, under your allow rule that checks the image argument', async () => {
+  const memory = await startTestMemory();
 
   const photo = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
@@ -1703,6 +1815,7 @@ test('it proposes a write from a photo whose text holds a hidden character, unde
     text: 'Rides a green​ cargo bike',
     image: { messageSequence: photo, image: 1 },
     caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict([{ arg: 'image.eventID', op: 'matches', value: '*' }]),
   });
 
   const versions = await memory.writer.db
@@ -1715,12 +1828,8 @@ test('it proposes a write from a photo whose text holds a hidden character, unde
   expect(versions).toStrictEqual([]);
 });
 
-test('it proposes a write from a photo with a number you never typed, under your allow rule that names the image source', async () => {
-  const memory = await startTestMemory({
-    gate: {
-      findAllowRule: () => Promise.resolve({ ruleID: 'rule-photo', revision: 1, source: 'image' }),
-    },
-  });
+test('it proposes a write from a photo with a number you never typed, under your allow rule that checks the image argument', async () => {
+  const memory = await startTestMemory();
 
   const photo = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
@@ -1733,6 +1842,7 @@ test('it proposes a write from a photo with a number you never typed, under your
     text: 'The bike shop phone number is 0412 555 019',
     image: { messageSequence: photo, image: 1 },
     caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict([{ arg: 'image.eventID', op: 'matches', value: '*' }]),
   });
 
   const versions = await memory.writer.db

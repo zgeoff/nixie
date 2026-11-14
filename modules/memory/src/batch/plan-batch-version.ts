@@ -23,16 +23,18 @@ export function planBatchVersion(
     return planRetiredVersion({
       target: write.target,
       provenance,
-      intentQuote: write.quote,
-      intentEvidence: verdict.evidence,
+      ...(verdict.evidence === null
+        ? {}
+        : { intentQuote: write.quote, intentEvidence: verdict.evidence }),
     });
   }
 
   return planRememberedVersion({
     text: write.text,
     provenance,
-    evidenceQuote: write.quote,
-    evidence: verdict.evidence,
+    ...(verdict.evidence === null
+      ? {}
+      : { evidenceQuote: write.quote, evidence: verdict.evidence }),
     ...(write.target === null ? { subject: write.subject } : { target: write.target }),
     ...(write.until === undefined ? {} : { until: write.until }),
   });

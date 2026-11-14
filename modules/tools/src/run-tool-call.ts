@@ -10,11 +10,13 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
 import { resolveCallDestinations } from './policy-call/resolve-call-destinations';
+import { resolveCallPolicyFacts } from './policy-call/resolve-call-policy-facts';
 import { toolCalledCodec } from './tool-called-codec';
 import { toolResultCodec } from './tool-result-codec';
 import type {
   ActionQueue,
   DirectResult,
+  MemoryWriteVerdict,
   RegisteredTool,
   ResultSources,
   SchemaCheck,
@@ -71,24 +73,35 @@ export async function runToolCall(
 
   const destinations = resolution.destinations;
 
+  const facts =
+    registered !== null && run.tools.includes(call.tool)
+      ? await resolveCallPolicyFacts(registered, call.input, run)
+      : null;
+
+  if (facts?.status === 'error') {
+    return writeInvalidCall(recorder, facts.message);
+  }
+
   const deadline =
     options.decisionDeadlineMs === undefined ? {} : { deadlineMs: options.decisionDeadlineMs };
 
   const decide = makeFaultSafeDecisionPoint(options.decide, deadline);
+  const policyArgs = facts?.args ?? call.input;
 
   const policyCall = buildToolPolicyCall(run, {
     tool: call.tool,
-    input: call.input,
+    input: policyArgs,
     destinations,
     definitions,
     at: options.log.writer.clock.now(),
+    ...(facts === null ? {} : { sources: facts.sources }),
   });
 
   const policy = await decide(policyCall);
 
   const stored = toStoredDecision(policy.decision, policyCall);
 
-  const written = await recorder.writeCall({ policy, stored, destinations });
+  const written = await recorder.writeCall({ policy, stored, destinations, args: policyArgs });
 
   const settled = await runDecidedCall({
     policy,
@@ -124,6 +137,9 @@ interface CallPolicy {
   readonly policy: PolicyDecision;
   readonly stored: Decision;
   readonly destinations: readonly CallDestination[];
+
+  // the arguments the decision read, which a replay of the stored decision reads again
+  readonly args: JSONObject;
 }
 
 interface WrittenCall {
@@ -150,7 +166,8 @@ function makeCallRecorder(
   return {
     writeCall: (decided) =>
       withWriteTransaction(options.log.writer, async (tx) => {
-        const input = recordInput?.(call.input) ?? call.input;
+        const recorded = decided?.args ?? call.input;
+        const input = recordInput?.(recorded) ?? recorded;
         const destinations = decided?.destinations ?? [];
 
         const [written] = await writeRecordsInTransaction(tx, options.log, [
@@ -183,7 +200,12 @@ function makeCallRecorder(
 
         const cause = decided?.policy.decision.cause;
 
-        if (decided === null || decided.policy.decision.outcome !== 'ask' || cause === undefined) {
+        if (
+          decided === null ||
+          decided.policy.decision.outcome !== 'ask' ||
+          cause === undefined ||
+          isMemoryRuleAsk(decided.policy)
+        ) {
           return { sequence: written.sequence, shortID: null };
         }
 
@@ -230,6 +252,17 @@ function makeCallRecorder(
       return toCallToolResult(settled);
     },
   };
+}
+
+// An ask rule on memory_write makes the write a memory proposal, which the memory gate writes, so
+// the call writes no action proposal.
+function isMemoryRuleAsk(policy: PolicyDecision): boolean {
+  return (
+    policy.memoryWrite !== undefined &&
+    policy.decision.outcome === 'ask' &&
+    policy.decision.cause === 'ask_rule' &&
+    policy.decision.rule !== null
+  );
 }
 
 const trustOrder: readonly ContentSource[] = ['untrusted', 'owner_data', 'owner'];
@@ -323,7 +356,7 @@ interface DecidedCall {
 function runDecidedCall(decided: DecidedCall): Promise<Settled> {
   const { policy, stored, registered, shortID, ...rest } = decided;
 
-  if (policy.decision.outcome === 'ask') {
+  if (policy.decision.outcome === 'ask' && !isMemoryRuleAsk(policy)) {
     return Promise.resolve(buildAskMessage(shortID));
   }
 
@@ -341,10 +374,13 @@ function runDecidedCall(decided: DecidedCall): Promise<Settled> {
     );
   }
 
+  const verdict = buildMemoryVerdict(policy);
+
   return tryRunAllowedCall({
     ...rest,
     registered,
     decision: stored,
+    ...(verdict === undefined ? {} : { verdict }),
   });
 }
 
@@ -358,6 +394,28 @@ function buildAskMessage(shortID: string | null): Settled {
   );
 }
 
+// What the decision point said about a memory write, for the tool's own gate. A decision from a
+// declaration that did not hold memory_write, such as a snapshot from before the release that
+// changed it, gives no verdict, and the tool runs every check.
+function buildMemoryVerdict(policy: PolicyDecision): MemoryWriteVerdict | undefined {
+  const facts = policy.memoryWrite;
+  const decision = policy.decision;
+
+  if (facts === undefined) {
+    return undefined;
+  }
+
+  if (decision.outcome === 'allow' && decision.rule !== null) {
+    return { kind: 'rule-allow', rules: facts.allowing };
+  }
+
+  if (isMemoryRuleAsk(policy) && decision.rule !== null) {
+    return { kind: 'rule-ask', rule: { id: decision.rule.id, revision: decision.rule.revision } };
+  }
+
+  return { kind: 'gate' };
+}
+
 interface AllowedCall {
   readonly registered: RegisteredTool;
   readonly decision: Decision;
@@ -366,6 +424,8 @@ interface AllowedCall {
 
   readonly callSequence: number;
   readonly options: ToolCallOptions;
+
+  readonly verdict?: MemoryWriteVerdict;
 }
 
 async function tryRunAllowedCall(allowed: AllowedCall): Promise<Settled> {
@@ -385,7 +445,10 @@ function runAllowedCall(allowed: AllowedCall): Promise<Settled> {
 }
 
 async function runDirect(allowed: AllowedCall): Promise<Settled> {
-  const outcome = await allowed.registered.definition.run(allowed.call, { run: allowed.run });
+  const outcome = await allowed.registered.definition.run(allowed.call, {
+    run: allowed.run,
+    ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
+  });
 
   // a tool's error can quote what an outside service said, so it counts as outside content
   return outcome.status === 'error'

@@ -1,5 +1,5 @@
 import { match } from 'ts-pattern';
-import type { Effect, Rule, RuleCall, RuleCheck } from '../types';
+import type { Rule, RuleCall, RuleCheck } from '../types';
 import { isPatternMatch } from './is-pattern-match';
 
 export function isRuleMatch(rule: Rule, call: RuleCall): boolean {
@@ -15,7 +15,7 @@ export function isRuleMatch(rule: Rule, call: RuleCall): boolean {
     (rule.contexts === undefined || rule.contexts.includes(call.context)) &&
     (rule.definitions === undefined ||
       (call.task !== null && rule.definitions.includes(call.task))) &&
-    (rule.effects === undefined || isEffectMatch(rule.effects, call.effects, isAllow)) &&
+    (rule.effects === undefined || isListMatch(rule.effects, call.effects, isAllow)) &&
     (rule.sources === undefined || isListMatch(rule.sources, call.sources, isAllow)) &&
     (rule.destinations === undefined ||
       isDestinationMatch(rule.destinations, call.destinations, isAllow)) &&
@@ -28,22 +28,6 @@ function isToolMatch(pattern: string, tool: string): boolean {
   const [name = tool] = tool.split('/', 1);
 
   return isPatternMatch(pattern, tool) || isPatternMatch(pattern, name);
-}
-
-// A deny or ask rule that lists memory_write also stops a call that declares note. An allow rule's
-// memory_write covers no call, so a memory write stays asked until a rule allows its note.
-function isEffectMatch(
-  listed: readonly Effect[],
-  held: readonly Effect[],
-  isAllow: boolean,
-): boolean {
-  if (isAllow) {
-    return isListMatch(listed, held, true);
-  }
-
-  const covered = held.includes('note') ? [...held, 'memory_write' as const] : held;
-
-  return isListMatch(listed, covered, false);
 }
 
 function isListMatch<Item>(

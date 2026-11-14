@@ -7,7 +7,7 @@ const contextSchema = z.enum(['conversation', 'task', 'job', 'coding']);
 const sourceSchema = z.enum(['owner', 'own_data', 'task', 'outside']);
 
 export const decisionSchema = z.object({
-  outcome: z.enum(['allow', 'ask', 'deny']),
+  outcome: z.enum(['allow', 'ask', 'deny', 'gate']),
   stage: z.number(),
   rule: z.object({ id: z.string(), revision: z.number() }).nullable(),
   destinations: destinationSchema.array().exactOptional(),

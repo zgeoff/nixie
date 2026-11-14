@@ -1,4 +1,3 @@
-import invariant from 'tiny-invariant';
 import { createBatchProposal } from '../batch/create-batch-proposal';
 import { runBatchGate } from '../batch/run-batch-gate';
 import type { StoreParts } from '../types';
@@ -19,8 +18,6 @@ export function buildWriterGate(parts: StoreParts): WriterGate {
       const gate = checked.gate;
 
       if (gate.status === 'pass') {
-        invariant(gate.evidence, 'a batch write passed with no evidence');
-
         return {
           outcome: 'apply',
           source: gate.source,

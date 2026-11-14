@@ -38,6 +38,9 @@ and [the memory writer](./writer.md#publishing) covers how its batch publishes i
 A memory text that holds a Unicode format character, such as a zero-width space or a bidirectional
 control, fails before any check runs.
 
+These steps are the full gate. [A rule on `memory_write`](#rules-on-memory-writes) can skip the
+quote check and the checker, or send the write to review.
+
 ### End times on writes
 
 `memory.remember` and `memory.edit` take an optional [end time](./store.md#end-times), an ISO time
@@ -138,8 +141,8 @@ is a proposal of its own with the pinned reason, because the core opens every se
 every turn that reads it, so the user decides what goes in. No quote backs a pin and no checker
 judges one: a pin adds no text, so the gate has nothing of the user's to check. `memory.remember`
 takes no pin, so a new fact that the model wants pinned is a remember and then a pin. The remember
-passes [the content gate](#the-content-gate) like any other, and the pin waits for the user's review
-unless an allow rule names `memory.pin`.
+passes [the content gate](#the-content-gate) like any other, and the pin always waits for the user's
+review: a pin declares `note`, so no rule on `memory_write` reaches it.
 
 A pin of a retired item, a forgotten one or a moved-on version fails before anything is written. An
 active item past its [end time](./store.md#end-times) counts as retired, so its pin fails the same
@@ -174,18 +177,19 @@ proposal merges only with one that carries the same mark.
 ## Self-notes
 
 A self-note is an item whose subject is self: nixie writes it about itself, in its own voice, such
-as its tastes or how something landed with the user, and every one waits for the user's review. An
-item takes its subject when it is created, and only an approved [subject change](#subject-changes)
-moves it to another, so an edit that keeps a self-note's subject is a self-note write. The
-conversation's `memory.remember` takes the subject. A shared item runs through the same gate as an
-item about the user, so it needs a quote of the user's own typed words to apply at once.
+as its tastes or how something landed with the user, and every one waits for the user's review
+unless [an allow rule covers it](#rules-on-memory-writes). An item takes its subject when it is
+created, and only an approved [subject change](#subject-changes) moves it to another, so an edit
+that keeps a self-note's subject is a self-note write. The conversation's `memory.remember` takes
+the subject. A shared item runs through the same gate as an item about the user, so it needs a quote
+of the user's own typed words to apply at once.
 
 Nothing of the user's backs a self-note, so the quote check and the checker have nothing to judge,
 and the gate skips both. It runs the hidden-character check and the token check, which compares the
 note's destination-like tokens against everything the user typed in the window, as under an allow
-rule. The write then becomes a proposal with the self-note reason whatever the token check found,
-and the proposal's checks keep the token verdict, so the review shows a destination the user never
-typed. An approved self-note takes outside content as its source.
+rule. Without a covering rule, the write becomes a proposal with the self-note reason whatever the
+token check found, and the proposal's checks keep the token verdict, so the review shows a
+destination the user never typed. An approved self-note takes outside content as its source.
 
 Only the conversation creates a self-note, because only a persona thread speaks as nixie. A
 self-note write from a task or from the memory writer fails before any check runs and writes
@@ -245,11 +249,11 @@ gives, and the proposal keeps no quote. It runs the hidden-character check and t
 for a self-note, and the write becomes a proposal with the photo reason. The proposal's checks name
 the image, and the [proposals page](./view.md#proposals) shows the photo beside the text.
 
-An allow rule covers a write from a photo only when the rule names the image source. A rule on
-`memory.remember` alone leaves the write a proposal. A rule that names the image source lets the
-write apply at once under the rule's token check, with outside content as its source. A version from
-a photo keeps the image in its checks and takes outside content as its source, even when the user
-approves an edit of its text.
+An allow rule covers a write from a photo only when the rule also checks an `image` argument, such
+as `{ arg: image.eventID, op: matches, value: '*' }`. A rule that allows `outside` alone leaves the
+write a proposal. A covering rule lets the write apply at once under the rule's token check, with
+outside content as its source. A version from a photo keeps the image in its checks and takes
+outside content as its source, even when the user approves an edit of its text.
 
 The recall tool returns that image source beside each version from a photo, as the event ID and the
 image's number, so the conversation can open the photo with the
@@ -287,14 +291,37 @@ approval of the user's own edit takes the user as its source, because the words 
 One exception: an edit of a proposal from a photo keeps outside content as its source, because the
 fact still comes from the photo.
 
-The user's allow rule on a content-gate tool lets a write through that tool skip the quote and the
-checker. The gate looks up the rule by the tool the write came through, `memory.edit` for a write
-that names an item and `memory.remember` for a new item, so a rule on one tool never covers the
-other. The rule never skips the token check, which then compares against everything the user typed
-in the window. No quote of the user's backs such a write, so its source is outside content. An allow
-rule that names `memory.pin` lets a pin apply at once with no proposal, and a rule on either content
-tool never covers a pin. The policy engine has no user rules, so the gate finds no allow rule and
-every write runs the full gate.
+## Rules on memory writes
+
+`memory.remember`, `memory.edit` and `memory.retire` declare the `memory_write` effect, so the
+user's rules decide a memory write before the gate does.
+[The decision point](../policy/decision-point.md#memory-writes) sets the write's sources from its
+quote, runs the rules, and hands the gate one of 4 answers:
+
+| The rules for the write | What the gate does                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| A deny rule matches     | Nothing: the decision point denies the call before the tool runs                           |
+| An ask rule matches     | The write becomes a proposal with the review reason `ask_rule`, whose checks name the rule |
+| An allow rule matches   | The gate runs the token check alone, and skips the quote check and the checker             |
+| No rule matches         | The gate runs every check                                                                  |
+
+Under an allow rule, no quote of the user's backs the write, so its source is outside content, and
+the token check compares against everything the user typed in the window. A write that passes
+applies with a notice, as any applied write does. A write that fails the token check becomes a
+proposal with the token reason. An allow rule on `owner` covers only a write whose quote lies in
+text the user typed, and the checker's judgment of whether the user meant the memory is skipped.
+
+- A self-note is covered only when a matching allow rule checks `subject` `eq` `self`. Without one,
+  the write runs its normal gate and waits for review. The token check still runs under a covering
+  rule.
+- A write from a photo is covered only when a matching allow rule checks an `image` argument.
+- When several allow rules match a self-note or a photo write, one covering rule is enough, and the
+  version's checks record that rule.
+- An allow rule on `memory_write` retires an item at once with a notice, and skips the intent quote
+  check and the retirement checker.
+- A pin, an unpin, a rating and a comment declare `note`, so no rule on `memory_write` reaches them.
+  A pin waits for review under every rule.
+- With the starter rules, no rule matches `memory_write`, so every write runs every check.
 
 ## Memory proposals
 

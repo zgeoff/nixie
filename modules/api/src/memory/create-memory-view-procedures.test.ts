@@ -1,11 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
-import {
-  defaultGateLimits,
-  defaultOwnerPronouns,
-  findNoAllowRule,
-  startMemoryStore,
-} from '@heynixie/memory';
+import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -29,7 +24,6 @@ async function setupTest() {
         }),
       clock: api.clock,
       defaultZone: 'UTC',
-      findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,

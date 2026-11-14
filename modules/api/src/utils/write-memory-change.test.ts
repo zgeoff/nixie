@@ -1,10 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import {
-  defaultGateLimits,
-  defaultOwnerPronouns,
-  findNoAllowRule,
-  startMemoryStore,
-} from '@heynixie/memory';
+import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
@@ -29,7 +24,6 @@ async function setupTest() {
         }),
       clock: api.clock,
       defaultZone: 'UTC',
-      findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,

@@ -1,7 +1,10 @@
 import { faker } from '@faker-js/faker';
-import type { ToolContext, ToolRun } from '@heynixie/tools';
+import type { MemoryWriteVerdict, ToolContext, ToolRun } from '@heynixie/tools';
 
-export function buildMockToolContext(overrides: Partial<ToolRun> = {}): ToolContext {
+export function buildMockToolContext(
+  overrides: Partial<ToolRun> = {},
+  verdict?: MemoryWriteVerdict,
+): ToolContext {
   return {
     run: {
       runID: faker.string.uuid(),
@@ -13,5 +16,6 @@ export function buildMockToolContext(overrides: Partial<ToolRun> = {}): ToolCont
       },
       ...overrides,
     },
+    ...(verdict === undefined ? {} : { verdict }),
   };
 }

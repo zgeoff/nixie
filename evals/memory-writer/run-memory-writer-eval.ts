@@ -35,6 +35,7 @@ interface PlannedRun {
 const emptyStore = {
   recall: () =>
     Promise.resolve({ items: [], next: null, omitted: { items: [], count: 0, versions: 0 } }),
+  writes: { readBatchSources: () => Promise.resolve('owner' as const) },
 };
 
 const jsonObject = z.record(z.string(), z.json()).transform((value): JSONObject => value);

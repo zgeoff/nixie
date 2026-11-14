@@ -13,7 +13,6 @@ import type { StartedMemoryStore } from '../memory/start-memory-store';
 import { startMemoryStore } from '../memory/start-memory-store';
 import type { MemoryWriterRunner } from '../memory/start-memory-writer-runner';
 import { startMemoryWriterRunner } from '../memory/start-memory-writer-runner';
-import { findNoAllowRule } from '../moment/find-no-allow-rule';
 import { defaultOwnerPronouns } from '../owner/default-owner-pronouns';
 import type { RecalledItem } from '../types';
 import type { WriterConfigInput } from '../utils/schema/writer-config-schema';
@@ -136,7 +135,6 @@ function buildClosedGate(clock: TestClock): GateContext {
       }),
     clock,
     defaultZone: 'UTC',
-    findAllowRule: findNoAllowRule,
     limits: defaultGateLimits,
     ownerName: null,
     ownerPronouns: defaultOwnerPronouns,

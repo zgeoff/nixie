@@ -1,12 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import type { CleanupSessions } from '@heynixie/memory';
-import {
-  defaultGateLimits,
-  defaultOwnerPronouns,
-  findNoAllowRule,
-  startMemoryStore,
-} from '@heynixie/memory';
+import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -31,7 +26,6 @@ async function setupTest() {
         }),
       clock: api.clock,
       defaultZone: 'UTC',
-      findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,

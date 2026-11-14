@@ -10,7 +10,6 @@ import type { TestMemoryOptions } from '../test-utils';
 import {
   buildMockCheckerAnswer,
   createProposal,
-  makeToolAllowRule,
   readItemShortID,
   startTestMemory,
 } from '../test-utils';
@@ -50,7 +49,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it declares read for the reads, export for export, and note for the memory and moment writes', async () => {
+test('it declares read for the reads, export for export, memory_write for remember, edit and retire, and note for the other writes', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -77,9 +76,9 @@ test('it declares read for the reads, export for export, and note for the memory
   expect(effects).toStrictEqual([
     ['memory.recall', ['read']],
     ['memory.pending', ['read']],
-    ['memory.remember', ['note']],
-    ['memory.edit', ['note']],
-    ['memory.retire', ['note']],
+    ['memory.remember', ['memory_write']],
+    ['memory.edit', ['memory_write']],
+    ['memory.retire', ['memory_write']],
     ['memory.pin', ['note']],
     ['memory.unpin', ['note']],
     ['memory.mark_sensitive', ['note']],
@@ -374,9 +373,7 @@ test('it gives the token sentence for a fact with a number its typed quote lacks
 });
 
 test('it gives the token sentence under an allow rule when the owner never typed the number, even though the quote holds it', async () => {
-  const ctx = await setupTest({
-    gate: { findAllowRule: makeToolAllowRule('memory.remember'), ownerName: 'Avery' },
-  });
+  const ctx = await setupTest({ gate: { ownerName: 'Avery' } });
 
   await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'conversation',
@@ -396,7 +393,12 @@ test('it gives the token sentence under an allow rule when the owner never typed
       tools: ['memory.remember'],
       model: { model: 'test-model', profile: 'standard' },
     },
-    ctx.toolCallOptions,
+    {
+      ...ctx.toolCallOptions,
+      decide: buildAllowingDecisionPoint({
+        allowing: [{ id: 'rule-a', revision: 2, checks: [] }],
+      }),
+    },
   );
 
   expect(result.structuredContent).toStrictEqual({

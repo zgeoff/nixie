@@ -1,5 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { ContentSource, JSONObject, RecordInput } from '@heynixie/log';
+import type { MemoryWriteVerdict } from '@heynixie/tools';
 import type { Selectable } from 'kysely';
 import type { ProposalPlan } from '../memory/write-memory-proposal';
 import type { MemorySubject, QuoteEvidence, VersionRef } from '../types';
@@ -43,12 +44,16 @@ export type StagedWrite =
       readonly until?: number | null;
 
       readonly isSensitive?: boolean;
+
+      // what the decision point said when the writer staged the call
+      readonly verdict?: MemoryWriteVerdict;
     }
   | {
       readonly op: 'retire';
       readonly quote: string;
       readonly sourceSequence: number;
       readonly target: VersionRef;
+      readonly verdict?: MemoryWriteVerdict;
     };
 
 export interface StagedFlag {
@@ -61,7 +66,9 @@ export type GateVerdict =
       readonly outcome: 'apply';
       readonly source: ContentSource;
       readonly checks: JSONObject;
-      readonly evidence: QuoteEvidence;
+
+      // null under an allow rule, which skips the quote check
+      readonly evidence: QuoteEvidence | null;
 
       readonly model: string;
     }

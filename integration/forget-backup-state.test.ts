@@ -13,7 +13,6 @@ import { localDataStorage, logProjections, startWriter } from '@heynixie/log';
 import {
   defaultGateLimits,
   defaultOwnerPronouns,
-  findNoAllowRule,
   memoryProjections,
   startMemoryStore,
 } from '@heynixie/memory';
@@ -76,7 +75,6 @@ async function setupTest() {
         }),
       clock,
       defaultZone: 'UTC',
-      findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,

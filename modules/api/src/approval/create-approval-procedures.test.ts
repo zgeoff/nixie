@@ -4,12 +4,7 @@ import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import type { LogTables } from '@heynixie/log';
 import { readRecords, removeRecordKey, writeRecords } from '@heynixie/log';
-import {
-  defaultGateLimits,
-  defaultOwnerPronouns,
-  findNoAllowRule,
-  startMemoryStore,
-} from '@heynixie/memory';
+import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { readProposal, runProposalLapses, runProposalReturns } from '@heynixie/proposals';
@@ -56,7 +51,6 @@ async function setupTest() {
         }),
       clock: api.clock,
       defaultZone: 'UTC',
-      findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
       ownerPronouns: defaultOwnerPronouns,

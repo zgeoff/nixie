@@ -2,12 +2,14 @@ import type { ConsentCheck, DestinationPermission } from '@heynixie/log';
 import type { ConsentFacts } from '../consent/check-consent';
 import { alwaysAskEffects } from '../effect/always-ask-effects';
 import type {
+  AllowingRule,
   DecisionDetail,
   DecisionPoint,
   EffectDeclaration,
   PolicyCall,
   PolicyDecision,
   PolicyInputs,
+  PolicyOutcome,
   PolicyStage,
   Rule,
   RuleCall,
@@ -168,6 +170,10 @@ async function runRuleStages(run: StageRun): Promise<PolicyDecision> {
 
   progress.stage = 8;
 
+  if (declaration.effects.includes('memory_write')) {
+    return buildDecision(run, 8, { outcome: 'gate' }, null);
+  }
+
   const consent = await answers.read();
 
   if (isConsentGiven(consent)) {
@@ -234,7 +240,7 @@ function makeConsentReader(run: StageRun): ConsentReader {
 }
 
 interface Verdict {
-  readonly outcome: 'allow' | 'ask' | 'deny';
+  readonly outcome: PolicyOutcome;
   readonly verdict?: EntryVerdict;
   readonly cause?: 'outside_steering' | 'always_ask' | 'ask_rule' | 'no_rule';
   readonly permissions?: readonly (DestinationPermission | null)[];
@@ -272,7 +278,13 @@ function buildDecision(
     snapshot: call.snapshot,
   };
 
-  return { decision: detail, sentence };
+  return {
+    decision: detail,
+    sentence,
+    ...(run.declaration.effects.includes('memory_write')
+      ? { memoryWrite: { allowing: listAllowingRules(run) } }
+      : {}),
+  };
 }
 
 // An ask at stage 5 or 9 that the owner's own words should have settled.
@@ -285,6 +297,25 @@ function isDirectRequest(verdict: Verdict, stage: PolicyStage): boolean {
     verdict.consent.codeCheck === 'pass' &&
     verdict.consent.checker !== 'yes'
   );
+}
+
+// In the order pickRuleOutcome names a rule, so the first is the rule the decision names.
+function listAllowingRules(run: StageRun): readonly AllowingRule[] {
+  const ruleCall = buildRuleCall(run);
+
+  const matched = [...getFixedRules(), ...run.inputs.rules].filter(
+    (entry) => entry.rule.outcome === 'allow' && isRuleMatch(entry.rule, ruleCall),
+  );
+
+  return matched
+    .map((entry) => entry.id)
+    .toSorted()
+    .flatMap((id) => matched.find((entry) => entry.id === id) ?? [])
+    .map((entry) => ({
+      id: entry.id,
+      revision: entry.revision,
+      checks: entry.rule.checks ?? [],
+    }));
 }
 
 function isConsentGiven(consent: ConsentCheck | null): boolean {

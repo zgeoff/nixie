@@ -1,3 +1,4 @@
+import type { MemoryWriteVerdict } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { MemorySubject } from '../types';
 import type { SourceMessage, StagedFlag, StagedWrite, WriterSubject } from './writer-model';
@@ -37,16 +38,21 @@ type StagedWriteRequest =
       readonly until?: number | null;
 
       readonly isSensitive?: boolean;
+      readonly verdict?: MemoryWriteVerdict;
     }
   | {
       readonly op: 'retire';
       readonly quote: string;
       readonly sourceSequence: number;
       readonly itemID: string;
+      readonly verdict?: MemoryWriteVerdict;
     };
 
 export interface WriterStaging {
   readonly open: (batch: StagingBatch) => StagingHandle;
+
+  readonly findSource: (sequence: number) => SourceMessage | undefined;
+  readonly findShown: (itemID: string) => ShownVersion | undefined;
 
   readonly show: (itemID: string, shown: ShownVersion, text: string) => void;
   readonly stage: (write: StagedWriteRequest) => StageResult;
@@ -93,6 +99,8 @@ export function createWriterStaging(): WriterStaging {
         readFlags: () => opened.flags,
       };
     },
+    findSource: (sequence) => state.batch?.sources.get(sequence),
+    findShown: (itemID) => state.batch?.shown.get(itemID),
     show: (itemID, shown, text) => {
       state.batch?.shown.set(itemID, shown);
       state.batch?.recalledTexts.add(text);
@@ -162,6 +170,7 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
       target: null,
       ...(request.until === undefined ? {} : { until: request.until }),
       ...(request.isSensitive === true ? { isSensitive: true } : {}),
+      ...(request.verdict === undefined ? {} : { verdict: request.verdict }),
     };
   }
 
@@ -210,8 +219,10 @@ function buildWriteFields(
 ):
   | Omit<Extract<StagedWrite, { readonly op: 'remember' }>, 'target'>
   | Omit<Extract<StagedWrite, { readonly op: 'retire' }>, 'target'> {
+  const verdict = request.verdict === undefined ? {} : { verdict: request.verdict };
+
   return request.op === 'retire'
-    ? { op: 'retire', quote: request.quote, sourceSequence: request.sourceSequence }
+    ? { op: 'retire', quote: request.quote, sourceSequence: request.sourceSequence, ...verdict }
     : {
         op: 'remember',
         subject: request.subject,
@@ -219,5 +230,6 @@ function buildWriteFields(
         quote: request.quote,
         sourceSequence: request.sourceSequence,
         ...(request.until === undefined ? {} : { until: request.until }),
+        ...verdict,
       };
 }

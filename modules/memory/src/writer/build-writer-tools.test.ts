@@ -14,7 +14,7 @@ async function setupTest() {
   return { memory, staging, registry };
 }
 
-test('it declares read for recall and note for remember, edit, retire and the flag', async () => {
+test('it declares read for recall, memory_write for remember, edit and retire, and note for the flag', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -27,9 +27,9 @@ test('it declares read for recall and note for remember, edit, retire and the fl
 
   expect(effects).toStrictEqual([
     ['memory.recall', ['read']],
-    ['memory.remember', ['note']],
-    ['memory.edit', ['note']],
-    ['memory.retire', ['note']],
+    ['memory.remember', ['memory_write']],
+    ['memory.edit', ['memory_write']],
+    ['memory.retire', ['memory_write']],
     ['memory.flag-self-note', ['note']],
   ]);
 });
@@ -713,4 +713,80 @@ test.each([
   const check = ctx.registry.findTool(name)?.parseInput(input);
 
   expect(check).toMatchObject({ isValid: false });
+});
+
+test('it fills the subject of a staged retirement from the item the writer was shown, in the arguments the rules read', async () => {
+  const ctx = await setupTest();
+
+  const handle = ctx.staging.open({
+    sources: new Map([
+      [
+        7,
+        {
+          sequence: 7,
+          text: 'I moved out of Elm Street',
+          spans: [{ start: 0, end: 25, source: 'typed' }],
+          sentAt: 1_794_550_000_000,
+          timeZone: null,
+        },
+      ],
+    ]),
+    shown: new Map([['item-1', { version: 1, subject: 'shared' }]]),
+    startedAt: 1_794_550_000_000,
+  });
+
+  const input = {
+    itemID: 'item-1',
+    quote: 'I moved out of Elm Street',
+    sourceID: 7,
+  };
+
+  const tool = ctx.registry.findTool('memory.retire');
+
+  invariant(tool);
+
+  const facts = await tool.definition.resolvePolicyFacts?.(input, {
+    run: {
+      runID: 'run-1',
+      thread: 'memory-writer',
+      tools: [],
+      model: { model: 'model-a', profile: 'standard' },
+    },
+  });
+
+  handle.close();
+
+  expect(facts).toStrictEqual({
+    status: 'ok',
+    sources: ['owner'],
+    args: { ...input, subject: 'shared' },
+  });
+});
+
+test('it returns an error as the facts of a staged retirement of an item the writer was never shown', async () => {
+  const ctx = await setupTest();
+
+  const handle = ctx.staging.open({ sources: new Map(), shown: new Map(), startedAt: 0 });
+  const tool = ctx.registry.findTool('memory.retire');
+
+  invariant(tool);
+
+  const facts = await tool.definition.resolvePolicyFacts?.(
+    { itemID: 'item-9', quote: 'I moved out', sourceID: 7 },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'memory-writer',
+        tools: [],
+        model: { model: 'model-a', profile: 'standard' },
+      },
+    },
+  );
+
+  handle.close();
+
+  expect(facts).toStrictEqual({
+    status: 'error',
+    message: 'item item-9 is not one you were shown; find it with memory.recall first',
+  });
 });

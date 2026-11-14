@@ -12,6 +12,8 @@ export type {
   ActionQueue,
   GuestToolRun,
   JsonSchema,
+  MemoryWriteVerdict,
+  PolicyFactsResolution,
   QueuedAction,
   RegisteredTool,
   ResultSources,

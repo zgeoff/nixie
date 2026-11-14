@@ -1,5 +1,7 @@
 import { requireLiveEvidence } from '../evidence/require-live-evidence';
+import { buildAskReview } from '../gate/build-ask-review';
 import type { ContentGateResult, GatedRetireRequest, WriteOutcome } from '../gate/gate-context';
+import { pickCoveringRule } from '../gate/pick-covering-rule';
 import { runIntentGate } from '../gate/run-intent-gate';
 import { readItemText } from '../item/read-item-text';
 import { writeMemoryProposal } from '../memory/write-memory-proposal';
@@ -11,13 +13,6 @@ import { ForgottenEvidenceError } from '../utils/error/forgotten-evidence-error'
 import type { WriteGroup } from '../write/build-write-group';
 import { buildWriteGroup } from '../write/build-write-group';
 
-const selfNoteRetirement: ContentGateResult = {
-  status: 'pass',
-  source: 'untrusted',
-  evidence: null,
-  checks: { selfNote: 'retired' },
-};
-
 export async function writeGatedRetirement(
   parts: StoreParts,
   request: GatedRetireRequest,
@@ -26,15 +21,10 @@ export async function writeGatedRetirement(
 
   const itemText = item.text;
 
-  const gate =
-    item.subject === 'self' && request.caller.origin === 'conversation'
-      ? selfNoteRetirement
-      : await runIntentGate(parts.context, {
-          target: request.target,
-          intentQuote: request.intentQuote ?? null,
-          thread: request.caller.thread,
-          itemText,
-        });
+  const gate = await runRetirementGate(parts, request, {
+    itemText,
+    isSelfNote: item.subject === 'self',
+  });
 
   const newest = await readNewestMessage(parts.context.log, request.caller.thread);
 
@@ -45,6 +35,52 @@ export async function writeGatedRetirement(
   }
 
   return writeRetirementProposal(parts, request, { review: gate, group, itemText });
+}
+
+interface RetiredItem {
+  readonly itemText: string;
+  readonly isSelfNote: boolean;
+}
+
+const selfNoteRetirement: ContentGateResult = {
+  status: 'pass',
+  source: 'untrusted',
+  evidence: null,
+  checks: { selfNote: 'retired' },
+};
+
+function runRetirementGate(
+  parts: StoreParts,
+  request: GatedRetireRequest,
+  item: RetiredItem,
+): Promise<ContentGateResult> {
+  const verdict = request.verdict;
+
+  if (verdict?.kind === 'rule-ask') {
+    return Promise.resolve(buildAskReview(verdict.rule));
+  }
+
+  if (item.isSelfNote && request.caller.origin === 'conversation') {
+    return Promise.resolve(selfNoteRetirement);
+  }
+
+  const covering = pickCoveringRule(verdict, 'none');
+
+  if (covering !== null) {
+    return Promise.resolve({
+      status: 'pass',
+      source: 'untrusted',
+      evidence: null,
+      checks: { rule: { id: covering.id, revision: covering.revision } },
+    });
+  }
+
+  return runIntentGate(parts.context, {
+    target: request.target,
+    intentQuote: request.intentQuote ?? null,
+    thread: request.caller.thread,
+    itemText: item.itemText,
+  });
 }
 
 interface PassedRetirement {

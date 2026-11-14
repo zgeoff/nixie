@@ -11967,7 +11967,8 @@
                               "self_note",
                               "from_photo",
                               "sensitive",
-                              "subject_change"
+                              "subject_change",
+                              "ask_rule"
                             ],
                             "type": "string"
                           },
@@ -17903,7 +17904,8 @@
                                       "self_note",
                                       "from_photo",
                                       "sensitive",
-                                      "subject_change"
+                                      "subject_change",
+                                      "ask_rule"
                                     ],
                                     "type": "string"
                                   },
