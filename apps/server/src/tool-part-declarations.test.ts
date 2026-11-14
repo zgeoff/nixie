@@ -2,6 +2,8 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { listImageNeeds } from './list-image-needs';
 import { loadDeploymentConfig } from './load-deployment-config';
@@ -10,6 +12,8 @@ import { pickNeededImages } from './pick-needed-images';
 import { serverPartDeclarations } from './server-part-declarations';
 import type { ServerPartValues } from './server-part-values';
 import { buildStubPartReader } from './test-utils/build-stub-part-reader';
+import { createTestClient } from './test-utils/create-test-client';
+import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 import { writeBootFiles } from './test-utils/write-boot-files';
 import { toolPartDeclarations } from './tool-part-declarations';
 import type { AnyPartDeclaration } from './types';
@@ -27,6 +31,8 @@ async function setupTest() {
 
   invariant(webFetch !== undefined, 'the tool parts hold a web_fetch part');
 
+  const sandboxes = buildStubSandboxes();
+
   const startWebFetch = (declarations: readonly AnyPartDeclaration<ServerPartValues>[]) => {
     const needs = listImageNeeds(config, declarations);
 
@@ -41,22 +47,30 @@ async function setupTest() {
       buildStubPartReader<ServerPartValues>({
         inputs: { options },
         context: { apiContext: { log: {} } },
-        sandbox_adapter: {},
+        sandbox_adapter: sandboxes.adapter,
       }),
     );
   };
 
   return {
+    sandboxes,
+    fetchImageName: images.fetch?.name,
     startWebFetch,
     webFetchWithoutImages: { name: webFetch.name, needs: webFetch.needs, start: webFetch.start },
   };
 }
 
-test('it starts the web fetch part on the images that the real declarations need', async () => {
+test('it creates the fetch sandbox from the fetch image that the real declarations pick', async () => {
   const ctx = await setupTest();
   const started = await ctx.startWebFetch(serverPartDeclarations);
 
-  expect(started).toHaveProperty('tool');
+  invariant(ctx.fetchImageName !== undefined, 'the test manifest holds a fetch image');
+
+  await started.readSkillPage('https://example.com/skills/SKILL.md').catch(() => null);
+
+  expect(ctx.sandboxes.created.map((spec) => [spec.kind, spec.image])).toStrictEqual([
+    ['fetch', ctx.fetchImageName],
+  ]);
 });
 
 test('it fails to start the web fetch part when its declaration names no image', async () => {
@@ -68,4 +82,67 @@ test('it fails to start the web fetch part when its declaration names no image',
   expect(ctx.startWebFetch(withoutImages)).rejects.toThrow(
     'the sandbox manifest holds no fetch image',
   );
+});
+
+test('it offers prompt_read and prompt_write to the conversation guest when the definitions export is configured', async () => {
+  const nixie = await startInProcessNixie({
+    extraDefinitions: [
+      'export: { repository: harbour/definitions, api_url: "https://127.0.0.1:9" }',
+    ],
+    extraSecrets: ['definitions_export_token: token-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  const gate = Promise.withResolvers<void>();
+
+  nixie.guest.addReplies({ text: 'Hello.', gate: () => gate.promise });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hi.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(() => nixie.guest.turns.length === 1);
+
+  const [received] = nixie.guest.received;
+
+  invariant(received);
+
+  const names = await nixie.readToolNames(received);
+
+  gate.resolve();
+
+  expect(names).toIncludeAllMembers(['prompt_read', 'prompt_write']);
+});
+
+test('it offers prompt_read alone to the conversation guest when no definitions export is configured', async () => {
+  const nixie = await startInProcessNixie();
+  const api = await createTestClient(nixie);
+
+  const gate = Promise.withResolvers<void>();
+
+  nixie.guest.addReplies({ text: 'Hello.', gate: () => gate.promise });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hi.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(() => nixie.guest.turns.length === 1);
+
+  const [received] = nixie.guest.received;
+
+  invariant(received);
+
+  const names = await nixie.readToolNames(received);
+
+  gate.resolve();
+
+  expect(names).toContain('prompt_read');
+  expect(names).not.toContain('prompt_write');
 });

@@ -39,3 +39,18 @@ test('it tells a new session how many moments were kept this week, and who kept 
     /<system-message type="status"[^>]*>\n(?:- [^\n]*\n)*- Moments kept this week: 1 \(1 by the owner\)\. 1 is waiting for a reflection\.\n<\/system-message/u,
   );
 });
+
+test('it creates the conversation sandbox from the conversation image of the needed images', async () => {
+  const ctx = await setupTest();
+  const api = await createTestClient(ctx);
+
+  ctx.guest.addReplies({ text: 'Hello.' });
+
+  await sendClientMessage(api.client, { text: 'Hi.' }, 'Hello.');
+
+  const sandboxes = await ctx.guest.adapter.list('conversation');
+
+  expect(sandboxes.map((sandbox) => [sandbox.spec.kind, sandbox.spec.image])).toStrictEqual([
+    ['conversation', 'nixie-conversation-cccccccccccc'],
+  ]);
+});
