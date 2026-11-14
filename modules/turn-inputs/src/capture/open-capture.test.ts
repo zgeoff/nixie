@@ -77,6 +77,30 @@ test('it hands back the own base URL and writes nothing with the log off', async
   expect(listed.misses).toStrictEqual([]);
 });
 
+test('it opens no capture when a set off lands while the step waits for the lane', async () => {
+  const ctx = await setupTest();
+
+  await ctx.turnInputs.runStart();
+
+  const setting = ctx.turnInputs.set({ state: 'off', drop: false });
+
+  const capture = await ctx.turnInputs.openCapture({
+    step: ctx.step,
+    profile: ctx.profile,
+    role: 'task',
+  });
+
+  await setting;
+
+  expect(capture.baseURL).toBe(ctx.profile.baseURL);
+
+  const captureRows = await ctx.readCaptures();
+  const keyRows = await ctx.readKeyRows();
+
+  expect(captureRows).toStrictEqual([]);
+  expect(keyRows).toStrictEqual([]);
+});
+
 test('it hands back the own base URL for a role outside the roles', async () => {
   const ctx = await setupTest();
 

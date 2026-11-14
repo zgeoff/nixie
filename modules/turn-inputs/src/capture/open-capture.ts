@@ -19,39 +19,47 @@ export async function openCapture(
   const own: Capture = { baseURL: input.profile.baseURL, close: () => Promise.resolve() };
 
   try {
-    const state = await readInputLogState(ctx);
-
-    const plan = pickCapturePlan({
-      config: ctx.config,
-      isOn: state.state === 'on',
-      role: input.role,
-      profile: input.profile,
-      answers: ctx.answers,
-    });
-
-    if (plan.kind === 'none') {
-      return own;
-    }
-
-    if (plan.kind === 'miss') {
-      await ctx.lane.run(() =>
-        writeInputMiss(ctx, {
-          captureID: null,
-          taskID: input.step.taskID,
-          stepRunID: input.step.stepRunID,
-          reason: 'no_capture_point',
-        }),
-      );
-
-      return own;
-    }
-
-    return await ctx.lane.run(() => createCapture(ctx, input, plan, own));
+    // The state is read in the lane, in the task that inserts the capture, so a `set off` that
+    // finished while this step waited is seen.
+    return await ctx.lane.run(() => openInLane(ctx, input, own));
   } catch {
     ctx.logger('turn_input.open_failed', { reason: 'unexpected' }, 'warn');
 
     return own;
   }
+}
+
+async function openInLane(
+  ctx: TurnInputsContext,
+  input: OpenCaptureInput,
+  own: Capture,
+): Promise<Capture> {
+  const state = await readInputLogState(ctx);
+
+  const plan = pickCapturePlan({
+    config: ctx.config,
+    isOn: state.state === 'on',
+    role: input.role,
+    profile: input.profile,
+    answers: ctx.answers,
+  });
+
+  if (plan.kind === 'none') {
+    return own;
+  }
+
+  if (plan.kind === 'miss') {
+    await writeInputMiss(ctx, {
+      captureID: null,
+      taskID: input.step.taskID,
+      stepRunID: input.step.stepRunID,
+      reason: 'no_capture_point',
+    });
+
+    return own;
+  }
+
+  return createCapture(ctx, input, plan, own);
 }
 
 type CapturingPlan = Extract<CapturePlan, { kind: 'capture' }>;
