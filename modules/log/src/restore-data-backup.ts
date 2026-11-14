@@ -1,5 +1,8 @@
 import { join } from 'node:path';
+import type { Clock } from '@heynixie/clock';
 import { DatabaseError, readQueryRows } from '@heynixie/db';
+import type { FetchedPair } from '@heynixie/wire';
+import { fetchedPairFile, fetchedPairSchema, parseBackupFile } from '@heynixie/wire';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { claimBackupLock } from './claim-backup-lock';
@@ -12,16 +15,22 @@ import { getBackupMarkerPath } from './get-backup-marker-path';
 import { getDataFilePath } from './get-data-file-path';
 import { getWALPath } from './get-wal-path';
 import { requireDataFiles } from './require-data-files';
+import { resetBackupStaging } from './reset-backup-staging';
 import { writeRestoreState } from './write-restore-state';
 
 export interface DataRestoreOptions {
   readonly storage: DataStorage;
   readonly dataDir: string;
   readonly directory: string;
+  readonly stagingDir: string;
+  readonly clock: Pick<Clock, 'now'>;
 }
 
 export interface DataRestore {
   readonly files: readonly DataFile[];
+
+  // null: the directory has no pair file, as one that nixie backup wrote
+  readonly pair: FetchedPair | null;
 }
 
 // The writer lock refuses the restore while a server runs on the data directory, and keeps a
@@ -47,6 +56,8 @@ export async function restoreDataBackup(
 
       await requireFinishedBackup(options);
 
+      const pair = await readFetchedPair(options);
+
       for (const file of dataFiles) {
         await requireIntactDatabase(options, file);
       }
@@ -54,7 +65,18 @@ export async function restoreDataBackup(
       await writeStagedFiles(options);
       await replaceDataFiles(options);
 
-      return { files: dataFiles };
+      // The marker stays until the staging folder is empty, so a restore that stops here leaves a
+      // server that will not start and a rerun that finishes the job.
+      await resetBackupStaging({
+        storage: options.storage,
+        stagingDir: options.stagingDir,
+        clock: options.clock,
+        keySnapshotID: pair?.key.snapshotID ?? null,
+      });
+
+      await writeRestoreState(options.storage.files, options.dataDir, 'none');
+
+      return { files: dataFiles, pair };
     } finally {
       backupLock.release();
     }
@@ -71,6 +93,32 @@ async function requireFinishedBackup(options: DataRestoreOptions): Promise<void>
       `the backup in ${options.directory} stopped before it finished, so nixie restores nothing`,
     );
   }
+}
+
+async function readFetchedPair(options: DataRestoreOptions): Promise<FetchedPair | null> {
+  const path = join(options.directory, fetchedPairFile);
+
+  const text = await options.storage.files.readText(path).catch((error: unknown) => {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return null;
+    }
+
+    throw error;
+  });
+
+  if (text === null) {
+    return null;
+  }
+
+  const parsed = parseBackupFile(text, fetchedPairSchema);
+
+  if ('refused' in parsed) {
+    throw new Error(
+      `the ${fetchedPairFile} in ${options.directory} does not parse (${parsed.refused}), so nixie restores nothing`,
+    );
+  }
+
+  return parsed.value;
 }
 
 async function requireIntactDatabase(options: DataRestoreOptions, file: DataFile): Promise<void> {
@@ -180,8 +228,8 @@ async function writeStagedFiles(options: DataRestoreOptions): Promise<void> {
   }
 }
 
-// The marker reaches the disk before the first database moves and leaves only after the last, so a
-// restore that stops between the two leaves a pair the server refuses to start on. A WAL file left
+// The marker reaches the disk before the first database moves, so a restore that stops between the
+// two leaves a pair the server refuses to start on. A WAL file left
 // beside a restored database would replay the old database's commits onto it.
 async function replaceDataFiles(options: DataRestoreOptions): Promise<void> {
   const files = options.storage.files;
@@ -197,6 +245,4 @@ async function replaceDataFiles(options: DataRestoreOptions): Promise<void> {
   }
 
   await files.writeDirectoryToDisk(options.dataDir);
-
-  await writeRestoreState(files, options.dataDir, 'none');
 }

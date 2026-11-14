@@ -1,3 +1,5 @@
+import { getBackupStagingDir } from '@heynixie/backup';
+import { systemClock } from '@heynixie/clock';
 import {
   WriterLockHeldError,
   localDataStorage,
@@ -70,6 +72,8 @@ async function runRestore(flags: CLIFlags, io: CLIIO): Promise<number> {
       storage: localDataStorage,
       dataDir: config.server.dataDir,
       directory: flags.from,
+      stagingDir: getBackupStagingDir(config.server.dataDir),
+      clock: systemClock,
     });
 
     if ('refused' in restore) {

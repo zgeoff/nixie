@@ -2,7 +2,9 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { claimFileLock } from '@heynixie/async';
 import { startDatabase } from '@heynixie/db';
+import { formatBackupFile, getBackupSetDir, restoreNoteSchema } from '@heynixie/wire';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { claimBackupLock } from './claim-backup-lock';
@@ -17,11 +19,35 @@ async function setupTest() {
 
   const dataDir = join(root, 'data');
   const directory = join(root, 'backup');
+  const stagingDir = join(root, 'staging');
 
   await mkdir(dataDir);
   await mkdir(directory);
 
-  return { dataDir, directory };
+  const writeBackupDatabases = async (): Promise<void> => {
+    const backupLog = startDatabase(join(directory, 'nixie.db'));
+
+    onTestFinished(() => backupLog.destroy());
+
+    await sql`create table schema_version (id integer primary key)`.execute(backupLog);
+    await sql`create table records (record_id text primary key)`.execute(backupLog);
+    await backupLog.destroy();
+
+    const backupKeys = startDatabase(join(directory, 'keys.db'));
+
+    onTestFinished(() => backupKeys.destroy());
+
+    await sql`create table record_keys (key_id text primary key)`.execute(backupKeys);
+    await backupKeys.destroy();
+  };
+
+  return {
+    dataDir,
+    directory,
+    stagingDir,
+    clock: { now: () => 1_700_000_000_000 },
+    writeBackupDatabases,
+  };
 }
 
 test('it replaces nixie.db and keys.db with the backup copies, and removes their WAL files', async () => {
@@ -54,6 +80,8 @@ test('it replaces nixie.db and keys.db with the backup copies, and removes their
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   const files = await readdir(ctx.dataDir);
@@ -69,7 +97,7 @@ test('it replaces nixie.db and keys.db with the backup copies, and removes their
   const items = await sql`select id from items`.execute(log);
   const recordKeys = await sql`select key_id from record_keys`.execute(keys);
 
-  expect(restored).toStrictEqual({ files: ['nixie.db', 'keys.db'] });
+  expect(restored).toStrictEqual({ files: ['nixie.db', 'keys.db'], pair: null });
   expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock']);
   expect(items.rows).toStrictEqual([{ id: 'k1' }]);
   expect(recordKeys.rows).toStrictEqual([{ key_id: 'k1' }]);
@@ -94,6 +122,8 @@ test('it refuses a restore while a backup reads the data directory, and leaves i
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   const log = await Bun.file(join(ctx.dataDir, 'nixie.db')).text();
@@ -128,6 +158,8 @@ test('it leaves its restore marker when it stops between the two databases', asy
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   await restore.catch(() => {});
@@ -155,6 +187,8 @@ test('it refuses a restore while a server holds the writer lock, and leaves the 
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   await restore.catch(() => {});
@@ -194,6 +228,8 @@ test('it refuses a backup that stopped mid-retry with a new nixie.db beside an o
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   await restore.catch(() => {});
@@ -220,6 +256,8 @@ test('it refuses a backup without keys.db', async () => {
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   await restore.catch(() => {});
@@ -253,6 +291,8 @@ test('it refuses a backup whose keys.db is an empty file, before it replaces any
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   await restore.catch(() => {});
@@ -287,6 +327,8 @@ test('it refuses a backup whose nixie.db holds no event log, before it replaces 
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   await restore.catch(() => {});
@@ -318,6 +360,8 @@ test('it refuses a backup whose nixie.db is not a database, before it replaces a
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   await restore.catch(() => {});
@@ -360,6 +404,8 @@ test('it removes its staged copies and keeps the old databases when it cannot st
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   await restore.catch(() => {});
@@ -413,6 +459,8 @@ test('it keeps the old databases when the data volume is full', async () => {
     },
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   await restore.catch(() => {});
@@ -458,6 +506,8 @@ test('it finishes the restore again after one that stopped between the two datab
     storage: localDataStorage,
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   const files = await readdir(ctx.dataDir);
@@ -505,6 +555,8 @@ test('it replaces neither database when its restore marker cannot reach the disk
     },
     dataDir: ctx.dataDir,
     directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
   });
 
   await restore.catch(() => {});
@@ -515,4 +567,155 @@ test('it replaces neither database when its restore marker cannot reach the disk
   expect(restore).rejects.toThrowWithMessage(Error, 'EIO: i/o error, fsync');
   expect(log).toBe('the old log');
   expect(keys).toBe('the old keys');
+});
+
+test('it refuses a pair file that does not parse, and changes nothing', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'nixie.db'), 'the live log');
+  await writeFile(join(ctx.dataDir, 'keys.db'), 'the live keys');
+  await mkdir(getBackupSetDir(ctx.stagingDir, 1), { recursive: true });
+
+  await ctx.writeBackupDatabases();
+
+  await writeFile(join(ctx.directory, 'fetched-pair.json'), '{"format":2}');
+
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
+  });
+
+  await restore.catch(() => {});
+
+  const log = await Bun.file(join(ctx.dataDir, 'nixie.db')).text();
+  const dataFiles = await readdir(ctx.dataDir);
+  const staging = await readdir(ctx.stagingDir);
+
+  expect(restore).rejects.toThrowWithMessage(
+    Error,
+    /the fetched-pair.json in .* does not parse .*, so nixie restores nothing/u,
+  );
+
+  expect(log).toBe('the live log');
+  expect(dataFiles).toIncludeSameMembers(['nixie.db', 'keys.db', 'backup.lock']);
+  expect(staging).toStrictEqual(['000000000001']);
+});
+
+test('it empties staging of its sets, writes the restore note, and returns the pair', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeBackupDatabases();
+
+  await writeFile(
+    join(ctx.directory, 'fetched-pair.json'),
+    formatBackupFile({
+      format: 1,
+      fetchedAt: 1_700_000_000_000,
+      key: { snapshotID: 'a'.repeat(64), publish: 2, set: 5, writtenAt: 1_700_000_000_000 },
+      data: { snapshotID: 'b'.repeat(64), publish: 2, set: 4, writtenAt: 1_700_000_000_000 },
+      relation: 'older-data',
+    }),
+  );
+
+  await mkdir(getBackupSetDir(ctx.stagingDir, 1), { recursive: true });
+  await writeFile(join(getBackupSetDir(ctx.stagingDir, 1), 'complete'), '');
+  await mkdir(getBackupSetDir(ctx.stagingDir, 2), { recursive: true });
+  await writeFile(join(ctx.stagingDir, 'job.lock'), '');
+
+  const options = {
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
+  };
+
+  const restored = await restoreDataBackup(options);
+  const staging = await readdir(ctx.stagingDir);
+  const noteText = await Bun.file(join(ctx.stagingDir, 'restore-note.json')).text();
+  const dataFiles = await readdir(ctx.dataDir);
+
+  await restoreDataBackup(options);
+
+  const secondNoteText = await Bun.file(join(ctx.stagingDir, 'restore-note.json')).text();
+  const secondStaging = await readdir(ctx.stagingDir);
+
+  expect(restored).toMatchObject({ pair: { relation: 'older-data' } });
+  expect(staging).toIncludeSameMembers(['job.lock', 'restore-note.json']);
+
+  expect(restoreNoteSchema.parse(JSON.parse(noteText))).toStrictEqual({
+    format: 1,
+    restoredAt: 1_700_000_000_000,
+    keySnapshotID: 'a'.repeat(64),
+  });
+
+  expect(dataFiles).not.toContain('restore-incomplete');
+  expect(secondNoteText).toBe(noteText);
+  expect(secondStaging).toIncludeSameMembers(['job.lock', 'restore-note.json']);
+});
+
+test('it fails with the restore marker in place when a backup job pass holds the staging lock', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeBackupDatabases();
+
+  await mkdir(getBackupSetDir(ctx.stagingDir, 1), { recursive: true });
+  await writeFile(join(ctx.stagingDir, 'job.lock'), '');
+
+  const lock = claimFileLock(join(ctx.stagingDir, 'job.lock'), 'exclusive');
+
+  invariant(lock);
+
+  onTestFinished(() => {
+    lock.release();
+  });
+
+  const restore = restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
+  });
+
+  await restore.catch(() => {});
+
+  const dataFiles = await readdir(ctx.dataDir);
+  const staging = await readdir(ctx.stagingDir);
+
+  const log = startDatabase(join(ctx.dataDir, 'nixie.db'), { readonly: true });
+
+  onTestFinished(() => log.destroy());
+
+  const tables = await sql`select name from sqlite_schema where name = 'records'`.execute(log);
+
+  expect(restore).rejects.toThrowWithMessage(Error, /a backup job pass holds the staging lock/u);
+  expect(tables.rows).toStrictEqual([{ name: 'records' }]);
+  expect(dataFiles).toContain('restore-incomplete');
+  expect(staging).toIncludeSameMembers(['job.lock', '000000000001']);
+});
+
+test('it writes a note with no key snapshot for a directory without a pair file', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeBackupDatabases();
+
+  const restored = await restoreDataBackup({
+    storage: localDataStorage,
+    dataDir: ctx.dataDir,
+    directory: ctx.directory,
+    stagingDir: ctx.stagingDir,
+    clock: ctx.clock,
+  });
+
+  const note = await Bun.file(join(ctx.stagingDir, 'restore-note.json')).text();
+
+  expect(restored).toStrictEqual({ files: ['nixie.db', 'keys.db'], pair: null });
+
+  expect(note).toBe(
+    formatBackupFile({ format: 1, restoredAt: 1_700_000_000_000, keySnapshotID: null }),
+  );
 });
