@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { readWriterRow } from '../read-writer-row';
+import { readWriterRow } from '../writer/read-writer-row';
 import { startTestMemory } from './start-test-memory';
 import { writePlannedBatch } from './write-planned-batch';
 

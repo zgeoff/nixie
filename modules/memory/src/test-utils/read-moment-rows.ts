@@ -1,5 +1,5 @@
 import type { Kysely, Selectable } from 'kysely';
-import type { MomentTables } from '../moment-context';
+import type { MomentTables } from '../utils/moment-context';
 
 type Rows<Table extends keyof MomentTables> = readonly Selectable<MomentTables[Table]>[];
 

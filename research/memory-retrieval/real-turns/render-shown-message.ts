@@ -7,7 +7,7 @@ const messageSpans = z.array(z.object({ start: z.int(), end: z.int(), source: z.
 const imagesSchema = z.object({ images: z.array(z.unknown()) });
 const textLimit = 1000;
 
-// A copy of the rule in modules/memory/src/read-message-recall.ts that cuts a shown past message,
+// A copy of the rule in modules/memory/src/message/read-message-recall.ts that cuts a shown past message,
 // and of the owner text and image marker renderers in modules/sessions that it calls. Both take the
 // product's log record, which a plain export does not rebuild, so a change there needs the same
 // change here.

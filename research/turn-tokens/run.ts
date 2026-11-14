@@ -17,9 +17,9 @@ import { runCheckQuery } from '../../guests/conversation/src/check/run-check-que
 // @boundaries-ignore a spike imports the code it measures
 import { runTurn } from '../../guests/conversation/src/turn/run-turn';
 // @boundaries-ignore a spike imports the code it measures
-import { renderConsolidatorPrompt } from '../../modules/memory/src/render-consolidator-prompt';
+import { renderConsolidatorPrompt } from '../../modules/memory/src/consolidator/render-consolidator-prompt';
 // @boundaries-ignore a spike imports the code it measures
-import { renderWriterPrompt } from '../../modules/memory/src/render-writer-prompt';
+import { renderWriterPrompt } from '../../modules/memory/src/writer/render-writer-prompt';
 // @boundaries-ignore a spike imports the code it measures
 import { encodeInboxUUID } from '../../modules/sessions/src/inbox/encode-inbox-uuid';
 // @boundaries-ignore a spike imports the code it measures

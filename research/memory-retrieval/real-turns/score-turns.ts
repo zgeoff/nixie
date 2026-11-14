@@ -6,7 +6,7 @@ import type { TurnCase } from './build-turn-cases.ts';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 // @boundaries-ignore a spike imports the code it measures
-import type { MemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
+import type { MemoryIndex } from '../../../modules/memory/src/memory/start-memory-index.ts';
 import type { EncoderName, TurnEncoder } from './load-turn-encoder.ts';
 import { makeRandom } from './make-random.ts';
 import type { BackgroundMessage, RankConfig, TurnRanking } from './rank-turn.ts';

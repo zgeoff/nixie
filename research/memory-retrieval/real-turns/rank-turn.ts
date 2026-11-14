@@ -2,13 +2,13 @@
 // index, vector index and fusion with the shipped settings, to check the rebuilt turns against what
 // the log recorded. `rankTurn` runs the same steps with each setting open, for the sweeps.
 // @boundaries-ignore a spike imports the code it measures
-import { buildVectorQuery } from '../../../modules/memory/src/build-vector-query.ts';
+import { buildVectorQuery } from '../../../modules/memory/src/utils/build-vector-query.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { mergeRankings } from '../../../modules/memory/src/merge-rankings.ts';
+import { mergeRankings } from '../../../modules/memory/src/view/merge-rankings.ts';
 // @boundaries-ignore a spike imports the code it measures
-import type { MemoryIndex } from '../../../modules/memory/src/start-memory-index.ts';
+import type { MemoryIndex } from '../../../modules/memory/src/memory/start-memory-index.ts';
 // @boundaries-ignore a spike imports the code it measures
-import { startVectorIndex } from '../../../modules/memory/src/start-vector-index.ts';
+import { startVectorIndex } from '../../../modules/memory/src/view/start-vector-index.ts';
 // @boundaries-ignore a spike imports the code it measures
 import type { Encoder } from '../../../modules/memory/src/types.ts';
 import { match } from 'ts-pattern';

@@ -1,4 +1,4 @@
-import type { MomentRow } from '../read-moment-row';
+import type { MomentRow } from '../moment/read-moment-row';
 
 export function buildMockMomentRow(overrides: Partial<MomentRow> = {}): MomentRow {
   return {

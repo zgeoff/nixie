@@ -4,7 +4,7 @@ import type {
   SourceMessage,
   StagedWrite,
   WriterGate,
-} from '../writer-model';
+} from '../writer/writer-model';
 
 export function buildStubGate(): WriterGate {
   return {

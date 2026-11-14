@@ -1,4 +1,4 @@
-import type { MemoryProposal } from '../gate-context';
+import type { MemoryProposal } from '../gate/gate-context';
 import type { ProposalRequest } from './create-proposal';
 import { createProposal } from './create-proposal';
 import type { MemorySeederDeps } from './memory-seeder-deps';

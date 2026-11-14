@@ -1,0 +1,37 @@
+import { readRecordKeys } from '@heynixie/log';
+import type { Selectable } from 'kysely';
+import { z } from 'zod';
+import type { StoreParts } from '../types';
+import type { ConsolidationSummary, ConsolidationTables } from '../utils/memory-consolidations';
+import { decodeConsolidationSummary } from './decode-consolidation-summary';
+
+type ConsolidationRow = Selectable<ConsolidationTables['memory_consolidations']>;
+
+const summaryShares = z.array(z.strictObject({ itemID: z.string(), sealed: z.base64() }));
+
+export async function readConsolidationSummary(
+  parts: StoreParts,
+  run: ConsolidationRow,
+  now: number,
+): Promise<ConsolidationSummary | null> {
+  if (run.summary === null || run.summary_shares === null || (run.summary_lapse_at ?? 0) <= now) {
+    return null;
+  }
+
+  const shares = summaryShares.parse(JSON.parse(run.summary_shares));
+  const itemIDs = shares.map((share) => share.itemID);
+
+  const found = await readRecordKeys(parts.context.log, itemIDs);
+
+  const keys = new Map(
+    [...found].flatMap(([itemID, key]) => (key === null ? [] : [[itemID, key] as const])),
+  );
+
+  if (itemIDs.some((itemID) => !keys.has(itemID))) {
+    return null;
+  }
+
+  const sealed = { sealed: run.summary, shares };
+
+  return { text: await decodeConsolidationSummary(run.diff_id, sealed, keys), itemIDs };
+}

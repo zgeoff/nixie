@@ -1,10 +1,10 @@
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import type { MemoryProposal } from '../gate-context';
-import { readWriterRow } from '../read-writer-row';
-import { runWriterBatch } from '../run-writer-batch';
-import { writerConfigSchema } from '../writer-config-schema';
-import type { WriterSubject } from '../writer-model';
+import type { MemoryProposal } from '../gate/gate-context';
+import { writerConfigSchema } from '../utils/schema/writer-config-schema';
+import { readWriterRow } from '../writer/read-writer-row';
+import { runWriterBatch } from '../writer/run-writer-batch';
+import type { WriterSubject } from '../writer/writer-model';
 import { claimWriterLease } from './claim-writer-lease';
 import { createStubWriterSession } from './create-stub-writer-session';
 import type { TestMemory } from './start-test-memory';

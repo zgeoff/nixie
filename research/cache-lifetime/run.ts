@@ -15,7 +15,7 @@ import type { GuestFrame, InboxMessage } from '../../libs/wire/src/index';
 // @boundaries-ignore a spike imports the code it measures
 import { renderSystemMessage } from '../../libs/wire/src/index';
 // @boundaries-ignore the memory module's record kinds, which the memory tools' types need
-import '../../modules/memory/src/memory-record-kind';
+import '../../modules/memory/src/record/memory-record-kind';
 // @boundaries-ignore a spike imports the code it measures
 import { runTurn } from '../../guests/conversation/src/turn/run-turn';
 // @boundaries-ignore a spike imports the code it measures

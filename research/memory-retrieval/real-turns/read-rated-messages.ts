@@ -1,5 +1,5 @@
 // @boundaries-ignore a spike imports the code it measures
-import { buildVectorQuery } from '../../../modules/memory/src/build-vector-query.ts';
+import { buildVectorQuery } from '../../../modules/memory/src/utils/build-vector-query.ts';
 // @boundaries-ignore a spike imports the code it measures
 import type { Encoder } from '../../../modules/memory/src/types.ts';
 import { messageKeyPrefix } from './build-rating-sample.ts';

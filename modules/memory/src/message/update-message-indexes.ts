@@ -1,0 +1,39 @@
+import type { StoreParts } from '../types';
+import { readMessageEntries } from './read-message-entries';
+
+export function updateMessageIndexes(
+  parts: Pick<StoreParts, 'context' | 'messages'>,
+): Promise<void> {
+  const messages = parts.messages;
+
+  return messages.lock(async () => {
+    const read = await readMessageEntries(parts.context, messages.cursor.readThrough());
+
+    for (const entry of read.entries) {
+      await messages.index.update(entry);
+
+      messages.vectors?.update(entry);
+    }
+
+    messages.cursor.updateThrough(read.through);
+
+    await removeForgottenEntries(parts, read.entries);
+
+    if (read.entries.length > 0 && messages.vectors?.isReady() === true) {
+      await messages.vectors.waitForIdle();
+    }
+  });
+}
+
+async function removeForgottenEntries(
+  parts: Pick<StoreParts, 'messages'>,
+  entries: readonly { readonly itemID: string }[],
+): Promise<void> {
+  const cursor = parts.messages.cursor;
+
+  for (const entry of entries.filter((added) => cursor.isRemoved(Number(added.itemID)))) {
+    await parts.messages.index.remove(entry.itemID);
+
+    parts.messages.vectors?.remove(entry.itemID);
+  }
+}

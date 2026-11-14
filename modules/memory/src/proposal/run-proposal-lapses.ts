@@ -1,0 +1,34 @@
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { MemoryTables, StoreParts } from '../types';
+import { removeClosedProposalKeys } from '../utils/key/remove-closed-proposal-keys';
+
+export async function runProposalLapses(parts: StoreParts): Promise<number> {
+  const log = parts.context.log;
+
+  const due = await withWriteTransaction(log.writer, async (tx) => {
+    const rows = await tx
+      .$extendTables<MemoryTables>()
+      .selectFrom('memory_proposals')
+      .select(['proposal_id', 'thread'])
+      .where('status', '=', 'pending')
+      .where('lapse_at', '<=', parts.context.gate.clock.now())
+      .execute();
+
+    await writeRecordsInTransaction(
+      tx,
+      log,
+      rows.map((row) => ({
+        kind: 'memory.proposal_lapsed',
+        definitions: parts.context.definitions(),
+        ...(row.thread === null ? {} : { thread: row.thread }),
+        payload: { proposalID: row.proposal_id },
+      })),
+    );
+
+    return rows;
+  });
+
+  await removeClosedProposalKeys(parts);
+
+  return due.length;
+}

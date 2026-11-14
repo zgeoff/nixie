@@ -1,7 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import type { MessageSpan } from '../gate-context';
+import type { MessageSpan } from '../gate/gate-context';
 
 export interface OwnerMessageRecord {
   readonly thread: string;

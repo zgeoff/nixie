@@ -1,5 +1,5 @@
 // @boundaries-ignore a spike imports the code it measures
-import { splitContentWords } from '../../../modules/memory/src/split-content-words.ts';
+import { splitContentWords } from '../../../modules/memory/src/memory/split-content-words.ts';
 import type { TurnCase } from './build-turn-cases.ts';
 import type { Gold } from './score-turns.ts';
 

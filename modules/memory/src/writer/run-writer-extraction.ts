@@ -1,0 +1,147 @@
+import { renderPrompt } from '@heynixie/prompts';
+import { renderSessionMessages } from '@heynixie/sessions';
+import type { StepInput } from '@heynixie/tasks';
+import { buildStepRunID, waitAtFaultPoint } from '@heynixie/tasks';
+import { readShownItems } from '../item/read-shown-items';
+import { writerSubjects } from '../subject/writer-subjects';
+import { memoryWriterTaskID } from '../utils/memory-writer-task-id';
+import type { StagingHandle } from './create-writer-staging';
+import type { WriterBatch } from './read-writer-batch';
+import { renderShownText } from './render-shown-text';
+import type { SpeakerNames } from './render-writer-prompt';
+import { renderWriterPrompt } from './render-writer-prompt';
+import type { BatchMessage, StagedFlag, StagedWrite, WriterUsage } from './writer-model';
+import type { WriterParts } from './writer-parts';
+
+export interface WriterExtraction {
+  readonly writes: readonly StagedWrite[];
+
+  readonly flags: readonly StagedFlag[];
+
+  readonly usage: WriterUsage | null;
+
+  readonly shownTexts: ReadonlySet<string>;
+}
+
+export type ExtractionStep = Pick<StepInput, 'inbox' | 'lease' | 'signal' | 'stepKey' | 'wake'>;
+
+export async function runWriterExtraction(
+  parts: WriterParts,
+  batch: WriterBatch,
+  step: ExtractionStep,
+): Promise<WriterExtraction> {
+  if (batch.sources.size === 0) {
+    return { writes: [], flags: [], usage: null, shownTexts: new Set() };
+  }
+
+  const shown = await readShownItems(parts.store, {
+    text: [...batch.sources.values()].map((source) => source.text).join('\n'),
+    listTokens: parts.config.itemListTokens,
+    topItems: parts.config.topItems,
+    thread: memoryWriterTaskID,
+  });
+
+  const staged = parts.staging.open({
+    sources: batch.sources,
+    startedAt: parts.context.clock.now(),
+    shown: new Map(
+      shown.items.map((item) => [item.itemID, { version: item.version, subject: item.subject }]),
+    ),
+  });
+
+  const proposals = await parts.store.proposals.listPending({ subjects: writerSubjects });
+
+  const now = new Date(parts.context.clock.now());
+
+  const taskMessages = renderSessionMessages(
+    step.inbox,
+    { defaultZone: parts.defaultZone, now },
+    { messaging: parts.messaging, wake: step.wake },
+  );
+
+  const prompt = renderWriterPrompt({
+    ...shown,
+    proposals,
+    messages: buildBatchMessages(batch),
+    names: buildSpeakerNames(parts),
+    defaultZone: parts.defaultZone,
+    taskMessages,
+  });
+
+  const session = await runSession(parts, {
+    prompt,
+    signal: step.signal,
+    stepRunID: buildStepRunID(step),
+    staged,
+  });
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('writer.batch.extracted', { kind: 'task', id: memoryWriterTaskID });
+  }
+
+  return {
+    ...session,
+    shownTexts: new Set([...shown.items.map((item) => item.text), ...staged.readRecalledTexts()]),
+  };
+}
+
+function buildBatchMessages(batch: WriterBatch): readonly BatchMessage[] {
+  return batch.entries.flatMap((entry) => {
+    if (entry.text === null) {
+      return [];
+    }
+
+    const shown =
+      entry.role === 'owner'
+        ? [renderShownText(entry.text, entry.spans), ...(entry.imageMarkers ?? [])].join('\n')
+        : entry.text;
+
+    return [
+      {
+        sequence: entry.sequence,
+        role: entry.role,
+        shown,
+        recordedAt: entry.recordedAt,
+        timeZone: entry.timeZone,
+      },
+    ];
+  });
+}
+
+function buildSpeakerNames(parts: WriterParts): SpeakerNames {
+  return { owner: parts.ownerName, assistant: parts.assistantName };
+}
+
+interface SessionRequest {
+  readonly prompt: string;
+  readonly signal: AbortSignal;
+  readonly stepRunID: string;
+  readonly staged: StagingHandle;
+}
+
+async function runSession(
+  parts: WriterParts,
+  session: SessionRequest,
+): Promise<Pick<WriterExtraction, 'writes' | 'flags' | 'usage'>> {
+  try {
+    const usage = await parts.model.runSession({
+      systemPrompt: renderPrompt(
+        'writer',
+        {
+          persona: parts.getPersona(),
+          owner: { name: parts.ownerName },
+          assistant: { name: parts.assistantName },
+        },
+        parts.getPrompts(),
+      ),
+      prompt: session.prompt,
+      signal: session.signal,
+      stepRunID: session.stepRunID,
+    });
+
+    return { writes: session.staged.close(), flags: session.staged.readFlags(), usage };
+  } catch (error) {
+    session.staged.close();
+    throw error;
+  }
+}

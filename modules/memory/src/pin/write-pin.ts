@@ -1,0 +1,106 @@
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { Kysely, Transaction } from 'kysely';
+import { readDeliverableItems } from '../item/read-deliverable-items';
+import type { VersionExtras } from '../memory/write-memory-version';
+import { readPinnedItems } from '../pinned/read-pinned-items';
+import { requirePinnedCoreRoom } from '../pinned/require-pinned-core-room';
+import type { MemoryTables, PinRequest, StoreParts } from '../types';
+import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
+import { MemoryStateError } from '../utils/error/memory-state-error';
+import { StaleVersionError } from '../utils/error/stale-version-error';
+import type { ItemEnd } from '../utils/item/is-item-lapsed';
+import { isItemLapsed } from '../utils/item/is-item-lapsed';
+
+export type PinExtras = Pick<VersionExtras, 'requireInTransaction' | 'approval'>;
+
+export function writePin(
+  parts: StoreParts,
+  request: PinRequest,
+  extras: PinExtras = {},
+): Promise<void> {
+  const log = parts.context.log;
+  const approval = extras.approval;
+
+  return parts.lock(() =>
+    withWriteTransaction(log.writer, async (tx) => {
+      await extras.requireInTransaction?.(tx.$extendTables<MemoryTables>());
+      await request.writeInTransaction?.(tx);
+
+      await requirePinnableItem(parts, tx, request);
+
+      await writeRecordsInTransaction(tx, log, [
+        ...(approval === undefined ? [] : [approval.record]),
+        {
+          kind: 'memory.pinned',
+          definitions: parts.context.definitions(),
+          ...(request.provenance.thread === undefined ? {} : { thread: request.provenance.thread }),
+          ...(approval === undefined ? {} : { approval: approval.envelope }),
+          payload: { itemID: request.itemID, isPinned: request.isPinned },
+        },
+      ]);
+    }),
+  );
+}
+
+async function requirePinnableItem(
+  parts: StoreParts,
+  tx: Transaction<unknown>,
+  request: PinRequest,
+): Promise<void> {
+  const db = tx.$extendTables<MemoryTables>();
+
+  const item = await db
+    .selectFrom('memory_items')
+    .select(['state', 'version', 'until'])
+    .where('item_id', '=', request.itemID)
+    .executeTakeFirst();
+
+  if (item === undefined || item.state === 'forgetting' || item.state === 'forgotten') {
+    throw new MemoryItemNotFoundError(request.itemID);
+  }
+
+  if (request.version !== undefined && request.version !== item.version) {
+    throw new StaleVersionError({ itemID: request.itemID, version: request.version }, item.version);
+  }
+
+  if (request.isPinned) {
+    await requireItemJoinsCore(parts, db, { itemID: request.itemID, ...item });
+  }
+}
+
+interface PinnedItem extends ItemEnd {
+  readonly itemID: string;
+}
+
+async function requireItemJoinsCore(
+  parts: StoreParts,
+  db: Kysely<MemoryTables>,
+  item: PinnedItem,
+): Promise<void> {
+  const state = isItemLapsed(item, parts.context.gate.clock.now()) ? 'retired' : item.state;
+
+  if (state !== 'active') {
+    throw new MemoryStateError(item.itemID, 'pin', state);
+  }
+
+  await requireItemCoreRoom(parts, db, item.itemID);
+}
+
+async function requireItemCoreRoom(
+  parts: StoreParts,
+  db: Kysely<MemoryTables>,
+  itemID: string,
+): Promise<void> {
+  const pinned = await readPinnedItems(parts, db);
+
+  const [readable] = await readDeliverableItems(parts, {
+    itemIDs: [itemID],
+    states: ['active'],
+    includeHistory: false,
+    db,
+  });
+
+  if (readable !== undefined) {
+    requirePinnedCoreRoom(parts.context, pinned, readable);
+  }
+}
