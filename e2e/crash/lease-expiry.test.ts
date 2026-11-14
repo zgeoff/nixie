@@ -138,6 +138,8 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
 
   await nixie.ready;
 
+  await ctx.nixie.markKnownContact('team');
+
   ctx.nixie.model.addReplies(
     {
       toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } },

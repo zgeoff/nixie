@@ -35,10 +35,12 @@ import {
 import { z } from 'zod';
 import type { NixieOperationArgs } from '../build-nixie-operation-schemas';
 import { getSandboxRootDir } from '../get-sandbox-root-dir';
+import { approveStarterRules } from './approve-starter-rules';
 import { buildAdvanceHelpers } from './build-advance-helpers';
 import { readDataFiles } from './read-data-files';
 import { readTestBundle } from './read-test-bundle';
 import { readTestRecords } from './read-test-records';
+import { runHostCommand } from './run-host-command';
 import type { AdvanceSteps, MatchRecord, RecoveredState, TestRecord } from './types';
 import { waitForMatch } from './wait-for-match';
 import type { BootFiles } from './write-boot-files';
@@ -117,6 +119,9 @@ export interface SpawnedNixie extends BootFiles {
 
   readonly readWriterEpoch: () => Promise<number | null>;
 
+  // Marks a destination as a known contact, which lets a send to it pass the destination limits.
+  readonly markKnownContact: (destination: string) => Promise<void>;
+
   readonly waitForQueueCheck: () => Promise<void>;
 
   readonly waitForModelCalls: (count: number) => Promise<void>;
@@ -194,9 +199,16 @@ export async function startSpawnedNixie(options: SpawnedNixieOptions = {}): Prom
 
   const recovery = startRecoveryReads(crashHarness, launch, reader);
 
+  const startProcess = (faultPoints?: readonly FaultPointArm[]): SpawnedNixieProcess =>
+    options.release === undefined ? recovery.start(faultPoints) : startRelease(launch, stack);
+
   const harness: SpawnedNixieHarness = {
     now: crashHarness.now,
-    start: options.release === undefined ? recovery.start : () => startRelease(launch, stack),
+    start: (faultPoints) => {
+      const started = startProcess(faultPoints);
+
+      return withStarterApproval(started, files.configPath);
+    },
     advance: crashHarness.advance,
   };
 
@@ -208,6 +220,9 @@ export async function startSpawnedNixie(options: SpawnedNixieOptions = {}): Prom
     ...reader,
     readRecoveredStates: recovery.readRecoveredStates,
     waitForRecord: (matches) => waitForMatch(reader.readRecords, matches, recordTimeoutMs),
+    markKnownContact: async (destination) => {
+      await runHostCommand(files.configPath, ['contacts', 'mark-known', destination]);
+    },
     waitForQueueCheck: () => waitForQueueCheck(reader.readRecords),
     waitForModelCalls: (count) => waitForModelCalls(doubles.model, count),
     ...buildAdvanceHelpers(harness, reader.readRecords),
@@ -262,6 +277,7 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
     ],
     secrets: [],
     definitions: [],
+    hasStarterRules: true,
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
     ...(isWriterOn
       ? {
@@ -455,6 +471,20 @@ function startRelease(launch: Launch, stack: AsyncDisposableStack): SpawnedNixie
   void Promise.allSettled([ready]);
 
   return { ...started, ready };
+}
+
+// A start that finds the first seed's proposal still pending approves it before its ready settles,
+// so a test sends its first message under the rules a deployment starts with.
+function withStarterApproval(nixie: SpawnedNixieProcess, configPath: string): SpawnedNixieProcess {
+  const ready = (async () => {
+    await nixie.ready;
+    await approveStarterRules(configPath);
+  })();
+
+  // A test that expects the process to refuse its start never waits for ready.
+  void Promise.allSettled([ready]);
+
+  return { ...nixie, ready };
 }
 
 // Each start of nixie checks its action queue with an action of its own, which reaches every

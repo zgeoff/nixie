@@ -23,6 +23,7 @@ test('it sends once when nixie dies after the action queued, before any attempt'
   void first.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
+  await ctx.nixie.markKnownContact('team');
 
   ctx.nixie.model.addReplies({
     toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } },
@@ -108,6 +109,7 @@ test('it leaves the action unknown and calls no provider when nixie dies after t
   void first.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
+  await ctx.nixie.markKnownContact('team');
 
   ctx.nixie.model.addReplies({
     toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } },
@@ -187,6 +189,7 @@ test('it leaves the action unknown and calls the provider once when nixie dies b
   void first.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
+  await ctx.nixie.markKnownContact('team');
 
   ctx.nixie.model.addReplies({
     toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } },
@@ -273,6 +276,7 @@ test('it returns the done action to the rerun and sends once when nixie dies bef
   first.release(arrival);
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
+  await ctx.nixie.markKnownContact('team');
 
   ctx.nixie.model.addReplies(
     { toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } } },

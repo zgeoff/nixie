@@ -16,6 +16,7 @@ test('it resumes the retry schedule across a restart and fails the action on the
 
   await ctx.nixie.waitForQueueCheck();
   await first.request('arm', { point: 'attempt.result.after', kind: 'action' });
+  await ctx.nixie.markKnownContact('team');
 
   ctx.nixie.model.addReplies(
     { toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } } },
@@ -139,6 +140,7 @@ test('it marks a retry unknown when nixie dies after its attempt record, and nev
   await first.ready;
 
   await ctx.nixie.waitForQueueCheck();
+  await ctx.nixie.markKnownContact('team');
 
   ctx.nixie.model.addReplies(
     { toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } } },

@@ -125,7 +125,7 @@ test('it lists a new version beside the version in force with the untyped token,
     '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n' +
     'Fetch the table from https://tides.example.net/today.\n';
 
-  await writeFile(join(definitions, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(definitions, 'nixie.yaml'), 'format: 3\n');
   await mkdir(join(definitions, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(definitions, 'skills', 'tide-tables', 'SKILL.md'), inForceText);
 
@@ -228,7 +228,7 @@ test('it approves your edited files in place of the proposal, and puts them in f
 
   invariant('skillHash' in edited);
 
-  await writeFile(join(definitions, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(definitions, 'nixie.yaml'), 'format: 3\n');
 
   ctx.guest.addReplies(
     {
@@ -297,7 +297,7 @@ test("it resolves a conflict by keeping nixie's version, which stays in force wi
   const inForceText = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
   const proposedText = `${inForceText}By port.\n`;
 
-  await writeFile(join(definitions, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(definitions, 'nixie.yaml'), 'format: 3\n');
   await mkdir(join(definitions, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(definitions, 'skills', 'tide-tables', 'SKILL.md'), inForceText);
 
@@ -396,7 +396,7 @@ test("it resolves a skill nixie wrote by keeping the definitions' version, which
 
   invariant('skillHash' in inForce);
 
-  await writeFile(join(definitions, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(definitions, 'nixie.yaml'), 'format: 3\n');
   await mkdir(join(definitions, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(definitions, 'skills', 'tide-tables', 'SKILL.md'), inForceText);
 

@@ -10,6 +10,7 @@ import { startInProcessNixie } from './test-utils/start-in-process-nixie';
 
 async function setupTest() {
   const nixie = await startInProcessNixie({
+    hasStarterRules: false,
     seedData: async (files) => {
       const definitions = join(dirname(files.configPath), 'definitions');
 
@@ -110,7 +111,10 @@ test.each([
   ['nixie', [['ask-mail', '**Deny** `mail.send`.']]],
   ['repo', [['ask-mail', '**Ask** before `mail.reply` or `mail.send`.']]],
 ])('it resolves a conflict with --keep %s and puts that version in force', async (keep, rules) => {
-  const nixie = await startInProcessNixie({ seedData: (files) => seedRuleConflict(files) });
+  const nixie = await startInProcessNixie({
+    hasStarterRules: false,
+    seedData: (files) => seedRuleConflict(files),
+  });
 
   await nixie.waitForLogEvent('ready');
 
@@ -149,7 +153,6 @@ test.each([
     'a resolve with a second rule ID',
     ['rules', 'resolve', 'deny-shell', 'allow-web', '--keep', 'repo'],
   ],
-  ['a rejection with no --reason', ['proposals', 'reject', 'p-rule-1']],
   ['an answer with no proposal ID', ['proposals', 'approve']],
 ])('it refuses %s while it reads the arguments', async (_name, argv) => {
   const io = { log: mock(), print: mock(), waitForSignal: mock() };

@@ -414,6 +414,13 @@ test("it gives each turn a step token of the step's run identity, and stops it o
       session: {
         key: expect.toBeString(),
         invalidatedThrough: 0,
+        policy: {
+          context: 'conversation',
+          definitionID: null,
+          onBehalfOf: [],
+          sources: [],
+          turnMessageSequence: expect.toBeNumber(),
+        },
         reserveImages: expect.any(Function),
         endSilently: expect.any(Function),
       },
@@ -425,6 +432,13 @@ test("it gives each turn a step token of the step's run identity, and stops it o
       session: {
         key: expect.toBeString(),
         invalidatedThrough: 0,
+        policy: {
+          context: 'conversation',
+          definitionID: null,
+          onBehalfOf: [],
+          sources: [],
+          turnMessageSequence: expect.toBeNumber(),
+        },
         reserveImages: expect.any(Function),
         endSilently: expect.any(Function),
       },

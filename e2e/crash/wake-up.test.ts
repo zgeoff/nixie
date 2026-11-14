@@ -125,6 +125,8 @@ test('it wakes the conversation for an action outcome written just before nixie 
 
   await first.ready;
 
+  await ctx.nixie.markKnownContact('team');
+
   ctx.nixie.model.addReplies(
     { toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } } },
     { text: 'Queued.' },
