@@ -765,6 +765,24 @@
         "@modelcontextprotocol/client": "catalog:",
       },
     },
+    "modules/turn-inputs": {
+      "name": "@heynixie/turn-inputs",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/models": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+      },
+    },
     "research/cache-lifetime": {
       "name": "@heynixie/spike-cache-lifetime",
       "version": "0.0.0",
@@ -1310,6 +1328,8 @@
     "@heynixie/testing": ["@heynixie/testing@workspace:libs/testing"],
 
     "@heynixie/tools": ["@heynixie/tools@workspace:modules/tools"],
+
+    "@heynixie/turn-inputs": ["@heynixie/turn-inputs@workspace:modules/turn-inputs"],
 
     "@heynixie/web": ["@heynixie/web@workspace:apps/web"],
 
