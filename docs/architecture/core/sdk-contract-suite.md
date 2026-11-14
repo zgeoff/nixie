@@ -56,9 +56,9 @@ watchdog to fire.
   loads a mod, and the probe keeps that option checked. Its mods live in the guest's
   [mods](../../../guests/conversation/src/sdk-contract/mods/) folder.
 - `tool-call-wait`: with the per-server `timeout` that the conversation guest sets on an HTTP tool
-  server at 2 seconds, a tool that returns after 1 second gives the model its result, and a tool
-  that returns after 3 seconds gives an error result that says the call timed out. The `agent-sdk`
-  harness declares its tool-call wait only because this probe passes.
+  server, a tool that returns inside the timeout gives the model its result, and a tool that returns
+  after the timeout gives an error result that says the call timed out. The `agent-sdk` harness
+  declares its tool-call wait only because this probe passes.
   [Conversation turns](conversation-turns.md) hold the wait.
 - `model-grant`: a turn whose only credential is the placeholder that `buildModelGrant` sets, in
   either auth header's variable, gets its answer through the broker, because the broker replaces the

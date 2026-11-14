@@ -44,10 +44,10 @@ export async function runToolCallWaitProbe(
   }
 }
 
-// oxlint-disable-next-line typescript/no-deprecated -- the high-level McpServer needs a zod schema per tool, and the probe lists one plain schema as nixie's endpoint does
 export const toolCallWaitProbeToolName = 'mcp__nixie__wait_then_answer';
 export const toolCallWaitProbeText = 'the lamp oil is full';
 
+// oxlint-disable-next-line typescript/no-deprecated -- the high-level McpServer needs a zod schema per tool, and the probe lists one plain schema as nixie's endpoint does
 function createWaitingServer(toolDelayMs: number): Server {
   // oxlint-disable-next-line typescript/no-deprecated -- as above
   const server = new Server({ name: 'nixie', version: '0.0.0' }, { capabilities: { tools: {} } });
