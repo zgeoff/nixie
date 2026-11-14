@@ -3,8 +3,11 @@ import { readQueryRows } from '@heynixie/db';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { nixiePausedCodec } from './nixie-paused-codec';
+import { recoveryStartedCodec } from './recovery-started-codec';
 import { removeRecordKey } from './remove-record-key';
 import { runProjectionRebuild } from './run-projection-rebuild';
+import { taskExemptedCodec } from './task-exempted-codec';
 import { startTestLog } from './test-utils/start-test-log';
 import { writeRecords } from './write-records';
 
@@ -106,4 +109,70 @@ test('it refuses to rebuild under a stale writer epoch and leaves the projection
 
   expect(rebuild).rejects.toMatchObject({ name: 'StaleWriterError' });
   expect(threads.rows).toStrictEqual([{ thread: 'conversation' }]);
+});
+
+test('it folds the pause, the exemptions and the recoveries back to the same rows', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:aa11' };
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'nixie.paused',
+      definitions,
+      payload: nixiePausedCodec.encode({ cause: 'owner', recoveryID: null, by: 'session-a' }),
+    },
+    {
+      kind: 'nixie.task_exempted',
+      definitions,
+      payload: taskExemptedCodec.encode({ taskID: 'task-a', by: 'session-a' }),
+    },
+    {
+      kind: 'nixie.task_exempted',
+      definitions,
+      payload: taskExemptedCodec.encode({ taskID: 'task-b', by: 'session-a' }),
+    },
+    {
+      kind: 'recovery.started',
+      definitions,
+      payload: recoveryStartedCodec.encode({
+        recoveryID: 'recovery-a',
+        restoredAt: 5,
+        backupTakenAt: 4,
+        toCheck: [
+          { taskID: 'task-a', stateAtBackup: 'running', wasRunning: true, pendingActions: 1 },
+        ],
+      }),
+    },
+  ]);
+
+  const readTables = sql`select
+    (select json_group_array(json_array(id, cause, recovery_id, paused_sequence))
+      from nixie_pause) as pause,
+    (select json_group_array(json_array(task_id, exempt_sequence))
+      from (select * from pause_exemptions order by task_id)) as exemptions,
+    (select json_group_array(json_array(recovery_id, restored_at, backup_taken_at, started_sequence))
+      from recoveries) as recoveries,
+    (select json_group_array(json_array(sequence, projection, row_key, row))
+      from (select * from projection_changes order by sequence, projection, row_key)) as changes`;
+
+  const live = await readTables.execute(ctx.writer.db);
+
+  await sql`delete from projection_changes; delete from recoveries;
+    delete from pause_exemptions; delete from nixie_pause`.execute(ctx.writer.db);
+
+  await runProjectionRebuild(ctx.log);
+
+  const folded = await readTables.execute(ctx.writer.db);
+
+  expect(live.rows).toStrictEqual([
+    {
+      pause: '[[1,"owner",null,1]]',
+      exemptions: '[["task-a",2],["task-b",3]]',
+      recoveries: '[["recovery-a",5,4,4]]',
+      changes: expect.any(String),
+    },
+  ]);
+
+  expect(folded.rows).toStrictEqual(live.rows);
 });

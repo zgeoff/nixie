@@ -59,6 +59,10 @@ export type {
   JSONObject,
   JSONValue,
   Log,
+  Pause,
+  PauseCause,
+  PauseLog,
+  TaskToCheck,
   LogRecord,
   LogTables,
   Projection,
@@ -81,3 +85,7 @@ export { writeRecords } from './write-records';
 export { writeRecordsInTransaction } from './write-records-in-transaction';
 export { WriterLockHeldError } from './writer-lock-held-error';
 export { buildEnvelopeRecord } from './build-envelope-record';
+export { exemptTaskInTransaction } from './exempt-task-in-transaction';
+export { pauseNixieInTransaction } from './pause-nixie-in-transaction';
+export { readPause } from './read-pause';
+export { resumeNixieInTransaction } from './resume-nixie-in-transaction';

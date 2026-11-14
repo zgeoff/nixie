@@ -14,6 +14,7 @@
     "@heynixie/async": "workspace:*",
     "@heynixie/clock": "workspace:*",
     "@heynixie/db": "workspace:*",
+    "@heynixie/task-control": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "@zgeoff/std": "catalog:",
     "kysely": "catalog:",

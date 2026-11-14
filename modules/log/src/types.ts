@@ -1,5 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import type { CheckedTables, MigrationReport } from '@heynixie/db';
+import type { TaskState } from '@heynixie/task-control';
 import type { Generated, Kysely, Selectable, Transaction } from 'kysely';
 
 export interface Writer {
@@ -110,6 +111,10 @@ export interface Approval {
 
 export interface RecordKinds {
   log_reset: true;
+  'nixie.paused': true;
+  'nixie.resumed': true;
+  'nixie.task_exempted': true;
+  'recovery.started': true;
 }
 
 export type RecordKind = keyof RecordKinds;
@@ -224,6 +229,42 @@ interface ProjectionChangeRow {
   readonly row: string | null;
 }
 
+export type PauseCause = 'restore' | 'owner' | 'spending';
+
+export interface Pause {
+  readonly cause: PauseCause;
+  readonly recoveryID: string | null;
+}
+
+export interface TaskToCheck {
+  readonly taskID: string;
+  readonly stateAtBackup: TaskState;
+  readonly wasRunning: boolean;
+  readonly pendingActions: number;
+}
+
+// The log that writeRecordsInTransaction reads.
+export type PauseLog = Log;
+
+interface NixiePauseRow {
+  readonly id: number;
+  readonly cause: string;
+  readonly recovery_id: string | null;
+  readonly paused_sequence: number;
+}
+
+interface PauseExemptionRow {
+  readonly task_id: string;
+  readonly exempt_sequence: number;
+}
+
+interface RecoveryRow {
+  readonly recovery_id: string;
+  readonly restored_at: number;
+  readonly backup_taken_at: number;
+  readonly started_sequence: number;
+}
+
 interface RecordAttachmentRow {
   readonly sequence: number;
   readonly position: number;
@@ -243,6 +284,9 @@ export type LogTables = CheckedTables<
     threads: ThreadRow;
     projection_changes: ProjectionChangeRow;
     record_attachments: RecordAttachmentRow;
+    nixie_pause: NixiePauseRow;
+    pause_exemptions: PauseExemptionRow;
+    recoveries: RecoveryRow;
   }>
 >;
 
