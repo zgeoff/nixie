@@ -59,10 +59,13 @@ test('it runs each check in the check guest on the checker role profile', async 
   expect(ctx.host.guest.checks).toStrictEqual([
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-test-checker',
         baseURL: expect.toStartWith('https://checker.example.test'),
         effort: 'low',
         authHeader: 'x-api-key',
+        contextTokens: null,
+        cacheTTL: '5m',
       },
       systemPrompt: 'You check one candidate memory.',
       input: '<owner_message>\nI take my coffee black\n</owner_message>',

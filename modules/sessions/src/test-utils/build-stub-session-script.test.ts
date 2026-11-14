@@ -58,7 +58,7 @@ test('it answers a retry that resumes where the session was and carries the refu
         sessionID: expect.toBeString(),
         messageID: expect.toBeString(),
       },
-      subtype: 'success',
+      outcome: 'finished',
       stopReason: 'end_turn',
       turns: 1,
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },

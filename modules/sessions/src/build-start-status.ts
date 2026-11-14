@@ -10,12 +10,12 @@ export function buildStartStatus(): StatusEntry {
 }
 
 function pickStartName(start: SessionStart): string {
-  return start.kind === 'rebuild' ? `rebuild:${start.reason}` : start.kind;
+  return start.kind === 'rebuild' ? `rebuild:${start.reason ?? 'unkept'}` : start.kind;
 }
 
 const historyLine = 'Earlier history is in the event log.';
 
-type RebuildReason = Extract<SessionStart, { kind: 'rebuild' }>['reason'];
+type RebuildReason = NonNullable<Extract<SessionStart, { kind: 'rebuild' }>['reason']>;
 
 const rebuildLines: Readonly<Record<RebuildReason, string>> = {
   lost: 'Start: a rebuild, because the earlier session was lost.',
@@ -34,5 +34,10 @@ function renderStartLine(start: SessionStart): string {
     return `Start: after a compaction. The summary below is yours, written as the earlier session closed, and it covers every turn of that session. ${historyLine}`;
   }
 
-  return `${rebuildLines[start.reason]} ${historyLine}`;
+  const line =
+    start.reason === null
+      ? 'Start: a rebuild, because the earlier session was not kept.'
+      : rebuildLines[start.reason];
+
+  return `${line} ${historyLine}`;
 }

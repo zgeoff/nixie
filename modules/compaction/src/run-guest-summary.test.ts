@@ -1,10 +1,12 @@
 import { expect, test } from 'bun:test';
+import { bindHarness } from '@heynixie/models';
+import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildMockSummarizeFrame } from '@heynixie/wire/test-utils';
 import { runGuestSummary } from './run-guest-summary';
 
 function setupTest() {
-  return { sandboxes: buildStubSandboxes() };
+  return { sandboxes: buildStubSandboxes(), harness: bindHarness(buildMockModelProfile()) };
 }
 
 test('it sends the summarize frame and returns the summary the guest reports', async () => {
@@ -17,6 +19,7 @@ test('it sends the summarize frame and returns the summary the guest reports', a
   const frame = buildMockSummarizeFrame();
 
   const summary = await runGuestSummary({
+    harness: ctx.harness,
     sandbox,
     command: { argv: ['guest'], env: {} },
     frame,
@@ -54,6 +57,7 @@ test('it fails with the guest failure when the guest reports no summary', async 
 
   expect(
     runGuestSummary({
+      harness: ctx.harness,
       sandbox,
       command: { argv: ['guest'], env: {} },
       frame: buildMockSummarizeFrame(),
@@ -75,6 +79,7 @@ test('it fails with the abort reason and sends no summary frame when the signal 
 
   expect(
     runGuestSummary({
+      harness: ctx.harness,
       sandbox,
       command: { argv: ['guest'], env: {} },
       frame: buildMockSummarizeFrame(),

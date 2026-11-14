@@ -1,11 +1,10 @@
 import type { HarnessID } from '@heynixie/wire';
+import type { AgentSDKProfile } from './agent-sdk-harness-definition';
 import type { modelRoles } from './model-roles';
 
 export type ModelRole = (typeof modelRoles)[number];
 
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
-
-type CacheTTL = '5m' | '1h';
 
 export interface PriceRates {
   readonly input: number;
@@ -24,24 +23,18 @@ export interface ModelPrices extends PriceRates {
   readonly longPrompt?: LongPromptPrices;
 }
 
+// The 6 fields every harness's profile has, with one meaning on each.
 export interface ModelProfile {
   readonly id: string;
   readonly harness: HarnessID;
   readonly baseURL: string;
-
   readonly credential: string;
-  readonly authHeader: 'bearer' | 'x-api-key';
   readonly model: string;
-  readonly effort: ReasoningEffort;
-
-  readonly providerPin: string | null;
-
-  readonly contextTokens: number | null;
-
-  readonly cacheTTL: CacheTTL;
-
   readonly prices: ModelPrices | null;
 }
+
+// The union of each definition's profile type.
+export type HarnessProfile = AgentSDKProfile;
 
 export interface SelectableModel {
   readonly name: string;
@@ -56,8 +49,11 @@ export interface TaskRunLimits {
   readonly dollars: number;
 }
 
-export interface ModelsConfig {
-  readonly profiles: Readonly<Record<string, ModelProfile>>;
+// A profile with the ID that its config key gave it.
+type WithID<Profile extends ModelProfile> = { readonly id: string } & Omit<Profile, 'id'>;
+
+export interface ModelsConfig<Profile extends ModelProfile = HarnessProfile> {
+  readonly profiles: Readonly<Record<string, WithID<Profile>>>;
   readonly roles: Readonly<Partial<Record<ModelRole, string>>> & { readonly conversation: string };
   readonly selectable: readonly SelectableModel[];
   readonly limits: {
@@ -70,7 +66,7 @@ export interface ModelSecrets {
 }
 
 export interface ResolvedProfile {
-  readonly profile: ModelProfile;
+  readonly profile: HarnessProfile;
 
   readonly credential: string | null;
 }

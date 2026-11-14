@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { SecretSpec } from '@heynixie/sandbox';
+import type { Harness } from './harness';
 import type { ResolvedProfile } from './types';
 
 const secretPrefix = 'nixie-model-';
@@ -8,13 +9,13 @@ const secretPrefix = 'nixie-model-';
 // the digest and the name keeps one length for every profile.
 const nameLength = 31;
 
-export function deriveModelSecret(resolved: ResolvedProfile): SecretSpec {
+export function deriveModelSecret(resolved: ResolvedProfile, harness: Harness): SecretSpec {
   const host = new URL(resolved.profile.baseURL).hostname;
 
   // A credential nixie holds goes into the name, because the sandbox backend keeps a granted secret
   // under its name and nixie cannot replace its value. A credential the backend holds stays out, so
   // a rotation replaces the value in place under the same name.
-  const parts = [resolved.profile.id, resolved.profile.authHeader, host];
+  const parts = [resolved.profile.id, harness.secretHeader, host];
 
   const digest = createHash('sha256')
     .update([...parts, ...(resolved.credential === null ? [] : [resolved.credential])].join('\n'))
@@ -25,6 +26,6 @@ export function deriveModelSecret(resolved: ResolvedProfile): SecretSpec {
     name: `${secretPrefix}${digest}`,
     value: resolved.credential,
     host,
-    header: resolved.profile.authHeader,
+    header: harness.secretHeader,
   };
 }

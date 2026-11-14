@@ -10,7 +10,7 @@ const toolUseSchema = z.object({ id: z.string(), name: z.string() }).readonly();
 const assistantFrameSchema = z
   .object({
     type: z.literal('assistant'),
-    messageID: z.uuid(),
+    messageID: z.string().min(1),
     text: z.string(),
     toolUses: z.array(toolUseSchema).readonly(),
     summary: z.string().optional(),
@@ -40,11 +40,24 @@ const contextSchema = z
   })
   .readonly();
 
+// finished: the model ended the turn. limit: the guest stopped at the model-call limit.
+// interrupted: an interrupt frame stopped it. overflow: the context passed the model's window.
+// stopped: any other end, such as a refusal or an output cap.
+export const turnOutcomeSchema = z.enum([
+  'finished',
+  'stopped',
+  'limit',
+  'interrupted',
+  'overflow',
+]);
+
+export type TurnOutcome = z.infer<typeof turnOutcomeSchema>;
+
 const endedFrameSchema = z
   .object({
     type: z.literal('ended'),
-    boundary: sessionPointSchema,
-    subtype: z.string(),
+    outcome: turnOutcomeSchema,
+    boundary: sessionPointSchema.optional(),
     stopReason: z.string().nullable(),
     isError: z.boolean().optional(),
     terminalReason: z.string().optional(),

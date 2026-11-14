@@ -89,32 +89,39 @@ async function runTokenTurn(
   const hasMore = input.inbox.length > opening.batch.records.length;
 
   try {
+    const capabilities = run.harness.capabilities;
+
     const turn = await runGuestTurn({
+      harness: run.harness,
       sandbox: run.sandbox,
       command: run.command,
       turn: {
         type: 'turn',
         profile: run.turnProfile,
         tools: { url, token: plan.token },
-        resume: plan.resume,
+        ...(run.harness.session === null ? {} : { resume: plan.resume }),
         systemPrompt: plan.systemPrompt,
-        limits: { modelCalls: run.modelCallLimit ?? null, toolCallWaitMs: run.toolCallWaitMs },
+        limits: {
+          modelCalls: capabilities.has('turn-limit') ? (run.modelCallLimit ?? null) : null,
+          toolCallWaitMs: run.harness.toolCallWaitMs,
+        },
         input: buildTurnInput(opening.batch.messages, [...plan.preamble, note?.text ?? null, held]),
       },
-      messages: hasMore
-        ? []
-        : readLiveInbox(run.context, {
-            taskID: input.taskID,
-            sent,
-            signal: live.signal,
-            times: plan.times,
-            view: plan.view,
-            images: opening.images,
-            silence: plan.silence,
-            log: run.log,
-          }),
+      messages:
+        hasMore || !capabilities.has('live-messages')
+          ? []
+          : readLiveInbox(run.context, {
+              taskID: input.taskID,
+              sent,
+              signal: live.signal,
+              times: plan.times,
+              view: plan.view,
+              images: opening.images,
+              silence: plan.silence,
+              log: run.log,
+            }),
       signal: plan.signal,
-      interrupt: input.interrupt,
+      ...(capabilities.has('interrupt') ? { interrupt: input.interrupt } : {}),
       readRecallMark: () => readTurnRecalledThrough(run.context, input),
       ...(run.onModelCall === undefined ? {} : { onCall: run.onModelCall }),
     });

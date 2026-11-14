@@ -1,6 +1,6 @@
 import type { Clock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/logger';
-import { deriveModelSecret, getHarness } from '@heynixie/models';
+import { bindHarness, deriveModelSecret } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
 import type {
   GuestCommand,
@@ -30,7 +30,8 @@ export interface CheckerRunnerOptions {
 export const checkerOwner = 'checker';
 
 export async function startCheckerRunner(options: CheckerRunnerOptions): Promise<RunCheck> {
-  const secret = deriveModelSecret(options.profile);
+  const harness = bindHarness(options.profile.profile);
+  const secret = deriveModelSecret(options.profile, harness);
 
   await options.sandboxes.addSecret(secret);
 
@@ -39,7 +40,7 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
     image: options.image,
     owner: checkerOwner,
     limits: options.limits,
-    modelGrant: getHarness(options.profile.profile.harness).buildGrant(secret),
+    modelGrant: harness.buildGrant(secret),
   });
 
   const sandbox = await createCheckerSandbox(options.sandboxes, spec);
@@ -57,12 +58,7 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
         signal,
         log: options.log,
         request: {
-          profile: {
-            model: profile.model,
-            baseURL: profile.baseURL,
-            effort: profile.effort,
-            authHeader: profile.authHeader,
-          },
+          profile: harness.toTurnProfile('one-off'),
           systemPrompt: request.prompt,
           input: request.input,
         },

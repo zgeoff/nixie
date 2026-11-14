@@ -25,6 +25,7 @@ export async function runOpenedTurn(turn: SessionTurn, opening: Opening): Promis
     source,
     {
       ...opened.completed,
+      harness: turn.run.harness,
       memory: { ...turn.context, invalidatedThrough: turn.invalidatedThrough },
     },
     [

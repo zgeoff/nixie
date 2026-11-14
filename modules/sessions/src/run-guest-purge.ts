@@ -1,13 +1,15 @@
+import type { Harness } from '@heynixie/models';
 import type { ExecStream, GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { GuestFrame } from '@heynixie/wire';
 import {
   decodeTurnFrame,
-  encodeTurnFrame,
+  encodeHostFrame,
   guestFrameSchema,
   turnFrameLimitBytes,
 } from '@heynixie/wire';
 
 export interface GuestPurgeSpec {
+  readonly harness: Harness;
   readonly sandbox: Sandbox;
   readonly command: GuestCommand;
 }
@@ -19,7 +21,7 @@ export async function runGuestPurge(spec: GuestPurgeSpec): Promise<void> {
     maxMessageBytes: turnFrameLimitBytes,
   });
 
-  const frames = await readPurgeFrames(stream);
+  const frames = await readPurgeFrames(stream, spec.harness);
   const exit = await stream.exit;
 
   if (!frames.some((frame) => frame.type === 'purged')) {
@@ -28,16 +30,19 @@ export async function runGuestPurge(spec: GuestPurgeSpec): Promise<void> {
     const stderr = new TextDecoder().decode(exit.stderr.bytes);
 
     throw new Error(
-      `the conversation guest did not remove its session state: ${failed?.detail ?? stderr}`,
+      `the ${spec.harness.guest.package} guest did not remove its session state: ${failed?.detail ?? stderr}`,
     );
   }
 }
 
-async function readPurgeFrames(stream: ExecStream): Promise<readonly GuestFrame[]> {
+async function readPurgeFrames(
+  stream: ExecStream,
+  harness: Harness,
+): Promise<readonly GuestFrame[]> {
   const frames: GuestFrame[] = [];
 
   try {
-    await stream.send(encodeTurnFrame({ type: 'purge' }));
+    await stream.send(encodeHostFrame(harness.capabilities, { type: 'purge' }));
 
     for await (const message of stream.messages) {
       frames.push(decodeTurnFrame(guestFrameSchema, message));

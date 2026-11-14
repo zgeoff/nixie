@@ -1,7 +1,7 @@
 import { z } from 'zod';
+import type { AgentSDKProfile } from './agent-sdk-harness-definition';
 import { getCLIContextWindow } from './get-cli-context-window';
 import { modelPricesSchema } from './model-prices-schema';
-import type { ModelProfile } from './types';
 
 const credentialSchema = z
   .string()
@@ -37,7 +37,7 @@ export const agentSDKProfileSchema = z
       });
     }
   })
-  .transform((input): Omit<ModelProfile, 'id'> => ({
+  .transform((input): Omit<AgentSDKProfile, 'id'> => ({
     harness: input.harness,
     baseURL: input.base_url,
     credential: input.credential,

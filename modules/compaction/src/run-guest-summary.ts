@@ -1,8 +1,9 @@
+import type { Harness } from '@heynixie/models';
 import type { ExecStream, GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { GuestFrame, HostFrame } from '@heynixie/wire';
 import {
   decodeTurnFrame,
-  encodeTurnFrame,
+  encodeHostFrame,
   guestFrameSchema,
   turnFrameLimitBytes,
 } from '@heynixie/wire';
@@ -12,6 +13,7 @@ type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 export type GuestSummary = Extract<GuestFrame, { type: 'summarized' }>;
 
 export interface GuestSummarySpec {
+  readonly harness: Harness;
   readonly sandbox: Sandbox;
   readonly command: GuestCommand;
   readonly frame: SummarizeFrame;
@@ -32,7 +34,7 @@ export async function runGuestSummary(spec: GuestSummarySpec): Promise<GuestSumm
     // An AbortSignal that aborted before the listener attached never fires it.
     spec.signal.throwIfAborted();
 
-    const frames = await readSummaryFrames(stream, spec.frame);
+    const frames = await readSummaryFrames(stream, spec);
 
     spec.signal.throwIfAborted();
 
@@ -60,11 +62,11 @@ function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
 
 async function readSummaryFrames(
   stream: ExecStream,
-  frame: SummarizeFrame,
+  spec: Pick<GuestSummarySpec, 'frame' | 'harness'>,
 ): Promise<readonly GuestFrame[]> {
   const frames: GuestFrame[] = [];
 
-  await stream.send(encodeTurnFrame(frame));
+  await stream.send(encodeHostFrame(spec.harness.capabilities, spec.frame));
 
   for await (const message of stream.messages) {
     frames.push(decodeTurnFrame(guestFrameSchema, message));

@@ -21,6 +21,7 @@ export function buildQueryOptions(
   context: QueryContext,
 ): Options {
   const home = getHome(context.env);
+  const resume = turn.resume ?? null;
 
   return {
     tools: [],
@@ -49,11 +50,11 @@ export function buildQueryOptions(
     systemPrompt: { type: 'custom', prompt: turn.systemPrompt, snapshot: false },
     cwd: getWorkDir(home),
     env: buildQueryEnv(turn, context.env, home),
-    ...(turn.resume === null
+    ...(resume === null
       ? {}
       : {
-          resume: turn.resume.sessionID,
-          resumeSessionAt: turn.resume.messageID,
+          resume: resume.sessionID,
+          resumeSessionAt: resume.messageID,
           forkSession: true,
         }),
   };

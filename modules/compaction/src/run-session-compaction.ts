@@ -1,6 +1,6 @@
 import type { Definitions, RecordInput } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import type { ModelRecordSource } from '@heynixie/models';
+import type { Harness, ModelRecordSource } from '@heynixie/models';
 import {
   buildModelRecord,
   modelCompactionFailedCodec,
@@ -20,6 +20,7 @@ export interface CompactionRun {
   readonly context: LogContext & { readonly definitions: () => Definitions };
   readonly model: ModelRecordSource['model'];
 
+  readonly harness: Harness;
   readonly turnProfile: TurnProfile;
   readonly sandbox: Sandbox;
   readonly command: GuestCommand;
@@ -165,6 +166,7 @@ function runSummaryCall(
   call: SummaryCall,
 ): Promise<GuestSummary> {
   return runGuestSummary({
+    harness: run.harness,
     sandbox: run.sandbox,
     command: run.command,
     frame: {

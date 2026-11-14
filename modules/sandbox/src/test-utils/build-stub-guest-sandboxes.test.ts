@@ -3,8 +3,9 @@ import type { CheckRequest } from '@heynixie/wire';
 import {
   checkReplySchema,
   decodeTurnFrame,
-  encodeTurnFrame,
+  encodeHostFrame,
   guestFrameSchema,
+  harnessCapabilities,
 } from '@heynixie/wire';
 import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
@@ -999,8 +1000,8 @@ test('it answers each inbox message of a turn in its own call, with a result for
 
   const [first, second] = run.frames.filter((frame) => frame.type === 'ended');
 
-  expect(first?.boundary.sessionID).toBe(second?.boundary.sessionID);
-  expect(first?.boundary.messageID).not.toBe(second?.boundary.messageID);
+  expect(first?.boundary?.sessionID).toBe(second?.boundary?.sessionID);
+  expect(first?.boundary?.messageID).not.toBe(second?.boundary?.messageID);
 });
 
 test('it answers a live message that arrives during a tool call, in the same session', async () => {
@@ -1022,8 +1023,11 @@ test('it answers a live message that arrives during a tool call, in the same ses
     maxMessageBytes: 1 << 20,
   });
 
-  await stream.send(encodeTurnFrame(buildMockTurnFrame()));
-  await stream.send(encodeTurnFrame({ type: 'message', message: live }));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], buildMockTurnFrame()));
+
+  await stream.send(
+    encodeHostFrame(harnessCapabilities['agent-sdk'], { type: 'message', message: live }),
+  );
 
   release.resolve('Buy oat milk.');
 
@@ -1049,7 +1053,7 @@ test('it answers a live message that arrives during a tool call, in the same ses
 
   const [first, second] = frames.filter((frame) => frame.type === 'ended');
 
-  expect(first?.boundary.sessionID).toBe(second?.boundary.sessionID);
+  expect(first?.boundary?.sessionID).toBe(second?.boundary?.sessionID);
 });
 
 test('it writes no transcript from a turn the host stopped during a tool call, so a purge after the stop holds', async () => {
@@ -1070,7 +1074,7 @@ test('it writes no transcript from a turn the host stopped during a tool call, s
     input: [{ uuid: crypto.randomUUID(), text: 'the blue flowerpot' }],
   });
 
-  await stream.send(encodeTurnFrame(turn));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], turn));
 
   const stopping = stream.stop();
 
@@ -1098,7 +1102,7 @@ test('it holds a gated reply until its gate opens, then answers with it', async 
     maxMessageBytes: 1 << 20,
   });
 
-  await stream.send(encodeTurnFrame(buildMockTurnFrame()));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], buildMockTurnFrame()));
 
   gate.resolve();
 
@@ -1153,7 +1157,7 @@ test('it ends a turn the host stopped while a gated reply waits, with no frame',
     maxMessageBytes: 1 << 20,
   });
 
-  await stream.send(encodeTurnFrame(buildMockTurnFrame()));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], buildMockTurnFrame()));
 
   const exited = await stream.stop();
   const messages = await Array.fromAsync(stream.messages);
@@ -1184,7 +1188,9 @@ test('it keeps the frames and transcript of an input that completed before a sto
     { uuid: '6e697869-0000-8000-8000-000000000002', text: 'Read my notes.' },
   ];
 
-  await stream.send(encodeTurnFrame(buildMockTurnFrame({ input })));
+  await stream.send(
+    encodeHostFrame(harnessCapabilities['agent-sdk'], buildMockTurnFrame({ input })),
+  );
 
   const messages = stream.messages[Symbol.asyncIterator]();
   const sent = [await messages.next(), await messages.next(), await messages.next()];
@@ -1253,10 +1259,13 @@ test('it answers a check in a checker sandbox with the queued answer, then fails
 
   const request: CheckRequest = {
     profile: {
+      harness: 'agent-sdk',
       model: 'claude-test-1',
       baseURL: 'http://127.0.0.1:9',
       effort: 'low',
       authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
     },
     systemPrompt: 'You check one candidate memory.',
     input: '<owner_message>\nI swim on Fridays\n</owner_message>',

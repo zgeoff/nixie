@@ -21,7 +21,11 @@ export function buildStubSessionScript(outcomes: readonly StubSessionOutcome[]):
     const missing = [...unanswered].filter((uuid) => !uuids.includes(uuid));
     const outcome = pending.shift();
 
-    if (!isDeepStrictEqual(turn.resume, boundary) || missing.length > 0 || outcome === undefined) {
+    if (
+      !isDeepStrictEqual(turn.resume ?? null, boundary) ||
+      missing.length > 0 ||
+      outcome === undefined
+    ) {
       return [
         {
           type: 'failed',
@@ -64,7 +68,7 @@ function buildAnswer(
     {
       type: 'ended',
       boundary,
-      subtype: 'success',
+      outcome: 'finished',
       stopReason: 'end_turn',
       turns: 1,
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },

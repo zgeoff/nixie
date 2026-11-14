@@ -287,7 +287,7 @@ test('it reports each inbox message the model read, then the turn end at the las
         sessionID: expect.toBeString(),
         messageID: reply.messageID,
       },
-      subtype: 'success',
+      outcome: 'finished',
       stopReason: 'end_turn',
       isError: false,
       terminalReason: 'completed',
@@ -381,7 +381,7 @@ test('it carries the reasoning summary on the thinking frame, the thinking token
         sessionID: expect.toBeString(),
         messageID: reply.messageID,
       },
-      subtype: 'success',
+      outcome: 'finished',
       stopReason: 'end_turn',
       isError: false,
       terminalReason: 'completed',
@@ -449,14 +449,14 @@ test('it keeps a tool-call turn working under the summarized display, with a sum
     throw new Error('the turn did not end');
   }
 
-  expect(ended.subtype).toBe('success');
+  expect(ended.outcome).toBe('finished');
   expect(ended.thinkingTokens).toBe(46);
 });
 
 test('it keeps a resumed session working under the summarized display', async () => {
   const ctx = await setupTest();
 
-  const runTurnAt = async (text: string, resume: SessionPoint | null) => {
+  const runTurnAt = async (text: string, resume: SessionPoint | null | undefined) => {
     await runTurn(
       buildMockTurnFrame({
         profile: { baseURL: ctx.model.url },
@@ -471,6 +471,8 @@ test('it keeps a resumed session working under the summarized display', async ()
     if (last?.type !== 'ended') {
       throw new Error('the turn did not end');
     }
+
+    invariant(last.boundary);
 
     return last.boundary;
   };
@@ -742,7 +744,7 @@ test('it reports the replies before a refused call, then fails the turn with no 
 test('it sends the model no error text on the turn that resumes before a refused call', async () => {
   const ctx = await setupTest();
 
-  const runTurnAt = (text: string, resume: SessionPoint | null) =>
+  const runTurnAt = (text: string, resume: SessionPoint | null | undefined) =>
     runTurn(
       buildMockTurnFrame({
         profile: { baseURL: ctx.model.url },
@@ -809,7 +811,7 @@ test('it sends the model no error text on the turn that resumes before a refused
 test('it fails a resumed turn with only its failure frame when the model API refuses the call', async () => {
   const ctx = await setupTest();
 
-  const runTurnAt = (text: string, resume: SessionPoint | null) =>
+  const runTurnAt = (text: string, resume: SessionPoint | null | undefined) =>
     runTurn(
       buildMockTurnFrame({
         profile: { baseURL: ctx.model.url },
@@ -859,7 +861,7 @@ test('it ends the turn with the overflow reason when the model API refuses a pro
 
   expect(ctx.frames.at(-1)).toMatchObject({
     type: 'ended',
-    subtype: 'success',
+    outcome: 'overflow',
     isError: true,
     terminalReason: 'prompt_too_long',
   });
@@ -887,6 +889,11 @@ test('it ends an overflowed turn at its last chain entry before the overflow mes
     throw new Error('the turn did not end');
   }
 
+  invariant(ended.boundary);
+
+  const sessionID = ended.boundary.sessionID;
+  const messageID = ended.boundary.messageID;
+
   const files = await readdir(join(ctx.home, '.claude', 'projects'), { recursive: true });
 
   const transcript = await Bun.file(
@@ -894,7 +901,7 @@ test('it ends an overflowed turn at its last chain entry before the overflow mes
       ctx.home,
       '.claude',
       'projects',
-      files.find((path) => path.endsWith(`${ended.boundary.sessionID}.jsonl`)) ?? '',
+      files.find((path) => path.endsWith(`${sessionID}.jsonl`)) ?? '',
     ),
   ).text();
 
@@ -902,9 +909,7 @@ test('it ends an overflowed turn at its last chain entry before the overflow mes
 
   expect(
     JSON.parse(
-      transcript
-        .split('\n')
-        .find((line) => line.includes(`"uuid":"${ended.boundary.messageID}"`)) ?? 'null',
+      transcript.split('\n').find((line) => line.includes(`"uuid":"${messageID}"`)) ?? 'null',
     ),
   ).toMatchObject({ type: 'user', message: { content: [{ type: 'tool_result' }] } });
 });
@@ -912,7 +917,7 @@ test('it ends an overflowed turn at its last chain entry before the overflow mes
 test('it ends an overflowed turn at its resume point when the overflow is its first chain entry', async () => {
   const ctx = await setupTest();
 
-  const runTurnAt = async (text: string, resume: SessionPoint | null) => {
+  const runTurnAt = async (text: string, resume: SessionPoint | null | undefined) => {
     await runTurn(
       buildMockTurnFrame({
         profile: { baseURL: ctx.model.url },
@@ -1026,7 +1031,7 @@ test('it ends an interrupted turn at its last chain entry, and leaves a queued m
 
   expect(ctx.frames.at(-1)).toMatchObject({
     type: 'ended',
-    subtype: 'error_during_execution',
+    outcome: 'interrupted',
     boundary: {
       harness: 'agent-sdk',
       sessionID: expect.toBeString(),
@@ -1060,7 +1065,7 @@ test('it ends a turn at its last chain entry when the model calls reach the turn
     requests: 1,
     ended: expect.objectContaining({
       type: 'ended',
-      subtype: 'error_max_turns',
+      outcome: 'limit',
       boundary: expect.objectContaining({ harness: 'agent-sdk' }),
     }),
   });
@@ -1091,7 +1096,7 @@ test('it ends a turn cleanly when an interrupt lands as the turn ends', async ()
     },
   );
 
-  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', subtype: 'success' });
+  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
 });
 
 test('it starts the next turn from the message an interrupt left unread, resumed after the interrupted turn', async () => {
@@ -1147,7 +1152,7 @@ test('it starts the next turn from the message an interrupt left unread, resumed
 
   expect(messages).toInclude('Watch my note.');
   expect(messages).toInclude('Also buy eggs.');
-  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', subtype: 'success' });
+  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
 });
 
 test('it fails the turn with the error its host message stream throws', async () => {
@@ -1196,7 +1201,7 @@ test('it fails the turn at once when the host message stream throws during a hel
 test('it resumes at a boundary on a new session that holds nothing after the boundary', async () => {
   const ctx = await setupTest();
 
-  const runTurnAt = async (text: string, resume: SessionPoint | null) => {
+  const runTurnAt = async (text: string, resume: SessionPoint | null | undefined) => {
     await runTurn(
       buildMockTurnFrame({
         profile: { baseURL: ctx.model.url },
@@ -1211,6 +1216,8 @@ test('it resumes at a boundary on a new session that holds nothing after the bou
     if (last?.type !== 'ended') {
       throw new Error('the turn did not end');
     }
+
+    invariant(last.boundary);
 
     return last.boundary;
   };
@@ -1401,7 +1408,7 @@ test('it offers the model the changed form of a tool at the next step of a turn 
 test('it never compacts the session itself when a call reads past the profile window', async () => {
   const ctx = await setupTest();
 
-  const runTurnAt = async (text: string, resume: SessionPoint | null) => {
+  const runTurnAt = async (text: string, resume: SessionPoint | null | undefined) => {
     await runTurn(
       buildMockTurnFrame({
         profile: { baseURL: ctx.model.url, contextTokens: 100_000 },
@@ -1499,7 +1506,7 @@ test('it reports a session to resume that is not on the guest disk as missing', 
 test('it keeps only the session it resumes and the fork it writes on the guest disk', async () => {
   const ctx = await setupTest();
 
-  const runTurnAt = async (text: string, resume: SessionPoint | null) => {
+  const runTurnAt = async (text: string, resume: SessionPoint | null | undefined) => {
     await runTurn(
       buildMockTurnFrame({
         profile: { baseURL: ctx.model.url },
@@ -1514,6 +1521,8 @@ test('it keeps only the session it resumes and the fork it writes on the guest d
     if (last?.type !== 'ended') {
       throw new Error('the turn did not end');
     }
+
+    invariant(last.boundary);
 
     return last.boundary;
   };

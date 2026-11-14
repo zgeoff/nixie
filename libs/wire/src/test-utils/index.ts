@@ -10,3 +10,4 @@ export { createSpoolRecipient } from './create-spool-recipient';
 export type { SeededKeyPair } from './derive-seeded-key-pair';
 export { deriveSeededKeyPair } from './derive-seeded-key-pair';
 export { parseSealedHeader } from './parse-sealed-header';
+export { buildCapabilitiesWithout } from './build-capabilities-without';

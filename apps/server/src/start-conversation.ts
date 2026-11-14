@@ -1,7 +1,7 @@
 import type { CompactionSettings } from '@heynixie/compaction';
 import type { Logger } from '@heynixie/logger';
 import type { ModelSecrets, ModelsConfig } from '@heynixie/models';
-import { getHarness, resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
+import { bindHarness, resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type {
   ConversationMemory,
@@ -53,11 +53,12 @@ export function startConversation(options: ConversationOptions): Promise<Convers
 
   invariant(resolved, `the conversation profile ${profile.id} was never resolved`);
 
-  const harness = getHarness(profile.harness);
+  const harness = bindHarness(profile);
 
   return startConversationRunner({
     context: options.context,
     profile: resolved,
+    harness,
     sandboxes: options.sandboxes,
     tools: options.tools,
     toolNames: options.toolNames,

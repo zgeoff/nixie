@@ -75,7 +75,7 @@ export function runStubGuestTurn(
 ): Promise<readonly GuestFrame[]> {
   run.disk.removeSessionsExcept(run.home, turn.resume?.sessionID ?? null);
 
-  const read = readStubGuestHistory(run, turn.resume);
+  const read = readStubGuestHistory(run, turn.resume ?? null);
 
   if ('failure' in read) {
     return Promise.resolve([read.failure]);
@@ -96,7 +96,7 @@ async function runInputs(
   const fork = { sessionID: crypto.randomUUID(), contextSize: run.takeContextSize() };
   const entries: StubSessionEntry[] = [...history];
   const frames: GuestFrame[] = [];
-  const progress: ProgressState = { committed: turn.resume };
+  const progress: ProgressState = { committed: turn.resume ?? null };
   const queue = [...turn.input];
 
   for (let message = queue.shift(); message !== undefined; message = queue.shift()) {
@@ -120,7 +120,7 @@ async function runInputs(
     }
 
     if (answer instanceof Error) {
-      if (progress.committed !== turn.resume) {
+      if (progress.committed !== (turn.resume ?? null)) {
         run.disk.writeSession(run.home, fork.sessionID, entries);
       }
 
@@ -437,7 +437,7 @@ function buildOverflowEnded(
       sessionID: state.fork.sessionID,
       messageID: message.uuid,
     },
-    subtype: 'success',
+    outcome: 'overflow',
     stopReason: 'stop_sequence',
     isError: true,
     terminalReason: reason,
@@ -463,8 +463,8 @@ function buildEnded(
 
   return {
     type: 'ended',
+    outcome: ended.stopReason === 'end_turn' ? 'finished' : 'interrupted',
     boundary: ended.point,
-    subtype: 'success',
     stopReason: ended.stopReason,
     turns: fresh.filter((entry) => entry.role === 'assistant').length,
     usage: {

@@ -1,6 +1,6 @@
 import type { CompactionSettings } from '@heynixie/compaction';
-import { deriveModelSecret, getHarness } from '@heynixie/models';
-import type { ResolvedProfile } from '@heynixie/models';
+import { bindHarness, deriveModelSecret } from '@heynixie/models';
+import type { Harness, ResolvedProfile } from '@heynixie/models';
 import type { RunStep, TaskMessaging, TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
@@ -24,6 +24,9 @@ export interface ConversationRunnerOptions {
   readonly context: TasksContext;
 
   readonly profile: ResolvedProfile;
+
+  // the profile's harness record; a test passes a stand-in for a harness with no session
+  readonly harness?: Harness;
   readonly sandboxes: ConversationSandboxSpec['sandboxes'];
   readonly tools: Pick<ToolEndpoint, 'startRun'>;
 
@@ -84,11 +87,10 @@ const defaultMessaging: TaskMessaging = {
 export async function startConversationRunner(
   options: ConversationRunnerOptions,
 ): Promise<ConversationRunner> {
-  const secret = deriveModelSecret(options.profile);
+  const harness = options.harness ?? bindHarness(options.profile.profile);
+  const secret = deriveModelSecret(options.profile, harness);
 
   await options.sandboxes.addSecret(secret);
-
-  const harness = getHarness(options.profile.profile.harness);
 
   const sandbox = await setupConversationSandbox({ ...options, harness }, secret);
 
@@ -111,8 +113,8 @@ export async function startConversationRunner(
     sandbox,
     endpoint,
     model,
-    turnProfile: harness.toTurnProfile(options.profile.profile),
-    toolCallWaitMs: harness.toolCallWaitMs,
+    harness,
+    turnProfile: harness.toTurnProfile('kept'),
     memorySettings: { ...defaultMemorySettings, ...options.memorySettings },
     compaction: { ...defaultCompaction, ...options.compaction },
     status: options.status ?? buildDefaultStatus(),

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { HostFrame } from './host-frame';
 import { hostFrameSchema } from './host-frame';
+import { buildMockTurnFrame } from './test-utils/build-mock-turn-frame';
 
 test('it accepts a summarize frame that resumes the session at a point', () => {
   const frame: HostFrame = {
@@ -210,4 +211,10 @@ test('it refuses a turn frame whose profile names a harness with no turn profile
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['profile', 'harness'] });
+});
+
+test('it accepts a turn frame with no resume key', () => {
+  const { resume: _resume, ...frame } = buildMockTurnFrame();
+
+  expect(hostFrameSchema.safeParse(frame).data).toStrictEqual(frame);
 });

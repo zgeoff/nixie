@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
-import type { ModelProfile, ModelsConfig } from '../types';
+import type { HarnessProfile, ModelsConfig } from '../types';
 import { buildMockModelProfile } from './build-mock-model-profile';
 
 interface ModelsConfigOverrides {
-  readonly profiles?: Readonly<Record<string, Partial<ModelProfile>>>;
+  readonly profiles?: Readonly<Record<string, Partial<HarnessProfile>>>;
   readonly roles?: Partial<ModelsConfig['roles']>;
   readonly selectable?: ModelsConfig['selectable'];
 }

@@ -6,8 +6,9 @@ import type { GuestFrame } from '@heynixie/wire';
 import {
   decodeTurnFrame,
   encodeFrame,
-  encodeTurnFrame,
+  encodeHostFrame,
   guestFrameSchema,
+  harnessCapabilities,
   makeFrameDecoder,
 } from '@heynixie/wire';
 import { buildMockMessageFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
@@ -50,7 +51,7 @@ test('it runs the turn the first frame starts and writes its frames framed', asy
   ctx.model.addReplies({ text: 'Hello.' });
 
   await runConversationGuest({
-    input: [encodeFrame(encodeTurnFrame(turn))],
+    input: [encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], turn))],
     write: ctx.write,
     env: ctx.env,
     createToolServer: () => createStubToolServer().config,
@@ -77,7 +78,7 @@ test('it answers a turn whose tool server connection failed at start, after one 
   ctx.model.addReplies({ text: 'Hello.' });
 
   await runConversationGuest({
-    input: [encodeFrame(encodeTurnFrame(turn))],
+    input: [encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], turn))],
     write: ctx.write,
     env: ctx.env,
     createToolServer: () => tools.config,
@@ -131,7 +132,7 @@ test('it reaches the run tool endpoint over HTTP with the run bearer token', asy
   });
 
   await runConversationGuest({
-    input: [encodeFrame(encodeTurnFrame(turn))],
+    input: [encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], turn))],
     write: ctx.write,
     env: ctx.env,
     waitBeforeReconnect: () => Promise.resolve(),
@@ -147,7 +148,7 @@ test('it answers a first frame that starts no turn with a failed frame', async (
   const message = buildMockMessageFrame();
 
   await runConversationGuest({
-    input: [encodeFrame(encodeTurnFrame(message))],
+    input: [encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], message))],
     write: ctx.write,
     env: ctx.env,
   });
@@ -169,7 +170,10 @@ test('it answers a turn frame that arrives while a turn runs with a failed frame
   ctx.model.addReplies({ text: 'Hello.' });
 
   await runConversationGuest({
-    input: [encodeFrame(encodeTurnFrame(turn)), encodeFrame(encodeTurnFrame(turn))],
+    input: [
+      encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], turn)),
+      encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], turn)),
+    ],
     write: ctx.write,
     env: ctx.env,
     createToolServer: () => createStubToolServer().config,
@@ -188,7 +192,7 @@ test('it removes every session transcript and the working directory on a purge f
   ctx.model.addReplies({ text: 'Hello.' });
 
   await runConversationGuest({
-    input: [encodeFrame(encodeTurnFrame(turn))],
+    input: [encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], turn))],
     write: ctx.write,
     env: ctx.env,
     createToolServer: () => createStubToolServer().config,
@@ -197,7 +201,7 @@ test('it removes every session transcript and the working directory on a purge f
   const before = await readdir(ctx.home);
 
   await runConversationGuest({
-    input: [encodeFrame(encodeTurnFrame({ type: 'purge' }))],
+    input: [encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], { type: 'purge' }))],
     write: ctx.write,
     env: ctx.env,
   });
@@ -215,7 +219,7 @@ test('it never removes a file in the guest home outside the session state on a p
   await writeFile(join(ctx.home, 'keep.txt'), 'not session state');
 
   await runConversationGuest({
-    input: [encodeFrame(encodeTurnFrame({ type: 'purge' }))],
+    input: [encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], { type: 'purge' }))],
     write: ctx.write,
     env: ctx.env,
   });

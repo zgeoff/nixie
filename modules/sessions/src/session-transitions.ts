@@ -10,4 +10,5 @@ export const sessionTransitions: Readonly<
   'compaction-due': { compact: 'summarized', resume: 'resumable' },
   invalidated: { open: 'resumable' },
   lost: { open: 'resumable' },
+  unkept: { open: 'resumable' },
 };

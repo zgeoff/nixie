@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
-import { decodeTurnFrame, encodeTurnFrame, guestFrameSchema } from '@heynixie/wire';
+import {
+  decodeTurnFrame,
+  encodeHostFrame,
+  guestFrameSchema,
+  harnessCapabilities,
+} from '@heynixie/wire';
 import { buildMockSummarizeFrame } from '@heynixie/wire/test-utils';
 import { buildStubSandboxes } from './build-stub-sandboxes';
 
@@ -17,7 +22,7 @@ test('it answers a turn frame with the script frames, then exits', async () => {
   ctx.stub.setGuestScript((turn) => [{ type: 'read', uuids: [turn.input[0]?.uuid ?? ''] }]);
 
   await stream.send(
-    encodeTurnFrame({
+    encodeHostFrame(harnessCapabilities['agent-sdk'], {
       type: 'turn',
       profile: {
         harness: 'agent-sdk',
@@ -52,7 +57,7 @@ test('it answers a purge frame as purged, records the sandbox, then exits', asyn
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
   const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
 
-  await stream.send(encodeTurnFrame({ type: 'purge' }));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], { type: 'purge' }));
 
   const messages = await Array.fromAsync(stream.messages);
   const exit = await stream.exit;
@@ -74,7 +79,7 @@ test('it answers a purge frame with the frames a test sets', async () => {
 
   const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
 
-  await stream.send(encodeTurnFrame({ type: 'purge' }));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], { type: 'purge' }));
 
   const messages = await Array.fromAsync(stream.messages);
 
@@ -91,7 +96,7 @@ test('it answers a summarize frame with a summary at a new chain entry, records 
 
   const frame = buildMockSummarizeFrame();
 
-  await stream.send(encodeTurnFrame(frame));
+  await stream.send(encodeHostFrame(harnessCapabilities['agent-sdk'], frame));
 
   const messages = await Array.fromAsync(stream.messages);
   const exit = await stream.exit;
@@ -125,7 +130,8 @@ test('it answers a summarize frame with the script a test sets', async () => {
   const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
 
   await stream.send(
-    encodeTurnFrame(
+    encodeHostFrame(
+      harnessCapabilities['agent-sdk'],
       buildMockSummarizeFrame({
         resume: {
           harness: 'agent-sdk',

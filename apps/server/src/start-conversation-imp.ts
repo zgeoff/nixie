@@ -1,6 +1,6 @@
 import type { StartedMemoryStore } from '@heynixie/memory';
 import { buildMomentStatus, buildPinnedCoreStatus } from '@heynixie/memory';
-import { resolveRoleProfile } from '@heynixie/models';
+import { bindHarness, resolveRoleProfile } from '@heynixie/models';
 import {
   buildModelStatus,
   buildStartStatus,
@@ -31,6 +31,7 @@ export async function startConversationImp(
   memory: () => StartedMemoryStore,
 ): Promise<ConversationImp> {
   const messaging = buildTaskMessaging(parts.config);
+  const conversationHarness = bindHarness(resolveRoleProfile(parts.config.models, 'conversation'));
 
   const conversation = await startConversation({
     context: parts.context,
@@ -55,7 +56,7 @@ export async function startConversationImp(
     loadOrPinSkillCatalog: makeSkillCatalogLoader({
       log: parts.context.log,
       readInForce: () => parts.inForce.read(),
-      profile: resolveRoleProfile(parts.config.models, 'conversation'),
+      harness: conversationHarness,
       skills: parts.config.skills,
     }),
     status: buildStatusRegistry([

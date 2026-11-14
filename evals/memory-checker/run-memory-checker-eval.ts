@@ -88,7 +88,15 @@ async function runCall(call: PlannedCall, guestHome: string): Promise<CheckerCal
     ask: async (request, signal) => {
       const reply = await runCheckQuery(
         {
-          profile: { model, baseURL: 'https://api.anthropic.com', effort, authHeader: 'x-api-key' },
+          profile: {
+            harness: 'agent-sdk',
+            model,
+            baseURL: 'https://api.anthropic.com',
+            effort,
+            authHeader: 'x-api-key',
+            contextTokens: null,
+            cacheTTL: '5m',
+          },
           systemPrompt: request.prompt,
           input: request.input,
         },

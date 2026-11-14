@@ -3,7 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildContractEnv, runContractQuery } from '@heynixie/conversation/sdk-contract';
-import { getHarness } from '@heynixie/models';
+import { bindHarness } from '@heynixie/models';
+import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import invariant from 'tiny-invariant';
 
 // Each probe calls the model on the subscription, so only a contract run enables it. Bun 1.4.2's
@@ -15,7 +16,7 @@ async function setupTest(header: 'bearer' | 'x-api-key') {
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
-  const grant = getHarness('agent-sdk').buildGrant({
+  const grant = bindHarness(buildMockModelProfile({ authHeader: header })).buildGrant({
     name: 'model-chat-1',
     value: 'not-a-real-key',
     host: 'api.anthropic.com',

@@ -1,7 +1,8 @@
 import type { RecordInput } from '@heynixie/log';
-import type { ModelRecordSource } from '@heynixie/models';
+import type { Harness, ModelRecordSource } from '@heynixie/models';
 import { buildModelRecord, modelReplyCodec, modelTurnEndedCodec } from '@heynixie/models';
 import type { StepResult } from '@heynixie/tasks';
+import { checkEndedContract } from './check-ended-contract';
 import { decodeInboxUUID } from './decode-inbox-uuid';
 import { isContextOverflow } from './is-context-overflow';
 import { ModelAPIError } from './model-api-error';
@@ -33,6 +34,7 @@ interface TurnMemoryRefs {
 }
 
 export interface StepTurn extends CompletedTurn {
+  readonly harness: Harness;
   readonly memory: TurnMemoryRefs;
 }
 
@@ -59,10 +61,10 @@ export function buildStepResult(
     );
   }
 
+  checkEndedContract(completed.harness, last);
+
   if (isContextOverflow(last)) {
-    throw new Error(
-      `the conversation turn passed the context window: ${last.terminalReason ?? ''}`,
-    );
+    throw new Error('the conversation turn passed the context window');
   }
 
   return {
@@ -71,7 +73,7 @@ export function buildStepResult(
     acknowledged: completed.turn.read
       .map((uuid) => decodeInboxUUID(uuid))
       .filter((sequence): sequence is number => sequence !== null && completed.sent.has(sequence)),
-    sessionBoundary: JSON.stringify(last.boundary),
+    sessionBoundary: completed.harness.session === null ? null : JSON.stringify(last.boundary),
   };
 }
 
@@ -149,6 +151,7 @@ type EndedFrame = GuestTurn['ended'][number];
 
 type TurnSummary = Pick<
   ReturnType<typeof modelTurnEndedCodec.decode>,
+  | 'outcome'
   | 'stopReason'
   | 'terminalReason'
   | 'turns'
@@ -165,10 +168,12 @@ function buildTurnSummary(turn: GuestTurn): TurnSummary {
     turn.ended.reduce((total, frame) => total + pick(frame), 0);
 
   const context = turn.ended.findLast((frame) => frame.context !== undefined)?.context;
-  const terminalReason = turn.ended.at(-1)?.terminalReason;
+  const last = turn.ended.at(-1);
+  const terminalReason = last?.terminalReason;
 
   return {
-    stopReason: turn.ended.at(-1)?.stopReason ?? null,
+    ...(last === undefined ? {} : { outcome: last.outcome }),
+    stopReason: last?.stopReason ?? null,
     ...(terminalReason === undefined ? {} : { terminalReason }),
     turns: buildTotal((frame) => frame.turns),
     inputTokens: buildTotal((frame) => frame.usage.inputTokens),

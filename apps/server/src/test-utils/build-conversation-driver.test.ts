@@ -93,7 +93,7 @@ test('it fails a send whose step errored after it sent a turn, with the step err
   expect(ctx.server.guest.turns).toHaveLength(1);
 
   expect(failure.cause).toMatchObject({
-    message: 'the conversation turn passed the context window: prompt_too_long',
+    message: 'the conversation turn passed the context window',
   });
 });
 

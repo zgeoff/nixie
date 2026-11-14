@@ -279,6 +279,7 @@ test.each([
       payload: {
         model: 'claude-test-errands',
         profile: 'errands',
+        outcome: 'finished',
         stopReason: 'end_turn',
         turns: 1,
         inputTokens: expect.any(Number),

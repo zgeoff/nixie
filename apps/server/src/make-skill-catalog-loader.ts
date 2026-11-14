@@ -1,23 +1,27 @@
 import type { DefinitionsInForce } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
-import type { ModelProfile } from '@heynixie/models';
-import { getCLIContextWindow } from '@heynixie/models';
+import type { Harness } from '@heynixie/models';
 import type { SkillsConfig } from '@heynixie/skills';
 import { loadOrPinTaskSkills, renderSkillCatalog } from '@heynixie/skills';
+import invariant from 'tiny-invariant';
 
 export interface SkillCatalogLoaderOptions {
   readonly log: Log;
 
   readonly readInForce: () => DefinitionsInForce | null;
 
-  readonly profile: Pick<ModelProfile, 'model' | 'contextTokens'>;
+  readonly harness: Pick<Harness, 'contextWindow'>;
   readonly skills: SkillsConfig;
 }
 
 export function makeSkillCatalogLoader(
   options: SkillCatalogLoaderOptions,
 ): (taskID: string) => Promise<string | null> {
-  const window = options.profile.contextTokens ?? getCLIContextWindow(options.profile.model);
+  const window = options.harness.contextWindow;
+
+  // Only the conversation builds a catalog, and its role needs the context-window capability.
+  invariant(window !== null, 'the harness of a skill catalog reports no context window');
+
   const capTokens = Math.floor(window * options.skills.catalogShare);
 
   return async (taskID) => {

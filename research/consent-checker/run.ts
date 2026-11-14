@@ -293,10 +293,13 @@ async function createModelEnv(): Promise<Record<string, string | undefined>> {
 
 function buildProfile(defaults: RoleProfile) {
   return {
+    harness: 'agent-sdk' as const,
     model: values.model ?? defaults.model,
     baseURL: values['base-url'],
     effort: effortSchema.parse(values.effort ?? defaults.effort),
     authHeader: 'bearer' as const,
+    contextTokens: null,
+    cacheTTL: '5m' as const,
   };
 }
 

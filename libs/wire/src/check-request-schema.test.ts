@@ -4,10 +4,13 @@ import { checkReplySchema, checkRequestSchema } from './check-request-schema';
 test('it accepts a check request', () => {
   const payload = {
     profile: {
+      harness: 'agent-sdk' as const,
       model: 'claude-sonnet-5-5',
       baseURL: 'https://api.anthropic.com',
       effort: 'low' as const,
       authHeader: 'x-api-key' as const,
+      contextTokens: null,
+      cacheTTL: '5m' as const,
     },
     systemPrompt: 'You check one candidate memory.',
     input: '<owner_message>\nI take my coffee black\n</owner_message>',
@@ -19,10 +22,13 @@ test('it accepts a check request', () => {
 test('it refuses a check request with an empty input', () => {
   const result = checkRequestSchema.safeParse({
     profile: {
+      harness: 'agent-sdk',
       model: 'claude-sonnet-5-5',
       baseURL: 'https://api.anthropic.com',
       effort: 'low',
       authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
     },
     systemPrompt: 'You check one candidate memory.',
     input: '',

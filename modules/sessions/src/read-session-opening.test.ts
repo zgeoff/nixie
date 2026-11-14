@@ -1,4 +1,4 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, spyOn, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
@@ -643,4 +643,56 @@ test('it pins the brief of a task of the release before in a session that is no 
 
   expect(first.record.briefSequence).toBe(400);
   expect(rebuilt.record.briefSequence).toBe(400);
+});
+
+test('it gives the same opening for two rebuilds from one log, with the clock, the status lines and the block IDs fixed', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Did the parcel come?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'It came at noon.' },
+    },
+  ]);
+
+  const randomUUID = spyOn(crypto, 'randomUUID').mockReturnValue(
+    '6e697869-0000-8000-8000-000000000001',
+  );
+
+  onTestFinished(() => {
+    randomUUID.mockRestore();
+  });
+
+  const query = {
+    taskID: 'conversation',
+    start: { kind: 'rebuild', reason: null, lostSessionID: null },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: null,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-11-14T03:00:00Z') },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    model: 'claude-test-1',
+    status: [buildStartStatus(), buildModelStatus()],
+  } as const;
+
+  const first = await readSessionOpening(ctx.tasks.context, query);
+  const second = await readSessionOpening(ctx.tasks.context, query);
+
+  expect(second).toStrictEqual(first);
+  expect(first.record).toMatchObject({ kind: 'rebuild', reason: null, lostSessionID: null });
+
+  expect(first.blocks.at(1)).toInclude(
+    'Start: a rebuild, because the earlier session was not kept.',
+  );
 });

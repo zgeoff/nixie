@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import { bindHarness } from '@heynixie/models';
+import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import { canSessionTake } from './can-session-take';
 import { pickSessionPosition } from './pick-session-position';
 import { sessionTransitions } from './session-transitions';
@@ -11,10 +13,13 @@ test('it opens each session that cannot resume, and compacts only a session past
     'compaction-due': { compact: 'summarized', resume: 'resumable' },
     invalidated: { open: 'resumable' },
     lost: { open: 'resumable' },
+    unkept: { open: 'resumable' },
   });
 });
 
 test('it opens a new session in place of one whose persona changed, and never resumes it', () => {
+  const ctx = { harness: bindHarness(buildMockModelProfile()) };
+
   const position = pickSessionPosition({
     marks: {
       isInvalidated: false,
@@ -31,6 +36,8 @@ test('it opens a new session in place of one whose persona changed, and never re
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',
       messageID: '8a9b0c1d-2e3f-4a5b-8c7d-9e0f1a2b3c4d',
     },
+    session: ctx.harness.session,
+    capabilities: ctx.harness.capabilities,
     threshold: 0.8,
   });
 

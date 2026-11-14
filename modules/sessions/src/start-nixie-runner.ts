@@ -4,10 +4,10 @@ import { removeWebFetchThread } from '@heynixie/connectors';
 import { subscribeToRecordCommits, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import type { HarnessDescriptor, ResolvedProfile } from '@heynixie/models';
+import type { Harness, ResolvedProfile } from '@heynixie/models';
 import {
+  bindHarness,
   deriveModelSecret,
-  getHarness,
   modelSessionCleanupCompletedCodec,
   modelSessionInvalidatedCodec,
   resolveModelCredentials,
@@ -149,7 +149,7 @@ function resolveModelGrant(runner: TaskRunner, profile: ResolvedProfile): Promis
 
 // A failed add leaves no grant behind, so the next step that needs the profile tries again.
 async function createModelGrant(runner: TaskRunner, profile: ResolvedProfile): Promise<GrantSpec> {
-  const secret = deriveModelSecret(profile);
+  const secret = deriveModelSecret(profile, bindHarness(profile.profile));
 
   try {
     await runner.options.sandboxes.addSecret(secret);
@@ -158,7 +158,7 @@ async function createModelGrant(runner: TaskRunner, profile: ResolvedProfile): P
     throw error;
   }
 
-  return getHarness(profile.profile.harness).buildGrant(secret);
+  return bindHarness(profile.profile).buildGrant(secret);
 }
 
 async function stopTaskImps(runner: TaskRunner): Promise<void> {
@@ -313,7 +313,7 @@ interface StartedRun {
   readonly options: TaskRunOptions;
   readonly limits: TaskLimits;
   readonly profile: ResolvedProfile;
-  readonly harness: HarnessDescriptor;
+  readonly harness: Harness;
   readonly command: GuestCommand;
   readonly model: ToolRunModel;
 }
@@ -345,7 +345,7 @@ function buildStartedRun(runner: TaskRunner, setup: TaskSetup): StartedRun {
 
   invariant(profile, `the task's profile ${options.profile ?? ''} is not defined`);
 
-  const harness = getHarness(profile.profile.harness);
+  const harness = bindHarness(profile.profile);
 
   return {
     startedBy: setup.startedBy,
@@ -520,8 +520,8 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     context: options.context,
     frame: { kind: 'task', startedBy: parts.run.startedBy, report: parts.run.options.report },
     profile: parts.run.profile,
-    turnProfile: parts.run.harness.toTurnProfile(parts.run.profile.profile),
-    toolCallWaitMs: parts.run.harness.toolCallWaitMs,
+    harness: parts.run.harness,
+    turnProfile: parts.run.harness.toTurnProfile('kept'),
     sandbox: parts.sandbox,
     endpoint: parts.endpoint,
     model: parts.run.model,
@@ -606,7 +606,7 @@ async function runTaskGuestPurge(runner: TaskRunner, taskID: string): Promise<vo
   try {
     const run = await readStartedRun(runner, taskID);
 
-    await runGuestPurge({ sandbox: held.sandbox, command: run.command });
+    await runGuestPurge({ harness: run.harness, sandbox: held.sandbox, command: run.command });
   } finally {
     await releaseTaskImp(imp);
   }

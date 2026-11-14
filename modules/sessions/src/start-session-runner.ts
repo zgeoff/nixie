@@ -1,5 +1,5 @@
-import { deriveModelSecret, getHarness } from '@heynixie/models';
-import type { ModelRole, ResolvedProfile } from '@heynixie/models';
+import { bindHarness, deriveModelSecret } from '@heynixie/models';
+import type { Harness, ModelRole, ResolvedProfile } from '@heynixie/models';
 import type { GuestCommand, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolEndpoint, ToolRunModel } from '@heynixie/tools';
@@ -51,11 +51,10 @@ export interface SessionRunner {
 }
 
 export async function startSessionRunner(options: SessionRunnerOptions): Promise<SessionRunner> {
-  const secret = deriveModelSecret(options.profile);
+  const harness = bindHarness(options.profile.profile);
+  const secret = deriveModelSecret(options.profile, harness);
 
   await options.sandboxes.addSecret(secret);
-
-  const harness = getHarness(options.profile.profile.harness);
 
   const worker = await createWorkerSandbox({
     sandboxes: options.sandboxes,
@@ -80,12 +79,14 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
 
   return {
     model,
-    runSession: (session) => runSession({ ...options, sandbox: worker.sandbox, endpoint }, session),
+    runSession: (session) =>
+      runSession({ ...options, harness, sandbox: worker.sandbox, endpoint }, session),
     stop: () => endpoint.stop(),
   };
 }
 
 interface SessionRun extends SessionRunnerOptions {
+  readonly harness: Harness;
   readonly sandbox: Sandbox;
 
   readonly endpoint: Pick<RunEndpoint, 'startStep'>;
@@ -150,25 +151,18 @@ async function runCapturedSession(
   session: SessionInput,
   captured: CapturedSession,
 ): Promise<SessionUsage> {
-  const profile = run.profile.profile;
-  const harness = getHarness(profile.harness);
+  const harness = run.harness;
   const tools = captured.tools;
 
   const turn = await runGuestTurn({
+    harness,
     sandbox: run.sandbox,
     command: run.command,
     turn: {
       type: 'turn',
-      profile: {
-        ...harness.toTurnProfile(profile),
-
-        // Each run starts a fresh session, so a 1-hour cache entry costs more to write and is never
-        // read again.
-        cacheTTL: '5m',
-        baseURL: captured.baseURL,
-      },
+      profile: { ...harness.toTurnProfile('one-off'), baseURL: captured.baseURL },
       tools,
-      resume: null,
+      ...(harness.capabilities.has('resume') ? { resume: null } : {}),
       systemPrompt: session.systemPrompt,
       limits: { modelCalls: null, toolCallWaitMs: harness.toolCallWaitMs },
       input: [{ uuid: crypto.randomUUID(), text: session.prompt }],

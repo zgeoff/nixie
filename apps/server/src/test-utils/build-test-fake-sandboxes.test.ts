@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
-import { decodeTurnFrame, encodeTurnFrame, guestFrameSchema } from '@heynixie/wire';
+import {
+  decodeTurnFrame,
+  encodeHostFrame,
+  guestFrameSchema,
+  harnessCapabilities,
+} from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -73,7 +78,12 @@ test("it gives a tool use of the guest's reply the result of the run's real endp
     maxMessageBytes: 1 << 20,
   });
 
-  await stream.send(encodeTurnFrame(buildMockTurnFrame({ tools: { token: run.token } })));
+  await stream.send(
+    encodeHostFrame(
+      harnessCapabilities['agent-sdk'],
+      buildMockTurnFrame({ tools: { token: run.token } }),
+    ),
+  );
 
   const messages = await Array.fromAsync(stream.messages);
 
@@ -81,6 +91,7 @@ test("it gives a tool use of the guest's reply the result of the run's real endp
   const ended = frames.at(-1);
 
   invariant(ended?.type === 'ended');
+  invariant(ended.boundary);
 
   const [transcript] = await sandbox.copyOut([
     `/home/nixie/.claude/projects/-home-nixie-conversation/${ended.boundary.sessionID}.jsonl`,

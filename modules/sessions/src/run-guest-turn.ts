@@ -1,8 +1,9 @@
+import type { Harness } from '@heynixie/models';
 import type { ExecStream, GuestCommand, Sandbox, StreamExit } from '@heynixie/sandbox';
 import type { GuestFrame, HostFrame, InboxMessage, ModelCallUsage } from '@heynixie/wire';
 import {
   decodeTurnFrame,
-  encodeTurnFrame,
+  encodeHostFrame,
   guestFrameSchema,
   turnFrameLimitBytes,
 } from '@heynixie/wire';
@@ -16,6 +17,7 @@ type EndedFrame = Extract<GuestFrame, { type: 'ended' }>;
 type FailedFrame = Extract<GuestFrame, { type: 'failed' }>;
 
 export interface GuestTurnSpec {
+  readonly harness: Harness;
   readonly sandbox: Sandbox;
   readonly command: GuestCommand;
   readonly turn: TurnFrame;
@@ -54,10 +56,10 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
     // An AbortSignal fires no abort listener added after it aborted.
     spec.signal.throwIfAborted();
 
-    await stream.send(encodeTurnFrame(spec.turn));
+    await stream.send(encodeHostFrame(spec.harness.capabilities, spec.turn));
 
-    void sendMessages(stream, spec.messages);
-    void sendInterrupt(stream, spec.interrupt, spec.signal);
+    void sendMessages(stream, spec);
+    void sendInterrupt(stream, spec);
 
     return await readTurn(stream, spec);
   } catch (error) {
@@ -81,12 +83,13 @@ function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
   };
 }
 
-type LiveMessages = GuestTurnSpec['messages'];
-
-async function sendMessages(stream: ExecStream, messages: LiveMessages): Promise<void> {
+async function sendMessages(
+  stream: ExecStream,
+  spec: Pick<GuestTurnSpec, 'harness' | 'messages'>,
+): Promise<void> {
   try {
-    for await (const message of messages) {
-      await stream.send(encodeTurnFrame({ type: 'message', message }));
+    for await (const message of spec.messages) {
+      await stream.send(encodeHostFrame(spec.harness.capabilities, { type: 'message', message }));
     }
   } catch {}
 }
@@ -94,17 +97,18 @@ async function sendMessages(stream: ExecStream, messages: LiveMessages): Promise
 // A guest that already ended its turn takes no frame, so a late interrupt fails quietly.
 async function sendInterrupt(
   stream: ExecStream,
-  interrupt: AbortSignal | undefined,
-  signal: AbortSignal,
+  spec: Pick<GuestTurnSpec, 'harness' | 'interrupt' | 'signal'>,
 ): Promise<void> {
-  if (interrupt === undefined) {
+  if (spec.interrupt === undefined) {
     return;
   }
 
-  const interrupted = await waitForAbort(interrupt, signal);
+  const interrupted = await waitForAbort(spec.interrupt, spec.signal);
 
   if (interrupted) {
-    await stream.send(encodeTurnFrame({ type: 'interrupt' })).catch(() => {});
+    try {
+      await stream.send(encodeHostFrame(spec.harness.capabilities, { type: 'interrupt' }));
+    } catch {}
   }
 }
 
@@ -147,7 +151,7 @@ interface MutableTurn {
 // session that no turn resumes. Its inbox records stay unread, and the next step sends them again.
 async function readTurn(
   stream: ExecStream,
-  spec: Pick<GuestTurnSpec, 'readRecallMark' | 'onCall'>,
+  spec: Pick<GuestTurnSpec, 'harness' | 'readRecallMark' | 'onCall'>,
 ): Promise<GuestTurn> {
   const turn: MutableTurn = {
     assistants: [],
@@ -169,12 +173,12 @@ async function readTurn(
 
     const mark = await readFrameMark(frame, spec.readRecallMark);
 
-    updateTurn(turn, frame, mark);
+    updateTurn(turn, frame, mark, spec.harness);
   }
 
   const exit = await stream.exit;
 
-  requireTurnEnd(turn, exit);
+  requireTurnEnd(turn, exit, spec.harness);
 
   return {
     // A failed turn resumes no session, so it keeps every reply the model gave before it failed.
@@ -197,7 +201,12 @@ function readFrameMark(frame: GuestFrame, readRecallMark: MarkReader): Promise<n
 
 type TurnStateFrame = Exclude<GuestFrame, { type: 'call' }>;
 
-function updateTurn(turn: MutableTurn, frame: TurnStateFrame, mark: number | undefined): void {
+function updateTurn(
+  turn: MutableTurn,
+  frame: TurnStateFrame,
+  mark: number | undefined,
+  harness: Harness,
+): void {
   if (frame.type === 'assistant') {
     turn.assistants.push(frame);
   } else if (frame.type === 'read') {
@@ -210,11 +219,15 @@ function updateTurn(turn: MutableTurn, frame: TurnStateFrame, mark: number | und
   } else if (frame.type === 'failed') {
     turn.failure = frame;
   } else {
-    throw new Error('the conversation guest reported a purge during a turn');
+    throw new Error(`the ${harness.guest.package} guest reported a purge during a turn`);
   }
 }
 
-function requireTurnEnd(turn: Pick<GuestTurn, 'ended' | 'failure'>, exit: StreamExit): void {
+function requireTurnEnd(
+  turn: Pick<GuestTurn, 'ended' | 'failure'>,
+  exit: StreamExit,
+  harness: Harness,
+): void {
   if (turn.ended.length > 0 || turn.failure !== null) {
     return;
   }
@@ -222,6 +235,6 @@ function requireTurnEnd(turn: Pick<GuestTurn, 'ended' | 'failure'>, exit: Stream
   const stderr = new TextDecoder().decode(exit.stderr.bytes);
 
   throw new Error(
-    `the conversation guest exited with code ${exit.code} and signal ${exit.signal} before it ended its turn: ${stderr}`,
+    `the ${harness.guest.package} guest exited with code ${exit.code} and signal ${exit.signal} before it ended its turn: ${stderr}`,
   );
 }

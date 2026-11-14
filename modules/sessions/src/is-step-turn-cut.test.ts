@@ -6,24 +6,28 @@ test.each([
   {
     name: 'an interrupted turn that stopped at tool_use',
     buildInterrupt: () => AbortSignal.abort(),
+    outcome: 'interrupted',
     stopReason: 'tool_use',
     isCut: true,
   },
   {
     name: 'an interrupted turn that stopped with no reason',
     buildInterrupt: () => AbortSignal.abort(),
+    outcome: 'interrupted',
     stopReason: null,
     isCut: true,
   },
   {
     name: 'a turn the interrupt reached after its end_turn',
     buildInterrupt: () => AbortSignal.abort(),
+    outcome: 'finished',
     stopReason: 'end_turn',
     isCut: false,
   },
   {
     name: 'a turn no interrupt reached',
     buildInterrupt: () => new AbortController().signal,
+    outcome: 'interrupted',
     stopReason: 'tool_use',
     isCut: false,
   },
@@ -36,6 +40,7 @@ test.each([
         payload: modelTurnEndedCodec.encode({
           model: 'claude-test',
           profile: 'task-direct',
+          outcome: row.outcome,
           stopReason: row.stopReason,
           turns: 1,
           inputTokens: 10,

@@ -33,7 +33,7 @@ test('it returns every frame the guest answers with, in order, and the ended fra
   expect(run.frames).toMatchObject([
     { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000002'] },
     { type: 'assistant', text: 'APPLE', toolUses: [] },
-    { type: 'ended', subtype: 'success' },
+    { type: 'ended', outcome: 'finished' },
   ]);
 
   invariant(run.ended !== null);

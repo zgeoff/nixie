@@ -1,7 +1,7 @@
 import type { CompactionSettings } from '@heynixie/compaction';
 import type { ContentSource, RecordInput } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
-import type { ResolvedProfile } from '@heynixie/models';
+import type { Harness, ResolvedProfile } from '@heynixie/models';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { StepInput, TaskMessaging, TaskReport, TasksContext } from '@heynixie/tasks';
@@ -147,10 +147,10 @@ export interface ConversationRun {
   readonly frame: SessionFrame;
   readonly profile: ResolvedProfile;
 
-  readonly turnProfile: TurnProfile;
+  readonly harness: Harness;
 
-  // the harness record's wait for one tool call, copied into each turn frame
-  readonly toolCallWaitMs: number | null;
+  // the harness's turn profile for a kept session, with the capture's base URL once a step opens one
+  readonly turnProfile: TurnProfile;
   readonly sandbox: Sandbox;
 
   readonly endpoint: Pick<RunEndpoint, 'startStep'>;
@@ -193,7 +193,8 @@ export type SessionState =
   | 'resumable'
   | 'compaction-due'
   | 'invalidated'
-  | 'lost';
+  | 'lost'
+  | 'unkept';
 
 type LiveSessionState = Extract<SessionState, 'resumable' | 'compaction-due'>;
 
@@ -246,7 +247,9 @@ export type SessionStart =
   | { readonly kind: 'compaction' }
   | {
       readonly kind: 'rebuild';
-      readonly reason: 'lost' | InvalidationCause | 'images';
+
+      // null: a step from unkept
+      readonly reason: 'lost' | InvalidationCause | 'images' | null;
       readonly lostSessionID: string | null;
     };
 
