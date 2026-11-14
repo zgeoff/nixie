@@ -11,6 +11,8 @@ import { renderImageMarkers, renderOwnerText } from '@heynixie/sessions';
 import { z } from 'zod';
 import { conversationKinds } from './conversation-kinds';
 import { formatToolEntry } from './format-tool-entry';
+import { readToolShortIDs } from './read-tool-short-ids';
+import type { ShortIDLookup } from './swapped-keys';
 
 export interface LogPageQuery {
   readonly thread: string;
@@ -114,10 +116,15 @@ async function readPageEntries(
       limit: Math.min(batchSize, query.scanLimit - scan.scanned),
     });
 
+    const lookup = await readToolShortIDs(
+      log,
+      batch.map((read) => read.record),
+    );
+
     scan =
       batch.length === 0
         ? { ...scan, after: bounds.through }
-        : buildNextScan(scan, batch, { query, words });
+        : buildNextScan(scan, batch, { query, words, lookup });
   }
 
   return scan;
@@ -130,6 +137,7 @@ function normalizeSearchText(text: string): string {
 interface EntryFilter {
   readonly query: LogPageQuery;
   readonly words: readonly string[];
+  readonly lookup: ShortIDLookup;
 }
 
 function buildNextScan(
@@ -147,7 +155,7 @@ function buildNextScan(
     next.after = read.record.sequence;
     next.scanned += 1;
 
-    const item = buildScannedEntry(read.record);
+    const item = buildScannedEntry(read.record, filter.lookup);
 
     if (isInRange(item.entry, filter.query) && hasEveryWord(item.plain, filter.words)) {
       next.entries.push(toShownEntry(item.entry));
@@ -165,7 +173,7 @@ interface ScannedEntry {
 const spanFields = z.object({ start: z.int(), end: z.int(), source: z.string() });
 const ownerFields = z.object({ text: z.string(), spans: z.array(spanFields).optional() });
 
-function buildScannedEntry(record: LogRecord): ScannedEntry {
+function buildScannedEntry(record: LogRecord, lookup: ShortIDLookup): ScannedEntry {
   const base = { sequence: record.sequence, recordedAt: record.recordedAt.getTime(), isCut: false };
   const fields = record.erasable.status === 'readable' ? record.erasable.fields : null;
 
@@ -179,7 +187,7 @@ function buildScannedEntry(record: LogRecord): ScannedEntry {
     };
   }
 
-  const text = formatEntryText(record, fields);
+  const text = formatEntryText(record, fields, lookup);
 
   return {
     entry: { ...base, role: record.kind === 'model.reply' ? 'assistant' : 'tool', text },
@@ -191,12 +199,16 @@ function renderOwnerEntry(record: LogRecord): string {
   return [renderOwnerText(record), ...renderImageMarkers(record)].join('\n');
 }
 
-function formatEntryText(record: LogRecord, fields: JSONObject | null): string | null {
+function formatEntryText(
+  record: LogRecord,
+  fields: JSONObject | null,
+  lookup: ShortIDLookup,
+): string | null {
   if (record.kind === 'model.reply') {
     return parseReplyText(fields);
   }
 
-  return fields === null ? null : formatToolEntry(record, fields);
+  return fields === null ? null : formatToolEntry(record, fields, lookup);
 }
 
 const replyFields = z.object({ text: z.string() });

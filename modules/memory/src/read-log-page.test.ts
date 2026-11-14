@@ -1,9 +1,12 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
+import type { JSONObject } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { readLogPage } from './read-log-page';
 import { startTestMemory } from './test-utils';
+import { createConsolidationDiff } from './test-utils/create-consolidation-diff';
+import { createMemoryItem } from './test-utils/create-memory-item';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
 async function setupTest() {
@@ -13,7 +16,53 @@ async function setupTest() {
     setSystemTime();
   });
 
-  return { log: memory.log };
+  const readToolEntries = async (results: readonly JSONObject[]) => {
+    await writeRecords(
+      memory.log,
+      results.map((erasable) => ({
+        kind: 'tool_result' as const,
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        contentSource: 'untrusted' as const,
+        payload: { outcome: 'result', sources: {} },
+        erasable,
+      })),
+    );
+
+    const page = await readLogPage(memory.log, {
+      thread: 'conversation',
+      after: 0,
+      from: null,
+      to: null,
+      words: [],
+      limit: 50,
+      scanLimit: 500,
+    });
+
+    return page.entries.filter((entry) => entry.role === 'tool').map((entry) => entry.text);
+  };
+
+  const keepMoment = async (title: string) => {
+    const message = await writeOwnerMessageRecord(memory.log, {
+      thread: 'conversation',
+      text: `${title} owner words`,
+      spans: [],
+    });
+
+    const kept = await memory.store.moments.keep({
+      caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+      thread: 'conversation',
+      firstSequence: message,
+      lastSequence: message,
+      title,
+    });
+
+    invariant(kept.status === 'written');
+
+    return kept;
+  };
+
+  return { log: memory.log, memory, readToolEntries, keepMoment };
 }
 
 test('it reads only the entries recorded in the time range', async () => {
@@ -600,4 +649,232 @@ test.each([
   });
 
   expect(page.entries.map((entry) => entry.text)).toStrictEqual([...row.texts]);
+});
+
+test('it prints the short ID of a moment and an item in the entry of each moment and recall tool, for a record with hidden and for one with UUIDs', async () => {
+  const ctx = await setupTest();
+  const kept = await ctx.keepMoment('The kettle argument');
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Buys only quiet kettles' });
+  const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
+
+  const itemShortID = shortIDs.get(item.itemID) ?? '';
+  const momentUUIDs = { [kept.shortID]: kept.momentID };
+  const bothUUIDs = { ...momentUUIDs, [itemShortID]: item.itemID };
+
+  const texts = await ctx.readToolEntries([
+    {
+      result: { moments: [{ momentID: kept.shortID, version: 1 }], next: null },
+      hidden: { uuids: momentUUIDs },
+    },
+    { result: { moments: [{ momentID: kept.momentID, version: 1 }], next: null } },
+    {
+      result: { momentID: kept.shortID, version: 1, eventIDs: ['3'] },
+      hidden: { uuids: momentUUIDs },
+    },
+    { result: { momentID: kept.momentID, version: 1, eventIDs: ['3'] } },
+    {
+      result: { momentID: kept.shortID, version: 1, keptThisWeek: 1 },
+      hidden: { uuids: momentUUIDs },
+    },
+    { result: { momentID: kept.momentID, version: 1, keptThisWeek: 1 } },
+    { result: { momentID: kept.shortID, version: 2 }, hidden: { uuids: momentUUIDs } },
+    { result: { momentID: kept.momentID, version: 2 } },
+    {
+      result: { momentID: kept.shortID, version: 3, state: 'retired' },
+      hidden: { uuids: momentUUIDs },
+    },
+    { result: { momentID: kept.momentID, version: 3, state: 'retired' } },
+    {
+      result: { momentID: kept.shortID, version: 4, itemID: itemShortID },
+      hidden: { uuids: bothUUIDs },
+    },
+    { result: { momentID: kept.momentID, version: 4, itemID: item.itemID } },
+    {
+      result: {
+        items: [{ itemID: itemShortID, version: 1, momentIDs: [kept.shortID] }],
+        next: null,
+        leftOut: { count: 1, itemIDs: [itemShortID], versions: 0 },
+      },
+      hidden: { uuids: bothUUIDs },
+    },
+    {
+      result: {
+        items: [{ itemID: item.itemID, version: 1, momentIDs: [kept.momentID] }],
+        next: null,
+        leftOut: { count: 1, itemIDs: [item.itemID], versions: 0 },
+      },
+    },
+  ]);
+
+  expect(texts).toHaveLength(14);
+
+  expect(texts).toSatisfyAll(
+    (text: string | null) =>
+      text?.includes(kept.shortID) === true || text?.includes(itemShortID) === true,
+  );
+
+  expect(texts.join('\n')).not.toContain(kept.momentID);
+  expect(texts.join('\n')).not.toContain(item.itemID);
+  expect(texts[1]).toBe(texts[0]);
+  expect(texts[13]).toBe(texts[12]);
+  expect(texts[11]).toBe(texts[10]);
+});
+
+test('it prints the short ID of a change while its row exists, and no changeID when none does', async () => {
+  const ctx = await setupTest();
+  const first = await createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' });
+
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [
+      {
+        kind: 'rewrite',
+        inputs: [first],
+        text: 'Takes oat milk',
+        reason: 'Shorter.',
+        source: 'owner',
+      },
+    ],
+  });
+
+  const [change] = diff.changes;
+
+  invariant(change);
+
+  const texts = await ctx.readToolEntries([
+    { result: { changes: [{ changeID: change.changeID, kind: 'rewrite' }] } },
+    {
+      result: { changes: [{ changeID: '0b4e7a3c-52d1-4f08-9a6e-3c1d8f27b5a9', kind: 'rewrite' }] },
+    },
+  ]);
+
+  expect(texts).toStrictEqual([
+    JSON.stringify({ result: { changes: [{ changeID: change.shortID, kind: 'rewrite' }] } }),
+    JSON.stringify({ result: { changes: [{ kind: 'rewrite' }] } }),
+  ]);
+});
+
+test('it prints no momentID for a moment that was destroyed', async () => {
+  const ctx = await setupTest();
+  const kept = await ctx.keepMoment('The shed colour');
+
+  await ctx.memory.store.moments.destroy({ momentID: kept.momentID, version: 1 });
+
+  const texts = await ctx.readToolEntries([
+    { result: { momentID: kept.momentID, version: 1, eventIDs: [] } },
+    {
+      result: { momentID: kept.shortID, version: 1, eventIDs: [] },
+      hidden: { uuids: { [kept.shortID]: kept.momentID } },
+    },
+  ]);
+
+  expect(texts).toStrictEqual([
+    '{"result":{"version":1,"eventIDs":[]}}',
+    JSON.stringify({ result: { momentID: kept.shortID, version: 1, eventIDs: [] } }),
+  ]);
+});
+
+test('it rejects the read when a short ID cannot be read', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Buys only quiet kettles' });
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { outcome: 'result', sources: {} },
+      erasable: { result: { itemID: item.itemID } },
+    },
+  ]);
+
+  const failing = ctx.memory.writer.db.withPlugin({
+    transformQuery: (args) => {
+      if (JSON.stringify(args.node).includes('"memory_items"')) {
+        throw new Error('the item read failed');
+      }
+
+      return args.node;
+    },
+    transformResult: (args) => Promise.resolve(args.result),
+  });
+
+  const log = {
+    deploymentKey: ctx.memory.deploymentKey,
+    writer: { ...ctx.memory.writer, db: failing },
+  };
+
+  const read = readLogPage(log, {
+    thread: 'conversation',
+    after: 0,
+    from: null,
+    to: null,
+    words: [],
+    limit: 20,
+    scanLimit: 500,
+  });
+
+  const [settled] = await Promise.allSettled([read]);
+
+  expect(settled.status).toBe('rejected');
+});
+
+test('it matches a word of a search to the short ID and not to the UUID', async () => {
+  const ctx = await setupTest();
+  const kept = await ctx.keepMoment('The kettle argument');
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { outcome: 'result', sources: {} },
+      erasable: { result: { momentID: kept.momentID, version: 1 } },
+    },
+  ]);
+
+  const readEntries = (word: string) =>
+    readLogPage(ctx.log, {
+      thread: 'conversation',
+      after: 0,
+      from: null,
+      to: null,
+      words: [word],
+      limit: 20,
+      scanLimit: 500,
+    });
+
+  const byShortID = await readEntries(kept.shortID);
+  const byUUID = await readEntries(kept.momentID);
+
+  expect(byShortID.entries).toHaveLength(1);
+  expect(byUUID.entries).toStrictEqual([]);
+});
+
+test('it prints the short ID of a moment and an item that sit in an object under an ID key', async () => {
+  const ctx = await setupTest();
+  const kept = await ctx.keepMoment('The ladder loan');
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Lends a ladder on Sundays' });
+  const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
+
+  const itemShortID = shortIDs.get(item.itemID) ?? '';
+
+  const texts = await ctx.readToolEntries([
+    {
+      result: {
+        itemIDs: [{ momentID: kept.momentID, nested: { itemID: item.itemID } }],
+        momentID: { itemID: item.itemID },
+      },
+    },
+  ]);
+
+  expect(texts).toStrictEqual([
+    JSON.stringify({
+      result: {
+        itemIDs: [{ momentID: kept.shortID, nested: { itemID: itemShortID } }],
+        momentID: { itemID: itemShortID },
+      },
+    }),
+  ]);
 });

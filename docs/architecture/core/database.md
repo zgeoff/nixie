@@ -113,6 +113,9 @@ length. Every kind of record that the model can see follows the same rule when i
 views from before the rule show UUIDs: memory proposals, and the memory writer's view of the items
 it reads.
 
+A tool's stored result follows the same rule: it holds the short ID, and the UUID sits under the
+result's `hidden.uuids`, keyed by short ID.
+
 The UUID stays the record's own key, in the log, in every foreign key and in the key store, so a
 short ID is an alias that only the model's side of each tool reads and writes. A tool that takes an
 ID accepts the short ID, and the UUID too, because a session can hold IDs that the model read before

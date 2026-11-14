@@ -214,7 +214,7 @@ export interface RecalledItem extends RecalledVersion {
 
 export type SearchMode = 'hybrid' | 'keyword' | 'keyword-fallback';
 
-export interface OmittedItem {
+interface OmittedItem {
   readonly itemID: string;
   readonly shortID: string;
 }

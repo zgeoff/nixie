@@ -1,6 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildHiddenUUIDs } from './build-hidden-uuids';
 import { buildMomentCaller } from './build-moment-caller';
 import type { MomentStore } from './build-moment-store';
 import { makeInputRecorder } from './make-input-recorder';
@@ -91,7 +92,8 @@ export function buildMomentEditTool(moments: Pick<MomentStore, 'edit'>): ToolDef
       return {
         status: 'ok',
         result: { momentID: edited.shortID, version: edited.version, ...reflection },
-        record: { momentID: edited.momentID, version: edited.version, ...reflection },
+        record: { momentID: edited.shortID, version: edited.version, ...reflection },
+        ...buildHiddenUUIDs([[edited.shortID, edited.momentID]]),
       };
     },
   };

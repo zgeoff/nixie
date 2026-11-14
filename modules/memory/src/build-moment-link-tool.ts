@@ -1,5 +1,6 @@
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildHiddenUUIDs } from './build-hidden-uuids';
 import { buildMomentCaller } from './build-moment-caller';
 import type { MomentStore } from './build-moment-store';
 import { readItemIDs } from './read-item-ids';
@@ -65,10 +66,18 @@ export function buildMomentLinkTool(
         return { status: 'error', message: renderMomentRefusal(linked.reason) };
       }
 
+      const shortIDs = await items.readShortIDs([itemID]);
+
+      const itemShortID = shortIDs.get(itemID) ?? itemID;
+
       return {
         status: 'ok',
         result: { momentID: linked.shortID, version: linked.version },
-        record: { momentID: linked.momentID, version: linked.version, itemID },
+        record: { momentID: linked.shortID, version: linked.version, itemID: itemShortID },
+        ...buildHiddenUUIDs([
+          [linked.shortID, linked.momentID],
+          [itemShortID, itemID],
+        ]),
       };
     },
   };

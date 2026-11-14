@@ -1,5 +1,7 @@
 import type { LogRecord } from '@heynixie/log';
 import { toolResultCodec } from '@heynixie/tools';
+import { swapToolResultUUIDs } from './swap-tool-result-uuids';
+import type { ShortIDLookup } from './swapped-keys';
 
 // The text of a tool result as the model reads it: the message, or the result, alone. A result of
 // an earlier release can hold a search's costUSD, which the model never read, so the top-level
@@ -7,6 +9,7 @@ import { toolResultCodec } from '@heynixie/tools';
 export function formatToolEntry(
   record: LogRecord,
   fields: Readonly<Record<string, unknown>>,
+  lookup: ShortIDLookup,
 ): string {
   const message = fields['message'];
 
@@ -15,7 +18,9 @@ export function formatToolEntry(
   }
 
   if ('result' in fields) {
-    return JSON.stringify({ result: dropUnnamedCost(fields['result'], record) });
+    return JSON.stringify({
+      result: swapToolResultUUIDs(dropUnnamedCost(fields['result'], record), lookup),
+    });
   }
 
   return JSON.stringify(fields);

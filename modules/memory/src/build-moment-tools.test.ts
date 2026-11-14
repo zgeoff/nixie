@@ -129,7 +129,10 @@ test('#moment.keep returns the moment ID, the week count and a pending reflectio
     },
     {
       status: 'readable',
-      fields: { result: { momentID: row.moment_id, version: 1, keptThisWeek: 1 } },
+      fields: {
+        result: { momentID: row.short_id, version: 1, keptThisWeek: 1 },
+        hidden: { uuids: { [row.short_id]: row.moment_id } },
+      },
     },
   ]);
 });
@@ -1136,13 +1139,18 @@ test('#memory.recall returns the moments linked to an item by ID and title, and 
     items: [{ moments: [{ momentID: kept.shortID, title: 'The kettle argument' }] }],
   });
 
+  const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
+
+  const itemShortID = shortIDs.get(item.itemID) ?? '';
+
   expect(recalled?.record.erasable).toStrictEqual({
     status: 'readable',
     fields: {
       result: {
-        items: [{ itemID: item.itemID, version: 1, momentIDs: [kept.shortID] }],
+        items: [{ itemID: itemShortID, version: 1, momentIDs: [kept.shortID] }],
         next: null,
       },
+      hidden: { uuids: { [itemShortID]: item.itemID, [kept.shortID]: kept.momentID } },
     },
   });
 });
@@ -1201,4 +1209,97 @@ test('it leaves every title, reflection and query out of the records of moment t
 
   expect(records).toHaveLength(8);
   expect(JSON.stringify(records.map((entry) => entry.record.erasable))).not.toInclude('Marigold');
+});
+
+test('it stores the short ID of the moment in the record of each moment tool and keeps its UUID under hidden', async () => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'only the quiet kettle from now on',
+    spans: [],
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'Buys only quiet kettles',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message,
+    lastSequence: message,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
+
+  const itemShortID = shortIDs.get(item.itemID) ?? '';
+
+  const calls = [
+    { tool: 'moment.find', input: { query: 'kettle' } },
+    { tool: 'moment.read', input: { momentID: kept.momentID } },
+    { tool: 'moment.edit', input: { momentID: kept.momentID, version: 1, title: 'The kettle' } },
+    { tool: 'moment.link', input: { momentID: kept.shortID, version: 2, itemID: item.itemID } },
+    { tool: 'moment.retire', input: { momentID: kept.shortID, version: 3 } },
+  ];
+
+  for (const [index, call] of calls.entries()) {
+    await runToolCall({ ...call, toolUseID: `toolu_${index}` }, ctx.run, ctx.toolCallOptions);
+  }
+
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['tool_result'] });
+
+  const stored = records.map((entry) =>
+    entry.record.erasable.status === 'readable' ? entry.record.erasable.fields : null,
+  );
+
+  expect(stored).toStrictEqual([
+    {
+      result: { moments: [{ momentID: kept.shortID, version: 1 }], next: null },
+      hidden: { uuids: { [kept.shortID]: kept.momentID } },
+    },
+    {
+      result: {
+        momentID: kept.shortID,
+        version: 1,
+        reflectionIDs: [],
+        eventIDs: [String(message)],
+        next: null,
+      },
+      hidden: { uuids: { [kept.shortID]: kept.momentID } },
+    },
+    {
+      result: { momentID: kept.shortID, version: 2 },
+      hidden: { uuids: { [kept.shortID]: kept.momentID } },
+    },
+    {
+      result: { momentID: kept.shortID, version: 3, itemID: itemShortID },
+      hidden: { uuids: { [kept.shortID]: kept.momentID, [itemShortID]: item.itemID } },
+    },
+    {
+      result: { momentID: kept.shortID, version: 4, state: 'retired' },
+      hidden: { uuids: { [kept.shortID]: kept.momentID } },
+    },
+  ]);
+});
+
+test('it stores no hidden field when moment.find matches no moment', async () => {
+  const ctx = await setupTest();
+
+  await runToolCall(
+    { tool: 'moment.find', input: { query: 'kettle' }, toolUseID: 'toolu_1' },
+    ctx.run,
+    ctx.toolCallOptions,
+  );
+
+  const [stored] = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['tool_result'] });
+
+  expect(stored?.record.erasable).toStrictEqual({
+    status: 'readable',
+    fields: { result: { moments: [], next: null } },
+  });
 });

@@ -136,4 +136,6 @@ The erasable fields of a result record hold the `result` or the `message`. They 
 never reads. `hidden` sits beside the `result`, or beside the `message` of an error the tool
 returns, and nowhere else. The model reads back the `result` or the `message` alone, through the
 reply, `log.read` and `moment.read`. A forget erases `hidden` with the record's other fields. The
-[search](./search.md#what-the-result-carries) tool records each search's cost there.
+[search](./search.md#what-the-result-carries) tool records each search's cost there. The moment
+tools and `memory.recall` record the UUID behind each short ID of their result there, under
+`hidden.uuids`, so the stored result shows short IDs only.

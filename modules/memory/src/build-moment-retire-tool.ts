@@ -1,5 +1,6 @@
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildHiddenUUIDs } from './build-hidden-uuids';
 import { buildMomentCaller } from './build-moment-caller';
 import type { MomentStore } from './build-moment-store';
 import { renderMomentRefusal } from './render-moment-refusal';
@@ -65,7 +66,8 @@ export function buildMomentRetireTool(moments: Pick<MomentStore, 'retire'>): Too
       return {
         status: 'ok',
         result: { momentID: retired.shortID, version: retired.version, state },
-        record: { momentID: retired.momentID, version: retired.version, state },
+        record: { momentID: retired.shortID, version: retired.version, state },
+        ...buildHiddenUUIDs([[retired.shortID, retired.momentID]]),
       };
     },
   };

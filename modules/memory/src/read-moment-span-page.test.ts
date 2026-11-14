@@ -4,6 +4,7 @@ import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { readMomentSpanPage } from './read-moment-span-page';
 import { startTestMemory } from './test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
 async function setupTest() {
   const memory = await startTestMemory();
@@ -249,4 +250,56 @@ test.each([
   });
 
   expect(page.entries.map((entry) => entry.text)).toStrictEqual([...row.texts]);
+});
+
+test.each([
+  { reader: 'model' as const, field: 'short' },
+  { reader: 'owner' as const, field: 'uuid' },
+])('it prints a moment tool record of the span with the $field ID for the $reader', async (row) => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'we settle the kettle question today',
+    spans: [],
+  });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message,
+    lastSequence: message,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  const [written] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { outcome: 'result', sources: {} },
+      erasable: { result: { momentID: kept.momentID, version: 1 } },
+    },
+  ]);
+
+  invariant(written);
+
+  const page = await readMomentSpanPage(ctx.memory.log, {
+    thread: 'conversation',
+    firstSequence: written.sequence,
+    lastSequence: written.sequence,
+    after: null,
+    tokenCap: 6000,
+    records: 'all',
+    reader: row.reader,
+  });
+
+  const shown = row.field === 'short' ? kept.shortID : kept.momentID;
+
+  expect(page.entries.map((entry) => entry.text)).toStrictEqual([
+    JSON.stringify({ result: { momentID: shown, version: 1 } }),
+  ]);
 });
