@@ -8,7 +8,7 @@ import {
   githubStore,
   readMockFiles,
   writeMockBranchFile,
-} from '@heynixie/definitions-github/mocks';
+} from '@heynixie/definitions-repo-github/mocks';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';

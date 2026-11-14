@@ -5,7 +5,7 @@ import {
   buildSkillChangeKind,
   startDefinitionsExportSweep,
 } from '@heynixie/definitions';
-import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-github';
+import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
 import type { Log } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
