@@ -33,7 +33,6 @@
         "pending": [
           "apps/server",
           "apps/web",
-          "modules/definitions",
           "modules/memory",
           "modules/sessions",
           "modules/tasks"
