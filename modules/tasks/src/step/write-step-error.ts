@@ -1,5 +1,6 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { requireLease } from '../lease/require-lease';
+import { writeRunEndInTransaction } from '../run/write-run-end-in-transaction';
 import type { StartedClaim, StepErrored, TasksContext, TasksTables } from '../types';
 import { resetLease } from '../utils/reset-lease';
 import type { StepErrorOptions } from './build-step-failure-plan';
@@ -43,6 +44,17 @@ export function writeStepError(
     );
 
     await writeRecordsInTransaction(tx, context.log, plan.records);
+
+    if (plan.nextState === 'failed') {
+      await writeRunEndInTransaction(tx, context, {
+        taskID,
+        trigger: { kind: 'failed' },
+        endedBy: `step:${claim.stepKey}`,
+        stepKey: claim.stepKey,
+        errors: plan.errors,
+      });
+    }
+
     await resetLease(tx, claim.lease);
 
     return {

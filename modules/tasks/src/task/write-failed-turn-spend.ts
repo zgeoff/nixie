@@ -5,6 +5,9 @@ import { taskFailedTurnSpentCodec } from './codec/task-failed-turn-spent-codec';
 export interface FailedTurnSpend {
   readonly taskID: string;
   readonly dollars: number;
+
+  // the open task run that the turn spent for
+  readonly taskRunID?: string;
 }
 
 // The calls spent the dollars whoever holds the task's lease now, so the write checks no lease: a
@@ -19,7 +22,11 @@ export async function writeFailedTurnSpend(
       kind: taskFailedTurnSpentCodec.kind,
       definitions: context.definitions(),
       thread: spend.taskID,
-      payload: taskFailedTurnSpentCodec.encode({ taskID: spend.taskID, dollars: spend.dollars }),
+      payload: taskFailedTurnSpentCodec.encode({
+        taskID: spend.taskID,
+        dollars: spend.dollars,
+        ...(spend.taskRunID === undefined ? {} : { taskRunID: spend.taskRunID }),
+      }),
     },
   ]);
 }

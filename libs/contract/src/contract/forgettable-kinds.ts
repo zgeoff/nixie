@@ -20,6 +20,8 @@ export const forgettableKinds = [
   'session_kept',
   'skills.write_rejected',
   'task.created',
+  'task.run_ended',
+  'task.run_report_requested',
   'task.step_errored',
   'task_message',
   'tool_called',

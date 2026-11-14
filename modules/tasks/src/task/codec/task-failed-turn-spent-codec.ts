@@ -6,5 +6,6 @@ export const taskFailedTurnSpentCodec = defineRecordCodec(
   z.object({
     taskID: z.string(),
     dollars: z.number(),
+    taskRunID: z.string().exactOptional(),
   }),
 );

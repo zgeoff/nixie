@@ -1,6 +1,5 @@
 import invariant from 'tiny-invariant';
 import { writeStepCommit } from '../step/write-step-commit';
-import { writeTaskLimitPause } from '../task/limit/write-task-limit-pause';
 import { claimTask } from '../task/projection/claim-task';
 import type { StartedClaim, TaskLimits, TasksContext } from '../types';
 import { seedTask } from './seed-task';
@@ -23,15 +22,15 @@ export async function seedPausedTask(context: TasksContext, seed: PausedTaskSeed
 
   invariant(claim, 'the started task is ready to claim');
 
-  await writeTaskLimitPause(context, {
-    lease: claim.lease,
-    stepKey: claim.stepKey,
-    startedBy: seed.starter.lease.workID,
-    used: seed.limits,
-    limits: seed.limits,
+  await writeStepCommit(context, claim, {
+    next: 'continue',
+    records: [],
+    acknowledged: [],
+    run: {
+      activity: 'worked',
+      limit: { meter: 'turns', used: seed.limits.turns, limit: seed.limits.turns },
+    },
   });
-
-  await writeStepCommit(context, claim, { next: 'continue', records: [], acknowledged: [] });
 
   return taskID;
 }

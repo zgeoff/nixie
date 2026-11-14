@@ -10,6 +10,7 @@ test('it runs its act on the step and then waits with the whole inbox read', asy
   const act = mock(() => Promise.resolve());
 
   const input = {
+    run: null,
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,
     lease: claim.lease,

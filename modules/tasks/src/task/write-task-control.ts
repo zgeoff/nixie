@@ -4,7 +4,7 @@ import type { TaskControlOutcome, TaskControlRequest } from './write-task-contro
 import { writeTaskControlInTransaction } from './write-task-control-in-transaction';
 
 export function writeTaskControl(
-  context: Pick<TasksContext, 'log' | 'definitions'>,
+  context: Pick<TasksContext, 'log' | 'definitions' | 'runSettings'>,
   request: TaskControlRequest,
 ): Promise<TaskControlOutcome> {
   return withWriteTransaction(context.log.writer, (tx) =>

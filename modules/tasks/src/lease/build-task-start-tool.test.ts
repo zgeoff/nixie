@@ -351,7 +351,86 @@ test('it shows the model each selectable model as an enum value, with its descri
     memory: expect.toBeObject(),
     tools: expect.toBeObject(),
     report: expect.toBeObject(),
+    reportShape: expect.toBeObject(),
     limits: expect.toBeObject(),
+  });
+});
+
+test('it refuses a start whose report shape holds a keyword it cannot enforce, and starts nothing', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
+
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: {
+        name: 'Parcel',
+        brief: 'Track the parcel until it lands.',
+        reportShape: { properties: { code: { type: 'string', pattern: '^[a-z]+$' } } },
+      },
+    }),
+    buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  const written = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.created'],
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.stringContaining('pattern'),
+  });
+
+  // only the conversation's own task exists
+  expect(written.map((entry) => entry.record.thread)).toStrictEqual(['conversation']);
+});
+
+test('it starts a task with the report shape it is given, as its option', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
+
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: {
+        name: 'Parcel',
+        brief: 'Track the parcel until it lands.',
+        reportShape: { properties: { city: { type: 'string' } }, required: ['city'] },
+      },
+    }),
+    buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  invariant(outcome.status === 'ok');
+
+  const result = outcome.result;
+
+  invariant(typeof result === 'object' && result !== null && 'taskID' in result);
+
+  const taskID = result['taskID'];
+
+  invariant(typeof taskID === 'string');
+
+  const setup = await readTaskSetup(ctx.context, taskID);
+
+  expect(setup?.options?.reportShape).toStrictEqual({
+    type: 'object',
+    properties: { city: { type: 'string' } },
+    required: ['city'],
+    additionalProperties: false,
   });
 });
 
@@ -418,7 +497,7 @@ test('it starts a stranger on a selectable model with the tools it asks for, and
       profile: 'router-b',
       persona: 'none',
       memory: 'none',
-      tools: ['tasks.list', 'task.message', 'web_fetch'],
+      tools: ['tasks.list', 'task.message', 'task.report', 'web_fetch'],
       report: 'wake',
       limits: { turns: 6, dollars: 0.5 },
     },
@@ -581,7 +660,7 @@ test.each(['mcp__nixie__memory_recall', 'memory.recall'])(
     });
 
     expect(setups.map((setup) => setup?.options?.tools)).toStrictEqual([
-      ['tasks.list', 'task.message', 'memory.recall'],
+      ['tasks.list', 'task.message', 'task.report', 'memory.recall'],
     ]);
   },
 );

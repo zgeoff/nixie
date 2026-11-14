@@ -19,6 +19,9 @@ export type TasksRecordKind =
   | 'recovery.notice'
   | 'task.limits_raised'
   | 'task.wake'
+  | 'task.run_opened'
+  | 'task.run_report_requested'
+  | 'task.run_ended'
   | 'task_message'
   | 'task.exchange_limited'
   | 'timer.fired'
@@ -29,6 +32,8 @@ type TasksErasableRecordKind =
   | 'action.outcome'
   | 'owner_message'
   | 'task.created'
+  | 'task.run_ended'
+  | 'task.run_report_requested'
   | 'task.step_errored'
   | 'task_message';
 

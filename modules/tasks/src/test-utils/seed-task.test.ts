@@ -51,7 +51,7 @@ test('it starts the task with the options it is given over the default ones', as
     profile: 'router-b',
     persona: 'none',
     memory: 'none',
-    tools: ['tasks.list', 'task.message', 'time.now'],
+    tools: ['tasks.list', 'task.message', 'task.report', 'time.now'],
     report: 'none',
     limits: { turns: 25, dollars: 2 },
   });

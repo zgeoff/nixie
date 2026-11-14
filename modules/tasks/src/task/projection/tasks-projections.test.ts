@@ -29,6 +29,7 @@ test('it lists the tasks projection before the timers projection that refers to 
     'tasks',
     'timers',
     'task_messages',
+    'task_runs',
   ]);
 });
 

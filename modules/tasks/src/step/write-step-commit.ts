@@ -1,11 +1,24 @@
-import { DatabaseError } from '@heynixie/db';
+import { DatabaseError, createShortID } from '@heynixie/db';
+import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { Transaction } from 'kysely';
 import { match } from 'ts-pattern';
 import { requireLease } from '../lease/require-lease';
 import { waitAtFaultPoint } from '../lease/wait-at-fault-point';
 import { probePauseRequested } from '../pause/probe-pause-requested';
+import { readOpenRun } from '../run/read-open-run';
+import { taskRunReportRequestedCodec } from '../run/task-run-report-requested-codec';
+import type { TaskRun } from '../run/types';
+import { writeRunEndInTransaction } from '../run/write-run-end-in-transaction';
 import { buildPausedRecord } from '../task/record/build-paused-record';
-import type { ResumeState, StepResult, TaskClaim, TaskState, TasksContext } from '../types';
+import type {
+  ResumeState,
+  StepResult,
+  TaskClaim,
+  TaskState,
+  TasksContext,
+  TasksTables,
+} from '../types';
 import { resetLease } from '../utils/reset-lease';
 import { taskStepCommittedCodec } from '../utils/task-step-committed-codec';
 import { readStepCursor } from './read-step-cursor';
@@ -29,8 +42,13 @@ export async function writeStepCommit(
     await requireLease(tx, claim.lease, context.clock.now());
 
     const cursor = await readStepCursor(tx, taskID, result.acknowledged);
+    const run = await readOpenRun(tx, taskID);
 
-    const nextState = pickNextState(result.next, cursor.hasUnread);
+    const hasReport = run !== null && (run.reportID !== null || result.run?.report !== undefined);
+
+    // A started task that reported waits for its starter's next message, and is never done.
+    const reportedNext = hasReport && result.next === 'done' ? 'wait' : result.next;
+    const nextState = pickNextState(reportedNext, cursor.hasUnread);
 
     const isPauseRequested = await probePauseRequested(tx, taskID);
 
@@ -38,6 +56,7 @@ export async function writeStepCommit(
 
     await writeRecordsInTransaction(tx, context.log, [
       ...result.records.map((record) => ({ ...record, thread: taskID })),
+      ...buildReportRequest(context, claim, run, result),
       {
         kind: 'task.step_committed',
         definitions: context.definitions(),
@@ -58,6 +77,26 @@ export async function writeStepCommit(
         ? []
         : [buildPausedRecord(taskID, resumeState, context.definitions())]),
     ]);
+
+    const hasOpenWait = await probeOpenWait(tx, taskID);
+
+    await writeRunEndInTransaction(tx, context, {
+      taskID,
+      trigger: {
+        kind: 'step',
+        hasReport,
+        limit: result.run?.limit ?? null,
+        isDone: result.next === 'done',
+        activity: result.run?.activity ?? 'worked',
+        isFirstStep: run?.opened.openedByStep === claim.stepKey,
+        hasWork: nextState === 'ready' || hasOpenWait,
+
+        // every started task is woken by messages until the wake rule says otherwise
+        isWakeable: true,
+      },
+      endedBy: `step:${claim.stepKey}`,
+      stepKey: claim.stepKey,
+    });
 
     await resetLease(tx, claim.lease);
   }).catch((error: unknown) => {
@@ -97,6 +136,50 @@ function pickPausedResume(nextState: TaskState, isPauseRequested: boolean): Resu
   }
 
   return nextState === 'ready' || nextState === 'waiting' ? nextState : null;
+}
+
+function buildReportRequest(
+  context: TasksContext,
+  claim: TaskClaim,
+  run: TaskRun | null,
+  result: StepResult,
+): readonly RecordInput[] {
+  const report = result.run?.report;
+
+  if (run === null || run.reportID !== null || report === undefined) {
+    return [];
+  }
+
+  return [
+    {
+      kind: taskRunReportRequestedCodec.kind,
+      definitions: context.definitions(),
+      thread: run.taskID,
+      payload: taskRunReportRequestedCodec.encode({
+        taskID: run.taskID,
+        runID: run.runID,
+        stepKey: claim.stepKey,
+        reportID: createShortID(),
+      }),
+      erasable: {
+        summary: report.summary,
+        ...(report.fields === undefined ? {} : { fields: report.fields }),
+      },
+    },
+  ];
+}
+
+async function probeOpenWait(tx: Transaction<unknown>, taskID: string): Promise<boolean> {
+  const wait = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('task_messages')
+    .select('message_id')
+    .where('from_task', '=', taskID)
+    .where('wait_state', '=', 'open')
+    .limit(1)
+    .executeTakeFirst();
+
+  return wait !== undefined;
 }
 
 function isStepKeyConflict(error: unknown): boolean {
