@@ -59,7 +59,7 @@ function openFrameReader(input: FetcherIO['input']): FrameReader {
         while (pending.length === 0) {
           const chunk = await chunks.read();
 
-          if (chunk.done === true) {
+          if (chunk.done) {
             return { done: true, value: undefined };
           }
 

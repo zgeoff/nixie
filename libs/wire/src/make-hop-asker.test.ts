@@ -37,7 +37,9 @@ function setupTest(replies: readonly Uint8Array[]) {
 
       return stalled;
     },
-    closeFrames: () => closed.resolve({ done: true, value: undefined }),
+    closeFrames: () => {
+      closed.resolve({ done: true, value: undefined });
+    },
   };
 }
 
@@ -65,7 +67,7 @@ test('it rejects when the signal aborts while it waits', () => {
   expect(asked).rejects.toThrowWithMessage(Error, 'time is up');
 });
 
-test('it rejects when the signal aborts while the write is still in flight', async () => {
+test('it rejects when the signal aborts while the write is still in flight', () => {
   const ctx = setupTest([encodeFetchMessage({ kind: 'hop-pass' })]);
   const stalled = ctx.stallWrites();
 
@@ -75,7 +77,7 @@ test('it rejects when the signal aborts while the write is still in flight', asy
 
   controller.abort(new Error('time is up'));
 
-  await expect(asked).rejects.toThrowWithMessage(Error, 'time is up');
+  expect(asked).rejects.toThrowWithMessage(Error, 'time is up');
 
   stalled.resolve();
 });
@@ -100,8 +102,8 @@ test('it rejects when the frames end before a pass', () => {
 test.each([
   ['a reply frame', encodeFetchMessage({ kind: 'failed', reason: 'no', isGated: false })],
   ['a frame that is not JSON', new TextEncoder().encode('not json')],
-])('it rejects when the next frame is %s', (_label, frame) => {
+])('it rejects when the next frame is %s', async (_label, frame) => {
   const ctx = setupTest([frame]);
 
-  expect(ctx.askHop('https://example.com/next', new AbortController().signal)).toReject();
+  await expect(ctx.askHop('https://example.com/next', new AbortController().signal)).toReject();
 });

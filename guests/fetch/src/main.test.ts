@@ -101,7 +101,7 @@ test('it exits after its reply to a gated request while the server holds its std
     fetcher.kill('SIGKILL');
   });
 
-  fetcher.stdin.write(
+  await fetcher.stdin.write(
     encodeFrame(
       encodeFetchMessage({
         url: 'https://localhost/',
