@@ -50,7 +50,7 @@ test('it answers a lookup of the records that a forget names from the index', as
 
   const details = z.array(z.object({ detail: z.string() })).parse(plan.rows);
 
-  expect(details.map((row) => row.detail)).toSatisfyAny((detail) =>
-    detail.includes('records_by_forgotten_sequence'),
+  expect(details.map((row) => row.detail)).toContainEqual(
+    expect.stringContaining('records_by_forgotten_sequence'),
   );
 });

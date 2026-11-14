@@ -58,6 +58,7 @@ test('it forgets your message, so its text reads as a gap in the thread and afte
   const rebuilt = await readThreadPage(ctx.context, { thread: 'conversation' });
 
   const gap = {
+    isRemoved: true as const,
     kind: 'owner_message',
     recordedAt: expect.toBeValidDate(),
     sequence: sent.sequence,

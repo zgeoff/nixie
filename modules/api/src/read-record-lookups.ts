@@ -42,10 +42,8 @@ export async function readRecordLookups(
     ? await readTaskDirectory(context, messaging)
     : messaging;
 
-  const removedSequences =
-    known.removedSequences === undefined
-      ? await readRemovedRecordSequences(context, records)
-      : known.removedSequences;
+  const removedSequences = await (known.removedSequences ??
+    readRemovedRecordSequences(context, records));
 
   return {
     cancelledActionIDs: await readCancelledActionIDs(context, failedActionIDs),
