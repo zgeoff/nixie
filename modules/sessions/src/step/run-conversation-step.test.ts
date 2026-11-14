@@ -107,6 +107,7 @@ async function setupTest() {
         compaction: { summaryTokens },
         loadOrPinSkillCatalog,
         log: () => {},
+        clearFetchPauses: () => {},
         ...(turnInputs === undefined ? {} : { turnInputs }),
       }),
     writeMessage: (text: string) =>

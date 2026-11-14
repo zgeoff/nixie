@@ -70,6 +70,7 @@ test('it reads every section, with the default of each setting the file leaves o
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
     },
     search: { daily_call_cap: 200, credential: null, api_url: 'https://kagi.com/api/v1' },
     time: { default_zone: 'Australia/Sydney' },

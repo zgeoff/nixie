@@ -74,6 +74,7 @@ export async function startTestConversation(
         readShortIDs: () => Promise.resolve(new Map()),
       })),
     log: () => {},
+    clearFetchPauses: () => {},
   });
 
   server.defer(() => runner.stop());

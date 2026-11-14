@@ -25,6 +25,9 @@ export interface ServerResetControlOptions extends Omit<ServerResetOptions, 'sto
   // removes the request bodies of the threads that a reset of the conversations covers
   readonly removeTurnInputThreads: (threads: readonly string[]) => Promise<void>;
 
+  // empties the web fetch pause of every host, for a reset of the conversations
+  readonly clearFetchPauses: () => void;
+
   readonly closeAPI: () => Promise<void>;
 
   readonly readStart: () => Promise<void>;

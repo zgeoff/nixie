@@ -27,6 +27,7 @@ export async function startWebFetchPart(inputs: WebFetchPartInputs): Promise<Web
     deniedRanges: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
     config: options.config.web_fetch,
     log: inputs.log,
+    ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
   });
 
   await options.cleanup.defer(() => webFetch.stop());

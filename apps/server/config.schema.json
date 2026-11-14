@@ -571,6 +571,24 @@
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991
+        },
+        "backoff_ms": {
+          "default": 30000,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "backoff_cap_ms": {
+          "default": 300000,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "backoff_wait_ms": {
+          "default": 5000,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "additionalProperties": false

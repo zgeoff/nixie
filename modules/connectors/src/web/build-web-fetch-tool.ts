@@ -1,7 +1,9 @@
+import type { Clock } from '@heynixie/clock';
 import type { Log } from '@heynixie/log';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
+import type { FetchBackoff } from '../fetch/make-fetch-backoff';
 import type { PageFetch } from '../page/page-fetch';
 import { pickPageView } from '../page/pick-page-view';
 import { runPageFetch } from '../page/run-page-fetch';
@@ -100,6 +102,13 @@ export interface WebFetchToolOptions {
 
   // the most pixels of an image's longer side; a larger image returns downscaled
   readonly imageLongEdge: number;
+
+  // the pauses of the hosts that answered with a rate limit
+  readonly backoff: FetchBackoff;
+
+  // the longest pause a call waits out itself; a longer one ends the call, or takes the fallback
+  readonly backoffWaitMs: number;
+  readonly clock: Clock;
 }
 
 export function buildWebFetchTool(
@@ -166,6 +175,9 @@ export function buildWebFetchTool(
           session: getPageSession(context.run),
           limits,
           imageLongEdge: options.imageLongEdge,
+          backoff: options.backoff,
+          backoffWaitMs: options.backoffWaitMs,
+          clock: options.clock,
           reserveImages: context.run.session?.reserveImages ?? null,
         },
         parseWebFetchRequest(call.input),

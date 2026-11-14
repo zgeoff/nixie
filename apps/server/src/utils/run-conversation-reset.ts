@@ -19,6 +19,9 @@ export interface ConversationReset {
 export interface ConversationResetOptions extends ServerResetOptions {
   readonly log: Logger;
 
+  // empties the web fetch pause of every host, because a host name can show what a conversation read
+  readonly clearFetchPauses: () => void;
+
   // closes the threads' turn-input captures and removes every logged request on them
   readonly removeTurnInputThreads: (threads: readonly string[]) => Promise<void>;
 }
@@ -29,6 +32,8 @@ export async function runConversationReset(
   const log = options.context.log;
 
   await options.stopWork();
+
+  options.clearFetchPauses();
 
   // The agent CLI keeps the conversation's transcript on its sandbox's disk, so a kept sandbox
   // would resume it.

@@ -61,6 +61,7 @@ async function setupTest(options: TestOptions = {}) {
             policyHash: 'sha256:policy-test',
           })),
         memory: () => memory,
+        clearFetchPauses: () => {},
         log,
       });
 

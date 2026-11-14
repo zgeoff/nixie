@@ -2,8 +2,8 @@ import type { ToolOutcome } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import type { PageFetch } from '../page/page-fetch';
 import { pickPageView } from '../page/pick-page-view';
+import type { PassOutcome } from '../page/read-fetch-pass';
 import type { PageView } from '../utils/parse-web-fetch-request';
-import type { PassOutcome } from '../utils/read-fetch-pass';
 import { writeWebFetchPage } from '../web/write-web-fetch-page';
 import { fitFetchedImage } from './fit-fetched-image';
 
@@ -14,6 +14,13 @@ export function writeFetchOutcome(
 ): Promise<ToolOutcome> {
   if (outcome.kind === 'ended') {
     return Promise.resolve({ status: 'error', message: outcome.reason });
+  }
+
+  if (outcome.kind === 'paused') {
+    return Promise.resolve({
+      status: 'error',
+      message: `${outcome.host} asked for a pause, so fetch it again in ${Math.ceil(outcome.leftMs / 1000)} seconds`,
+    });
   }
 
   return outcome.reply.kind === 'image'

@@ -43,6 +43,8 @@ export interface ConversationOptions {
 
   readonly turnInputs?: ConversationRunnerOptions['turnInputs'];
 
+  readonly clearFetchPauses: ConversationRunnerOptions['clearFetchPauses'];
+
   readonly log: Logger;
 }
 
@@ -77,6 +79,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     ...(options.defaultZone === undefined ? {} : { defaultZone: options.defaultZone }),
     ...(options.messaging === undefined ? {} : { messaging: options.messaging }),
     ...(options.turnInputs === undefined ? {} : { turnInputs: options.turnInputs }),
+    clearFetchPauses: options.clearFetchPauses,
     log: options.log,
   });
 }

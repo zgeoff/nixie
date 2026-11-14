@@ -6,10 +6,15 @@ import { conversationTaskID } from '@heynixie/tasks';
 import type { ConversationRun, SessionCleanupCause } from '../types';
 import { runGuestPurge } from '../utils/run-guest-purge';
 
-type CleanupRun = Pick<ConversationRun, 'context' | 'harness' | 'sandbox' | 'command' | 'session'>;
+type CleanupRun = Pick<
+  ConversationRun,
+  'context' | 'harness' | 'sandbox' | 'command' | 'session' | 'clearFetchPauses'
+>;
 
 export function runSessionCleanup(run: CleanupRun, cause: SessionCleanupCause): Promise<void> {
   return run.session.withInvalidation(async () => {
+    run.clearFetchPauses();
+
     await writeRecords(run.context.log, [
       {
         kind: modelSessionInvalidatedCodec.kind,

@@ -16,6 +16,7 @@ test('it takes every default when the section is empty', () => {
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
   });
 });
 
@@ -37,6 +38,7 @@ test('it takes the limits the file names', () => {
     linkPathChars: 12,
     pageStoreBytes: 4096,
     imageLongEdge: 800,
+    backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
   });
 });
 
@@ -83,3 +85,26 @@ test('it refuses a count of fetches per sandbox, since every fetch has a sandbox
     keys: ['fetches_per_sandbox'],
   });
 });
+
+test('it takes the pause keys the file names, and accepts 0', () => {
+  const result = webFetchConfigSchema.safeParse({
+    backoff_ms: 10_000,
+    backoff_cap_ms: 0,
+    backoff_wait_ms: 0,
+  });
+
+  expect(result.data?.backoff).toStrictEqual({
+    backoffMs: 10_000,
+    backoffCapMs: 0,
+    backoffWaitMs: 0,
+  });
+});
+
+test.each(['backoff_ms', 'backoff_cap_ms', 'backoff_wait_ms'])(
+  'it refuses a negative %s',
+  (key) => {
+    const result = webFetchConfigSchema.safeParse({ [key]: -1 });
+
+    expect(result.error?.issues).toPartiallyContain({ path: [key] });
+  },
+);

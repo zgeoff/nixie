@@ -3,6 +3,7 @@ import type { WebFetchConfig } from './web-fetch-defaults';
 import { webFetchDefaults } from './web-fetch-defaults';
 
 const countSchema = z.number().int().positive();
+const millisecondsSchema = z.number().int().nonnegative();
 
 export const webFetchConfigSchema = z
   .strictObject({
@@ -14,6 +15,9 @@ export const webFetchConfigSchema = z
     page_store_bytes: countSchema.default(webFetchDefaults.pageStoreBytes),
     image_bytes: countSchema.default(webFetchDefaults.limits.imageBytes),
     image_long_edge: countSchema.default(webFetchDefaults.imageLongEdge),
+    backoff_ms: millisecondsSchema.default(webFetchDefaults.backoff.backoffMs),
+    backoff_cap_ms: millisecondsSchema.default(webFetchDefaults.backoff.backoffCapMs),
+    backoff_wait_ms: millisecondsSchema.default(webFetchDefaults.backoff.backoffWaitMs),
   })
   .transform((config): WebFetchConfig => ({
     limits: {
@@ -27,4 +31,9 @@ export const webFetchConfigSchema = z
     linkPathChars: config.link_path_chars,
     pageStoreBytes: config.page_store_bytes,
     imageLongEdge: config.image_long_edge,
+    backoff: {
+      backoffMs: config.backoff_ms,
+      backoffCapMs: config.backoff_cap_ms,
+      backoffWaitMs: config.backoff_wait_ms,
+    },
   }));

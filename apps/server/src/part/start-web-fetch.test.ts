@@ -233,6 +233,7 @@ test('it keeps the whole text of a page whose text decodes to 3 times its body b
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
     },
   });
 

@@ -1,5 +1,15 @@
-import { expect, mock, test } from 'bun:test';
-import { readLinkTarget } from '@heynixie/connectors';
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import {
+  buildWebFetchTool,
+  makeFetchBackoff,
+  readLinkTarget,
+  startFetchSandbox,
+} from '@heynixie/connectors';
+import {
+  buildMockPageReply,
+  buildStubSandboxAdapter,
+  makeStubFetcher,
+} from '@heynixie/connectors/test-utils';
 import { withWriteTransaction } from '@heynixie/log';
 import { resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
@@ -12,7 +22,7 @@ import {
   writeInboxRecords,
 } from '@heynixie/tasks';
 import { readTestTaskProgress, writeTestTaskMessage } from '@heynixie/tasks/test-utils';
-import { waitForCondition } from '@heynixie/testing';
+import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import type { InboxMessage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
@@ -34,6 +44,7 @@ interface RunnerConfig {
   readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote' | 'loadOrPinSkillCatalog'>;
 
   readonly log?: ConversationRunnerOptions['log'];
+  readonly clearFetchPauses?: ConversationRunnerOptions['clearFetchPauses'];
 
   readonly getDefinitions?: ConversationRunnerOptions['getDefinitions'];
   readonly messaging?: ConversationRunnerOptions['messaging'];
@@ -98,6 +109,7 @@ async function setupTest() {
           recallMessages: () => Promise.resolve({ messages: [] }),
           readShortIDs: () => Promise.resolve(new Map()),
         }),
+        clearFetchPauses: config.clearFetchPauses ?? (() => {}),
         log: config.log ?? (() => {}),
         ...(config.messaging === undefined ? {} : { messaging: config.messaging }),
         ...(config.imageBudget === undefined ? {} : { imageBudget: config.imageBudget }),
@@ -510,6 +522,78 @@ test("it removes the thread's web fetch links on a forget", async () => {
 
   expect(threadLink).toBeNull();
   expect(otherLink).toBe('https://pier.test/c');
+});
+
+test('it clears every web fetch pause on a forget, so the next fetch of a paused host reaches the site', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const clock = buildTestClock(1_000_000);
+  const backoff = makeFetchBackoff({ backoffMs: 30_000, backoffCapMs: 300_000, clock });
+  const requestedURLs: string[] = [];
+
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(
+      makeStubFetcher((request) => {
+        requestedURLs.push(request.url);
+
+        return buildMockPageReply(request.url, { status: 429, retryAfterMs: 60_000 });
+      }),
+    ),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const tool = buildWebFetchTool(fetchSandbox.readPage, {
+    log: ctx.context.log,
+    textBytes: 20_000,
+    linkPathChars: 24,
+    pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
+    backoff,
+    backoffWaitMs: 5000,
+    clock,
+  });
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['web_fetch'],
+    clearFetchPauses: backoff.clear,
+  });
+
+  const readStubPage = () =>
+    tool.run(
+      {
+        callID: 'call-1',
+        tool: 'web_fetch',
+        input: { url: 'https://example.com/a' },
+        toolUseID: null,
+      },
+      {
+        run: {
+          runID: 'conversation',
+          thread: 'conversation',
+          tools: ['web_fetch'],
+          model: { model: 'model-a', profile: 'chat-direct' },
+          session: { key: 'session-a', invalidatedThrough: 0 },
+        },
+      },
+    );
+
+  await readStubPage();
+
+  await runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
+
+  await readStubPage();
+
+  expect(requestedURLs).toStrictEqual(['https://example.com/a', 'https://example.com/a']);
 });
 
 test("it hands each turn's tool calls the newest invalidation the step saw", async () => {
