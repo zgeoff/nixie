@@ -13,9 +13,8 @@ export interface TaskResumeRequest {
   readonly by: string;
 }
 
-// The caller must hold the writer's write transaction. While nixie is paused, the resume of a task
-// lets that task run alone: it resumes a task paused on its own, and exempts the task from nixie's
-// pause, in one transaction.
+// The caller must hold the writer's write transaction, so the resume and the exemption commit
+// together.
 export async function writeTaskResumeInTransaction(
   tx: Transaction<unknown>,
   context: Pick<TasksContext, 'log' | 'definitions'>,

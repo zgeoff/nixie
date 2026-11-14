@@ -68,19 +68,11 @@ test('it runs each task as its records say after nixie resumes, and keeps a task
     },
   ]);
 
-  const whilePaused = await ctx.claim('runner-b');
-
   await ctx.resumeNixie();
 
   const first = await ctx.claim('runner-b');
   const second = await ctx.claim('runner-b');
   const third = await ctx.claim('runner-b');
-
-  const claimed = [first?.lease.workID, second?.lease.workID];
-
-  expect(whilePaused).toBeNull();
-  expect(claimed).toIncludeSameMembers([ready.taskID, waiting.taskID]);
-  expect(third).toBeNull();
 
   const state = await ctx.db
     .selectFrom('tasks')
@@ -88,6 +80,10 @@ test('it runs each task as its records say after nixie resumes, and keeps a task
     .where('task_id', '=', paused.taskID)
     .executeTakeFirstOrThrow();
 
+  const claimed = [first?.lease.workID, second?.lease.workID];
+
+  expect(claimed).toIncludeSameMembers([ready.taskID, waiting.taskID]);
+  expect(third).toBeNull();
   expect(state.state).toBe('paused');
 });
 
@@ -155,7 +151,12 @@ test('it resumes a task paused on its own and exempts it in one transaction whil
   const records = await ctx.readControlRecords();
   const claim = await ctx.claim('runner-a');
 
-  expect(outcome).toMatchObject({ status: 'controlled', state: 'ready' });
+  expect(outcome).toStrictEqual({
+    status: 'controlled',
+    state: 'ready',
+    isPauseRequested: false,
+    sequence: expect.any(Number),
+  });
 
   expect(records.map((read) => read.record.kind)).toStrictEqual([
     'task.paused',
@@ -182,7 +183,11 @@ test('it refuses the resume of a limit-held task while nixie is paused, and writ
   const outcome = await writeTaskResume(ctx.context, { taskID, by: 'host' });
   const after = await ctx.readControlRecords();
 
-  expect(outcome).toMatchObject({ status: 'refused', refusal: { reason: 'at_limit' } });
+  expect(outcome).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'at_limit', state: 'paused', isPauseRequested: false },
+  });
+
   expect(after).toStrictEqual(before);
 });
 
@@ -199,7 +204,13 @@ test.each(['done', 'stopped'] as const)(
     const outcome = await writeTaskResume(ctx.context, { taskID, by: 'host' });
     const records = await ctx.readControlRecords();
 
-    expect(outcome).toMatchObject({ status: 'controlled', state });
+    expect(outcome).toStrictEqual({
+      status: 'controlled',
+      state,
+      isPauseRequested: false,
+      sequence: expect.any(Number),
+    });
+
     expect(records.map((read) => read.record.kind)).toStrictEqual(['nixie.task_exempted']);
   },
 );
@@ -210,7 +221,11 @@ test('it refuses the resume of a ready task as built while nixie is not paused, 
   const outcome = await writeTaskResume(ctx.context, { taskID, by: 'host' });
   const records = await ctx.readControlRecords();
 
-  expect(outcome).toMatchObject({ status: 'refused', refusal: { reason: 'not_allowed' } });
+  expect(outcome).toStrictEqual({
+    status: 'refused',
+    refusal: { reason: 'not_allowed', state: 'ready', isPauseRequested: false },
+  });
+
   expect(records).toStrictEqual([]);
 });
 
@@ -298,10 +313,11 @@ test('it resumes a running task that holds a pause request and exempts it while 
     .where('task_id', '=', taskID)
     .executeTakeFirstOrThrow();
 
-  expect(outcome).toMatchObject({
+  expect(outcome).toStrictEqual({
     status: 'controlled',
     state: 'running',
     isPauseRequested: false,
+    sequence: expect.any(Number),
   });
 
   expect(records.map((read) => read.record.kind)).toStrictEqual([

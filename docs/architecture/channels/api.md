@@ -102,7 +102,7 @@ close of the conversation gets `CONVERSATION_NEVER_CLOSES`, and a task that does
 the control again against the state the task holds then. An action read lists a task's queued
 actions, which a stop cancels, apart from its started ones, which run on to their outcome, so a
 client shows what a stop does before the user confirms it. While nixie is paused, the resume control
-also exempts the task, so the task runs while the rest stay paused.
+exempts the task from the pause, so the task runs while the rest stay paused.
 
 ## Sending a message
 

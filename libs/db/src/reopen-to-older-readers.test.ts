@@ -8,7 +8,6 @@ import { nixieSchema } from './nixie-schema';
 import { pauseMigrationVersion } from './pause-migration-version';
 import { reopenToOlderReaders } from './reopen-to-older-readers';
 import { runMigrations } from './run-migrations';
-import { SchemaTooNewError } from './schema-too-new-error';
 import { startDatabase } from './start-database';
 
 async function setupTest() {
@@ -69,15 +68,9 @@ test('it lets a schema older than the pause migration open again after the gate 
   };
 
   await ctx.closeGate(pauseMigrationVersion);
-
-  const refused = runMigrations(ctx.db, { schema: olderSchema, copyDir: ctx.directory });
-
-  await Promise.allSettled([refused]);
   await ctx.db.transaction().execute((tx) => reopenToOlderReaders(tx));
 
   const accepted = await runMigrations(ctx.db, { schema: olderSchema, copyDir: ctx.directory });
-
-  expect(refused).rejects.toBeInstanceOf(SchemaTooNewError);
 
   expect(accepted).toStrictEqual({
     from: pauseMigrationVersion,

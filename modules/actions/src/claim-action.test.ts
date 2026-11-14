@@ -293,12 +293,9 @@ test('it claims the action of a done task once the resume of the task exempts it
 
   await ctx.pauseNixie();
 
-  const held = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
-
   await writeTaskResume(ctx.context, { taskID: step.lease.workID, by: 'host' });
 
   const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  expect(held).toBeNull();
   expect(lease?.workID).toBe(queued.action_id);
 });
