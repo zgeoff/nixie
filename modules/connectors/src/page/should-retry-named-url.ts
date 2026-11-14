@@ -12,6 +12,7 @@ export function shouldRetryNamedURL(wasRewritten: boolean, outcome: PassOutcome)
   return match(outcome)
     .with({ kind: 'paused' }, () => true)
     .with({ kind: 'ended' }, () => false)
+    .with({ kind: 'cached' }, () => false)
     .with(
       { kind: 'reply' },
       (replied) => replied.reply.status === 404 || isRateLimitReply(replied.reply),

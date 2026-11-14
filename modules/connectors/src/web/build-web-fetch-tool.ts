@@ -34,6 +34,12 @@ const webFetchInput = {
         'the ID of a page this session fetched, such as tz4a98xxat, to read its stored copy ' +
         'with no new fetch; give part or find with it',
     },
+    fresh: {
+      type: 'boolean',
+      description:
+        "true fetches the page again in place of returning this session's stored copy; goes " +
+        'only with url or link',
+    },
     part: { type: 'integer', minimum: 1, description: 'the number of the part to read, from 1' },
     find: {
       type: 'string',
@@ -56,6 +62,7 @@ const webFetchOutput = {
     text: { type: ['string', 'null'] },
     isTruncated: { type: 'boolean', 'x-endorsed': true },
     blocked: { type: ['string', 'null'] },
+    isCached: { type: 'boolean', 'x-endorsed': true },
     image: {
       type: 'object',
       properties: {
@@ -86,6 +93,7 @@ const webFetchOutput = {
     'text',
     'isTruncated',
     'blocked',
+    'isCached',
   ],
   additionalProperties: false,
 };
@@ -112,6 +120,9 @@ export interface WebFetchToolOptions {
   // the longest pause a call waits out itself; a longer one ends the call, or takes the fallback
   readonly backoffWaitMs: number;
   readonly clock: Clock;
+
+  // how long a stored page answers a url or link call; 0 turns the cache off
+  readonly cacheMs: number;
 
   // the scan that refuses a URL or a redirect hop that holds a secret
   readonly findSecret: SecretFinder;
@@ -159,7 +170,9 @@ export function buildWebFetchTool(
       "the fetch's size limit, so no part holds its end. blocked is null, or the reason the " +
       "site's bot protection answered in place of the page, which no retry passes. A page of a " +
       'known site, such as a GitHub file, an npm or PyPI package or a Wikipedia article, comes ' +
-      'back in its raw or JSON form, and url shows what nixie fetched.',
+      'back in its raw or JSON form, and url shows what nixie fetched. A url or link that this ' +
+      'session fetched a few minutes earlier returns the stored copy with isCached true and ' +
+      'fetches nothing; pass fresh true to fetch it again.',
     input: webFetchInput,
     output: webFetchOutput,
     declaration: {
@@ -177,6 +190,7 @@ export function buildWebFetchTool(
         text: 'untrusted',
         isTruncated: 'untrusted',
         blocked: 'untrusted',
+        isCached: 'untrusted',
         image: 'untrusted',
         matches: 'untrusted',
       },
@@ -200,6 +214,7 @@ export function buildWebFetchTool(
           backoff: options.backoff,
           backoffWaitMs: options.backoffWaitMs,
           clock: options.clock,
+          cacheMs: options.cacheMs,
           reserveImages: context.run.session?.reserveImages ?? null,
         },
         parseWebFetchRequest(call.input),
@@ -213,8 +228,8 @@ function runWebFetchCall(fetching: PageFetch, request: WebFetchRequest): Promise
       Promise.resolve<ToolOutcome>({ status: 'error', message: refused.message }),
     )
     .with({ kind: 'page' }, (page) => readStoredView(fetching, page.pageID, page.view))
-    .with({ kind: 'url' }, (url) => runPageFetch(fetching, url.url, url.view))
-    .with({ kind: 'link' }, (link) => runLinkFetch(fetching, link.number, link.view))
+    .with({ kind: 'url' }, (url) => runPageFetch(fetching, url.url, url.view, url.fresh))
+    .with({ kind: 'link' }, (link) => runLinkFetch(fetching, link.number, link.view, link.fresh))
     .exhaustive();
 }
 
@@ -235,13 +250,14 @@ async function readStoredView(
           `${pageID} is not a page of this session. A page ID works only in the session that ` +
           'fetched it, so fetch the page again by its url.',
       }
-    : pickPageView(page, view);
+    : pickPageView(page, view, false);
 }
 
 async function runLinkFetch(
   fetching: PageFetch,
   number: number,
   view: PageView,
+  fresh: boolean,
 ): Promise<ToolOutcome> {
   const url = await readLinkTarget(fetching.log, {
     sessionKey: fetching.session.sessionKey,
@@ -255,5 +271,5 @@ async function runLinkFetch(
           `L${number} is not a link from this session. An ID works only in the session whose ` +
           'page or search showed it, so fetch that page again by its url.',
       }
-    : runPageFetch(fetching, url, view);
+    : runPageFetch(fetching, url, view, fresh);
 }

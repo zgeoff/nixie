@@ -112,6 +112,7 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
       imageLongEdge: config.imageLongEdge,
       backoff,
       backoffWaitMs: config.backoff.backoffWaitMs,
+      cacheMs: config.cacheMs,
       clock,
       findSecret: options.findSecret,
       isOwnerTyped: options.isOwnerTyped,

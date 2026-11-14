@@ -16,6 +16,7 @@ test('it takes every default when the section is empty', () => {
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    cacheMs: 300_000,
     backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
     secretTypedURLCovers: 'redirects',
     secretOwnValues: [
@@ -47,6 +48,7 @@ test('it takes the limits the file names', () => {
     linkPathChars: 12,
     pageStoreBytes: 4096,
     imageLongEdge: 800,
+    cacheMs: 300_000,
     backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
     secretTypedURLCovers: 'redirects',
     secretOwnValues: [
@@ -163,4 +165,22 @@ test('it refuses a typed URL cover that is neither named_url nor redirects', () 
   const result = webFetchConfigSchema.safeParse({ secret_typed_url_covers: 'everything' });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['secret_typed_url_covers'] });
+});
+
+test.each([
+  ['a time', 60_000],
+  ['0, which turns the cache off', 0],
+])('it takes cache_ms as %s', (_name, cacheMs) => {
+  const result = webFetchConfigSchema.safeParse({ cache_ms: cacheMs });
+
+  expect(result.data?.cacheMs).toBe(cacheMs);
+});
+
+test.each([
+  ['a negative time', -1],
+  ['a fraction', 1.5],
+])('it refuses cache_ms as %s', (_name, cacheMs) => {
+  const result = webFetchConfigSchema.safeParse({ cache_ms: cacheMs });
+
+  expect(result.success).toBeFalse();
 });

@@ -19,16 +19,20 @@ interface SetupOptions {
   // the sandbox holds its answer to this URL until `release` runs
   readonly holdURL?: string;
 
+  // how long a stored page answers; the cache is off when absent
+  readonly cacheMs?: number;
+
   // replaces the scan that finds nothing
   readonly secretScan?: Partial<SecretScanSetup>;
 }
 
 async function setupTest(answer: (url: string) => FetchReply, options: SetupOptions = {}) {
-  const log = await startTestLog();
-
   const requestedURLs: string[] = [];
   const hold = Promise.withResolvers<void>();
   const clock = buildTestClock(1_000_000);
+
+  const log = await startTestLog(clock);
+
   const backoff = makeFetchBackoff({ backoffMs: 30_000, backoffCapMs: 300_000, clock });
 
   const adapter = buildStubSandboxAdapter((stdin, stdout) => {
@@ -72,13 +76,20 @@ async function setupTest(answer: (url: string) => FetchReply, options: SetupOpti
     release: () => {
       hold.resolve();
     },
-    runFetch: (url: string) =>
+    runFetch: (
+      url: string,
+      fetchOptions: {
+        readonly fresh?: boolean;
+        readonly sessionKey?: string;
+        readonly findSecret?: SecretScanSetup['findSecret'];
+      } = {},
+    ) =>
       runPageFetch(
         {
           log,
           readPage: fetchSandbox.readPage,
           secretScan: {
-            findSecret: () => null,
+            findSecret: fetchOptions.findSecret ?? (() => null),
             isOwnerTyped: () => Promise.resolve(false),
             run: {
               runID: 'run-1',
@@ -90,16 +101,18 @@ async function setupTest(answer: (url: string) => FetchReply, options: SetupOpti
             typedURLCovers: 'redirects',
             ...options.secretScan,
           },
-          session,
+          session: { ...session, sessionKey: fetchOptions.sessionKey ?? session.sessionKey },
           limits: { textBytes: 20_000, linkPathChars: 24, storeBytes: 20_971_520 },
           imageLongEdge: 1568,
           backoff,
           backoffWaitMs: 5000,
+          cacheMs: options.cacheMs ?? 0,
           clock,
           reserveImages: null,
         },
         url,
         view,
+        fetchOptions.fresh ?? false,
       ),
     readStored: (pageID: string) => readWebFetchPage(log, { sessionKey: 'session-a', pageID }),
   };
@@ -126,6 +139,7 @@ test('it fetches the rewritten URL for a url call to a known site, and returns i
       text: '{"name":"reefkit"}',
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 });
@@ -598,4 +612,167 @@ test('it ends the call at the URL scan when the sent URL holds a secret, with no
   });
 
   expect(ctx.adapter.created).toHaveLength(0);
+});
+
+test('it returns the stored page of a URL fetched inside the cache time, with no sandbox started', async () => {
+  const ctx = await setupTest((url) => buildMockPageReply(url, { text: 'Open page' }), {
+    cacheMs: 300_000,
+  });
+
+  const first = await ctx.runFetch('https://example.com/docs');
+
+  ctx.clock.advance(299_000);
+
+  const second = await ctx.runFetch('https://example.com/docs');
+
+  invariant(first.status === 'ok');
+
+  expect(second).toStrictEqual({ status: 'ok', result: { ...first.result, isCached: true } });
+  expect(ctx.requestedURLs).toStrictEqual(['https://example.com/docs']);
+});
+
+test('it fetches a URL again once the cache time has passed', async () => {
+  const ctx = await setupTest((url) => buildMockPageReply(url), { cacheMs: 300_000 });
+
+  await ctx.runFetch('https://example.com/docs');
+
+  ctx.clock.advance(300_000);
+
+  const outcome = await ctx.runFetch('https://example.com/docs');
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { isCached: false } });
+  expect(ctx.requestedURLs).toStrictEqual(['https://example.com/docs', 'https://example.com/docs']);
+});
+
+test('it fetches again with fresh true, inside the cache time', async () => {
+  const ctx = await setupTest((url) => buildMockPageReply(url), { cacheMs: 300_000 });
+
+  await ctx.runFetch('https://example.com/docs');
+
+  const outcome = await ctx.runFetch('https://example.com/docs', { fresh: true });
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { isCached: false } });
+  expect(ctx.requestedURLs).toStrictEqual(['https://example.com/docs', 'https://example.com/docs']);
+});
+
+test('it returns the stored page of a host that is paused', async () => {
+  const ctx = await setupTest(
+    (url) => buildMockPageReply(url, { text: 'Open page', retryAfterMs: 60_000 }),
+    { cacheMs: 300_000 },
+  );
+
+  await ctx.runFetch('https://example.com/docs');
+
+  const outcome = await ctx.runFetch('https://example.com/docs');
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { text: 'Open page', isCached: true } });
+  expect(ctx.requestedURLs).toStrictEqual(['https://example.com/docs']);
+});
+
+test('it ignores a fragment when it finds the stored page', async () => {
+  const ctx = await setupTest((url) => buildMockPageReply(url), { cacheMs: 300_000 });
+
+  await ctx.runFetch('https://example.com/docs');
+
+  const outcome = await ctx.runFetch('https://example.com/docs#install');
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { isCached: true } });
+  expect(ctx.requestedURLs).toStrictEqual(['https://example.com/docs']);
+});
+
+test('it finds the page of a rewritten URL by the URL that was sent', async () => {
+  const ctx = await setupTest(
+    (url) =>
+      buildMockPageReply(url, { contentType: 'application/json', text: '{"name":"reefkit"}' }),
+    { cacheMs: 300_000 },
+  );
+
+  await ctx.runFetch('https://pypi.org/project/reefkit/');
+
+  const outcome = await ctx.runFetch('https://pypi.org/project/reefkit/');
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { url: 'https://pypi.org/pypi/reefkit/json', isCached: true },
+  });
+
+  expect(ctx.requestedURLs).toStrictEqual(['https://pypi.org/pypi/reefkit/json']);
+});
+
+test('it finds the page of an http URL whose fetch ended at https by the URL that was sent', async () => {
+  const ctx = await setupTest(
+    () => buildMockPageReply('https://example.com/docs', { text: 'Secure page' }),
+    { cacheMs: 300_000 },
+  );
+
+  await ctx.runFetch('http://example.com/docs');
+
+  const outcome = await ctx.runFetch('http://example.com/docs');
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { url: 'https://example.com/docs', text: 'Secure page', isCached: true },
+  });
+
+  expect(ctx.requestedURLs).toStrictEqual(['http://example.com/docs']);
+});
+
+test.each([
+  ['a 404 page', { status: 404 }],
+  ['a page with a blocked reason', { blocked: 'bot challenge' }],
+])('it fetches again after %s', async (_name, overrides) => {
+  const ctx = await setupTest((url) => buildMockPageReply(url, overrides), { cacheMs: 300_000 });
+
+  await ctx.runFetch('https://example.com/docs');
+  await ctx.runFetch('https://example.com/docs');
+
+  expect(ctx.requestedURLs).toStrictEqual(['https://example.com/docs', 'https://example.com/docs']);
+});
+
+test('it fetches again with cache_ms 0', async () => {
+  const ctx = await setupTest((url) => buildMockPageReply(url), { cacheMs: 0 });
+
+  await ctx.runFetch('https://example.com/docs');
+  await ctx.runFetch('https://example.com/docs');
+
+  expect(ctx.requestedURLs).toStrictEqual(['https://example.com/docs', 'https://example.com/docs']);
+});
+
+test('it fetches a URL that another session stored', async () => {
+  const ctx = await setupTest((url) => buildMockPageReply(url), { cacheMs: 300_000 });
+
+  await ctx.runFetch('https://example.com/docs');
+
+  const outcome = await ctx.runFetch('https://example.com/docs', { sessionKey: 'session-b' });
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { isCached: false } });
+  expect(ctx.requestedURLs).toStrictEqual(['https://example.com/docs', 'https://example.com/docs']);
+});
+
+test('it fetches a cached URL again after a forget of its thread', async () => {
+  const ctx = await setupTest((url) => buildMockPageReply(url), { cacheMs: 300_000 });
+
+  await ctx.runFetch('https://example.com/docs');
+
+  await removeWebFetchThread(ctx.log, 'conversation');
+
+  const outcome = await ctx.runFetch('https://example.com/docs');
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { isCached: false } });
+  expect(ctx.requestedURLs).toStrictEqual(['https://example.com/docs', 'https://example.com/docs']);
+});
+
+test('it refuses a URL that holds a secret even when a page for it is stored', async () => {
+  const ctx = await setupTest((url) => buildMockPageReply(url), { cacheMs: 300_000 });
+
+  await ctx.runFetch('https://example.com/docs');
+
+  const refusing = await ctx.runFetch('https://example.com/docs', {
+    findSecret: () => ({ rule: 'test-rule' }),
+  });
+
+  expect(refusing).toStrictEqual({
+    status: 'error',
+    message: 'the URL holds a secret (rule test-rule), so it was not fetched',
+  });
 });

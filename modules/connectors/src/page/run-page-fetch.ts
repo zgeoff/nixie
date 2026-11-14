@@ -12,6 +12,9 @@ export async function runPageFetch(
   fetching: PageFetch,
   namedURL: string,
   view: PageView,
+
+  // true skips the page cache
+  fresh: boolean,
 ): Promise<ToolOutcome> {
   const setup = fetching.secretScan;
 
@@ -29,10 +32,10 @@ export async function runPageFetch(
   const rewrittenURL = rewriteFetchURL(namedURL);
   const wasRewritten = rewrittenURL !== null;
 
-  const first = await readFetchPass(fetching, rewrittenURL ?? namedURL, scan);
+  const first = await readFetchPass(fetching, rewrittenURL ?? namedURL, scan, !fresh);
 
   const outcome = shouldRetryNamedURL(wasRewritten, first)
-    ? await readFetchPass(fetching, namedURL, scan)
+    ? await readFetchPass(fetching, namedURL, scan, false)
     : first;
 
   return writeFetchOutcome(fetching, outcome, view);

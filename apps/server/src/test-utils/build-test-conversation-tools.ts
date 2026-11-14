@@ -30,6 +30,7 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
             linkPathChars: webFetchDefaults.linkPathChars,
             pageStoreBytes: webFetchDefaults.pageStoreBytes,
             imageLongEdge: webFetchDefaults.imageLongEdge,
+            cacheMs: 0,
             backoff: makeFetchBackoff({
               backoffMs: webFetchDefaults.backoff.backoffMs,
               backoffCapMs: webFetchDefaults.backoff.backoffCapMs,
