@@ -1,7 +1,7 @@
 // A repository is a local directory: snapshots are JSON files, and each snapshot's content is a
 // blob that a prune removes once no snapshot names it, so a test sees what restic's prune leaves.
 import { appendFile, mkdir, readdir, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
 
@@ -21,6 +21,7 @@ const parsed = parseArgs({
     'stdin-filename': { type: 'string' },
     tag: { type: 'string', multiple: true },
     time: { type: 'string' },
+    target: { type: 'string' },
     'group-by': { type: 'string' },
     'keep-hourly': { type: 'string' },
     'keep-daily': { type: 'string' },
@@ -133,6 +134,20 @@ if (command === 'cat' && rest[0] === 'config') {
   if (missing !== undefined) {
     fail(1, `Fatal: snapshot ${missing.id} names a missing blob`);
   }
+} else if (command === 'restore') {
+  const snapshot = snapshots.find((entry) => entry.id === rest[0]);
+
+  if (snapshot === undefined) {
+    fail(1, `Fatal: no snapshot ${rest[0] ?? ''}`);
+  }
+
+  const target = parsed.values.target ?? '';
+
+  await mkdir(target, { recursive: true });
+
+  const content = await Bun.file(join(repository, 'blobs', snapshot.blob)).bytes();
+
+  await Bun.write(join(target, basename(snapshot.paths[0] ?? 'stdin')), content);
 } else if (command === 'dump') {
   const snapshot = snapshots.find((entry) => entry.id === rest[0]);
 

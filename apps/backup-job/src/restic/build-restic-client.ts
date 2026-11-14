@@ -117,6 +117,11 @@ export function buildResticClient(
         };
       });
     },
+    restoreSnapshot: async (snapshotID, directory) => {
+      const result = await run(['restore', snapshotID, '--target', directory]);
+
+      requireSuccess('restore', result);
+    },
     removeSnapshots: async (snapshotIDs) => {
       if (snapshotIDs.length === 0) {
         return;

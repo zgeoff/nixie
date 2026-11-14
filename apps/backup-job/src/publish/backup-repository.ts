@@ -15,6 +15,7 @@ export interface BackupRepository {
   readonly createRepository: () => Promise<void>;
   readonly writeSnapshot: (path: string, name: string, tags: readonly string[]) => Promise<string>;
   readonly readSnapshots: () => Promise<readonly PublishedSnapshot[]>;
+  readonly restoreSnapshot: (snapshotID: string, directory: string) => Promise<void>;
   readonly removeSnapshots: (snapshotIDs: readonly string[]) => Promise<void>;
   readonly runRetention: (retention: DataRetention) => Promise<void>;
   readonly runPrune: () => Promise<void>;
