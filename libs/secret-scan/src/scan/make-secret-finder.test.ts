@@ -20,6 +20,12 @@ test.each([
   expect(find(`https://host.test/items?ref=${encoded}`)).toStrictEqual({ rule: 'nixie-secret' });
 });
 
+test('it reports the own-value rule for a value that holds a byte order mark', () => {
+  const find = makeSecretFinder(['a\uFEFFb']);
+
+  expect(find('https://host.test/?ref=a%EF%BB%BF%62')).toStrictEqual({ rule: 'nixie-secret' });
+});
+
 test('it reports the own-value rule for a URL that holds the value only once decoded', () => {
   const rest = buildKey('alphanumeric', 15, 9);
   const find = makeSecretFinder([`q${rest}`]);

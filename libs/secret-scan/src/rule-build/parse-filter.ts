@@ -177,7 +177,7 @@ function parseCall(call: CallParts, ctx: ParseContext): FilterClause | null {
   }
 
   if (call['name'] === 'entropy') {
-    if (args.length !== 1 || call.isNegated || call['limit'] === undefined) {
+    if (target !== 'secret' || args.length !== 1 || call.isNegated || call['limit'] === undefined) {
       return null;
     }
 

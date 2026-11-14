@@ -224,6 +224,19 @@ finding["secret"].startsWith("demo")
   ).toThrowWithMessage(Error, /rule odd-rule: cannot classify the filter clause/u);
 });
 
+test('it fails the build on an entropy clause that reads the match', () => {
+  expect(() =>
+    parseRuleSource(`
+[[rules]]
+id = "odd-rule"
+regex = '''tok_([a-z]+)'''
+filter = '''
+entropy(finding["match"]) < 2.0
+'''
+`),
+  ).toThrowWithMessage(Error, /rule odd-rule: cannot classify the filter clause/u);
+});
+
 test('it keeps the recognised disjuncts of a scripted filter', () => {
   const source = `
 [[rules]]

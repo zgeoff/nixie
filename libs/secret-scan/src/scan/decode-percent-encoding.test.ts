@@ -10,6 +10,8 @@ test.each([
   ['a percent sign before a non-hex pair', 'a%zzb', 'a%zzb'],
   ['a percent sign with one hex digit', 'a%2', 'a%2'],
   ['bytes that are not UTF-8', 'a%FFb', 'a�b'],
+  ['a byte order mark inside the text', 'a%EF%BB%BFb', 'a\uFEFFb'],
+  ['a byte order mark at the start of a run', '%EF%BB%BFb', '\uFEFFb'],
   ['a truncated multi-byte sequence', 'a%E2%82b', 'a�b'],
 ])('it decodes %s without throwing', (_name, input, expected) => {
   expect(decodePercentEncoding(input)).toBe(expected);
