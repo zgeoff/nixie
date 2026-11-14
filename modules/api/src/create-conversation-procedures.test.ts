@@ -190,6 +190,9 @@ test.each([
 
 test('#conversation.previewForget counts the live moments that hold the record and lists the items that quote it', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const client = buildTestClient(ctx.url, laptop.token);
@@ -254,6 +257,9 @@ test('#conversation.previewForget counts the live moments that hold the record a
 
 test('#conversation.previewForget refuses an unknown sequence', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const client = buildTestClient(ctx.url, laptop.token);
@@ -266,6 +272,9 @@ test('#conversation.previewForget refuses an unknown sequence', async () => {
 
 test('#conversation.previewForget refuses a record of another thread', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const client = buildTestClient(ctx.url, laptop.token);
@@ -293,6 +302,9 @@ test('#conversation.previewForget refuses a record of another thread', async () 
 
 test('#conversation.previewForget refuses a record of a kind that cannot be forgotten', async () => {
   const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const client = buildTestClient(ctx.url, laptop.token);
