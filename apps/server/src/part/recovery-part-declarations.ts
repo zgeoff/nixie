@@ -17,7 +17,7 @@ export const recoveryPartDeclarations: readonly AnyPartDeclaration<ServerPartVal
   },
   {
     name: 'restore_pause',
-    needs: ['server_parts', 'first_seed'],
+    needs: ['inputs', 'server_parts', 'first_seed'],
     start: makeRetriedStart('restore_pause', installPauseAndClearMarker),
   },
   {

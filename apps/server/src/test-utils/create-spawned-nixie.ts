@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -327,21 +328,31 @@ type LogReader = Pick<
 type Database = ReturnType<typeof startDatabase>;
 
 function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader {
-  const reader: { db: Database | null } = { db: null };
+  const reader: { db: Database | null; inode: number | null } = { db: null, inode: null };
 
-  const getReader = (): Database => {
-    reader.db ??= startDatabase(getDataFilePath(dataDir, 'nixie.db'));
+  // A restore replaces the database file, and a handle on the old file reads the old log.
+  const readReader = (): Database => {
+    const path = getDataFilePath(dataDir, 'nixie.db');
+    const inode = statSync(path, { throwIfNoEntry: false })?.ino ?? null;
+
+    if (reader.db !== null && inode !== null && inode !== reader.inode) {
+      void reader.db.destroy();
+      reader.db = null;
+    }
+
+    reader.db ??= startDatabase(path);
+    reader.inode = inode;
 
     return reader.db;
   };
 
   stack.defer(() => reader.db?.destroy());
 
-  const getWriter = (): Pick<Writer, 'db'> => ({ db: getReader() });
+  const readWriter = (): Pick<Writer, 'db'> => ({ db: readReader() });
 
   return {
     readRecords: async () => {
-      const rows = await readTestRecordRows(getWriter());
+      const rows = await readTestRecordRows(readWriter());
 
       return rows.map((row) => ({
         sequence: row.sequence,
@@ -351,13 +362,13 @@ function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader
         payload: parseJSONObject(row.payload),
       }));
     },
-    readTasks: () => readTestTasks(getWriter()),
-    readLeases: () => readTestLeases(getWriter()),
-    readTimers: () => readTestTimers(getWriter()),
-    readActions: () => readTestActions(getWriter()),
-    readMemoryItems: () => readTestMemoryItems(getWriter()),
-    readBackupSets: () => readTestBackupSets(getWriter()),
-    readWriterEpoch: () => readTestWriterEpoch(getWriter()),
+    readTasks: () => readTestTasks(readWriter()),
+    readLeases: () => readTestLeases(readWriter()),
+    readTimers: () => readTestTimers(readWriter()),
+    readActions: () => readTestActions(readWriter()),
+    readMemoryItems: () => readTestMemoryItems(readWriter()),
+    readBackupSets: () => readTestBackupSets(readWriter()),
+    readWriterEpoch: () => readTestWriterEpoch(readWriter()),
   };
 }
 

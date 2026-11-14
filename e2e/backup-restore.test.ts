@@ -9,7 +9,7 @@ import {
   startSpawnedNixie,
 } from '@heynixie/server/test-utils';
 
-test('it backs up a running server and restores it into an empty data directory through the nixie executable, and the restarted server refuses to start on the finished restore', async () => {
+test('it backs up a running server and restores it into an empty data directory through the nixie executable, and the restarted server starts paused and takes no step until nixie resumes', async () => {
   const nixie = await startSpawnedNixie();
 
   const server = nixie.harness.start();
@@ -24,6 +24,12 @@ test('it backs up a running server and restores it into an empty data directory 
     timeoutMs: 30_000,
   });
 
+  const created = await server.request('createTask', { brief: 'Wait an hour.' });
+
+  const taskID = String(created);
+
+  await nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
+
   const target = join(nixie.directory, 'backup');
 
   const backup = await runHostCommand(nixie.configPath, ['backup', '--to', target]);
@@ -35,19 +41,75 @@ test('it backs up a running server and restores it into an empty data directory 
   await mkdir(nixie.dataDir);
 
   const restore = await runHostCommand(nixie.configPath, ['restore', '--from', target, '--yes']);
+  const marker = await Bun.file(join(nixie.dataDir, 'restore-incomplete')).text();
 
+  const pending = pendingRestoreSchema.parse(JSON.parse(marker));
   const restarted = nixie.harness.start();
 
-  const exit = await restarted.exited;
-  const marker = await Bun.file(join(nixie.dataDir, 'restore-incomplete')).text();
+  await restarted.ready;
+
+  const markerFile = Bun.file(join(nixie.dataDir, 'restore-incomplete'));
+
+  const isMarkerPresent = await markerFile.exists();
+  const started = await nixie.waitForRecord((record) => record.kind === 'recovery.started');
+  const restartedRecords = await nixie.readRecords();
 
   expect(backup.exitCode).toBe(0);
   expect(backup.stdout).toStartWith('copied nixie.db\ncopied keys.db\n');
   expect(backup.stdout).toInclude(`nixie backed up nixie.db and keys.db into ${target} in `);
   expect(restore.exitCode).toBe(0);
   expect(restore.stdout).toInclude(`nixie restored nixie.db and keys.db from ${target}\n`);
-  expect(pendingRestoreSchema.safeParse(JSON.parse(marker)).success).toBeTrue();
-  expect(exit.code).not.toBe(0);
-  expect(restarted.readOutput()).not.toInclude('"event":"ready"');
-  expect(restarted.readOutput()).toInclude('holds a finished restore');
+  expect(isMarkerPresent).toBeFalse();
+  expect(restarted.readOutput()).not.toInclude('holds a finished restore');
+  expect(restartedRecords.filter((record) => record.kind === 'recovery.started')).toHaveLength(1);
+  expect(started.payload['recoveryID']).toBe(pending.recoveryID);
+
+  expect(
+    restartedRecords
+      .filter((record) => record.kind === 'nixie.paused')
+      .map((record) => record.payload),
+  ).toStrictEqual([{ cause: 'restore', recoveryID: pending.recoveryID, by: null }]);
+
+  await nixie.harness.advance(3_700_000);
+  await restarted.request('sendMessage', { thread: 'conversation', text: 'Pear-message-5LW1' });
+
+  const fired = await nixie.waitForRecord((record) => record.kind === 'timer.fired');
+
+  const message = await nixie.waitForRecord(
+    (record) => record.kind === 'owner_message' && record.sequence > started.sequence,
+  );
+
+  await nixie.harness.advance(1, { settle: true });
+
+  const waitingRecords = await nixie.readRecords();
+
+  expect(
+    waitingRecords.filter(
+      (record) =>
+        record.sequence > started.sequence &&
+        (record.kind === 'task.step_started' || record.kind === 'test.inbox_read'),
+    ),
+  ).toStrictEqual([]);
+
+  await restarted.request('resumeNixie', null);
+
+  const resumed = await nixie.waitForRecord((record) => record.kind === 'nixie.resumed');
+
+  const timerStep = await nixie.waitForRecord(
+    (record) =>
+      record.kind === 'test.inbox_read' &&
+      record.payload['taskID'] === taskID &&
+      Array.isArray(record.payload['sequences']) &&
+      record.payload['sequences'].includes(fired.sequence),
+  );
+
+  const conversationStep = await nixie.waitForRecord(
+    (record) =>
+      record.kind === 'task.step_started' &&
+      record.thread === 'conversation' &&
+      record.sequence > resumed.sequence,
+  );
+
+  expect(timerStep.sequence).toBeGreaterThan(resumed.sequence);
+  expect(conversationStep.sequence).toBeGreaterThan(message.sequence);
 });
