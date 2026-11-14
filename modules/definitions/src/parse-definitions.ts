@@ -1,3 +1,4 @@
+import type { EffectOverride } from '@heynixie/policy';
 import { definitionsFormats } from './definitions-formats';
 import type { ParseProblem } from './definitions-parse-error';
 import { DefinitionsParseError } from './definitions-parse-error';
@@ -6,6 +7,7 @@ import { manifestPath } from './manifest-path';
 import { manifestPromptsSchema } from './manifest-prompts-schema';
 import { manifestSchema } from './manifest-schema';
 import { parseConversationSkills } from './parse-conversation-skills';
+import { parseEffectDefinitions } from './parse-effect-definitions';
 import type { ManifestPrompts } from './parse-prompt-overrides';
 import { parsePromptOverrides } from './parse-prompt-overrides';
 import { parseRuleDefinitions } from './parse-rule-definitions';
@@ -33,11 +35,17 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
       ? parseRuleDefinitions(texts, overrides.partFiles)
       : { rules: [], paths: new Set<string>() };
 
+  const effects =
+    formatVersion >= definitionsFormats.effects
+      ? parseEffectDefinitions(texts, overrides.partFiles)
+      : { effects: new Map<string, EffectOverride>(), paths: new Set<string>() };
+
   const unapplied = [...texts.keys()]
     .filter((path) => path !== manifestPath && path !== personaPath)
     .filter((path) => !hasSkills || !path.startsWith('skills/'))
     .filter((path) => !overrides.partFiles.has(path))
     .filter((path) => !rules.paths.has(path))
+    .filter((path) => !effects.paths.has(path))
     .toSorted();
 
   requireParsable(unapplied.map((path) => [path, texts.get(path) ?? '']));
@@ -49,6 +57,7 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
     conversationSkills,
     prompts: overrides.prompts,
     rules: rules.rules,
+    effects: effects.effects,
     unapplied,
   };
 }

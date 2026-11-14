@@ -4,14 +4,19 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./test-utils": "./src/test-utils/index.ts"
   },
   "scripts": {
     "rules-schema": "bun src/run-rules-json-schema.ts",
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
+    "@heynixie/clock": "workspace:*",
+    "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
+    "@heynixie/proposals": "workspace:*",
+    "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "ts-pattern": "catalog:",
     "zod": "catalog:"

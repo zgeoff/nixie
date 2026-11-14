@@ -16,6 +16,10 @@ export function readMockRuleProposals() {
       before: change.before === null ? null : { ...change.before },
       after: change.after === null ? null : { ...change.after },
     })),
+    effectChanges: proposal.effectChanges.map((change) => ({
+      ...change,
+      remove: [...change.remove],
+    })),
     createdAt: proposal.createdAt,
     lapseAt: proposal.lapseAt,
   }));

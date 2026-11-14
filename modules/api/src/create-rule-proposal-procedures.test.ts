@@ -54,6 +54,7 @@ test('#rules.listProposals lists a pending rule change with the sentence of each
             after: { ruleHash: expect.any(String), sentence: expect.stringContaining('web.fetch') },
           },
         ],
+        effectChanges: [],
         createdAt: expect.toBeValidDate(),
         lapseAt: expect.toBeValidDate(),
       },

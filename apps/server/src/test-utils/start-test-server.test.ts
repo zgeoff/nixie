@@ -30,6 +30,7 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
     'moment_reflections',
     'moment_links',
     'moment_texts',
+    'known_contacts',
   ]);
 
   expect(server.sandboxes).toMatchObject({ id: 'process', boundary: 'process' });
@@ -82,10 +83,18 @@ test('it reads the ID of each sandbox the process double holds', async () => {
 });
 
 test('it serves the tools it is given, and passes each call through the decision point it is given', async () => {
-  const decide = mock<DecisionPoint>(() => ({
-    decision: { outcome: 'deny', stage: 3, rule: null },
-    sentence: 'Notes are closed today.',
-  }));
+  const decide = mock<DecisionPoint>(() =>
+    Promise.resolve({
+      decision: {
+        outcome: 'deny',
+        stage: 3,
+        rule: null,
+        destinations: [],
+        snapshot: 'sha256:test',
+      },
+      sentence: 'Notes are closed today.',
+    }),
+  );
 
   const server = await startTestServer({
     definitions: [
@@ -137,7 +146,10 @@ test('it serves the tools it is given, and passes each call through the decision
 
   const records = await server.readRecords();
 
-  expect(decide).toHaveBeenCalledWith({ tool: 'notes_read', toolList: ['notes_read'] });
+  expect(decide).toHaveBeenCalledWith(
+    expect.objectContaining({ tool: 'notes_read', toolList: ['notes_read'] }),
+    expect.anything(),
+  );
 
   expect(records.find((record) => record.kind === 'tool_called')?.decision).toMatchObject({
     outcome: 'deny',
@@ -147,10 +159,17 @@ test('it serves the tools it is given, and passes each call through the decision
 test('it builds its tools from its own context, the log the tools write to included', async () => {
   const buildTools = mock<BuildTestServerTools>(() => ({
     definitions: [],
-    decide: () => ({
-      decision: { outcome: 'deny', stage: 1, rule: null },
-      sentence: 'No tool is registered.',
-    }),
+    decide: () =>
+      Promise.resolve({
+        decision: {
+          outcome: 'deny',
+          stage: 1,
+          rule: null,
+          destinations: [],
+          snapshot: 'sha256:test',
+        },
+        sentence: 'No tool is registered.',
+      }),
   }));
 
   const server = await startTestServer(buildTools);

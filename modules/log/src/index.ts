@@ -45,8 +45,13 @@ export { threadsProjection } from './threads-projection';
 
 export type {
   Approval,
+  CheckerResult,
+  ConsentCheck,
   ContentSource,
   Decision,
+  DecisionFault,
+  DecisionInputs,
+  DestinationPermission,
   Definitions,
   EnvelopeRecord,
   ErasableFields,

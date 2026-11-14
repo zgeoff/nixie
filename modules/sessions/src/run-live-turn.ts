@@ -3,6 +3,7 @@ import { buildStepRunID } from '@heynixie/tasks';
 import type { ToolSession } from '@heynixie/tools';
 import type { InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import { buildStepPolicyFrame } from './build-step-policy-frame';
 import type { CompletedTurn } from './build-step-result';
 import type { TurnSilence } from './build-turn-silence';
 import { buildTurnSilence } from './build-turn-silence';
@@ -49,6 +50,7 @@ export async function runLiveTurn(
     ...plan.session,
     reserveImages: makeImageReserver(opening.images),
     endSilently: silence.end,
+    policy: buildStepPolicyFrame(run.frame, opening.batch.records),
   });
 
   try {

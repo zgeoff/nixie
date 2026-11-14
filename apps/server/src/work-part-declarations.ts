@@ -2,6 +2,7 @@ import { createFirstEnrolmentCode } from '@heynixie/api';
 import { startRuleLapseSweep } from '@heynixie/definitions';
 import { toErrorFields } from '@heynixie/logger';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
+import { startActionLapseSweep } from '@heynixie/policy';
 import { startPromptLapseSweep } from '@heynixie/prompts';
 import { startSkillLapseSweep } from '@heynixie/skills';
 import type { RunStep } from '@heynixie/tasks';
@@ -18,6 +19,7 @@ import { startRunners } from './start-runners';
 import { startSeedPoll } from './start-seed-poll';
 import { startServerBackups } from './start-server-backups';
 import type { AnyPartDeclaration } from './types';
+import { warnWithoutOwnerRules } from './warn-without-owner-rules';
 import { writeStartRecord } from './write-start-record';
 
 export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
@@ -34,6 +36,8 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         tools: parts.tools.definitions.map((definition) => definition.name),
         personaVersion: parts.inForce.read()?.personaVersion ?? null,
       });
+
+      await warnWithoutOwnerRules(parts);
     }),
   },
   {
@@ -147,6 +151,23 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         clock: parts.context.clock,
         onError: (error) => {
           parts.log('rules.lapse_failed', toErrorFields(error));
+        },
+      });
+
+      await parts.cleanup.defer(() => sweep.stop());
+    },
+  },
+  {
+    name: 'action_lapse_sweep',
+    needs: ['server_parts', 'start_record'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+
+      const sweep = startActionLapseSweep({
+        context: parts.context,
+        clock: parts.context.clock,
+        onError: (error) => {
+          parts.log('policy.action_lapse_failed', toErrorFields(error));
         },
       });
 

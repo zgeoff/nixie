@@ -8,6 +8,9 @@ import type { ProposalContext, ProposalState } from './types';
 export interface ProposalLapseSource {
   readonly readProposals: (db: Kysely<unknown>) => Promise<readonly ProposalState[]>;
 
+  // how long a proposal waits; the default is the shared lapse time
+  readonly lapseMs?: number;
+
   readonly lapsedCodec: Pick<
     RecordCodec<RecordKind, { readonly proposalID: string }>,
     'kind' | 'encode'
@@ -28,7 +31,7 @@ export function writeProposalLapses(
     const lapsed = proposals.filter(
       (entry) =>
         canMoveProposal(entry.outcome ?? 'pending', 'lapsed') &&
-        entry.proposedAt + proposalLapseMs <= now,
+        entry.proposedAt + (source.lapseMs ?? proposalLapseMs) <= now,
     );
 
     if (lapsed.length > 0) {

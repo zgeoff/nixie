@@ -1,9 +1,9 @@
 import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
+import { effectNames } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { Transaction } from 'kysely';
 import { z } from 'zod';
-import { addSeededRules } from './add-seeded-rules';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { buildRuleRevisions } from './build-rule-revisions';
 import { buildRuleSeedPlan } from './build-rule-seed-plan';
@@ -12,6 +12,7 @@ import { readDefinitionsInForce } from './read-definitions-in-force';
 import { readDefinitionsSkills } from './read-definitions-skills';
 import { readRuleProposalChange } from './read-rule-proposal-change';
 import { readRuleStore } from './read-rule-store';
+import { readSeedPolicy } from './read-seed-policy';
 import { readWrittenSkills } from './read-written-skills';
 import type { SeedResult } from './run-seed';
 import type { SnapshotPolicy } from './types';
@@ -50,11 +51,24 @@ export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult>
     const revisions = buildRuleRevisions(store.current, rules.inForce);
     const now = options.log.writer.clock.now();
 
-    const proposals = await readRuleProposalChange(tx, rules.held, now);
+    const lists = await readSeedLists(tx, inForce.recordSequence);
+
+    const policy = await readSeedPolicy(tx, {
+      base: options.buildPolicy(inForce.prompts),
+      overrides: lists.effects,
+      inForce,
+      rules: revisions.inForce,
+    });
+
+    if (policy.status === 'refused') {
+      return { status: 'refused', error: policy.error, inForce };
+    }
+
+    const proposals = await readRuleProposalChange(tx, rules.held, policy.held, now);
 
     const built = buildDefinitionsSnapshot({
       persona: inForce.persona,
-      policy: addSeededRules(options.buildPolicy(inForce.prompts), revisions.inForce),
+      policy: policy.policy,
       prompts: inForce.prompts,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
@@ -76,8 +90,6 @@ export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult>
       return { status: 'unchanged', inForce };
     }
 
-    const lists = await readSeedLists(tx, inForce.recordSequence);
-
     const written = await writeSeed(tx, options.log, {
       source: {
         id: inForce.sourceID,
@@ -87,6 +99,8 @@ export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult>
         contentHash: inForce.contentHash,
       },
       formatVersion: inForce.formatVersion,
+      effects: lists.effects,
+      heldEffects: policy.held,
       unapplied: lists.unapplied,
       skipped: lists.skipped,
       versions: [],
@@ -106,9 +120,20 @@ export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult>
   });
 }
 
+const effectNameSchema = z.enum(effectNames);
+
+const overrideSchema = z.object({
+  add: effectNameSchema.array(),
+  remove: effectNameSchema.array(),
+});
+
 const seedLists = z.object({
   unapplied: z.array(z.string()).default([]),
   skipped: z.array(z.string()).default([]),
+  effects: z
+    .record(z.string(), overrideSchema)
+    .default({})
+    .transform((overrides) => new Map(Object.entries(overrides))),
 });
 
 type SeedRecordTables = Readonly<{

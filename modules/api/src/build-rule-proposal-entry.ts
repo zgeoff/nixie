@@ -14,6 +14,11 @@ export function buildRuleProposalEntry(entry: PendingRuleProposal) {
           ? null
           : { ruleHash: change.after.hash, sentence: change.after.sentence },
     })),
+    effectChanges: entry.proposal.effectChanges.map((change) => ({
+      tool: change.tool,
+      remove: change.remove,
+      sentence: `${change.tool} no longer has the ${change.remove.join(', ')} effect, so rules on that effect stop covering it.`,
+    })),
     createdAt: new Date(entry.proposedAt),
     lapseAt: new Date(entry.lapseAt),
   };

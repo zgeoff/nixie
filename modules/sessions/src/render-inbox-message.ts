@@ -3,6 +3,7 @@ import type { SystemMessageType } from '@heynixie/wire';
 import { renderSystemMessage } from '@heynixie/wire';
 import { formatMessageStamp } from './format-message-stamp';
 import { formatMessageTime } from './format-message-time';
+import { renderApprovalAnswer } from './render-approval-answer';
 import { renderLimitNotice } from './render-limit-notice';
 import { renderOwnerText } from './render-owner-text';
 import type { TaskMessageView } from './render-task-message';
@@ -32,6 +33,10 @@ export function renderInboxMessage(
 
   if (record.kind === 'task.limit_notice') {
     return renderLimitNotice(record, times, view.messaging.ownerName);
+  }
+
+  if (record.kind === 'policy.action_answered') {
+    return renderApprovalAnswer(record, times);
   }
 
   return `A ${record.kind} record arrived: ${JSON.stringify(record.payload)}`;

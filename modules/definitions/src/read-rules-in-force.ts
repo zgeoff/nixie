@@ -10,10 +10,13 @@ export interface RuleInForceEntry extends RuleInForce {
 export async function readRulesInForce(db: Kysely<unknown>): Promise<readonly RuleInForceEntry[]> {
   const inForce = await readDefinitionsInForce(db);
 
-  if (inForce === null) {
-    return [];
-  }
+  return inForce === null ? [] : readSnapshotRules(db, inForce.snapshotHash);
+}
 
+export async function readSnapshotRules(
+  db: Kysely<unknown>,
+  snapshotHash: string,
+): Promise<readonly RuleInForceEntry[]> {
   const rows = await db
     .$extendTables<DefinitionsTables>()
     .selectFrom('snapshot_rules')
@@ -29,7 +32,7 @@ export async function readRulesInForce(db: Kysely<unknown>): Promise<readonly Ru
       'rules.origin',
       'rule_fires.last_fired_at',
     ])
-    .where('snapshot_rules.snapshot_hash', '=', inForce.snapshotHash)
+    .where('snapshot_rules.snapshot_hash', '=', snapshotHash)
     .orderBy('snapshot_rules.rule_id')
     .execute();
 

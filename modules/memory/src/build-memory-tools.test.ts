@@ -1,5 +1,6 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildMemoryTools } from './build-memory-tools';
@@ -34,10 +35,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
     toolCallOptions: {
       registry,
 
-      decide: () => ({
-        decision: { outcome: 'allow' as const, stage: 3, rule: null },
-        sentence: null,
-      }),
+      decide: buildAllowingDecisionPoint(),
       log: memory.log,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
 

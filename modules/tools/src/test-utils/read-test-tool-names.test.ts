@@ -1,6 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
-import { makeDecisionPoint } from '@heynixie/policy';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry } from '../build-tool-registry';
 import { startToolEndpoint } from '../start-tool-endpoint';
 import { buildMockToolDefinition } from './build-mock-tool-definition';
@@ -24,9 +24,9 @@ test('it reads the names of the tools a run endpoint offers to the run token', a
   const endpoint = await startToolEndpoint({
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
-    }),
+    decide: readStarterDecisionPoint(
+      (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+    ),
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 

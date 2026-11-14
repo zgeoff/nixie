@@ -95,6 +95,14 @@ function RuleProposalCard(props: RuleProposalCardProps): ReactNode {
           </li>
         ))}
       </ul>
+      <ul aria-label="Effect changes">
+        {proposal.effectChanges.map((change) => (
+          <li key={change.tool}>
+            <strong>{change.tool}</strong>
+            <p>{change.sentence}</p>
+          </li>
+        ))}
+      </ul>
       <p className={meta}>
         Lapses{' '}
         {proposal.lapseAt.toLocaleDateString(undefined, {

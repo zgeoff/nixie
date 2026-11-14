@@ -16,6 +16,7 @@ export async function startQueueCheckTask(parts: ServerParts, runStep: RunStep):
   const checkStep = makeQueueCheckStep({
     context: parts.context,
     queue: parts.tools.actions.queue,
+    makeDecide: parts.decisions,
     tool: parts.tools.actions.logConnector.tool,
   });
 

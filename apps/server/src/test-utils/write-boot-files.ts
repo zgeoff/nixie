@@ -1,6 +1,7 @@
 import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { LogLevel } from '@heynixie/logger';
+import { readStarterRulesText } from '@heynixie/policy/test-utils';
 
 export interface BootFiles {
   readonly dataDir: string;
@@ -22,6 +23,9 @@ export interface BootFileExtras {
 
   readonly sandboxAdapter?: 'imp' | 'test';
 
+  // the definitions carry the starter rules, which a test then approves
+  readonly hasStarterRules?: boolean;
+
   readonly isBackupOn?: boolean;
 
   readonly modelCredential?: 'secrets-file' | 'sandbox-backend';
@@ -40,7 +44,7 @@ export async function writeBootFiles(
   const deploymentKey = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64');
 
   await mkdir(dataDir);
-  await writeDefinitions(join(directory, 'definitions'));
+  await writeDefinitions(join(directory, 'definitions'), extras.hasStarterRules ?? false);
   await writeSecrets(join(directory, 'secrets.yaml'), deploymentKey, extras);
   await writeManifest(join(directory, 'sandbox-manifest.json'));
   await writeStubSops(join(directory, 'sops'));
@@ -67,10 +71,15 @@ export async function writeBootFiles(
   };
 }
 
-async function writeDefinitions(definitionsDir: string): Promise<void> {
+async function writeDefinitions(definitionsDir: string, hasStarterRules: boolean): Promise<void> {
   await mkdir(definitionsDir);
-  await writeFile(join(definitionsDir, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(definitionsDir, 'nixie.yaml'), `format: ${hasStarterRules ? 3 : 2}\n`);
   await writeFile(join(definitionsDir, 'persona.md'), 'You are nixie.\n');
+
+  if (hasStarterRules) {
+    await mkdir(join(definitionsDir, 'rules'));
+    await writeFile(join(definitionsDir, 'rules', 'starter.yaml'), readStarterRulesText());
+  }
 }
 
 async function writeSecrets(

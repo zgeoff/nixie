@@ -88,6 +88,7 @@ rendering of it:
 | Queued, not done  | The action ID, once the wait runs out     | No    |
 | Queued, failed    | The action ID and its reason              | No    |
 | Denied            | The decision point's sentence             | Yes   |
+| Asked             | "Waiting for approval as `<shortID>`"     | No    |
 | Invalid input     | The schema errors                         | Yes   |
 | Tool error        | The tool's message, or what it threw      | Yes   |
 | Result off schema | A refusal with the tool's name            | Yes   |
@@ -120,6 +121,9 @@ repeats text the model chose counts as untrusted: the schema errors, and a regis
 with the tool's name. A tool's error and an action's failure count as untrusted too, because they
 can quote what an outside service said. nixie's other messages, such as a rule's deny sentence,
 count as the user's own data.
+
+The call record of a tool with such a form also keeps the arguments that the decision read, under
+its own erasable key, so a replay decides on them and an action proposal hashes them whole.
 
 A tool whose input or result repeats text that another key guards gives each record a form of its
 own in place of that text. Each record's erasable fields sit under the record's own key, so a forget

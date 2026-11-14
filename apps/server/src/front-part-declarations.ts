@@ -5,6 +5,7 @@ import { buildServerReset } from './build-server-reset';
 import { buildTaskMessaging } from './build-task-messaging';
 import { createServerContext } from './create-server-context';
 import { loadStartState } from './load-start-state';
+import { makeServerDecisions } from './make-server-decisions';
 import { runInForceSeedAndWake } from './run-in-force-seed-and-wake';
 import type { ServerPartValues } from './server-part-values';
 import { startHostCommands } from './start-host-commands';
@@ -39,6 +40,19 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
     },
   },
   {
+    name: 'decisions',
+    needs: ['inputs', 'context'],
+    uses: ['checker'],
+    start: (parts) =>
+      Promise.resolve(
+        makeServerDecisions({
+          log: parts.get('context').apiContext.log,
+          linkMaxAgeMs: parts.get('inputs').options.config.policy.consent.linkMaxAgeMs,
+          readCheck: () => parts.find('checker')?.check ?? null,
+        }),
+      ),
+  },
+  {
     name: 'api_gate',
     needs: [],
     start: () => Promise.resolve(buildAPIGate()),
@@ -68,7 +82,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   },
   {
     name: 'server_parts',
-    needs: ['inputs', 'state', 'context', 'tools'],
+    needs: ['inputs', 'state', 'context', 'tools', 'decisions'],
     start: (parts) => {
       const inputs = parts.get('inputs');
       const context = parts.get('context');
@@ -82,6 +96,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         apiContext: context.apiContext,
         inForce: context.inForce,
         tools,
+        decisions: parts.get('decisions'),
         cleanup: inputs.work,
         modelSecrets: inputs.options.secrets.models,
         onFailure: inputs.onFailure,

@@ -74,6 +74,7 @@ test('it reads every section, with the default of each setting the file leaves o
     time: { default_zone: 'Australia/Sydney' },
     tasks: { runners: 3, startedClaimLoops: 2, messaging: { hopLimit: 20 } },
     actions: { runners: 4 },
+    policy: { consent: { linkMaxAgeMs: 86_400_000 } },
     skills: { catalogShare: 0.02 },
     backup: { isEnabled: true, intervalMs: 3_600_000 },
   });

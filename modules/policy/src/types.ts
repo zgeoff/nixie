@@ -1,4 +1,10 @@
-import type { ContentSource, Decision, JSONObject } from '@heynixie/log';
+import type {
+  ConsentCheck,
+  ContentSource,
+  DecisionFault,
+  DestinationPermission,
+  JSONObject,
+} from '@heynixie/log';
 import type { z } from 'zod';
 import type { effectNames } from './effect-names';
 import type { ruleBodySchema } from './rule-body-schema';
@@ -46,23 +52,116 @@ export interface EffectDeclaration {
   readonly results: Readonly<Record<string, ContentSource>>;
 }
 
+export interface CallDestination {
+  readonly value: string;
+
+  // true only for the sender of a message that nixie read, or the organizer of an event it read
+  readonly replyTarget: boolean;
+}
+
+// A change of a tool's effects: the tool's declaration in code stays the base.
+export interface EffectOverride {
+  readonly add: readonly Effect[];
+  readonly remove: readonly Effect[];
+}
+
 export interface PolicyCall {
   readonly tool: string;
   readonly toolList: readonly string[];
+  readonly context: RuleContext;
+  readonly definitionID: string | null;
+  readonly args: Readonly<Record<string, unknown>>;
+  readonly destinations: readonly CallDestination[];
+  readonly sources: readonly RuleSource[];
+  readonly at: number;
+
+  // the sequence of the owner_message that started this turn; null in a task run
+  readonly turnMessageSequence: number | null;
+
+  // sequences of owner messages that a task_message carried to this task
+  readonly onBehalfOf: readonly number[];
+
+  // the snapshot hash of the definitions the call runs under
+  readonly snapshot: string;
 }
 
-export type PolicyOutcome = 'allow' | 'deny';
+export type PolicyOutcome = 'allow' | 'ask' | 'deny';
+
+export type PolicyStage = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
+export type AskCause = 'outside_steering' | 'always_ask' | 'ask_rule' | 'no_rule';
+
+export interface DecisionDetail {
+  readonly outcome: PolicyOutcome;
+  readonly stage: PolicyStage;
+  readonly rule: {
+    readonly id: string;
+    readonly revision: number;
+    readonly others: readonly string[];
+  } | null;
+  readonly cause?: AskCause;
+  readonly defect?: 'direct_request' | 'repeat';
+  readonly destinations: readonly {
+    readonly value: string;
+    readonly permission: DestinationPermission | null;
+  }[];
+  readonly consent?: ConsentCheck;
+  readonly snapshot: string;
+  readonly fault?: DecisionFault;
+}
 
 export interface PolicyDecision {
-  readonly decision: Decision & { readonly outcome: PolicyOutcome };
+  readonly decision: DecisionDetail;
   readonly sentence: string | null;
 }
 
-export interface FixedRule {
+export interface RuleEntry {
   readonly id: string;
   readonly revision: number;
-  readonly sentence: string;
-  readonly pickOutcome: (call: PolicyCall, declaration: EffectDeclaration) => PolicyOutcome | null;
+  readonly rule: Rule;
 }
 
-export type DecisionPoint = (call: PolicyCall) => PolicyDecision;
+// A contact the owner marked as known. A record forget erases the details, which leaves both null.
+export interface KnownContact {
+  readonly contactID: string;
+  readonly name: string | null;
+  readonly destination: string | null;
+}
+
+// What the decision point reads from the snapshot a call runs under, never from the latest one.
+export interface PolicyInputs {
+  readonly rules: readonly RuleEntry[];
+  readonly contacts: readonly KnownContact[];
+  readonly tools: ReadonlyMap<string, EffectDeclaration>;
+  readonly ownerDestinations: readonly string[];
+}
+
+export interface ConsentMessage {
+  readonly sequence: number;
+  readonly text: string;
+  readonly spans: readonly {
+    readonly start: number;
+    readonly end: number;
+    readonly source: 'typed' | 'pasted' | 'dropped' | 'unknown';
+  }[];
+  readonly sentAt: number;
+}
+
+export interface ConsentAnswer {
+  readonly verdict: 'asserted' | 'not_asserted' | 'unsure';
+  readonly failure: 'timeout' | 'error' | 'unreadable' | null;
+}
+
+interface ConsentCheckRequest {
+  readonly prompt: string;
+  readonly input: string;
+}
+
+export type RunConsentCheck = (request: ConsentCheckRequest) => Promise<ConsentAnswer>;
+
+// The stage a decision point is running, which a fault wrapper reads when the point throws or stalls.
+export interface StageProgress {
+  stage: PolicyStage;
+}
+
+export type DecisionPoint = (call: PolicyCall, progress?: StageProgress) => Promise<PolicyDecision>;

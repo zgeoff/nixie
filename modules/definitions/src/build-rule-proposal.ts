@@ -3,35 +3,48 @@ import { renderRule } from '@heynixie/policy';
 import type { z } from 'zod';
 import type { RuleEdit } from './build-rule-seed-plan';
 import { buildSHA256 } from './build-sha256';
+import type { HeldEffects } from './pick-seed-effects';
 import type { ruleProposalSchema } from './rule-proposal-schema';
 import { toCanonicalJSON } from './to-canonical-json';
 import type { StoredRule } from './types';
 
 export type RuleProposal = z.output<typeof ruleProposalSchema>;
 
-export function buildRuleProposal(proposalID: string, edits: readonly RuleEdit[]): RuleProposal {
+export function buildRuleProposal(
+  proposalID: string,
+  edits: readonly RuleEdit[],
+  effects: readonly HeldEffects[],
+): RuleProposal {
   return {
     proposalID,
-    proposalHash: buildRuleProposalHash(edits),
+    proposalHash: buildRuleProposalHash(edits, effects),
     changes: edits.map((edit) => ({
       ruleID: edit.ruleID,
       before: toRuleSide(edit.before),
       after: toRuleSide(edit.after),
       fields: collectFieldChanges(edit.before?.rule ?? null, edit.after?.rule ?? null),
     })),
+    effectChanges: effects.map((held) => ({ tool: held.tool, remove: [...held.remove] })),
   };
 }
 
-function buildRuleProposalHash(edits: readonly RuleEdit[]): string {
-  return buildSHA256(
-    toCanonicalJSON(
-      edits.map((edit) => ({
-        ruleID: edit.ruleID,
-        before: edit.before?.hash ?? null,
-        after: edit.after?.hash ?? null,
-      })),
-    ),
-  );
+// A proposal with no effect change hashes as the release before did, so a pending one stays itself.
+function buildRuleProposalHash(
+  edits: readonly RuleEdit[],
+  effects: readonly HeldEffects[],
+): string {
+  const rules = edits.map((edit) => ({
+    ruleID: edit.ruleID,
+    before: edit.before?.hash ?? null,
+    after: edit.after?.hash ?? null,
+  }));
+
+  const hashed =
+    effects.length === 0
+      ? rules
+      : { rules, effects: effects.map((held) => ({ tool: held.tool, remove: [...held.remove] })) };
+
+  return buildSHA256(toCanonicalJSON(hashed));
 }
 
 function toRuleSide(stored: StoredRule | null): { hash: string; sentence: string } | null {

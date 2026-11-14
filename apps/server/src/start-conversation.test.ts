@@ -149,7 +149,7 @@ test('it resumes the session after a change to the policy alone, and decides the
 
   await ctx.conversation.send('What did my note say?');
 
-  notes.setEffects(['send']);
+  notes.setEffects(['delete']);
 
   const second = await ctx.conversation.send('Read it again.');
   const records = await ctx.readRecords();
@@ -162,8 +162,8 @@ test('it resumes the session after a change to the policy alone, and decides the
   }).toMatchObject({
     opened: [{ payload: { kind: 'first', policyHash: 'policy:read' } }],
     decisions: [
-      { outcome: 'allow', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
-      { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
+      { outcome: 'allow', stage: 7, rule: { id: 'allow-reads', revision: 1 } },
+      { outcome: 'ask', stage: 6, rule: { id: 'ask-permanent-deletes', revision: 1 } },
     ],
   });
 

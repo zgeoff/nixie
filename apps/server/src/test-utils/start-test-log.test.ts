@@ -37,6 +37,7 @@ test('it starts a log with the tasks, sandboxes and memory projections and a fre
     'moment_reflections',
     'moment_links',
     'moment_texts',
+    'known_contacts',
   ]);
 
   expect(log.deploymentKey.algorithm).toMatchObject({ name: 'AES-KW', length: 256 });

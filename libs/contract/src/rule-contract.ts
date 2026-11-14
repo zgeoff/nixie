@@ -9,9 +9,25 @@ const ruleChangeSchema = z.object({
   after: ruleVersionSchema,
 });
 
+const effectChangeSchema = z.object({
+  tool: z.string(),
+  remove: z.array(z.string()),
+  sentence: z.string(),
+});
+
 const ruleProposalSchema = z.object({
   proposalID: z.string(),
   changes: z.array(ruleChangeSchema),
+  effectChanges: z.array(effectChangeSchema),
+  createdAt: z.date(),
+  lapseAt: z.date(),
+});
+
+const actionProposalSchema = z.object({
+  proposalID: z.string(),
+  tool: z.string(),
+  sentence: z.string(),
+  destinations: z.array(z.string()),
   createdAt: z.date(),
   lapseAt: z.date(),
 });
@@ -34,6 +50,16 @@ export const ruleContract = {
     .output(z.object({ proposalID: z.string() })),
 
   rejectProposal: ruleAnswer
+    .input(z.object({ proposalID: proposalIDSchema, reason: z.string().max(500).regex(/\S/u) }))
+    .output(z.object({ proposalID: z.string() })),
+
+  listActionProposals: signedIn.output(z.object({ proposals: z.array(actionProposalSchema) })),
+
+  approveActionProposal: ruleAnswer
+    .input(z.object({ proposalID: proposalIDSchema }))
+    .output(z.object({ proposalID: z.string() })),
+
+  rejectActionProposal: ruleAnswer
     .input(z.object({ proposalID: proposalIDSchema, reason: z.string().max(500).regex(/\S/u) }))
     .output(z.object({ proposalID: z.string() })),
 };

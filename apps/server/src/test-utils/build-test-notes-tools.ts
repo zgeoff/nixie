@@ -1,5 +1,5 @@
 import type { Effect, EffectDeclaration } from '@heynixie/policy';
-import { makeDecisionPoint } from '@heynixie/policy';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import type { TestServerTools } from './start-test-server';
 
 export interface TestNotesTools {
@@ -31,10 +31,9 @@ export function buildTestNotesTools(note: string): TestNotesTools {
           run: () => Promise.resolve({ status: 'ok', result: { text: note } }),
         },
       ],
-      decide: makeDecisionPoint({
-        findDeclaration: (tool) =>
-          tool === 'notes_read' ? buildNotesDeclaration(declared.effects) : null,
-      }),
+      decide: readStarterDecisionPoint((tool) =>
+        tool === 'notes_read' ? buildNotesDeclaration(declared.effects) : null,
+      ),
     },
     setEffects: (effects) => {
       declared.effects = effects;

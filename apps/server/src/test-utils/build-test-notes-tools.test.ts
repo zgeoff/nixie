@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildPolicyCall } from '@heynixie/policy/test-utils';
 import { buildTestNotesTools } from './build-test-notes-tools';
 
 test('it serves notes_read, which returns the note given', async () => {
@@ -25,30 +26,44 @@ test('it serves notes_read, which returns the note given', async () => {
   });
 });
 
-test('it allows a call to notes_read while the policy declares it a read', () => {
+test('it allows a call to notes_read while the policy declares it a read', async () => {
   const notes = buildTestNotesTools('Buy oat milk.');
 
-  expect(
-    notes.tools.decide({ tool: 'notes_read', toolList: ['notes_read'] }).decision,
-  ).toStrictEqual({ outcome: 'allow', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } });
+  const decided = await notes.tools.decide(
+    buildPolicyCall({ tool: 'notes_read', toolList: ['notes_read'] }),
+  );
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'allow',
+    stage: 7,
+    rule: { id: 'allow-reads', revision: 1 },
+  });
 });
 
-test('it denies the next call to notes_read once the policy declares it a send', () => {
+test('it asks for the next call to notes_read once the policy declares it a delete', async () => {
   const notes = buildTestNotesTools('Buy oat milk.');
 
-  notes.setEffects(['send']);
+  notes.setEffects(['delete']);
 
-  expect(
-    notes.tools.decide({ tool: 'notes_read', toolList: ['notes_read'] }).decision,
-  ).toStrictEqual({ outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } });
+  const decided = await notes.tools.decide(
+    buildPolicyCall({ tool: 'notes_read', toolList: ['notes_read'] }),
+  );
+
+  expect(decided.decision).toMatchObject({
+    outcome: 'ask',
+    stage: 6,
+    rule: { id: 'ask-permanent-deletes', revision: 1 },
+  });
 });
 
-test('it denies a tool the policy declares nothing for at the registry stage', () => {
+test('it denies a tool the policy declares nothing for at the registry stage', async () => {
   const notes = buildTestNotesTools('Buy oat milk.');
 
-  expect(
-    notes.tools.decide({ tool: 'notes_write', toolList: ['notes_write'] }).decision,
-  ).toStrictEqual({ outcome: 'deny', stage: 1, rule: null });
+  const decided = await notes.tools.decide(
+    buildPolicyCall({ tool: 'notes_write', toolList: ['notes_write'] }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'deny', stage: 1, rule: null });
 });
 
 test('it names the declared effects in its policy hash, which changes with them', () => {

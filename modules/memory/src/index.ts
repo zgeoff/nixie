@@ -176,6 +176,7 @@ export type {
 } from './writer-model';
 
 export { getTypedQuote } from './get-typed-quote';
+export { readOwnerMessagesBySequence } from './read-owner-messages-by-sequence';
 export type { UntypedTokenQuery } from './check-untyped-token';
 export { checkUntypedToken } from './check-untyped-token';
 export type { DestinationToken } from './collect-destination-tokens';

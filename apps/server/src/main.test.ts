@@ -38,7 +38,7 @@ test('it keeps no message text in nixie.db, the key store or the log events', as
 });
 
 test('it puts the snapshot hash of the definitions in force on every record', async () => {
-  const ctx = await setupTest();
+  const ctx = await startInProcessNixie({ hasStarterRules: false });
   const api = await createTestClient(ctx);
   const seeded = await ctx.waitForLogEvent('definitions.seeded');
 

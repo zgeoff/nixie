@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildTimeTool } from '@heynixie/connectors';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
-import { makeDecisionPoint } from '@heynixie/policy';
+import { buildPolicyCall, readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildPromptReadTool } from '@heynixie/prompts';
 import { buildSkillTools } from '@heynixie/skills';
 import { buildTestClock } from '@heynixie/testing';
@@ -232,7 +232,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
   ).rejects.toThrowWithMessage(Error, 'a tool call ran before the memory store started');
 });
 
-test('it allows the time tool, the log reader and each memory tool but export, and denies a write tool under the read-only rule', async () => {
+test('it allows the time tool, the log reader and each memory tool but export, and the starter rules allow a write tool', async () => {
   const ctx = await setupTest();
 
   const registry = buildToolRegistry([
@@ -292,9 +292,9 @@ test('it allows the time tool, the log reader and each memory tool but export, a
     },
   ]);
 
-  const decide = makeDecisionPoint({
-    findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
-  });
+  const decide = readStarterDecisionPoint(
+    (name) => registry.findTool(name)?.definition.declaration ?? null,
+  );
 
   const readTools = [
     'time.now',
@@ -315,21 +315,18 @@ test('it allows the time tool, the log reader and each memory tool but export, a
 
   const toolList = ['web.fetch', ...readTools, 'files.write'];
 
-  const allowed = {
-    decision: {
-      outcome: 'allow' as const,
-      stage: 3,
-      rule: { id: 'slice1.read-only', revision: 1 },
-    },
-    sentence: null,
-  };
-
-  expect(readTools.map((tool) => decide({ tool, toolList }))).toStrictEqual(
-    readTools.map(() => allowed),
+  const decided = await Promise.all(
+    readTools.map((tool) => decide(buildPolicyCall({ tool, toolList }))),
   );
 
-  expect(decide({ tool: 'files.write', toolList })).toMatchObject({
-    decision: { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only' } },
+  expect(decided.map((entry) => entry.decision.outcome)).toStrictEqual(
+    readTools.map(() => 'allow'),
+  );
+
+  const written = await decide(buildPolicyCall({ tool: 'files.write', toolList }));
+
+  expect(written).toMatchObject({
+    decision: { outcome: 'allow', stage: 7, rule: { id: 'allow-service-writes' } },
   });
 });
 
@@ -389,7 +386,7 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
   ]);
 });
 
-test('it denies a model call to memory.export under the read-only rule, so nothing exports', async () => {
+test('it asks about a model call to memory.export under the starter rules, so nothing exports', async () => {
   const ctx = await setupTest();
 
   const registry = buildToolRegistry(
@@ -444,9 +441,9 @@ test('it denies a model call to memory.export under the read-only rule, so nothi
     },
     {
       registry,
-      decide: makeDecisionPoint({
-        findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
-      }),
+      decide: readStarterDecisionPoint(
+        (name) => registry.findTool(name)?.definition.declaration ?? null,
+      ),
       log: ctx.log,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
 
@@ -462,9 +459,11 @@ test('it denies a model call to memory.export under the read-only rule, so nothi
     content: [
       {
         type: 'text',
-        text: 'denied: slice1.read-only: Only a tool whose effects are read, fetch or note may run; every other call is denied.',
+        text: expect.stringMatching(
+          /^Waiting for approval as `[a-z0-9]{10}`\. You can keep working; you will hear the answer in your inbox\.$/u,
+        ),
       },
     ],
-    isError: true,
+    isError: false,
   });
 });

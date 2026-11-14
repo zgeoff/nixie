@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { actionsProjection } from '@heynixie/actions';
 import { readTestActions } from '@heynixie/actions/test-utils';
 import { logProjections, startWriter } from '@heynixie/log';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { tasksProjections, writeInboxRecords } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
 import { buildActions } from '../build-actions';
@@ -48,7 +49,12 @@ async function setupTest() {
     log,
     connectors: actions.connectors,
     runStep: actions.trackSteps(
-      makeQueueCheckStep({ context, queue: actions.queue, tool: actions.logConnector.tool }),
+      makeQueueCheckStep({
+        context,
+        queue: actions.queue,
+        makeDecide: (findDeclaration) => readStarterDecisionPoint(findDeclaration),
+        tool: actions.logConnector.tool,
+      }),
     ),
   };
 }

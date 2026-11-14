@@ -1,6 +1,8 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
+import { actionProposalSchema } from './action-proposal-schema';
 import { forgetBackupSchema } from './forget-backup-schema';
+import { knownContactSchema } from './known-contact-schema';
 
 const versionRefSchema = z.object({ itemID: z.string(), version: z.int().positive() });
 
@@ -288,9 +290,16 @@ const ruleProposalChangeSchema = z.object({
   after: ruleVersionSchema,
 });
 
+const effectChangeSchema = z.object({
+  tool: z.string(),
+  remove: z.array(z.string()),
+  sentence: z.string(),
+});
+
 const pendingRuleProposalSchema = z.object({
   proposalID: z.string(),
   changes: z.array(ruleProposalChangeSchema),
+  effectChanges: z.array(effectChangeSchema),
   createdAt: z.date(),
   lapseAt: z.date(),
 });
@@ -301,12 +310,20 @@ const ruleProposalRejectionSchema = ruleProposalAnswerSchema.extend({
   reason: z.string().max(500).regex(/\S/u),
 });
 
+const actionRejectionSchema = ruleProposalAnswerSchema.extend({
+  reason: z.string().max(500).regex(/\S/u).optional(),
+});
+
 const ruleProposalErrors = {
   NOT_FOUND: { message: 'nothing has that ID', status: 404 },
   PROPOSAL_CLOSED: { message: 'the proposal is answered, withdrawn or lapsed', status: 409 },
 } as const;
 
 const rules = oc.errors(ruleProposalErrors);
+
+const contacts = oc.errors({
+  NOT_FOUND: { message: 'no known contact has that ID', status: 404 },
+});
 
 const forgottenItemsSchema = z.object({
   itemIDs: z.array(z.string()),
@@ -496,6 +513,29 @@ export const hostContract = {
       approve: rules.input(ruleProposalAnswerSchema).output(z.object({ proposalID: z.string() })),
       reject: rules.input(ruleProposalRejectionSchema).output(z.object({ proposalID: z.string() })),
     },
+  },
+  actions: {
+    proposals: {
+      list: rules.output(z.array(actionProposalSchema)),
+      approve: rules.input(ruleProposalAnswerSchema).output(z.object({ proposalID: z.string() })),
+      reject: rules.input(actionRejectionSchema).output(z.object({ proposalID: z.string() })),
+    },
+  },
+  contacts: {
+    list: contacts.output(z.array(knownContactSchema)),
+
+    markKnown: contacts
+      .input(
+        z.strictObject({
+          destination: z.string().min(1).max(500),
+          name: z.string().min(1).max(200).optional(),
+        }),
+      )
+      .output(z.object({ contact: knownContactSchema, isNew: z.boolean() })),
+
+    unmark: contacts
+      .input(z.strictObject({ contactID: z.string().min(1) }))
+      .output(z.object({ contactID: z.string() })),
   },
   prompts: {
     proposals: {

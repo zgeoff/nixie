@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { actionsProjection, writeUnknownOutcomes } from '@heynixie/actions';
 import { readTestActions } from '@heynixie/actions/test-utils';
 import { logProjections, readRecords, startWriter } from '@heynixie/log';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
 import {
   tasksProjections,
@@ -49,7 +50,12 @@ async function setupTest() {
   const actions = buildActions(context, { log, testProviderURL: null });
 
   const runStep = actions.trackSteps(
-    makeQueueCheckStep({ context, queue: actions.queue, tool: actions.logConnector.tool }),
+    makeQueueCheckStep({
+      context,
+      queue: actions.queue,
+      makeDecide: (findDeclaration) => readStarterDecisionPoint(findDeclaration),
+      tool: actions.logConnector.tool,
+    }),
   );
 
   const wake = (taskID: string) =>
@@ -95,7 +101,7 @@ async function setupTest() {
   };
 }
 
-test('it queues one actions.log action under the step that a wake starts, allowed by slice1.queue-check', async () => {
+test('it queues one actions.log action under the step that a wake starts, allowed by the starter write rule', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
   const inbox = await ctx.wake(step.taskID);
@@ -122,13 +128,13 @@ test('it queues one actions.log action under the step that a wake starts, allowe
     },
   ]);
 
-  expect(called.map((read) => [read.record.kind, read.record.decision])).toStrictEqual([
-    [
-      'tool_called',
-      { outcome: 'allow', stage: 3, rule: { id: 'slice1.queue-check', revision: 1 } },
-    ],
-    ['tool_result', null],
-  ]);
+  expect(called.map((read) => read.record.kind)).toStrictEqual(['tool_called', 'tool_result']);
+
+  expect(called[0]?.record.decision).toMatchObject({
+    outcome: 'allow',
+    stage: 7,
+    rule: { id: 'allow-service-writes', revision: 1 },
+  });
 
   expect(result).toStrictEqual({
     next: 'wait',

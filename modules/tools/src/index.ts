@@ -18,6 +18,7 @@ export type {
   RunEndpoint,
   SchemaCheck,
   SilentEnd,
+  StepPolicyFrame,
   ToolCall,
   ToolContext,
   ToolDefinition,

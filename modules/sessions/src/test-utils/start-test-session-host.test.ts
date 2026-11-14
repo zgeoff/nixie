@@ -1,7 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
 import { threadsProjection } from '@heynixie/log';
-import { makeDecisionPoint } from '@heynixie/policy';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildSandboxRecorder, readSandboxOwners } from '@heynixie/sandbox';
 import { buildMockSandboxSpec, runGuestFrame } from '@heynixie/sandbox/test-utils';
 import { readTestTasks } from '@heynixie/tasks/test-utils';
@@ -76,9 +76,9 @@ test("it sends a tool call of the stub guest's turn to the run endpoint of the s
   const endpoint = await startToolEndpoint({
     socketDir: host.socketDir,
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
-    }),
+    decide: readStarterDecisionPoint(
+      (name) => registry.findTool(name)?.definition.declaration ?? null,
+    ),
     log: host.context.log,
     definitions: host.context.definitions,
     queue: { enqueue: mock(), waitForOutcome: mock() },
@@ -123,9 +123,9 @@ test('it reads the names of the tools a turn of the stub guest is offered', asyn
   const endpoint = await startToolEndpoint({
     socketDir: host.socketDir,
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
-    }),
+    decide: readStarterDecisionPoint(
+      (name) => registry.findTool(name)?.definition.declaration ?? null,
+    ),
     log: host.context.log,
     definitions: host.context.definitions,
     queue: { enqueue: mock(), waitForOutcome: mock() },

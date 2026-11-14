@@ -436,3 +436,44 @@ test('it offers no search tool when the configuration names no search credential
 
   expect(names).not.toContain('search');
 });
+
+test('it lets no registered tool run a call that no rule in force allows', async () => {
+  const ctx = await startInProcessNixie({ isStarterApproved: false });
+  const api = await createTestClient(ctx);
+
+  const gate = Promise.withResolvers<void>();
+
+  await ctx.waitForLogEvent('ready');
+
+  ctx.guest.addReplies({ text: 'Hello.', gate: () => gate.promise });
+
+  await api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hi.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(() => ctx.guest.turns.length === 1);
+
+  const [received] = ctx.guest.received;
+
+  invariant(received);
+
+  const names = await ctx.readToolNames(received);
+  const answers = await Promise.all(names.map((name) => ctx.callTool(received, name, {})));
+
+  gate.resolve();
+
+  const ran = answers.flatMap((answer, index) =>
+    answer.includes('"isError":true') || answer.includes('Waiting for approval')
+      ? []
+      : [`${names[index] ?? '?'}: ${answer}`],
+  );
+
+  expect(
+    answers.filter((answer) => answer.includes('Waiting for approval')).length,
+  ).toBeGreaterThan(3);
+
+  expect(ran).toStrictEqual([]);
+});

@@ -1,10 +1,12 @@
 import type { Log, LogRecord, RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
+import type { EffectOverride } from '@heynixie/policy';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { RuleProposal } from './build-rule-proposal';
 import { buildSkillChanges } from './build-skill-changes';
 import type { SkillOverlay } from './build-skill-overlay';
+import type { HeldEffects } from './pick-seed-effects';
 import { rulesChangeProposedCodec } from './rules-change-proposed-codec';
 import { rulesChangeWithdrawnCodec } from './rules-change-withdrawn-codec';
 import type {
@@ -33,6 +35,8 @@ export interface SeedPlan {
     readonly contentHash: string;
   };
   readonly formatVersion: number;
+  readonly effects: ReadonlyMap<string, EffectOverride>;
+  readonly heldEffects: readonly HeldEffects[];
   readonly unapplied: readonly string[];
   readonly skipped: readonly string[];
   readonly versions: readonly SkillVersion[];
@@ -199,6 +203,16 @@ async function writeSeedRecord(
         adoptedSkills: plan.overlay.adopted.map((skill) => ({
           name: skill.name,
           approvalID: skill.approvalID,
+        })),
+        effects: Object.fromEntries(
+          [...plan.effects].map(([tool, override]) => [
+            tool,
+            { add: [...override.add], remove: [...override.remove] },
+          ]),
+        ),
+        heldEffects: plan.heldEffects.map((held) => ({
+          tool: held.tool,
+          remove: [...held.remove],
         })),
         unapplied: [...plan.unapplied],
         skipped: [...plan.skipped],

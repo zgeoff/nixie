@@ -5,18 +5,19 @@ import type { DefinitionsInForce } from '@heynixie/definitions';
 import { checkPromptProposal } from '@heynixie/definitions';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
-import { makeDecisionPoint } from '@heynixie/policy';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import { buildSilentEndTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
 import { buildTaskMessageTool, buildTaskStartTool, buildTasksListTool } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { buildContactTool } from './build-contact-tool';
 import { buildConversationMemoryTools } from './build-conversation-memory-tools';
 import { buildConversationSkillTools } from './build-conversation-skill-tools';
 import { buildConversationTools } from './build-conversation-tools';
 import { buildTaskMessaging } from './build-task-messaging';
 import { buildTaskStartBounds } from './build-task-start-bounds';
+import type { DecisionPointFactory } from './make-server-decisions';
 import type { ServerParts } from './types';
 
 interface ConversationSearch {
@@ -31,6 +32,7 @@ export interface ConversationEndpointTools {
   readonly testTools: readonly ToolDefinition[];
 
   readonly queue: ActionQueue;
+  readonly makeDecide: DecisionPointFactory;
   readonly readStore: () => MemoryToolStore | null;
 
   readonly readInForce: () => DefinitionsInForce | null;
@@ -124,6 +126,7 @@ export async function startConversationEndpoint(
       memory,
     ),
     ...search,
+    buildContactTool(options.context, tools.refreshDefinitions),
     buildSilentEndTool(messaging),
   ];
 
@@ -132,9 +135,7 @@ export async function startConversationEndpoint(
   const endpoint = await startToolEndpoint({
     socketDir: join(options.config.server.dataDir, 'run', 'tools'),
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
-    }),
+    decide: tools.makeDecide((name) => registry.findTool(name)?.definition.declaration ?? null),
     log: options.context.log,
     definitions: options.context.definitions,
     queue: tools.queue,

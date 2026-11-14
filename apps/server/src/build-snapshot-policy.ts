@@ -1,13 +1,21 @@
 import type { SnapshotPolicy } from '@heynixie/definitions';
-import type { FixedRule } from '@heynixie/policy';
+import type { JSONObject } from '@heynixie/log';
+import type { RuleEntry } from '@heynixie/policy';
+import { renderRule, toRuleForm } from '@heynixie/policy';
 import type { ToolDefinition } from '@heynixie/tools';
 
 export function buildSnapshotPolicy(
-  rules: readonly FixedRule[],
+  rules: readonly RuleEntry[],
   tools: readonly ToolDefinition[],
+  consent: JSONObject,
 ): SnapshotPolicy {
   return {
-    rules: rules.map((rule) => ({ id: rule.id, revision: rule.revision, sentence: rule.sentence })),
+    rules: rules.map((entry) => ({
+      id: entry.id,
+      revision: entry.revision,
+      sentence: renderRule(entry.rule),
+      rule: toRuleForm(entry.rule),
+    })),
     tools: tools.map((tool) => ({
       name: tool.name,
       effects: [...tool.declaration.effects],
@@ -16,5 +24,7 @@ export function buildSnapshotPolicy(
       content: [...tool.declaration.content],
       results: { ...tool.declaration.results },
     })),
+    contacts: [],
+    consent,
   };
 }

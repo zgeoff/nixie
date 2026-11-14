@@ -1,6 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
-import { makeDecisionPoint } from '@heynixie/policy';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry } from '../build-tool-registry';
 import { startToolEndpoint } from '../start-tool-endpoint';
 import { buildMockToolDefinition } from './build-mock-tool-definition';
@@ -26,9 +26,9 @@ test('it calls a tool on the run endpoint with the run token and returns its res
   const endpoint = await startToolEndpoint({
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
-    }),
+    decide: readStarterDecisionPoint(
+      (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+    ),
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
@@ -63,9 +63,9 @@ test('it rejects a call that carries a token the endpoint does not know', async 
   const endpoint = await startToolEndpoint({
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
-    }),
+    decide: readStarterDecisionPoint(
+      (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+    ),
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 

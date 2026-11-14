@@ -88,6 +88,11 @@ export interface NixieTables {
     readonly revoked_at: number | null;
     readonly paired_sequence: number;
   };
+  readonly known_contacts: {
+    readonly contact_id: string;
+    readonly marked_sequence: number;
+    readonly unmarked_sequence: number | null;
+  };
   readonly leases: {
     readonly kind: string;
     readonly work_id: string;

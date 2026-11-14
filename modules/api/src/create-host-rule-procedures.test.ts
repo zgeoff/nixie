@@ -54,6 +54,24 @@ async function setupTest() {
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),
       }),
+    runMailToolSeed: () =>
+      runSeed({
+        log,
+        source: createPathSource({ directory: root }),
+        buildPolicy: () => ({
+          rules: [],
+          tools: [
+            {
+              name: 'mail.draft',
+              effects: ['send', 'write'],
+              destinations: [],
+              amount: null,
+              content: [],
+              results: {},
+            },
+          ],
+        }),
+      }),
   };
 }
 
@@ -205,6 +223,7 @@ test('#proposals.list shows a pending rule change proposal with the sentence of 
           after: { ruleHash: expect.any(String), sentence: expect.stringContaining('web.fetch') },
         },
       ],
+      effectChanges: [],
       createdAt: new Date(Date.UTC(2026, 9, 16, 9, 0)),
       lapseAt: expect.any(Date),
     },
@@ -292,4 +311,32 @@ test('#proposals.reject refuses a proposal you answered as closed', async () => 
   await Promise.allSettled([rejected]);
 
   expect(rejected).rejects.toMatchObject({ code: 'PROPOSAL_CLOSED' });
+});
+
+test('#proposals.list shows an effect removal that no rule change comes with', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'effects'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await ctx.runMailToolSeed();
+
+  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), 'mail.draft:\n  remove: [send]\n');
+
+  await ctx.runMailToolSeed();
+
+  const proposals = await ctx.client.proposals.list();
+
+  expect(proposals).toStrictEqual([
+    {
+      proposalID: expect.any(String),
+      changes: [],
+      effectChanges: [
+        { tool: 'mail.draft', remove: ['send'], sentence: expect.stringContaining('send') },
+      ],
+      createdAt: new Date(Date.UTC(2026, 9, 16, 9, 0)),
+      lapseAt: expect.any(Date),
+    },
+  ]);
 });

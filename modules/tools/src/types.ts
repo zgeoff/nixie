@@ -1,5 +1,5 @@
 import type { ContentSource, Decision, JSONObject } from '@heynixie/log';
-import type { EffectDeclaration } from '@heynixie/policy';
+import type { CallDestination, EffectDeclaration, RuleContext, RuleSource } from '@heynixie/policy';
 import type { SandboxRef, ToolTarget } from '@heynixie/sandbox';
 
 export type JsonSchema = JSONObject;
@@ -48,7 +48,19 @@ export interface ToolDefinition {
   readonly run: (call: ToolCall, context: ToolContext) => Promise<ToolOutcome>;
 
   readonly recordInput?: (input: JSONObject) => JSONObject;
+
+  // Resolves the destinations of a call on the host, for a tool whose destinations are not plain
+  // arguments, such as a reply that names a message. A tool without it takes each argument its
+  // declaration names as a destination.
+  readonly resolveDestinations?: (
+    input: JSONObject,
+    context: ToolContext,
+  ) => Promise<DestinationResolution>;
 }
+
+export type DestinationResolution =
+  | { readonly status: 'ok'; readonly destinations: readonly CallDestination[] }
+  | { readonly status: 'error'; readonly message: string };
 
 export type SchemaCheck =
   | { readonly isValid: true }
@@ -93,6 +105,21 @@ export interface ToolSession {
   // A turn that holds a message from the owner refuses to end with nothing sent, so the model
   // replies to it.
   readonly endSilently?: () => SilentEnd;
+
+  // what the step's calls pass to the decision point beyond the tool and its input
+  readonly policy?: StepPolicyFrame;
+}
+
+export interface StepPolicyFrame {
+  readonly context: RuleContext;
+  readonly definitionID: string | null;
+
+  // the owner message that started the turn; null in a task run
+  readonly turnMessageSequence: number | null;
+
+  // owner messages that a task message carried to the task
+  readonly onBehalfOf: readonly number[];
+  readonly sources: readonly RuleSource[];
 }
 
 export type SilentEnd = 'ended' | 'refused';

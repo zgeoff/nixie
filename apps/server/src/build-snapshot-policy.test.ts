@@ -3,7 +3,13 @@ import { buildSnapshotPolicy } from './build-snapshot-policy';
 
 test('it lists each rule and each tool declaration in plain JSON', () => {
   const policy = buildSnapshotPolicy(
-    [{ id: 'slice1.read-only', revision: 1, sentence: 'Reads only.', pickOutcome: () => null }],
+    [
+      {
+        id: 'slice1.queue-check',
+        revision: 1,
+        rule: { id: 'slice1.queue-check', outcome: 'allow', tools: ['actions.log'] },
+      },
+    ],
     [
       {
         name: 'web_fetch',
@@ -21,10 +27,18 @@ test('it lists each rule and each tool declaration in plain JSON', () => {
         run: () => Promise.reject(new Error('unused')),
       },
     ],
+    { prompt: 'sha256:aa', profile: 'checker-direct' },
   );
 
   expect(policy).toStrictEqual({
-    rules: [{ id: 'slice1.read-only', revision: 1, sentence: 'Reads only.' }],
+    rules: [
+      {
+        id: 'slice1.queue-check',
+        revision: 1,
+        sentence: '**Allow** `actions.log`.',
+        rule: { id: 'slice1.queue-check', outcome: 'allow', tools: ['actions.log'] },
+      },
+    ],
     tools: [
       {
         name: 'web_fetch',
@@ -35,5 +49,7 @@ test('it lists each rule and each tool declaration in plain JSON', () => {
         results: { text: 'untrusted' },
       },
     ],
+    contacts: [],
+    consent: { prompt: 'sha256:aa', profile: 'checker-direct' },
   });
 });
