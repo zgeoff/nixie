@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { recallPageLimitBytes, toolOutputLimitTokens } from '@heynixie/wire';
+import { z } from 'zod';
 import { buildToolOutputPlan } from './build-tool-output-plan';
 
 test('it serves a 700-line page whole under the CLI defaults', () => {
@@ -50,7 +51,7 @@ test('it serves a filler of 30,000 characters whose last line is numbered', () =
 
 test('it serves 150 items in the recall shape as one JSON result of about 20,000 bytes', () => {
   const plan = buildToolOutputPlan({ HOME: '/home/tide' }, 'recall-shape');
-  const result: { items: unknown[] } = JSON.parse(plan.served);
+  const result = z.object({ items: z.array(z.unknown()) }).parse(JSON.parse(plan.served));
 
   expect(result.items).toHaveLength(150);
   expect(result.items[149]).toMatchObject({ itemID: 'k000000149', subject: 'owner', version: 1 });
