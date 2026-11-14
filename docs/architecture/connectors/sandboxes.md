@@ -206,7 +206,40 @@ pass an abort signal to cut it short.
   sandbox test utilities.
 - **Every other adapter** returns `unsupported`.
 
-A watcher that logs each new kill is planned ([GEO-2526](https://linear.app/zgeoff/issue/GEO-2526)).
+## Watching memory kills
+
+The server wraps its sandbox adapter in `watchMemoryKills`, whether it built the adapter or took it
+from the `createSandboxAdapter` option, and logs `sandbox.memory_watch` once. The wrapped adapter
+has the same `id` and methods as the adapter it wraps.
+
+When a program that `spawn` started ends, for any cause, the watcher reads that sandbox's count and
+compares it with the last count it holds. It never reads after an `exec`, and it never looks at the
+exit code or signal, because a stop's `SIGKILL` looks like a memory kill. `exit` and `stop()` settle
+with the adapter's own values.
+
+A sandbox that the watcher created starts at a count of 0. A sandbox it did not create, such as one
+that `read` or `list` returned after a restart, gets one baseline read before its first `spawn`.
+
+| Case                                                        | Line                                                          |
+| ----------------------------------------------------------- | ------------------------------------------------------------- |
+| the count rose                                              | `sandbox.memory_kill` at `error`, with `kills` as the rise    |
+| the count is the same, such as after a stop or a clean end  | no line                                                       |
+| the adapter returns `unsupported`                           | `sandbox.memory_kill_unknown`, reason `unsupported`, each end |
+| the read failed or passed `readTimeoutMs` (2000 by default) | unknown, reason `read_failed`                                 |
+| the count fell, as after a cold boot                        | unknown, reason `counter_reset`                               |
+| no last count, and the count is above 0                     | unknown, reason `no_baseline`                                 |
+
+`kills` is the rise since the last read of that sandbox, so a day's kills are the sum of that day's
+lines. Each end writes at most one line. A line holds `ended` (`turn` for a conversation sandbox,
+`fetch` for a fetch sandbox, `step` for any other), `kind`, `memoryMiB`, `sandboxID`, and `kills` or
+`reason`, and never a task ID, a step key, guest output, a URL or a prompt. The lines are log lines
+only, with no event-log record.
+
+The read runs in the background. Nothing waits on it except the next `spawn`, the `sleep` and the
+`destroy` of the same sandbox, which run after it so a sandbox never goes while its count is unread.
+A web fetch's reply never waits for the read. The watcher keys its state by sandbox ID, because
+`read` and `list` return a new object for the same sandbox, and compares and stores each count in
+one synchronous step, so 2 programs that end together on one sandbox give one line for one kill.
 
 ## The test sandbox
 

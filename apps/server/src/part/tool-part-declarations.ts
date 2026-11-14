@@ -1,14 +1,12 @@
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
-import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildKagiSearch } from '@heynixie/search-kagi';
 import { startConversationEndpoint } from '../conversation/start-conversation-endpoint';
 import { refreshDefinitions } from '../definition/refresh-definitions';
-import { createSandboxAdapter } from '../sandbox/create-sandbox-adapter';
 import { buildActions } from '../test/build-actions';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool } from '../utils/build-test-send-tool';
-import { getSandboxRootDir } from './get-sandbox-root-dir';
 import type { ServerPartValues } from './server-part-values';
+import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
 import { startWebFetchPart } from './start-web-fetch-part';
 
 export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
@@ -19,18 +17,17 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     start: (parts) => {
       const options = parts.get('inputs').options;
       const apiContext = parts.get('context').apiContext;
-      const create = options.createSandboxAdapter ?? createSandboxAdapter;
 
       return Promise.resolve(
-        create({
-          recorder: buildSandboxRecorder({
-            log: apiContext.log,
-            definitions: apiContext.definitions,
-          }),
-          toolTarget: (sandbox) => parts.get('tool_endpoint').endpoint.getToolTarget(sandbox),
+        startSandboxAdapterPart({
+          ...(options.createSandboxAdapter === undefined
+            ? {}
+            : { createSandboxAdapter: options.createSandboxAdapter }),
           sandbox: options.sandbox,
-          testRootDir: getSandboxRootDir(options.config.server.dataDir),
-          hostEnv: process.env,
+          dataDir: options.config.server.dataDir,
+          log: options.log,
+          recorder: { log: apiContext.log, definitions: apiContext.definitions },
+          toolTarget: (sandbox) => parts.get('tool_endpoint').endpoint.getToolTarget(sandbox),
         }),
       );
     },

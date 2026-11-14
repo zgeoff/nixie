@@ -1,5 +1,6 @@
 import type {
   ExecExit,
+  MemoryKillRead,
   ProcessIO,
   Sandbox,
   SandboxAdapter,
@@ -29,6 +30,8 @@ export interface StubSandboxAdapterOptions {
   readonly createFailures?: readonly StubCallFailure[];
   readonly listFailures?: readonly StubCallFailure[];
   readonly destroyFailures?: readonly StubCallFailure[];
+
+  readonly readMemoryKills?: () => Promise<MemoryKillRead>;
 }
 
 export function buildStubSandboxAdapter(
@@ -66,6 +69,8 @@ export function buildStubSandboxAdapter(
         spawned,
         destroyed,
         destroyFailures,
+        readMemoryKills:
+          options.readMemoryKills ?? (() => Promise.resolve({ kind: 'unsupported' })),
       });
 
       live.set(id, sandbox);
@@ -108,6 +113,7 @@ interface StubState {
   readonly spawned: { sandboxID: string; argv: readonly string[] }[];
   readonly destroyed: string[];
   readonly destroyFailures: StubCallFailure[];
+  readonly readMemoryKills: () => Promise<MemoryKillRead>;
 }
 
 function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sandbox {
@@ -131,7 +137,7 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
     applyMove: () => Promise.reject(new Error('the stub runs no exec')),
     toolRoute: () => Promise.resolve(null),
     suspension: { kind: 'none' },
-    readMemoryKills: () => Promise.resolve({ kind: 'unsupported' }),
+    readMemoryKills: state.readMemoryKills,
     isRetired: false,
     destroy: async () => {
       await applyCallFailure(state.destroyFailures.shift());

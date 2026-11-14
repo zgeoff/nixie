@@ -1,4 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import type { MemoryKillRead } from '@heynixie/sandbox';
+import { watchMemoryKills } from '@heynixie/sandbox';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { buildTestClock, makeGatedCall, waitForCondition } from '@heynixie/testing';
 import type { FetchRequest } from '@heynixie/wire';
@@ -1490,4 +1492,55 @@ test.each([
     { kind: 'failed', reason: 'the fetch sandbox failed: impd is down', isGated },
     { kind: 'failed', reason: 'the fetch sandbox is stopped', isGated },
   ]);
+});
+
+test('it returns a web fetch page before the memory kill read ends', async () => {
+  const gate = Promise.withResolvers<MemoryKillRead>();
+  const readStarted = Promise.withResolvers<void>();
+
+  const stub = buildStubSandboxAdapter(
+    makeStubFetcher((request) => ({
+      kind: 'page',
+      retryAfterMs: null,
+      isGated: false,
+      url: request.url,
+      status: 200,
+      contentType: 'text/plain',
+      text: 'hello',
+      links: [],
+      isTruncated: false,
+      blocked: null,
+    })),
+    {
+      readMemoryKills: () => {
+        readStarted.resolve();
+
+        return gate.promise;
+      },
+    },
+  );
+
+  const fetchSandbox = startFetchSandbox({
+    adapter: watchMemoryKills(stub, { log: () => {}, readTimeoutMs: 60_000 }),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
+    deniedRanges: [],
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  onTestFinished(() => fetchSandbox.stop());
+
+  const reply = await fetchSandbox.readPage('https://example.com/');
+
+  await readStarted.promise;
+
+  const destroyedBeforeRelease = [...stub.destroyed];
+
+  gate.resolve({ kind: 'count', kills: 0 });
+
+  await waitForCondition(() => stub.destroyed.length === 1);
+
+  expect(reply).toMatchObject({ kind: 'page', text: 'hello' });
+  expect(destroyedBeforeRelease).toStrictEqual([]);
 });
