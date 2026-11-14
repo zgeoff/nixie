@@ -32,7 +32,7 @@ Agent SDK. The SDK runs in a guest that the process sandbox adapter starts as a 
 needs no `/dev/kvm` and no imp. The test-only parts are four:
 
 - The test connector declares one queued action, `test.send`, which the test rule allows. The
-  production rule set stays read-only, so no release build can queue it.
+  release build's rules in code hold no such rule, so no release build can queue it.
 - A test task kind sets a durable timer on its first step, records which inbox entries each step
   read, and finishes when its inbox holds a finish request, so a test can see a wake-up, a timer
   fire and a task that stays done.

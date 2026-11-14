@@ -226,14 +226,19 @@ enters as the rules sorted by ID and the tool declarations sorted by name, each 
 sorted and without duplicates. Every object serialises as canonical JSON, with sorted keys and no
 whitespace, so the same definitions always give the same bytes.
 
-The policy holds the fixed rule, the rules in force and every tool declaration in the build's
+The policy holds the rules in code, the rules in force and every tool declaration in the build's
 registry. A rule enters with its revision, as [rules in force](../policy/rules.md#rules-in-force)
 describes, so an edit to a rule changes the snapshot hash. When a rule last decided a call lives in
-its own table and never enters the hash. The fixed rule decides by a tool's declared effects
+its own table and never enters the hash. The rules in code are the queue check rule, which allows
+`actions.log` alone, and in a test build the test rule. A rule decides by a tool's declared effects
 ([the decision point](../policy/decision-point.md)), so a replay needs the declarations that were in
 force. A release that changes a tool declaration therefore changes the snapshot hash over the same
 files. A probe token follows the source alone, so the change enters with the next seed the release
 runs, which compares the snapshot hash as well as the revision.
+
+A migration that rewrites a stored form keeps the snapshot's hash, because the hash names the
+snapshot in every record and in copies outside the database, and nothing recomputes it from the
+stored form.
 
 ## Seeding
 

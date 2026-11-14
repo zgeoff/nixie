@@ -72,5 +72,6 @@ message is the best evidence of where the user is now. When no message carries a
 the default zone from the deployment configuration and says so, so the model can tell the user it
 assumed the zone.
 
-The tool reads only nixie's own log and acts on nothing outside nixie, so it runs direct and the
-read-only rule allows it. Every result field counts as the user's own data.
+The tool reads only nixie's own log and acts on nothing outside nixie, so it runs direct and an
+allow rule on its read effect, such as the starter rule `allow-reads`, allows it. Every result field
+counts as the user's own data.

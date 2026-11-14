@@ -19,11 +19,12 @@ flowchart LR
 
 ## The tool
 
-The tool declares only the fetch effect and no destination, so the decision point's read-only rule
-allows it and it runs direct, inside the turn. Its result holds the final URL after redirects, the
-status code, the content type, the page ID, the part number and the count of parts, the text of one
-part, the truncated mark and the blocked reason. A fetched image reaches the model as image content
-beside the result, as [web fetch images](./web-fetch-images.md) describes.
+The tool declares only the fetch effect and no destination, so the decision point allows it under an
+allow rule on that effect, such as the starter rule `allow-reads`, and it runs direct, inside the
+turn. Its result holds the final URL after redirects, the status code, the content type, the page
+ID, the part number and the count of parts, the text of one part, the truncated mark and the blocked
+reason. A fetched image reaches the model as image content beside the result, as
+[web fetch images](./web-fetch-images.md) describes.
 
 Every field of the result and every image is outside content, because the page and every redirect
 along the way came from someone other than the user. The result schema marks the status code, the

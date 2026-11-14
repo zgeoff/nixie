@@ -17,11 +17,11 @@ A call sets a query, and can set:
 - `freshness`, `day`, `week` or `month`, which keeps only pages published or updated within that
   span.
 
-The [decision point](../policy/decision-point.md) allows every search. The tool declares only the
-fetch effect, and the decision point's read-only rule allows a call whose effects are only reads,
-fetches or notes. The tool runs [direct](./tool-calls.md#a-tool-definition), inside the model's
-turn, like every tool that changes nothing outside nixie. A failed search returns an error that
-holds the provider's reason, and the model reads it.
+The tool declares only the fetch effect, so the [decision point](../policy/decision-point.md) allows
+a search when an allow rule covers that effect, such as the starter rule `allow-reads`, and asks
+otherwise. The tool runs [direct](./tool-calls.md#a-tool-definition), inside the model's turn, like
+every tool that changes nothing outside nixie. A failed search returns an error that holds the
+provider's reason, and the model reads it.
 
 ## What the result carries
 
