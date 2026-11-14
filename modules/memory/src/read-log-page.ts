@@ -179,7 +179,7 @@ function buildScannedEntry(record: LogRecord): ScannedEntry {
     };
   }
 
-  const text = buildEntryText(record, fields);
+  const text = formatEntryText(record, fields);
 
   return {
     entry: { ...base, role: record.kind === 'model.reply' ? 'assistant' : 'tool', text },
@@ -191,7 +191,7 @@ function renderOwnerEntry(record: LogRecord): string {
   return [renderOwnerText(record), ...renderImageMarkers(record)].join('\n');
 }
 
-function buildEntryText(record: LogRecord, fields: JSONObject | null): string | null {
+function formatEntryText(record: LogRecord, fields: JSONObject | null): string | null {
   if (record.kind === 'model.reply') {
     return parseReplyText(fields);
   }
