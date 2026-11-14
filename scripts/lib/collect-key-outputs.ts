@@ -18,7 +18,7 @@ export function collectKeyOutputs(
       continue;
     }
 
-    const value: unknown = entry?.outputs?.[output];
+    const value: unknown = pickOutput(entry, output);
 
     if (typeof value !== 'string') {
       throw new TypeError(`${name} gives no ${output} output`);
@@ -28,4 +28,18 @@ export function collectKeyOutputs(
   }
 
   return collected;
+}
+
+function pickOutput(entry: unknown, output: string): unknown {
+  if (typeof entry !== 'object' || entry === null || !('outputs' in entry)) {
+    return undefined;
+  }
+
+  const outputs = entry.outputs;
+
+  if (typeof outputs !== 'object' || outputs === null) {
+    return undefined;
+  }
+
+  return Object.entries(outputs).find(([key]) => key === output)?.[1];
 }
