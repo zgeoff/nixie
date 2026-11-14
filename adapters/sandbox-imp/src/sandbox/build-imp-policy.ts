@@ -1,5 +1,5 @@
 import type { SandboxSpec } from '@heynixie/sandbox';
-import type { ImpPolicy } from './types';
+import type { ImpPolicy } from '../types';
 
 export function buildImpPolicy(spec: SandboxSpec): ImpPolicy {
   if (spec.egress.kind === 'allow') {

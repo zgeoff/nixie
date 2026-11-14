@@ -1,5 +1,5 @@
 import type { ProcessIO } from '@heynixie/sandbox';
-import type { ImpExec } from './types';
+import type { ImpExec } from '../types';
 
 export function toProcessIO(exec: ImpExec, killGraceMs: number): ProcessIO {
   const stopping = { isSent: false };

@@ -1,7 +1,7 @@
 import type { SandboxSpec } from '@heynixie/sandbox';
 import { SandboxSpecRefusedError, requireSandboxSpec } from '@heynixie/sandbox';
+import type { ImpFeatures, ImpPort } from '../types';
 import type { PublicEgressConfig } from './parse-imp-config';
-import type { ImpFeatures, ImpPort } from './types';
 
 export async function requireImpSpec(
   port: ImpPort,

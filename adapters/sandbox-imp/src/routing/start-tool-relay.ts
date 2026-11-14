@@ -1,6 +1,6 @@
 import { createConnection } from 'node:net';
 import type { ToolTarget } from '@heynixie/sandbox';
-import type { ImpRelay, ImpRelayHandlers } from './types';
+import type { ImpRelay, ImpRelayHandlers } from '../types';
 
 // impd binds each reverse forward to its imp, so the target belongs to the sandbox's run whatever
 // the guest claims.

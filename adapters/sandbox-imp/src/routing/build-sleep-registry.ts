@@ -1,4 +1,4 @@
-import type { SleepRegistry } from './build-imp-sandbox';
+import type { SleepRegistry } from '../sandbox/build-imp-sandbox';
 
 export function buildSleepRegistry(): SleepRegistry {
   const asleep = new Set<string>();

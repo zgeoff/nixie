@@ -11,9 +11,9 @@ import {
   startStubToolEndpoint,
 } from '@heynixie/sandbox/test-utils';
 import invariant from 'tiny-invariant';
+import type { PublicEgressConfig } from '../config/parse-imp-config';
+import { startFakeImp } from '../test-utils/start-fake-imp';
 import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
-import type { PublicEgressConfig } from './parse-imp-config';
-import { startFakeImp } from './test-utils/start-fake-imp';
 
 interface AdapterConfig {
   readonly publicEgress?: PublicEgressConfig | null;

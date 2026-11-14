@@ -1,6 +1,6 @@
 import { z } from 'zod';
+import { rangePattern } from '../memory/range-pattern';
 import type { PublicEgressConfig } from './parse-imp-config';
-import { rangePattern } from './range-pattern';
 
 const rangeSchema = z.string().regex(rangePattern, 'an address or a network, such as 10.0.0.0/8');
 

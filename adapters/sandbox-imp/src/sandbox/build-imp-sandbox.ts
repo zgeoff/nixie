@@ -10,11 +10,11 @@ import type {
   SandboxSpec,
 } from '@heynixie/sandbox';
 import { readStreamOutput, runCommand, startExecStream } from '@heynixie/sandbox';
-import type { RouteRegistry } from './build-route-registry';
-import { memoryKillsArgv } from './memory-kills-argv';
-import { parseMemoryEvents } from './parse-memory-events';
+import { memoryKillsArgv } from '../memory/memory-kills-argv';
+import { parseMemoryEvents } from '../memory/parse-memory-events';
+import type { RouteRegistry } from '../routing/build-route-registry';
+import type { ImpPort } from '../types';
 import { toProcessIO } from './to-process-io';
-import type { ImpPort } from './types';
 
 export interface SleepRegistry {
   readonly isAsleep: (id: string) => boolean;
@@ -219,7 +219,7 @@ async function readGuestFilePaths(
     .decode(result.stdout.bytes)
     .split('\0')
     .filter((path) => path !== '')
-    .map((path) => path.slice('./'.length));
+    .map((path) => path.slice('..'.length));
 }
 
 async function applyGuestMove(ctx: ImpSandboxContext, from: string, to: string): Promise<void> {

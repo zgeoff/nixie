@@ -1,7 +1,7 @@
 import { onTestFinished } from 'bun:test';
 import { createServer } from 'node:net';
 import { waitForSettled } from '@heynixie/async';
-import { memoryKillsArgv } from '../memory-kills-argv';
+import { memoryKillsArgv } from '../memory/memory-kills-argv';
 import type { ImpCreateInput, ImpExec, ImpExecOptions, ImpFeatures, ImpPort } from '../types';
 import type { FakeSleeps } from './build-fake-sleeps';
 import { buildFakeSleeps } from './build-fake-sleeps';

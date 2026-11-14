@@ -31,7 +31,6 @@
       "error",
       {
         "pending": [
-          "adapters/sandbox-imp",
           "apps/model-gateway",
           "apps/server",
           "apps/web",

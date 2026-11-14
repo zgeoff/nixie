@@ -2,10 +2,10 @@ import { expect, test } from 'bun:test';
 import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createImpClient } from '@impz/client';
 import invariant from 'tiny-invariant';
+import { parseImpConfig } from '../config/parse-imp-config';
+import { runProbe } from '../test-utils/run-probe';
+import { setupIsolationAdapter } from '../test-utils/setup-isolation-adapter';
 import { buildImpPort } from './build-imp-port';
-import { parseImpConfig } from './parse-imp-config';
-import { runProbe } from './test-utils/run-probe';
-import { setupIsolationAdapter } from './test-utils/setup-isolation-adapter';
 
 // Bun's skipIf takes a boolean and has no skip from inside a test body, so this gate reads the
 // environment when the file loads.

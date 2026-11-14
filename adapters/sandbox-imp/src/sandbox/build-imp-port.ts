@@ -1,7 +1,7 @@
 import { SandboxHostError } from '@heynixie/sandbox';
 import type { ImpClient } from '@impz/client';
 import { ORPCError, createImpClient, openReverseForward } from '@impz/client';
-import type { ImpPort } from './types';
+import type { ImpPort } from '../types';
 
 export interface ImpConnection {
   readonly url: string;

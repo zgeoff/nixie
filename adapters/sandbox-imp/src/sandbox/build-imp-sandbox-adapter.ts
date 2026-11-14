@@ -8,14 +8,14 @@ import type {
   ToolTargetResolver,
 } from '@heynixie/sandbox';
 import { createSandboxID, stopGraceMs } from '@heynixie/sandbox';
+import type { PublicEgressConfig } from '../config/parse-imp-config';
+import { requireImpSpec } from '../config/require-imp-spec';
+import { buildRouteRegistry } from '../routing/build-route-registry';
+import { buildSleepRegistry } from '../routing/build-sleep-registry';
+import type { ImpPort } from '../types';
 import { buildImpPolicy } from './build-imp-policy';
 import type { SleepRegistry } from './build-imp-sandbox';
 import { buildImpSandbox } from './build-imp-sandbox';
-import { buildRouteRegistry } from './build-route-registry';
-import { buildSleepRegistry } from './build-sleep-registry';
-import type { PublicEgressConfig } from './parse-imp-config';
-import { requireImpSpec } from './require-imp-spec';
-import type { ImpPort } from './types';
 
 export interface ImpSandboxOptions {
   readonly port: ImpPort;

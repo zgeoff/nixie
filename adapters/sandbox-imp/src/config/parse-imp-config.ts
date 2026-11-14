@@ -1,4 +1,4 @@
-import { rangePattern } from './range-pattern';
+import { rangePattern } from '../memory/range-pattern';
 
 export interface PublicEgressConfig {
   readonly hostAddresses: readonly string[];

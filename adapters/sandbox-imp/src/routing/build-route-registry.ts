@@ -1,6 +1,6 @@
 import type { SandboxSpec, ToolTargetResolver } from '@heynixie/sandbox';
+import type { ImpForward, ImpPort } from '../types';
 import { startToolRelay } from './start-tool-relay';
-import type { ImpForward, ImpPort } from './types';
 
 export interface RouteRegistry {
   readonly open: (id: string, spec: SandboxSpec) => Promise<void>;

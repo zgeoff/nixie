@@ -9,8 +9,8 @@ import {
 } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { startFakeImp } from '../test-utils/start-fake-imp';
 import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
-import { startFakeImp } from './test-utils/start-fake-imp';
 
 async function setupTest() {
   const recorder = await setupTestRecorder();

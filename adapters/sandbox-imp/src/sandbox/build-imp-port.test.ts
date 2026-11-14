@@ -3,10 +3,10 @@ import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test
 import { waitForCondition } from '@heynixie/testing';
 import { TEST_TOKEN, startTestImpd } from '@impz/testing';
 import invariant from 'tiny-invariant';
+import { attachTestGuests } from '../test-utils/attach-test-guests';
+import { setupIsolationAdapter } from '../test-utils/setup-isolation-adapter';
+import { startStubImpd } from '../test-utils/start-stub-impd';
 import { buildImpPort } from './build-imp-port';
-import { attachTestGuests } from './test-utils/attach-test-guests';
-import { setupIsolationAdapter } from './test-utils/setup-isolation-adapter';
-import { startStubImpd } from './test-utils/start-stub-impd';
 
 test('it refuses to read the features of an impd whose version the client does not speak', () => {
   const answerRequest = mock(() =>
