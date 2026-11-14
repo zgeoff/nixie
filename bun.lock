@@ -690,15 +690,16 @@
         "@heynixie/async": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
         "@heynixie/testing": "workspace:*",
         "tiny-invariant": "catalog:",
-        "ts-pattern": "catalog:",
       },
     },
     "modules/sessions": {

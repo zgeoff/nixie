@@ -31,6 +31,8 @@ export { sandboxesProjection } from './sandbox/sandboxes-projection';
 export type { ProcessIO } from './exec/start-exec-stream';
 export { startExecStream } from './exec/start-exec-stream';
 export { stopGraceMs } from './process/stop-grace-ms';
+export type { WatchMemoryKillsOptions } from './sandbox/watch-memory-kills';
+export { watchMemoryKills } from './sandbox/watch-memory-kills';
 
 export type {
   CollectedOutput,
