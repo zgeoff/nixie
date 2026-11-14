@@ -17,7 +17,11 @@ export async function seedFailedConversationTurn(context: TasksContext): Promise
     },
   ]);
 
-  const claim = await claimTask(context, { holder: 'seed-runner', leaseMs: 60_000 });
+  const claim = await claimTask(context, {
+    holder: 'seed-runner',
+    leaseMs: 60_000,
+    taskID: 'conversation',
+  });
 
   invariant(claim, 'the conversation is ready for its message');
 
