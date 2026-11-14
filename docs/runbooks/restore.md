@@ -29,6 +29,7 @@ Replace these placeholders in each command:
 | `<restore_volume>`    | that volume: a named volume on Compose, a claim on Kubernetes           |
 | `<backup_service>`    | the Compose service that runs the backup job                            |
 | `<namespace>`         | the Kubernetes namespace of nixie                                       |
+| `<job_name>`          | the name of a backup Job that has not finished                          |
 | `<sops_file>`         | the deployment's sops file; `<age_key_file>` is the recovery key's file |
 | `<task_id>`           | the ID of one task from `nixie recovery`                                |
 | `<snapshot_id>`       | the full ID of a data snapshot, from `nixie-backup snapshots`           |
@@ -53,17 +54,22 @@ replaced database.
   docker compose stop <backup_service> nixie
   ```
 
-- Kubernetes: scale the StatefulSet to 0, and stop the backup CronJob:
+- Kubernetes: scale the StatefulSet to 0, suspend the backup CronJob, and list its Jobs:
 
   ```bash
   kubectl -n <namespace> scale statefulset/nixie --replicas=0
   kubectl -n <namespace> patch cronjob/nixie-backup -p '{"spec":{"suspend":true}}'
+  kubectl -n <namespace> get jobs
   ```
+
+  Suspending the CronJob does not stop a Job that already runs. Delete each Job that has not
+  finished with `kubectl -n <namespace> delete job/<job_name>`, then wait until
+  `kubectl -n <namespace> get pods` lists none of its pods.
 
   The Pulumi component sets `suspend: false` on the CronJob again at each `pulumi up`, so run no
   `pulumi up` until step 8.
 
-Expect: no nixie pod and no backup job pod.
+Expect: no nixie container or pod, and no backup job container or pod.
 
 ### 2. Fetch the pair
 
@@ -71,18 +77,22 @@ Fetch the newest key snapshot and the data snapshot that belongs with it into an
 Create `<restore_volume>` first. It is a separate volume that the fetch container and the restore
 container both mount, so the fetch container never mounts the data volume.
 
-- Compose: the fetch runs in the backup service's image, which holds the repositories' variables and
-  passwords:
+- Compose: Docker creates the volume owned by root, but the fetch runs as user 10001. The first
+  `docker compose run` gives the volume to that user, through the `setup` service, which runs as
+  root. The fetch then runs in the backup service's image, which holds the repositories' variables
+  and passwords:
 
   ```bash
   docker volume create <restore_volume>
+  docker compose run --rm --no-deps --entrypoint chown -v <restore_volume>:<restore_directory> setup 10001:10001 <restore_directory>
   docker compose run --rm --no-deps -v <restore_volume>:<restore_directory> <backup_service> fetch --to <restore_directory>
   ```
 
 - Kubernetes: create a claim named `<restore_volume>` of a few gigabytes, and run a one-off pod in
   the backup image that mounts it at `<restore_directory>` and the `nixie-backup` Secret, and runs
   `nixie-backup fetch --to <restore_directory>`. The Secret and the optional `nixie-backup-script`
-  ConfigMap keep fixed names, so the pod's YAML names them.
+  ConfigMap keep fixed names, so the pod's YAML names them. The fetch runs as user 10001, so set
+  `securityContext.fsGroup: 10001` on the pod, which gives that user write access to the claim.
 
 The fetch exits with one log line:
 
@@ -123,9 +133,11 @@ backup is lost.
 Run it in a one-off container of nixie's image that mounts the data volume, the configuration and
 `<restore_volume>`. The container holds no backup credential.
 
-- Compose:
+- Compose: run the `setup` service first. It gives nixie's user the data volume and fills the
+  secrets volume, and `--no-deps` on the restore container skips it:
 
   ```bash
+  docker compose run --rm --no-deps setup
   docker compose run --rm --no-deps -v <restore_volume>:<restore_directory>:ro nixie restore --from <restore_directory> --yes
   ```
 
@@ -144,10 +156,10 @@ the backup job is still running. Stop it, then run the restore again.
 
 Start the release that has the pause. Do not start the backup job.
 
-- Compose:
+- Compose: leave out `--no-deps`, so that Compose runs `setup` again before nixie starts:
 
   ```bash
-  docker compose up -d --wait --no-deps nixie
+  docker compose up -d --wait nixie
   ```
 
 - Kubernetes:
