@@ -43,3 +43,19 @@ test('it scrolls the conversation to the message that its link names, behind 120
     expect(scrolls.mock.contexts).toContain(message);
   });
 });
+
+test('it renders the conversation around a record of a kind the page does not know, without throwing', async () => {
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } });
+  await store.records.create({ kind: 'harbour.unknown_kind' });
+  await store.records.create({ kind: 'model.reply', message: { text: 'It is on.' } });
+
+  const rendered = renderRoute('/');
+
+  const asked = await rendered.findByText('Is the kettle on?', {}, { timeout: 4000 });
+  const answered = await rendered.findByText('It is on.');
+
+  expect(asked).toBeTruthy();
+  expect(answered).toBeTruthy();
+});

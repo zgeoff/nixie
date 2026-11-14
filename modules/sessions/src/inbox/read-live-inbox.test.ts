@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildMockTaskMessageView } from '../test-utils/build-mock-task-message-view';
@@ -263,4 +264,46 @@ test("it counts an owner message that lands during the turn against the turn's s
   await live.next();
 
   expect(silence.end()).toBe('refused');
+});
+
+test('it passes over a record of a kind no module registers and yields the next message', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const live = readLiveInbox(ctx.context, {
+    taskID: 'conversation',
+    sent: new Set([0]),
+    signal: ctx.signal,
+    view: buildMockTaskMessageView(),
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
+    silence: buildTurnSilence([]),
+    log: () => {},
+  });
+
+  await writeRecords(ctx.context.log, [
+    {
+      // @ts-expect-error -- no module registers this kind
+      kind: 'harbour.unknown_kind',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { tide: 'high' },
+    },
+  ]);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'The second shelf.' },
+    },
+  ]);
+
+  const next = await live.next();
+
+  invariant(next.done !== true, 'the feed ended before the message');
+
+  expect(next.value.text).toInclude('The second shelf.');
 });

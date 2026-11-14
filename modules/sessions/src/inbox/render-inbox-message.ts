@@ -12,6 +12,7 @@ import { renderApprovalAnswer } from './render-approval-answer';
 import { renderLimitNotice } from './render-limit-notice';
 import { renderProposalDecline } from './render-proposal-decline';
 import { renderProposalDefer } from './render-proposal-defer';
+import { renderRecoveryNotice } from './render-recovery-notice';
 
 export function renderInboxMessage(
   record: LogRecord,
@@ -36,6 +37,10 @@ export function renderInboxMessage(
 
   if (record.kind === 'task.limit_notice') {
     return renderLimitNotice(record, times);
+  }
+
+  if (record.kind === 'recovery.notice') {
+    return renderRecoveryNotice(record, times);
   }
 
   if (record.kind === 'policy.action_answered') {
