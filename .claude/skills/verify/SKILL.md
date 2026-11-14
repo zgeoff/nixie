@@ -50,6 +50,8 @@ journey of `bun verify` commands, and the end state that shows it works.
 | sign-in-enrol   | Sign a browser in with a code from `nixie enrol-code`, and see its session | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)     |
 | chat-turn       | Send a message from the page, and see the reply after it, in order         | [references/feature-chat-turn.md](references/feature-chat-turn.md)             |
 | memory-approval | Approve a memory the model proposed, and see it become active              | [references/feature-memory-approval.md](references/feature-memory-approval.md) |
+| policy-proposal | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md) |
+| task-control    | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)       |
 
 <!-- /wringer:features -->
 
@@ -128,15 +130,13 @@ command points that command alone.
 - Run the `sign-in-enrol` journey first. The other journeys use the browser it signs in, and
   `up --restart` starts a browser with no sign-in.
 - `preview` runs the pushed commit in an imp, a small VM, on a machine you reach over SSH. Set
-  `NIXIE_PREVIEW_SSH` to that machine's SSH destination. Set `NIXIE_PREVIEW_IMP_EXEC` to the words
-  that start a command in an imp there; `bun verify` appends the imp's name, `--` and the command.
-  Ask the repo's maintainer for both values. `attach` fails with `environment` while the preview
-  builds: run it again.
-- On `preview`, `bun verify doctor` fails when the preview serves another commit than `HEAD`. Push,
-  then attach again.
-- Each feature file's steps say what to skip or change on `preview`. To start a pass on `preview`
-  from empty data, run `action reset-data`: it keeps the sign-in.
-- Evidence stays in `.wringer/`. `publish` puts only the report in the PR.
+  `NIXIE_PREVIEW_SSH` to its SSH destination, and `NIXIE_PREVIEW_IMP_EXEC` to the words that start a
+  command in an imp there; ask the repo's maintainer for both. `attach` fails with `environment`
+  while the preview builds: run it again.
+- On `preview`, `doctor` fails when the preview serves another tree than `HEAD`: push, then attach.
+- Each feature file says what to skip on `preview`, or that it runs on `local` only. On `preview`,
+  `action reset-data` empties the data and keeps the sign-in.
+- Evidence stays in `.wringer/`; `publish` adds only the report to the PR.
 
 <!-- /repo -->
 
@@ -151,9 +151,9 @@ group, such as `action`: run `bun verify <group> --help` for its commands.
 
 <!-- repo: commands -->
 
-- Each feature file says what its `action`, `conversation turn` and `sessions` lines check.
-- Pass `--role` and `--name` to `browser type` and `browser click`, as the journeys do. A
-  `browser snapshot` names each element with a `ref`, which changes when the page changes.
+- Each feature file says what its own commands check.
+- Pass `--role` and `--name` to `browser type` and `browser click`. A `browser snapshot` names each
+  element with a `ref`, which changes when the page changes.
 
 <!-- /repo -->
 

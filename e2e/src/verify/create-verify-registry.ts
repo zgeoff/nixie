@@ -16,10 +16,13 @@ import { featurePaths, ignoredPaths, sharedPaths } from './feature-paths';
 import { controlRoutes } from './harness/control-routes';
 import type { ControlRoute } from './harness/control-routes';
 import { parseEnrolmentCode } from './parse-enrolment-code';
+import { pickProposalRefusal } from './pick-proposal-refusal';
+import { pickTaskRefusal } from './pick-task-refusal';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
+import type { ServedContainer } from './preview/build-served-blobs-argv';
 import { createPreviewHost } from './preview/create-preview-host';
 import { pickCommitRefusal } from './preview/pick-commit-refusal';
-import { pickSourceRefusal } from './preview/pick-source-refusal';
+import { collectExtraPaths, pickSourceRefusal } from './preview/pick-source-refusal';
 import { previewCheckout } from './preview/preview-checkout';
 import { readPreviewEndpoints } from './preview/read-preview-endpoints';
 import type { PullRequest } from './preview/read-pull-request';
@@ -118,7 +121,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply; with --memory, the model first proposes that memory with its memory tool",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --export it first asks to export memory, and with --task it first starts that task",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
@@ -170,6 +173,44 @@ export function createVerifyRegistry(): Wringer {
       data: conversationTurnSchema,
       run: (args, ctx) => readConversationTurn(ctx.drivers.stream, args),
     })
+    .command({
+      path: ['task'],
+      summary:
+        'Check that the task named --name is in the state --state, and that its last record is --record',
+      effect: 'read',
+      args: z.strictObject({
+        name: z.string().min(1),
+        state: z.string().min(1),
+        record: z.string().min(1),
+      }),
+      data: controlRoutes.tasks.output,
+      run: async (args, ctx) => {
+        refuseHarnessless(ctx.target, 'task');
+
+        const listed = await postControl(ctx.drivers.http, controlRoutes.tasks, {});
+
+        throwRefusal(pickTaskRefusal(listed.tasks, args), listed);
+
+        return listed;
+      },
+    })
+    .command({
+      path: ['proposals'],
+      summary:
+        'Check that one call of the tool --tool waits for your answer (--waiting pending), or none does (--waiting none)',
+      effect: 'read',
+      args: z.strictObject({ tool: z.string().min(1), waiting: z.enum(['pending', 'none']) }),
+      data: controlRoutes.actionProposals.output,
+      run: async (args, ctx) => {
+        refuseHarnessless(ctx.target, 'proposals');
+
+        const listed = await postControl(ctx.drivers.http, controlRoutes.actionProposals, {});
+
+        throwRefusal(pickProposalRefusal(listed.proposals, args), listed);
+
+        return listed;
+      },
+    })
     .check({
       name: 'nixie',
       input: z.strictObject({}),
@@ -197,6 +238,16 @@ export function createVerifyRegistry(): Wringer {
         name: 'memory-approval',
         summary: 'Approve a memory the model proposed, and see it become active',
         paths: featurePaths['memory-approval'],
+      },
+      {
+        name: 'policy-proposal',
+        summary: 'Approve a call that an ask rule held unrun',
+        paths: featurePaths['policy-proposal'],
+      },
+      {
+        name: 'task-control',
+        summary: 'Pause and resume a task, and see its records agree',
+        paths: featurePaths['task-control'],
       },
     )
     .shared(...sharedPaths)
@@ -244,6 +295,22 @@ async function postControl<Input extends z.ZodType, Output extends z.ZodType>(
   return route.output.parse(response.json);
 }
 
+// The harness's control routes read these checks' state, and only `local` runs the harness.
+function refuseHarnessless(target: string, command: string): void {
+  if (target !== 'local') {
+    throw new WringerError('usage', {
+      message: `\`${command}\` reads the harness, which only the local target runs`,
+      hint: 'Run the journey with `--target local`.',
+    });
+  }
+}
+
+function throwRefusal(refusal: string | null, data: unknown): void {
+  if (refusal !== null) {
+    throw new WringerError('check-failed', { message: refusal, data });
+  }
+}
+
 const previewRefusalHint =
   'Push this commit, open the preview link on the pull request to rebuild the preview, then run `bun verify attach` and `bun verify doctor` again.';
 
@@ -260,24 +327,50 @@ async function checkPreviewCommit(host: PreviewHost): Promise<{ commit: string }
     throw new WringerError('check-failed', { message: commitRefusal, hint: previewRefusalHint });
   }
 
-  const servedBlobs = await host.run({ argv: buildServedBlobsArgv(), access: 'read-only' });
+  for (const container of ['nixie', 'web'] as const) {
+    await checkServedSources(host, container);
+  }
 
-  if (servedBlobs.exitCode !== 0) {
+  return { commit: served.stdout.trim() };
+}
+
+async function checkServedSources(host: PreviewHost, container: ServedContainer): Promise<void> {
+  const listed = await host.run({ argv: buildServedBlobsArgv(container), access: 'read-only' });
+
+  if (listed.exitCode !== 0) {
     throw new WringerError('environment', {
-      message: `the preview's nixie container could not list its files: ${servedBlobs.stderr.trim()}`,
+      message: `the preview's ${container} container could not list its sources: ${listed.stderr.trim()}`,
       hint: 'Open the preview link on the pull request, wait for the preview to serve, then run `bun verify doctor` again.',
     });
   }
 
   const committed = await $`git ls-tree -r HEAD -- ${servedSourceFolders}`.quiet().text();
 
-  const sourceRefusal = pickSourceRefusal(committed, servedBlobs.stdout);
+  const extras = collectExtraPaths(committed, listed.stdout);
 
-  if (sourceRefusal !== null) {
-    throw new WringerError('check-failed', { message: sourceRefusal, hint: previewRefusalHint });
+  const ignored = await readIgnoredPaths(extras);
+
+  const refusal = pickSourceRefusal({ container, committed, served: listed.stdout, ignored });
+
+  if (refusal !== null) {
+    throw new WringerError('check-failed', { message: refusal, hint: previewRefusalHint });
+  }
+}
+
+// `git check-ignore` exits 1 when it ignores none of the paths, and refuses an empty list.
+async function readIgnoredPaths(paths: readonly string[]): Promise<ReadonlySet<string>> {
+  if (paths.length === 0) {
+    return new Set();
   }
 
-  return { commit: served.stdout.trim() };
+  const checked = await $`git check-ignore -- ${paths}`.quiet().nothrow();
+
+  return new Set(
+    checked.stdout
+      .toString()
+      .split('\n')
+      .filter((path) => path !== ''),
+  );
 }
 
 async function checkHarness(client: HttpClient): Promise<{ commit: string }> {

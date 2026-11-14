@@ -2,6 +2,7 @@ import type { ContractClient } from '@heynixie/contract';
 import { getDataFilePath } from '@heynixie/log';
 import { createSpawnedNixie, createTestClient, readTestBundle } from '@heynixie/server/test-utils';
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
+import { buildScriptedReplies } from './build-scripted-replies';
 import { serveControl } from './serve-control';
 
 interface RunningState {
@@ -41,14 +42,36 @@ export async function runVerifyHarness(): Promise<void> {
   const control = serveControl({
     isNixieRunning: () => running.isRunning,
     addReply: (reply) => {
-      nixie.model.addReplies(
-        ...(reply.memory === undefined
-          ? []
-          : [{ toolUse: { name: 'mcp__nixie__memory_remember', input: { text: reply.memory } } }]),
-        { text: reply.text },
-      );
+      const replies = buildScriptedReplies(reply);
 
-      return reply.memory === undefined ? 1 : 2;
+      nixie.model.addReplies(...replies);
+
+      return replies.length;
+    },
+    readTasks: async () => {
+      const listed = await api.client.tasks.list();
+      const records = await nixie.readRecords();
+
+      return {
+        tasks: listed.tasks.map((task) => ({
+          taskID: task.taskID,
+          name: task.name,
+          state: task.state,
+          records: records
+            .filter((record) => record.thread === task.taskID)
+            .map((record) => record.kind),
+        })),
+      };
+    },
+    readActionProposals: async () => {
+      const listed = await api.client.rules.listActionProposals();
+
+      return {
+        proposals: listed.proposals.map((proposal) => ({
+          proposalID: proposal.proposalID,
+          tool: proposal.tool,
+        })),
+      };
     },
   });
 

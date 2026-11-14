@@ -18,6 +18,8 @@ export const featurePaths = {
   'sign-in-enrol': [...everyJourney],
   'chat-turn': [...everyJourney],
   'memory-approval': [...everyJourney],
+  'policy-proposal': [...everyJourney],
+  'task-control': [...everyJourney],
 } as const satisfies Record<string, readonly string[]>;
 
 // A change to one of these changes every feature: the verify CLI and its harness, the test helpers

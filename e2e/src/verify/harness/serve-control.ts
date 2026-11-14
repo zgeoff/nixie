@@ -6,6 +6,10 @@ export interface ControlHandlers {
   readonly isNixieRunning: () => boolean;
 
   readonly addReply: (reply: z.output<typeof controlRoutes.addReply.input>) => number;
+
+  readonly readTasks: () => Promise<z.input<typeof controlRoutes.tasks.output>>;
+
+  readonly readActionProposals: () => Promise<z.input<typeof controlRoutes.actionProposals.output>>;
 }
 
 export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
@@ -17,6 +21,12 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
         GET: makeRouteHandler(controlRoutes.health, () => ({
           isNixieRunning: handlers.isNixieRunning(),
         })),
+      },
+      [controlRoutes.tasks.path]: {
+        GET: makeRouteHandler(controlRoutes.tasks, handlers.readTasks),
+      },
+      [controlRoutes.actionProposals.path]: {
+        GET: makeRouteHandler(controlRoutes.actionProposals, handlers.readActionProposals),
       },
       [controlRoutes.addReply.path]: {
         POST: makeRouteHandler(controlRoutes.addReply, (reply) => ({
@@ -30,7 +40,7 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
 
 function makeRouteHandler<Input extends z.ZodType, Output extends z.ZodType>(
   route: ControlRoute<Input, Output>,
-  answer: (input: z.output<Input>) => z.input<Output>,
+  answer: (input: z.output<Input>) => z.input<Output> | Promise<z.input<Output>>,
 ) {
   return async (request: Request): Promise<Response> => {
     const body: unknown = route.method === 'GET' ? {} : await request.json().catch(() => null);
@@ -40,7 +50,9 @@ function makeRouteHandler<Input extends z.ZodType, Output extends z.ZodType>(
       return Response.json({ error: parsed.error.message }, { status: 400 });
     }
 
-    return Response.json(route.output.parse(answer(parsed.data)));
+    const answered = await answer(parsed.data);
+
+    return Response.json(route.output.parse(answered));
   };
 }
 
