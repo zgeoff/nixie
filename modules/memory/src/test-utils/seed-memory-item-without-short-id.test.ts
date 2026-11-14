@@ -25,3 +25,16 @@ test('it leaves an active item whose row holds no short ID', async () => {
 
   expect(row).toStrictEqual({ item_id: item.itemID, state: 'active', short_id: null });
 });
+
+test('it applies the text and origin overrides to an item with no short ID', async () => {
+  const ctx = await setupTest();
+
+  const item = await seedMemoryItemWithoutShortID(ctx, {
+    text: 'Keeps bees',
+    origin: 'conversation',
+  });
+
+  const history = await ctx.store.readHistory(item.itemID);
+
+  expect(history?.versions[0]).toMatchObject({ origin: 'conversation', text: 'Keeps bees' });
+});

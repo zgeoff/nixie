@@ -25,3 +25,23 @@ test('it leaves the item in the forgetting state', async () => {
 
   expect(row).toStrictEqual({ item_id: item.itemID, state: 'forgetting' });
 });
+
+// the forget removes the item's key, so its text no longer reads back: the test checks the
+// overrides that outlive it
+test('it applies the origin and source overrides to a forgetting item', async () => {
+  const ctx = await setupTest();
+
+  const item = await seedForgettingMemoryItem(ctx, {
+    text: 'Keeps bees',
+    origin: 'conversation',
+    source: 'untrusted',
+  });
+
+  const history = await ctx.store.readHistory(item.itemID);
+
+  expect(history?.versions[0]).toMatchObject({
+    origin: 'conversation',
+    source: 'untrusted',
+    status: 'shredded',
+  });
+});

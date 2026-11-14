@@ -25,3 +25,11 @@ test('it leaves the item in the retired state', async () => {
 
   expect(row).toStrictEqual({ item_id: item.itemID, state: 'retired' });
 });
+
+test('it applies the text and origin overrides to a retired item', async () => {
+  const ctx = await setupTest();
+  const item = await seedRetiredMemoryItem(ctx, { text: 'Keeps bees', origin: 'conversation' });
+  const history = await ctx.store.readHistory(item.itemID);
+
+  expect(history?.versions[0]).toMatchObject({ origin: 'conversation', text: 'Keeps bees' });
+});

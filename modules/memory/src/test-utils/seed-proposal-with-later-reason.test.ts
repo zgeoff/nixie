@@ -29,3 +29,13 @@ test('it leaves a pending proposal whose review reason a later release wrote', a
     review_reason: 'quote_too_old',
   });
 });
+
+test('it applies the text override to a proposal with a later reason', async () => {
+  const ctx = await setupTest();
+  const proposal = await seedProposalWithLaterReason(ctx, { text: 'Keeps bees' });
+  const pending = await ctx.store.proposals.listPending();
+
+  expect(pending.find((entry) => entry.proposalID === proposal.proposalID)?.text).toBe(
+    'Keeps bees',
+  );
+});

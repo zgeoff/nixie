@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildTestClock } from '@heynixie/testing';
 import type { MemoryTables } from '../types';
+import { buildMockWriteCaller } from './build-mock-write-caller';
 import { seedLapsedProposal } from './seed-lapsed-proposal';
 import { startTestMemory } from './start-test-memory';
 
@@ -24,4 +25,25 @@ test('it leaves the proposal in the lapsed status', async () => {
     .executeTakeFirstOrThrow();
 
   expect(row).toStrictEqual({ proposal_id: proposal.proposalID, status: 'lapsed' });
+});
+
+// the lapse shreds the proposal's text, so the test checks the caller override that outlives it
+test('it applies the caller override to a lapsed proposal', async () => {
+  const ctx = await setupTest();
+
+  const proposal = await seedLapsedProposal(ctx, {
+    text: 'Keeps bees',
+    caller: buildMockWriteCaller({ thread: 'garden', taskID: 'task-7' }),
+  });
+
+  const row = await ctx.db
+    .selectFrom('memory_proposals')
+    .select(['proposal_id', 'thread', 'task_id'])
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({
+    proposal_id: proposal.proposalID,
+    thread: 'garden',
+    task_id: 'task-7',
+  });
 });

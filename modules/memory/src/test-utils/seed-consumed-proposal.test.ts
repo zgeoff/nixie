@@ -25,3 +25,11 @@ test('it leaves the proposal in the consumed status', async () => {
 
   expect(row).toStrictEqual({ proposal_id: proposal.proposalID, status: 'consumed' });
 });
+
+test('it applies the text override to a consumed proposal', async () => {
+  const ctx = await setupTest();
+  const proposal = await seedConsumedProposal(ctx, { text: 'Keeps bees' });
+  const history = await ctx.store.readHistory(proposal.itemID);
+
+  expect(history?.versions[0]).toMatchObject({ status: 'readable', text: 'Keeps bees' });
+});
