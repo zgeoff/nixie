@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { ThreadApprovalsContext } from '../approval/thread-approvals-context';
+import { useThreadApprovals } from '../approval/use-thread-approvals';
 import { hasTaskMessage } from '../conversation/has-task-message';
 import { useConversationRecords } from '../conversation/use-conversation-records';
 import { useMemoryNotices } from '../memory/use-memory-notices';
@@ -119,6 +121,7 @@ export function Conversation(props: ConversationProps): ReactNode {
 
   const [sends, setSends] = useState(0);
   const notices = useMemoryNotices(props.thread, conversation.records);
+  const approvals = useThreadApprovals(conversation.records);
 
   if (conversation.status === 'pending') {
     return <p>Loading the conversation…</p>;
@@ -160,15 +163,17 @@ export function Conversation(props: ConversationProps): ReactNode {
         arrivals={records.length + entries.length + notices.notices.length}
         sends={sends}
       >
-        <ConversationList
-          {...linkedOptions}
-          entries={entries}
-          notices={notices.notices}
-          onDiscard={outbox.discard}
-          onRetry={outbox.retry}
-          records={records}
-          taskMessageLayout={props.thread === 'conversation' ? 'line' : 'block'}
-        />
+        <ThreadApprovalsContext value={approvals}>
+          <ConversationList
+            {...linkedOptions}
+            entries={entries}
+            notices={notices.notices}
+            onDiscard={outbox.discard}
+            onRetry={outbox.retry}
+            records={records}
+            taskMessageLayout={props.thread === 'conversation' ? 'line' : 'block'}
+          />
+        </ThreadApprovalsContext>
       </ConversationScroller>
       <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
       <div className={composerBar}>

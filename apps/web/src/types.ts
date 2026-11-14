@@ -47,13 +47,15 @@ export type RetiredForgetItem = ReadonlyDeep<
 
 export type MemoryVersion = ReadonlyDeep<ContractOutputs['memory']['readItem']['versions'][number]>;
 
-export type MemoryProposal = ReadonlyDeep<
-  ContractOutputs['memory']['listProposals']['proposals'][number]
+export type ApprovalItem = ReadonlyDeep<ContractOutputs['approvals']['listItems']['items'][number]>;
+
+export type ApprovalRead = ReadonlyDeep<
+  ContractOutputs['approvals']['readProposals']['proposals'][number]
 >;
 
-export type ProposalOutcome = ReadonlyDeep<
-  ContractOutputs['memory']['approveProposals']['outcomes'][number]
->;
+export type ApprovalBody = ApprovalItem['body'];
+
+export type MemoryProposal = NonNullable<ApprovalBody['memory']>;
 
 export type MemoryNotice = ReadonlyDeep<
   ContractOutputs['memory']['listNotices']['notices'][number]

@@ -279,3 +279,59 @@ test('it opens the conversation at a message that a hop-limit notice links, behi
     { timeout: 10_000 },
   );
 });
+
+test('it shows a card from its records when the model reply claims the action is done, then Approved after the answer', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  const row = await store.approvalRows.create({
+    approveLabel: 'Run mail.send to harbour@example.org',
+    sentence: 'Send the tide table to harbour@example.org.',
+  });
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Send the tide table.' } });
+
+  await store.records.create({
+    kind: 'policy.action_proposed',
+    proposal: { proposalID: row.proposalID, shortID: row.shortID },
+  });
+
+  await store.records.create({
+    kind: 'model.reply',
+    message: { text: 'I sent the tide table to harbour@example.org.' },
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await waitFor(
+    async () => {
+      const text: unknown = await ctx.view.evaluate(
+        "document.querySelector('[aria-label=\"Routine proposal\"] button[name=approve]')?.innerText ?? ''",
+      );
+
+      expect(text).toBe('Run mail.send to harbour@example.org');
+    },
+    { timeout: 10_000 },
+  );
+
+  const page: unknown = await ctx.view.evaluate('document.body.innerText');
+
+  expect(page).toInclude('I sent the tide table to harbour@example.org.');
+
+  await ctx.view.click('[aria-label="Routine proposal"] button[name=approve]');
+
+  await waitFor(
+    async () => {
+      const card: unknown = await ctx.view.evaluate(
+        "document.querySelector('[aria-label=\"Routine proposal\"]')?.innerText ?? ''",
+      );
+
+      expect(card).toInclude('Approved');
+    },
+    { timeout: 10_000 },
+  );
+
+  expect(
+    store.approvalRows.findFirst((query) => query.where({ proposalID: row.proposalID }))?.state,
+  ).toBe('approved');
+});
