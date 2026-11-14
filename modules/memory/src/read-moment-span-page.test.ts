@@ -234,3 +234,46 @@ test.each([
 
   expect(page.entries.map((entry) => entry.text)).toStrictEqual([...row.texts]);
 });
+
+test('it prints a refused search for the owner and the model as its message alone', async () => {
+  const ctx = await setupTest();
+
+  const written = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { outcome: 'error', sources: { message: 'untrusted' } },
+      erasable: {
+        message: 'the session ended while the search ran, so it returns no hits',
+        hidden: { costUSD: 0.012 },
+      },
+    },
+  ]);
+
+  invariant(written[0]);
+
+  const readers = ['model', 'owner'] as const;
+
+  const pages = await Promise.all(
+    readers.map((reader) =>
+      readMomentSpanPage(ctx.memory.log, {
+        thread: 'conversation',
+        firstSequence: written[0]?.sequence ?? 0,
+        lastSequence: written[0]?.sequence ?? 0,
+        after: null,
+        tokenCap: 6000,
+        records: 'all',
+        reader,
+      }),
+    ),
+  );
+
+  expect(pages.map((page) => page.entries.map((entry) => entry.text))).toStrictEqual([
+    ['{"message":"the session ended while the search ran, so it returns no hits"}'],
+    [
+      '{"message":"the session ended while the search ran, so it returns no hits","hidden":{"costUSD":0.012}}',
+    ],
+  ]);
+});

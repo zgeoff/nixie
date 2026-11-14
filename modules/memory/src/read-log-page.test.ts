@@ -524,6 +524,16 @@ test.each([
     texts: ['{"result":{"costUSD":3}}'],
   },
   {
+    name: 'the message of a refused search without the cost recorded under hidden',
+    erasable: {
+      message: 'the session ended while the search ran, so it returns no hits',
+      hidden: { costUSD: 0.012 },
+    },
+    sources: { message: 'untrusted' },
+    words: [],
+    texts: ['{"message":"the session ended while the search ran, so it returns no hits"}'],
+  },
+  {
     name: 'a message alone, which wins over a result',
     erasable: { message: 'the tool refused', result: { count: 1 }, hidden: { note: 'x' } },
     sources: {},

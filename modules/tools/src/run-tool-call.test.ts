@@ -211,6 +211,54 @@ test.each([
   expect(entries[1]?.record.erasable).toStrictEqual({ status: 'readable', fields: row.fields });
 });
 
+test.each([
+  {
+    name: 'stores hidden after the message',
+    hidden: { costUSD: 0.012 },
+    fields: { message: 'the tool refused', hidden: { costUSD: 0.012 } },
+  },
+  {
+    name: 'stores no hidden key for an empty hidden',
+    hidden: {},
+    fields: { message: 'the tool refused' },
+  },
+])('it $name of an error and returns the model the message alone', async (row) => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () =>
+          Promise.resolve({ status: 'error', message: 'the tool refused', hidden: row.hidden }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const erasable = entries[1]?.record.erasable;
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'the tool refused' }],
+    isError: true,
+  });
+
+  expect(erasable).toStrictEqual({ status: 'readable', fields: row.fields });
+
+  // key order: the message comes before hidden
+  expect(JSON.stringify(erasable)).toBe(JSON.stringify({ status: 'readable', fields: row.fields }));
+});
+
 test('it returns the model the images of a direct result as image blocks beside its JSON', async () => {
   const ctx = await setupTest({
     tools: [

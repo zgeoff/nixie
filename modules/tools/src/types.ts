@@ -20,7 +20,14 @@ export interface ToolContext {
 
 export type ToolOutcome =
   | ({ readonly status: 'ok' } & DirectResult)
-  | { readonly status: 'error'; readonly message: string };
+  | {
+      readonly status: 'error';
+      readonly message: string;
+
+      // What the server records and the model never reads. Only the tool puts a value here. A tool
+      // never puts text here that a forget of another record must erase.
+      readonly hidden?: JSONObject;
+    };
 
 interface TypedResult {
   readonly result: JSONObject;
