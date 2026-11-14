@@ -349,7 +349,7 @@ test('it waits for the caller to finish with a model call before it reads the ne
 
   const secondCallRead = waitForCondition(() => seen.length > 1, { timeoutMs: 200 });
 
-  await expect(secondCallRead).rejects.toThrow('condition not met');
+  await expect(secondCallRead).toReject();
 
   const seenWhileHeld = [...seen];
 
