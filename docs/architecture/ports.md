@@ -92,3 +92,5 @@ These are places where the code departs from a rule today. Do not copy them into
   `modules/models/src/models-config-schema.ts`, and the wire lib's turn profile schema in
   `host-frame.ts` and session point schema in `session-point.ts`, which each name an `agent-sdk`
   member (rule 10).
+- `pickCapturePlan` in the turn-inputs module checks `profile.harness === 'codex'` to skip the
+  capture for a Codex step (rule 9).
