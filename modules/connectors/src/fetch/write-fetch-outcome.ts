@@ -23,9 +23,13 @@ export function writeFetchOutcome(
     });
   }
 
+  if (outcome.kind === 'cached') {
+    return Promise.resolve(pickPageView(outcome.page, view, true));
+  }
+
   return outcome.reply.kind === 'image'
     ? runImageResult(fetching, outcome.reply)
-    : runPageResult(fetching, outcome.reply, view);
+    : runPageResult(fetching, outcome.reply, outcome.sentURL, view);
 }
 
 type ImageReply = Extract<FetchReply, { readonly kind: 'image' }>;
@@ -66,6 +70,7 @@ async function runImageResult(fetching: PageFetch, reply: ImageReply): Promise<T
       text: null,
       isTruncated: false,
       blocked: null,
+      isCached: false,
       image: { mediaType: fitted.image.mediaType, width: fitted.width, height: fitted.height },
     },
     images: [fitted.image],
@@ -77,6 +82,7 @@ type PageReply = Extract<FetchReply, { readonly kind: 'page' }>;
 async function runPageResult(
   fetching: PageFetch,
   reply: PageReply,
+  sentURL: string,
   view: PageView,
 ): Promise<ToolOutcome> {
   if (reply.text === null) {
@@ -92,13 +98,14 @@ async function runPageResult(
         text: null,
         isTruncated: reply.isTruncated,
         blocked: reply.blocked,
+        isCached: false,
       },
     };
   }
 
   const stored = await writeWebFetchPage(
     fetching.log,
-    { ...reply, text: reply.text },
+    { ...reply, fetchURL: sentURL, text: reply.text },
     fetching.session,
     fetching.limits,
   );
@@ -108,5 +115,5 @@ async function runPageResult(
         status: 'error',
         message: 'the session ended while the page was fetched, so fetch it again by its url',
       }
-    : pickPageView(stored, view);
+    : pickPageView(stored, view, false);
 }

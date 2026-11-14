@@ -66,6 +66,7 @@ test('it keeps the links of a database it upgrades, and stores a page', async ()
       page_id: 'qx7f2m9kpa',
       thread: 'conversation',
       url: 'https://harbour.test/ferries',
+      fetch_url: null,
       status: 200,
       content_type: 'text/html',
       is_truncated: 0,

@@ -208,6 +208,7 @@ test("it stores a page past the web fetch's text limit whole, in parts of that l
     text: 'x'.repeat(20_000),
     isTruncated: false,
     blocked: null,
+    isCached: false,
   });
 
   expect(second).toStrictEqual({
@@ -248,6 +249,7 @@ test('it keeps the whole text of a page whose text decodes to 3 times its body b
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      cacheMs: 0,
       backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
       secretTypedURLCovers: 'redirects',
       secretOwnValues: [],
@@ -286,6 +288,7 @@ test('it keeps the whole text of a page whose text decodes to 3 times its body b
       text: 'x'.repeat(1000),
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 });

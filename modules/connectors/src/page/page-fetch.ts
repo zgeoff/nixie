@@ -22,6 +22,9 @@ export interface PageFetch {
   readonly backoffWaitMs: number;
   readonly clock: Clock;
 
+  // how long a stored page answers a url or link call; 0 turns the cache off
+  readonly cacheMs: number;
+
   // null when the call cannot show the model an image, such as one under the run's own token
   readonly reserveImages: ((images: readonly ToolImage[]) => boolean) | null;
 }

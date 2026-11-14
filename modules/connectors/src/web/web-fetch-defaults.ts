@@ -10,6 +10,9 @@ export interface WebFetchConfig {
   readonly linkPathChars: number;
   readonly pageStoreBytes: number;
   readonly imageLongEdge: number;
+
+  // how long a stored page answers a url or link call; 0 turns the cache off
+  readonly cacheMs: number;
   readonly backoff: {
     readonly backoffMs: number;
     readonly backoffCapMs: number;
@@ -36,6 +39,7 @@ export const webFetchDefaults: WebFetchConfig = {
   linkPathChars: 24,
   pageStoreBytes: 20_971_520,
   imageLongEdge: imageLimits.longEdge,
+  cacheMs: 300_000,
   backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
   secretTypedURLCovers: 'redirects',
   secretOwnValues: [

@@ -585,6 +585,7 @@ export interface NixieTables {
     readonly parts: string;
     readonly bytes: number;
     readonly stored_at: number;
+    readonly fetch_url: string | null;
   };
   readonly written_skills: {
     readonly approval_id: string;

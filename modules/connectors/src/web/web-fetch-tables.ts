@@ -16,6 +16,10 @@ interface WebFetchPageRow {
   readonly page_id: string;
   readonly thread: string;
   readonly url: string;
+
+  // the sent URL of the pass that stored the row, which a later call for it finds; null on rows of
+  // earlier releases
+  readonly fetch_url: string | null;
   readonly status: number;
   readonly content_type: string | null;
   readonly is_truncated: number;

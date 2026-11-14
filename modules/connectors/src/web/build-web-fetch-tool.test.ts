@@ -62,6 +62,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -94,6 +95,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
       text: 'Example Domain',
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 });
@@ -122,6 +124,7 @@ test("it writes each link in the page's text as an ID the session numbers from 1
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -159,6 +162,7 @@ test("it writes each link in the page's text as an ID the session numbers from 1
       text: 'The new loaf [L1] is out.\n\nOther links on this page:\n- Menu [L2]',
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 });
@@ -204,6 +208,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -252,6 +257,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
       text: 'Our hours [L3], our menu [L2], the menu again [L2].',
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 });
@@ -284,6 +290,7 @@ test('it shows the host and path, with no query string, only for a link that lea
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -321,6 +328,7 @@ test('it shows the host and path, with no query string, only for a link that lea
       text: 'Fares [L1], the weather [L2 · weather.test/coast] and the old site [L3].',
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 });
@@ -369,6 +377,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -415,6 +424,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
       text: 'Sourdough, baked daily.',
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 });
@@ -469,6 +479,7 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -532,6 +543,7 @@ test.each([
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -593,6 +605,7 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -661,6 +674,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -736,6 +750,7 @@ test('it refuses a page whose session a forget ended while it was fetched, and s
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -813,6 +828,7 @@ test("it numbers a new session's links from 1 again", async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -841,6 +857,7 @@ test("it numbers a new session's links from 1 again", async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -894,6 +911,7 @@ test("it numbers a new session's links from 1 again", async () => {
       text: 'The menu [L1].',
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 });
@@ -924,6 +942,7 @@ test('it keys the links of a call under the run token by the run', async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -976,6 +995,7 @@ test.each([
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1017,6 +1037,7 @@ test('it refuses a link that does not read as a link ID', async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1083,6 +1104,7 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1162,6 +1184,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -1196,6 +1219,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
     text: 'Just a moment...',
     isTruncated: false,
     blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+    isCached: false,
   });
 
   expect(registered.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
@@ -1226,6 +1250,7 @@ test('it returns a page result that the registry checks against the output schem
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -1273,6 +1298,7 @@ test.each([
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -1310,6 +1336,7 @@ test('it returns a binary page with no text', async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1346,6 +1373,7 @@ test('it returns a binary page with no text', async () => {
       text: null,
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 });
@@ -1375,6 +1403,7 @@ test.each([
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1408,6 +1437,7 @@ test('it declares only the fetch effect and no destination, so it runs direct', 
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1437,6 +1467,7 @@ test('it marks every result field as outside content', async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1454,6 +1485,7 @@ test('it marks every result field as outside content', async () => {
     text: 'untrusted',
     isTruncated: 'untrusted',
     blocked: 'untrusted',
+    isCached: 'untrusted',
     image: 'untrusted',
     matches: 'untrusted',
   });
@@ -1470,6 +1502,7 @@ test('it endorses only the status code, the part numbers and the truncated mark'
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1487,6 +1520,7 @@ test('it endorses only the status code, the part numbers and the truncated mark'
     text: { type: ['string', 'null'] },
     isTruncated: { type: 'boolean', 'x-endorsed': true },
     blocked: { type: ['string', 'null'] },
+    isCached: { type: 'boolean', 'x-endorsed': true },
     image: {
       type: 'object',
       properties: {
@@ -1520,6 +1554,7 @@ test('it is a tool the registry accepts', async () => {
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1567,6 +1602,7 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1618,6 +1654,7 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
       text: 'The last ferry returns at six.',
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 
@@ -1655,6 +1692,7 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1755,6 +1793,7 @@ test('it fetches the page again for a url with a part, and returns that part', a
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1792,6 +1831,7 @@ test('it fetches the page again for a url with a part, and returns that part', a
       text: 'Pier 3 is shut.',
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 
@@ -1823,6 +1863,7 @@ test('it refuses a part past the end of a page, and names its count of parts', a
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -1890,6 +1931,7 @@ test('it returns the part that holds the first match of find, with every match, 
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -1936,6 +1978,7 @@ test('it returns the part that holds the first match of find, with every match, 
       text: 'The ISLAND ferry.\n',
       isTruncated: false,
       blocked: null,
+      isCached: false,
       matches: [
         { part: 3, snippet: 'Pier 1 is open.\nPier 2 is open.\nThe ISLAND ferry.\nIsland tours.' },
         { part: 4, snippet: 'Pier 1 is open.\nPier 2 is open.\nThe ISLAND ferry.\nIsland tours.' },
@@ -1971,6 +2014,7 @@ test('it says a find with no match found none, with the count of parts', async (
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2025,6 +2069,7 @@ test('it refuses a page ID no session stored, and fetches nothing', async () => 
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -2085,6 +2130,7 @@ test('it refuses the page ID of an earlier session, and never returns another pa
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2177,6 +2223,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2263,6 +2310,7 @@ test('it refuses a page ID given as a link, and names the kind it expected', asy
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -2309,6 +2357,7 @@ test.each([
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2345,6 +2394,7 @@ test('it refuses a link ID given as a page, and names the kind it expected', asy
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -2396,6 +2446,7 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2477,6 +2528,7 @@ test('it returns a PNG under the image limit as image content with its media typ
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -2514,6 +2566,7 @@ test('it returns a PNG under the image limit as image content with its media typ
       text: null,
       isTruncated: false,
       blocked: null,
+      isCached: false,
       image: { mediaType: 'image/png', width: 40, height: 30 },
     },
     images: [{ mediaType: 'image/png', bytes: expect.any(Uint8Array) }],
@@ -2545,6 +2598,7 @@ test('it returns a result with no image, marked truncated, for an image the fetc
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2583,6 +2637,7 @@ test('it returns a result with no image, marked truncated, for an image the fetc
       text: null,
       isTruncated: true,
       blocked: null,
+      isCached: false,
     },
   });
 });
@@ -2610,6 +2665,7 @@ test('it returns an image past the long edge downscaled to fit it', async () => 
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2680,6 +2736,7 @@ test('it counts the image it returns against the session image budget', async ()
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2734,6 +2791,7 @@ test('it returns an error, with no image, once the session holds as many images 
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2791,6 +2849,7 @@ test('it returns an error, with no image, for an image fetched under the run tok
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2846,6 +2905,7 @@ test('it returns an error for an image body that is no image the model can see',
       imageLongEdge: 1568,
       backoff: ctx.backoff,
       backoffWaitMs: 5000,
+      cacheMs: 0,
       findSecret: () => null,
       isOwnerTyped: () => Promise.resolve(false),
       logger: () => {},
@@ -2934,6 +2994,7 @@ test('it fetches the rewritten URL for a link ID whose target a rule matches', a
     imageLongEdge: 1568,
     backoff: ctx.backoff,
     backoffWaitMs: 5000,
+    cacheMs: 0,
     findSecret: () => null,
     isOwnerTyped: () => Promise.resolve(false),
     logger: () => {},
@@ -2970,4 +3031,148 @@ test('it fetches the rewritten URL for a link ID whose target a rule matches', a
     status: 'ok',
     result: { url: 'https://pypi.org/pypi/reefkit/json', text: '{"name":"reefkit"}' },
   });
+});
+
+test('it returns the stored page for a link call inside the cache time, and fetches it again with fresh true', async () => {
+  const ctx = await setupTest();
+
+  const readPage = mock((url: string): Promise<FetchReply> =>
+    Promise.resolve({
+      kind: 'page',
+      retryAfterMs: null,
+      isGated: true,
+      url,
+      status: 200,
+      contentType: 'text/html',
+      text: url === 'https://bakery.test/news' ? 'The new loaf \u{E000}0\u{E001}.' : 'Bread page',
+      links: ['https://bakery.test/bread'],
+      isTruncated: false,
+      blocked: null,
+    }),
+  );
+
+  const tool = buildWebFetchTool(readPage, {
+    log: ctx.log,
+    textBytes: 20_000,
+    linkPathChars: 24,
+    pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    cacheMs: 300_000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => {},
+    secretTypedURLCovers: 'redirects',
+    clock: ctx.clock,
+  });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'conversation',
+    tools: ['web_fetch'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    session: { key: 'session-a', invalidatedThrough: 0 },
+  };
+
+  const callTool = (input: Record<string, string | number | boolean>) =>
+    tool.run({ callID: 'call', tool: 'web_fetch', input, toolUseID: null }, { run });
+
+  await callTool({ url: 'https://bakery.test/news' });
+
+  const linked = await callTool({ link: 'L1' });
+  const cached = await callTool({ link: 'L1' });
+  const fresh = await callTool({ link: 'L1', fresh: true });
+
+  expect(linked).toMatchObject({ status: 'ok', result: { isCached: false } });
+  expect(cached).toMatchObject({ status: 'ok', result: { isCached: true, text: 'Bread page' } });
+  expect(fresh).toMatchObject({ status: 'ok', result: { isCached: false } });
+  expect(readPage).toHaveBeenCalledTimes(3);
+});
+
+test.each([
+  ['fresh true', { page: 'qx7f2m9kpa', part: 1, fresh: true }],
+  ['fresh false', { page: 'qx7f2m9kpa', part: 1, fresh: false }],
+])('it refuses a page call with %s, and fetches nothing', async (_name, input) => {
+  const ctx = await setupTest();
+
+  const readPage = mock();
+
+  const tool = buildWebFetchTool(readPage, {
+    log: ctx.log,
+    textBytes: 20_000,
+    linkPathChars: 24,
+    pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    cacheMs: 300_000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => {},
+    secretTypedURLCovers: 'redirects',
+    clock: ctx.clock,
+  });
+
+  const outcome = await tool.run(
+    { callID: 'call-1', tool: 'web_fetch', input, toolUseID: null },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        session: { key: 'session-a', invalidatedThrough: 0 },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'fresh goes with url or link, since a page call never fetches',
+  });
+
+  expect(readPage).not.toHaveBeenCalled();
+});
+
+test('it refuses a fresh that is no boolean, and fetches nothing', async () => {
+  const ctx = await setupTest();
+
+  const readPage = mock();
+
+  const tool = buildWebFetchTool(readPage, {
+    log: ctx.log,
+    textBytes: 20_000,
+    linkPathChars: 24,
+    pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    cacheMs: 300_000,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => {},
+    secretTypedURLCovers: 'redirects',
+    clock: ctx.clock,
+  });
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://site.test/', fresh: 'yes' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({ status: 'error', message: 'fresh is true or false' });
+  expect(readPage).not.toHaveBeenCalled();
 });

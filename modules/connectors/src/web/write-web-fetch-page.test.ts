@@ -22,6 +22,7 @@ test('it stores the page in parts under a new page ID, and returns it', async ()
     ctx.log,
     {
       url: 'https://harbour.test/ferries',
+      fetchURL: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/html',
       isTruncated: true,
@@ -57,6 +58,7 @@ test('it numbers the links of the whole page, past its first part', async () => 
     ctx.log,
     {
       url: 'https://harbour.test/ferries',
+      fetchURL: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/html',
       isTruncated: false,
@@ -92,6 +94,7 @@ test('it stores the page of a session no invalidation ended since its step began
     ctx.log,
     {
       url: 'https://harbour.test/ferries',
+      fetchURL: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/html',
       isTruncated: false,
@@ -122,6 +125,7 @@ test('it writes no link or page and returns null once an invalidation ended the 
     ctx.log,
     {
       url: 'https://harbour.test/ferries',
+      fetchURL: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/html',
       isTruncated: false,
@@ -157,6 +161,7 @@ test("it never lets another thread's invalidation end the session", async () => 
     ctx.log,
     {
       url: 'https://harbour.test/ferries',
+      fetchURL: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/html',
       isTruncated: false,
@@ -181,6 +186,7 @@ test("it removes the session's oldest page first once its pages pass the store l
     ctx.log,
     {
       url: 'https://harbour.test/a',
+      fetchURL: 'https://harbour.test/a',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -196,6 +202,7 @@ test("it removes the session's oldest page first once its pages pass the store l
     ctx.log,
     {
       url: 'https://harbour.test/b',
+      fetchURL: 'https://harbour.test/b',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -211,6 +218,7 @@ test("it removes the session's oldest page first once its pages pass the store l
     ctx.log,
     {
       url: 'https://harbour.test/c',
+      fetchURL: 'https://harbour.test/c',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -240,6 +248,7 @@ test('it keeps a new page larger than the whole store limit, and removes every o
     ctx.log,
     {
       url: 'https://harbour.test/a',
+      fetchURL: 'https://harbour.test/a',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -255,6 +264,7 @@ test('it keeps a new page larger than the whole store limit, and removes every o
     ctx.log,
     {
       url: 'https://harbour.test/timetable',
+      fetchURL: 'https://harbour.test/timetable',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -305,6 +315,7 @@ test("it removes the pages of the thread's ended sessions when a new session sto
     ctx.log,
     {
       url: 'https://harbour.test/a',
+      fetchURL: 'https://harbour.test/a',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -347,6 +358,7 @@ test("it removes the pages of the thread's ended sessions when a new session sto
     ctx.log,
     {
       url: 'https://harbour.test/b',
+      fetchURL: 'https://harbour.test/b',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -399,6 +411,7 @@ test("it keeps the live session's pages when a call under the run's own token st
     ctx.log,
     {
       url: 'https://harbour.test/a',
+      fetchURL: 'https://harbour.test/a',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -418,6 +431,7 @@ test("it keeps the live session's pages when a call under the run's own token st
     ctx.log,
     {
       url: 'https://harbour.test/b',
+      fetchURL: 'https://harbour.test/b',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -447,6 +461,7 @@ test("it keeps the thread's pages of a key no session opening names, such as a r
     ctx.log,
     {
       url: 'https://harbour.test/a',
+      fetchURL: 'https://harbour.test/a',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -462,6 +477,7 @@ test("it keeps the thread's pages of a key no session opening names, such as a r
     ctx.log,
     {
       url: 'https://harbour.test/b',
+      fetchURL: 'https://harbour.test/b',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -486,6 +502,7 @@ test("it writes the time it stored the page from the writer's clock", async () =
     ctx.log,
     {
       url: 'https://harbour.test/a',
+      fetchURL: 'https://harbour.test/a',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -512,6 +529,7 @@ test('it removes the page stored first once the store limit passes, even after t
     ctx.log,
     {
       url: 'https://harbour.test/a',
+      fetchURL: 'https://harbour.test/a',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -529,6 +547,7 @@ test('it removes the page stored first once the store limit passes, even after t
     ctx.log,
     {
       url: 'https://harbour.test/b',
+      fetchURL: 'https://harbour.test/b',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -545,4 +564,30 @@ test('it removes the page stored first once the store limit passes, even after t
   const pages = await sql`select page_id from web_fetch_pages`.execute(ctx.log.writer.db);
 
   expect(pages.rows).toStrictEqual([{ page_id: newest.pageID }]);
+});
+
+test('it stores the sent URL of the pass without its fragment', async () => {
+  const ctx = await setupTest();
+
+  await writeWebFetchPage(
+    ctx.log,
+    {
+      url: 'https://harbour.test/ferries',
+      fetchURL: 'http://harbour.test/ferries#nine',
+      status: 200,
+      contentType: 'text/plain',
+      isTruncated: false,
+      blocked: null,
+      text: 'Ferries leave at nine.',
+      links: [],
+    },
+    { sessionKey: 'session-a', thread: 'conversation', invalidatedThrough: null },
+    { textBytes: 30, linkPathChars: 24, storeBytes: 1000 },
+  );
+
+  const rows = await sql`select url, fetch_url from web_fetch_pages`.execute(ctx.log.writer.db);
+
+  expect(rows.rows).toStrictEqual([
+    { url: 'https://harbour.test/ferries', fetch_url: 'http://harbour.test/ferries' },
+  ]);
 });

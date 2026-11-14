@@ -6,6 +6,7 @@ import { collectPageParts } from '../page/collect-page-parts';
 import type { PageSession } from '../utils/get-page-session';
 import type { LinkedTextLimits } from '../utils/render-linked-text';
 import { renderLinkedText } from '../utils/render-linked-text';
+import { buildCacheURL } from './build-cache-url';
 import { probeSessionEnded } from './probe-session-ended';
 import { removeWebFetchPages } from './remove-web-fetch-pages';
 import type { WebFetchTables } from './web-fetch-tables';
@@ -14,6 +15,9 @@ import { writeLinkNumbers } from './write-link-numbers';
 // a page as the fetcher read it, its text holding a mark where each link ends
 export interface FetchedPage {
   readonly url: string;
+
+  // the URL the fetch was sent to, before any redirect
+  readonly fetchURL: string;
   readonly status: number;
   readonly contentType: string | null;
   readonly isTruncated: boolean;
@@ -88,6 +92,7 @@ export function writeWebFetchPage(
         page_id: stored.pageID,
         thread: session.thread,
         url: stored.url,
+        fetch_url: buildCacheURL(page.fetchURL),
         status: stored.status,
         content_type: stored.contentType,
         is_truncated: stored.isTruncated ? 1 : 0,

@@ -61,6 +61,7 @@ test("it removes the thread's pages", async () => {
     ctx.log,
     {
       url: 'https://pier.test/a',
+      fetchURL: 'https://pier.test/a',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -86,6 +87,7 @@ test("it never removes another thread's pages", async () => {
     ctx.log,
     {
       url: 'https://pier.test/c',
+      fetchURL: 'https://pier.test/c',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,

@@ -4,7 +4,7 @@ import type { PageView } from '../utils/parse-web-fetch-request';
 import type { StoredPage } from '../web/write-web-fetch-page';
 import { collectPageMatches } from './collect-page-matches';
 
-export function pickPageView(page: StoredPage, view: PageView): ToolOutcome {
+export function pickPageView(page: StoredPage, view: PageView, isCached: boolean): ToolOutcome {
   const partCount = formatPartCount(page.parts.length);
 
   return match(view)
@@ -16,7 +16,7 @@ export function pickPageView(page: StoredPage, view: PageView): ToolOutcome {
             status: 'error',
             message: `page ${page.pageID} has ${partCount}, so it has no part ${partView.part}`,
           }
-        : { status: 'ok', result: buildPageResult(page, partView.part, text) };
+        : { status: 'ok', result: buildPageResult(page, partView.part, text, isCached) };
     })
     .with({ kind: 'find' }, (findView): ToolOutcome => {
       const matches = collectPageMatches(page.parts, findView.query);
@@ -28,7 +28,7 @@ export function pickPageView(page: StoredPage, view: PageView): ToolOutcome {
         : {
             status: 'ok',
             result: {
-              ...buildPageResult(page, first.part, text),
+              ...buildPageResult(page, first.part, text, isCached),
               matches,
             },
           };
@@ -40,7 +40,7 @@ function formatPartCount(count: number): string {
   return count === 1 ? '1 part' : `${count} parts`;
 }
 
-function buildPageResult(page: StoredPage, part: number, text: string) {
+function buildPageResult(page: StoredPage, part: number, text: string, isCached: boolean) {
   return {
     url: page.url,
     status: page.status,
@@ -51,5 +51,6 @@ function buildPageResult(page: StoredPage, part: number, text: string) {
     text,
     isTruncated: page.isTruncated,
     blocked: page.blocked,
+    isCached,
   };
 }

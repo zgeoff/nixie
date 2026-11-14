@@ -15,6 +15,7 @@ test('it reads the parts of a page the session stored', async () => {
     ctx.log,
     {
       url: 'https://harbour.test/ferries',
+      fetchURL: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,
@@ -40,6 +41,7 @@ test('it reads no page for the ID of a page another session stored', async () =>
     ctx.log,
     {
       url: 'https://harbour.test/ferries',
+      fetchURL: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/plain',
       isTruncated: false,

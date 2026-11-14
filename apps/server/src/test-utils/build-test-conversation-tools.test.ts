@@ -60,6 +60,7 @@ test('it returns the reply given from every web fetch', async () => {
       text: 'Rye bread needs a long proof.',
       isTruncated: false,
       blocked: null,
+      isCached: false,
     },
   });
 });

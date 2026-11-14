@@ -5,10 +5,22 @@ export type PageView =
   | { readonly kind: 'find'; readonly query: string };
 
 export type WebFetchRequest =
-  | { readonly kind: 'url'; readonly url: string; readonly view: PageView }
-  | { readonly kind: 'link'; readonly number: number; readonly view: PageView }
+  | {
+      readonly kind: 'url';
+      readonly url: string;
+      readonly view: PageView;
+      readonly fresh: boolean;
+    }
+  | {
+      readonly kind: 'link';
+      readonly number: number;
+      readonly view: PageView;
+      readonly fresh: boolean;
+    }
   | { readonly kind: 'page'; readonly pageID: string; readonly view: PageView }
   | { readonly kind: 'refused'; readonly message: string };
+
+const freshMessage = 'fresh goes with url or link, since a page call never fetches';
 
 const mixMessage =
   'give the url of a page or the ID of a link, with an optional part or find; or give the ID ' +
@@ -21,6 +33,12 @@ export function parseWebFetchRequest(input: JSONObject): WebFetchRequest {
     return { kind: 'refused', message: view };
   }
 
+  const fresh = input['fresh'];
+
+  if (fresh !== undefined && typeof fresh !== 'boolean') {
+    return { kind: 'refused', message: 'fresh is true or false' };
+  }
+
   const url = input['url'];
   const link = input['link'];
   const page = input['page'];
@@ -31,11 +49,15 @@ export function parseWebFetchRequest(input: JSONObject): WebFetchRequest {
   }
 
   if (typeof url === 'string') {
-    return { kind: 'url', url, view: view ?? { kind: 'part', part: 1 } };
+    return { kind: 'url', url, view: view ?? { kind: 'part', part: 1 }, fresh: fresh ?? false };
   }
 
   if (typeof link === 'string') {
-    return parseLinkRequest(link, view ?? { kind: 'part', part: 1 });
+    return parseLinkRequest(link, view ?? { kind: 'part', part: 1 }, fresh ?? false);
+  }
+
+  if (fresh !== undefined) {
+    return { kind: 'refused', message: freshMessage };
   }
 
   if (typeof page !== 'string' || view === null) {
@@ -68,11 +90,11 @@ function parseView(part: unknown, find: unknown): PageView | null | string {
   return null;
 }
 
-function parseLinkRequest(link: string, view: PageView): WebFetchRequest {
+function parseLinkRequest(link: string, view: PageView, fresh: boolean): WebFetchRequest {
   const number = parseLinkID(link);
 
   if (number !== null) {
-    return { kind: 'link', number, view };
+    return { kind: 'link', number, view, fresh };
   }
 
   return {
