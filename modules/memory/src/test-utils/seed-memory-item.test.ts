@@ -14,9 +14,9 @@ async function setupTest() {
   return { ...deps, db: memory.writer.db.$extendTables<MemoryTables>() };
 }
 
-test('it leaves an active item with the text it is given', async () => {
+test('it leaves an active item', async () => {
   const ctx = await setupTest();
-  const item = await seedMemoryItem(ctx, { text: 'Keeps bees' });
+  const item = await seedMemoryItem(ctx);
 
   const row = await ctx.db
     .selectFrom('memory_items')

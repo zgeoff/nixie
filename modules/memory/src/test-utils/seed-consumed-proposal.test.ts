@@ -16,7 +16,7 @@ async function setupTest() {
 
 test('it leaves the proposal in the consumed status', async () => {
   const ctx = await setupTest();
-  const proposal = await seedConsumedProposal(ctx, { text: 'Keeps bees' });
+  const proposal = await seedConsumedProposal(ctx);
 
   const row = await ctx.db
     .selectFrom('memory_proposals')

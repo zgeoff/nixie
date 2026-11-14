@@ -16,7 +16,7 @@ async function setupTest() {
 
 test('it leaves a pending proposal whose review reason a later release wrote', async () => {
   const ctx = await setupTest();
-  const proposal = await seedProposalWithLaterReason(ctx, { text: 'Keeps bees' });
+  const proposal = await seedProposalWithLaterReason(ctx);
 
   const row = await ctx.db
     .selectFrom('memory_proposals')
@@ -35,7 +35,7 @@ test('it applies the text override to a proposal with a later reason', async () 
   const proposal = await seedProposalWithLaterReason(ctx, { text: 'Keeps bees' });
   const pending = await ctx.store.proposals.listPending();
 
-  expect(pending.find((entry) => entry.proposalID === proposal.proposalID)?.text).toBe(
-    'Keeps bees',
-  );
+  expect(
+    pending.map((entry) => ({ proposalID: entry.proposalID, text: entry.text })),
+  ).toStrictEqual([{ proposalID: proposal.proposalID, text: 'Keeps bees' }]);
 });

@@ -17,7 +17,7 @@ async function setupTest() {
 
 test('it leaves the proposal in the lapsed status', async () => {
   const ctx = await setupTest();
-  const proposal = await seedLapsedProposal(ctx, { text: 'Keeps bees' });
+  const proposal = await seedLapsedProposal(ctx);
 
   const row = await ctx.db
     .selectFrom('memory_proposals')
@@ -32,7 +32,6 @@ test('it applies the caller override to a lapsed proposal', async () => {
   const ctx = await setupTest();
 
   const proposal = await seedLapsedProposal(ctx, {
-    text: 'Keeps bees',
     caller: buildMockWriteCaller({ thread: 'garden', taskID: 'task-7' }),
   });
 

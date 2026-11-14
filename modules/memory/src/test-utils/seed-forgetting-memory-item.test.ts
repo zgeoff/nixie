@@ -16,7 +16,7 @@ async function setupTest() {
 
 test('it leaves the item in the forgetting state', async () => {
   const ctx = await setupTest();
-  const item = await seedForgettingMemoryItem(ctx, { text: 'Keeps bees' });
+  const item = await seedForgettingMemoryItem(ctx);
 
   const row = await ctx.db
     .selectFrom('memory_items')
@@ -32,7 +32,6 @@ test('it applies the origin and source overrides to a forgetting item', async ()
   const ctx = await setupTest();
 
   const item = await seedForgettingMemoryItem(ctx, {
-    text: 'Keeps bees',
     origin: 'conversation',
     source: 'untrusted',
   });

@@ -16,7 +16,7 @@ async function setupTest() {
 
 test('it leaves the item in the retired state', async () => {
   const ctx = await setupTest();
-  const item = await seedRetiredMemoryItem(ctx, { text: 'Keeps bees' });
+  const item = await seedRetiredMemoryItem(ctx);
 
   const row = await ctx.db
     .selectFrom('memory_items')
