@@ -2,6 +2,7 @@ import type { ParseProblem, ParsedSkill } from '@heynixie/definitions';
 import { checkSkillFiles, writeWrittenSkill } from '@heynixie/definitions';
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { writeThreadRecordInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { findAnswerRefusal } from './find-answer-refusal';
@@ -47,15 +48,13 @@ export async function writeSkillProposalDecision(
   answer: SkillProposalAnswer,
 ): Promise<SkillProposalAnswerResult> {
   if (answer.answer === 'reject') {
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        definitions: context.definitions(),
-        ...(state.thread === null ? {} : { thread: state.thread }),
-        kind: 'skills.write_rejected',
-        payload: skillsWriteRejectedCodec.encode({ proposalID: answer.proposalID }),
-        erasable: { reason: answer.reason },
-      },
-    ]);
+    await writeThreadRecordInTransaction(tx, context, {
+      definitions: context.definitions(),
+      ...(state.thread === null ? {} : { thread: state.thread }),
+      kind: 'skills.write_rejected',
+      payload: skillsWriteRejectedCodec.encode({ proposalID: answer.proposalID }),
+      erasable: { reason: answer.reason },
+    });
 
     return { proposalID: answer.proposalID, approvalID: null, skillHash: null };
   }

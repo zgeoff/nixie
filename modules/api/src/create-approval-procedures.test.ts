@@ -1,8 +1,17 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
+import { readRecords } from '@heynixie/log';
+import {
+  defaultGateLimits,
+  defaultOwnerPronouns,
+  findNoAllowRule,
+  startMemoryStore,
+} from '@heynixie/memory';
+import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import { runProposalLapses, runProposalReturns } from '@heynixie/proposals';
+import { createConversationTask } from '@heynixie/tasks';
 import { buildProposalCoreDeps } from './build-proposal-core-deps';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
@@ -31,9 +40,35 @@ async function setupTest() {
   // the writer stamps records with the wall clock, so the test clock starts there
   api.clock.advance(Date.now() - api.clock.now());
 
+  const memory = await startMemoryStore({
+    log: api.context.log,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    cleanupSessions: () => Promise.resolve(),
+    gate: {
+      check: () =>
+        Promise.resolve({
+          verdict: 'unsure',
+          reason: 'no checker is wired',
+          model: 'no-checker',
+          failure: 'error',
+        }),
+      clock: api.clock,
+      defaultZone: 'UTC',
+      findAllowRule: findNoAllowRule,
+      limits: defaultGateLimits,
+      ownerName: null,
+      ownerPronouns: defaultOwnerPronouns,
+      getPromptsInForce: () => ({ snapshotHash: 'sha256:test', prompts: {} }),
+    },
+  });
+
+  onTestFinished(() => memory.stop());
+
+  api.setMemory(memory);
+
   const laptop = await createDeviceSession(api.context, 'laptop');
 
-  return { api, client: buildTestClient(api.url, laptop.token) };
+  return { api, memory, url: api.url, client: buildTestClient(api.url, laptop.token) };
 }
 
 test('#approvals.listItems lists a pending rule change with the choices it takes', async () => {
@@ -244,4 +279,82 @@ test('#runProposalLapses lapses a proposal at the new time after a defer, not th
     lapsedAtOldTime: 0,
     lapsedAtNewTime: 1,
   });
+});
+
+test('#approvals.answerProposal applies no memory write when the session is revoked between the checks and the write', async () => {
+  const ctx = await setupTest();
+  const phone = await createDeviceSession(ctx.api.context, 'phone');
+
+  await ctx.memory.writes.remember({
+    text: 'Keeps a rowing boat at the lake',
+    caller: buildMockWriteCaller(),
+  });
+
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.group === 'memory');
+
+  ctx.api.setMemory({
+    ...ctx.memory,
+    proposals: {
+      ...ctx.memory.proposals,
+      approve: async (input) => {
+        await ctx.client.sessions.revoke({
+          clientActionID: crypto.randomUUID(),
+          sessionID: phone.sessionID,
+        });
+
+        return ctx.memory.proposals.approve(input);
+      },
+    },
+  });
+
+  const answer = buildTestClient(ctx.url, phone.token).approvals.answerProposal({
+    proposalID: item?.proposal.proposalID ?? 'missing',
+    actionHash: item?.proposal.actionHash ?? 'missing',
+    choice: 'approve',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  await expect(answer).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+
+  const pending = await ctx.memory.proposals.listPending();
+
+  expect(pending).toHaveLength(1);
+});
+
+test('#approvals.answerProposal puts the note of a declined memory proposal in the inbox of its task', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.api.context);
+
+  await ctx.memory.writes.remember({
+    text: 'Keeps a rowing boat at the lake',
+    caller: buildMockWriteCaller({ thread: 'conversation' }),
+  });
+
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.group === 'memory');
+
+  await ctx.client.approvals.answerProposal({
+    proposalID: item?.proposal.proposalID ?? 'missing',
+    actionHash: item?.proposal.actionHash ?? 'missing',
+    choice: 'decline',
+    note: 'Not something to remember.',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const read = await readRecords(ctx.api.context.log, {
+    afterSequence: 0,
+    kinds: ['memory.proposal_rejected'],
+    limit: 10,
+  });
+
+  expect(
+    read.map((entry) => [
+      entry.record.thread,
+      entry.record.erasable.status === 'readable' ? entry.record.erasable.fields : null,
+    ]),
+  ).toStrictEqual([['conversation', { reason: 'Not something to remember.' }]]);
 });

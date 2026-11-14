@@ -1,13 +1,11 @@
 import { readMessageTimeZone } from '@heynixie/connectors';
 import { makeRuleProposalHandler, writeRuntimeRuleInTransaction } from '@heynixie/definitions';
 import type { RecordInput } from '@heynixie/log';
-import { writeRecordsInTransaction } from '@heynixie/log';
 import { makeMemoryProposalHandler } from '@heynixie/memory';
 import { makeActionProposalHandler } from '@heynixie/policy';
 import type { ProposalContext, ProposalCoreDeps, ProposalKindHandler } from '@heynixie/proposals';
 import { makeSkillProposalHandler } from '@heynixie/skills';
-import { isFinishedState, isInboxRecord, writeInboxRecordsInTransaction } from '@heynixie/tasks';
-import type { TasksTables } from '@heynixie/tasks';
+import { writeThreadRecordInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import { defaultApprovalSettings } from './default-api-settings';
 import { proposalsProjection } from './proposals-projection';
@@ -31,7 +29,7 @@ export function buildProposalCoreDeps(
   parts: ProposalParts,
 ): ProposalCoreDeps {
   const writeThreadRecord = (tx: Transaction<unknown>, input: RecordInput) =>
-    writeTaskRecord(context, tx, input);
+    writeThreadRecordInTransaction(tx, context, input);
 
   const handlers: readonly ProposalKindHandler[] = [
     makeActionProposalHandler({
@@ -98,36 +96,4 @@ export function buildProposalCoreDeps(
     },
     writeThreadRecord,
   };
-}
-
-// A task that is still open takes the record as an inbox record, so it hears it. A finished task
-// takes no input, so its record is written with no thread and wakes nothing.
-async function writeTaskRecord(
-  context: ProposalAPIContext,
-  tx: Transaction<unknown>,
-  input: RecordInput,
-): Promise<void> {
-  const thread = input.thread ?? null;
-
-  const task =
-    thread === null
-      ? undefined
-      : await tx
-          .$extendTables<TasksTables>()
-          .selectFrom('tasks')
-          .select('state')
-          .where('task_id', '=', thread)
-          .executeTakeFirst();
-
-  const isOpen = task !== undefined && !isFinishedState(task.state);
-
-  if (isOpen && isInboxRecord({ kind: input.kind, thread })) {
-    await writeInboxRecordsInTransaction(tx, context, [input]);
-
-    return;
-  }
-
-  const { thread: _thread, ...unthreaded } = input;
-
-  await writeRecordsInTransaction(tx, context.log, [isOpen ? input : unthreaded]);
 }

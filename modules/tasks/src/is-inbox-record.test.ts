@@ -7,6 +7,8 @@ test.each([
   ['action.outcome', 'task-1', true],
   ['task.wake', 'memory-writer', true],
   ['task.limit_notice', 'conversation', true],
+  ['memory.proposal_rejected', 'task-1', true],
+  ['skills.write_rejected', 'task-1', true],
   ['task.limit_reached', 'task-1', false],
   ['turn_finished', 'task-1', false],
   ['task.step_committed', 'task-1', false],

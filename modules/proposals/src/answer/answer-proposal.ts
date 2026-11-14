@@ -10,6 +10,7 @@ import type {
   Checked,
   ProposalCoreDeps,
 } from './types';
+import { UnauthorizedError } from './unauthorized-error';
 import { writeDefer } from './write-defer';
 
 // The checks run in order inside one write transaction, and the first that fails refuses the
@@ -146,6 +147,12 @@ async function runOwnedApply(
   };
 
   const guard = async (tx: Transaction<unknown>): Promise<void> => {
+    const probed = await hooks.probeCaller?.(tx);
+
+    if (probed === false) {
+      throw new UnauthorizedError();
+    }
+
     const again = await checkAnswer(deps, tx, answer, hooks.family);
 
     if (again.status === 'refused') {
@@ -156,6 +163,10 @@ async function runOwnedApply(
   };
 
   const applied = await applyOwned(ready, answer, guard);
+
+  if (applied.status === 'unauthorized') {
+    return applied;
+  }
 
   if (applied.status === 'refused') {
     const refused: AnswerSettlement = { status: 'refused', refusal: applied.refusal };
@@ -172,10 +183,14 @@ async function applyOwned(
   ready: Ready,
   answer: ProposalAnswerInput,
   guard: ApplyRun['guard'],
-): Promise<ApplyOutcome> {
+): Promise<ApplyOutcome | { readonly status: 'unauthorized' }> {
   try {
     return await applyChoice(ready, answer, { tx: null, guard });
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return { status: 'unauthorized' };
+    }
+
     if (error instanceof RefusedError) {
       return { status: 'refused', refusal: error.refusal };
     }

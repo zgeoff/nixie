@@ -126,6 +126,7 @@ export type {
 export { waitAtFaultPoint } from './wait-at-fault-point';
 export { writeInboxRecords } from './write-inbox-records';
 export { writeInboxRecordsInTransaction } from './write-inbox-records-in-transaction';
+export { writeThreadRecordInTransaction } from './write-thread-record-in-transaction';
 export { writeStepCommit } from './write-step-commit';
 export { writeTaskControl } from './write-task-control';
 export type { TaskControlOutcome, TaskControlRequest } from './write-task-control-in-transaction';

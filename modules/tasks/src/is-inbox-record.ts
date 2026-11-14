@@ -1,6 +1,6 @@
-import type { EnvelopeRecord, RecordKind } from '@heynixie/log';
+import type { EnvelopeRecord } from '@heynixie/log';
 
-const inboxKinds: ReadonlySet<RecordKind> = new Set([
+const inboxKinds: ReadonlySet<string> = new Set([
   'owner_message',
   'timer.fired',
   'action.outcome',
@@ -8,6 +8,8 @@ const inboxKinds: ReadonlySet<RecordKind> = new Set([
   'task_message',
   'task.limit_notice',
   'policy.action_answered',
+  'memory.proposal_rejected',
+  'skills.write_rejected',
   'proposals.deferred',
   'proposals.returned',
 ]);

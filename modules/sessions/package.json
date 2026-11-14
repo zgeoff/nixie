@@ -15,6 +15,7 @@
     "@heynixie/compaction": "workspace:*",
     "@heynixie/connectors": "workspace:*",
     "@heynixie/contract": "workspace:*",
+    "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
     "@heynixie/models": "workspace:*",
