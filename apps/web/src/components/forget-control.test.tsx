@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
-import { waitFor } from '@testing-library/react';
+import { focusManager } from '@tanstack/react-query';
+import { act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { server } from '../mocks/server';
@@ -300,4 +301,56 @@ test('it shows an error in place of the confirm when the preview fails, and neve
   expect(alert).toHaveTextContent('The forget could not read what it removes.');
   expect(rendered.queryByRole('button')).toBeNull();
   expect(forgotten).not.toHaveBeenCalled();
+});
+
+test('it keeps the confirm hidden after a failed preview when the window regains focus', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const previews = mock<() => void>();
+
+  const stored = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'The shed code is 4417.' },
+  });
+
+  server.use(
+    http.post('*/rpc/conversation/previewForget', () => {
+      previews();
+
+      return HttpResponse.json({ code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
+    }),
+  );
+
+  const rendered = render(
+    <ForgetControl
+      hasText
+      kind="owner_message"
+      label="Forget"
+      onForgotten={() => {}}
+      onOpenChange={() => {}}
+      sequence={stored.sequence}
+      thread={stored.thread}
+    />,
+  );
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));
+  await rendered.findByRole('alert');
+
+  try {
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+
+      await Promise.resolve();
+    });
+
+    expect(rendered.queryByText('Reading what the forget removes…')).toBeNull();
+    expect(previews).toHaveBeenCalledTimes(1);
+    expect(rendered.getByRole('alert')).toBeInTheDocument();
+    expect(rendered.queryByRole('button')).toBeNull();
+  } finally {
+    focusManager.setFocused(undefined);
+  }
 });

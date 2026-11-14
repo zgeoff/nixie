@@ -122,6 +122,8 @@ function ForgetConfirmation(props: ForgetConfirmationProps): ReactNode {
       input: { sequence: props.sequence, thread: props.thread },
     }),
     gcTime: 0,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
     retry: false,
     staleTime: Number.POSITIVE_INFINITY,
   });
