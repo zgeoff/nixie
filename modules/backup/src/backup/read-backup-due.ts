@@ -1,5 +1,5 @@
 import { sql } from 'kysely';
-import type { BackupTables, BackupWriter } from './types';
+import type { BackupTables, BackupWriter } from '../types';
 
 export interface BackupDue {
   readonly isForgetDue: boolean;

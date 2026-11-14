@@ -1,11 +1,11 @@
 import { subscribeToRecordCommits } from '@heynixie/log';
 import { createActor, toPromise } from 'xstate';
+import type { BackupContext } from '../types';
 import { BackupPassError } from './backup-pass-error';
 import { backupScheduleMachine } from './backup-schedule-machine';
 import { removeAbandonedSets } from './remove-abandoned-sets';
 import type { BackupPass } from './run-backup-pass';
 import { runBackupPass } from './run-backup-pass';
-import type { BackupContext } from './types';
 
 export interface BackupScheduleOptions {
   readonly context: BackupContext;

@@ -1,6 +1,6 @@
-import type { ForgetBackup } from './pick-forget-backup';
-import { pickForgetBackup } from './pick-forget-backup';
-import type { BackupTables, BackupWriter } from './types';
+import type { ForgetBackup } from '../forget/pick-forget-backup';
+import { pickForgetBackup } from '../forget/pick-forget-backup';
+import type { BackupTables, BackupWriter } from '../types';
 
 // A set covers a forget once its copy started at or after the forget's closing record, because the
 // forget deletes its keys before it writes that record.

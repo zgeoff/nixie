@@ -7,9 +7,9 @@ import {
   readBackupSets,
 } from '@heynixie/wire';
 import type { Transaction } from 'kysely';
+import type { BackupContext, BackupSetState, BackupTables } from '../types';
 import { getBackupStagingDir } from './get-backup-staging-dir';
 import { removeRecordedSet } from './remove-recorded-set';
-import type { BackupContext, BackupSetState, BackupTables } from './types';
 import type { BackupSetReceiptFields } from './write-backup-set-state';
 import { writeBackupSetState } from './write-backup-set-state';
 

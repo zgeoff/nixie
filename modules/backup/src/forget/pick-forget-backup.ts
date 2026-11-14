@@ -1,6 +1,6 @@
 import { backupReceiptSchema, parseBackupFile } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
-import type { BackupSetState } from './types';
+import type { BackupSetState } from '../types';
 
 export type ForgetBackup =
   | { readonly state: 'pending' }

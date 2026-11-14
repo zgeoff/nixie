@@ -3,8 +3,8 @@ import type { JSONObject, RecordKind } from '@heynixie/log';
 import { localDataStorage, withWriteTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { sql } from 'kysely';
+import { buildSeeder } from '../test-utils/build-seeder';
 import { readBackupDue } from './read-backup-due';
-import { buildSeeder } from './test-utils/build-seeder';
 
 async function setupTest() {
   const log = await startTestLog();

@@ -1,7 +1,7 @@
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
+import type { BackupSetState, BackupTables } from '../types';
 import { requireBackupSetMove } from './require-backup-set-move';
-import type { BackupSetState, BackupTables } from './types';
 
 export interface BackupSetReceiptFields {
   readonly received_at: number;

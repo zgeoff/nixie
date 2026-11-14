@@ -1,6 +1,6 @@
 import { withWriteTransaction } from '@heynixie/log';
+import type { BackupContext, BackupNotice, BackupTables } from '../types';
 import { pickBackupNotices } from './pick-backup-notices';
-import type { BackupContext, BackupNotice, BackupTables } from './types';
 
 export async function writeBackupNotices(
   context: BackupContext,

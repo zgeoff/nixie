@@ -1,4 +1,4 @@
-import type { BackupSetState } from './types';
+import type { BackupSetState } from '../types';
 
 // A copy that stops part way leaves a set no job ships, so it is abandoned at the next start; a
 // staged set whose directory is gone is abandoned too, because no receipt can reach it.

@@ -1,4 +1,4 @@
-import type { BackupNoticeCause, BackupSetState } from './types';
+import type { BackupNoticeCause, BackupSetState } from '../types';
 
 export interface NoticeSet {
   readonly sequence: number;

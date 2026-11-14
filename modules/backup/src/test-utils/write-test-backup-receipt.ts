@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type { BackupReceipt } from '@heynixie/wire';
 import { backupSetLayout, formatBackupFile, getBackupSetDir } from '@heynixie/wire';
 import { match } from 'ts-pattern';
-import { getBackupStagingDir } from '../get-backup-staging-dir';
+import { getBackupStagingDir } from '../backup/get-backup-staging-dir';
 
 export type TestBackupReceipt =
   | { readonly sequence: number; readonly status: 'published' }

@@ -12,9 +12,9 @@ import { startTestLog } from '@heynixie/log/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
+import { buildStubFailingStorage, writeTestBackupReceipt } from '../test-utils';
 import type { BackupPass } from './run-backup-pass';
 import { startBackupSchedule } from './start-backup-schedule';
-import { buildStubFailingStorage, writeTestBackupReceipt } from './test-utils';
 
 async function setupTest() {
   const log = await startTestLog();

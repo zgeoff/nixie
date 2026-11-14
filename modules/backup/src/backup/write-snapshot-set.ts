@@ -10,8 +10,8 @@ import {
   readBackupSets,
 } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import type { BackupContext, BackupTables } from '../types';
 import { getBackupStagingDir } from './get-backup-staging-dir';
-import type { BackupContext, BackupTables } from './types';
 import { writeBackupSetState } from './write-backup-set-state';
 
 export async function writeSnapshotSet(

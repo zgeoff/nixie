@@ -2,9 +2,9 @@ import { join } from 'node:path';
 import type { DataStorage } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import { parseBackupSetName, readBackupSets } from '@heynixie/wire';
+import type { BackupContext, BackupSetState, BackupTables } from '../types';
 import { getBackupStagingDir } from './get-backup-staging-dir';
 import { removedSetSuffix } from './remove-recorded-set';
-import type { BackupContext, BackupSetState, BackupTables } from './types';
 import { writeBackupSetState } from './write-backup-set-state';
 
 export interface AbandonedSets {

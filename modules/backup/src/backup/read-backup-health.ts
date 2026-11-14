@@ -1,4 +1,4 @@
-import type { BackupNotice, BackupTables, BackupWriter } from './types';
+import type { BackupNotice, BackupTables, BackupWriter } from '../types';
 
 export interface BackupHealth {
   readonly lastUploadAt: number | null;

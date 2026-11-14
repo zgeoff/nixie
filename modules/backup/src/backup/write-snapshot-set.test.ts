@@ -8,8 +8,8 @@ import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { backupSetManifestSchema, parseBackupFile, readFileSHA256 } from '@heynixie/wire';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
-import { buildSeeder } from './test-utils/build-seeder';
-import { buildStubFailingStorage } from './test-utils/build-stub-failing-storage';
+import { buildSeeder } from '../test-utils/build-seeder';
+import { buildStubFailingStorage } from '../test-utils/build-stub-failing-storage';
 import { writeSnapshotSet } from './write-snapshot-set';
 
 async function setupTest() {
