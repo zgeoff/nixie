@@ -7,7 +7,7 @@ import { formatSpoolFileName, parseSpoolFileName, sealSpoolBody } from '@heynixi
 import { isRecord } from './is-record';
 import type { CaptureConfig } from './types';
 
-export interface CaptureRequest {
+interface CaptureRequest {
   readonly tag: CaptureTag;
   readonly receivedAt: number;
   readonly route: string;
@@ -18,7 +18,7 @@ export interface CaptureRequest {
 
 // Neither method waits for the spool: the work runs behind them, and a fault in it never reaches
 // the request.
-export interface CaptureHandle {
+interface CaptureHandle {
   // the model API answered with this status
   readonly finish: (upstreamStatus: number) => void;
 
