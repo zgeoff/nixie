@@ -398,7 +398,7 @@ test.each([
 
     const keyID = rows.find((row) => row.sequence === result.sequence)?.key_id;
 
-    invariant(typeof keyID === 'string');
+    invariant(typeof keyID === 'string' && keyID !== '');
 
     await ctx.startForget({ thread, sequence: result.sequence });
 

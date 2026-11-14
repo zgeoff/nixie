@@ -74,7 +74,7 @@ test('it reads a finished forget of a record with a key as forgotten at the sequ
 
   const [forgotten] = await ctx.readForgottenSequences();
 
-  invariant(typeof forgotten === 'number');
+  invariant(typeof forgotten === 'number' && forgotten > 0);
 
   const progress = await readRecordForgetProgress(ctx.context, result.sequence);
 
