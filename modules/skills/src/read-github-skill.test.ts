@@ -264,6 +264,7 @@ test('it refuses an image in place of the JSON the API sends', async () => {
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://api.github.com/repos/example/skills/git/commits/3f6c1a528e0b4d7a9c215b7e4f0d9a133f6c1a52',
         status: 200,
         contentType: 'image/gif',
@@ -292,6 +293,7 @@ test('it refuses when the fetcher fails', async () => {
       Promise.resolve({
         kind: 'refused',
         reason: 'api.github.com resolves to 10.0.0.7, which is not a public address',
+        isGated: false,
       }),
     {
       owner: 'example',

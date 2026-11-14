@@ -3,7 +3,11 @@ import { systemClock } from '@heynixie/clock';
 import type { ExecStream, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import { buildSandboxSpec } from '@heynixie/sandbox';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
-import { decodeFetchReply, encodeFetchMessage, getLinkTargetLimit } from '@heynixie/wire';
+import { decodeFetchGuestFrame, encodeFetchMessage, getLinkTargetLimit } from '@heynixie/wire';
+import type { HopScan } from './gate-page-hops';
+import { gatePageHops } from './gate-page-hops';
+import type { TimeLimit } from './wait-or-time-out';
+import { waitOrTimeOut } from './wait-or-time-out';
 
 export interface FetchSandboxOptions {
   readonly adapter: SandboxAdapter;
@@ -26,8 +30,12 @@ export interface FetchSandboxOptions {
   readonly clock?: Clock;
 }
 
+interface FetchPageOptions {
+  readonly scanHop?: HopScan;
+}
+
 export interface FetchSandbox {
-  readonly readPage: (url: string) => Promise<FetchReply>;
+  readonly readPage: (url: string, options?: FetchPageOptions) => Promise<FetchReply>;
 
   readonly stop: () => Promise<void>;
 }
@@ -40,13 +48,12 @@ interface FetchSandboxState {
   needsSweep: boolean;
 }
 
-const stoppedReply: FetchReply = { kind: 'failed', reason: 'the fetch sandbox is stopped' };
-
 export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
   const state: FetchSandboxState = { queue: Promise.resolve(), isStopped: false, needsSweep: true };
 
   return {
-    readPage: async (url) => {
+    readPage: async (url, readOptions) => {
+      const scanHop = readOptions?.scanHop;
       const previous = state.queue;
       const ended = Promise.withResolvers<void>();
 
@@ -57,10 +64,14 @@ export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
       if (state.isStopped) {
         ended.resolve();
 
-        return stoppedReply;
+        return {
+          kind: 'failed',
+          reason: 'the fetch sandbox is stopped',
+          isGated: scanHop !== undefined,
+        };
       }
 
-      return runFetch(options, state, url, ended.resolve);
+      return runFetch(options, state, { url, scanHop }, ended.resolve);
     },
     stop: async () => {
       state.isStopped = true;
@@ -70,17 +81,22 @@ export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
   };
 }
 
+interface FetchTarget {
+  readonly url: string;
+  readonly scanHop: HopScan | undefined;
+}
+
 // returns the reply as soon as the fetcher sends it, and destroys the sandbox after, off the reply's
 // path
 async function runFetch(
   options: FetchSandboxOptions,
   state: FetchSandboxState,
-  url: string,
+  target: FetchTarget,
   onEnded: () => void,
 ): Promise<FetchReply> {
   const creating = createWithinLimit(options, state);
 
-  const reply = await tryRunFetcher(creating, options, url);
+  const reply = await tryRunFetcher(creating, options, target);
 
   void removeSandbox(options, state, creating, onEnded);
 
@@ -144,35 +160,6 @@ async function createFetchSandbox(
   }
 }
 
-interface TimeLimit {
-  readonly clock: Clock;
-
-  readonly deadline: number;
-  readonly message: string;
-}
-
-async function waitOrTimeOut<T>(promise: Promise<T>, limit: TimeLimit): Promise<T> {
-  // Promise.race takes the first settled input in order, so an already settled call would beat a
-  // deadline that passed between calls.
-  if (limit.deadline <= limit.clock.now()) {
-    throw new Error(limit.message);
-  }
-
-  const settled = new AbortController();
-
-  try {
-    return await Promise.race([promise, waitForDeadline(limit, settled.signal)]);
-  } finally {
-    settled.abort();
-  }
-}
-
-async function waitForDeadline(limit: TimeLimit, settled: AbortSignal): Promise<never> {
-  await limit.clock.sleep(limit.deadline - limit.clock.now(), settled);
-
-  throw new Error(limit.message);
-}
-
 const defaultSandboxCallTimeoutMs = 120_000;
 
 function buildSandboxCallLimit(options: FetchSandboxOptions): TimeLimit {
@@ -217,16 +204,20 @@ async function destroyOrSweepLater(
 async function tryRunFetcher(
   creating: Promise<Sandbox>,
   options: FetchSandboxOptions,
-  url: string,
+  target: FetchTarget,
 ): Promise<FetchReply> {
   try {
     const sandbox = await creating;
 
-    return await runFetcher(sandbox, options, url);
+    return await runFetcher(sandbox, options, target);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
-    return { kind: 'failed', reason: `the fetch sandbox failed: ${message}` };
+    return {
+      kind: 'failed',
+      reason: `the fetch sandbox failed: ${message}`,
+      isGated: target.scanHop !== undefined,
+    };
   }
 }
 
@@ -235,7 +226,7 @@ const defaultReplyGraceMs = 5000;
 async function runFetcher(
   sandbox: Sandbox,
   options: FetchSandboxOptions,
-  url: string,
+  target: FetchTarget,
 ): Promise<FetchReply> {
   const clock = options.clock ?? systemClock;
 
@@ -254,10 +245,26 @@ async function runFetcher(
     limit,
   );
 
-  const request = { url, limits: options.limits, deniedRanges: options.deniedRanges };
+  const request = {
+    url: target.url,
+    limits: options.limits,
+    deniedRanges: options.deniedRanges,
+    hops: target.scanHop === undefined ? ('none' as const) : ('ask' as const),
+  };
 
   try {
-    return await sendFetchRequest(stream, encodeFetchMessage(request), limit);
+    await waitOrTimeOut(stream.send(encodeFetchMessage(request)), limit);
+
+    if (target.scanHop === undefined) {
+      return await readUngatedReply(stream, limit);
+    }
+
+    return await gatePageHops(stream, {
+      sentURL: target.url,
+      redirects: options.limits.redirects,
+      scanHop: target.scanHop,
+      limit,
+    });
   } catch (error) {
     await stream.stop();
 
@@ -280,25 +287,26 @@ function getReplyLimit(limits: FetchLimits): number {
   return Math.max(textReplyBytes, imageReplyBytes) + replyOverheadBytes;
 }
 
-async function sendFetchRequest(
-  stream: ExecStream,
-  request: Uint8Array,
-  limit: TimeLimit,
-): Promise<FetchReply> {
-  await waitOrTimeOut(stream.send(request), limit);
-
+async function readUngatedReply(stream: ExecStream, limit: TimeLimit): Promise<FetchReply> {
   const reply = await waitOrTimeOut(readFirstMessage(stream.messages), limit);
+
+  const frame = reply === null ? null : decodeFetchGuestFrame(reply);
+
+  if (frame?.kind === 'hop') {
+    throw new Error('the fetcher asked before a hop of a fetch that is not gated');
+  }
+
   const exit = await waitOrTimeOut(stream.exit, limit);
 
   if (exit.code !== 0) {
     throw new Error(`the fetcher exited with ${exit.code ?? exit.signal ?? 'no code'}`);
   }
 
-  if (reply === null) {
+  if (frame === null) {
     throw new Error('the fetcher closed its output with no reply');
   }
 
-  return decodeFetchReply(reply);
+  return frame;
 }
 
 async function readFirstMessage(messages: AsyncIterable<Uint8Array>): Promise<Uint8Array | null> {

@@ -33,6 +33,7 @@ test('it answers one request in a process of its own and leaves its temporary di
           imageBytes: 1000,
         },
         deniedRanges: [],
+        hops: 'none',
       }),
     ),
     stdout: 'pipe',
@@ -57,6 +58,7 @@ test('it answers one request in a process of its own and leaves its temporary di
         'localhost resolves to 127.0.0.1, which is not a public address',
         'localhost resolves to ::1, which is not a public address',
       ]),
+      isGated: false,
     },
   ]);
 
@@ -83,4 +85,55 @@ test('it exits non-zero with no reply for a malformed request', async () => {
   expect(code).not.toBe(0);
   expect(stdout).toHaveLength(0);
   expect(left).toStrictEqual([]);
+});
+
+test('it exits after its reply to a gated request while the server holds its stdin open', async () => {
+  const ctx = await setupTest();
+
+  const fetcher = Bun.spawn([process.execPath, join(import.meta.dir, 'main.ts')], {
+    env: { PATH: process.env['PATH'] ?? '', TMPDIR: ctx.root },
+    stdin: 'pipe',
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+
+  onTestFinished(() => {
+    fetcher.kill('SIGKILL');
+  });
+
+  fetcher.stdin.write(
+    encodeFrame(
+      encodeFetchMessage({
+        url: 'https://localhost/',
+        limits: {
+          bodyBytes: 1000,
+          timeoutMs: 5000,
+          redirects: 1,
+          textBytes: 1000,
+          imageBytes: 1000,
+        },
+        deniedRanges: [],
+        hops: 'ask',
+      }),
+    ),
+  );
+
+  await fetcher.stdin.flush();
+
+  const [code, stdout] = await Promise.all([fetcher.exited, new Response(fetcher.stdout).bytes()]);
+
+  expect(code).toBe(0);
+
+  expect(
+    makeFrameDecoder(100_000)(stdout).map((message) => decodeFetchReply(message)),
+  ).toStrictEqual([
+    {
+      kind: 'refused',
+      reason: expect.toBeOneOf([
+        'localhost resolves to 127.0.0.1, which is not a public address',
+        'localhost resolves to ::1, which is not a public address',
+      ]),
+      isGated: true,
+    },
+  ]);
 });

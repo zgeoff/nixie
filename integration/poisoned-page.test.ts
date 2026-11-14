@@ -25,6 +25,7 @@ test('it turns every write a poisoned page causes into a proposal from outside c
   const tools = buildTestConversationTools({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://soup-notes.test/lentil',
     status: 200,
     contentType: 'text/html; charset=utf-8',

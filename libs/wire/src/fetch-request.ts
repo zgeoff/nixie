@@ -16,4 +16,7 @@ export interface FetchRequest {
   readonly limits: FetchLimits;
 
   readonly deniedRanges: readonly string[];
+
+  // 'ask': the fetcher sends a hop frame and waits for a pass before each hop after hop 0
+  readonly hops: 'ask' | 'none';
 }

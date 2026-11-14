@@ -16,6 +16,9 @@ export type FetchReply =
 
       // the wait in ms that the reply's headers ask for, null when they ask for none
       readonly retryAfterMs: number | null;
+
+      // true when the fetcher asked the server before each hop; the decoder reads a missing field as false
+      readonly isGated: boolean;
     }
   | {
       readonly kind: 'image';
@@ -29,6 +32,9 @@ export type FetchReply =
 
       // the wait in ms that the reply's headers ask for, null when they ask for none
       readonly retryAfterMs: number | null;
+
+      // true when the fetcher asked the server before each hop; the decoder reads a missing field as false
+      readonly isGated: boolean;
     }
-  | { readonly kind: 'refused'; readonly reason: string }
-  | { readonly kind: 'failed'; readonly reason: string };
+  | { readonly kind: 'refused'; readonly reason: string; readonly isGated: boolean }
+  | { readonly kind: 'failed'; readonly reason: string; readonly isGated: boolean };

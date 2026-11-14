@@ -129,15 +129,31 @@ Each fetch runs in a fetch sandbox of its own. nixie creates a new sandbox from 
 spawns one fetcher process in it, and destroys the sandbox when the fetch ends, so a page that
 compromises the fetcher sees only its own fetch and never the URL of another. The fetcher works
 inside a new temporary directory that it removes when the fetch ends. nixie talks to the fetcher
-only over that process's stdin and stdout, one frame each way, each frame holding one line of JSON
-in the format `libs/wire` defines. The request carries the URL, the fetch limits and the ranges the
-deployment lists as internal; nothing else nixie holds reaches the sandbox.
+only over that process's stdin and stdout, each frame holding one line of JSON in the format
+`libs/wire` defines. An ungated fetch takes one frame each way. The request carries the URL, the
+fetch limits and the ranges the deployment lists as internal; nothing else nixie holds reaches the
+sandbox.
 
 A page or image reply also carries `retryAfterMs`, the wait in milliseconds that the site's headers
 ask for. The fetcher takes it from `Retry-After` on a 429, 503 or 403 reply, and from
 `x-ratelimit-reset` on any reply whose `x-ratelimit-remaining` is `0`. When both headers give a
 wait, the longer one wins. The field is null when neither header gives one. A reply from a fetcher
 built before the field reads as null, so the server and the fetch image update in either order.
+
+A gated fetch is a fetch whose caller passes a `scanHop` function to `readPage`. The request then
+holds `hops: 'ask'`, which the wire writes as a redirect limit of 0 and a `hopGate` object that
+holds the real limit. Before the fetcher resolves the host of each redirect, it sends a `hop` frame
+with the URL and waits for a `hop-pass` frame. The server scans each hop with `scanHop` in
+`gatePageHops` and sends the pass, or it stops the fetcher and returns a refusal, so the wire holds
+no refusal frame. A fetch with no `scanHop` sends `hops: 'none'` and the same bytes as before, and a
+`hop` frame on it fails the fetch. Every reply carries `isGated`, which is true when the fetcher
+asked before each hop, and the fetch tool never passes it on to the model.
+
+The server and the fetch image can be of different releases. A fetch image before the hop gate reads
+a redirect limit of 0 and sends no hop frame, so it never follows an unscanned redirect, and the
+server replaces the reason of its failed reply with one that names the older image. A server before
+the hop gate sends no `hopGate`, so the new fetch image follows redirects as that server expects. No
+caller gates a fetch yet: [GEO-2246](https://linear.app/zgeoff/issue/GEO-2246) adds the first.
 
 Fetches run one at a time, and the next fetch starts only once the last fetch's destroy ends, so no
 fetcher ever runs beside another. nixie returns the reply as soon as the fetcher sends it and

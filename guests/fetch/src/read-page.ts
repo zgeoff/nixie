@@ -1,5 +1,5 @@
 import type { IncomingMessage } from 'node:http';
-import type { FetchLimits, FetchReply } from '@heynixie/wire';
+import type { AskHop, FetchLimits, FetchReply } from '@heynixie/wire';
 import { ConnectionNotOpenError } from './connection-not-open-error';
 import type { WebTransports } from './create-web-transports';
 import type { AddressCheck } from './make-address-check';
@@ -15,21 +15,29 @@ export interface PageReaderOptions {
   readonly resolveHost: (host: string) => Promise<readonly string[]>;
   readonly transports: WebTransports;
 
+  // when given, the fetcher asks before each hop after hop 0, and its replies carry isGated true
+  readonly askHop?: AskHop;
+
   readonly ca?: string;
   readonly defaultPorts?: DefaultPorts;
 }
 
 export async function readPage(url: string, options: PageReaderOptions): Promise<FetchReply> {
   const signal = AbortSignal.timeout(options.limits.timeoutMs);
+  const isGated = options.askHop !== undefined;
 
   try {
-    return await readRedirectChain(url, options, signal);
+    return { ...(await readRedirectChain(url, options, signal)), isGated };
   } catch (error) {
     if (signal.aborted) {
-      return { kind: 'failed', reason: `the fetch passed ${options.limits.timeoutMs} ms` };
+      return { kind: 'failed', reason: `the fetch passed ${options.limits.timeoutMs} ms`, isGated };
     }
 
-    return { kind: 'failed', reason: error instanceof Error ? error.message : String(error) };
+    return {
+      kind: 'failed',
+      reason: error instanceof Error ? error.message : String(error),
+      isGated,
+    };
   }
 }
 
@@ -50,11 +58,17 @@ async function readRedirectChain(
     }
 
     if (hop.count === options.limits.redirects) {
-      return { kind: 'failed', reason: `the page redirected more than ${hop.count} times` };
+      return {
+        kind: 'failed',
+        reason: `the page redirected more than ${hop.count} times`,
+        isGated: false,
+      };
     }
 
     hop.url = step.location;
     hop.count += 1;
+
+    await options.askHop?.(hop.url, signal);
   }
 }
 
@@ -78,7 +92,7 @@ async function readHop(
   const planned = await planHop(url, options);
 
   if (planned.kind === 'refused') {
-    return planned;
+    return { ...planned, isGated: false };
   }
 
   const attempt = pickHopAttempt(planned.url, mayTryHTTPS, options.limits.timeoutMs);

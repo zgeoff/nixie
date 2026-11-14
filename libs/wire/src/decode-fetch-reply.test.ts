@@ -18,6 +18,7 @@ test('it returns a page with its text', () => {
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://example.com/',
     status: 200,
     contentType: 'text/html',
@@ -45,6 +46,7 @@ test('it returns a binary page with no text', () => {
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://example.com/a.png',
     status: 200,
     contentType: null,
@@ -69,6 +71,7 @@ test('it returns an image with its body in base64', () => {
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'image',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://example.com/a.png',
     status: 200,
     contentType: 'image/png',
@@ -91,12 +94,17 @@ test('it refuses an image with no body', () => {
 
 test('it returns a refusal with its reason', () => {
   const bytes = new TextEncoder().encode(
-    JSON.stringify({ kind: 'refused', reason: 'only http and https URLs are fetched' }),
+    JSON.stringify({
+      kind: 'refused',
+      reason: 'only http and https URLs are fetched',
+      isGated: false,
+    }),
   );
 
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'refused',
     reason: 'only http and https URLs are fetched',
+    isGated: false,
   });
 });
 
@@ -105,7 +113,11 @@ test('it drops a field that a well-formed reply does not hold', () => {
     JSON.stringify({ kind: 'failed', reason: 'timeout', extra: 'x' }),
   );
 
-  expect(decodeFetchReply(bytes)).toStrictEqual({ kind: 'failed', reason: 'timeout' });
+  expect(decodeFetchReply(bytes)).toStrictEqual({
+    kind: 'failed',
+    reason: 'timeout',
+    isGated: false,
+  });
 });
 
 test('it refuses a reply of an unknown kind', () => {
@@ -182,6 +194,7 @@ test('it returns a page with the reason the bot protection blocked it', () => {
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://example.com/',
     status: 403,
     contentType: 'text/html',
@@ -225,6 +238,7 @@ test('it returns a page with the targets of the links its text marks', () => {
   expect(decodeFetchReply(bytes)).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://bakery.test/news',
     status: 200,
     contentType: 'text/html',
@@ -309,6 +323,7 @@ test('it reads a page wait of whole milliseconds', () => {
     isTruncated: false,
     blocked: null,
     retryAfterMs: 42_000,
+    isGated: false,
   });
 });
 
@@ -328,4 +343,42 @@ test.each([-1, '42', 1.5])('it refuses a page with a retryAfterMs of %p', (retry
   );
 
   expect(() => decodeFetchReply(bytes)).toThrowWithMessage(TypeError, /retryAfterMs/u);
+});
+
+test.each([
+  [
+    'page',
+    {
+      url: 'https://example.com/',
+      status: 200,
+      contentType: null,
+      text: null,
+      links: [],
+      isTruncated: false,
+      blocked: null,
+    },
+  ],
+  ['image', { url: 'https://example.com/', status: 200, contentType: 'image/png', base64: 'AAAA' }],
+  ['refused', { reason: 'no' }],
+  ['failed', { reason: 'no' }],
+])('it reads a %s reply with no isGated as not gated', (kind, fields) => {
+  const bytes = new TextEncoder().encode(JSON.stringify({ kind, ...fields }));
+
+  expect(decodeFetchReply(bytes)).toMatchObject({ kind, isGated: false });
+});
+
+test('it reads isGated true from a reply', () => {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({ kind: 'failed', reason: 'no', isGated: true }),
+  );
+
+  expect(decodeFetchReply(bytes)).toStrictEqual({ kind: 'failed', reason: 'no', isGated: true });
+});
+
+test('it refuses an isGated that is not a boolean', () => {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify({ kind: 'failed', reason: 'no', isGated: 'yes' }),
+  );
+
+  expect(() => decodeFetchReply(bytes)).toThrowWithMessage(TypeError, /isGated/u);
 });

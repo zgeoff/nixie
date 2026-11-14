@@ -42,6 +42,7 @@ test('it returns the readable text of an HTML page over a connection to the chec
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: `https://site.test:${site.port}/page?q=1`,
     status: 200,
     contentType: 'text/html; charset=utf-8',
@@ -95,7 +96,12 @@ test('it refuses a certificate that does not cover the host name it sent', async
     ca: site.ca,
   });
 
-  expect(reply).toStrictEqual({ kind: 'failed', reason: expect.toInclude('site.test') });
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: expect.toInclude('site.test'),
+    isGated: false,
+  });
+
   expect(site.requests).toStrictEqual([]);
 });
 
@@ -142,6 +148,7 @@ test.each([
   expect(reply).toStrictEqual({
     kind: 'refused',
     reason: `only http and https URLs are fetched, not ${scheme}`,
+    isGated: false,
   });
 
   expect(resolver.hosts).toStrictEqual([]);
@@ -182,6 +189,7 @@ test('it returns the https page for an http URL whose host serves https', async 
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://site.test/tides',
     status: 200,
     contentType: 'text/html',
@@ -223,6 +231,7 @@ test('it returns the http page, with its http final URL, for an http URL whose h
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'http://site.test/notices',
     status: 200,
     contentType: 'text/html',
@@ -263,6 +272,7 @@ test('it returns the http page within the time limit for an http URL whose host 
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'http://site.test/locks',
     status: 200,
     contentType: 'text/plain',
@@ -299,7 +309,7 @@ test('it fails with the https error, with no http request, when https connects a
     defaultPorts: { http: plain.port, https: secure.port },
   });
 
-  expect(reply).toStrictEqual({ kind: 'failed', reason: expect.any(String) });
+  expect(reply).toStrictEqual({ kind: 'failed', reason: expect.any(String), isGated: false });
   expect(plain.requests).toStrictEqual([]);
 });
 
@@ -330,6 +340,7 @@ test('it returns the http page for an http URL whose host fails the https handsh
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'http://site.test/notices',
     status: 200,
     contentType: 'text/plain',
@@ -369,6 +380,7 @@ test('it fetches an http URL that names a port over http without trying https', 
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: `http://site.test:${plain.port}/buoys`,
     status: 200,
     contentType: 'text/plain',
@@ -412,6 +424,7 @@ test.each([
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'http://site.test/buoys',
     status: 200,
     contentType: 'text/plain',
@@ -461,7 +474,12 @@ test('it fails at the time limit, with no http request, when https connects but 
     defaultPorts: { http: plain.port, https: secure.port },
   });
 
-  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: 'the fetch passed 300 ms',
+    isGated: false,
+  });
+
   expect(plain.requests).toStrictEqual([]);
 });
 
@@ -486,6 +504,7 @@ test.each(['http', 'https'])(
     expect(reply).toStrictEqual({
       kind: 'refused',
       reason: 'inside.test resolves to 10.0.0.5, which is not a public address',
+      isGated: false,
     });
 
     expect(resolver.hosts).toStrictEqual(['inside.test']);
@@ -506,7 +525,11 @@ test('it refuses text that is not a URL', async () => {
     transports: createWebTransports(),
   });
 
-  expect(reply).toStrictEqual({ kind: 'refused', reason: 'not a url is not a URL' });
+  expect(reply).toStrictEqual({
+    kind: 'refused',
+    reason: 'not a url is not a URL',
+    isGated: false,
+  });
 });
 
 test('it refuses a host when any of its A and AAAA addresses is not public', async () => {
@@ -535,6 +558,7 @@ test('it refuses a host when any of its A and AAAA addresses is not public', asy
   expect(reply).toStrictEqual({
     kind: 'refused',
     reason: 'site.test resolves to fd00::1, which is not a public address',
+    isGated: false,
   });
 
   expect(checked).toStrictEqual(['127.0.0.1', '2606:4700::1', 'fd00::1']);
@@ -558,6 +582,7 @@ test('it refuses a host that resolves to a private address under the production 
   expect(reply).toStrictEqual({
     kind: 'refused',
     reason: 'site.test resolves to ::ffff:169.254.169.254, which is not a public address',
+    isGated: false,
   });
 });
 
@@ -580,6 +605,7 @@ test('it checks an address literal in the URL', async () => {
   expect(reply).toStrictEqual({
     kind: 'refused',
     reason: '::ffff:a00:1 resolves to ::ffff:a00:1, which is not a public address',
+    isGated: false,
   });
 
   expect(resolver.hosts).toStrictEqual([]);
@@ -599,7 +625,11 @@ test('it refuses a host that resolves to no address', async () => {
     transports: createWebTransports(),
   });
 
-  expect(reply).toStrictEqual({ kind: 'refused', reason: 'site.test resolves to no address' });
+  expect(reply).toStrictEqual({
+    kind: 'refused',
+    reason: 'site.test resolves to no address',
+    isGated: false,
+  });
 });
 
 test.each(['https', 'http'])(
@@ -631,6 +661,7 @@ test.each(['https', 'http'])(
     expect(reply).toStrictEqual({
       kind: 'refused',
       reason: 'inside.test resolves to 10.0.0.5, which is not a public address',
+      isGated: false,
     });
 
     expect(resolver.hosts).toStrictEqual(['site.test', 'inside.test']);
@@ -668,6 +699,7 @@ test('it follows a redirect to an http URL over http, with no https try first', 
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'http://site.test/chart',
     status: 200,
     contentType: 'text/plain',
@@ -709,6 +741,7 @@ test('it follows redirects up to the limit and returns the final URL', async () 
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: `https://site.test:${site.port}/next?step=2`,
     status: 200,
     contentType: 'text/plain',
@@ -750,6 +783,7 @@ test('it resolves the links of a page against its final URL after a redirect', a
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: `https://site.test:${site.port}/guides/setup/`,
     status: 200,
     contentType: 'text/html',
@@ -789,6 +823,7 @@ test('it returns a page within the text limit whole and not truncated when its l
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: directory,
     status: 200,
     contentType: 'text/html',
@@ -826,6 +861,7 @@ test('it cuts the list of other links before the text of the page at the text li
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: `https://site.test:${site.port}/`,
     status: 200,
     contentType: 'text/html',
@@ -856,7 +892,12 @@ test('it fails a page that redirects more times than the limit', async () => {
     ca: site.ca,
   });
 
-  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the page redirected more than 3 times' });
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: 'the page redirected more than 3 times',
+    isGated: false,
+  });
+
   expect(site.requests).toHaveLength(4);
 });
 
@@ -890,6 +931,7 @@ test('it returns the blocked reason for a Cloudflare challenge in place of the p
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: `https://site.test:${site.port}/post`,
     status: 403,
     contentType: 'text/html; charset=UTF-8',
@@ -927,6 +969,7 @@ test('it returns the blocked reason for a challenge page it knows by its markup'
   expect(reply).toMatchObject({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     status: 503,
     blocked: "blocked by the site's bot protection (Cloudflare challenge)",
   });
@@ -959,6 +1002,7 @@ test('it returns no blocked reason for a forbidden page with no challenge', asyn
   expect(reply).toMatchObject({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     status: 403,
     text: 'You do not have access.',
     blocked: null,
@@ -1039,6 +1083,7 @@ test('it stops at the body limit and marks the result truncated', async () => {
   expect(reply).toMatchObject({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     text: '0123456789012345678901234',
     links: [],
     isTruncated: true,
@@ -1132,6 +1177,7 @@ test('it fails a page sent in a content coding it cannot read', async () => {
   expect(reply).toStrictEqual({
     kind: 'failed',
     reason: expect.toInclude('the page uses the content coding zstd'),
+    isGated: false,
   });
 });
 
@@ -1189,7 +1235,11 @@ test('it fails a fetch that passes the time limit', async () => {
     ca: site.ca,
   });
 
-  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: 'the fetch passed 300 ms',
+    isGated: false,
+  });
 });
 
 test('it returns the page of a slow site that answers within the time limit', async () => {
@@ -1239,7 +1289,12 @@ test('it returns the page of a slow site that answers within the time limit', as
 
   const reply = await replying;
 
-  expect(shortReply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
+  expect(shortReply).toStrictEqual({
+    kind: 'failed',
+    reason: 'the fetch passed 300 ms',
+    isGated: false,
+  });
+
   expect(reply).toMatchObject({ kind: 'page', text: 'late' });
 });
 
@@ -1283,7 +1338,11 @@ test('it fails a fetch whose compressed body stalls past the time limit', async 
     ca: site.ca,
   });
 
-  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: 'the fetch passed 300 ms',
+    isGated: false,
+  });
 });
 
 test('it returns a compressed body that stalls and finishes within the time limit', async () => {
@@ -1343,7 +1402,12 @@ test('it returns a compressed body that stalls and finishes within the time limi
 
   const reply = await replying;
 
-  expect(shortReply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
+  expect(shortReply).toStrictEqual({
+    kind: 'failed',
+    reason: 'the fetch passed 300 ms',
+    isGated: false,
+  });
+
   expect(reply).toMatchObject({ kind: 'page', text: 'a'.repeat(1000) });
 });
 
@@ -1363,7 +1427,11 @@ test('it fails a fetch whose DNS answer passes the time limit', async () => {
     transports: createWebTransports(),
   });
 
-  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 100 ms' });
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: 'the fetch passed 100 ms',
+    isGated: false,
+  });
 });
 
 test('it checks a slow DNS answer that arrives within the time limit', async () => {
@@ -1385,6 +1453,7 @@ test('it checks a slow DNS answer that arrives within the time limit', async () 
   expect(reply).toStrictEqual({
     kind: 'refused',
     reason: 'site.test resolves to 10.0.0.1, which is not a public address',
+    isGated: false,
   });
 });
 
@@ -1414,6 +1483,7 @@ test('it returns a binary type with no body', async () => {
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: `https://site.test:${site.port}/a.pdf`,
     status: 200,
     contentType: 'application/pdf',
@@ -1444,6 +1514,7 @@ test('it returns the whole body of an image within the image limit', async () =>
   expect(reply).toStrictEqual({
     kind: 'image',
     retryAfterMs: null,
+    isGated: false,
     url: `https://site.test:${site.port}/a.png`,
     status: 200,
     contentType: 'image/png',
@@ -1477,6 +1548,7 @@ test('it returns no image, marked truncated, for an image past the image limit',
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: `https://site.test:${site.port}/a.png`,
     status: 200,
     contentType: 'image/png',
@@ -1514,6 +1586,7 @@ test('it returns the blocked reason, with no image, for an image a Cloudflare ch
   expect(reply).toStrictEqual({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: `https://site.test:${site.port}/a.png`,
     status: 403,
     contentType: 'image/png',
@@ -1577,6 +1650,7 @@ test('it returns another text type as it arrived', async () => {
   expect(reply).toMatchObject({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     status: 404,
     text: '{"a": "<b>"}',
     links: [],
@@ -1699,5 +1773,198 @@ test('it carries the wait that a rate-limited reply asks for', async () => {
     isTruncated: false,
     blocked: null,
     retryAfterMs: 7000,
+    isGated: false,
+  });
+});
+
+test('it asks about each redirect before it resolves the host of the hop, and never about hop 0', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: (request) => {
+      const step = Number(new URL(request.url).searchParams.get('step') ?? '0');
+
+      return step < 2
+        ? new Response(null, { status: 307, headers: { location: `/next?step=${step + 1}` } })
+        : new Response('arrived', { headers: { 'content-type': 'text/plain' } });
+    },
+  });
+
+  const events: string[] = [];
+
+  const reply = await readPage(`https://site.test:${site.port}/start`, {
+    limits: {
+      bodyBytes: 1_000_000,
+      timeoutMs: 5000,
+      redirects: 5,
+      textBytes: 1_000_000,
+      imageBytes: 1_000_000,
+    },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: (host) => {
+      events.push(`resolve ${host}`);
+
+      return Promise.resolve(['127.0.0.1']);
+    },
+    transports: createWebTransports(),
+    ca: site.ca,
+    askHop: (url) => {
+      events.push(`ask ${url}`);
+
+      return Promise.resolve();
+    },
+  });
+
+  expect(events).toStrictEqual([
+    'resolve site.test',
+    `ask https://site.test:${site.port}/next?step=1`,
+    'resolve site.test',
+    `ask https://site.test:${site.port}/next?step=2`,
+    'resolve site.test',
+  ]);
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    retryAfterMs: null,
+    isGated: true,
+    url: `https://site.test:${site.port}/next?step=2`,
+    status: 200,
+    contentType: 'text/plain',
+    text: 'arrived',
+    links: [],
+    isTruncated: false,
+    blocked: null,
+  });
+});
+
+test('it never resolves or connects to the host of a hop whose ask rejects', async () => {
+  const hopSite = await startTestSite({
+    names: ['hop.test'],
+    respond: () => new Response('secret page'),
+  });
+
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: () => Response.redirect(`https://hop.test:${hopSite.port}/`, 302),
+  });
+
+  const resolver = buildStubResolver({
+    answers: { 'site.test': [['127.0.0.1']], 'hop.test': [['127.0.0.1']] },
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: {
+      bodyBytes: 1_000_000,
+      timeoutMs: 5000,
+      redirects: 5,
+      textBytes: 1_000_000,
+      imageBytes: 1_000_000,
+    },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: resolver.resolveHost,
+    transports: createWebTransports(),
+    ca: site.ca,
+    askHop: () => Promise.reject(new Error('the server stopped this hop')),
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: 'the server stopped this hop',
+    isGated: true,
+  });
+
+  expect(resolver.hosts).toStrictEqual(['site.test']);
+  expect(hopSite.requests).toStrictEqual([]);
+});
+
+test('it fails with the timeout reason when the time limit passes during an ask', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: () => Response.redirect('/next', 302),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: {
+      bodyBytes: 1_000_000,
+      timeoutMs: 200,
+      redirects: 5,
+      textBytes: 1_000_000,
+      imageBytes: 1_000_000,
+    },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: site.ca,
+    askHop: (_url, signal) =>
+      new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => {
+          reject(new Error('aborted'));
+        });
+      }),
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: 'the fetch passed 200 ms',
+    isGated: true,
+  });
+});
+
+test('it does not ask for the https try of an http sent URL', async () => {
+  const secure = await startTestSite({
+    names: ['site.test'],
+    respond: () => new Response('Plain chart', { headers: { 'content-type': 'text/plain' } }),
+  });
+
+  const asked: string[] = [];
+
+  const reply = await readPage('http://site.test/chart', {
+    limits: {
+      bodyBytes: 1_000_000,
+      timeoutMs: 5000,
+      redirects: 5,
+      textBytes: 1_000_000,
+      imageBytes: 1_000_000,
+    },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: secure.ca,
+    defaultPorts: { http: 1, https: secure.port },
+    askHop: (url) => {
+      asked.push(url);
+
+      return Promise.resolve();
+    },
+  });
+
+  expect(asked).toStrictEqual([]);
+  expect(reply).toMatchObject({ kind: 'page', url: 'https://site.test/chart', isGated: true });
+});
+
+test('it marks the refusal of a hop that the ask passed as gated', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    respond: () => new Response(null, { status: 302, headers: { location: 'ftp://files.test/a' } }),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: {
+      bodyBytes: 1_000_000,
+      timeoutMs: 5000,
+      redirects: 5,
+      textBytes: 1_000_000,
+      imageBytes: 1_000_000,
+    },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    transports: createWebTransports(),
+    ca: site.ca,
+    askHop: () => Promise.resolve(),
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'refused',
+    reason: 'only http and https URLs are fetched, not ftp:',
+    isGated: true,
   });
 });

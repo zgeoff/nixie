@@ -10,7 +10,12 @@ import {
 // Stands in for the fetch guest in a test sandbox, because the guest refuses every address a test
 // can serve.
 const decode = makeFrameDecoder(65_536);
-let reply: FetchReply = { kind: 'failed', reason: 'the stub fetcher read no request' };
+
+let reply: FetchReply = {
+  kind: 'failed',
+  reason: 'the stub fetcher read no request',
+  isGated: false,
+};
 
 for await (const chunk of Bun.stdin.stream()) {
   const [message] = decode(chunk);
@@ -34,6 +39,7 @@ async function answerRequest(request: FetchRequest): Promise<FetchReply> {
     return {
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: request.url,
       status: 200,
       contentType: 'text/plain; charset=utf-8',
@@ -53,6 +59,7 @@ async function answerRequest(request: FetchRequest): Promise<FetchReply> {
     return {
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: request.url,
       status: 200,
       contentType: 'image/png',
@@ -66,6 +73,7 @@ async function answerRequest(request: FetchRequest): Promise<FetchReply> {
   return {
     kind: 'image',
     retryAfterMs: null,
+    isGated: false,
     url: request.url,
     status: 200,
     contentType: 'image/png',

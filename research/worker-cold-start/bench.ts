@@ -205,6 +205,7 @@ async function runTurn(samples: number): Promise<void> {
 function buildFetchFrame(): Uint8Array {
   const request: FetchRequest = {
     deniedRanges: [],
+    hops: 'none',
     limits: {
       bodyBytes: 2_000_000,
       redirects: 5,

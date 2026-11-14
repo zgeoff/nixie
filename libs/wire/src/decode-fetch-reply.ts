@@ -4,9 +4,10 @@ import { parseFetchObject } from './parse-fetch-object';
 export function decodeFetchReply(bytes: Uint8Array): FetchReply {
   const reply = parseFetchObject(bytes, 'reply');
   const kind = reply['kind'];
+  const isGated = isReplyGated(reply);
 
   if (kind === 'refused' || kind === 'failed') {
-    return { kind, reason: requireString(reply, 'reason') };
+    return { kind, reason: requireString(reply, 'reason'), isGated };
   }
 
   if (kind === 'image') {
@@ -17,6 +18,7 @@ export function decodeFetchReply(bytes: Uint8Array): FetchReply {
       contentType: requireStringOrNull(reply, 'contentType'),
       base64: requireString(reply, 'base64'),
       retryAfterMs: requireRetryAfterMs(reply),
+      isGated,
     };
   }
 
@@ -34,7 +36,22 @@ export function decodeFetchReply(bytes: Uint8Array): FetchReply {
     isTruncated: requireBoolean(reply, 'isTruncated'),
     blocked: requireStringOrNull(reply, 'blocked'),
     retryAfterMs: requireRetryAfterMs(reply),
+    isGated,
   };
+}
+
+function isReplyGated(reply: Readonly<Record<string, unknown>>): boolean {
+  const value = reply['isGated'];
+
+  if (value === undefined) {
+    return false;
+  }
+
+  if (typeof value !== 'boolean') {
+    throw new TypeError('a fetch reply needs isGated, a boolean');
+  }
+
+  return value;
 }
 
 function requireString(reply: Readonly<Record<string, unknown>>, name: string): string {
