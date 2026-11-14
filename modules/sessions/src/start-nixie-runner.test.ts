@@ -1808,13 +1808,11 @@ test('it interrupts a task turn at its own spend that, with a spend recorded aft
 
   const runner = await ctx.startRunner();
 
-  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
-  await ctx.writeMessage(taskID, 'And the evening tide?');
-
+  // A brief ends its turn's batch, so the second call answers a message that lands during the turn.
   ctx.guest.addKindReplies(
     'worker',
     {
-      text: 'The morning tide is at six.',
+      text: 'The high tides on Saturday are at six and at half past six.',
       usage: {
         uncachedInputTokens: 3334,
         cacheReadTokens: 0,
@@ -1822,7 +1820,15 @@ test('it interrupts a task turn at its own spend that, with a spend recorded aft
         cacheWrite1hTokens: 0,
         outputTokens: 0,
       },
-      gate: () => writeFailedTurnSpend(ctx.context, { taskID, dollars: 0.01 }),
+      gate: async () => {
+        await writeFailedTurnSpend(ctx.context, { taskID, dollars: 0.01 });
+
+        await ctx.writeMessage(taskID, 'And the evening tide?');
+
+        await waitForCondition(() =>
+          ctx.guest.received.some((entry) => entry.frame.type === 'message'),
+        );
+      },
     },
     {
       text: 'The evening tide is at seven.',
