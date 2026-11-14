@@ -13,6 +13,7 @@ import {
 import { waitForCondition } from '@heynixie/testing';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
+import { z } from 'zod';
 
 test('it backs up a running server and restores it into an empty data directory through the nixie executable, and the restarted server starts paused and takes no step until nixie resumes', async () => {
   const nixie = await startSpawnedNixie();
@@ -35,12 +36,19 @@ test('it backs up a running server and restores it into an empty data directory 
 
   await nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
 
+  // A conversation step that has started and not committed is a task to check after the restore.
+  await server.request('arm', { point: 'step.commit.before', workID: 'conversation' });
+
+  nixie.model.addReplies({ text: 'Lime-reply-2VB6' });
+  void server.request('sendMessage', { thread: 'conversation', text: 'Lime-message-9HD4' });
+
+  await server.waitForArrival('step.commit.before');
+
   const target = join(nixie.directory, 'backup');
 
   const backup = await runHostCommand(nixie.configPath, ['backup', '--to', target]);
 
-  await server.sendStopSignal();
-  await server.waitForExit();
+  await server.kill();
 
   await rm(nixie.dataDir, { recursive: true, force: true });
   await mkdir(nixie.dataDir);
@@ -60,6 +68,7 @@ test('it backs up a running server and restores it into an empty data directory 
   const isMarkerPresent = await markerFile.exists();
   const started = await nixie.waitForRecord((record) => record.kind === 'recovery.started');
   const restartedRecords = await nixie.readRecords();
+  const recovery = await runHostCommand(nixie.configPath, ['recovery']);
 
   expect(backup.exitCode).toBe(0);
   expect(backup.stdout).toStartWith('copied nixie.db\ncopied keys.db\n');
@@ -70,6 +79,23 @@ test('it backs up a running server and restores it into an empty data directory 
   expect(restarted.readOutput()).not.toInclude('holds a finished restore');
   expect(restartedRecords.filter((record) => record.kind === 'recovery.started')).toHaveLength(1);
   expect(started.payload['recoveryID']).toBe(pending.recoveryID);
+  expect(recovery.exitCode).toBe(0);
+
+  const checkedTaskSchema = z.object({ taskID: z.string(), name: z.string() });
+  const checkedSchema = z.object({ toCheck: z.array(checkedTaskSchema) });
+  const recoverySchema = z.object({ recovery: checkedSchema });
+  const recordedTaskSchema = z.object({ taskID: z.string() });
+  const startedSchema = z.object({ toCheck: z.array(recordedTaskSchema) });
+  const checked = recoverySchema.parse(JSON.parse(recovery.stdout));
+  const recorded = startedSchema.parse(started.payload);
+
+  const expected = recorded.toCheck.map((task) => ({
+    taskID: task.taskID,
+    name: task.taskID === 'conversation' ? 'Conversation' : task.taskID,
+  }));
+
+  expect(checked.recovery.toCheck.length).toBeGreaterThan(0);
+  expect(checked.recovery.toCheck).toStrictEqual(expected);
 
   expect(
     restartedRecords
@@ -100,7 +126,9 @@ test('it backs up a running server and restores it into an empty data directory 
 
   nixie.model.addReplies({ text: 'Fig-reply-8RD3' });
 
-  await restarted.request('resumeNixie', null);
+  const resume = await runHostCommand(nixie.configPath, ['resume']);
+
+  expect(resume.exitCode).toBe(0);
 
   const resumed = await nixie.waitForRecord((record) => record.kind === 'nixie.resumed');
 
