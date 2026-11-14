@@ -95,6 +95,7 @@ The `zgeoff/import-zones` lint rule refuses each of these imports outside its on
   because it checks the SDK itself.
 - imp's client: `adapters/sandbox-imp`.
 - `bun:sqlite` and the Kysely dialect: `libs/db`.
+- ONNX Runtime and its tokenizer: `adapters/encoder-onnx`.
 
 ## Working here
 

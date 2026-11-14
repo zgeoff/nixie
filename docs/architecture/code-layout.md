@@ -115,6 +115,7 @@ A few imports belong to one package each:
 | The Agent SDK                       | `guests/conversation`               |
 | imp's client                        | `adapters/sandbox-imp`              |
 | `bun:sqlite` and the Kysely dialect | `libs/db`                           |
+| ONNX Runtime and its tokenizer      | `adapters/encoder-onnx`             |
 
 The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package. The Agent
 SDK has one exception: the SDK contract suite and the eval helpers in `evals/` drive the SDK itself,
