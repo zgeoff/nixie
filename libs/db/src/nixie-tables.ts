@@ -309,6 +309,27 @@ export interface NixieTables {
     readonly pull_request_url: string;
     readonly updated_at: number;
   };
+  readonly proposals: {
+    readonly proposal_id: string;
+    readonly short_id: string;
+    readonly family: string;
+    readonly kind: string;
+    readonly risk_class: string;
+    readonly action_hash: string;
+    readonly rule_hash: string | null;
+    readonly cause: string;
+    readonly task_id: string | null;
+    readonly thread: string | null;
+    readonly created_sequence: number;
+    readonly created_at: number;
+    readonly lapses_at: number;
+    readonly deadline_at: number | null;
+    readonly state: string;
+    readonly used_by: string | null;
+    readonly defer_generation: number;
+    readonly defer_until: number | null;
+    readonly return_at: number | null;
+  };
   readonly record_attachments: {
     readonly sequence: number;
     readonly position: number;
