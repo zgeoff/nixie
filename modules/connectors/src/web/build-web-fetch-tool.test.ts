@@ -6,6 +6,7 @@ import { buildToolRegistry } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { makeFetchBackoff } from '../fetch/make-fetch-backoff';
 import { startFetchSandbox } from '../fetch/start-fetch-sandbox';
 import { buildSearchTool } from '../search/build-search-tool';
 import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapter';
@@ -17,7 +18,13 @@ import { buildWebFetchTool } from './build-web-fetch-tool';
 import { removeWebFetchThread } from './remove-web-fetch-thread';
 
 async function setupTest() {
-  return { log: await startTestLog() };
+  const clock = buildTestClock(1_000_000);
+
+  return {
+    log: await startTestLog(),
+    clock,
+    backoff: makeFetchBackoff({ backoffMs: 30_000, backoffCapMs: 300_000, clock }),
+  };
 }
 
 test('it returns the page the fetch sandbox reads at the URL as the typed result', async () => {
@@ -53,6 +60,9 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -106,6 +116,9 @@ test("it writes each link in the page's text as an ID the session numbers from 1
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -181,6 +194,9 @@ test('it gives a URL one ID across the pages of one session', async () => {
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -254,6 +270,9 @@ test('it shows the host and path, with no query string, only for a link that lea
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -332,6 +351,9 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const run = {
@@ -423,6 +445,9 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const run = {
@@ -477,6 +502,9 @@ test.each([
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const run = {
@@ -529,6 +557,9 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const run = {
@@ -588,6 +619,9 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   await tool.run(
@@ -656,6 +690,9 @@ test('it refuses a page whose session a forget ended while it was fetched, and s
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const running = tool.run(
@@ -726,6 +763,9 @@ test("it numbers a new session's links from 1 again", async () => {
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const otherReply: FetchReply = {
@@ -747,6 +787,9 @@ test("it numbers a new session's links from 1 again", async () => {
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   }).run(
     {
       callID: 'call-1',
@@ -823,6 +866,9 @@ test('it keys the links of a call under the run token by the run', async () => {
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const run = {
@@ -866,6 +912,9 @@ test.each([
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -900,6 +949,9 @@ test('it refuses a link that does not read as a link ID', async () => {
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -959,6 +1011,9 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -1031,6 +1086,9 @@ test('it returns the reason the bot protection blocked a page in a result the sc
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     }),
   ]).findTool('web_fetch');
 
@@ -1088,6 +1146,9 @@ test('it returns a page result that the registry checks against the output schem
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     }),
   ]).findTool('web_fetch');
 
@@ -1128,6 +1189,9 @@ test.each([
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     }),
   ]).findTool('web_fetch');
 
@@ -1158,6 +1222,9 @@ test('it returns a binary page with no text', async () => {
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -1216,6 +1283,9 @@ test.each([
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -1242,6 +1312,9 @@ test('it declares only the fetch effect and no destination, so it runs direct', 
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   expect(tool.execution).toBe('direct');
@@ -1264,6 +1337,9 @@ test('it marks every result field as outside content', async () => {
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   expect(tool.declaration.results).toStrictEqual({
@@ -1290,6 +1366,9 @@ test('it endorses only the status code, the part numbers and the truncated mark'
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   expect(tool.output['properties']).toStrictEqual({
@@ -1333,6 +1412,9 @@ test('it is a tool the registry accepts', async () => {
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   expect(() => buildToolRegistry([tool])).not.toThrow();
@@ -1373,6 +1455,9 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const run = {
@@ -1454,6 +1539,9 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const run = {
@@ -1547,6 +1635,9 @@ test('it fetches the page again for a url with a part, and returns that part', a
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -1608,6 +1699,9 @@ test('it refuses a part past the end of a page, and names its count of parts', a
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -1668,6 +1762,9 @@ test('it returns the part that holds the first match of find, with every match, 
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const run = {
@@ -1742,6 +1839,9 @@ test('it says a find with no match found none, with the count of parts', async (
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -1789,6 +1889,9 @@ test('it refuses a page ID no session stored, and fetches nothing', async () => 
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -1842,6 +1945,9 @@ test('it refuses the page ID of an earlier session, and never returns another pa
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -1921,7 +2027,16 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
   const tool = buildWebFetchTool(
     (url) =>
       Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page', isGated: false }),
-    { log: ctx.log, textBytes: 20_000, linkPathChars: 24, pageStoreBytes: 20, imageLongEdge: 1568 },
+    {
+      log: ctx.log,
+      textBytes: 20_000,
+      linkPathChars: 24,
+      pageStoreBytes: 20,
+      imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
+    },
   );
 
   const run = {
@@ -2000,6 +2115,9 @@ test('it refuses a page ID given as a link, and names the kind it expected', asy
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -2039,6 +2157,9 @@ test.each([
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     });
 
     const outcome = await tool.run(
@@ -2068,6 +2189,9 @@ test('it refuses a link ID given as a page, and names the kind it expected', asy
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -2112,6 +2236,9 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -2186,6 +2313,9 @@ test('it returns a PNG under the image limit as image content with its media typ
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const outcome = await tool.run(
@@ -2247,6 +2377,9 @@ test('it returns a result with no image, marked truncated, for an image the fetc
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -2305,6 +2438,9 @@ test('it returns an image past the long edge downscaled to fit it', async () => 
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -2368,6 +2504,9 @@ test('it counts the image it returns against the session image budget', async ()
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -2415,6 +2554,9 @@ test('it returns an error, with no image, once the session holds as many images 
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -2465,6 +2607,9 @@ test('it returns an error, with no image, for an image fetched under the run tok
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -2513,6 +2658,9 @@ test('it returns an error for an image body that is no image the model can see',
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
       imageLongEdge: 1568,
+      backoff: ctx.backoff,
+      backoffWaitMs: 5000,
+      clock: ctx.clock,
     },
   );
 
@@ -2594,6 +2742,9 @@ test('it fetches the rewritten URL for a link ID whose target a rule matches', a
     linkPathChars: 24,
     pageStoreBytes: 20_971_520,
     imageLongEdge: 1568,
+    backoff: ctx.backoff,
+    backoffWaitMs: 5000,
+    clock: ctx.clock,
   });
 
   const run = {

@@ -9,6 +9,11 @@ export interface WebFetchConfig {
   readonly linkPathChars: number;
   readonly pageStoreBytes: number;
   readonly imageLongEdge: number;
+  readonly backoff: {
+    readonly backoffMs: number;
+    readonly backoffCapMs: number;
+    readonly backoffWaitMs: number;
+  };
 }
 
 export const webFetchDefaults: WebFetchConfig = {
@@ -23,4 +28,5 @@ export const webFetchDefaults: WebFetchConfig = {
   linkPathChars: 24,
   pageStoreBytes: 20_971_520,
   imageLongEdge: imageLimits.longEdge,
+  backoff: { backoffMs: 30_000, backoffCapMs: 300_000, backoffWaitMs: 5000 },
 };

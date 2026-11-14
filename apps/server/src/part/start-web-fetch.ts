@@ -1,6 +1,13 @@
 import { join } from 'node:path';
+import type { Clock } from '@heynixie/clock';
+import { systemClock } from '@heynixie/clock';
 import type { WebFetchConfig } from '@heynixie/connectors';
-import { buildWebFetchTool, startFetchSandbox, webFetchDefaults } from '@heynixie/connectors';
+import {
+  buildWebFetchTool,
+  makeFetchBackoff,
+  startFetchSandbox,
+  webFetchDefaults,
+} from '@heynixie/connectors';
 import { defaultSizeLimits } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
 import type { SandboxAdapter } from '@heynixie/sandbox';
@@ -19,12 +26,18 @@ export interface WebFetchOptions {
 
   // the log whose writer holds the link store
   readonly log: Pick<Log, 'writer'>;
+
+  // the clock of the host pauses; the system clock when absent
+  readonly clock?: Clock;
 }
 
 export interface WebFetch {
   readonly tool: ToolDefinition;
 
   readonly readSkillPage: ReadPage;
+
+  // empties the pause of every host, for the cleanup of a forgotten session
+  readonly clearPauses: () => void;
 
   readonly stop: () => Promise<void>;
 }
@@ -72,6 +85,14 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
     owner: 'skill_fetch',
   });
 
+  const clock = options.clock ?? systemClock;
+
+  const backoff = makeFetchBackoff({
+    backoffMs: config.backoff.backoffMs,
+    backoffCapMs: config.backoff.backoffCapMs,
+    clock,
+  });
+
   return {
     tool: buildWebFetchTool(fetchSandbox.readPage, {
       log: options.log,
@@ -79,8 +100,12 @@ export function startWebFetch(options: WebFetchOptions): WebFetch {
       linkPathChars: config.linkPathChars,
       pageStoreBytes: config.pageStoreBytes,
       imageLongEdge: config.imageLongEdge,
+      backoff,
+      backoffWaitMs: config.backoff.backoffWaitMs,
+      clock,
     }),
     readSkillPage: skillSandbox.readPage,
+    clearPauses: backoff.clear,
     stop: async () => {
       await Promise.all([fetchSandbox.stop(), skillSandbox.stop()]);
     },

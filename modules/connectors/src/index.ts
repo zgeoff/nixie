@@ -1,6 +1,8 @@
 export type { SearchToolOptions } from './search/build-search-tool';
 export { buildSearchTool } from './search/build-search-tool';
 export { buildTimeTool } from './time/build-time-tool';
+export type { FetchBackoff, FetchBackoffOptions } from './fetch/make-fetch-backoff';
+export { makeFetchBackoff } from './fetch/make-fetch-backoff';
 export { buildWebFetchTool } from './web/build-web-fetch-tool';
 export { readLinkTarget } from './web/read-link-target';
 export { readMessageTimeZone } from './time/read-message-time-zone';

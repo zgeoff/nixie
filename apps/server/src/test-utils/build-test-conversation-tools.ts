@@ -1,4 +1,9 @@
-import { buildTimeTool, buildWebFetchTool, webFetchDefaults } from '@heynixie/connectors';
+import {
+  buildTimeTool,
+  buildWebFetchTool,
+  makeFetchBackoff,
+  webFetchDefaults,
+} from '@heynixie/connectors';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
@@ -25,6 +30,13 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
             linkPathChars: webFetchDefaults.linkPathChars,
             pageStoreBytes: webFetchDefaults.pageStoreBytes,
             imageLongEdge: webFetchDefaults.imageLongEdge,
+            backoff: makeFetchBackoff({
+              backoffMs: webFetchDefaults.backoff.backoffMs,
+              backoffCapMs: webFetchDefaults.backoff.backoffCapMs,
+              clock: context.clock,
+            }),
+            backoffWaitMs: webFetchDefaults.backoff.backoffWaitMs,
+            clock: context.clock,
           }),
           time: buildTimeTool({
             clock: context.clock,
