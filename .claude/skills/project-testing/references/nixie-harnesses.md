@@ -25,7 +25,7 @@ in place of the sandbox adapter. A turn starts no guest process and no Agent SDK
 - Expect no migration on a start. The harness copies each data directory from a template that
   [`writeMigratedData`](../../../../apps/server/src/test-utils/write-migrated-data.ts) migrates
   once, and again only when the database or log sources change. To test the migration itself, open
-  an empty data directory with [`startWriter`](../../../../modules/log/src/start-writer.ts).
+  an empty data directory with [`startWriter`](../../../../modules/log/src/writer/start-writer.ts).
 
 ## A crash suite on the spawned harness
 

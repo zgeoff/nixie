@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
-import { readRecords } from '../read-records';
-import { writeRecords } from '../write-records';
+import { readRecords } from '../record/read-records';
+import { writeRecords } from '../record/write-records';
 import { removeTestRecordKey } from './remove-test-record-key';
 import { startTestLog } from './start-test-log';
 

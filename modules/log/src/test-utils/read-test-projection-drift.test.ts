@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { writeRecords } from '../write-records';
+import { writeRecords } from '../record/write-records';
 import { buildLogSeeder } from './build-log-seeder';
 import { readTestProjectionDrift } from './read-test-projection-drift';
 import { startTestLog } from './start-test-log';

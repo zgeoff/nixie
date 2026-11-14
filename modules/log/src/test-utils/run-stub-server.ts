@@ -1,5 +1,5 @@
 import { systemClock } from '@heynixie/clock';
-import { startWriter } from '../start-writer';
+import { startWriter } from '../writer/start-writer';
 
 const dataDir = process.argv.at(2);
 

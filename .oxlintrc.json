@@ -35,7 +35,6 @@
           "apps/web",
           "modules/api",
           "modules/definitions",
-          "modules/log",
           "modules/memory",
           "modules/sessions",
           "modules/tasks"

@@ -1,0 +1,339 @@
+import { expect, onTestFinished, test } from 'bun:test';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { Migration } from '@heynixie/db';
+import { reopenToOlderReaders } from '@heynixie/db';
+import { sql } from 'kysely';
+import { pauseNixieInTransaction } from '../pause/pause-nixie-in-transaction';
+import { runLogReset } from '../record/run-log-reset';
+import { withWriteTransaction } from '../record/with-write-transaction';
+import { startTestLog } from '../test-utils/start-test-log';
+import { localDataStorage } from '../utils/local-data-storage';
+import { claimWriterLock } from './claim-writer-lock';
+import { startWriter } from './start-writer';
+
+async function setupTest() {
+  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-writer-'));
+
+  onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
+
+  return { dataDir, stubServer: join(import.meta.dir, '..', 'test-utils', 'run-stub-server.ts') };
+}
+
+test('it refuses to start when statfs reports a network filesystem', async () => {
+  const ctx = await setupTest();
+
+  const start = startWriter({
+    dataDir: ctx.dataDir,
+    readFilesystemType: () => ({ type: 0x69_69 }),
+  });
+
+  await start.catch(() => {});
+
+  const names = await readdir(ctx.dataDir);
+
+  expect(start).rejects.toThrowWithMessage(
+    Error,
+    `data directory ${ctx.dataDir} is on a network filesystem (nfs), and nixie needs a local one`,
+  );
+
+  expect(names).toStrictEqual([]);
+});
+
+test('it exits a second process on the same data directory with the writer lock error', async () => {
+  const ctx = await setupTest();
+
+  const first = Bun.spawn([process.execPath, ctx.stubServer, ctx.dataDir], { stdout: 'pipe' });
+
+  onTestFinished(async () => {
+    first.kill('SIGKILL');
+
+    await first.exited;
+  });
+
+  await first.stdout.getReader().read();
+
+  const second = Bun.spawn([process.execPath, ctx.stubServer, ctx.dataDir], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+
+  onTestFinished(async () => {
+    second.kill('SIGKILL');
+
+    await second.exited;
+  });
+
+  const exitCode = await second.exited;
+
+  const stderr = await new Response(second.stderr).text();
+
+  expect(exitCode).not.toBe(0);
+  expect(stderr).toInclude('WriterLockHeldError: writer lock held by another process');
+});
+
+test('it takes the lock and the next epoch once the process that held them dies', async () => {
+  const ctx = await setupTest();
+
+  const first = Bun.spawn([process.execPath, ctx.stubServer, ctx.dataDir], { stdout: 'pipe' });
+
+  onTestFinished(async () => {
+    first.kill('SIGKILL');
+
+    await first.exited;
+  });
+
+  await first.stdout.getReader().read();
+
+  first.kill('SIGKILL');
+
+  await first.exited;
+
+  const writer = await startWriter({ dataDir: ctx.dataDir });
+
+  onTestFinished(() => writer.stop());
+
+  expect(writer.epoch).toBe(2);
+});
+
+test('it raises the writer epoch before the first migration runs', async () => {
+  const ctx = await setupTest();
+
+  const seen: unknown[] = [];
+
+  const writer = await startWriter({
+    dataDir: ctx.dataDir,
+    schema: {
+      migrations: [
+        {
+          name: 'read the writer epoch',
+          up: async (tx) => {
+            const result = await sql`select epoch from writer_epoch`.execute(tx);
+
+            seen.push(...result.rows);
+          },
+        },
+      ],
+      oldestReader: 0,
+    },
+  });
+
+  onTestFinished(() => writer.stop());
+
+  expect(seen).toStrictEqual([{ epoch: writer.epoch }]);
+});
+
+test('it reports the copy it takes before the first migration of a release', async () => {
+  const ctx = await setupTest();
+
+  const createNotes: Migration = {
+    name: 'create notes',
+    up: async (tx) => {
+      await sql`create table notes (id text primary key)`.execute(tx);
+    },
+  };
+
+  const release1 = await startWriter({
+    dataDir: ctx.dataDir,
+    schema: { migrations: [createNotes], oldestReader: 0 },
+  });
+
+  onTestFinished(() => release1.stop());
+
+  await release1.stop();
+
+  const release2 = await startWriter({
+    dataDir: ctx.dataDir,
+    schema: {
+      migrations: [
+        createNotes,
+        {
+          name: 'create tags',
+          up: async (tx) => {
+            await sql`create table tags (id text primary key)`.execute(tx);
+          },
+        },
+      ],
+      oldestReader: 0,
+    },
+  });
+
+  onTestFinished(() => release2.stop());
+
+  expect(release2.migration).toStrictEqual({
+    from: 1,
+    to: 2,
+    copyPath: join(ctx.dataDir, 'nixie-schema-1.db'),
+  });
+});
+
+test('it copies the database before the first migration of a release and never the key store', async () => {
+  const ctx = await setupTest();
+
+  const createNotes: Migration = {
+    name: 'create notes',
+    up: async (tx) => {
+      await sql`create table notes (id text primary key)`.execute(tx);
+    },
+  };
+
+  const release1 = await startWriter({
+    dataDir: ctx.dataDir,
+    schema: { migrations: [createNotes], oldestReader: 0 },
+  });
+
+  onTestFinished(() => release1.stop());
+
+  await release1.stop();
+
+  const release2 = await startWriter({
+    dataDir: ctx.dataDir,
+    schema: {
+      migrations: [
+        createNotes,
+        {
+          name: 'create tags',
+          up: async (tx) => {
+            await sql`create table tags (id text primary key)`.execute(tx);
+          },
+        },
+      ],
+      oldestReader: 0,
+    },
+  });
+
+  onTestFinished(() => release2.stop());
+
+  await release2.stop();
+
+  const names = await readdir(ctx.dataDir);
+
+  expect(names).toIncludeSameMembers(['keys.db', 'nixie-schema-1.db', 'nixie.db']);
+});
+
+test('it refuses to start on a data directory whose restore stopped before it finished, and releases the lock', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dataDir, 'restore-incomplete'), '');
+
+  const start = startWriter({ dataDir: ctx.dataDir });
+
+  await start.catch(() => {});
+
+  const lock = claimWriterLock(ctx.dataDir);
+
+  onTestFinished(() => {
+    lock.release();
+  });
+
+  const names = await readdir(ctx.dataDir);
+
+  expect(start).rejects.toThrowWithMessage(
+    Error,
+    `a restore of the data directory ${ctx.dataDir} stopped before it finished, so its databases may come from two backups; run nixie restore again`,
+  );
+
+  expect(names).toStrictEqual(['restore-incomplete']);
+});
+
+test('it releases the lock when it cannot read whether a restore stopped', async () => {
+  const ctx = await setupTest();
+
+  const start = startWriter({
+    dataDir: ctx.dataDir,
+    files: {
+      ...localDataStorage.files,
+      probeFile: () =>
+        Promise.reject(
+          Object.assign(new Error('EACCES: permission denied, stat'), { code: 'EACCES' }),
+        ),
+    },
+  });
+
+  await start.catch(() => {});
+
+  const lock = claimWriterLock(ctx.dataDir);
+
+  onTestFinished(() => {
+    lock.release();
+  });
+
+  expect(start).rejects.toThrowWithMessage(Error, 'EACCES: permission denied, stat');
+});
+
+test('it opens the key store as keys.db beside nixie.db, with secure delete on', async () => {
+  const ctx = await setupTest();
+  const writer = await startWriter({ dataDir: ctx.dataDir });
+
+  onTestFinished(() => writer.stop());
+
+  const secureDelete = await sql`pragma secure_delete`.execute(writer.keys);
+
+  const tables = await sql`select name from sqlite_schema
+    where type = 'table' and name = 'record_keys'`.execute(writer.keys);
+
+  const names = await readdir(ctx.dataDir);
+
+  expect(secureDelete.rows).toStrictEqual([{ secure_delete: 1 }]);
+  expect(tables.rows).toStrictEqual([{ name: 'record_keys' }]);
+  expect(names).toIncludeAllMembers(['keys.db', 'nixie.db']);
+});
+
+test('it opens a closed reader gate at the next start after a log reset removed the pause', async () => {
+  const log = await startTestLog();
+
+  await withWriteTransaction(log.writer, (tx) =>
+    pauseNixieInTransaction(tx, log.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: 'session-a',
+      definitions: { snapshotHash: 'sha256:aa11' },
+    }),
+  );
+
+  await runLogReset(log.log, {
+    keptTables: [],
+    readKept: () => Promise.resolve(null),
+    writeFirstRecords: () => Promise.resolve(),
+  });
+
+  await log.writer.stop();
+
+  const writer = await startWriter({ dataDir: log.dataDir });
+
+  onTestFinished(() => writer.stop());
+
+  const gate = await sql`select oldest_reader, open_oldest_reader from schema_version`.execute(
+    writer.db,
+  );
+
+  expect(gate.rows).toStrictEqual([{ oldest_reader: 35, open_oldest_reader: null }]);
+});
+
+test('it closes the reader gate at the next start while nixie is paused', async () => {
+  const log = await startTestLog();
+
+  await withWriteTransaction(log.writer, async (tx) => {
+    await pauseNixieInTransaction(tx, log.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: 'session-a',
+      definitions: { snapshotHash: 'sha256:aa11' },
+    });
+
+    await reopenToOlderReaders(tx);
+  });
+
+  await log.writer.stop();
+
+  const writer = await startWriter({ dataDir: log.dataDir });
+
+  onTestFinished(() => writer.stop());
+
+  const gate = await sql`select oldest_reader, open_oldest_reader from schema_version`.execute(
+    writer.db,
+  );
+
+  expect(gate.rows).toStrictEqual([{ oldest_reader: 45, open_oldest_reader: 35 }]);
+});

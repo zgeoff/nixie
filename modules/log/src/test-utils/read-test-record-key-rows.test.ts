@@ -3,7 +3,7 @@ import { readQueryRows } from '@heynixie/db';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import { writeRecords } from '../write-records';
+import { writeRecords } from '../record/write-records';
 import { readTestRecordKeyRows } from './read-test-record-key-rows';
 import { startTestLog } from './start-test-log';
 

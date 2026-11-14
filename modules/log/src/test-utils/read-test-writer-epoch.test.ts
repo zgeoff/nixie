@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { claimWriterEpoch } from '../claim-writer-epoch';
+import { claimWriterEpoch } from '../record/claim-writer-epoch';
 import { readTestWriterEpoch } from './read-test-writer-epoch';
 import { startTestLog } from './start-test-log';
 
