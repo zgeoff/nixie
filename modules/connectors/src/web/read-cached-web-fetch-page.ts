@@ -1,4 +1,5 @@
 import type { Log } from '@heynixie/log';
+import { sql } from 'kysely';
 import { z } from 'zod';
 import type { WebFetchTables } from './web-fetch-tables';
 import type { StoredPage } from './write-web-fetch-page';
@@ -32,6 +33,9 @@ export async function readCachedWebFetchPage(
     .where('blocked', 'is', null)
     .where('stored_at', '>', query.storedAfter)
     .orderBy('stored_at', 'desc')
+
+    // rows of one stored_at, which a coarse clock gives, come back newest insert first
+    .orderBy(sql`rowid`, 'desc')
     .executeTakeFirst();
 
   return row === undefined
