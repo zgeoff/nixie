@@ -2541,3 +2541,75 @@ test('it returns an error for an image body that is no image the model can see',
       'ERR_IMAGE_UNKNOWN_FORMAT',
   });
 });
+
+test('it fetches the rewritten URL for a link ID whose target a rule matches', async () => {
+  const ctx = await setupTest();
+
+  const readPage = mock((url: string) => {
+    if (url === 'https://bakery.test/news') {
+      return Promise.resolve<FetchReply>({
+        kind: 'page',
+        retryAfterMs: null,
+        isGated: false,
+        url,
+        status: 200,
+        contentType: 'text/html',
+        text: 'The package \u{E000}0\u{E001}.',
+        links: ['https://pypi.org/project/reefkit/'],
+        isTruncated: false,
+        blocked: null,
+      });
+    }
+
+    return Promise.resolve<FetchReply>({
+      kind: 'page',
+      retryAfterMs: null,
+      isGated: false,
+      url,
+      status: 200,
+      contentType: 'application/json',
+      text: '{"name":"reefkit"}',
+      links: [],
+      isTruncated: false,
+      blocked: null,
+    });
+  });
+
+  const tool = buildWebFetchTool(readPage, {
+    log: ctx.log,
+    textBytes: 20_000,
+    linkPathChars: 24,
+    pageStoreBytes: 20_971_520,
+    imageLongEdge: 1568,
+  });
+
+  const run = {
+    runID: 'conversation',
+    thread: 'conversation',
+    tools: ['web_fetch'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    session: { key: 'session-a', invalidatedThrough: 0 },
+  };
+
+  await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://bakery.test/news' },
+      toolUseID: null,
+    },
+    { run },
+  );
+
+  const outcome = await tool.run(
+    { callID: 'call-2', tool: 'web_fetch', input: { link: 'L1' }, toolUseID: null },
+    { run },
+  );
+
+  expect(readPage).toHaveBeenLastCalledWith('https://pypi.org/pypi/reefkit/json');
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { url: 'https://pypi.org/pypi/reefkit/json', text: '{"name":"reefkit"}' },
+  });
+});

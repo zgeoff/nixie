@@ -1,17 +1,16 @@
 import type { Log } from '@heynixie/log';
-import type { ToolDefinition, ToolImage, ToolOutcome } from '@heynixie/tools';
+import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
-import { fitFetchedImage } from './fit-fetched-image';
-import type { PageSession } from './get-page-session';
 import { getPageSession } from './get-page-session';
+import type { PageFetch } from './page-fetch';
 import type { PageView, WebFetchRequest } from './parse-web-fetch-request';
 import { parseWebFetchRequest } from './parse-web-fetch-request';
 import { pickPageView } from './pick-page-view';
 import { readLinkTarget } from './read-link-target';
 import { readWebFetchPage } from './read-web-fetch-page';
+import { runPageFetch } from './run-page-fetch';
 import type { PageLimits } from './write-web-fetch-page';
-import { writeWebFetchPage } from './write-web-fetch-page';
 
 // no required key, since a call names a page by url, link or page, and the run checks the mix
 const webFetchInput = {
@@ -134,7 +133,9 @@ export function buildWebFetchTool(
       'appears, with up to 10 matches and the text around each; neither fetches the page again. ' +
       'Link and page IDs last for this session only. isTruncated is true when the page passed ' +
       "the fetch's size limit, so no part holds its end. blocked is null, or the reason the " +
-      "site's bot protection answered in place of the page, which no retry passes.",
+      "site's bot protection answered in place of the page, which no retry passes. A page of a " +
+      'known site, such as a GitHub file, an npm or PyPI package or a Wikipedia article, comes ' +
+      'back in its raw or JSON form, and url shows what nixie fetched.',
     input: webFetchInput,
     output: webFetchOutput,
     declaration: {
@@ -172,17 +173,6 @@ export function buildWebFetchTool(
   };
 }
 
-interface PageFetch {
-  readonly log: Pick<Log, 'writer'>;
-  readonly readPage: (url: string) => Promise<FetchReply>;
-  readonly session: PageSession;
-  readonly limits: PageLimits;
-  readonly imageLongEdge: number;
-
-  // null when the call cannot show the model an image, such as one under the run's own token
-  readonly reserveImages: ((images: readonly ToolImage[]) => boolean) | null;
-}
-
 function runWebFetchCall(fetching: PageFetch, request: WebFetchRequest): Promise<ToolOutcome> {
   return match(request)
     .with({ kind: 'refused' }, (refused) =>
@@ -212,105 +202,6 @@ async function readStoredView(
           'fetched it, so fetch the page again by its url.',
       }
     : pickPageView(page, view);
-}
-
-async function runPageFetch(
-  fetching: PageFetch,
-  url: string,
-  view: PageView,
-): Promise<ToolOutcome> {
-  const reply = await fetching.readPage(url);
-
-  return match(reply)
-    .with({ kind: 'refused' }, { kind: 'failed' }, (refused) =>
-      Promise.resolve<ToolOutcome>({ status: 'error', message: refused.reason }),
-    )
-    .with({ kind: 'image' }, (image) => runImageResult(fetching, image))
-    .with({ kind: 'page' }, (page) => runPageResult(fetching, page, view))
-    .exhaustive();
-}
-
-type ImageReply = Extract<FetchReply, { readonly kind: 'image' }>;
-
-async function runImageResult(fetching: PageFetch, reply: ImageReply): Promise<ToolOutcome> {
-  const fitted = await fitFetchedImage(Buffer.from(reply.base64, 'base64'), fetching.imageLongEdge);
-
-  if (fitted.kind === 'unreadable') {
-    return {
-      status: 'error',
-      message: `${reply.url} sent ${reply.contentType ?? 'a body'} that is no image the model can see: ${fitted.reason}`,
-    };
-  }
-
-  if (fetching.reserveImages === null) {
-    return {
-      status: 'error',
-      message: `${reply.url} is an image, and this call cannot show the model an image`,
-    };
-  }
-
-  if (!fetching.reserveImages([fitted.image])) {
-    return {
-      status: 'error',
-      message: `${reply.url} is an image, and this session holds as many images as it can take`,
-    };
-  }
-
-  return {
-    status: 'ok',
-    result: {
-      url: reply.url,
-      status: reply.status,
-      contentType: reply.contentType,
-      page: null,
-      part: null,
-      parts: 0,
-      text: null,
-      isTruncated: false,
-      blocked: null,
-      image: { mediaType: fitted.image.mediaType, width: fitted.width, height: fitted.height },
-    },
-    images: [fitted.image],
-  };
-}
-
-type PageReply = Extract<FetchReply, { readonly kind: 'page' }>;
-
-async function runPageResult(
-  fetching: PageFetch,
-  reply: PageReply,
-  view: PageView,
-): Promise<ToolOutcome> {
-  if (reply.text === null) {
-    return {
-      status: 'ok',
-      result: {
-        url: reply.url,
-        status: reply.status,
-        contentType: reply.contentType,
-        page: null,
-        part: null,
-        parts: 0,
-        text: null,
-        isTruncated: reply.isTruncated,
-        blocked: reply.blocked,
-      },
-    };
-  }
-
-  const stored = await writeWebFetchPage(
-    fetching.log,
-    { ...reply, text: reply.text },
-    fetching.session,
-    fetching.limits,
-  );
-
-  return stored === null
-    ? {
-        status: 'error',
-        message: 'the session ended while the page was fetched, so fetch it again by its url',
-      }
-    : pickPageView(stored, view);
 }
 
 async function runLinkFetch(
