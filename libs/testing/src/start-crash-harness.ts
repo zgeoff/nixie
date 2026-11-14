@@ -1,4 +1,3 @@
-import { onTestFinished } from 'bun:test';
 import type { NixieProcess } from './start-nixie-process';
 import { startNixieProcess } from './start-nixie-process';
 import type { FaultPointArm } from './types';
@@ -41,8 +40,6 @@ export function startCrashHarness(options: CrashHarnessOptions): CrashHarness {
   const stop = async (): Promise<void> => {
     await Promise.all([...processes.started].map((nixie) => nixie.kill()));
   };
-
-  onTestFinished(stop);
 
   return {
     now: () => clock.now,

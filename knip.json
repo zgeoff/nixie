@@ -51,6 +51,9 @@
     // TanStack Router loads each route file by its path, and Vite loads the PostCSS config by its
     // name, so no import reaches them
     "apps/web": { "entry": ["src/routes/**/*.tsx", "postcss.config.js"] },
+    // `bun verify` runs the verify CLI by its path, and the CLI launches the harness by its path,
+    // so no import reaches either
+    "e2e": { "entry": ["src/verify/verify.ts", "src/verify/harness/run-verify-harness.ts"] },
     // rig loads its config and the lane start hooks by path
     ".": {
       "entry": ["rig.config.ts", "scripts/test-utils/prepare-*-lane.ts"]

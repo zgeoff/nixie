@@ -12,6 +12,7 @@ export type { ServerRecordKind } from '../server-record-kind';
 export type { BootFileExtras, BootFiles } from './write-boot-files';
 export { writeBootFiles } from './write-boot-files';
 export { startTestConversation } from './start-test-conversation';
+export { createSpawnedNixie } from './create-spawned-nixie';
 export { startSpawnedNixie } from './start-spawned-nixie';
 export { startTestServer } from './start-test-server';
 export { writeSeedMessages } from './write-seed-messages';

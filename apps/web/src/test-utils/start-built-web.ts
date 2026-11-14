@@ -1,5 +1,5 @@
-import { expect, onTestFinished } from 'bun:test';
-import { waitFor } from '@testing-library/react';
+import { onTestFinished } from 'bun:test';
+import { createBuiltWeb } from './create-built-web';
 import { readBrowserBuild } from './read-browser-build';
 
 // A browser suite runs on the client its lane built before the run; an e2e suite passes the build
@@ -8,37 +8,9 @@ export async function startBuiltWeb(
   apiURL: string,
   serverPath: string = readBrowserBuild().webServerPath,
 ): Promise<{ url: string }> {
-  const portProbe = Bun.serve({ fetch: answerProbe, hostname: '127.0.0.1', port: 0 });
-  const port = portProbe.port;
+  const web = await createBuiltWeb(apiURL, serverPath);
 
-  await portProbe.stop(true);
+  onTestFinished(web.stop);
 
-  const child = Bun.spawn(['bun', serverPath], {
-    env: { ...process.env, NIXIE_API_URL: apiURL, NODE_ENV: 'production', PORT: String(port) },
-    stderr: 'inherit',
-    stdout: 'ignore',
-  });
-
-  onTestFinished(async () => {
-    child.kill();
-
-    await child.exited;
-  });
-
-  const url = `http://127.0.0.1:${port}`;
-
-  await waitFor(
-    async () => {
-      const live = await fetch(`${url}/health/live`);
-
-      expect(live.status).toBe(200);
-    },
-    { timeout: 10_000 },
-  );
-
-  return { url };
-}
-
-function answerProbe(): Response {
-  return new Response();
+  return { url: web.url };
 }

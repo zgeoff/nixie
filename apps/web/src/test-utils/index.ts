@@ -1,5 +1,7 @@
 export { store } from '../mocks/store';
 export { buildEndingResponse } from './build-ending-response';
+export { createBuiltWeb } from './create-built-web';
+export { createFrontProxy } from './create-front-proxy';
 export { readWebBuild } from './read-web-build';
 export { runWebBuild } from './run-web-build';
 export { setupSignedInBrowser } from './setup-signed-in-browser';

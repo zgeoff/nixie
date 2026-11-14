@@ -9,6 +9,8 @@ function setupTest() {
     startMs: 1_000_000,
   });
 
+  onTestFinished(harness.stop);
+
   return { harness };
 }
 
@@ -33,6 +35,8 @@ test('it starts each nixie with the arguments the harness is given', async () =>
     env: {},
     startMs: 1_000_000,
   });
+
+  onTestFinished(harness.stop);
 
   const nixie = harness.start();
 
@@ -93,15 +97,15 @@ test('it refuses a settled advance when the work of a runner it woke never ends'
   );
 });
 
-test('it kills every nixie still running when the test finishes', async () => {
+test('it kills every nixie still running when it stops', async () => {
   const ctx = setupTest();
   const nixie = ctx.harness.start();
 
   await nixie.ready;
 
-  onTestFinished(async () => {
-    const exit = await nixie.exited;
+  await ctx.harness.stop();
 
-    expect(exit).toStrictEqual({ code: null, signal: 'SIGKILL' });
-  });
+  const exit = await nixie.exited;
+
+  expect(exit).toStrictEqual({ code: null, signal: 'SIGKILL' });
 });
