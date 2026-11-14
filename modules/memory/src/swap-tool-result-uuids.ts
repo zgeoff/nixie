@@ -1,6 +1,6 @@
 import { isRecordObject } from './is-record-object';
 import { isUUIDShaped } from './is-uuid-shaped';
-import type { ShortIDLookup } from './swapped-keys';
+import type { ShortIDKind, ShortIDLookup } from './swapped-keys';
 import { swappedKeys } from './swapped-keys';
 
 // A stored result of an earlier release can hold the UUID of a moment, an item or a change. The
@@ -14,33 +14,36 @@ export function swapToolResultUUIDs(result: unknown, lookup: ShortIDLookup): unk
     return result;
   }
 
-  const swapped: Record<string, unknown> = {};
+  // fromEntries defines each field as an own property, so a field named __proto__ survives.
+  return Object.fromEntries(
+    Object.entries(result).flatMap(([key, value]): [string, unknown][] => {
+      const rule = Object.hasOwn(swappedKeys, key) ? swappedKeys[key] : undefined;
 
-  for (const [key, value] of Object.entries(result)) {
-    const rule = Object.hasOwn(swappedKeys, key) ? swappedKeys[key] : undefined;
-
-    if (rule === undefined) {
-      swapped[key] = swapToolResultUUIDs(value, lookup);
-    } else if (rule.isList && Array.isArray(value)) {
-      swapped[key] = value.flatMap((element) => {
-        if (!isUUIDShaped(element)) {
-          return [element];
-        }
-
-        const shortID = lookup[rule.kind].get(element.toLowerCase());
-
-        return shortID === undefined ? [] : [shortID];
-      });
-    } else if (!rule.isList && isUUIDShaped(value)) {
-      const shortID = lookup[rule.kind].get(value.toLowerCase());
-
-      if (shortID !== undefined) {
-        swapped[key] = shortID;
+      if (rule === undefined) {
+        return [[key, swapToolResultUUIDs(value, lookup)]];
       }
-    } else {
-      swapped[key] = value;
-    }
+
+      if (rule.isList && Array.isArray(value)) {
+        return [[key, value.flatMap((element) => swapListElement(element, rule.kind, lookup))]];
+      }
+
+      if (isUUIDShaped(value)) {
+        const shortID = lookup[rule.kind].get(value.toLowerCase());
+
+        return shortID === undefined ? [] : [[key, shortID]];
+      }
+
+      return [[key, swapToolResultUUIDs(value, lookup)]];
+    }),
+  );
+}
+
+function swapListElement(element: unknown, kind: ShortIDKind, lookup: ShortIDLookup): unknown[] {
+  if (!isUUIDShaped(element)) {
+    return [swapToolResultUUIDs(element, lookup)];
   }
 
-  return swapped;
+  const shortID = lookup[kind].get(element.toLowerCase());
+
+  return shortID === undefined ? [] : [shortID];
 }

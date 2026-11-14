@@ -25,11 +25,17 @@ export function collectToolResultUUIDs(result: unknown, found: ToolResultUUIDs):
     if (swapped === undefined) {
       collectToolResultUUIDs(value, found);
     } else if (swapped.isList && Array.isArray(value)) {
-      for (const element of value.filter((candidate) => isUUIDShaped(candidate))) {
-        found[swapped.kind].add(element.toLowerCase());
+      for (const element of value) {
+        if (isUUIDShaped(element)) {
+          found[swapped.kind].add(element.toLowerCase());
+        } else {
+          collectToolResultUUIDs(element, found);
+        }
       }
-    } else if (!swapped.isList && isUUIDShaped(value)) {
+    } else if (isUUIDShaped(value)) {
       found[swapped.kind].add(value.toLowerCase());
+    } else {
+      collectToolResultUUIDs(value, found);
     }
   }
 }

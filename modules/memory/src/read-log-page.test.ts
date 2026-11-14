@@ -851,3 +851,30 @@ test('it matches a word of a search to the short ID and not to the UUID', async 
   expect(byShortID.entries).toHaveLength(1);
   expect(byUUID.entries).toStrictEqual([]);
 });
+
+test('it prints the short ID of a moment and an item that sit in an object under an ID key', async () => {
+  const ctx = await setupTest();
+  const kept = await ctx.keepMoment('The ladder loan');
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Lends a ladder on Sundays' });
+  const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
+
+  const itemShortID = shortIDs.get(item.itemID) ?? '';
+
+  const texts = await ctx.readToolEntries([
+    {
+      result: {
+        itemIDs: [{ momentID: kept.momentID, nested: { itemID: item.itemID } }],
+        momentID: { itemID: item.itemID },
+      },
+    },
+  ]);
+
+  expect(texts).toStrictEqual([
+    JSON.stringify({
+      result: {
+        itemIDs: [{ momentID: kept.shortID, nested: { itemID: itemShortID } }],
+        momentID: { itemID: itemShortID },
+      },
+    }),
+  ]);
+});
