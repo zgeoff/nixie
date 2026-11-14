@@ -678,6 +678,18 @@ test('it reads the count that writeMemoryKills copied into a test sandbox', asyn
   expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 2 });
 });
 
+test('it reads back the largest count that writeMemoryKills copies into a test sandbox', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  await writeMemoryKills(sandbox, Number.MAX_SAFE_INTEGER);
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({
+    kind: 'count',
+    kills: Number.MAX_SAFE_INTEGER,
+  });
+});
+
 test('it reads a count from a sandbox that a restarted adapter lists', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());

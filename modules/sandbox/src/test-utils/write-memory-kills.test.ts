@@ -21,6 +21,13 @@ test('#writeMemoryKills copies the count into the sandbox as text', async () => 
   expect(copies).toStrictEqual([{ path: memoryKillsPath, text: '7' }]);
 });
 
-test.each([[-1], [1.5], [Number.NaN]])('#writeMemoryKills refuses %d', (kills) => {
+test.each([
+  [-1],
+  [1.5],
+  [Number.NaN],
+  [1e21],
+  [Number.MAX_SAFE_INTEGER + 1],
+  [Number.POSITIVE_INFINITY],
+])('#writeMemoryKills refuses %d', (kills) => {
   expect(() => writeMemoryKills(buildMockSandbox(), kills)).toThrow();
 });

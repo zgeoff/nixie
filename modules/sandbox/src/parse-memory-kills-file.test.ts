@@ -9,7 +9,7 @@ test.each([
   expect(parseMemoryKillsFile(text)).toStrictEqual({ kind: 'count', kills });
 });
 
-test.each([[''], ['-1'], ['1.5'], ['3 kills'], ['abc']])(
+test.each([[''], ['-1'], ['1.5'], ['3 kills'], ['abc'], ['1e+21'], ['9007199254740993']])(
   '#parseMemoryKillsFile fails on %j',
   (text) => {
     expect(parseMemoryKillsFile(text)).toStrictEqual({ kind: 'failed' });
