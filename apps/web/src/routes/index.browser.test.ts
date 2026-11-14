@@ -334,7 +334,17 @@ test('it shows a card from its records when the model reply claims the action is
         "document.querySelector('[aria-label=\"Routine proposal\"]')?.innerText ?? ''",
       );
 
-      console.log('DEBUG-T poll', Date.now() - debugT0, JSON.stringify(card).slice(-80));
+      const debugReads: unknown = await ctx.view.evaluate(
+        "JSON.stringify(performance.getEntriesByType('resource').map((entry) => entry.name).filter((name) => name.includes('approvals')).map((name) => name.split('/').slice(-1).join('/')))",
+      );
+
+      console.log(
+        'DEBUG-T poll',
+        Date.now() - debugT0,
+        String(debugReads),
+        store.approvalRows.findFirst((query) => query.where({ proposalID: row.proposalID }))?.state,
+        JSON.stringify(card).slice(-30),
+      );
 
       expect(card).toInclude('Approved');
     },
