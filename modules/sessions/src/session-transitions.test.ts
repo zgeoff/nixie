@@ -19,11 +19,13 @@ test('it opens a new session in place of one whose persona changed, and never re
     marks: {
       isInvalidated: false,
       hasOpening: true,
+      isBriefUnmarked: false,
       openedPersonaHash: 'sha256:persona-a',
       isSummarized: false,
       lastContext: { size: 10_000, window: 100_000 },
     },
     personaHash: 'sha256:persona-b',
+    isTask: false,
     boundary: {
       harness: 'agent-sdk',
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',

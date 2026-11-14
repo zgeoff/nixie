@@ -6,13 +6,8 @@ import type { MessageTimeOptions } from './types';
 
 // A task's name comes from a model, so the notice names the task only by its ID: the system
 // message is text the model trusts as nixie's own.
-export function renderLimitNotice(
-  record: LogRecord,
-  times: MessageTimeOptions,
-  ownerName: string | null,
-): string {
+export function renderLimitNotice(record: LogRecord, times: MessageTimeOptions): string {
   const notice = taskLimitNoticeCodec.decode(record.payload);
-  const owner = ownerName ?? 'the owner';
 
   return renderSystemMessage({
     type: 'task-limit',
@@ -20,7 +15,6 @@ export function renderLimitNotice(
     body:
       `[#${record.sequence}] Task ${notice.taskID} paused at its limit: it used ` +
       `${String(notice.used.turns)} of its ${String(notice.limits.turns)} turns and ` +
-      `$${notice.used.dollars.toFixed(2)} of its $${notice.limits.dollars.toFixed(2)}. Only ` +
-      `${owner} can resume it, by raising its limit, so tell ${owner} when its work needs more.`,
+      `$${notice.used.dollars.toFixed(2)} of its $${notice.limits.dollars.toFixed(2)}.`,
   });
 }

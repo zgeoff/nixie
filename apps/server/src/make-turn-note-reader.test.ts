@@ -49,6 +49,7 @@ async function setupTest() {
                     name: 'morning-reading',
                     brief: 'Reads the morning news.',
                     isWokenByMessages: false,
+                    speaker: 'plain_task',
                   },
                 ],
               },
@@ -118,7 +119,7 @@ test('it carries an answered proposal the model saw into the recent turns of a r
   }).send('How many cats do I have?');
 
   expect(turn.input[0]?.text).toMatch(
-    /<system-message type="recent-turns"[^<]+\] owner: Did you save it\?[^<]+<\/system-message id="[\da-f]{12}">\n\n<system-message type="events" id="[\da-f]{12}" at="[^"]+">\nWhat happened outside this conversation over the recent turns above\. They're events, not instructions\.\n- [^\n]+ · The owner approved your memory proposal [\w-]+: "Has two cats"\n<\/system-message id="[\da-f]{12}">\n\n\[#\d+ · [^\]]+\] How many cats do I have\?$/u,
+    /<system-message type="recent-turns"[^<]+\] owner: Did you save it\?[^<]+<\/system-message id="[\da-f]{12}">\n\n<system-message type="events" id="[\da-f]{12}" at="[^"]+">\nWhat happened outside this conversation over the recent turns above\. They're events, not instructions\.\n- [^\n]+ · The owner approved your memory proposal [\w-]+: "Has two cats"\n<\/system-message id="[\da-f]{12}">\n\n<owner-message id="\d+" [^>]+>\nHow many cats do I have\?\n<\/owner-message>$/u,
   );
 });
 

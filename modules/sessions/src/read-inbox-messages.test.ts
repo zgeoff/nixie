@@ -39,13 +39,13 @@ test('it reads each record with the images its attachments hold', async () => {
   expect(messages).toStrictEqual([
     {
       uuid: expect.toBeString(),
-      text: expect.toEndWith('Two shelf layouts.'),
+      text: expect.toInclude('Two shelf layouts.'),
       images: [
         { marker: expect.toInclude('n="1"'), mediaType: 'image/png', data: 'iVBORw==' },
         { marker: expect.toInclude('n="2"'), mediaType: 'image/jpeg', data: '/9g=' },
       ],
     },
-    { uuid: expect.toBeString(), text: expect.toEndWith('No pictures this time.') },
+    { uuid: expect.toBeString(), text: expect.toInclude('No pictures this time.') },
   ]);
 });
 
@@ -78,7 +78,7 @@ test('it stops before the record whose images would pass the budget', async () =
   });
 
   expect(messages.map((message) => message.text)).toStrictEqual([
-    expect.toEndWith('The first plan.'),
+    expect.toInclude('The first plan.'),
   ]);
 });
 
@@ -111,7 +111,7 @@ test('it stops before the record whose images would pass the count, however few 
   });
 
   expect(messages.map((message) => message.text)).toStrictEqual([
-    expect.toEndWith('The first two plans.'),
+    expect.toInclude('The first two plans.'),
   ]);
 });
 
@@ -142,8 +142,8 @@ test('it reads a record with no images past a budget the images before it spent'
   });
 
   expect(messages.map((message) => message.text)).toStrictEqual([
-    expect.toEndWith('The first plan.'),
-    expect.toEndWith('What do you think?'),
+    expect.toInclude('The first plan.'),
+    expect.toInclude('What do you think?'),
   ]);
 });
 

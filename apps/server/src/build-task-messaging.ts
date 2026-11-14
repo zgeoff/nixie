@@ -6,6 +6,7 @@ interface MessagingConfig {
   readonly memory_writer: { readonly isEnabled: boolean };
   readonly memory_consolidation: { readonly isEnabled: boolean };
   readonly owner: { readonly name: string | null };
+  readonly agent: { readonly names: readonly string[] };
   readonly tasks: { readonly messaging: { readonly hopLimit: number } };
 }
 
@@ -17,6 +18,7 @@ export function buildTaskMessaging(config: MessagingConfig): TaskMessaging {
     name: 'Conversation',
     brief: `Talks with ${owner} and answers each message.`,
     isWokenByMessages: true,
+    speaker: 'conversation',
   };
 
   const writer: TaskProfile = {
@@ -24,6 +26,7 @@ export function buildTaskMessaging(config: MessagingConfig): TaskMessaging {
     name: 'Memory writer',
     brief: `Reads the conversation in batches and saves or proposes what ${owner} says as memory. Runs on its own schedule.`,
     isWokenByMessages: false,
+    speaker: 'plain_task',
   };
 
   const consolidator: TaskProfile = {
@@ -31,6 +34,7 @@ export function buildTaskMessaging(config: MessagingConfig): TaskMessaging {
     name: 'Memory consolidator',
     brief: `Tidies memory on its own schedule, and proposes merges, rewrites and retirements for ${owner} to review.`,
     isWokenByMessages: false,
+    speaker: 'plain_task',
   };
 
   return {
@@ -41,5 +45,6 @@ export function buildTaskMessaging(config: MessagingConfig): TaskMessaging {
     ],
     hopLimit: config.tasks.messaging.hopLimit,
     ownerName: config.owner.name,
+    agentName: config.agent.names[0] ?? null,
   };
 }

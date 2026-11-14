@@ -26,7 +26,7 @@ test('it runs a turn with the note before your message', async () => {
   const turn = await driver.send('Say a fruit.');
 
   expect(turn.input[0]?.text).toMatch(
-    /NOTE\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Say a fruit\.$/u,
+    /NOTE\n\n<owner-message id="\d+" [^>]+>\nSay a fruit\.\n<\/owner-message>$/u,
   );
 });
 

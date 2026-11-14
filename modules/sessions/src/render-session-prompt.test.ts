@@ -39,6 +39,7 @@ test("it renders the task prompt with the task's name and brief from the directo
             name: 'Tide tables',
             brief: 'Find the high tides for Saturday.',
             isWokenByMessages: true,
+            speaker: 'plain_task',
           },
         ],
       },
@@ -72,5 +73,5 @@ test('it names a task missing from the directory by its ID, with an empty brief'
     },
   );
 
-  expect(prompt).toStartWith('You are "k3vq8m2xpa", one of the tasks');
+  expect(prompt).toStartWith('You are "k3vq8m2xpa", a task working for the owner.');
 });

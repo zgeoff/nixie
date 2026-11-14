@@ -14,7 +14,6 @@ export type SystemMessageType =
   | 'timer'
   | 'outcome'
   | 'task-messages'
-  | 'task-start'
   | 'task-continue'
   | 'task-limit'
   | 'approval';

@@ -43,7 +43,7 @@ async function setupTest(setup: WriterSetup = {}) {
     ownerName: null,
     assistantName: null,
     defaultZone: 'UTC',
-    messaging: { directory: [], hopLimit: 20, ownerName: null },
+    messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
     onError: () => {},
   };
 
@@ -191,7 +191,7 @@ test('it shows a waiting task message to its next scheduled session and reads it
   const result = await ctx.runStep([message]);
 
   expect(runSession.mock.calls[0]?.[0].prompt).toMatch(
-    /\n\nMessages to you from other tasks, outside the batch:\n\n<task-message id="k3vq8m2xpa" from="conversation" [^>]+>\nThis message is from another task, not from the owner\.\nLeave the bike note out\.\n<\/task-message block="\w+">$/u,
+    /\n\nMessages to you from other tasks, outside the batch:\n\n<task-message id="k3vq8m2xpa" from="task: conversation" [^>]+>\nLeave the bike note out\.\n<\/task-message fence="\w+">$/u,
   );
 
   expect(result.acknowledged).toStrictEqual([900]);

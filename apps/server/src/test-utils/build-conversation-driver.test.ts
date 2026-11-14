@@ -27,7 +27,7 @@ test('it sends your message and returns the turn the guest received', async () =
     resume: null,
     systemPrompt: expect.toInclude('You are nixie.'),
     profile: { model: 'claude-test-1' },
-    input: [{ text: expect.toEndWith('How many sugars?') }],
+    input: [{ text: expect.toEndWith('How many sugars?\n</owner-message>') }],
   });
 });
 
@@ -125,7 +125,12 @@ test('it retries a failed step once its backoff passed, and returns the turn the
         resume: null,
         systemPrompt: expect.toInclude('You are nixie.'),
         limits: { modelCalls: null },
-        input: [{ uuid: expect.any(String), text: expect.toEndWith('How many sugars?') }],
+        input: [
+          {
+            uuid: expect.any(String),
+            text: expect.toEndWith('How many sugars?\n</owner-message>'),
+          },
+        ],
       },
     ],
     summaries: [],

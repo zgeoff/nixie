@@ -821,7 +821,7 @@ test('it sends each inbox record with its sequence as the message uuid and at th
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\n\[#2 · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u.test(
+        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\n<owner-message id="2" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nFirst\.\n<\/owner-message>$/u.test(
           text,
         ),
       ),
@@ -829,7 +829,9 @@ test('it sends each inbox record with its sequence as the message uuid and at th
     {
       uuid: '6e697869-0000-8000-8000-000000000003',
       text: expect.toSatisfy((text: string) =>
-        /^\[#3 · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Second\.$/u.test(text),
+        /^<owner-message id="3" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nSecond\.\n<\/owner-message>$/u.test(
+          text,
+        ),
       ),
     },
   ]);
@@ -842,11 +844,24 @@ test("it wakes the conversation for a system task's message and gives the turn t
 
   const messaging = {
     directory: [
-      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'memory-writer',
+        name: 'Memory writer',
+        brief: 'Saves.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   };
 
   await createConversationTask(ctx.context);
@@ -875,7 +890,7 @@ test("it wakes the conversation for a system task's message and gives the turn t
   await ctx.runNextStep(runner);
 
   expect(ctx.sandboxes.turns[0]?.input.at(-1)?.text).toMatch(
-    /<task-message id="\w+" from="memory-writer" name="Memory writer" kind="report" sent="[^"]+" age="under a minute" hop="1" reply-wakes="yes" block="(?<block>\w+)">\nThis message is from another task, not from Robin\.\nTwo new memories wait for your review\.\n<\/task-message block="\k<block>">$/u,
+    /<task-message id="\w+" from="task: Memory writer" kind="report" sent="[^"]+" fence="(?<fence>\w+)">\nTwo new memories wait for your review\.\n<\/task-message fence="\k<fence>">$/u,
   );
 });
 
@@ -884,11 +899,24 @@ test("it passes a held task message that lands during a turn into that turn, fra
 
   const messaging = {
     directory: [
-      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'memory-writer',
+        name: 'Memory writer',
+        brief: 'Saves.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 3,
     ownerName: 'Robin',
+    agentName: null,
   };
 
   await createConversationTask(ctx.context);
@@ -932,17 +960,8 @@ test("it passes a held task message that lands during a turn into that turn, fra
 
   expect(sent.payload).toMatchObject({ hop: 4, woke: false });
   expect(live.received).toHaveLength(1);
-
-  expect(live.received[0]?.text).toInclude(
-    'from="memory-writer" name="Memory writer" kind="question"',
-  );
-
-  expect(live.received[0]?.text).toInclude(' hop="4" reply-wakes="yes" ');
-
-  expect(live.received[0]?.text).toInclude(
-    '\nThis message is from another task, not from Robin.\nKeep the note about the bike?\n',
-  );
-
+  expect(live.received[0]?.text).toInclude('from="task: Memory writer" kind="question"');
+  expect(live.received[0]?.text).toInclude('\nKeep the note about the bike?\n');
   expect([task.state, task.readCursor]).toStrictEqual(['waiting', sent.sequence]);
 });
 
@@ -951,11 +970,24 @@ test('it gives the next turn a message sent with no wake, before the message tha
 
   const messaging = {
     directory: [
-      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'memory-writer',
+        name: 'Memory writer',
+        brief: 'Saves.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   };
 
   await createConversationTask(ctx.context);
@@ -987,47 +1019,7 @@ test('it gives the next turn a message sent with no wake, before the message tha
 
   expect(input).toHaveLength(2);
   expect(input[0]?.text).toInclude('kind="progress"');
-  expect(input[1]?.text).toEndWith('Anything new?');
-});
-
-test('it tells the conversation its reply will not wake a task once the reply would pass the hop limit', async () => {
-  const ctx = await setupTest();
-
-  const messaging = {
-    directory: [
-      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
-    ],
-    hopLimit: 1,
-    ownerName: 'Robin',
-  };
-
-  await createConversationTask(ctx.context);
-  await createSystemTask(ctx.context, 'memory-writer');
-  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
-
-  const runner = await ctx.startRunner({
-    models: buildMockModelsConfig(),
-    credential: 'not-a-real-key',
-    toolNames: ['task.message'],
-    messaging,
-  });
-
-  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
-
-  await writeTestTaskMessage(ctx.context, messaging, {
-    from: 'memory-writer',
-    to: 'conversation',
-    kind: 'question',
-    body: 'Keep the bike note?',
-    replyTo: null,
-    onBehalfOf: [],
-    wake: true,
-  });
-
-  await ctx.runNextStep(runner);
-
-  expect(ctx.sandboxes.turns[0]?.input.at(-1)?.text).toInclude('hop="1" reply-wakes="no"');
+  expect(input[1]?.text).toInclude('Anything new?');
 });
 
 test('it tells the conversation which messages arrived past the hop limit when the owner wakes it', async () => {
@@ -1035,11 +1027,24 @@ test('it tells the conversation which messages arrived past the hop limit when t
 
   const messaging = {
     directory: [
-      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'memory-writer',
+        name: 'Memory writer',
+        brief: 'Saves.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 2,
     ownerName: 'Robin',
+    agentName: null,
   };
 
   await createConversationTask(ctx.context);
@@ -1127,7 +1132,9 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
           text.includes('- Start: a rebuild, because the earlier session was lost.') &&
           text.includes('] owner: Hi.\n[') &&
           text.includes('] nixie: Hello.\n</system-message') &&
-          /\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
+          /\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi again\.\n<\/owner-message>$/u.test(
+            text,
+          ),
       ),
     },
   ]);
@@ -1163,7 +1170,9 @@ test('it gives a resumed session your next message after its send time, with no 
       {
         uuid: expect.toBeString(),
         text: expect.toSatisfy((text: string) =>
-          /^\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
+          /^<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi again\.\n<\/owner-message>$/u.test(
+            text,
+          ),
         ),
       },
     ],
@@ -1613,7 +1622,7 @@ test('it opens the first turn on a fresh session with the pinned memory and the 
       {
         uuid: '6e697869-0000-8000-8000-000000000002',
         text: expect.toSatisfy((text: string) =>
-          /^<system-message type="pinned-memory" id="(?<pinnedID>[\da-f]{12})" at="[^"]+">\nNothing is pinned in your memory\.\n<\/system-message id="\k<pinnedID>">\n\n<system-message type="status" id="(?<statusID>[\da-f]{12})" at="[^"]+">\n- Start: a new session\. Earlier history is in the event log\.\n- Session started: [^\n]+\n- Model: [^\n]+\n<\/system-message id="\k<statusID>">\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u.test(
+          /^<system-message type="pinned-memory" id="(?<pinnedID>[\da-f]{12})" at="[^"]+">\nNothing is pinned in your memory\.\n<\/system-message id="\k<pinnedID>">\n\n<system-message type="status" id="(?<statusID>[\da-f]{12})" at="[^"]+">\n- Start: a new session\. Earlier history is in the event log\.\n- Session started: [^\n]+\n- Model: [^\n]+\n<\/system-message id="\k<statusID>">\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi\.\n<\/owner-message>$/u.test(
             text,
           ),
         ),
@@ -1652,7 +1661,9 @@ test('it opens the first turn after a forget with a status that says so, and res
           text.startsWith('<system-message type="pinned-memory"') &&
           text.includes('- Start: a rebuild after a forget.') &&
           text.includes('<system-message type="recent-turns"') &&
-          /\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
+          /\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi again\.\n<\/owner-message>$/u.test(
+            text,
+          ),
       ),
     },
   ]);
@@ -1663,7 +1674,9 @@ test('it opens the first turn after a forget with a status that says so, and res
       {
         uuid: expect.toBeString(),
         text: expect.toSatisfy((text: string) =>
-          /^\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] And again\.$/u.test(text),
+          /^<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nAnd again\.\n<\/owner-message>$/u.test(
+            text,
+          ),
         ),
       },
     ],
@@ -2557,7 +2570,7 @@ test('it puts the memory note before the first message of the turn and leaves th
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\nMemory changed: you moved to Lisbon\.\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u.test(
+        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\nMemory changed: you moved to Lisbon\.\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nFirst\.\n<\/owner-message>$/u.test(
           text,
         ),
       ),
@@ -2565,7 +2578,9 @@ test('it puts the memory note before the first message of the turn and leaves th
     {
       uuid: '6e697869-0000-8000-8000-000000000003',
       text: expect.toSatisfy((text: string) =>
-        /^\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Second\.$/u.test(text),
+        /^<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nSecond\.\n<\/owner-message>$/u.test(
+          text,
+        ),
       ),
     },
   ]);
@@ -2621,7 +2636,7 @@ test('it records the sequence a turn with no memory changes covers and adds no m
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u.test(
+        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi\.\n<\/owner-message>$/u.test(
           text,
         ),
       ),
@@ -2636,11 +2651,24 @@ test('it ends a turn that a task report alone woke with no reply, and records th
 
   const messaging = {
     directory: [
-      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'memory-writer',
+        name: 'Memory writer',
+        brief: 'Saves.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   };
 
   await createConversationTask(ctx.context);
@@ -2744,11 +2772,24 @@ test.each([
 
   const messaging = {
     directory: [
-      { taskID: 'memory-writer', name: 'Memory writer', brief: 'Saves.', isWokenByMessages: true },
-      { taskID: 'conversation', name: 'Conversation', brief: 'Talks.', isWokenByMessages: true },
+      {
+        taskID: 'memory-writer',
+        name: 'Memory writer',
+        brief: 'Saves.',
+        isWokenByMessages: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation' as const,
+      },
     ],
     hopLimit: 20,
     ownerName: 'Robin',
+    agentName: null,
   };
 
   await createConversationTask(ctx.context);
@@ -2909,7 +2950,7 @@ test('it passes a message from you that lands after a silent end only to the nex
   await ctx.runNextStep(runner);
 
   expect(delivered).toStrictEqual([]);
-  expect(ctx.sandboxes.turns[1]?.input.at(-1)?.text).toEndWith('Are you there?');
+  expect(ctx.sandboxes.turns[1]?.input.at(-1)?.text).toInclude('Are you there?');
 });
 
 test('it records no noted sequence on the turn end of a runner with no memory note', async () => {

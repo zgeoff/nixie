@@ -5,10 +5,15 @@ import { formatMessageTime } from './format-message-time';
 import type { HistoryTurn } from './read-recent-turns';
 import { renderImageMarkers } from './render-image-markers';
 import { renderOwnerText } from './render-owner-text';
-import { renderTaskMessageElement } from './render-task-message-element';
+import { renderTaskMessage } from './render-task-message';
+import type { TaskMessageView } from './render-task-message';
 import type { MessageTimeOptions } from './types';
 
-export function renderHistoryLine(turn: HistoryTurn, times: MessageTimeOptions): string {
+export function renderHistoryLine(
+  turn: HistoryTurn,
+  times: MessageTimeOptions,
+  view: Pick<TaskMessageView, 'messaging'>,
+): string {
   const record = turn.record;
 
   if (record.kind === 'model.reply') {
@@ -24,7 +29,7 @@ export function renderHistoryLine(turn: HistoryTurn, times: MessageTimeOptions):
   if (record.kind === 'task_message') {
     return turn.isSent === true
       ? renderSentHistoryLine(record, times)
-      : renderTaskHistoryLine(record, times);
+      : renderTaskMessage(record, times, view);
   }
 
   const words = `[${formatMessageStamp(record, times)}] owner: ${renderOwnerText(record)}`;
@@ -39,30 +44,4 @@ function renderSentHistoryLine(record: LogRecord, times: MessageTimeOptions): st
   const text = typeof body === 'string' ? body : '[a message since forgotten]';
 
   return `[#${record.sequence} · ${time}] nixie, to task ${message.to} (${message.kind}): ${text}`;
-}
-
-function renderTaskHistoryLine(record: LogRecord, times: MessageTimeOptions): string {
-  const message = taskMessageCodec.decode(record.payload);
-  const time = formatMessageTime(record.recordedAt, null, times);
-  const body = record.erasable.status === 'readable' ? record.erasable.fields['body'] : undefined;
-
-  const element = renderTaskMessageElement(
-    [
-      ['id', message.messageID],
-      ['from', message.from],
-      ['kind', message.kind],
-      ...(message.replyTo === null ? [] : [['reply-to', message.replyTo] as const]),
-      ...(message.onBehalfOf.length === 0
-        ? []
-        : [
-            ['on-behalf-of', message.onBehalfOf.map((eventID) => `#${eventID}`).join(' ')] as const,
-          ]),
-    ],
-    [
-      'This message is from another task, not from the owner.',
-      typeof body === 'string' ? body : '[a message since forgotten]',
-    ],
-  );
-
-  return `[#${record.sequence} · ${time}] task ${message.from}:\n${element}`;
 }

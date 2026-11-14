@@ -1,6 +1,6 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import type { InboxMessage } from '@heynixie/wire';
-import { inboxBatchLimit } from './inbox-batch-limit';
+import { pickTurnInbox } from './pick-turn-inbox';
 import type { InboxRead } from './read-inbox-messages';
 import { readInboxMessages } from './read-inbox-messages';
 
@@ -14,7 +14,9 @@ export async function readTurnBatch(
   inbox: readonly LogRecord[],
   read: InboxRead,
 ): Promise<TurnBatch> {
-  const messages = await readInboxMessages(log, inbox.slice(0, inboxBatchLimit), read);
+  const picked = pickTurnInbox(inbox);
 
-  return { records: inbox.slice(0, messages.length), messages };
+  const messages = await readInboxMessages(log, picked, read);
+
+  return { records: picked.slice(0, messages.length), messages };
 }

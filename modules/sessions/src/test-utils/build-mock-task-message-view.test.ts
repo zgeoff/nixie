@@ -10,10 +10,12 @@ test('it builds the view of a step the owner woke, with the conversation in the 
           name: 'Conversation',
           brief: 'Talks with the owner.',
           isWokenByMessages: true,
+          speaker: 'conversation',
         },
       ],
       hopLimit: 20,
       ownerName: null,
+      agentName: null,
     },
     wake: { hop: 0, cause: { kind: 'owner' } },
   });

@@ -46,6 +46,6 @@ test('it frames each task message in the inbox, after the note on messages past 
   );
 
   expect(prompt).toMatch(
-    /^<system-message type="task-messages"[^>]+>\n1 message from Conversation arrived after the exchange reached its limit, so it did not wake you\. You woke for an outside event, so a reply from you will wake Conversation\.\n<\/system-message id="\w+">\n\n<task-message id="k3vq8m2xpa" [^>]+>\nThis message is from another task, not from the owner\.\nSkip the bike note\.\n<\/task-message block="\w+">$/u,
+    /^<system-message type="task-messages"[^>]+>\n1 message from Conversation arrived after the exchange reached its limit, so it did not wake you\. You woke for an outside event, so a reply from you will wake Conversation\.\n<\/system-message id="\w+">\n\n<task-message id="k3vq8m2xpa" [^>]+>\nSkip the bike note\.\n<\/task-message fence="\w+">$/u,
   );
 });

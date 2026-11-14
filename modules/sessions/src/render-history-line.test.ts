@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import { renderHistoryLine } from './render-history-line';
+import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
 
 test('it renders your message with its event ID and the time you sent it, in the zone the message carries', () => {
   const record = buildMockLogRecord({
@@ -18,6 +19,7 @@ test('it renders your message with its event ID and the time you sent it, in the
         defaultZone: 'Australia/Sydney',
         now: new Date('2026-10-13T05:00:00Z'),
       },
+      buildMockTaskMessageView(),
     ),
   ).toBe('[#48213 · Mon 12 Oct, 19:31, Tokyo] owner: Where is the spare key?');
 });
@@ -37,6 +39,7 @@ test('it renders your message with its event ID and the time you sent it, in the
         defaultZone: 'Australia/Sydney',
         now: new Date('2026-10-13T05:00:00Z'),
       },
+      buildMockTaskMessageView(),
     ),
   ).toBe('[#48213 · Mon 12 Oct, 21:31, Sydney] owner: Where is the spare key?');
 });
@@ -59,6 +62,7 @@ test('it renders your message with the label of the session you sent it from', (
         defaultZone: 'Australia/Sydney',
         now: new Date('2026-10-13T05:00:00Z'),
       },
+      buildMockTaskMessageView(),
     ),
   ).toBe('[#48213 · Mon 12 Oct, 21:31, Sydney · phone] owner: Where is the spare key?');
 });
@@ -79,6 +83,7 @@ test('it renders a marker line for each image of your message and none of its by
         defaultZone: 'Australia/Sydney',
         now: new Date('2026-10-13T05:00:00Z'),
       },
+      buildMockTaskMessageView(),
     ),
   ).toMatch(
     /^\[#48213 · Mon 12 Oct, 21:31, Sydney\] owner: Two menu sketches\.\n<dropped-image id="[0-9a-f]{12}" n="1"\/>\n<dropped-image id="[0-9a-f]{12}" n="2"\/>$/u,
@@ -101,6 +106,7 @@ test('it renders no marker for the images of a forgotten message', () => {
         defaultZone: 'Australia/Sydney',
         now: new Date('2026-10-13T05:00:00Z'),
       },
+      buildMockTaskMessageView(),
     ),
   ).toBe('[#48213 · Mon 12 Oct, 21:31, Sydney] owner: [a message you sent, since forgotten]');
 });
@@ -125,6 +131,7 @@ test('it renders a reply as nixie with its own event ID and its time in the zone
     renderHistoryLine(
       { record, answered },
       { defaultZone: 'Asia/Tokyo', now: new Date('2025-10-14T05:00:00Z') },
+      buildMockTaskMessageView(),
     ),
   ).toBe('[#48214 · Tue 14 Oct, 14:06, Sydney] nixie: Under the blue flowerpot.');
 });
@@ -141,6 +148,7 @@ test('it renders a reply as nixie with its time in the default zone when it answ
     renderHistoryLine(
       { record, answered: null },
       { defaultZone: 'Australia/Sydney', now: new Date('2025-10-14T05:00:00Z') },
+      buildMockTaskMessageView(),
     ),
   ).toBe('[#48213 · Tue 14 Oct, 14:06, Sydney] nixie: Under the blue flowerpot.');
 });
@@ -164,6 +172,7 @@ test('it renders a reply in the default zone when the message it answers carries
     renderHistoryLine(
       { record, answered },
       { defaultZone: 'Australia/Sydney', now: new Date('2025-10-14T05:00:00Z') },
+      buildMockTaskMessageView(),
     ),
   ).toBe('[#48214 · Tue 14 Oct, 14:06, Sydney] nixie: Under the blue flowerpot.');
 });
@@ -180,6 +189,7 @@ test('it renders a reply from a past year with its year', () => {
     renderHistoryLine(
       { record, answered: null },
       { defaultZone: 'Australia/Sydney', now: new Date('2026-10-14T05:00:00Z') },
+      buildMockTaskMessageView(),
     ),
   ).toBe('[#48213 · Tue 14 Oct 2025, 14:06, Sydney] nixie: Under the blue flowerpot.');
 });
@@ -199,6 +209,7 @@ test('it renders a note in place of a reply whose text was forgotten', () => {
         defaultZone: 'Australia/Sydney',
         now: new Date('2026-10-13T05:00:00Z'),
       },
+      buildMockTaskMessageView(),
     ),
   ).toBe('[#48213 · Mon 12 Oct, 21:32, Sydney] nixie: [a reply, since forgotten]');
 });
@@ -227,6 +238,7 @@ test('it renders a span you pasted in your message inside a pasted block', () =>
       defaultZone: 'Australia/Sydney',
       now: new Date('2026-10-13T05:00:00Z'),
     },
+    buildMockTaskMessageView(),
   );
 
   const blockID = /<pasted id="(?<blockID>\w+)">/u.exec(line)?.groups?.['blockID'];
@@ -236,7 +248,7 @@ test('it renders a span you pasted in your message inside a pasted block', () =>
   );
 });
 
-test("it renders a task's message framed as a task message, with its ID, its sender, its kind and the message it replies to", () => {
+test("it renders a task's message in the same envelope as the inbox, with its ID, its sender's label, its kind and the message it replies to", () => {
   const record = buildMockLogRecord({
     sequence: 48_300,
     kind: 'task_message',
@@ -259,23 +271,21 @@ test("it renders a task's message framed as a task message, with its ID, its sen
 
   const line = renderHistoryLine(
     { record, answered: null },
-    {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    },
+    { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    buildMockTaskMessageView(),
   );
 
-  const blockID = /block="(?<blockID>\w+)"/u.exec(line)?.groups?.['blockID'];
+  const fence = /fence="(?<fence>\w+)"/u.exec(line)?.groups?.['fence'];
 
   expect(line).toBe(
     [
-      '[#48300 · Mon 12 Oct, 21:31, Sydney] task planner:',
-      `<task-message id="k3vq8m2xpa" from="planner" kind="reply" reply-to="w7tn4c9rhz" on-behalf-of="#48212" block="${blockID}">`,
-      'This message is from another task, not from the owner.',
+      `<task-message id="k3vq8m2xpa" from="task: planner" kind="reply" reply-to="w7tn4c9rhz" sent="Mon 12 Oct, 21:31, Sydney" on-behalf-of="48212" fence="${fence}">`,
       'Thursday suits the dentist.',
-      `</task-message block="${blockID}">`,
+      `</task-message fence="${fence}">`,
     ].join('\n'),
   );
+
+  expect(line).not.toMatch(/name=|age=|hop=|reply-wakes|from another task/u);
 });
 
 test('it renders a message the task sent as its own words, with the task it went to and its kind', () => {
@@ -303,6 +313,7 @@ test('it renders a message the task sent as its own words, with the task it went
   const line = renderHistoryLine(
     { record, answered: null, isSent: true },
     { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    buildMockTaskMessageView(),
   );
 
   expect(line).toBe(
@@ -335,6 +346,7 @@ test("it renders a forgotten task message's body as forgotten", () => {
     renderHistoryLine(
       { record, answered: null },
       { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+      buildMockTaskMessageView(),
     ),
-  ).toInclude('\n[a message since forgotten]\n</task-message block="');
+  ).toInclude('\n[a message since forgotten]\n</task-message fence="');
 });

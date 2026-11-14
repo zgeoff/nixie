@@ -1,7 +1,7 @@
 import { countTextTokens } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
 import { readThreadNewestFirst } from '@heynixie/log';
-import type { TasksContext } from '@heynixie/tasks';
+import type { TaskMessaging, TasksContext } from '@heynixie/tasks';
 import { readSentTaskMessages } from '@heynixie/tasks';
 import { renderHistoryLine } from './render-history-line';
 import type { MessageTimeOptions } from './types';
@@ -16,6 +16,7 @@ export interface RecentTurnsQuery {
   readonly tokens: number;
 
   readonly times: MessageTimeOptions;
+  readonly messaging: TaskMessaging;
 }
 
 export interface HistoryTurn {
@@ -33,7 +34,7 @@ export async function readRecentTurns(
   const total = { tokens: 0 };
 
   for await (const turn of readTurnsNewestFirst(context, query)) {
-    total.tokens += countTextTokens(renderHistoryLine(turn, query.times));
+    total.tokens += countTextTokens(renderHistoryLine(turn, query.times, query));
 
     if (total.tokens > query.tokens) {
       break;

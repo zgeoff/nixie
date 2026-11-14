@@ -19,6 +19,10 @@ export interface SessionMarks {
 
   readonly hasOpening: boolean;
 
+  // whether the newest opening comes from a release that kept no brief mark, so its session never
+  // accounted for a brief
+  readonly isBriefUnmarked: boolean;
+
   readonly lastContext: ContextSize | null;
 
   readonly openedPersonaHash: string | null;
@@ -63,6 +67,7 @@ export async function readSessionMarks(
     invalidatedThrough,
 
     hasOpening: openedThrough > (cliCompacted.at(0)?.sequence ?? 0),
+    isBriefUnmarked: isBriefUnmarked(opened.at(0)),
     openedPersonaHash: findPersonaHash(opened.at(0)),
     sessionKey: findSessionKey(opened.at(0)),
     lastContext: toContext(ended),
@@ -86,6 +91,14 @@ type TurnEnd = ReturnType<typeof modelTurnEndedCodec.tryDecodePartial>;
 
 function getTurnThrough(turn: LogRecord, ended: TurnEnd): number {
   return ended?.invalidatedThrough ?? turn.sequence;
+}
+
+// Remove this with the rebuild it drives once every open session's newest opening has the key.
+function isBriefUnmarked(opened: LogRecord | undefined): boolean {
+  const payload =
+    opened === undefined ? null : modelSessionOpenedCodec.tryDecodePartial(opened.payload);
+
+  return payload !== null && payload.briefSequence === undefined;
 }
 
 function findPersonaHash(opened: LogRecord | undefined): string | null {

@@ -70,7 +70,13 @@ const defaultMemorySettings: ConversationMemorySettings = {
 };
 
 const defaultCompaction: CompactionSettings = { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 };
-const defaultMessaging: TaskMessaging = { directory: [], hopLimit: 20, ownerName: null };
+
+const defaultMessaging: TaskMessaging = {
+  directory: [],
+  hopLimit: 20,
+  ownerName: null,
+  agentName: null,
+};
 
 export async function startConversationRunner(
   options: ConversationRunnerOptions,

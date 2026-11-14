@@ -16,6 +16,7 @@ test('it reads no earlier core and no invalidation before the first turn', async
     isInvalidated: false,
     invalidatedThrough: 0,
     hasOpening: false,
+    isBriefUnmarked: false,
     openedPersonaHash: null,
     sessionKey: null,
     lastContext: null,
@@ -508,4 +509,49 @@ test('it reads no persona hash from an opening recorded before openings kept it'
   const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
 
   expect(marks.openedPersonaHash).toBeNull();
+});
+
+test.each([
+  ['an opening with no brief key', {}, true],
+  ['an opening that accounted for no brief', { briefSequence: null }, false],
+  ['an opening that accounted for a brief', { briefSequence: 16_031 }, false],
+])('it reads %s as brief unmarked: %p', async (_case, payload, isBriefUnmarked) => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 't4m2',
+      payload,
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 't4m2');
+
+  expect(marks.isBriefUnmarked).toBe(isBriefUnmarked);
+});
+
+test('it reads a task with no opening as brief marked', async () => {
+  const ctx = await setupTest();
+  const marks = await readSessionMarks(ctx.tasks.context, 't4m2');
+
+  expect(marks.isBriefUnmarked).toBeFalse();
+});
+
+test('it reads the marks of a session whose opening records the brief it accounted for', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'tide-1',
+      payload: { briefSequence: 2 },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'tide-1');
+
+  expect(marks.hasOpening).toBe(true);
 });

@@ -6,10 +6,18 @@ import type { SessionPosition } from './types';
 export interface SessionPositionInput {
   readonly marks: Pick<
     SessionMarks,
-    'isInvalidated' | 'hasOpening' | 'openedPersonaHash' | 'isSummarized' | 'lastContext'
+    | 'isInvalidated'
+    | 'hasOpening'
+    | 'isBriefUnmarked'
+    | 'openedPersonaHash'
+    | 'isSummarized'
+    | 'lastContext'
   >;
 
   readonly personaHash: string;
+
+  // whether the session belongs to a started task, which has a brief
+  readonly isTask: boolean;
 
   readonly boundary: SessionPoint | null;
 
@@ -26,6 +34,12 @@ export function pickSessionPosition(input: SessionPositionInput): SessionPositio
   }
 
   if (!input.marks.hasOpening) {
+    return { state: 'lost', boundary: input.boundary };
+  }
+
+  // A session that the release before opened never held the brief, so the next step rebuilds it
+  // once with the brief pinned. Remove this when every open session's opening has the mark.
+  if (input.isTask && input.marks.isBriefUnmarked) {
     return { state: 'lost', boundary: input.boundary };
   }
 

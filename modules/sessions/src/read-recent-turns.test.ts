@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { readRecentTurns } from './read-recent-turns';
+import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
@@ -53,6 +54,7 @@ test('it reads the messages and replies before the first inbox record, oldest fi
     beforeSequence: 5,
     tokens: 30_000,
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(records.map((turn) => turn.record.sequence)).toStrictEqual([1, 2]);
@@ -100,6 +102,7 @@ test("it reads a task's message as a turn, and pairs the reply after it with tha
     beforeSequence: 3,
     tokens: 30_000,
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(
@@ -180,6 +183,7 @@ test('it reads a message the task sent from the thread of the task it went to, i
     beforeSequence: 5,
     tokens: 30_000,
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(
@@ -226,6 +230,7 @@ test('it keeps a reply that committed after a message still pending, paired with
     beforeSequence: 2,
     tokens: 30_000,
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(
@@ -254,6 +259,7 @@ test('it keeps only the newest turns that fit the token budget', async () => {
     beforeSequence: 4,
     tokens: 60,
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(records.map((turn) => turn.record.sequence)).toStrictEqual([2, 3]);
@@ -277,6 +283,7 @@ test('it reads back past a page of records', async () => {
     beforeSequence: 251,
     tokens: 30_000,
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(records).toHaveLength(250);
@@ -319,6 +326,7 @@ test('it pairs each reply with the newest message before it, and a reply with no
     beforeSequence: 5,
     tokens: 30_000,
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(
@@ -355,6 +363,7 @@ test('it pairs the oldest reply it keeps with the message it answers, though the
     beforeSequence: 3,
     tokens: 30,
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(
@@ -398,6 +407,7 @@ test('it leaves out every record that a summary covers', async () => {
     afterSequence: 2,
     tokens: 30_000,
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(turns.map((turn) => turn.record.sequence)).toStrictEqual([3, 4]);
@@ -444,6 +454,7 @@ test('it leaves out every record from before the newest reset of the conversatio
     beforeSequence: 6,
     tokens: 30_000,
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(turns.map((turn) => turn.record.sequence)).toStrictEqual([4, 5]);

@@ -34,6 +34,7 @@ export function runConversationStep(
     const position = pickSessionPosition({
       marks,
       personaHash: definitions.personaHash,
+      isTask: run.frame.kind === 'task',
       boundary: parseSessionBoundary(input.sessionBoundary),
       threshold: run.compaction.threshold,
     });

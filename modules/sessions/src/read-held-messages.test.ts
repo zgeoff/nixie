@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { readHeldMessages } from './read-held-messages';
+import { buildMockTaskMessageView } from './test-utils/build-mock-task-message-view';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
@@ -57,6 +58,7 @@ test('it holds your messages in the thread from the mark the newest opening kept
     beforeSequence: Number.MAX_SAFE_INTEGER,
     rebuildTokens: 30_000,
     times: { defaultZone: 'UTC', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(held).toStrictEqual([kept.sequence, latest.sequence]);
@@ -93,6 +95,7 @@ test('it holds every message in the thread for an opening recorded before openin
     beforeSequence: Number.MAX_SAFE_INTEGER,
     rebuildTokens: 30_000,
     times: { defaultZone: 'UTC', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(held).toStrictEqual([first.sequence, second.sequence]);
@@ -131,6 +134,7 @@ test('it holds a new session the messages its recent turns reach back to within 
 
     rebuildTokens: 20,
     times: { defaultZone: 'UTC', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
   });
 
   expect(held).toStrictEqual([recent.sequence, pending.sequence]);

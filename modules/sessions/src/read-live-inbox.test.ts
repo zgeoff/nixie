@@ -55,7 +55,7 @@ test('it yields a message that lands during the turn and adds its images to the 
 
   invariant(next.done !== true, 'the feed ended before the message');
 
-  expect(next.value.text).toEndWith('The second shelf.');
+  expect(next.value.text).toInclude('The second shelf.');
 
   expect(images).toStrictEqual({
     spent: { bytes: 16, count: 2 },
@@ -182,7 +182,7 @@ test('it yields a message with no images past a spent session budget', async () 
 
   invariant(next.done !== true, 'the feed ended before the message');
 
-  expect(next.value.text).toEndWith('Which one fits?');
+  expect(next.value.text).toInclude('Which one fits?');
 });
 
 test('it ends the feed at a message that lands after the turn ended silently, and leaves it unsent', async () => {

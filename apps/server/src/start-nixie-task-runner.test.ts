@@ -227,14 +227,8 @@ test("it gives a stranger's tool run the task tools, the clock and the silent en
     'turn.end_silently',
   ]);
 
-  expect(taskTurn.frame.systemPrompt).toStartWith(
-    'You are "Tide tables", one of the tasks that nixie runs for',
-  );
-
-  expect(taskTurn.frame.systemPrompt).toInclude(
-    'Your brief:\n\nFind the high tides at Bramble Quay on Saturday.',
-  );
-
+  expect(taskTurn.frame.systemPrompt).toStartWith('You are "Tide tables", a task working for');
+  expect(input).toInclude('Find the high tides at Bramble Quay on Saturday.');
   expect(taskTurn.frame.systemPrompt).not.toInclude('You are nixie.');
   expect(input).not.toInclude('type="pinned-memory"');
   expect(input).not.toInclude('type="retrieved-memory"');
@@ -309,7 +303,7 @@ test('it runs a stranger that the conversation starts on another model, and its 
   expect(taskTurn.frame.systemPrompt).not.toInclude('You are nixie.');
 
   expect(report).toMatch(
-    /<task-message id="\w+" from="\w+" name="Second look" kind="report"[^>]*>\nThis message is from another task, not from the owner\.\nThe north bed gets no afternoon sun\./u,
+    /<task-message id="\w+" from="task: Second look" kind="report"[^>]*>\nThe north bed gets no afternoon sun\./u,
   );
 });
 

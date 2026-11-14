@@ -7,12 +7,14 @@ import { renderRetrievedSelfNotes } from './render-retrieved-self-notes';
 import type { MemoryLineOptions } from './types';
 
 export interface TurnPreamble {
-  readonly start: string | null;
   readonly continuation: string | null;
   readonly changes: string | null;
   readonly retrieval: TurnRetrieval;
   readonly thread: string;
   readonly at: string;
+
+  // the envelope of a brief that sits in no inbox record, which comes last
+  readonly brief: string | null;
 }
 
 export function renderTurnPreamble(
@@ -23,7 +25,6 @@ export function renderTurnPreamble(
   const at = preamble.at;
 
   return [
-    renderPreambleMessage('task-start', at, preamble.start),
     renderPreambleMessage('task-continue', at, preamble.continuation),
     renderPreambleMessage('pinned-memory-changes', at, preamble.changes),
     renderPreambleMessage('retrieved-memory', at, renderRetrievedItems(retrieval.items, lines)),
@@ -37,6 +38,7 @@ export function renderTurnPreamble(
       at,
       renderRetrievedMessages(retrieval.messages, { ...lines, thread: preamble.thread }),
     ),
+    preamble.brief,
   ].filter((block) => block !== null);
 }
 
