@@ -8,7 +8,7 @@ import { rulesChangeRejectedCodec } from '../change/rules-change-rejected-codec'
 import { ruleProposalSchema } from '../utils/rule-proposal-schema';
 import { rulesChangeWithdrawnCodec } from '../utils/rules-change-withdrawn-codec';
 
-const closedSchema = z.object({ proposalID: z.string() });
+const closedSchema = z.object({ proposalID: z.string(), identityID: z.string().optional() });
 
 const closingCodecs = [
   [rulesChangeApprovedCodec, 'approved'],
@@ -41,11 +41,14 @@ export function mapRuleProposalRecord(record: EnvelopeRecord): ProposalChange | 
 
   for (const [codec, state] of closingCodecs) {
     if (record.kind === codec.kind) {
+      const closed = closedSchema.parse(record.payload);
+
       return {
         type: 'close',
-        proposalID: closedSchema.parse(record.payload).proposalID,
+        proposalID: closed.proposalID,
         state,
         usedBy: null,
+        answeredBy: closed.identityID ?? null,
       };
     }
   }

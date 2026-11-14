@@ -3,5 +3,5 @@ import { z } from 'zod';
 
 export const rulesChangeApprovedCodec = defineRecordCodec(
   'rules.change_approved',
-  z.object({ proposalID: z.string() }),
+  z.object({ proposalID: z.string(), identityID: z.string().exactOptional() }),
 );

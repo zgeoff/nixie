@@ -5,6 +5,7 @@ export const skillsWriteApprovedCodec = defineRecordCodec(
   'skills.write_approved',
   z.object({
     proposalID: z.string(),
+    identityID: z.string().exactOptional(),
     approvalID: z.string().exactOptional(),
     skillHash: z.string().exactOptional(),
     isEdited: z.boolean().exactOptional(),

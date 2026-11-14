@@ -29,20 +29,26 @@ export function mapSkillProposalRecord(record: EnvelopeRecord): ProposalChange |
   }
 
   if (record.kind === skillsWriteApprovedCodec.kind) {
+    const approved = skillsWriteApprovedCodec.decode(record.payload);
+
     return {
       type: 'close',
-      proposalID: skillsWriteApprovedCodec.decode(record.payload).proposalID,
+      proposalID: approved.proposalID,
       state: 'approved',
       usedBy: null,
+      answeredBy: approved.identityID ?? null,
     };
   }
 
   if (record.kind === skillsWriteRejectedCodec.kind) {
+    const rejected = skillsWriteRejectedCodec.decode(record.payload);
+
     return {
       type: 'close',
-      proposalID: skillsWriteRejectedCodec.decode(record.payload).proposalID,
+      proposalID: rejected.proposalID,
       state: 'declined',
       usedBy: null,
+      answeredBy: rejected.identityID ?? null,
     };
   }
 
@@ -52,6 +58,7 @@ export function mapSkillProposalRecord(record: EnvelopeRecord): ProposalChange |
       proposalID: skillsWriteLapsedCodec.decode(record.payload).proposalID,
       state: 'lapsed',
       usedBy: null,
+      answeredBy: null,
     };
   }
 

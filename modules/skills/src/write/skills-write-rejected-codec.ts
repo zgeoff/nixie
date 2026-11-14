@@ -3,5 +3,5 @@ import { z } from 'zod';
 
 export const skillsWriteRejectedCodec = defineRecordCodec(
   'skills.write_rejected',
-  z.object({ proposalID: z.string() }),
+  z.object({ proposalID: z.string(), identityID: z.string().exactOptional() }),
 );

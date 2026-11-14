@@ -52,14 +52,21 @@ export async function writeSkillProposalDecision(
       definitions: context.definitions(),
       ...(state.thread === null ? {} : { thread: state.thread }),
       kind: 'skills.write_rejected',
-      payload: skillsWriteRejectedCodec.encode({ proposalID: answer.proposalID }),
+      payload: skillsWriteRejectedCodec.encode({
+        proposalID: answer.proposalID,
+        ...(answer.identityID === undefined ? {} : { identityID: answer.identityID }),
+      }),
       erasable: { reason: answer.reason },
     });
 
     return { proposalID: answer.proposalID, approvalID: null, skillHash: null };
   }
 
-  return writeApproval(tx, context, { state, files: answer.files ?? null });
+  return writeApproval(tx, context, {
+    state,
+    files: answer.files ?? null,
+    identityID: answer.identityID ?? null,
+  });
 }
 
 async function readOpenProposal(
@@ -85,6 +92,7 @@ async function readOpenProposal(
 interface Approval {
   readonly state: SkillProposalState;
   readonly files: readonly SkillFile[] | null;
+  readonly identityID: string | null;
 }
 
 async function writeApproval(
@@ -120,6 +128,7 @@ async function writeApproval(
       isEdited: checked.skillHash !== proposal.skillHash,
       approver: 'owner',
       channel: 'host',
+      ...(approval.identityID === null ? {} : { identityID: approval.identityID }),
     }),
   };
 

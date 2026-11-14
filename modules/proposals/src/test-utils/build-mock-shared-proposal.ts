@@ -21,6 +21,7 @@ export function buildMockSharedProposal(overrides: Partial<SharedProposal> = {})
     deadlineAt: null,
     state: 'pending',
     usedBy: null,
+    answeredBy: null,
     deferGeneration: 0,
     deferUntil: null,
     returnAt: null,

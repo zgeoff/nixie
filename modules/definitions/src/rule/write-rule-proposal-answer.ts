@@ -76,6 +76,7 @@ interface RuleProposalDecision {
   readonly proposal: RuleProposal;
   readonly outcome: 'approved' | 'rejected';
   readonly reason: string;
+  readonly identityID?: string;
 }
 
 // The records of an answer, once the shared checks passed.
@@ -94,6 +95,7 @@ export async function writeRuleProposalDecision(
         payload: rulesChangeRejectedCodec.encode({
           proposalID: proposal.proposalID,
           reason: decision.reason,
+          ...(decision.identityID === undefined ? {} : { identityID: decision.identityID }),
         }),
       },
     ]);
@@ -107,7 +109,10 @@ export async function writeRuleProposalDecision(
     {
       kind: rulesChangeApprovedCodec.kind,
       definitions: context.definitions(),
-      payload: rulesChangeApprovedCodec.encode({ proposalID: proposal.proposalID }),
+      payload: rulesChangeApprovedCodec.encode({
+        proposalID: proposal.proposalID,
+        ...(decision.identityID === undefined ? {} : { identityID: decision.identityID }),
+      }),
     },
   ]);
 }

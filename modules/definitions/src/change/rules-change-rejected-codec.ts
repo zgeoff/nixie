@@ -3,5 +3,9 @@ import { z } from 'zod';
 
 export const rulesChangeRejectedCodec = defineRecordCodec(
   'rules.change_rejected',
-  z.object({ proposalID: z.string(), reason: z.string() }),
+  z.object({
+    proposalID: z.string(),
+    reason: z.string(),
+    identityID: z.string().exactOptional(),
+  }),
 );

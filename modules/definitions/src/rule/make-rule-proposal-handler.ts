@@ -39,6 +39,7 @@ export function makeRuleProposalHandler(context: RuleContext): ProposalKindHandl
                     .join(' '),
                   fields: {},
                   ruleSentence: null,
+                  approveLabel: 'Apply the rule change',
                 },
           ];
         }),
@@ -91,6 +92,7 @@ async function writeAnswer(
     proposal: state.proposal,
     outcome: isDeclined ? 'rejected' : 'approved',
     reason: answer.note ?? '',
+    identityID: answer.identityID,
   });
 
   return {
