@@ -31,7 +31,7 @@ export interface LogPageQuery {
 
 export interface LogEntry {
   readonly sequence: number;
-  readonly role: 'owner' | 'assistant' | 'tool';
+  readonly role: 'owner' | 'assistant' | 'tool' | 'task';
   readonly recordedAt: number;
   readonly text: string | null;
   readonly isCut: boolean;
@@ -57,7 +57,7 @@ export async function readLogPage(
   return { entries: scan.entries, next: scan.after >= bounds.through ? null : scan.after };
 }
 
-const entryKinds: readonly RecordKind[] = [...conversationKinds, 'tool_result'];
+const entryKinds: readonly RecordKind[] = [...conversationKinds, 'tool_result', 'task_message'];
 
 interface SequenceBounds {
   readonly after: number;
@@ -187,6 +187,12 @@ function buildScannedEntry(record: LogRecord, lookup: ShortIDLookup): ScannedEnt
     };
   }
 
+  if (record.kind === 'task_message') {
+    const text = renderTaskMessageText(record, fields);
+
+    return { entry: { ...base, role: 'task', text }, plain: text };
+  }
+
   const text = formatEntryText(record, fields, lookup);
 
   return {
@@ -197,6 +203,23 @@ function buildScannedEntry(record: LogRecord, lookup: ShortIDLookup): ScannedEnt
 
 function renderOwnerEntry(record: LogRecord): string {
   return [renderOwnerText(record), ...renderImageMarkers(record)].join('\n');
+}
+
+const taskMessageFields = z.object({ body: z.string() });
+const taskMessageHeader = z.object({ kind: z.string(), messageID: z.string(), from: z.string() });
+
+// A message that was forgotten has no body, so its entry keeps its place and shows no text.
+function renderTaskMessageText(record: LogRecord, fields: JSONObject | null): string | null {
+  const body = taskMessageFields.safeParse(fields);
+  const header = taskMessageHeader.safeParse(record.payload);
+
+  if (!body.success || !header.success) {
+    return null;
+  }
+
+  const head = header.data;
+
+  return `${head.kind} ${head.messageID} from task ${head.from}\n${body.data.body}`;
 }
 
 function formatEntryText(

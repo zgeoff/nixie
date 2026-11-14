@@ -8,6 +8,7 @@ import { readClientAction } from '../utils/read-client-action';
 import { writeClientAction } from '../utils/write-client-action';
 import { probeUnfinishedQueuedAction } from './probe-unfinished-queued-action';
 import { readBriefStartCalls } from './read-brief-start-calls';
+import { readReportRecords } from './read-report-records';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
 
 interface RecordForgetInput {
@@ -30,7 +31,12 @@ export async function writeRecordForget(
 ): Promise<RecordForgetResult> {
   // The search reads the brief's text, which the cleanup destroys, so it runs before the forget
   // starts and the forget's start record keeps what it found.
-  const startCalls = await readBriefStartCalls(context, input.sequence);
+  const briefCalls = await readBriefStartCalls(context, input.sequence);
+  const reportRecords = await readReportRecords(context, input.sequence);
+
+  // The start record names each other record that the forget destroys with its target, whatever
+  // part of a task's work it holds.
+  const startCalls = [...briefCalls, ...reportRecords].toSorted((left, right) => left - right);
 
   const result = await withWriteTransaction(context.log.writer, async (tx) => {
     const [live, earlier] = await Promise.all([

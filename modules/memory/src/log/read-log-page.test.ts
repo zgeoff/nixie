@@ -299,6 +299,59 @@ test('it leaves out the records of other threads and the kinds a reader never se
   expect(page).toStrictEqual({ entries: [], next: null });
 });
 
+test('it shows a task message as an entry of the role task, with its kind, ID and sender, and no text once forgotten', async () => {
+  const ctx = await setupTest();
+
+  const [written] = await writeRecords(ctx.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'r8d2',
+        from: 't4m2',
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 6,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: 'task:t4m2',
+      },
+      erasable: { body: 'High tide is at 06:42.' },
+    },
+  ]);
+
+  invariant(written, 'the log wrote the task message');
+
+  const query = {
+    thread: 'conversation',
+    after: 0,
+    from: null,
+    to: null,
+    words: [],
+    limit: 20,
+    scanLimit: 500,
+  };
+
+  const shown = await readLogPage(ctx.log, query);
+
+  await removeTestRecordKey(ctx.log, written.sequence);
+
+  const forgotten = await readLogPage(ctx.log, query);
+
+  expect(shown.entries.map((entry) => ({ role: entry.role, text: entry.text }))).toStrictEqual([
+    { role: 'task', text: 'report r8d2 from task t4m2\nHigh tide is at 06:42.' },
+  ]);
+
+  expect(forgotten.entries.map((entry) => ({ role: entry.role, text: entry.text }))).toStrictEqual([
+    { role: 'task', text: null },
+  ]);
+});
+
 test('it shows a forgotten message with no text, and a search never returns it', async () => {
   const ctx = await setupTest();
 

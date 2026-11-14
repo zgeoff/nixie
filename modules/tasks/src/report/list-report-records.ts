@@ -1,5 +1,5 @@
 import type { LogRecord } from '@heynixie/log';
-import type { Transaction } from 'kysely';
+import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import { z } from 'zod';
 
@@ -7,7 +7,7 @@ import { z } from 'zod';
 // task run's end and the message that went to the report target. A report that nixie kept has no
 // message, and a record that belongs to no report gets none.
 export async function listReportRecords(
-  tx: Transaction<unknown>,
+  db: Kysely<unknown>,
   record: Pick<LogRecord, 'kind' | 'payload'>,
 ): Promise<readonly number[]> {
   const reportID = pickReportID(record);
@@ -21,7 +21,7 @@ export async function listReportRecords(
         and json_extract(payload, '$.reportID') = ${reportID})
       or (kind = 'task_message' and json_extract(payload, '$.kind') = 'report'
         and json_extract(payload, '$.messageID') = ${reportID})
-    order by sequence`.execute(tx);
+    order by sequence`.execute(db);
 
   return result.rows.map((row) => z.object({ sequence: z.number() }).parse(row).sequence);
 }

@@ -8,7 +8,7 @@ import {
 } from '@heynixie/log';
 import { readTestRecordAttachmentRows } from '@heynixie/log/test-utils';
 import { momentKeptCodec } from '@heynixie/memory';
-import { createConversationTask } from '@heynixie/tasks';
+import { createConversationTask, taskRunEndedCodec, taskRunOpenedCodec } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { writeOwnerMessage } from '../kept/write-owner-message';
 import { buildSeeder } from '../test-utils/build-seeder';
@@ -695,4 +695,116 @@ test('it forgets a task message that is no brief with no call of the starter', a
 
   expect(call?.record.erasable.status).toBe('readable');
   expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ recordSequence: report.sequence });
+});
+
+test('it forgets the request and the end of a report with its delivered message, and rebuilds the sessions of each', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const started = await seedTaskStartCall(ctx.context, {
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const written = await writeRecords(ctx.context.log, [
+    {
+      kind: 'task.run_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: started.taskID,
+      payload: taskRunOpenedCodec.encode({
+        taskID: started.taskID,
+        runID: 'run-a',
+        openedByStep: 'k:1',
+        origin: { kind: 'brief', sequence: null },
+        definitionID: null,
+        definitionHash: null,
+        triggerKey: null,
+        carriesRunID: null,
+        briefID: null,
+        report: { mode: 'wake', target: 'conversation' },
+        reportShape: null,
+        limits: { turns: 25, dollars: 2, calls: {} },
+      }),
+    },
+    {
+      kind: 'task.run_report_requested',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: started.taskID,
+      payload: { taskID: started.taskID, runID: 'run-a', stepKey: 'k:1', reportID: 'r7k2' },
+      erasable: { summary: 'The high tide is at 06:10.' },
+    },
+    {
+      kind: 'task.run_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: started.taskID,
+      payload: taskRunEndedCodec.encode({
+        taskID: started.taskID,
+        runID: 'run-a',
+        cause: 'reported',
+        detail: {},
+        endedBy: 'step:k:1',
+        definitionID: null,
+        triggerKey: null,
+        carriesRunID: null,
+        used: { turns: 1, dollars: 0, calls: {} },
+        reportID: 'r7k2',
+        reportTo: 'conversation',
+        delivery: 'wake',
+      }),
+      erasable: { body: 'The high tide is at 06:10.' },
+    },
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'r7k2',
+        from: started.taskID,
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: `task:${started.taskID}`,
+      },
+      erasable: { body: 'The high tide is at 06:10.' },
+    },
+  ]);
+
+  const [, requested, ended, delivered] = written;
+
+  invariant(requested && ended && delivered);
+
+  const cleanupSessions = mock<CleanupRecordSessions>(() => Promise.resolve());
+
+  await writeRecordForget(
+    { ...ctx.context, readSessionCleanup: () => cleanupSessions },
+    laptop.caller,
+    {
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      thread: 'conversation',
+      sequence: delivered.sequence,
+    },
+  );
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    sequences: [requested.sequence, ended.sequence, delivered.sequence],
+  });
+
+  expect(entries.map((entry) => entry.record.erasable)).toStrictEqual([
+    { status: 'shredded' },
+    { status: 'shredded' },
+    { status: 'shredded' },
+  ]);
+
+  expect(cleanupSessions.mock.calls).toStrictEqual([
+    [{ recordSequence: delivered.sequence }],
+    [{ recordSequence: requested.sequence }],
+    [{ recordSequence: ended.sequence }],
+  ]);
 });
