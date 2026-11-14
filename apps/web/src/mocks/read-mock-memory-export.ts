@@ -3,7 +3,7 @@ import type { StoredMemoryItem } from './to-mock-memory-item';
 
 export function readMockMemoryExport(exportedAt: Date): readonly string[] {
   const header = {
-    schemaVersion: 7,
+    schemaVersion: 8,
     exportedAt: exportedAt.toISOString(),
     snapshotHash: 'sha256:mock',
   };
@@ -112,6 +112,12 @@ function toExportMoment(moment: StoredMoment) {
       text: record.message?.text ?? null,
       isGap: textKinds.has(record.kind) && record.message === undefined,
       isRemoved: record.isRemoved === true,
+      images: toImagePointers(record.message?.images ?? []),
     })),
   };
+}
+
+function toImagePointers(images: readonly { readonly mediaType: string }[]) {
+  // oxlint-disable-next-line id-length -- the pointer's field is n, as the number input of log.read_image names it
+  return images.map((image, index) => ({ n: index + 1, mediaType: image.mediaType }));
 }

@@ -1,3 +1,4 @@
+import { ownerImageMediaTypes } from '@heynixie/tasks';
 import { z } from 'zod';
 import { memoryExportSchemaVersion } from './memory-export-schema-version';
 
@@ -48,6 +49,12 @@ const reflectionSchema = z.strictObject({
   text: z.string().nullable(),
 });
 
+const imagePointerSchema = z.strictObject({
+  // oxlint-disable-next-line id-length -- the pointer's field is n, as the number input of log.read_image names it
+  n: z.int().positive(),
+  mediaType: z.enum(ownerImageMediaTypes),
+});
+
 const spanRecordSchema = z.strictObject({
   sequence: z.int().positive(),
   kind: z.string(),
@@ -58,6 +65,7 @@ const spanRecordSchema = z.strictObject({
   text: z.string().nullable(),
   isGap: z.boolean(),
   isRemoved: z.boolean().exactOptional(),
+  images: z.array(imagePointerSchema).exactOptional(),
 });
 
 const readableMomentSchema = z.strictObject({
@@ -92,6 +100,9 @@ const sensitiveMarkVersion = 6;
 // A file before version 7 predates the removal mark, so its span records read as not removed.
 const removalMarkVersion = 7;
 
+// A file before version 8 predates the image pointers, so its span records read with no images.
+const imagesVersion = 8;
+
 export const memoryExportSchema = z
   .strictObject({
     header: z.strictObject({
@@ -99,6 +110,7 @@ export const memoryExportSchema = z
         firstReadableVersion,
         sensitiveMarkVersion,
         removalMarkVersion,
+        imagesVersion,
         memoryExportSchemaVersion,
       ]),
       exportedAt: z.iso.datetime(),
@@ -110,6 +122,7 @@ export const memoryExportSchema = z
   .superRefine((file, ctx) => {
     const isMarkRequired = file.header.schemaVersion >= sensitiveMarkVersion;
     const isRemovalRequired = file.header.schemaVersion >= removalMarkVersion;
+    const isImagesRequired = file.header.schemaVersion >= imagesVersion;
 
     for (const [index, item] of file.items.entries()) {
       if ('versions' in item && 'isSensitive' in item !== isMarkRequired) {
@@ -134,6 +147,14 @@ export const memoryExportSchema = z
             path: ['moments', momentIndex, 'records', index, 'isRemoved'],
           });
         }
+
+        if ('images' in record !== isImagesRequired) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `schema version ${file.header.schemaVersion} span records ${isImagesRequired ? 'need' : 'have no'} an image list`,
+            path: ['moments', momentIndex, 'records', index, 'images'],
+          });
+        }
       }
     }
   })
@@ -149,6 +170,7 @@ export const memoryExportSchema = z
             records: moment.records.map((record) => ({
               ...record,
               isRemoved: record.isRemoved ?? false,
+              images: record.images ?? [],
             })),
           }
         : moment,

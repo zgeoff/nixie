@@ -1,6 +1,8 @@
+/* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
 import { expect, test } from 'bun:test';
 import { removeSummaryKeys } from '@heynixie/compaction';
 import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { readMomentSpanPage } from './read-moment-span-page';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -134,6 +136,7 @@ test('it gives each record its payload and its policy decision beside its text',
       payload: { callID: 'call-1', runID: 'run-1', toolUseID: null, tool: 'web.fetch' },
       decision: 'deny',
       text: JSON.stringify({ input: { url: 'https://example.test/kettles' } }),
+      images: [],
       isGap: false,
       isRemoved: false,
       isCut: false,
@@ -302,4 +305,124 @@ test.each([
   expect(page.entries.map((entry) => entry.text)).toStrictEqual([
     JSON.stringify({ result: { momentID: shown, version: 1 } }),
   ]);
+});
+
+test('it lists a pointer to each image of an owner message, numbered from 1', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'two shelf photos',
+    spans: [],
+    images: ['image/png', 'image/webp'],
+  });
+
+  const entry = await ctx.readOnlyEntry(sequence, ctx.memory.deploymentKey);
+
+  expect(entry.images).toStrictEqual([
+    { n: 1, mediaType: 'image/png' },
+    { n: 2, mediaType: 'image/webp' },
+  ]);
+});
+
+test('it lists no image of an owner message that was forgotten', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'two shelf photos',
+    spans: [],
+    images: ['image/png', 'image/webp'],
+  });
+
+  await removeTestRecordKey(ctx.memory.log, sequence);
+
+  const entry = await ctx.readOnlyEntry(sequence, ctx.memory.deploymentKey);
+
+  expect([entry.isGap, entry.images]).toStrictEqual([true, []]);
+});
+
+test('it lists the images of a readable owner message whose attachments are unreadable', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'one shelf photo',
+    spans: [],
+    images: ['image/png'],
+  });
+
+  const entry = await ctx.readOnlyEntry(sequence, ctx.memory.deploymentKey);
+
+  expect(entry.images).toStrictEqual([{ n: 1, mediaType: 'image/png' }]);
+});
+
+test('it lists no image of a record that is not an owner message', async () => {
+  const ctx = await setupTest();
+
+  const [reply] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { images: [{ mediaType: 'image/png' }] },
+      erasable: { text: 'a drawing of the gate' },
+    },
+  ]);
+
+  invariant(reply);
+
+  const entry = await ctx.readOnlyEntry(reply.sequence, ctx.memory.deploymentKey);
+
+  expect(entry.images).toStrictEqual([]);
+});
+
+test('it lists no image of an owner message whose payload fails the codec', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'owner',
+      payload: { images: [{ mediaType: 'image/bmp' }] },
+      erasable: { text: 'a shelf photo', spans: [] },
+    },
+  ]);
+
+  invariant(message);
+
+  const entry = await ctx.readOnlyEntry(message.sequence, ctx.memory.deploymentKey);
+
+  expect(entry.images).toStrictEqual([]);
+});
+
+test('it keeps the whole image list of a record cut by a small cap and drops its payload', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'a long run of shelf photos '.repeat(200),
+    spans: [],
+    images: Array.from({ length: 80 }, () => 'image/png'),
+  });
+
+  const page = await readMomentSpanPage(ctx.memory.log, {
+    thread: 'conversation',
+    firstSequence: sequence,
+    lastSequence: sequence,
+    after: null,
+    tokenCap: 1100,
+    records: 'all',
+    reader: 'model',
+  });
+
+  const [entry] = page.entries;
+
+  invariant(entry);
+
+  expect([entry.isCut, entry.payload, entry.images.length]).toStrictEqual([true, null, 80]);
+  expect(Math.ceil(JSON.stringify(entry).length / 4)).toBeLessThanOrEqual(1100);
 });

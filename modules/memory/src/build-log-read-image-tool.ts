@@ -15,7 +15,8 @@ const logReadImageInput = {
       type: 'integer',
       minimum: 1,
       maximum: 100,
-      description: 'the n of the image in that message, from its <dropped-image> marker',
+      description:
+        'the n of the image in that message, from its <dropped-image> marker, a moment.read record or a memory.recall item',
     },
   },
   required: ['eventID', 'number'],
@@ -40,8 +41,8 @@ export function buildLogReadImageTool(log: Pick<Log, 'deploymentKey' | 'writer'>
     name: 'log.read_image',
     description:
       'Shows you one image the owner attached to a message in this conversation, by the eventID ' +
-      'of the message and the number of the image: the n of its <dropped-image> marker, or the ' +
-      'image a memory.recall item names. Open an image only when seeing it would change your ' +
+      'of the message and the number of the image: the n of its <dropped-image> marker (log.read), or ' +
+      'the n an image of a moment.read record or a memory.recall item names. Open an image only when seeing it would change your ' +
       'answer. It returns image unavailable once the owner forgot the message, when the ' +
       "message holds no such image of the owner's, or when this session already holds as many " +
       'images as it can take.',

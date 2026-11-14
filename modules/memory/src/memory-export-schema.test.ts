@@ -1,10 +1,11 @@
+/* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { memoryExportSchema } from './memory-export-schema';
 
-test('it accepts the version 7 export file the fixture holds, a removed record and another gap included', async () => {
+test('it accepts the version 8 export file the fixture holds, a message with 2 images, a removed record and another gap included', async () => {
   const fixture: unknown = await Bun.file(
-    join(import.meta.dir, 'fixtures', 'memory-export-v7.json'),
+    join(import.meta.dir, 'fixtures', 'memory-export-v8.json'),
   ).json();
 
   const parsed: unknown = memoryExportSchema.safeParse(fixture).data;
@@ -322,4 +323,92 @@ test('it rejects a readable item with no kind', () => {
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['items', 0] });
+});
+
+test.each([6, 7])(
+  'it reads the span records of a version %i file with no images',
+  async (version) => {
+    const fixture: unknown = await Bun.file(
+      join(import.meta.dir, 'fixtures', `memory-export-v${version}.json`),
+    ).json();
+
+    const file = memoryExportSchema.parse(fixture);
+
+    const lists = file.moments.flatMap((moment) =>
+      'records' in moment ? moment.records.map((record) => record.images) : [],
+    );
+
+    expect(lists).toSatisfyAll((images) => images.length === 0);
+  },
+);
+
+test('it reads the span records of a version 5 file with no images', () => {
+  const file = memoryExportSchema.parse({
+    header: {
+      schemaVersion: 5,
+      exportedAt: '2026-10-14T08:00:00.000Z',
+      snapshotHash: 'sha256:4be1c0',
+    },
+    items: [],
+    moments: [
+      {
+        momentID: '4d1e7a3b-90c2-4b5f-8a6d-1e9c3f7b2d40',
+        shortID: 'm4q8r2t6vb',
+        state: 'active',
+        thread: 'thread-1',
+        firstSequence: 3,
+        lastSequence: 3,
+        keptBy: 'owner',
+        keptThread: null,
+        keptModel: null,
+        keptAt: '2026-10-12T09:05:00.000Z',
+        editedAt: null,
+        title: 'Shelf photo',
+        note: null,
+        reflections: [],
+        links: [],
+        records: [
+          {
+            sequence: 3,
+            kind: 'owner_message',
+            recordedAt: '2026-10-12T09:00:00.000Z',
+            source: 'owner',
+            payload: null,
+            decision: null,
+            text: 'a shelf',
+            isGap: false,
+          },
+        ],
+      },
+    ],
+  });
+
+  expect(
+    file.moments.flatMap((moment) => ('records' in moment ? moment.records : [])),
+  ).toSatisfyAll((record) => record.images.length === 0);
+});
+
+test('it rejects a version 7 span record that carries an image list', async () => {
+  const text = await Bun.file(join(import.meta.dir, 'fixtures', 'memory-export-v7.json')).text();
+
+  const fixture: unknown = JSON.parse(
+    text.replace('"isGap": false', '"isGap": false, "images": []'),
+  );
+
+  const result = memoryExportSchema.safeParse(fixture);
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['moments', 0, 'records', 0, 'images'],
+  });
+});
+
+test('it rejects a version 8 span record with no image list', async () => {
+  const text = await Bun.file(join(import.meta.dir, 'fixtures', 'memory-export-v8.json')).text();
+
+  const fixture: unknown = JSON.parse(text.replace(/,\s*"images": \[\]/u, ''));
+  const result = memoryExportSchema.safeParse(fixture);
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['moments', 0, 'records', 1, 'images'],
+  });
 });

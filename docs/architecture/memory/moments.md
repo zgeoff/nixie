@@ -106,6 +106,18 @@ session cleanup deleted, shows as a gap that is not removed. The read looks for
 `record.forget_started` and never `record.forgotten`, because a crash between the key's deletion and
 `record.forgotten` leaves only the start record.
 
+A record that is an owner message with images lists a pointer to each, as `images` of `n` and
+`mediaType`, with `n` counted from 1 in its message. The span entry builds the list from the
+record's payload alone, so a message the owner forgot, a gap, any other kind of record and a payload
+the codec refuses list none, and a readable message lists its images even when its attachments are
+not readable. `moment.read` leaves the `images` key out of a record that has none, shows each image
+as a pointer in that field and never as a line in the text, and spends nothing of the session's
+image cap. The pointers count toward the page's token cap, and a record cut to fit the page keeps
+its whole list. The stored record holds no list. The model passes a record's event ID and an image's
+`n` to `log.read_image`, which reads the thread that `log.read` reads, so an image of a moment on
+another thread comes back unavailable, as does an image once the session cannot take more. The
+export carries the same pointers.
+
 Each page of `moment.read` stops at a token cap and returns a cursor, because a span over a long
 task holds thousands of records and a moment gathers reflections over time. The first page holds the
 note, the reflections follow under the same cursor, and then the records. A single reflection or

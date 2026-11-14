@@ -50,7 +50,12 @@ type ScriptedMessage = (
   | {
       readonly toolUse: {
         readonly name: string;
-        readonly input: Readonly<Record<string, unknown>>;
+
+        // a function builds the input from the request the reply answers, when a value in the
+        // input, such as an ID, is known only from an earlier tool result in that request
+        readonly input:
+          | Readonly<Record<string, unknown>>
+          | ((body: ScriptedModelBody) => Readonly<Record<string, unknown>>);
       };
     }
 ) &
@@ -171,12 +176,13 @@ function renderScriptedReply(
   // A reply with a `when` answers only a request whose body it accepts, so two callers that ask
   // at the same time each get their own reply.
   const index = script.findIndex((entry) => entry.when === undefined || entry.when(body));
-  const reply = index === -1 ? undefined : script.splice(index, 1)[0];
+  const scripted = index === -1 ? undefined : script.splice(index, 1)[0];
 
-  if (reply === undefined) {
+  if (scripted === undefined) {
     return { response: renderRefusal('the scripted model has no reply left') };
   }
 
+  const reply = resolveToolInput(scripted, body);
   const model = body.model ?? 'stub';
   const isStream = body.stream === true;
 
@@ -197,6 +203,14 @@ function renderRefusal(message: string): Response {
     { type: 'error', error: { type: 'invalid_request_error', message } },
     { status: 400 },
   );
+}
+
+function resolveToolInput(reply: ScriptedReply, body: ScriptedModelBody): ScriptedReply {
+  if (!('toolUse' in reply) || typeof reply.toolUse.input !== 'function') {
+    return reply;
+  }
+
+  return { ...reply, toolUse: { name: reply.toolUse.name, input: reply.toolUse.input(body) } };
 }
 
 function buildResponsesReply(reply: ScriptedReply, model: string, isStream: boolean): Response {
