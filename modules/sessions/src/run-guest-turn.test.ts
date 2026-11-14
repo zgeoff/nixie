@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { once } from 'node:events';
 import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import { waitForCondition } from '@heynixie/testing';
 import type { InboxMessage } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
@@ -287,6 +288,79 @@ test('it hands each model call to the caller before it reads the next frame, so 
   });
 
   expect(events).toStrictEqual(['call 900', 'interrupt', 'call 30']);
+});
+
+test('it waits for the caller to finish with a model call before it reads the next frame', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  const callUsage = {
+    cacheReadTokens: 0,
+    cacheWrite5mTokens: 0,
+    cacheWrite1hTokens: 0,
+    outputTokens: 0,
+  };
+
+  const interrupt = new AbortController();
+
+  const held = Promise.withResolvers<void>();
+  const guestAnswered = Promise.withResolvers<void>();
+  const seen: number[] = [];
+
+  ctx.stub.setGuestScript(async (_turn, guest) => {
+    invariant(guest.interrupt && guest.emit);
+
+    guest.emit([{ type: 'call', usage: { ...callUsage, uncachedInputTokens: 900 } }]);
+
+    await once(guest.interrupt, 'abort');
+
+    guestAnswered.resolve();
+
+    return [
+      { type: 'call', usage: { ...callUsage, uncachedInputTokens: 30 } },
+      { type: 'failed', reason: 'error', detail: 'stopped' },
+    ];
+  });
+
+  const turn = runGuestTurn({
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
+    }),
+    messages: [],
+    signal: new AbortController().signal,
+    interrupt: interrupt.signal,
+    onCall: (usage) => {
+      seen.push(usage.uncachedInputTokens);
+
+      if (seen.length === 1) {
+        interrupt.abort();
+
+        return held.promise;
+      }
+
+      return Promise.resolve();
+    },
+  });
+
+  await guestAnswered.promise;
+
+  const secondCallRead = waitForCondition(() => seen.length > 1, { timeoutMs: 200 });
+
+  await expect(secondCallRead).rejects.toThrow('condition not met');
+
+  const seenWhileHeld = [...seen];
+
+  held.resolve();
+
+  await turn;
+
+  expect({ seenWhileHeld, seenAtEnd: seen }).toStrictEqual({
+    seenWhileHeld: [900],
+    seenAtEnd: [900, 30],
+  });
 });
 
 test('it throws when the guest exits before it ends or fails its turn', async () => {

@@ -66,7 +66,8 @@ test('it never reaches the budget of a profile that sets no prices, and reads no
   expect({
     isReached: budget.signal.aborted,
     spentDollars: budget.getSpentDollars(),
-  }).toStrictEqual({ isReached: false, spentDollars: 0 });
+    readCount: readLateDollars.mock.calls.length,
+  }).toStrictEqual({ isReached: false, spentDollars: 0, readCount: 0 });
 });
 
 test('it lowers the dollars left by a late spend, so a call reaches the budget sooner', async () => {
