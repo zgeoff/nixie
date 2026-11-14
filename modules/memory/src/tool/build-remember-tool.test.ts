@@ -117,7 +117,11 @@ test('it reads the sources of a remember from the quote in text the owner typed'
     buildMockToolContext(),
   );
 
-  expect(facts).toStrictEqual({ status: 'ok', sources: ['owner'], args: input });
+  expect(facts).toStrictEqual({
+    status: 'ok',
+    sources: ['owner'],
+    args: { ...input, subject: 'owner' },
+  });
 });
 
 test.each<['typed' | 'pasted', string, Record<string, string>]>([
@@ -149,7 +153,11 @@ test.each<['typed' | 'pasted', string, Record<string, string>]>([
       buildMockToolContext(),
     );
 
-    expect(facts).toStrictEqual({ status: 'ok', sources: ['outside'], args: input });
+    expect(facts).toStrictEqual({
+      status: 'ok',
+      sources: ['outside'],
+      args: { subject: 'owner', ...input },
+    });
   },
 );
 
@@ -169,7 +177,11 @@ test('it adds the source task to a remember that a task run makes', async () => 
     buildMockToolContext({ thread: 'task-1' }),
   );
 
-  expect(facts).toStrictEqual({ status: 'ok', sources: ['owner', 'task'], args: input });
+  expect(facts).toStrictEqual({
+    status: 'ok',
+    sources: ['owner', 'task'],
+    args: { ...input, subject: 'owner' },
+  });
 });
 
 test('it reads the source outside for a write from a photo, whatever its quote', async () => {
@@ -193,5 +205,9 @@ test('it reads the source outside for a write from a photo, whatever its quote',
     buildMockToolContext(),
   );
 
-  expect(facts).toStrictEqual({ status: 'ok', sources: ['outside'], args: input });
+  expect(facts).toStrictEqual({
+    status: 'ok',
+    sources: ['outside'],
+    args: { ...input, subject: 'owner' },
+  });
 });

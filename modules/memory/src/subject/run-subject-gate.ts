@@ -93,7 +93,11 @@ function runGateOfSubject(
   if ((subjects.newSubject ?? subjects.subject) === 'self') {
     const covering = pickCoveringRule(verdict, 'self_note');
 
-    return covering === null
+    // a self-note from a photo needs a rule for the photo too
+    const isPhotoCovered =
+      request.image === undefined || pickCoveringRule(verdict, 'photo') !== null;
+
+    return covering === null || !isPhotoCovered
       ? runSelfNoteGate(parts.context, { text: request.text, thread: request.caller.thread })
       : runRuleGate(parts.context, content, { id: covering.id, revision: covering.revision });
   }

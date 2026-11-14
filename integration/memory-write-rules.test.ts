@@ -301,6 +301,27 @@ test('it denies a write that a deny rule on memory_write matches, and leaves a p
   expect(pending).toMatchObject([{ operation: 'pin', reason: 'pinned' }]);
 });
 
+test('it denies a write with the subject left out under a deny rule on the owner subject, as it does an explicit owner', async () => {
+  const ctx = await setupTest({
+    rules: [
+      {
+        id: 'deny-owner-subject',
+        outcome: 'deny',
+        effects: ['memory_write'],
+        checks: [{ arg: 'subject', op: 'eq', value: 'owner' }],
+      },
+    ],
+  });
+
+  const omitted = await ctx.call('memory.remember', { text: 'Takes coffee black' });
+  const explicit = await ctx.call('memory.remember', { text: 'Takes tea', subject: 'owner' });
+  const items = await readTestMemoryItems(ctx.memory.writer);
+
+  expect(omitted.isError).toBeTrue();
+  expect(explicit.isError).toBeTrue();
+  expect(items).toStrictEqual([]);
+});
+
 test('it runs every check of the gate when the decision read a snapshot declaration that says note, though the starter rules allow note', async () => {
   const ctx = await setupTest({
     snapshotDeclaration: {

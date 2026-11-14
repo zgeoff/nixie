@@ -1199,6 +1199,57 @@ test('it counts a self-note as covered when one of several allow rules checks th
   expect(row.checks).toBe(JSON.stringify({ rule: { id: 'rule-b', revision: 5 }, tokens: 'pass' }));
 });
 
+test('it leaves a self-note from a photo a proposal when no allow rule checks the image, though one checks the subject', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'I liked how the bike looked',
+    subject: 'self',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+    verdict: {
+      kind: 'rule-allow',
+      rules: [{ id: 'rule-a', revision: 1, checks: [{ arg: 'subject', op: 'eq', value: 'self' }] }],
+    },
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed' });
+});
+
+test('it applies a self-note from a photo when allow rules cover both the subject and the image', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'I liked how the bike looked',
+    subject: 'self',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+    verdict: {
+      kind: 'rule-allow',
+      rules: [
+        { id: 'rule-a', revision: 1, checks: [{ arg: 'subject', op: 'eq', value: 'self' }] },
+        { id: 'rule-b', revision: 2, checks: [{ arg: 'image.number', op: 'eq', value: 1 }] },
+      ],
+    },
+  });
+
+  expect(outcome).toMatchObject({ status: 'applied' });
+});
+
 test("it groups a turn's applied writes and proposals under one notice", async () => {
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },

@@ -112,7 +112,7 @@ export function buildRememberTool(
           sources: await memory.writes.readRememberSources(
             buildRememberRequest(input, undefined, context),
           ),
-          args: rawInput,
+          args: { ...rawInput, subject: input.subject ?? 'owner' },
         };
       }),
     run: (call, context) => {

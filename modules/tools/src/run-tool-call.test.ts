@@ -1395,6 +1395,53 @@ test('it runs a memory write that an ask rule decides with the ask verdict, and 
   });
 });
 
+test('it records the arguments the decision read, so a replay of the stored decision reads the same ones', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'memory.edit',
+        declaration: { effects: ['memory_write'] },
+        resolvePolicyFacts: (input) =>
+          Promise.resolve({
+            status: 'ok',
+            sources: ['owner'],
+            args: { ...input, subject: 'self' },
+          }),
+      }),
+    ],
+    rules: [
+      {
+        id: 'deny-self',
+        revision: 1,
+        rule: {
+          id: 'deny-self',
+          outcome: 'deny',
+          effects: ['memory_write'],
+          checks: [{ arg: 'subject', op: 'eq', value: 'self' }],
+        },
+      },
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'memory.edit', input: { query: 'tea' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.edit'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries[0]?.record).toMatchObject({
+    decision: { outcome: 'deny', rule: { id: 'deny-self', revision: 1 } },
+    erasable: { fields: { input: { query: 'tea', subject: 'self' } } },
+  });
+});
+
 test('it denies a memory write that a deny rule matches, and never runs the tool', async () => {
   const contexts: ToolContext[] = [];
 

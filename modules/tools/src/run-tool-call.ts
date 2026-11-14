@@ -86,10 +86,11 @@ export async function runToolCall(
     options.decisionDeadlineMs === undefined ? {} : { deadlineMs: options.decisionDeadlineMs };
 
   const decide = makeFaultSafeDecisionPoint(options.decide, deadline);
+  const policyArgs = facts?.args ?? call.input;
 
   const policyCall = buildToolPolicyCall(run, {
     tool: call.tool,
-    input: facts?.args ?? call.input,
+    input: policyArgs,
     destinations,
     definitions,
     at: options.log.writer.clock.now(),
@@ -100,7 +101,7 @@ export async function runToolCall(
 
   const stored = toStoredDecision(policy.decision, policyCall);
 
-  const written = await recorder.writeCall({ policy, stored, destinations });
+  const written = await recorder.writeCall({ policy, stored, destinations, args: policyArgs });
 
   const settled = await runDecidedCall({
     policy,
@@ -136,6 +137,9 @@ interface CallPolicy {
   readonly policy: PolicyDecision;
   readonly stored: Decision;
   readonly destinations: readonly CallDestination[];
+
+  // the arguments the decision read, which a replay of the stored decision reads again
+  readonly args: JSONObject;
 }
 
 interface WrittenCall {
@@ -162,7 +166,8 @@ function makeCallRecorder(
   return {
     writeCall: (decided) =>
       withWriteTransaction(options.log.writer, async (tx) => {
-        const input = recordInput?.(call.input) ?? call.input;
+        const recorded = decided?.args ?? call.input;
+        const input = recordInput?.(recorded) ?? recorded;
         const destinations = decided?.destinations ?? [];
 
         const [written] = await writeRecordsInTransaction(tx, options.log, [
