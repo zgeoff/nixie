@@ -1,10 +1,10 @@
 import { tmpdir } from 'node:os';
-import { createWebTransports } from './create-web-transports';
-import { makeAddressCheck } from './make-address-check';
-import { readPage } from './read-page';
-import { resolveHostAddresses } from './resolve-host-addresses';
-import { runFetcher } from './run-fetcher';
-import { withFetchDirectory } from './with-fetch-directory';
+import { createWebTransports } from './page/create-web-transports';
+import { makeAddressCheck } from './page/make-address-check';
+import { readPage } from './page/read-page';
+import { resolveHostAddresses } from './page/resolve-host-addresses';
+import { runFetcher } from './page/run-fetcher';
+import { withFetchDirectory } from './page/with-fetch-directory';
 
 await withFetchDirectory(tmpdir(), async (directory) => {
   process.chdir(directory);

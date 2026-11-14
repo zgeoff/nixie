@@ -1,5 +1,5 @@
 import { getLinkTargetLimit } from '@heynixie/wire';
-import type { ReadableText } from './build-readable-text';
+import type { ReadableText } from '../utils/build-readable-text';
 
 export interface TextWithinLimit extends ReadableText {
   readonly isCut: boolean;

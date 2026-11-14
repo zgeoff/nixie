@@ -1,10 +1,10 @@
 import type { IncomingMessage } from 'node:http';
 import type { AskHop, FetchLimits, FetchReply } from '@heynixie/wire';
+import { readResponsePage } from '../response/read-response-page';
 import { ConnectionNotOpenError } from './connection-not-open-error';
 import type { WebTransports } from './create-web-transports';
 import type { AddressCheck } from './make-address-check';
 import { planHop } from './plan-hop';
-import { readResponsePage } from './read-response-page';
 import type { DefaultPorts, PinnedRequestOptions } from './send-pinned-request';
 import { sendPinnedRequest } from './send-pinned-request';
 

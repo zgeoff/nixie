@@ -1,8 +1,8 @@
 import type { IncomingMessage } from 'node:http';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
 import { stripLinkMarks } from '@heynixie/wire';
-import { buildReadableText } from './build-readable-text';
-import { buildTextWithinLimit } from './build-text-within-limit';
+import { buildTextWithinLimit } from '../page/build-text-within-limit';
+import { buildReadableText } from '../utils/build-readable-text';
 import { decodeContent } from './decode-content';
 import { findBotChallenge } from './find-bot-challenge';
 import { findRetryAfterMs } from './find-retry-after-ms';

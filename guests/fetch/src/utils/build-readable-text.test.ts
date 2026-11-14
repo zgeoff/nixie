@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import { measureLinkPageBuild } from '../test-utils/measure-link-page-build';
 import { buildReadableText } from './build-readable-text';
-import { measureLinkPageBuild } from './test-utils/measure-link-page-build';
 
 test('it returns the title and the readable text of a page', () => {
   const html = `<!doctype html>

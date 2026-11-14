@@ -1,15 +1,15 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { gzipSync } from 'node:zlib';
 import { defaultFetchTextBytes } from '@heynixie/wire';
-import { buildReadableText } from './build-readable-text';
+import { buildStubResolver } from '../test-utils/build-stub-resolver';
+import { readClosedPort } from '../test-utils/read-closed-port';
+import { startResettingSite } from '../test-utils/start-resetting-site';
+import { startSilentListener } from '../test-utils/start-silent-listener';
+import { startTestSite } from '../test-utils/start-test-site';
+import { buildReadableText } from '../utils/build-readable-text';
 import { createWebTransports } from './create-web-transports';
 import { makeAddressCheck } from './make-address-check';
 import { readPage } from './read-page';
-import { buildStubResolver } from './test-utils/build-stub-resolver';
-import { readClosedPort } from './test-utils/read-closed-port';
-import { startResettingSite } from './test-utils/start-resetting-site';
-import { startSilentListener } from './test-utils/start-silent-listener';
-import { startTestSite } from './test-utils/start-test-site';
 
 test('it returns the readable text of an HTML page over a connection to the checked address', async () => {
   const site = await startTestSite({

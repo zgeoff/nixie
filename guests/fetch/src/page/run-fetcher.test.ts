@@ -7,11 +7,11 @@ import {
   encodeFrame,
   makeFrameDecoder,
 } from '@heynixie/wire';
+import { buildStubResolver } from '../test-utils/build-stub-resolver';
+import { startTestSite } from '../test-utils/start-test-site';
 import { createWebTransports } from './create-web-transports';
 import { readPage } from './read-page';
 import { runFetcher } from './run-fetcher';
-import { buildStubResolver } from './test-utils/build-stub-resolver';
-import { startTestSite } from './test-utils/start-test-site';
 
 test('it reads one request frame, however it arrives, and writes one reply frame', async () => {
   const site = await startTestSite({ names: ['site.test'], respond: () => new Response('hello') });

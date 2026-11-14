@@ -6,11 +6,11 @@ import { createServer } from 'node:http';
 import type { Socket } from 'node:net';
 import { connect } from 'node:net';
 // @boundaries-ignore a spike imports the code it measures
-import { makeAddressCheck } from '../../guests/fetch/src/make-address-check';
+import { makeAddressCheck } from '../../guests/fetch/src/page/make-address-check';
 // @boundaries-ignore a spike imports the code it measures
-import { planHop } from '../../guests/fetch/src/plan-hop';
+import { planHop } from '../../guests/fetch/src/page/plan-hop';
 // @boundaries-ignore a spike imports the code it measures
-import { resolveHostAddresses } from '../../guests/fetch/src/resolve-host-addresses';
+import { resolveHostAddresses } from '../../guests/fetch/src/page/resolve-host-addresses';
 
 export interface TunnelRecord {
   readonly host: string;
