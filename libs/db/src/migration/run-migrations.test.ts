@@ -564,25 +564,24 @@ test('it keeps the newest 3 copies of the database and removes the older ones', 
   ]);
 });
 
-test('it sorts copy versions as numbers, so a copy of 9 goes before one of 10', async () => {
+test('it sorts copy versions as numbers, so it prunes a copy of 8 before one of 10', async () => {
   const ctx = await setupTest();
 
-  await runMigrations(ctx.db, { schema: buildGrowingSchema(9), copyDir: ctx.directory });
+  await runMigrations(ctx.db, { schema: buildGrowingSchema(1), copyDir: ctx.directory });
 
-  for (const version of [9, 8]) {
+  for (const version of [8, 9, 10]) {
     await writeFile(join(ctx.directory, `nixie-schema-${version}.db`), 'older');
   }
 
-  await runMigrations(ctx.db, { schema: buildGrowingSchema(10), copyDir: ctx.directory });
-  await runMigrations(ctx.db, { schema: buildGrowingSchema(11), copyDir: ctx.directory });
+  await runMigrations(ctx.db, { schema: buildGrowingSchema(2), copyDir: ctx.directory });
 
   const names = await readdir(ctx.directory);
 
   const copies = names.filter((name) => name.startsWith('nixie-schema-'));
 
   expect(copies.toSorted()).toStrictEqual([
+    'nixie-schema-1.db',
     'nixie-schema-10.db',
-    'nixie-schema-8.db',
     'nixie-schema-9.db',
   ]);
 });

@@ -44,7 +44,7 @@ Run these on the host, in the deployment repo's checkout.
 2. Pull the new images while the old version keeps running:
 
    ```bash
-   docker compose pull
+   NIXIE_SECRETS_FILE=<sops_file> NIXIE_AGE_KEY_FILE=<age_key_file> docker compose pull
    ```
 
 3. When the deployment runs a backup service, replace it first:
@@ -65,22 +65,23 @@ Run these on the host, in the deployment repo's checkout.
    docker compose up -d --wait --no-deps web
    ```
 
-Set `NIXIE_SECRETS_FILE` and `NIXIE_AGE_KEY_FILE` on each `docker compose up`, as the
-[Compose guide](../guides/compose.md) does.
+Set `NIXIE_SECRETS_FILE` and `NIXIE_AGE_KEY_FILE` on each `docker compose` command, as the
+[Compose guide](../guides/compose.md) does. Steps 3 to 5 show only the command, so add the two
+assignments before it.
 
 ### Deploy on Kubernetes with the manifests
 
 1. Apply nixie, then wait for the StatefulSet:
 
    ```bash
-   kubectl apply -f nixie.yaml
+   kubectl -n <namespace> apply -f nixie.yaml
    kubectl -n <namespace> rollout status statefulset/nixie
    ```
 
 2. Apply web, then wait for its Deployment:
 
    ```bash
-   kubectl apply -f web.yaml
+   kubectl -n <namespace> apply -f web.yaml
    kubectl -n <namespace> rollout status deployment/nixie-web
    ```
 
