@@ -9,7 +9,7 @@ user might want to talk to, or that waits for something, is a task, and any othe
 [worker](../../glossary.md) behind one tool call. The tasks module owns tasks, their inbox and their
 timers.
 
-[Leases and recovery](./leases-and-recovery.md) covers how a runner claims a step and what a restart
+[Leases and recovery](./leases-and-recovery.md) covers how a claim takes a step and what a restart
 does, and the [tasks design](../../design/platform/core/tasks.md) covers the states and waits that
 are not built. The [glossary](../../glossary.md) defines a task run and a lease.
 
@@ -19,7 +19,7 @@ are not built. The [glossary](../../glossary.md) defines a task run and a lease.
 stateDiagram-v2
   [*] --> ready: a task is created with its brief message
   [*] --> waiting: the conversation is created
-  ready --> running: a runner claims a step
+  ready --> running: a claim takes a step
   running --> ready: the step commits with work left, or throws
   running --> waiting: the step commits with nothing unread, or the conversation's step throws an error that waits for the user
   running --> done: the step commits as done

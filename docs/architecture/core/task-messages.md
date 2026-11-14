@@ -37,6 +37,10 @@ The record's body is erasable. A task's brief is the first message of its thread
 the task's creation record. A reply to a brief answers the starter, and the reply is known without
 the starter naming it.
 
+A message of kind `report` is written by the end of a started task's task run, which
+[reports](./started-tasks.md#reports) describes, and the message tool treats a message of that kind
+as it treats any other: nothing checks it against the task's report mode.
+
 A message write checks the sender's lease in its own transaction, as a step commit does. The tool
 call carries the ID of the step that made it, and the write refuses the call when the task has
 started another step, its lease has moved to another

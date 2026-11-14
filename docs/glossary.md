@@ -9,7 +9,9 @@ one person a nixie deployment works for, and the architecture docs call that per
 | ---------------- | ------------------------------------------------------------------------------------------ |
 | conversation     | Your single chat with nixie. It is a task that never closes, and it routes work to tasks   |
 | task             | A durable piece of work with its own context, which you can open and talk to               |
-| task run         | One execution of a task, from its start or restart until it waits, stops or closes         |
+| task run         | One stretch of a started task's work, from the claim that opens it to its one report       |
+| report           | What ends a task run: a summary and the fields of the report shape, sent to the starter    |
+| report shape     | The fields a started task must pass with its report, which nixie checks and never trusts   |
 | worker           | A disposable unit of work behind one tool call, which runs in its own imp                  |
 | worker run       | One execution of a worker, from the tool call to its result                                |
 | job              | A definition: a schedule or trigger, instructions and a tool list                          |
