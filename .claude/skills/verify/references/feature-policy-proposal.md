@@ -35,7 +35,7 @@ signed in from an earlier journey since `up`.
 
    ```bash
    bun verify proposals --tool memory.export --waiting pending
-   bun verify db query "select json_extract(payload, '$.outcome') as outcome, json_extract(payload, '$.actionID') as action from records where kind = 'tool_result' and thread = 'conversation'"
+   bun verify db query "select json_extract(payload, '$.outcome') as outcome, json_extract(payload, '$.actionID') as action from records where kind = 'tool_result' and thread = 'conversation' order by sequence"
    ```
 
    Expect: `proposals` exits 0. The last row of `data.rows` has `outcome` `queued` and `action`
