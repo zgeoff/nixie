@@ -191,7 +191,7 @@ test.each([
   const ctx = await setupTest();
 
   const readPage = mock(() =>
-    Promise.resolve<FetchReply>({ kind: 'failed', reason: 'no fetch expected' }),
+    Promise.resolve<FetchReply>({ kind: 'failed', reason: 'no fetch expected', isGated: false }),
   );
 
   const tool = buildSkillVendorTool({ readPage, repo: ctx.definitions, readReviewer: () => null });
@@ -340,7 +340,7 @@ test('it refuses a review when no review model runs, before it fetches', async (
   const ctx = await setupTest();
 
   const readPage = mock(() =>
-    Promise.resolve<FetchReply>({ kind: 'failed', reason: 'no fetch expected' }),
+    Promise.resolve<FetchReply>({ kind: 'failed', reason: 'no fetch expected', isGated: false }),
   );
 
   const tool = buildSkillVendorTool({ readPage, repo: ctx.definitions, readReviewer: () => null });

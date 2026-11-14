@@ -128,6 +128,7 @@ test('it serves the text of a file at the commit as plain text', async () => {
   expect(reply).toMatchObject({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     status: 200,
     contentType: 'text/plain; charset=utf-8',
     text: 'High tide at noon.\n',

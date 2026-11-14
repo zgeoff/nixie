@@ -20,8 +20,9 @@ await withFetchDirectory(tmpdir(), async (directory) => {
         await Bun.write(Bun.stdout, bytes);
       },
     },
-    (request) =>
+    (request, askHop) =>
       readPage(request.url, {
+        ...(askHop === undefined ? {} : { askHop }),
         limits: request.limits,
         checkAddress: makeAddressCheck(request.deniedRanges),
         resolveHost: resolveHostAddresses,

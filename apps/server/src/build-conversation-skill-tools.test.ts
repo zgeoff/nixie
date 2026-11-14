@@ -57,7 +57,8 @@ test('it serves skill_vendor when the deployment exports to a definitions repo',
   const ctx = await setupTest();
 
   const tools = buildConversationSkillTools(ctx.skillContext, {
-    readPage: () => Promise.resolve({ kind: 'failed', reason: 'no fetch in this test' }),
+    readPage: () =>
+      Promise.resolve({ kind: 'failed', reason: 'no fetch in this test', isGated: false }),
     repo: ctx.definitionsRepo,
     readReviewer: () => null,
   });

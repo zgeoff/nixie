@@ -106,6 +106,7 @@ test("it reads a skill's page through its own fetch sandbox, which refuses a pri
       'localhost resolves to 127.0.0.1, which is not a public address',
       'localhost resolves to ::1, which is not a public address',
     ]),
+    isGated: false,
   });
 });
 

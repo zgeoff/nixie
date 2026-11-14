@@ -14,7 +14,18 @@ export function decodeFetchRequest(bytes: Uint8Array): FetchRequest {
     throw new TypeError('a fetch request needs deniedRanges, a list of strings');
   }
 
-  return { url: request['url'], limits: decodeLimits(limits), deniedRanges };
+  const decoded = decodeLimits(limits);
+
+  if (!('hopGate' in request)) {
+    return { url: request['url'], limits: decoded, deniedRanges, hops: 'none' };
+  }
+
+  return {
+    url: request['url'],
+    limits: { ...decoded, redirects: decodeHopGateRedirects(request['hopGate']) },
+    deniedRanges,
+    hops: 'ask',
+  };
 }
 
 function isStringList(value: unknown): value is readonly string[] {
@@ -45,4 +56,17 @@ function decodeLimits(value: unknown): FetchLimits {
     textBytes: Number(limits.get('textBytes')),
     imageBytes: Number(limits.get('imageBytes')),
   };
+}
+
+function decodeHopGateRedirects(value: unknown): number {
+  const redirects: unknown =
+    typeof value === 'object' && value !== null
+      ? Object.fromEntries(Object.entries(value))['redirects']
+      : undefined;
+
+  if (typeof redirects !== 'number' || !Number.isSafeInteger(redirects) || redirects < 0) {
+    throw new TypeError('a fetch request needs hopGate.redirects, a whole number of 0 or more');
+  }
+
+  return redirects;
 }

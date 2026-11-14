@@ -28,6 +28,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
       makeStubFetcher((request) => ({
         kind: 'page',
         retryAfterMs: null,
+        isGated: false,
         url: request.url,
         status: 200,
         contentType: 'text/html',
@@ -89,6 +90,7 @@ test("it writes each link in the page's text as an ID the session numbers from 1
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://bakery.test/news',
     status: 200,
     contentType: 'text/html',
@@ -147,6 +149,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
     'https://bakery.test/news': {
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -158,6 +161,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
     'https://bakery.test/about': {
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://bakery.test/about',
       status: 200,
       contentType: 'text/html',
@@ -169,7 +173,8 @@ test('it gives a URL one ID across the pages of one session', async () => {
   };
 
   const tool = buildWebFetchTool(
-    (url) => Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page' }),
+    (url) =>
+      Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page', isGated: false }),
     {
       log: ctx.log,
       textBytes: 20_000,
@@ -229,6 +234,7 @@ test('it shows the host and path, with no query string, only for a link that lea
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://www.ferries.test/timetable',
     status: 200,
     contentType: 'text/html',
@@ -291,6 +297,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     'https://bakery.test/news': {
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -302,6 +309,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
     'https://bakery.test/bread': {
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://bakery.test/breads/sourdough',
       status: 200,
       contentType: 'text/html',
@@ -313,7 +321,9 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
   };
 
   const readPage = mock((url: string) =>
-    Promise.resolve(pages[url] ?? { kind: 'failed' as const, reason: 'no such page' }),
+    Promise.resolve(
+      pages[url] ?? { kind: 'failed' as const, reason: 'no such page', isGated: false },
+    ),
   );
 
   const tool = buildWebFetchTool(readPage, {
@@ -396,6 +406,7 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url,
       status: 200,
       contentType: 'text/html',
@@ -449,6 +460,7 @@ test.each([
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -500,6 +512,7 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -558,6 +571,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -623,6 +637,7 @@ test('it refuses a page whose session a forget ended while it was fetched, and s
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://bakery.test/news',
     status: 200,
     contentType: 'text/html',
@@ -695,6 +710,7 @@ test("it numbers a new session's links from 1 again", async () => {
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://bakery.test/news',
     status: 200,
     contentType: 'text/html',
@@ -715,6 +731,7 @@ test("it numbers a new session's links from 1 again", async () => {
   const otherReply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://bakery.test/about',
     status: 200,
     contentType: 'text/html',
@@ -789,6 +806,7 @@ test('it keys the links of a call under the run token by the run', async () => {
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://bakery.test/news',
       status: 200,
       contentType: 'text/html',
@@ -925,6 +943,7 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://almanac.test/harbours',
     status: 200,
     contentType: 'text/html',
@@ -986,6 +1005,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
       makeStubFetcher((request) => ({
         kind: 'page',
         retryAfterMs: null,
+        isGated: false,
         url: request.url,
         status: 403,
         contentType: 'text/html',
@@ -1051,6 +1071,7 @@ test('it returns a page result that the registry checks against the output schem
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://site.test/',
     status: 200,
     contentType: 'text/html',
@@ -1121,6 +1142,7 @@ test('it returns a binary page with no text', async () => {
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://example.com/a.png',
     status: 200,
     contentType: 'image/png',
@@ -1178,7 +1200,7 @@ test.each([
   const ctx = await setupTest();
 
   const fetchSandbox = startFetchSandbox({
-    adapter: buildStubSandboxAdapter(makeStubFetcher(() => ({ kind, reason }))),
+    adapter: buildStubSandboxAdapter(makeStubFetcher(() => ({ kind, reason, isGated: false }))),
     image: 'nixie-fetch',
     argv: ['bun', '/app/fetch.js'],
     limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50, imageBytes: 100 },
@@ -1323,6 +1345,7 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
     makeStubFetcher((request) => ({
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: request.url,
       status: 200,
       contentType: 'text/plain',
@@ -1415,6 +1438,7 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
   const reply: FetchReply = {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://harbour.test/piers',
     status: 200,
     contentType: 'text/html',
@@ -1506,6 +1530,7 @@ test('it fetches the page again for a url with a part, and returns that part', a
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/plain',
@@ -1568,6 +1593,7 @@ test('it refuses a part past the end of a page, and names its count of parts', a
       Promise.resolve({
         kind: 'page',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://harbour.test/ferries',
         status: 200,
         contentType: 'text/plain',
@@ -1625,6 +1651,7 @@ test('it returns the part that holds the first match of find, with every match, 
     Promise.resolve({
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://harbour.test/ferries',
       status: 200,
       contentType: 'text/plain',
@@ -1700,6 +1727,7 @@ test('it says a find with no match found none, with the count of parts', async (
       Promise.resolve({
         kind: 'page',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://harbour.test/piers',
         status: 200,
         contentType: 'text/plain',
@@ -1799,6 +1827,7 @@ test('it refuses the page ID of an earlier session, and never returns another pa
       Promise.resolve({
         kind: 'page',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://harbour.test/ferries',
         status: 200,
         contentType: 'text/plain',
@@ -1866,6 +1895,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
     'https://harbour.test/a': {
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://harbour.test/a',
       status: 200,
       contentType: 'text/plain',
@@ -1877,6 +1907,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
     'https://harbour.test/b': {
       kind: 'page',
       retryAfterMs: null,
+      isGated: false,
       url: 'https://harbour.test/b',
       status: 200,
       contentType: 'text/plain',
@@ -1888,7 +1919,8 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
   };
 
   const tool = buildWebFetchTool(
-    (url) => Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page' }),
+    (url) =>
+      Promise.resolve(pages[url] ?? { kind: 'failed', reason: 'no such page', isGated: false }),
     { log: ctx.log, textBytes: 20_000, linkPathChars: 24, pageStoreBytes: 20, imageLongEdge: 1568 },
   );
 
@@ -2065,6 +2097,7 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
       Promise.resolve({
         kind: 'page',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://harbour.test/ferries',
         status: 200,
         contentType: 'text/plain',
@@ -2131,6 +2164,7 @@ test('it returns a PNG under the image limit as image content with its media typ
       makeStubFetcher((request) => ({
         kind: 'image',
         retryAfterMs: null,
+        isGated: false,
         url: request.url,
         status: 200,
         contentType: 'image/png',
@@ -2198,6 +2232,7 @@ test('it returns a result with no image, marked truncated, for an image the fetc
       Promise.resolve({
         kind: 'page',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://tide-charts.test/coast.png',
         status: 200,
         contentType: 'image/png',
@@ -2258,6 +2293,7 @@ test('it returns an image past the long edge downscaled to fit it', async () => 
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://tide-charts.test/estuary.png',
         status: 200,
         contentType: 'image/png',
@@ -2320,6 +2356,7 @@ test('it counts the image it returns against the session image budget', async ()
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://tide-charts.test/harbour.png',
         status: 200,
         contentType: 'image/png',
@@ -2366,6 +2403,7 @@ test('it returns an error, with no image, once the session holds as many images 
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://tide-charts.test/harbour.png',
         status: 200,
         contentType: 'image/png',
@@ -2415,6 +2453,7 @@ test('it returns an error, with no image, for an image fetched under the run tok
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://tide-charts.test/harbour.png',
         status: 200,
         contentType: 'image/png',
@@ -2462,6 +2501,7 @@ test('it returns an error for an image body that is no image the model can see',
       Promise.resolve({
         kind: 'image',
         retryAfterMs: null,
+        isGated: false,
         url: 'https://tide-charts.test/missing.png',
         status: 404,
         contentType: 'image/png',

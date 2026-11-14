@@ -21,7 +21,7 @@ export async function readResponsePage(
   try {
     if (kind === 'image') {
       return await readImage(
-        { url: url.href, status, contentType, retryAfterMs },
+        { url: url.href, status, contentType, retryAfterMs, isGated: false },
         response,
         limits,
       );
@@ -33,6 +33,7 @@ export async function readResponsePage(
       status,
       contentType,
       retryAfterMs,
+      isGated: false,
       ...(await readContent(url, response, kind, limits)),
     };
   } finally {
@@ -76,6 +77,7 @@ interface ResponseHead {
   readonly status: number;
   readonly contentType: string | null;
   readonly retryAfterMs: number | null;
+  readonly isGated: boolean;
 }
 
 // An image the site's bot protection sent, or one past the image limit, returns as a page with no

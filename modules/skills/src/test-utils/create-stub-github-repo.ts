@@ -109,6 +109,7 @@ function buildJSONPage(url: string, status: number, body: unknown): FetchReply {
   return {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url,
     status,
     contentType: 'application/json; charset=utf-8',
@@ -162,6 +163,7 @@ async function readRaw(git: StubGit, url: string, ref: string, path: string): Pr
   return {
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url,
     status: isFound ? 200 : 404,
     contentType: 'text/plain; charset=utf-8',

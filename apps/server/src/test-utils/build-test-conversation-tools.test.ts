@@ -15,6 +15,7 @@ test('it returns the reply given from every web fetch', async () => {
   const tools = buildTestConversationTools({
     kind: 'page',
     retryAfterMs: null,
+    isGated: false,
     url: 'https://bread-notes.test/rye',
     status: 200,
     contentType: 'text/plain',
@@ -66,7 +67,7 @@ test('it returns the reply given from every web fetch', async () => {
 test('it lets a web fetch through the decision point', async () => {
   const ctx = await setupTest();
 
-  const tools = buildTestConversationTools({ kind: 'failed', reason: 'no page' });
+  const tools = buildTestConversationTools({ kind: 'failed', reason: 'no page', isGated: false });
 
   const outcome = await tools
     .buildTools(ctx.server.context)
@@ -78,7 +79,7 @@ test('it lets a web fetch through the decision point', async () => {
 test('it refuses a memory tool call before the store is set', async () => {
   const ctx = await setupTest();
 
-  const tools = buildTestConversationTools({ kind: 'failed', reason: 'no page' });
+  const tools = buildTestConversationTools({ kind: 'failed', reason: 'no page', isGated: false });
 
   const remember = tools
     .buildTools(ctx.server.context)
@@ -110,7 +111,7 @@ test('it runs a memory tool call on the store set', async () => {
   const ctx = await setupTest();
   const store = await startTestMemoryStore(ctx.server.context, () => Promise.resolve());
 
-  const tools = buildTestConversationTools({ kind: 'failed', reason: 'no page' });
+  const tools = buildTestConversationTools({ kind: 'failed', reason: 'no page', isGated: false });
 
   const remember = tools
     .buildTools(ctx.server.context)
