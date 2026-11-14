@@ -163,9 +163,8 @@ function setupTest(config: WatchConfig = {}) {
     return { adapter, programs, events, reads, sandbox };
   };
 
-  const startGatedSandbox = (overrides: Partial<Sandbox> = {}) => {
+  const startGatedSandbox = (overrides: Partial<Sandbox> = {}, events: string[] = []) => {
     const gate = Promise.withResolvers<void>();
-    const events: string[] = [];
 
     const hand = buildHandSandbox(
       async () => {
@@ -418,17 +417,20 @@ test('it waits for the pending read before it sleeps the sandbox', async () => {
   const events: string[] = [];
   const ctx = setupTest();
 
-  const hand = ctx.startGatedSandbox({
-    suspension: {
-      kind: 'memory',
-      sleep: () => {
-        events.push('sleep');
+  const hand = ctx.startGatedSandbox(
+    {
+      suspension: {
+        kind: 'memory',
+        sleep: () => {
+          events.push('sleep');
 
-        return Promise.resolve();
+          return Promise.resolve();
+        },
+        wake: () => Promise.resolve(),
       },
-      wake: () => Promise.resolve(),
     },
-  });
+    events,
+  );
 
   const sandbox = await hand.adapter.create(buildMockSandboxSpec());
 
@@ -443,7 +445,7 @@ test('it waits for the pending read before it sleeps the sandbox', async () => {
 
   await sleeping;
 
-  expect([...hand.events, ...events]).toStrictEqual(['spawn', 'read', 'sleep']);
+  expect(events).toStrictEqual(['spawn', 'read', 'sleep']);
 });
 
 test('it waits for the pending read before the next spawn of the sandbox', async () => {
