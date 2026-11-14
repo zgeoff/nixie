@@ -43,12 +43,11 @@ A pattern uses `*` as its only wildcard and matches the whole text, so `*@exampl
 address at that domain and nothing longer. Strings compare in Unicode NFC on both sides. One kind of
 wildcard keeps the widening check decidable, which a regular expression would not.
 
-The parser still reads the old names, `jobs` for `definitions` and the context `job` for `task`, and
-a rule that holds both `jobs` and `definitions` is refused, because merging the lists could widen an
-allow rule. The JSON Schema marks the old names as deprecated. nixie stores each rule in the old
-names for one release, so the previous release still reads the stored rules and matches the same
-calls: a rule that names definitions stores `task` as `job`, and any other rule stores it as `job`
-and `task`. The export writes the new names.
+The parser of a rules file still reads the old names, `jobs` for `definitions` and the context `job`
+for `task`, and a rule that holds both `jobs` and `definitions` is refused, because merging the
+lists could widen an allow rule. The JSON Schema marks the old names as deprecated. nixie stores
+every rule in the new names, and reads a stored rule in no other form. The export writes the new
+names too.
 
 The context `task` covers both kinds of task, so it matches more than either old context did. A rule
 with `contexts: [job]` matches a task that nixie starts from chat as well as a definition's task

@@ -231,7 +231,9 @@ interface DefinitionVersion {
   from a deny or an ask rule. Each time it logs a warning that names the rule and the field.
 - The release before reads the context `task` as a task that nixie starts from chat, so a rule with
   that context matches no task run of a definition.
-- A rule that nixie stored needs no step, because nixie writes it in the old names.
+- The schema gate refuses a rollback across the release that stores every rule in the new names,
+  because its migration rewrites rows the release before cannot read. The release before refuses a
+  rules file that writes `definitions` outright, so the last seed it accepted stays in force.
 
 ## Decisions
 
@@ -256,9 +258,10 @@ interface DefinitionVersion {
   The owner chose this on 13 Nov. The field `jobs` becomes `definitions`, the context `job` becomes
   `task`, and `call.job` becomes `call.task`, so one rule covers a task that nixie starts and a
   definition's task run. The seed reads both names.
-- **A rule that nixie stores keeps the old names for one release.** An agent's call on 13 Nov: the
-  release before reads only `jobs` and `job` from `rule_versions`, so a stored rule in the new names
-  would stop it starting after a rollback. The release after this one writes the new names.
+- **One release rewrites every stored rule to the new names.** The owner chose this on 15 Nov, in
+  place of keeping the old names in storage for one release. A migration rewrites each stored rule,
+  its hash and every row that names the hash, and the old names leave the code in the same release.
+  A rollback across it is refused, and the rules files keep accepting both names.
 
 ## Builder decides
 
