@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { isRuleMatch } from './is-rule-match';
+import { parseRuleFiles } from './parse-rule-files';
 import type { Rule, RuleCall } from './types';
 
 test.each<[string, Rule, Partial<RuleCall>, boolean]>([
@@ -148,14 +150,14 @@ test.each<[string, Rule, Partial<RuleCall>, boolean]>([
   ],
   [
     'a rule for some contexts leaves a call in another',
-    { id: 'ask-sends-in-jobs', outcome: 'ask', effects: ['send'], contexts: ['job'] },
+    { id: 'ask-sends-in-tasks', outcome: 'ask', effects: ['send'], contexts: ['task'] },
     { context: 'conversation' },
     false,
   ],
   [
-    'a rule for some jobs catches a call in one of them',
-    { id: 'ask-triage-sends', outcome: 'ask', effects: ['send'], jobs: ['inbox-triage'] },
-    { context: 'job', job: 'inbox-triage' },
+    'a rule for the task context catches a task run of a definition',
+    { id: 'ask-sends-in-tasks', outcome: 'ask', effects: ['send'], contexts: ['task'] },
+    { context: 'task', task: 'inbox-triage' },
     true,
   ],
   [
@@ -221,7 +223,7 @@ test.each<[string, Rule, Partial<RuleCall>, boolean]>([
       tool: 'mail.send',
       effects: ['send'],
       context: 'conversation',
-      job: null,
+      task: null,
       args: {},
       destinations: [],
       sources: [],
@@ -253,7 +255,7 @@ test.each([
         tool: 'task.start/nixie',
         effects: ['note'],
         context: 'conversation',
-        job: null,
+        task: null,
         args: { name: 'Garden plan', brief: 'Plan the beds.', ...args },
         destinations: [],
         sources: [],
@@ -262,3 +264,63 @@ test.each([
     ).toBe(isMatch);
   },
 );
+
+test.each([
+  [
+    'definitions and task',
+    'ask-triage-sends:\n  outcome: ask\n  contexts: [task]\n  definitions: [inbox-triage]\n',
+  ],
+  [
+    'the old names jobs and job',
+    'ask-triage-sends:\n  outcome: ask\n  contexts: [job]\n  jobs: [inbox-triage]\n',
+  ],
+])('it matches only a task run of the listed definition for a rule with %s', (_label, text) => {
+  const parsed = parseRuleFiles(new Map([['rules/mail.yaml', text]]));
+  const rule = parsed.status === 'parsed' ? parsed.rules[0]?.rule : undefined;
+
+  invariant(rule !== undefined, 'the rule file parses');
+
+  const call: RuleCall = {
+    tool: 'mail.send',
+    effects: ['send'],
+    context: 'task',
+    task: null,
+    args: {},
+    destinations: [],
+    sources: [],
+    at: 0,
+  };
+
+  expect([
+    isRuleMatch(rule, { ...call, task: 'inbox-triage' }),
+    isRuleMatch(rule, { ...call, task: 'evening' }),
+    isRuleMatch(rule, call),
+  ]).toStrictEqual([true, false, false]);
+});
+
+test.each([
+  ['the old context job', 'ask-task-sends:\n  outcome: ask\n  contexts: [job]\n'],
+  ['the context task', 'ask-task-sends:\n  outcome: ask\n  contexts: [task]\n'],
+])('it matches a chat task and a definition task run for a rule with %s', (_label, text) => {
+  const parsed = parseRuleFiles(new Map([['rules/mail.yaml', text]]));
+  const rule = parsed.status === 'parsed' ? parsed.rules[0]?.rule : undefined;
+
+  invariant(rule !== undefined, 'the rule file parses');
+
+  const call: RuleCall = {
+    tool: 'mail.send',
+    effects: ['send'],
+    context: 'task',
+    task: null,
+    args: {},
+    destinations: [],
+    sources: [],
+    at: 0,
+  };
+
+  expect([
+    isRuleMatch(rule, call),
+    isRuleMatch(rule, { ...call, task: 'inbox-triage' }),
+    isRuleMatch(rule, { ...call, context: 'conversation' }),
+  ]).toStrictEqual([true, true, false]);
+});

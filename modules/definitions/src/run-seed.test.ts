@@ -8,6 +8,7 @@ import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildContentHash } from './build-content-hash';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
+import { buildSHA256 } from './build-sha256';
 import { checkSkillFiles } from './check-skill-files';
 import { createPathSource } from './create-path-source';
 import { DefinitionsParseError } from './definitions-parse-error';
@@ -20,6 +21,7 @@ import { ruleFiresProjection } from './rule-fires-projection';
 import { runSeed } from './run-seed';
 import { buildTestToolDeclaration } from './test-utils/build-test-tool-declaration';
 import { createStubGitSyncWorktree } from './test-utils/create-stub-git-sync-worktree';
+import { toCanonicalJSON } from './to-canonical-json';
 import { writeSkillExportState } from './write-skill-export-state';
 import { writeWrittenSkill } from './write-written-skill';
 import { writeWrittenSkillState } from './write-written-skill-state';
@@ -1426,6 +1428,99 @@ test('it applies a rule edit that narrows and records it in the seed record', as
   expect(result.record.payload['rules']).toStrictEqual({
     revisions: [{ ruleID: 'ask-mail', revision: 2, hash: expect.any(String) }],
     applied: [{ ruleID: 'ask-mail', change: 'narrowing' }],
+    held: [],
+    adopted: [],
+    conflicts: [],
+    proposalID: null,
+  });
+});
+
+test('it stores a rule in the old names and keeps the hash the release before gave it', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'triage.yaml'),
+    'ask-triage:\n  outcome: ask\n  contexts: [task]\n  definitions: [inbox-triage]\n',
+  );
+
+  await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const versions = await sql`
+    select rule_hash, rule from rule_versions`.execute(ctx.writer.db);
+
+  expect(versions.rows).toStrictEqual([
+    {
+      rule_hash: buildSHA256(
+        toCanonicalJSON({
+          id: 'ask-triage',
+          outcome: 'ask',
+          contexts: ['job'],
+          jobs: ['inbox-triage'],
+        }),
+      ),
+      rule: '{"id":"ask-triage","outcome":"ask","contexts":["job"],"jobs":["inbox-triage"]}',
+    },
+  ]);
+});
+
+test('it records no new revision for a rules file in the old names whose rows the release before wrote', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'triage.yaml'),
+    'ask-triage:\n  outcome: ask\n  contexts: [job]\n  jobs: [inbox-triage]\n',
+  );
+
+  const oldForm = {
+    id: 'ask-triage',
+    outcome: 'ask',
+    contexts: ['job'],
+    jobs: ['inbox-triage'],
+  };
+
+  const oldHash = buildSHA256(toCanonicalJSON(oldForm));
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await sql`insert into rule_versions (rule_hash, rule) values (${oldHash}, ${JSON.stringify(oldForm)})`.execute(
+      tx,
+    );
+
+    await sql`insert into rules (rule_id, revision, rule_hash, origin, created_at, updated_at)
+      values ('ask-triage', 1, ${oldHash}, 'definitions', 1, 1)`.execute(tx);
+
+    await sql`insert into rule_revisions (rule_id, revision, rule_hash, created_at)
+      values ('ask-triage', 1, ${oldHash}, 1)`.execute(tx);
+
+    await sql`insert into definition_rules (rule_id, rule_hash, path)
+      values ('ask-triage', ${oldHash}, 'rules/triage.yaml')`.execute(tx);
+
+    await sql`insert into seeded_rules (rule_id, rule_hash)
+      values ('ask-triage', ${oldHash})`.execute(tx);
+  });
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  invariant(result.status === 'seeded');
+
+  expect(result.record.payload['rules']).toStrictEqual({
+    revisions: [],
+    applied: [],
     held: [],
     adopted: [],
     conflicts: [],

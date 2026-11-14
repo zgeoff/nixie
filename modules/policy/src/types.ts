@@ -31,7 +31,9 @@ export interface RuleCall {
   readonly tool: string;
   readonly effects: readonly Effect[];
   readonly context: RuleContext;
-  readonly job: string | null;
+
+  // the definition ID of the task run, or null
+  readonly task: string | null;
   readonly args: Readonly<Record<string, unknown>>;
   readonly destinations: readonly string[];
   readonly sources: readonly RuleSource[];

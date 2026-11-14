@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { toRuleForm } from './to-rule-form';
+import { toRuleForm, toStoredRuleForm } from './to-rule-form';
+import type { Rule } from './types';
 
 test('it sorts each list and drops its duplicates', () => {
   const form = toRuleForm({
@@ -43,4 +44,32 @@ test('it turns free text into NFC and the expiry into UTC', () => {
     expires: '2026-11-07T23:00:00.000Z',
     note: 'Caf\u00E9 bookings.',
   });
+});
+
+test('it writes the stored form in the old names, with job for a rule that names definitions', () => {
+  const stored = toStoredRuleForm({
+    id: 'ask-triage',
+    outcome: 'ask',
+    contexts: ['task', 'coding'],
+    definitions: ['morning', 'evening'],
+  });
+
+  expect(stored).toStrictEqual({
+    id: 'ask-triage',
+    outcome: 'ask',
+    contexts: ['coding', 'job'],
+    jobs: ['evening', 'morning'],
+  });
+});
+
+test('it writes task beside job for a task context with no definitions', () => {
+  const stored = toStoredRuleForm({ id: 'ask-tasks', outcome: 'ask', contexts: ['task'] });
+
+  expect(stored).toStrictEqual({ id: 'ask-tasks', outcome: 'ask', contexts: ['job', 'task'] });
+});
+
+test('it leaves a rule with no definitions or task context as its form', () => {
+  const rule: Rule = { id: 'allow-reads', outcome: 'allow', contexts: ['conversation'] };
+
+  expect(toStoredRuleForm(rule)).toStrictEqual(toRuleForm(rule));
 });

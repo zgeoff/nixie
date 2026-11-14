@@ -184,7 +184,7 @@ function buildRuleCall(run: StageRun): RuleCall {
     tool: run.call.tool,
     effects: run.declaration.effects,
     context: run.call.context,
-    job: run.call.definitionID,
+    task: run.call.definitionID,
     args: run.call.args,
     destinations: run.call.destinations.map((destination) => destination.value),
     sources: run.call.sources,

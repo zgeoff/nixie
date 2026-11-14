@@ -70,15 +70,15 @@ test.each<[string, Rule, string]>([
     '**Ask** before starting a task in nixie when `memory` is `read` and `model` is `glm` or `sol`.',
   ],
   [
-    'ask-job-sends',
+    'ask-triage-sends',
     {
-      id: 'ask-job-sends',
+      id: 'ask-triage-sends',
       outcome: 'ask',
       effects: ['send'],
-      contexts: ['job', 'task'],
-      jobs: ['inbox-triage'],
+      contexts: ['task'],
+      definitions: ['inbox-triage', 'evening'],
     },
-    '**Ask** before a call when it has the effect `send`, it runs in a job or a task and it runs in the job `inbox-triage`.',
+    '**Ask** before a call when it has the effect `send`, it runs in a task and it runs as a task of the definition `inbox-triage` or `evening`.',
   ],
   [
     'allow-own-memories',

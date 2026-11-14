@@ -96,6 +96,10 @@ test.each([
   ],
   ['a mandate rule without an expiry', 'allow-x:\n  outcome: allow\n  mandate: invites-today\n'],
   ['a pattern with a space', 'allow-x:\n  outcome: allow\n  destinations: ["pat @example.com"]\n'],
+  [
+    'a rule that holds both jobs and definitions',
+    'allow-x:\n  outcome: allow\n  jobs: [a]\n  definitions: [b]\n',
+  ],
   ['a file that is a list', '- outcome: allow\n'],
 ])('it refuses %s with the file at fault', (_label, text) => {
   const parsed = parseRuleFiles(new Map([['rules/broken.yaml', text]]));
@@ -103,5 +107,39 @@ test.each([
   expect(parsed).toStrictEqual({
     status: 'refused',
     problems: expect.arrayContaining([{ path: 'rules/broken.yaml', reason: expect.any(String) }]),
+  });
+});
+
+test('it names both fields when a rule holds jobs and definitions', () => {
+  const parsed = parseRuleFiles(
+    new Map([['rules/x.yaml', 'allow-x:\n  outcome: allow\n  jobs: [a]\n  definitions: [b]\n']]),
+  );
+
+  expect(parsed).toStrictEqual({
+    status: 'refused',
+    problems: [
+      {
+        path: 'rules/x.yaml',
+        reason: 'allow-x.definitions: a rule holds definitions or its old name jobs, never both',
+      },
+    ],
+  });
+});
+
+test('it reads the old names jobs and job as definitions and task', () => {
+  const parsed = parseRuleFiles(
+    new Map([
+      ['rules/x.yaml', 'ask-x:\n  outcome: ask\n  contexts: [job, task]\n  jobs: [morning]\n'],
+    ]),
+  );
+
+  expect(parsed).toStrictEqual({
+    status: 'parsed',
+    rules: [
+      {
+        path: 'rules/x.yaml',
+        rule: { id: 'ask-x', outcome: 'ask', contexts: ['task'], definitions: ['morning'] },
+      },
+    ],
   });
 });

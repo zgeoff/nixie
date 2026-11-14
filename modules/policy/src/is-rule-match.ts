@@ -13,7 +13,8 @@ export function isRuleMatch(rule: Rule, call: RuleCall): boolean {
     (rule.expires === undefined || call.at < Date.parse(rule.expires)) &&
     (rule.tools === undefined || rule.tools.some((pattern) => isToolMatch(pattern, call.tool))) &&
     (rule.contexts === undefined || rule.contexts.includes(call.context)) &&
-    (rule.jobs === undefined || (call.job !== null && rule.jobs.includes(call.job))) &&
+    (rule.definitions === undefined ||
+      (call.task !== null && rule.definitions.includes(call.task))) &&
     (rule.effects === undefined || isEffectMatch(rule.effects, call.effects, isAllow)) &&
     (rule.sources === undefined || isListMatch(rule.sources, call.sources, isAllow)) &&
     (rule.destinations === undefined ||

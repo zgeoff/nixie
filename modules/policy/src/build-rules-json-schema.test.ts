@@ -37,6 +37,14 @@ test.each([
     'an ask on a list of models',
     'ask-off-claude:\n  outcome: ask\n  checks:\n    - { arg: model, op: in, value: [glm, sol] }\n',
   ],
+  [
+    'definitions and the context task',
+    'ask-triage:\n  outcome: ask\n  contexts: [task]\n  definitions: [inbox-triage]\n',
+  ],
+  [
+    'the old names jobs and job',
+    'ask-triage:\n  outcome: ask\n  contexts: [job]\n  jobs: [inbox-triage]\n',
+  ],
   ['a deny on effects', 'deny-device:\n  outcome: deny\n  effects: [device]\n'],
 ])('it accepts a rules file with %s', (_label, text) => {
   const ctx = setupTest();

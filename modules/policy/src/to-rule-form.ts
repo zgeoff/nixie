@@ -1,5 +1,6 @@
+import type { JSONObject } from '@heynixie/log';
 import { match } from 'ts-pattern';
-import type { Rule, RuleCheck, RuleForm } from './types';
+import type { Rule, RuleCheck, RuleContext, RuleForm } from './types';
 
 export function toRuleForm(rule: Rule): RuleForm {
   return {
@@ -8,7 +9,7 @@ export function toRuleForm(rule: Rule): RuleForm {
     ...(rule.tools === undefined ? {} : { tools: toSortedText(rule.tools) }),
     ...(rule.effects === undefined ? {} : { effects: toSortedSet(rule.effects) }),
     ...(rule.contexts === undefined ? {} : { contexts: toSortedSet(rule.contexts) }),
-    ...(rule.jobs === undefined ? {} : { jobs: toSortedText(rule.jobs) }),
+    ...(rule.definitions === undefined ? {} : { definitions: toSortedText(rule.definitions) }),
     ...(rule.checks === undefined ? {} : { checks: toSortedChecks(rule.checks) }),
     ...(rule.destinations === undefined ? {} : { destinations: toSortedText(rule.destinations) }),
     ...(rule.sources === undefined ? {} : { sources: toSortedSet(rule.sources) }),
@@ -17,6 +18,41 @@ export function toRuleForm(rule: Rule): RuleForm {
     ...(rule.cel === undefined ? {} : { cel: rule.cel.normalize('NFC') }),
     ...(rule.note === undefined ? {} : { note: rule.note.normalize('NFC') }),
   };
+}
+
+// The form nixie persists in this release: the names the release before reads. The release after
+// this one writes the new names, and this function is the one place to change.
+export function toStoredRuleForm(rule: Rule): JSONObject {
+  const form = toRuleForm(rule);
+
+  const kept = Object.entries(form).filter(
+    ([field]) => field !== 'definitions' && field !== 'contexts',
+  );
+
+  return {
+    ...Object.fromEntries(kept),
+    ...(form.contexts === undefined
+      ? {}
+      : {
+          contexts: toSortedSet(
+            form.contexts.flatMap((context) =>
+              toStoredContexts(context, form.definitions !== undefined),
+            ),
+          ),
+        }),
+    ...(form.definitions === undefined ? {} : { jobs: form.definitions }),
+  };
+}
+
+// The release before reads `task` as only a task nixie starts, so a definition's task run needs
+// `job` beside it to keep matching the same calls. A rule that names definitions matches no task
+// nixie starts, so `job` alone matches the same calls and keeps the form the release before wrote.
+function toStoredContexts(context: RuleContext, hasDefinitions: boolean): readonly string[] {
+  if (context !== 'task') {
+    return [context];
+  }
+
+  return hasDefinitions ? ['job'] : ['job', 'task'];
 }
 
 function toSortedText(items: readonly string[]): string[] {
