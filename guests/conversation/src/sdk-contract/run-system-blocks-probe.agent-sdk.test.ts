@@ -86,7 +86,9 @@ test('it reaches a loopback base URL through a proxy variable that exempts loopb
 
   const proxy = startRefusingProxy();
 
-  onTestFinished(() => proxy.stop());
+  onTestFinished(() => {
+    proxy.stop();
+  });
 
   ctx.model.addReplies({ text: 'one' });
 

@@ -14,9 +14,7 @@ export const captureRewrittenMigration: Migration = {
 
     if (columns.length === 0) {
       await sql`alter table turn_input_captures
-        add column is_rewritten integer not null default 0 check (is_rewritten in (0, 1))`.execute(
-        tx,
-      );
+        add column is_rewritten integer not null default 0`.execute(tx);
     }
   },
 };

@@ -35,14 +35,14 @@ test('it moves the schema to version 46, which the release before can still read
   expect(nixieSchema.oldestReader).toBe(35);
 });
 
-test('it refuses a capture mark outside 0 and 1', async () => {
+test('it marks a capture written without the column as not rewritten', async () => {
   const ctx = await setupTest();
 
-  const insert = sql`insert into turn_input_captures
-    (capture_id, task_id, step_run_id, role, profile, model, harness, is_rewritten, source, state, opened_at)
-    values ('c', 't', 's', 'task', 'p', 'm', 'agent-sdk', 2, 'gateway', 'open', 1)`.execute(ctx.db);
+  await sql`insert into turn_input_captures
+    (capture_id, task_id, step_run_id, role, profile, model, harness, source, state, opened_at)
+    values ('c', 't', 's', 'task', 'p', 'm', 'agent-sdk', 'gateway', 'open', 1)`.execute(ctx.db);
 
-  await Promise.allSettled([insert]);
+  const stored = await sql`select is_rewritten from turn_input_captures`.execute(ctx.db);
 
-  expect(insert).rejects.toMatchObject({ code: 'SQLITE_CONSTRAINT_CHECK' });
+  expect(stored.rows).toStrictEqual([{ is_rewritten: 0 }]);
 });
