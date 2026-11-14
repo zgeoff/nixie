@@ -787,6 +787,7 @@
         "@heynixie/policy": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@modelcontextprotocol/server": "catalog:",
+        "kysely": "catalog:",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",
       },

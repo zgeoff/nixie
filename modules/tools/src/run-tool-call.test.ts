@@ -1653,3 +1653,106 @@ test('it gates a memory write when the snapshot declaration keeps note beside me
 
   expect(contexts.map((context) => context.verdict)).toStrictEqual([{ kind: 'gate' }]);
 });
+
+test('it denies the call one past its task run cap and never runs the tool', async () => {
+  const ran = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'edited' } }));
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'moment.edit',
+        declaration: { effects: ['read'] },
+        run: ran,
+      }),
+    ],
+  });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['moment.edit'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 3 } },
+  };
+
+  const results = [];
+
+  for (const toolUseID of ['toolu_1', 'toolu_2', 'toolu_3', 'toolu_4']) {
+    const result = await runToolCall(
+      { tool: 'moment.edit', input: { query: 'a' }, toolUseID },
+      run,
+      ctx.options,
+    );
+
+    results.push(result);
+  }
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_result'] });
+
+  expect(results.at(-1)).toStrictEqual({
+    content: [{ type: 'text', text: 'This run has used its 3 calls to moment.edit.' }],
+    isError: true,
+  });
+
+  expect(ran).toHaveBeenCalledTimes(3);
+
+  expect(entries.map((entry) => entry.record.payload['outcome'])).toStrictEqual([
+    'result',
+    'result',
+    'result',
+    'denied',
+  ]);
+
+  expect(entries.at(-1)?.record.payload['taskRunID']).toBe('a3f9c2d4');
+});
+
+test('it counts no call that came back invalid toward the cap', async () => {
+  const ran = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'edited' } }));
+
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'moment.edit', run: ran })],
+  });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['moment.edit'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 1 } },
+  };
+
+  await runToolCall({ tool: 'moment.edit', input: {}, toolUseID: 'toolu_1' }, run, ctx.options);
+
+  const second = await runToolCall(
+    { tool: 'moment.edit', input: { query: 'a' }, toolUseID: 'toolu_2' },
+    run,
+    ctx.options,
+  );
+
+  expect(second).toStrictEqual({ content: [], structuredContent: { text: 'edited' } });
+});
+
+test('it counts a call only against the task run that made it', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'moment.edit' })] });
+
+  const base = {
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['moment.edit'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  };
+
+  await runToolCall(
+    { tool: 'moment.edit', input: { query: 'a' }, toolUseID: 'toolu_1' },
+    { ...base, taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 1 } } },
+    ctx.options,
+  );
+
+  const next = await runToolCall(
+    { tool: 'moment.edit', input: { query: 'a' }, toolUseID: 'toolu_2' },
+    { ...base, taskRun: { runID: 'b7e1d0c5', calls: { 'moment.edit': 1 } } },
+    ctx.options,
+  );
+
+  expect(next).toStrictEqual({ content: [], structuredContent: { text: 'a note' } });
+});

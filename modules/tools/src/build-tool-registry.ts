@@ -1,31 +1,8 @@
 import type { Effect } from '@heynixie/policy';
-import type { JsonSchemaValidator } from '@modelcontextprotocol/server';
-import { AjvJsonSchemaValidator } from '@modelcontextprotocol/server/validators/ajv';
-import type {
-  JsonSchema,
-  RegisteredTool,
-  SchemaCheck,
-  ToolDefinition,
-  ToolRegistry,
-} from './types';
+import { buildSchemaParser } from './schema/build-schema-parser';
+import type { RegisteredTool, ToolDefinition, ToolRegistry } from './types';
 
 export function buildToolRegistry(definitions: readonly ToolDefinition[]): ToolRegistry {
-  const compiler: { validator: AjvJsonSchemaValidator | null } = { validator: null };
-
-  // Ajv compiles each schema to code, and a start registers every tool while a turn calls few, so
-  // each schema compiles on its first parse.
-  const makeSchemaParser = (schema: JsonSchema) => {
-    const parser: { validate: JsonSchemaValidator<unknown> | null } = { validate: null };
-
-    return (value: unknown): SchemaCheck => {
-      compiler.validator ??= new AjvJsonSchemaValidator();
-
-      parser.validate ??= compiler.validator.getValidator(schema);
-
-      return toSchemaCheck(parser.validate(value));
-    };
-  };
-
   const tools = new Map<string, RegisteredTool>();
 
   for (const definition of definitions) {
@@ -37,16 +14,12 @@ export function buildToolRegistry(definitions: readonly ToolDefinition[]): ToolR
 
     tools.set(definition.name, {
       definition,
-      parseInput: makeSchemaParser(definition.input),
-      parseOutput: makeSchemaParser(definition.output),
+      parseInput: buildSchemaParser(definition.input),
+      parseOutput: buildSchemaParser(definition.output),
     });
   }
 
   return { findTool: (name) => tools.get(name) ?? null };
-}
-
-function toSchemaCheck(result: ReturnType<JsonSchemaValidator<unknown>>): SchemaCheck {
-  return result.valid ? { isValid: true } : { isValid: false, errors: result.errorMessage };
 }
 
 function assertDefinition(definition: ToolDefinition): void {

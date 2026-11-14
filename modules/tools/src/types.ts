@@ -134,6 +134,9 @@ export interface ToolRun {
 
   readonly stepRunID?: string;
 
+  // the open task run, with the caps of its limits; a started task passes none
+  readonly taskRun?: { readonly runID: string; readonly calls: Readonly<Record<string, number>> };
+
   // the conversation session the step's turn runs on; absent for a call under the run's own token
   readonly session?: ToolSession;
 }
@@ -199,7 +202,11 @@ export interface RunEndpoint {
   readonly runID: string;
   readonly token: string;
 
-  readonly startStep: (stepRunID: string, session?: ToolSession) => StepToken;
+  readonly startStep: (
+    stepRunID: string,
+    session?: ToolSession,
+    taskRun?: NonNullable<ToolRun['taskRun']>,
+  ) => StepToken;
 
   readonly socketPath: string;
   readonly target: ToolTarget;

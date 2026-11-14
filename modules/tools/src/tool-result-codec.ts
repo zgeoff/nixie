@@ -12,5 +12,6 @@ export const toolResultCodec = defineRecordCodec(
     outcome: z.enum(['result', 'invalid', 'denied', 'error', 'queued', 'failed', 'unknown']),
     actionID: z.string().nullable(),
     sources: sourcesSchema,
+    taskRunID: z.string().exactOptional(),
   }),
 );
