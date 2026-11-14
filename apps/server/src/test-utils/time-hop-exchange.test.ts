@@ -36,7 +36,9 @@ function setupTest() {
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
 
-  onTestFinished(() => fetchSandbox.stop());
+  onTestFinished(() => {
+    fetchSandbox.stop();
+  });
 
   return { lines, fetchSandbox };
 }
