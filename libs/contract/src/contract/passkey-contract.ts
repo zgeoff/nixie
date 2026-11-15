@@ -60,6 +60,7 @@ export const passkeyContract = {
         data: z.object({ reason: z.string() }),
       },
       TOO_MANY_PASSKEYS: registrationErrors.TOO_MANY_PASSKEYS,
+      ORIGIN_UNSUPPORTED: registrationErrors.ORIGIN_UNSUPPORTED,
     })
     .input(
       z.object({

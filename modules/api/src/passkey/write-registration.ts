@@ -7,8 +7,9 @@ import { buildInputHash } from '../utils/build-input-hash';
 import { probeLiveIdentity } from '../utils/probe-live-identity';
 import { readClientAction } from '../utils/read-client-action';
 import { writeClientAction } from '../utils/write-client-action';
+import { parseRegistrationOrigin } from './parse-registration-origin';
 import { challengeLifetimeMs, maxLivePasskeys } from './passkey-state';
-import { readLivePasskeys } from './read-live-passkeys';
+import { readAllPasskeys } from './read-all-passkeys';
 
 type RegistrationInput = ContractInputs['passkeys']['register'];
 
@@ -17,49 +18,68 @@ export type RegistrationResult =
   | { readonly status: 'failed'; readonly reason: string }
   | { readonly status: 'too_many' }
   | { readonly status: 'reused' }
+  | { readonly status: 'origin_unsupported' }
   | { readonly status: 'unauthorized' };
 
 const maxLabelLength = 64;
 
+interface RegistrationRequest {
+  readonly input: RegistrationInput;
+  readonly origin: string | undefined;
+}
+
 // Adds the passkey that the asking session's options allowed. The options work once, so a failed
-// verification removes them.
-export async function writeRegistration(
+// verification removes them. The client action lookup and the insert share one write transaction,
+// so a concurrent duplicate sees the first row.
+export function writeRegistration(
   context: APIContext,
   caller: Identity,
-  input: RegistrationInput,
+  request: RegistrationRequest,
 ): Promise<RegistrationResult> {
+  const input = request.input;
+
+  if (parseRegistrationOrigin(request.origin) === null) {
+    return Promise.resolve({ status: 'origin_unsupported' });
+  }
+
   const inputHash = buildInputHash({ credentialID: input.response.id, label: input.label ?? null });
 
-  const earlier = await readClientAction(context.log.writer.db, input.clientActionID);
-
-  if (earlier !== null) {
-    return earlier.procedure === 'passkeys.register' &&
-      earlier.identityID === caller.identityID &&
-      earlier.inputHash === inputHash
-      ? { status: 'registered', passkeyID: String(earlier.result['passkeyID']) }
-      : { status: 'reused' };
-  }
-
-  const pending = context.passkeys.registrations.get(caller.identityID);
-
-  context.passkeys.registrations.delete(caller.identityID);
-
-  if (pending === undefined || context.clock.now() - pending.issuedAt >= challengeLifetimeMs) {
-    return { status: 'failed', reason: 'unknown_options' };
-  }
-
-  const verified = await verifyResponse(toRegistrationResponse(input.response), pending);
-
-  if (verified === null) {
-    return { status: 'failed', reason: 'verification' };
-  }
-
   return withWriteTransaction(context.log.writer, async (tx): Promise<RegistrationResult> => {
+    const earlier = await readClientAction(tx, input.clientActionID);
+
+    if (earlier !== null) {
+      return earlier.procedure === 'passkeys.register' &&
+        earlier.identityID === caller.identityID &&
+        earlier.inputHash === inputHash
+        ? { status: 'registered', passkeyID: String(earlier.result['passkeyID']) }
+        : { status: 'reused' };
+    }
+
+    const pending = context.passkeys.registrations.get(caller.identityID);
+
+    context.passkeys.registrations.delete(caller.identityID);
+
+    if (pending === undefined || context.clock.now() - pending.issuedAt >= challengeLifetimeMs) {
+      return { status: 'failed', reason: 'unknown_options' };
+    }
+
+    if (parseRegistrationOrigin(request.origin)?.origin !== pending.origin) {
+      return { status: 'failed', reason: 'origin_changed' };
+    }
+
+    const verified = await verifyResponse(toRegistrationResponse(input.response), pending);
+
+    if (verified === null) {
+      return { status: 'failed', reason: 'verification' };
+    }
+
     if (!(await probeLiveIdentity(tx, context, caller.identityID))) {
       return { status: 'unauthorized' };
     }
 
-    const live = await readLivePasskeys(tx);
+    const known = await readAllPasskeys(tx);
+
+    const live = known.filter((row) => row.revoked_at === null);
 
     if (live.length >= maxLivePasskeys) {
       return { status: 'too_many' };
@@ -67,6 +87,11 @@ export async function writeRegistration(
 
     if (live.some((row) => row.origin !== pending.origin)) {
       return { status: 'failed', reason: 'origin_changed' };
+    }
+
+    // every passkey of the owner shares one user handle
+    if (known.some((row) => !isSameHandle(row.user_handle, pending.userHandle))) {
+      return { status: 'failed', reason: 'user_handle_changed' };
     }
 
     // a revoke that committed before this write leaves the authorizing passkey dead
@@ -187,4 +212,8 @@ function toRegistrationResponse(response: RegistrationInput['response']): Regist
       ? {}
       : { authenticatorAttachment: response.authenticatorAttachment }),
   };
+}
+
+function isSameHandle(left: Uint8Array, right: Uint8Array): boolean {
+  return left.length === right.length && left.every((byte, index) => byte === right[index]);
 }

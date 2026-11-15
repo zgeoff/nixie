@@ -93,7 +93,11 @@ export function createRegistrationOptions(
 
       const known = await readAllPasskeys(tx);
 
-      const userHandle = known[0]?.user_handle ?? crypto.getRandomValues(new Uint8Array(32));
+      const handles = context.passkeys.userHandle;
+
+      // a stored row's handle wins, and without one every pending first registration shares one
+      const userHandle =
+        known[0]?.user_handle ?? (handles.current ??= crypto.getRandomValues(new Uint8Array(32)));
 
       const generated = await generateRegistrationOptions({
         rpName: 'nixie',

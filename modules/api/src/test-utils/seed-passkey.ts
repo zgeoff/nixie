@@ -44,9 +44,12 @@ export async function seedPasskey(context: APIContext, seed: PasskeySeed): Promi
   });
 
   const registered = await writeRegistration(context, seed.caller, {
-    clientActionID: crypto.randomUUID(),
-    response,
-    ...(seed.label === undefined ? {} : { label: seed.label }),
+    origin,
+    input: {
+      clientActionID: crypto.randomUUID(),
+      response,
+      ...(seed.label === undefined ? {} : { label: seed.label }),
+    },
   });
 
   invariant(registered.status === 'registered', `a registration failed: ${registered.status}`);

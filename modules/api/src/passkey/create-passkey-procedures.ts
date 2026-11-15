@@ -69,7 +69,10 @@ export function createPasskeyProcedures(context: APIContext) {
         options.errors.UNAUTHORIZED,
       );
 
-      const result = await writeRegistration(context, caller, options.input);
+      const result = await writeRegistration(context, caller, {
+        input: options.input,
+        origin: options.context.origin,
+      });
 
       if (result.status === 'registered') {
         return { passkeyID: result.passkeyID };
@@ -81,6 +84,7 @@ export function createPasskeyProcedures(context: APIContext) {
 
       throw {
         too_many: options.errors.TOO_MANY_PASSKEYS,
+        origin_unsupported: options.errors.ORIGIN_UNSUPPORTED,
         reused: options.errors.CLIENT_ACTION_ID_REUSED,
         unauthorized: options.errors.UNAUTHORIZED,
       }[result.status]();

@@ -303,6 +303,78 @@ test('#passkeys.register works once for the options it answers', async () => {
   expect(outcome).toMatchObject({ code: 'REGISTRATION_FAILED' });
 });
 
+test.each([
+  ['plain http', 'http://nixie.example.org'],
+  ['an IP address', 'https://192.0.2.10'],
+  ['no Origin header', undefined],
+])('#passkeys.register refuses %s with ORIGIN_UNSUPPORTED', async (_name, at) => {
+  const ctx = await setupTest();
+  const issued = await createPasskeyCode(ctx.api.context);
+  const authenticator = await createTestAuthenticator();
+  const optionsIssued = await ctx.client.passkeys.registrationOptions({ code: issued.code });
+  const response = await authenticator.register(optionsIssued.options, { origin: ctx.origin });
+
+  const outcome = await ctx.refusalOf(
+    ctx.clientAt(at).passkeys.register({ clientActionID: crypto.randomUUID(), response }),
+  );
+
+  expect(outcome).toMatchObject({ code: 'ORIGIN_UNSUPPORTED' });
+});
+
+test('#passkeys.register adds one passkey when two sessions register with the same client action ID', async () => {
+  const ctx = await setupTest();
+  const tablet = await createDeviceSession(ctx.api.context, 'tablet');
+  const issued = await createPasskeyCode(ctx.api.context);
+
+  const clientActionID = crypto.randomUUID();
+
+  const firstAuthenticator = await createTestAuthenticator();
+  const secondAuthenticator = await createTestAuthenticator();
+  const firstOptions = await ctx.client.passkeys.registrationOptions({ code: issued.code });
+  const second = await createPasskeyCode(ctx.api.context);
+
+  const secondOptions = await ctx
+    .clientAt(ctx.origin, tablet.token)
+    .passkeys.registrationOptions({ code: second.code });
+
+  const firstResponse = await firstAuthenticator.register(firstOptions.options, {
+    origin: ctx.origin,
+  });
+
+  const secondResponse = await secondAuthenticator.register(secondOptions.options, {
+    origin: ctx.origin,
+  });
+
+  const outcomes = await Promise.all([
+    ctx.refusalOf(ctx.client.passkeys.register({ clientActionID, response: firstResponse })),
+    ctx.refusalOf(
+      ctx.clientAt(ctx.origin, tablet.token).passkeys.register({
+        clientActionID,
+        response: secondResponse,
+      }),
+    ),
+  ]);
+
+  const listed = await ctx.client.passkeys.list();
+
+  expect(listed.passkeys).toHaveLength(1);
+  expect(outcomes.filter((outcome) => outcome instanceof Error)).toHaveLength(1);
+});
+
+test('#passkeys.register gives two pending first registrations the same user handle', async () => {
+  const ctx = await setupTest();
+  const tablet = await createDeviceSession(ctx.api.context, 'tablet');
+  const issued = await createPasskeyCode(ctx.api.context);
+  const firstOptions = await ctx.client.passkeys.registrationOptions({ code: issued.code });
+  const second = await createPasskeyCode(ctx.api.context);
+
+  const secondOptions = await ctx
+    .clientAt(ctx.origin, tablet.token)
+    .passkeys.registrationOptions({ code: second.code });
+
+  expect(secondOptions.options.user.id).toBe(firstOptions.options.user.id);
+});
+
 test('#passkeys.registrationOptions refuses another origin while a passkey is live', async () => {
   const ctx = await setupTest();
 

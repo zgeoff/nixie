@@ -35,8 +35,16 @@ export interface PasskeyState {
   // keyed by the identity ID of the session that asked
   readonly registrations: Map<string, PendingRegistration>;
   readonly code: { current: PendingCode | null };
+
+  // the one user handle every passkey shares, fixed when the first options are issued
+  readonly userHandle: { current: Uint8Array<ArrayBuffer> | null };
 }
 
 export function createPasskeyState(): PasskeyState {
-  return { challenges: new Map(), registrations: new Map(), code: { current: null } };
+  return {
+    challenges: new Map(),
+    registrations: new Map(),
+    code: { current: null },
+    userHandle: { current: null },
+  };
 }
