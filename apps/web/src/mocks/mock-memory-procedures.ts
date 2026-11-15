@@ -41,12 +41,6 @@ export const mockMemoryProcedures = {
     };
   }),
 
-  consolidatorStatus: memory.consolidatorStatus.handler((options) => {
-    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-    return { isEnabled: false };
-  }),
-
   listItems: memory.listItems.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
