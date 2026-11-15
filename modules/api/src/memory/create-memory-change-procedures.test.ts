@@ -43,9 +43,9 @@ test('#memory.retire retires the item at the version the view showed, as your ow
   const item = await ctx.memory.remember({
     text: 'Rents a flat on Mill Lane',
     provenance: {
-      origin: 'memory_writer',
+      origin: 'conversation',
       source: 'owner',
-      taskID: 'memory-writer',
+      taskID: 'conversation',
       proposalID: null,
       checks: null,
     },
@@ -63,7 +63,7 @@ test('#memory.retire retires the item at the version the view showed, as your ow
 
   expect(history).toMatchObject({
     state: 'retired',
-    versions: [{ origin: 'memory_writer' }, { change: 'retired', origin: 'owner' }],
+    versions: [{ origin: 'conversation' }, { change: 'retired', origin: 'owner' }],
   });
 });
 

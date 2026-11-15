@@ -115,8 +115,4 @@ function requireSelfNoteWrite(request: GatedRememberRequest, isNewSelfNote: bool
       `only the conversation writes a self-note, and this write came from the ${request.caller.origin}`,
     );
   }
-
-  if (request.caller.origin === 'memory_writer') {
-    throw new SelfNoteError('the note-taker never edits a self-note');
-  }
 }

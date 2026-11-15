@@ -7,10 +7,10 @@ Each change binds to the versions of the items it read, so an approval never app
 item that moved on after the model read it. Consolidation never forgets an item, and it never reads
 the conversation.
 
-The consolidator is a system task in [the task runtime](../core/tasks.md), beside
-[the memory writer](./writer.md). [The memory store](./store.md) covers the items, versions and keys
-a change writes, and [model profiles](../core/model-profiles.md) cover the `memory-consolidator`
-role that picks its model.
+The consolidator is a system task in [the task runtime](../core/tasks.md).
+[The memory store](./store.md) covers the items, versions and keys a change writes, and
+[model profiles](../core/model-profiles.md) cover the `memory-consolidator` role that picks its
+model.
 
 ```mermaid
 flowchart LR

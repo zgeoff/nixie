@@ -12,12 +12,8 @@ import type { MemoryGate } from './build-memory-gate';
 import { buildMemoryGate } from './build-memory-gate';
 import { buildMemoryStore } from './build-memory-store';
 import { removeLeftKeys } from './remove-left-keys';
-import type { BatchPublication, PublishResult } from './write-memory-batch';
-import { writeMemoryBatch } from './write-memory-batch';
 
 export interface StartedMemoryStore extends MemoryStore, MemoryGate, ItemIDStore {
-  readonly writeBatch: (publication: BatchPublication) => Promise<PublishResult>;
-
   readonly moments: MomentStore;
 
   readonly waitForSemanticIndex: () => Promise<boolean>;
@@ -35,7 +31,6 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
     ...buildMemoryStore(parts),
     ...buildItemIDStore(parts),
     ...buildMemoryGate(parts),
-    writeBatch: (publication) => writeMemoryBatch(parts, publication),
     moments: buildMomentStore(context, parts.moments),
     waitForSemanticIndex: async () => {
       const isReady = await updated.rebuilt;

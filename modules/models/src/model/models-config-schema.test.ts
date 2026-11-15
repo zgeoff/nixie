@@ -71,7 +71,7 @@ test('it reads an aggregator profile with its provider pin and the role map into
     roles: {
       conversation: 'background-aggregator',
       checker: 'checker',
-      'memory-writer': 'background-aggregator',
+      'memory-consolidator': 'background-aggregator',
     },
   });
 
@@ -109,7 +109,7 @@ test('it reads an aggregator profile with its provider pin and the role map into
     roles: {
       conversation: 'background-aggregator',
       checker: 'checker',
-      'memory-writer': 'background-aggregator',
+      'memory-consolidator': 'background-aggregator',
     },
     selectable: [],
     limits: {

@@ -1,6 +1,6 @@
 import { buildProposalCoreDeps, createFirstEnrolmentCode } from '@heynixie/api';
 import { toErrorFields } from '@heynixie/logger';
-import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
+import { memoryConsolidatorTaskID } from '@heynixie/memory';
 import { startPromptLapseSweep } from '@heynixie/prompts';
 import type { RunStep } from '@heynixie/tasks';
 import { conversationTaskID, createConversationTask, reviveHeldTasks } from '@heynixie/tasks';
@@ -69,7 +69,6 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'server_parts',
       'conversation_task',
       'conversation_imp',
-      'memory_writer',
       'memory_consolidator',
       'nixie_runner',
     ],
@@ -78,7 +77,6 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       const systemSteps = new Map([
         [conversationTaskID, reader.get('conversation_imp').runStep],
-        [memoryWriterTaskID, reader.get('memory_writer')],
         [memoryConsolidatorTaskID, reader.get('memory_consolidator')],
       ]);
 

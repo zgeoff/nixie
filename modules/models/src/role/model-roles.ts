@@ -3,6 +3,5 @@ export const modelRoles = [
   'task',
   'worker',
   'checker',
-  'memory-writer',
   'memory-consolidator',
 ] as const;

@@ -65,9 +65,9 @@ test('it names the owner in general terms when the configuration sets no name', 
     text: 'Keeps bees',
     caller: {
       ...caller,
-      origin: 'memory_writer',
-      thread: 'memory-writer',
-      taskID: 'memory-writer',
+      origin: 'task',
+      thread: 'task-1',
+      taskID: 'task-1',
     },
   });
 
@@ -80,7 +80,7 @@ test('it names the owner in general terms when the configuration sets no name', 
   invariant(first.status === 'proposed');
 
   expect(note).toEndWith(
-    ` · Your note-taker proposed the same memory again; it merged into your pending memory proposal ${buildShortIDFromUUID(first.proposalID)}, which still waits for the owner's review.`,
+    ` · A task proposed the same memory again; it merged into your pending memory proposal ${buildShortIDFromUUID(first.proposalID)}, which still waits for the owner's review.`,
   );
 });
 

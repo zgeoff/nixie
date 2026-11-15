@@ -2,7 +2,7 @@ import { ownerImageMediaTypes } from '@heynixie/tasks';
 import { z } from 'zod';
 import { memoryExportSchemaVersion } from './memory-export-schema-version';
 
-const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']);
+const originSchema = z.enum(['owner', 'conversation', 'task', 'lapse']);
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
 
 const provenanceSchema = z.strictObject({

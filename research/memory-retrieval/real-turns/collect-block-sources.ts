@@ -3,7 +3,7 @@ import type { BlockSources, VersionMeta } from './build-block-tokens.ts';
 import type { PlainExport } from './read-plain-export.ts';
 
 const subjectSchema = z.enum(['owner', 'self', 'shared']).catch('owner');
-const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']).catch('owner');
+const originSchema = z.enum(['owner', 'conversation', 'task', 'lapse']).catch('owner');
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']).catch('owner');
 
 // Gathers what the renderers need beyond a turn's own fields: each version's line details.

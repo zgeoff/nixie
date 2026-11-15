@@ -23,7 +23,7 @@ test('it renders each subject under its own heading, shared after the owner and 
         subject: 'shared',
         model: null,
         version: 1,
-        origin: 'memory_writer',
+        origin: 'conversation',
         source: 'owner',
         recordedAt: Date.UTC(2026, 9, 12, 9, 30),
         text: 'Robin and the assistant call the kettle Captain Steam',
@@ -53,7 +53,7 @@ test('it renders each subject under its own heading, shared after the owner and 
       h4ns8w1cpe v2 · 14 Sep · Robin said this
     Between you and Robin:
     - Robin and the assistant call the kettle Captain Steam
-      b7kq2m9xza v1 · 12 Oct · the note-taker noted it · Robin said this
+      b7kq2m9xza v1 · 12 Oct · you noted it · Robin said this
       How it came up: "ask Captain Steam"
     About yourself, in your own words:
     - I like a story that ends on a small joke

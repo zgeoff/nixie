@@ -11,7 +11,6 @@ export interface ProposalMergeEvent {
 const proposerWords: Readonly<Record<Exclude<ProposalOrigin, 'owner'>, string>> = {
   conversation: 'Another conversation turn',
   task: 'A task',
-  memory_writer: 'Your note-taker',
 };
 
 export function buildProposalMergeKind(log: Pick<Log, 'writer'>): EventKind<ProposalMergeEvent> {

@@ -1,4 +1,4 @@
-type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'memory_writer' | 'lapse';
+type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'lapse';
 
 type MemorySource = 'owner' | 'owner_data' | 'untrusted';
 
@@ -6,7 +6,6 @@ const origins: Readonly<Record<MemoryOrigin, string>> = {
   owner: 'you',
   conversation: 'the conversation',
   task: 'a task',
-  memory_writer: 'the memory writer',
   lapse: 'its end time',
 };
 

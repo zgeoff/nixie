@@ -1,4 +1,4 @@
-import { readRatingNotes, readVersionTexts, readWriterStatus } from '@heynixie/memory';
+import { readRatingNotes, readVersionTexts } from '@heynixie/memory';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { requireCaller } from './require-caller';
@@ -24,24 +24,15 @@ export function createMemoryProcedures(context: APIContext) {
     writerStatus: apiImplementer.memory.writerStatus.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      const status = await readWriterStatus(context.log);
-
       return {
-        isEnabled: context.settings.isMemoryWriterEnabled,
-        backlog: status.backlog,
-        batches: status.batches,
-        cursor: status.cursor,
-        failures: status.failures,
-        isCatchingUp: status.isCatchingUp,
-        lastError:
-          status.lastError === null
-            ? null
-            : {
-                at: new Date(status.lastError.at),
-                code: status.lastError.code,
-                message: status.lastError.message,
-              },
-        retryAt: status.retryAt === null ? null : new Date(status.retryAt),
+        isEnabled: false,
+        backlog: 0,
+        batches: 0,
+        cursor: 0,
+        failures: 0,
+        isCatchingUp: false,
+        lastError: null,
+        retryAt: null,
       };
     }),
 

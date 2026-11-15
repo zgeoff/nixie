@@ -206,26 +206,23 @@ test('it writes the log level it names into the configuration', async () => {
   expect(config.server.logLevel).toBe('warn');
 });
 
-test('it gives the memory writer and the checker their own scripted models when asked', async () => {
-  const nixie = await startSpawnedNixie({ memoryWriter: true });
+test('it gives the checker its own scripted model when asked', async () => {
+  const nixie = await startSpawnedNixie({ isCheckerScripted: true });
   const config = await loadDeploymentConfig(nixie.configPath);
 
-  expect(config.memory_writer.isEnabled).toBeTrue();
-  expect(config.models.profiles['scripted-memory-writer']?.baseURL).toBe(nixie.writerModel.url);
   expect(config.models.profiles['scripted-checker']?.baseURL).toBe(nixie.checkerModel.url);
 });
 
 test('it gives the checker an hour on the harness clock before its timeout', async () => {
-  const nixie = await startSpawnedNixie({ memoryWriter: true });
+  const nixie = await startSpawnedNixie();
   const config = await loadDeploymentConfig(nixie.configPath);
 
   expect(config.memory.checkerTimeoutMs).toBe(3_600_000);
 });
 
-test('it keeps the memory writer and the consolidator off unless asked', async () => {
+test('it keeps the consolidator off', async () => {
   const nixie = await startSpawnedNixie();
   const config = await loadDeploymentConfig(nixie.configPath);
 
-  expect(config.memory_writer.isEnabled).toBeFalse();
   expect(config.memory_consolidation.isEnabled).toBeFalse();
 });

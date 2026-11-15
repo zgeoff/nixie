@@ -7,7 +7,6 @@ import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { createProposal } from '../test-utils/create-proposal';
-import { createWriterProposal } from '../test-utils/create-writer-proposal';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { buildPendingTool } from './build-pending-tool';
 
@@ -44,14 +43,13 @@ async function setupTest() {
   };
 }
 
-test('it lists a pending proposal from the conversation and one from the note-taker, each with who noted it and why it waits', async () => {
+test('it lists a pending proposal from the conversation and one from a task, each with who noted it and why it waits', async () => {
   const ctx = await setupTest();
   const own = await createProposal(ctx.memory.store, { text: 'Waters the ferns on Sundays' });
 
-  const noted = await createWriterProposal(ctx.memory, {
-    message: 'I keep bees on the allotment.',
+  const noted = await createProposal(ctx.memory.store, {
     text: 'The owner keeps bees.',
-    quote: 'I keep bees',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
   });
 
   ctx.clock.advance(2 * 86_400_000);
@@ -82,9 +80,9 @@ test('it lists a pending proposal from the conversation and one from the note-ta
         proposalID: buildShortIDFromUUID(noted.proposalID),
         change: 'new',
         text: 'The owner keeps bees.',
-        notedBy: ['the note-taker noted it'],
+        notedBy: ['a task noted it'],
         subject: 'owner',
-        reason: 'quote_not_typed',
+        reason: 'no_quote',
         age: '2 days',
       },
     ],
@@ -135,13 +133,12 @@ test('it leaves out a proposal the owner approved and one the owner rejected', a
   });
 });
 
-test('it names both proposers of a conversation write that merged into the note-taker proposal', async () => {
+test('it names both proposers of a conversation write that merged into a task proposal', async () => {
   const ctx = await setupTest();
 
-  await createWriterProposal(ctx.memory, {
-    message: 'I grow tomatoes on the balcony.',
+  await createProposal(ctx.memory.store, {
     text: 'The owner grows tomatoes.',
-    quote: 'I grow tomatoes',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
   });
 
   await ctx.memory.store.writes.remember({
@@ -162,7 +159,7 @@ test('it names both proposers of a conversation write that merged into the note-
 
   expect(result.structuredContent).toMatchObject({
     proposals: [
-      { text: 'The owner grows tomatoes.', notedBy: ['the note-taker noted it', 'you noted it'] },
+      { text: 'The owner grows tomatoes.', notedBy: ['a task noted it', 'you noted it'] },
     ],
   });
 });

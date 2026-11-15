@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { defaultGateLimits } from '../gate/default-gate-limits';
-import type { GateLimits } from '../gate/gate-context';
+import { defaultGateLimits } from './default-gate-limits';
+import type { GateLimits } from './gate-context';
 
 const dayMs = 24 * 60 * 60 * 1000;
 const countSchema = z.number().int().positive();

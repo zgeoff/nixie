@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
@@ -16,9 +15,9 @@ test("it reads a version's provenance with the writer's and the checker's models
   const item = await ctx.memory.store.remember({
     text: 'Plays the cello on Thursdays',
     provenance: {
-      origin: 'memory_writer',
+      origin: 'conversation',
       source: 'owner',
-      taskID: 'memory-writer',
+      taskID: 'conversation',
       proposalID: null,
       checks: {
         quote: 'pass',
@@ -36,10 +35,10 @@ test("it reads a version's provenance with the writer's and the checker's models
       version: 1,
       change: 'created',
       state: 'active',
-      origin: 'memory_writer',
+      origin: 'conversation',
       source: 'owner',
       recordedAt: expect.toBeNumber(),
-      taskID: 'memory-writer',
+      taskID: 'conversation',
       proposalID: null,
       checks: {
         quote: 'pass',
@@ -312,63 +311,6 @@ test('it reads no checker model for a version no checker saw', async () => {
   expect(detail?.versions[0]).toMatchObject({
     writerModel: 'conversation-model-1',
     checkerModel: null,
-  });
-});
-
-test("it reads the writer's model from the batch that applied a version whose row holds none", async () => {
-  const ctx = await setupTest();
-
-  await writeRecords(ctx.memory.log, [
-    {
-      kind: 'memory.writer_started',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'memory-writer',
-      payload: { startSequence: 0, at: 1_000_000 },
-    },
-  ]);
-
-  const item = await ctx.memory.store.remember({
-    text: 'Plays the cello on Thursdays',
-    provenance: {
-      origin: 'memory_writer',
-      source: 'owner',
-      taskID: 'memory-writer',
-      proposalID: null,
-      checks: {
-        quote: 'pass',
-        tokens: 'pass',
-        checker: { verdict: 'asserted', model: 'checker-model-1', failure: null },
-      },
-      thread: 'memory-writer',
-    },
-  });
-
-  await writeRecords(ctx.memory.log, [
-    {
-      kind: 'memory.batch_published',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'memory-writer',
-      payload: {
-        start: 0,
-        end: 1,
-        mode: 'catch_up',
-        at: 1_000_000,
-        applied: [{ itemID: item.itemID, version: 1 }],
-        proposed: 0,
-        dropped: 0,
-        catchUpEnded: false,
-        model: 'writer-model-1',
-        profile: 'writer-direct',
-        usage: { inputTokens: 100, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 },
-      },
-    },
-  ]);
-
-  const detail = await ctx.memory.store.view.readItem(item.itemID);
-
-  expect(detail?.versions[0]).toMatchObject({
-    writerModel: 'writer-model-1',
-    checkerModel: 'checker-model-1',
   });
 });
 

@@ -26,7 +26,6 @@ export type AnswerQuoteSource = Pick<MemoryStore, 'recall'> & {
 const proposerWords: Readonly<Record<Exclude<ProposalOrigin, 'conversation'>, string>> = {
   owner: 'the owner',
   task: 'a task',
-  memory_writer: 'your note-taker',
 };
 
 export function buildProposalAnswerKind(

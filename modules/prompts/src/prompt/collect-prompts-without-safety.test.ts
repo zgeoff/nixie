@@ -19,9 +19,9 @@ test('it finds no prompt without safety when an override keeps the built-in safe
 test('it names a prompt whose safety part is replaced', () => {
   expect(
     collectPromptsWithoutSafety({
-      writer: { parts: { safety: 'Quote the owner exactly.' }, template: null },
+      compaction: { parts: { safety: 'Quote the owner exactly.' }, template: null },
     }),
-  ).toStrictEqual([{ id: 'writer', safety: 'replaced' }]);
+  ).toStrictEqual([{ id: 'compaction', safety: 'replaced' }]);
 });
 
 test('it names a prompt whose template leaves the safety part out, even when that part is replaced', () => {

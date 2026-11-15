@@ -143,7 +143,7 @@ test('it lists a newly approved shared item first in Active, ahead of 50 older f
   await store.memoryItems.create({
     subject: 'shared',
     shortID: 'k3m9qa',
-    versions: [{ origin: 'memory_writer', text: 'Calls the kettle Captain Steam' }],
+    versions: [{ origin: 'conversation', text: 'Calls the kettle Captain Steam' }],
   });
 
   const rendered = render(<MemoryView />);
@@ -330,45 +330,6 @@ test('it shows the pinned core with its size against its budget', async () => {
   expect(within(core).queryByRole('listitem', { name: 'p7x2rd' })).toBeNull();
 });
 
-test('it shows the writer catch-up with its cursor, backlog and last error', async () => {
-  setupBrowserTimeZone('UTC');
-
-  await createDeviceSession();
-
-  await store.memoryWriter.create({
-    backlog: 1240,
-    cursor: 5310,
-    isCatchingUp: true,
-    lastError: {
-      at: new Date('2026-03-02T09:15:00Z'),
-      code: 'model_timeout',
-      message: 'no answer',
-    },
-  });
-
-  const rendered = render(<MemoryView />);
-
-  const writer = await rendered.findByRole('region', { name: 'Memory writer' });
-
-  expect(writer).toHaveTextContent(
-    'Memory writer: catching up on earlier conversation · at record 5,310 · 1,240 messages wait',
-  );
-
-  expect(writer).toHaveTextContent('Last error: model_timeout (no answer) at Mar 2, 9:15 AM');
-});
-
-test('it shows the writer as off when the deployment turns it off', async () => {
-  await createDeviceSession();
-
-  await store.memoryWriter.create({ isEnabled: false, cursor: 5310, backlog: 1240 });
-
-  const rendered = render(<MemoryView />);
-
-  const writer = await rendered.findByRole('region', { name: 'Memory writer' });
-
-  expect(writer).toHaveTextContent(/^Memory writer: off$/u);
-});
-
 test('it shows the consolidation as off when the deployment turns it off', async () => {
   await createDeviceSession();
 
@@ -386,7 +347,7 @@ test('it shows no consolidation line while the consolidator is on', async () => 
 
   const rendered = render(<MemoryView />);
 
-  await rendered.findByRole('region', { name: 'Memory writer' });
+  await rendered.findByRole('region', { name: 'Pinned core' });
 
   expect(rendered.queryByRole('region', { name: 'Memory consolidation' })).toBeNull();
 });
@@ -400,7 +361,7 @@ test('it shows an item with who wrote it, from what, and when', async () => {
     shortID: 'k3m9qa',
     versions: [
       {
-        origin: 'memory_writer',
+        origin: 'conversation',
         recordedAt: new Date('2026-02-01T08:00:00Z'),
         source: 'owner',
         text: 'Plays the cello',
@@ -414,6 +375,6 @@ test('it shows an item with who wrote it, from what, and when', async () => {
   const item = await within(active).findByRole('listitem', { name: 'k3m9qa' });
 
   expect(item).toHaveTextContent(
-    /^Plays the celloby the memory writer, from your own words · created Feb 1, 2026RetirePinMark sensitiveForgetHistory$/u,
+    /^Plays the celloby the conversation, from your own words · created Feb 1, 2026RetirePinMark sensitiveForgetHistory$/u,
   );
 });

@@ -129,7 +129,7 @@ test('it holds a request for a scheduled receiver until its next run, and opens 
     planTaskMessage(
       {
         from: 'conversation',
-        to: 'memory-writer',
+        to: 'sweeper',
         kind: 'request',
         body: 'Skip the note about the bike.',
         replyTo: null,
@@ -145,8 +145,8 @@ test('it holds a request for a scheduled receiver until its next run, and opens 
       {
         directory: [
           {
-            taskID: 'memory-writer',
-            name: 'Memory writer',
+            taskID: 'sweeper',
+            name: 'Sweeper',
             brief: 'Saves.',
             isWokenByMessages: false,
             speaker: 'plain_task',
@@ -211,7 +211,7 @@ test('it opens no wait for a question to a scheduled receiver sent with no wake'
     planTaskMessage(
       {
         from: 'conversation',
-        to: 'memory-writer',
+        to: 'sweeper',
         kind: 'question',
         body: 'Did you save the note about the bike?',
         replyTo: null,
@@ -227,8 +227,8 @@ test('it opens no wait for a question to a scheduled receiver sent with no wake'
       {
         directory: [
           {
-            taskID: 'memory-writer',
-            name: 'Memory writer',
+            taskID: 'sweeper',
+            name: 'Sweeper',
             brief: 'Saves.',
             isWokenByMessages: false,
             speaker: 'plain_task',

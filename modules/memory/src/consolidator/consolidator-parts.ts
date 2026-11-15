@@ -4,7 +4,7 @@ import type { ConsolidationStaging } from '../consolidation/create-consolidation
 import type { MemoryStore } from '../types';
 import type { MemoryConsolidations } from '../utils/memory-consolidations';
 import type { ConsolidationConfig } from '../utils/schema/consolidation-config-schema';
-import type { WriterModel } from '../writer/writer-model';
+import type { ConsolidatorModel } from './consolidator-model';
 
 export interface ConsolidatorParts {
   readonly context: TasksContext;
@@ -13,7 +13,7 @@ export interface ConsolidatorParts {
   };
   readonly staging: ConsolidationStaging;
 
-  readonly model: WriterModel;
+  readonly model: ConsolidatorModel;
   readonly config: ConsolidationConfig;
 
   readonly getPersona: () => string;

@@ -193,7 +193,7 @@ const memoryItemVersionSchema = z.object({
   image: ownerImageSchema.nullable().default(null),
 
   isUnreadable: z.boolean().default(false),
-  origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']).default('owner'),
+  origin: z.enum(['owner', 'conversation', 'task']).default('owner'),
   proposalID: z.string().nullable().default(null),
   recordedAt: z.date().default(() => faker.date.recent()),
   source: z.enum(['owner', 'owner_data', 'untrusted']).default('owner'),
@@ -220,25 +220,6 @@ const memoryItems = new Collection({
     state: z.enum(['active', 'retired', 'forgetting', 'forgotten']).default('active'),
     until: z.date().nullable().default(null),
     versions: z.array(memoryItemVersionSchema).min(1),
-  }),
-});
-
-const writerErrorSchema = z.object({
-  at: z.date(),
-  code: z.string(),
-  message: z.string().nullable(),
-});
-
-const memoryWriter = new Collection({
-  schema: z.object({
-    backlog: z.int().nonnegative().default(0),
-    batches: z.int().nonnegative().default(0),
-    cursor: z.int().nonnegative().default(0),
-    failures: z.int().nonnegative().default(0),
-    isCatchingUp: z.boolean().default(false),
-    isEnabled: z.boolean().default(true),
-    lastError: writerErrorSchema.nullable().default(null),
-    retryAt: z.date().nullable().default(null),
   }),
 });
 
@@ -271,11 +252,10 @@ const noticeEntrySchema = z.object({
 
 const memoryNotices = new Collection({
   schema: z.object({
-    count: z.int().nonnegative().nullable().default(null),
     entries: z.array(noticeEntrySchema).default([]),
-    kind: z.enum(['turn', 'batch', 'catch_up', 'run']).default('turn'),
+    kind: z.enum(['turn', 'run']).default('turn'),
     messageSequence: z.int().nonnegative().nullable().default(null),
-    noticeKey: z.string().default(() => `batch/${faker.string.uuid()}`),
+    noticeKey: z.string().default(() => `run/${faker.string.uuid()}`),
     sequence: z.int().nonnegative().nullable().default(null),
     thread: z.string().default('conversation'),
   }),
@@ -318,7 +298,7 @@ const memoryProposals = new Collection({
     newSubject: z.enum(['owner', 'self', 'shared']).nullable().default(null),
     lapseAt: z.date().default(() => faker.date.soon({ days: 7 })),
     operation: z.enum(['remember', 'retire', 'pin']).default('remember'),
-    origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']).default('memory_writer'),
+    origin: z.enum(['owner', 'conversation', 'task']).default('conversation'),
     proposalID: z.uuid().default(() => faker.string.uuid()),
     quote: z.string().nullable().default(null),
     reason: z
@@ -458,7 +438,6 @@ export const store = {
   memoryNotices,
   memoryProposals,
   memoryVersions,
-  memoryWriter,
   moments,
   ratingNotes,
   records,
@@ -481,7 +460,6 @@ export const store = {
       memoryProposals,
       approvalRows,
       rules,
-      memoryWriter,
       memoryConsolidator,
       backupNotices,
       memoryVersions,

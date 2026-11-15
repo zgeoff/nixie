@@ -3,9 +3,9 @@ import { readRecords } from '@heynixie/log';
 import { ownerMessageCodec } from '@heynixie/tasks';
 import { z } from 'zod';
 import type { ReviewReason } from '../gate/gate-context';
-import type { SourceMessage } from '../writer/writer-model';
 import type { QuoteEvidenceResult } from './read-quote-evidence';
 import { readSourceEvidence } from './read-source-evidence';
+import type { SourceMessage } from './source-message';
 
 export interface EventSearch {
   readonly thread: string;

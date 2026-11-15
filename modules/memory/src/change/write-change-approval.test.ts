@@ -280,7 +280,7 @@ test('it gives a rewritten item its new text and keeps its source', async () => 
 
   const item = await createMemoryItem(ctx.memory.store, {
     text: 'owner likes. tea green, no sugar',
-    origin: 'memory_writer',
+    origin: 'conversation',
   });
 
   const diff = await createConsolidationDiff(ctx.memory, {

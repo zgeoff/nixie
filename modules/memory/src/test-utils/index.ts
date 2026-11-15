@@ -2,10 +2,7 @@ export { buildMemorySeeder } from './build-memory-seeder';
 export type { MemorySeederDeps } from './memory-seeder-deps';
 export { buildMockCheckerAnswer } from './build-mock-checker-answer';
 export { buildMockWriteCaller } from './build-mock-write-caller';
-export type { RememberCall } from './build-remember-reply';
-export { buildRememberReply } from './build-remember-reply';
 export { buildStubEncoder } from './build-stub-encoder';
-export { buildStubGate } from './build-stub-gate';
 export type { DiffRequest } from './create-consolidation-diff';
 export { buildAllowVerdict } from './build-allow-verdict';
 export { createConsolidationDiff } from './create-consolidation-diff';
@@ -23,14 +20,6 @@ export type { TestMemory, TestMemoryOptions } from './start-test-memory';
 export { startTestMemory } from './start-test-memory';
 export { startNextTestMemory } from './start-next-test-memory';
 export { startTestMemoryStore } from './start-test-memory-store';
-
-export type {
-  TestMemoryWriter,
-  TestMemoryWriterOptions,
-  TestWriterHost,
-} from './start-test-memory-writer';
-
-export { startTestMemoryWriter } from './start-test-memory-writer';
 export type { ImageOfferRecord, WrittenImageOffer } from './write-image-offer-record';
 export { writeImageOfferRecord } from './write-image-offer-record';
 export { writeOwnerMessages } from './write-owner-messages';

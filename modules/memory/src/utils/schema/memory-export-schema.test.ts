@@ -12,57 +12,6 @@ test('it accepts the version 8 export file the fixture holds, a message with 2 i
   expect(parsed).toStrictEqual(fixture);
 });
 
-test('it reads a span record of the version 6 file the fixture holds as not removed', async () => {
-  const fixture: unknown = await Bun.file(
-    join(import.meta.dir, '..', '..', 'fixtures', 'memory-export-v6.json'),
-  ).json();
-
-  const file = memoryExportSchema.parse(fixture);
-
-  const marks = file.moments.flatMap((moment) =>
-    'records' in moment ? moment.records.map((record) => record.isRemoved) : [],
-  );
-
-  expect(marks).toStrictEqual([false, false, false, false]);
-});
-
-test('it rejects a version 6 span record that carries a removal mark', async () => {
-  const text = await Bun.file(
-    join(import.meta.dir, '..', '..', 'fixtures', 'memory-export-v6.json'),
-  ).text();
-
-  const fixture: unknown = JSON.parse(
-    text.replace('"isGap": false', '"isGap": false, "isRemoved": false'),
-  );
-
-  const result = memoryExportSchema.safeParse(fixture);
-
-  expect(result.error?.issues).toPartiallyContain({
-    path: ['moments', 0, 'records', 0, 'isRemoved'],
-  });
-});
-
-test('it rejects a version 7 span record with no removal mark', async () => {
-  const text = await Bun.file(
-    join(import.meta.dir, '..', '..', 'fixtures', 'memory-export-v7.json'),
-  ).text();
-
-  const fixture: unknown = JSON.parse(text.replace(/,\s*"isRemoved": false/u, ''));
-  const result = memoryExportSchema.safeParse(fixture);
-
-  expect(result.error?.issues).toPartiallyContain({
-    path: ['moments', 0, 'records', 0, 'isRemoved'],
-  });
-});
-
-test('it accepts the version 6 file the fixture holds', async () => {
-  const fixture: unknown = await Bun.file(
-    join(import.meta.dir, '..', '..', 'fixtures', 'memory-export-v6.json'),
-  ).json();
-
-  expect(memoryExportSchema.safeParse(fixture).success).toBeTrue();
-});
-
 test('it reads an item of a version 5 file, which predates the sensitive mark, as not sensitive', () => {
   const result = memoryExportSchema.safeParse({
     header: {
@@ -328,26 +277,6 @@ test('it rejects a readable item with no kind', () => {
   expect(result.error?.issues).toPartiallyContain({ path: ['items', 0] });
 });
 
-test.each([
-  [6, 4],
-  [7, 5],
-])(
-  'it reads the span records of a version %i file with no images',
-  async (version, recordCount) => {
-    const fixture: unknown = await Bun.file(
-      join(import.meta.dir, '..', '..', 'fixtures', `memory-export-v${version}.json`),
-    ).json();
-
-    const file = memoryExportSchema.parse(fixture);
-
-    const lists = file.moments.flatMap((moment) =>
-      'records' in moment ? moment.records.map((record) => record.images) : [],
-    );
-
-    expect(lists).toStrictEqual(Array.from({ length: recordCount }, () => []));
-  },
-);
-
 test('it reads the span records of a version 5 file with no images', () => {
   const file = memoryExportSchema.parse({
     header: {
@@ -394,22 +323,6 @@ test('it reads the span records of a version 5 file with no images', () => {
   );
 
   expect(lists).toStrictEqual([[]]);
-});
-
-test('it rejects a version 7 span record that carries an image list', async () => {
-  const text = await Bun.file(
-    join(import.meta.dir, '..', '..', 'fixtures', 'memory-export-v7.json'),
-  ).text();
-
-  const fixture: unknown = JSON.parse(
-    text.replace('"isGap": false', '"isGap": false, "images": []'),
-  );
-
-  const result = memoryExportSchema.safeParse(fixture);
-
-  expect(result.error?.issues).toPartiallyContain({
-    path: ['moments', 0, 'records', 0, 'images'],
-  });
 });
 
 test('it rejects a version 8 span record with no image list', async () => {

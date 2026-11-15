@@ -17,7 +17,6 @@ credential store's part and cost.
 | `task`                | Every other task's turns, unless its start chose a model                           |
 | `worker`              | Each worker run, unless the tool sets a role of its own                            |
 | `checker`             | The consent checker and the memory checker, which share one model                  |
-| `memory-writer`       | Batched capture in [memory writes](../memory/writes.md)                            |
 | `memory-consolidator` | The turns of [memory consolidation](../../../architecture/memory/consolidation.md) |
 
 Each sandbox that runs a model loop gets its role's profile when nixie creates it, or the profile of

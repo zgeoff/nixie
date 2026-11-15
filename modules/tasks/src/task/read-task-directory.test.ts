@@ -15,7 +15,7 @@ function setupTest() {
 test('it adds each started task to the directory, with the name and the brief a task of the release before holds in its creation', async () => {
   const ctx = await setupTest();
 
-  await createSystemTask(ctx.context, 'memory-writer');
+  await createSystemTask(ctx.context, 'sweeper');
 
   await writeRecords(ctx.context.log, [
     {

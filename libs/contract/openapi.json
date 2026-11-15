@@ -5360,6 +5360,7 @@
     "/memory/writerStatus": {
       "post": {
         "operationId": "memory.writerStatus",
+        "deprecated": true,
         "responses": {
           "200": {
             "description": "OK",
@@ -5702,7 +5703,6 @@
                               "owner",
                               "conversation",
                               "task",
-                              "memory_writer",
                               "lapse"
                             ],
                             "type": "string"
@@ -6065,7 +6065,6 @@
                               "owner",
                               "conversation",
                               "task",
-                              "memory_writer",
                               "lapse"
                             ],
                             "type": "string"
@@ -6357,7 +6356,6 @@
                               "owner",
                               "conversation",
                               "task",
-                              "memory_writer",
                               "lapse"
                             ],
                             "type": "string"
@@ -6651,7 +6649,6 @@
                         "owner",
                         "conversation",
                         "task",
-                        "memory_writer",
                         "lapse"
                       ],
                       "type": "string"
@@ -6858,7 +6855,6 @@
                               "owner",
                               "conversation",
                               "task",
-                              "memory_writer",
                               "lapse"
                             ],
                             "type": "string"
@@ -7967,7 +7963,6 @@
                                             "owner",
                                             "conversation",
                                             "task",
-                                            "memory_writer",
                                             "lapse"
                                           ],
                                           "type": "string"
@@ -8110,8 +8105,6 @@
                           "kind": {
                             "enum": [
                               "turn",
-                              "batch",
-                              "catch_up",
                               "run"
                             ],
                             "type": "string"
@@ -9109,7 +9102,6 @@
                         "owner",
                         "conversation",
                         "task",
-                        "memory_writer",
                         "lapse"
                       ],
                       "type": "string"
@@ -9316,7 +9308,6 @@
                               "owner",
                               "conversation",
                               "task",
-                              "memory_writer",
                               "lapse"
                             ],
                             "type": "string"
@@ -10167,7 +10158,6 @@
                               "owner",
                               "conversation",
                               "task",
-                              "memory_writer",
                               "lapse"
                             ],
                             "type": "string"
@@ -17159,8 +17149,7 @@
                                     "enum": [
                                       "owner",
                                       "conversation",
-                                      "task",
-                                      "memory_writer"
+                                      "task"
                                     ],
                                     "type": "string"
                                   },
@@ -17216,8 +17205,7 @@
                                           "enum": [
                                             "owner",
                                             "conversation",
-                                            "task",
-                                            "memory_writer"
+                                            "task"
                                           ],
                                           "type": "string"
                                         },
@@ -17787,8 +17775,7 @@
                                         "enum": [
                                           "owner",
                                           "conversation",
-                                          "task",
-                                          "memory_writer"
+                                          "task"
                                         ],
                                         "type": "string"
                                       },
@@ -17844,8 +17831,7 @@
                                               "enum": [
                                                 "owner",
                                                 "conversation",
-                                                "task",
-                                                "memory_writer"
+                                                "task"
                                               ],
                                               "type": "string"
                                             },

@@ -220,7 +220,7 @@ test('it edits a memory proposal before approving it from the digest, and applie
       lapseAt: new Date('2026-11-20T01:00:00Z'),
       newSubject: null,
       operation: 'remember',
-      origin: 'memory_writer',
+      origin: 'conversation',
       proposalID: 'b1c2d3e4-0000-4000-8000-000000000001',
       quote: null,
       reason: 'no_quote',

@@ -1,7 +1,6 @@
 import { runPendingRecordForgets } from '@heynixie/api';
 import { startMemory } from '../cli/start-memory';
 import { startConsolidatorTask } from '../task/start-consolidator-task';
-import { startWriterTask } from '../task/start-writer-task';
 import { runTurnInputForget } from '../turn/run-turn-input-forget';
 import type { AnyPartDeclaration } from '../types';
 import { makeRetriedStart } from './make-retried-start';
@@ -55,13 +54,6 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
     name: 'record_forgets',
     needs: ['server_parts', 'session_cleanup'],
     start: makeRetriedStart('record_forgets', (parts) => runPendingRecordForgets(parts.apiContext)),
-  },
-  {
-    name: 'memory_writer',
-    needs: ['server_parts', 'memory', 'record_forgets'],
-    start: makeRetriedStart('memory_writer', (parts, reader) =>
-      startWriterTask(parts, reader.get('memory')),
-    ),
   },
   {
     name: 'memory_consolidator',

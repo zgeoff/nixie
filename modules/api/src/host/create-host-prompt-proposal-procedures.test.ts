@@ -62,11 +62,11 @@ test('#list lists each pending proposal with its files, its reason, the override
       thread: 'conversation',
       payload: promptsOverrideProposedCodec.encode({
         proposalID: 'p8w2n4c6ld',
-        promptID: 'writer',
+        promptID: 'compaction',
         proposalHash: 'hash-c',
         baseHash: null,
-        entry: { safety: 'prompts/writer-safety.md' },
-        files: [{ path: 'prompts/writer-safety.md', text: 'Quote each fact word for word.\n' }],
+        entry: { safety: 'prompts/compaction-safety.md' },
+        files: [{ path: 'prompts/compaction-safety.md', text: 'Quote each fact word for word.\n' }],
         reason: 'The quote rule reads too loosely.',
         provenance: { runID: 'run-2', callID: 'call-2', profile: 'standard' },
       }),
@@ -76,7 +76,7 @@ test('#list lists each pending proposal with its files, its reason, the override
   const client = ctx.createClient({
     snapshotHash: 'snapshot-a',
     personaVersion: 'persona-a',
-    prompts: { writer: { parts: { safety: 'Quote every fact.' }, template: null } },
+    prompts: { compaction: { parts: { safety: 'Quote every fact.' }, template: null } },
   });
 
   const pending = await client.list();
@@ -84,11 +84,11 @@ test('#list lists each pending proposal with its files, its reason, the override
   expect(pending).toStrictEqual([
     {
       proposalID: 'p8w2n4c6ld',
-      promptID: 'writer',
+      promptID: 'compaction',
       proposalHash: 'hash-c',
       baseHash: null,
-      entry: { safety: 'prompts/writer-safety.md' },
-      files: [{ path: 'prompts/writer-safety.md', text: 'Quote each fact word for word.\n' }],
+      entry: { safety: 'prompts/compaction-safety.md' },
+      files: [{ path: 'prompts/compaction-safety.md', text: 'Quote each fact word for word.\n' }],
       reason: 'The quote rule reads too loosely.',
       inForce: { parts: { safety: 'Quote every fact.' }, template: null },
       thread: 'conversation',
@@ -232,7 +232,7 @@ test('#approve refuses a proposal whose base the override in force moved past wi
       thread: 'conversation',
       payload: promptsOverrideProposedCodec.encode({
         proposalID: 'p8w2n4c6ld',
-        promptID: 'writer',
+        promptID: 'compaction',
         proposalHash: 'hash-c',
         baseHash: null,
         entry: { _template: '{{ parts.safety }}' },
@@ -246,7 +246,7 @@ test('#approve refuses a proposal whose base the override in force moved past wi
   const client = ctx.createClient({
     snapshotHash: 'snapshot-a',
     personaVersion: 'persona-a',
-    prompts: { writer: { parts: { safety: 'Quote every fact.' }, template: null } },
+    prompts: { compaction: { parts: { safety: 'Quote every fact.' }, template: null } },
   });
 
   const refusal = await client.approve({ proposalID: 'p8w2n4c6ld', proposalHash: 'hash-c' }).then(
@@ -267,7 +267,7 @@ test('#reject records the rejection with your reason', async () => {
       thread: 'conversation',
       payload: promptsOverrideProposedCodec.encode({
         proposalID: 'p8w2n4c6ld',
-        promptID: 'writer',
+        promptID: 'compaction',
         proposalHash: 'hash-c',
         baseHash: null,
         entry: { _template: '{{ parts.safety }}' },
@@ -281,7 +281,7 @@ test('#reject records the rejection with your reason', async () => {
   const result = await ctx.createClient(null).reject({
     proposalID: 'p8w2n4c6ld',
     proposalHash: 'hash-c',
-    reason: 'The writer needs its instruction part.',
+    reason: 'The compaction needs its safety part.',
   });
 
   const records = await readRecords(ctx.log, {
@@ -292,7 +292,7 @@ test('#reject records the rejection with your reason', async () => {
   expect(result).toStrictEqual({ proposalID: 'p8w2n4c6ld' });
 
   expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
-    { status: 'readable', fields: { reason: 'The writer needs its instruction part.' } },
+    { status: 'readable', fields: { reason: 'The compaction needs its safety part.' } },
   ]);
 });
 
@@ -320,7 +320,7 @@ test('#reject refuses an answer under another proposal hash with its code', asyn
       thread: 'conversation',
       payload: promptsOverrideProposedCodec.encode({
         proposalID: 'p8w2n4c6ld',
-        promptID: 'writer',
+        promptID: 'compaction',
         proposalHash: 'hash-c',
         baseHash: null,
         entry: { _template: '{{ parts.safety }}' },
@@ -356,7 +356,7 @@ test('#approve refuses a proposal that a rejection closed with its code', async 
       thread: 'conversation',
       payload: promptsOverrideProposedCodec.encode({
         proposalID: 'p8w2n4c6ld',
-        promptID: 'writer',
+        promptID: 'compaction',
         proposalHash: 'hash-c',
         baseHash: null,
         entry: { _template: '{{ parts.safety }}' },

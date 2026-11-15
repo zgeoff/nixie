@@ -134,7 +134,7 @@ export interface RetiredForgetPreview {
   readonly hasMore: boolean;
 }
 
-export type ViewNoticeKind = 'turn' | 'batch' | 'catch_up' | 'run';
+export type ViewNoticeKind = 'turn' | 'run';
 
 export interface ViewNoticeEntry extends NoticeEntry {
   readonly item: (ViewItem & { readonly change: MemoryChange }) | null;

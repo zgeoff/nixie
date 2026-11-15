@@ -112,7 +112,7 @@ test('it hands back the own base URL for a role outside the roles', async () => 
   const capture = await ctx.turnInputs.openCapture({
     step: ctx.step,
     profile: ctx.profile,
-    role: 'memory-writer',
+    role: 'memory-consolidator',
     isRewritten: false,
   });
 

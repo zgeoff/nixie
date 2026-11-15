@@ -121,9 +121,6 @@ holds the design for a piece of work that is not built yet, with its spikes in
 - [The memory store](architecture/memory/store.md) — items and versions, the 4 states, changes bound
   to a version, a key per item, recall with its index and delivery lock, forgetting, and the model's
   tools
-- [The memory writer](architecture/memory/writer.md) — batches of conversation turns, the catch-up,
-  a fresh session per batch, publishing in one transaction, backoff, and the memory changes the
-  conversation hears of
 - [Memory writes](architecture/memory/writes.md) — the content gate and its quote, token and checker
   checks, retirement intent, provenance, memory proposals and notices
 - [Memory consolidation](architecture/memory/consolidation.md) — the weekly diff of merges, rewrites
@@ -139,8 +136,6 @@ holds the design for a piece of work that is not built yet, with its spikes in
   items each turn retrieves, and the session cleanup a forget runs
 - [The memory checker eval](architecture/memory/checker-eval.md) — the labelled sets, wrong
   confirmations and misses, and the results per set
-- [The memory writer eval](architecture/memory/writer-eval.md) — the cases, the rule each run must
-  meet, and the results per prompt
 
 ### Deployment
 
@@ -234,8 +229,7 @@ rests on.
 
 - [The memory store](design/platform/memory/store.md) — the first build, bulk deletion of retired
   memories, forget completion with key backups, the memory view and export
-- [Memory writes](design/platform/memory/writes.md) — the memory writer, batched capture, and the
-  client's proposal cards and notices
+- [Memory writes](design/platform/memory/writes.md) — the client's proposal cards and notices
 - [Memory in context](design/platform/memory/context.md) — past messages in retrieval, the recall
   tools, compaction summaries, and the SDK transcript as a cache
 - [Moments](design/platform/memory/moments.md) — kept spans of the event log, their records and

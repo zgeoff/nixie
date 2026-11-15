@@ -8,11 +8,6 @@ interface PromptOwner {
 }
 
 export interface PromptContexts {
-  readonly writer: {
-    readonly persona: string;
-    readonly owner: PromptOwner;
-    readonly assistant: { readonly name: string | null };
-  };
   readonly consolidator: {
     readonly persona: string;
     readonly owner: PromptOwner;

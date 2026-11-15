@@ -171,7 +171,7 @@ test('it leaves out a proposal that a rejection closed before its lapse time', a
       thread: 'conversation',
       payload: promptsOverrideProposedCodec.encode({
         proposalID: 'w7tn4c9rhz',
-        promptID: 'writer',
+        promptID: 'compaction',
         proposalHash: 'hash-b',
         baseHash: null,
         entry: { _template: '{{ parts.safety }}' },

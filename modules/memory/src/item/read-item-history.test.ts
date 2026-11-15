@@ -17,7 +17,7 @@ test('it reads every version of an item with its provenance, oldest first', asyn
     text: 'Lives on Oak Avenue',
     target: item,
     provenance: {
-      origin: 'memory_writer',
+      origin: 'conversation',
       source: 'owner',
       taskID: null,
       proposalID: null,
@@ -46,7 +46,7 @@ test('it reads every version of an item with its provenance, oldest first', asyn
         version: 2,
         change: 'edited',
         state: 'active',
-        origin: 'memory_writer',
+        origin: 'conversation',
         source: 'owner',
         recordedAt: expect.toBeNumber(),
         status: 'readable',

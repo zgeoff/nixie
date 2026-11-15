@@ -18,17 +18,19 @@ device that asked.
 ## The file
 
 The export schema, versioned beside the memory store's code, fixes the file's shape, and a committed
-fixture of each version shows a whole file. The header holds the export time, the schema version and
-the snapshot hash of the definitions in force when the export ran, so a reader checks the version
-before it reads the items. Each version also keeps the snapshot hash it was written under, because a
-version's checks only make sense against the definitions that ran them. A change to the shape raises
-the schema version, so a file from an older release holds the version of the shape it was written
-in. The schema reads every version from 5 up. A file from before the sensitive mark reads with every
-item not sensitive, and a file from before version 7, which adds the removal mark, reads with every
-span record not removed, and a file from before version 8, which adds the `images` list of each span
-record, reads with every span record holding no images. The list holds a pointer to each image of an
-owner message, an `n` and a media type, and never the image's bytes. A file refuses a field that its
-version predates, and refuses a missing field that its version requires.
+fixture shows a whole file of the current version. The header holds the export time, the schema
+version and the snapshot hash of the definitions in force when the export ran, so a reader checks
+the version before it reads the items. Each version also keeps the snapshot hash it was written
+under, because a version's checks only make sense against the definitions that ran them. A change to
+the shape raises the schema version, so a file from an older release holds the version of the shape
+it was written in. The schema takes the shape of each version from 5 up, and it never reads a file
+that names an origin this release does not write, so a file that an older release wrote can fail to
+read. In a file of an older shape, the schema reads each item from before the sensitive mark as not
+sensitive. It reads each span record from before version 7, which adds the removal mark, as not
+removed, and each span record from before version 8, which adds the `images` list, as holding no
+images. The list holds a pointer to each image of an owner message, an `n` and a media type, and
+never the image's bytes. A file refuses a field that its version predates, and refuses a missing
+field that its version requires.
 
 A version whose key or ciphertext fails exports with no text and no quote, as the memory view shows
 it unreadable. An item a forget began exports as a forgotten one even before the forget's cleanup

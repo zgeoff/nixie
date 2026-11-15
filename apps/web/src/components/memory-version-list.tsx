@@ -183,7 +183,7 @@ function VersionProvenance(props: VersionProps): ReactNode {
     ['Task', version.taskID],
     ['Proposal', version.proposalID],
     ['Checks', version.checks === null ? null : formatMemoryChecks(version.checks)],
-    ['Writer model', version.writerModel],
+    ['Model', version.writerModel],
     ['Checker model', version.checkerModel],
   ].filter((fact): fact is [string, string] => typeof fact[1] === 'string' && fact[1] !== '');
 

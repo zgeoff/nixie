@@ -671,45 +671,12 @@ test('it keeps the text of a forgotten message in no data file', async () => {
   expect(files.filter((file) => file.text.includes('Lilac-message-5JX'))).toStrictEqual([]);
 });
 
-test('it starts the memory writer with the batch gate, its catch-up from the first record', async () => {
-  const ctx = await setupTest();
-  const started = await ctx.waitForLogEvent('memory_writer.started');
-
-  expect(started).toMatchObject({ cursor: 0, startSequence: expect.toBeNumber() });
-  expect(ctx.readLogEvents()).not.toPartiallyContain({ event: 'memory_writer.off' });
-});
-
 test('it starts the memory consolidator when the configuration leaves out its enabled key', async () => {
   const ctx = await setupTest();
   const started = await ctx.waitForLogEvent('memory_consolidator.started');
 
   expect(started).toMatchObject({ periodMs: 604_800_000 });
   expect(ctx.readLogEvents()).not.toPartiallyContain({ event: 'memory_consolidator.off' });
-});
-
-test('it never starts the memory writer the configuration turns off, and a turn files nothing for it', async () => {
-  const nixie = await startInProcessNixie({
-    extraConfig: ['memory_writer: { enabled: false, batch_messages: 1 }'],
-  });
-
-  const api = await createTestClient(nixie);
-
-  await nixie.waitForLogEvent('memory_writer.off');
-
-  nixie.guest.addReplies({ text: 'Noted: the ferry leaves at nine.' });
-
-  await sendClientMessage(
-    api.client,
-    { text: 'The ferry to the island leaves at nine.' },
-    'Noted: the ferry leaves at nine.',
-  );
-
-  nixie.signalStop();
-
-  const exited = await nixie.waitForExit();
-
-  expect(exited.records.filter((record) => record.thread === 'memory-writer')).toStrictEqual([]);
-  expect(nixie.readLogEvents()).not.toPartiallyContain({ event: 'memory_writer.started' });
 });
 
 test('it never runs the memory consolidator the configuration turns off', async () => {
@@ -731,16 +698,14 @@ test('it never runs the memory consolidator the configuration turns off', async 
   expect(nixie.readLogEvents()).not.toPartiallyContain({ event: 'memory_consolidator.started' });
 });
 
-test('it reports the memory writer and consolidator the configuration turns off as off to a device', async () => {
+test('it reports the consolidator the configuration turns off as off to a device', async () => {
   const nixie = await startInProcessNixie({
-    extraConfig: ['memory_writer: { enabled: false }', 'memory_consolidation: { enabled: false }'],
+    extraConfig: ['memory_consolidation: { enabled: false }'],
   });
 
   const api = await createTestClient(nixie);
-  const writer = await api.client.memory.writerStatus();
   const consolidator = await api.client.memory.consolidatorStatus();
 
-  expect(writer.isEnabled).toBeFalse();
   expect(consolidator).toStrictEqual({ isEnabled: false });
 });
 

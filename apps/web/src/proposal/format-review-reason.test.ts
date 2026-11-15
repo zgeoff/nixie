@@ -16,10 +16,7 @@ test.each([
   ['other', 'A newer release of nixie sent it to review.'],
   ['self_note', 'nixie wrote it about itself, and every self-note waits for your review.'],
   ['from_photo', 'It comes from a photo you sent, and nixie never takes a photo as your words.'],
-  [
-    'sensitive',
-    'The note-taker marked it sensitive, and every sensitive item waits for your review.',
-  ],
+  ['sensitive', 'It was marked sensitive, and every sensitive item waits for your review.'],
   [
     'subject_change',
     'It changes whose fact the item is, and every subject change waits for your review.',

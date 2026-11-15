@@ -12,7 +12,6 @@ import { MemoryRetiredForgetControl } from './memory-retired-forget-control';
 import { MemorySearchForm } from './memory-search-form';
 import { MemorySearchResults } from './memory-search-results';
 import { PinnedCorePanel } from './pinned-core-panel';
-import { WriterStatusPanel } from './writer-status-panel';
 
 export interface MemoryViewProps {
   readonly navigation?: ReactNode;
@@ -44,7 +43,6 @@ export function MemoryView(props: MemoryViewProps): ReactNode {
       {props.openItemID === undefined ? null : (
         <OpenedItem itemID={props.openItemID} renderItem={renderItem} />
       )}
-      <WriterStatusPanel />
       <ConsolidatorStatusPanel />
       <PinnedCorePanel renderItem={renderItem} />
       <MemoryExportButton />

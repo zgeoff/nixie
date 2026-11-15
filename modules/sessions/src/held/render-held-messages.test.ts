@@ -9,7 +9,7 @@ test('it adds no block when no message arrived past the hop limit', () => {
     thread: 'conversation',
     payload: {
       messageID: 'k3vq8m2xpa',
-      from: 'memory-writer',
+      from: 'sweeper',
       to: 'conversation',
       kind: 'chat',
       replyTo: null,
@@ -18,7 +18,7 @@ test('it adds no block when no message arrived past the hop limit', () => {
       hopLimit: 20,
       wake: false,
       woke: false,
-      source: 'task:memory-writer',
+      source: 'task:sweeper',
     },
   });
 
@@ -38,7 +38,7 @@ test('it counts the messages past the hop limit by their sender in one system me
       thread: 'conversation',
       payload: {
         messageID,
-        from: 'memory-writer',
+        from: 'sweeper',
         to: 'conversation',
         kind: 'chat',
         replyTo: null,
@@ -47,7 +47,7 @@ test('it counts the messages past the hop limit by their sender in one system me
         hopLimit: 20,
         wake: true,
         woke: false,
-        source: 'task:memory-writer',
+        source: 'task:sweeper',
       },
     }),
   );
@@ -59,8 +59,8 @@ test('it counts the messages past the hop limit by their sender in one system me
       messaging: {
         directory: [
           {
-            taskID: 'memory-writer',
-            name: 'Memory writer',
+            taskID: 'sweeper',
+            name: 'Sweeper',
             brief: 'Saves memories.',
             isWokenByMessages: true,
             speaker: 'plain_task',
@@ -78,7 +78,7 @@ test('it counts the messages past the hop limit by their sender in one system me
   expect(block).toBe(
     [
       `<system-message type="task-messages" id="${blockID}" at="Tue 13 Oct, 05:00, UTC">`,
-      '2 messages from Memory writer arrived after the exchange reached its limit, so they did not wake you. Oldest first. You woke for a message from Robin, so a reply from you will wake Memory writer.',
+      '2 messages from Sweeper arrived after the exchange reached its limit, so they did not wake you. Oldest first. You woke for a message from Robin, so a reply from you will wake Sweeper.',
       `</system-message id="${blockID}">`,
     ].join('\n'),
   );

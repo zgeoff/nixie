@@ -31,7 +31,7 @@ export function buildMemoryChangeKind(
     read: async (range) => {
       const versions = await readOutsideVersions(log, range);
 
-      return collectLatestVersions(versions.listed);
+      return collectLatestVersions(versions);
     },
     complete: (events) => readNotedItems(store, events),
     render: (detail, settings) => {

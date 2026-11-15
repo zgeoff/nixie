@@ -218,12 +218,6 @@ export type FaultPointID =
   | 'memory.forget.key_removed'
   | 'memory.lapse.read'
   | 'memory.approval.opened'
-  | 'writer.batch.planned'
-  | 'writer.batch.extracted'
-  | 'writer.batch.gated'
-  | 'writer.publish.inside'
-  | 'writer.publish.before'
-  | 'writer.publish.after'
   | 'backup.set.copied';
 
 export interface FaultPointContext {

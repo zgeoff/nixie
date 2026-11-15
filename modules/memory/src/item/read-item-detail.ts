@@ -4,7 +4,6 @@ import { findImageSource } from '../image/find-image-source';
 import type { MemoryTables, MemoryVersionRow } from '../types';
 import { findCheckerModel } from '../utils/checker/find-checker-model';
 import { readItemKey } from '../utils/item/read-item-key';
-import { loadWriterModel } from '../utils/load-writer-model';
 import { parseChecks } from '../utils/parse-checks';
 import { parseEvidence } from '../utils/parse-evidence';
 import type { EvidenceMessage, ViewItemDetail, ViewVersion } from '../view/memory-view';
@@ -41,11 +40,10 @@ export async function readItemDetail(
     return read;
   };
 
-  const loadModel = (row: MemoryVersionRow): Promise<string | null> => loadWriterModel(log, row);
   const readThread = (sequence: number): Promise<string | null> => readRecordThread(log, sequence);
 
   const versions = await Promise.all(
-    rows.map((row) => readViewVersion(row, { key, readMessage, loadModel, readThread })),
+    rows.map((row) => readViewVersion(row, { key, readMessage, readThread })),
   );
 
   return { ...item, versions };
@@ -68,7 +66,6 @@ async function readRecordThread(
 interface VersionReaders {
   readonly key: CryptoKey | null | undefined;
   readonly readMessage: (sequence: number) => Promise<EvidenceMessage>;
-  readonly loadModel: (row: MemoryVersionRow) => Promise<string | null>;
   readonly readThread: (sequence: number) => Promise<string | null>;
 }
 
@@ -98,7 +95,7 @@ async function readViewVersion(
     taskID: row.task_id,
     proposalID: row.proposal_id,
     checks,
-    writerModel: await readers.loadModel(row),
+    writerModel: row.model,
     checkerModel: findCheckerModel(checks),
     evidenceQuote: opened.evidenceQuote,
     evidence:

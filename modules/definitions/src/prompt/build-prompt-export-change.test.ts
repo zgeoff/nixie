@@ -5,9 +5,9 @@ test('it builds the same change from the same approval', () => {
   const input = {
     approvalID: 'approval-a',
     proposalID: 'k3x9m2p7qa',
-    promptID: 'writer' as const,
-    entry: { instruction: 'prompts/writer-instruction.md' },
-    files: [{ path: 'prompts/writer-instruction.md', text: 'Write in short sentences.\n' }],
+    promptID: 'compaction' as const,
+    entry: { instruction: 'prompts/compaction-instruction.md' },
+    files: [{ path: 'prompts/compaction-instruction.md', text: 'Write in short sentences.\n' }],
     reason: 'Shorter memories.',
     text: { agentName: null, ownerName: null },
     sizes: new Map(),
@@ -21,9 +21,9 @@ test('it builds a change with no safety note when the override keeps the built-i
   const change = buildPromptExportChange({
     approvalID: 'approval-a',
     proposalID: 'k3x9m2p7qa',
-    promptID: 'writer',
-    entry: { instruction: 'prompts/writer-instruction.md' },
-    files: [{ path: 'prompts/writer-instruction.md', text: 'Write in short sentences.\n' }],
+    promptID: 'compaction',
+    entry: { instruction: 'prompts/compaction-instruction.md' },
+    files: [{ path: 'prompts/compaction-instruction.md', text: 'Write in short sentences.\n' }],
     reason: 'Shorter memories.\nOne idea per item.',
     text: { agentName: null, ownerName: null },
     sizes: new Map(),
@@ -31,15 +31,15 @@ test('it builds a change with no safety note when the override keeps the built-i
   });
 
   expect(change).toStrictEqual({
-    branch: 'nixie/prompt/writer',
-    title: 'Override the writer prompt with the version nixie proposed',
-    message: 'Override the writer prompt with the version nixie proposed',
-    body: 'nixie proposed this override of the `writer` prompt, and the owner approved it: approval `approval-a`, proposal `k3x9m2p7qa`.\n\nThe reason the proposal gives:\n\n> Shorter memories.\n> One idea per item.\n\nThe override applies after this pull request merges and `live` is promoted.\n',
+    branch: 'nixie/prompt/compaction',
+    title: 'Override the compaction prompt with the version nixie proposed',
+    message: 'Override the compaction prompt with the version nixie proposed',
+    body: 'nixie proposed this override of the `compaction` prompt, and the owner approved it: approval `approval-a`, proposal `k3x9m2p7qa`.\n\nThe reason the proposal gives:\n\n> Shorter memories.\n> One idea per item.\n\nThe override applies after this pull request merges and `live` is promoted.\n',
     files: new Map([
-      ['prompts/writer-instruction.md', 'Write in short sentences.\n'],
+      ['prompts/compaction-instruction.md', 'Write in short sentences.\n'],
       [
         'nixie.yaml',
-        'format: 3\nprompts:\n  writer:\n    instruction: "prompts/writer-instruction.md"\n',
+        'format: 3\nprompts:\n  compaction:\n    instruction: "prompts/compaction-instruction.md"\n',
       ],
     ]),
   });
@@ -55,7 +55,7 @@ test("it moves a part file that another prompt reads to the prompt's own folder,
     reason: 'Shorter summaries.',
     text: { agentName: null, ownerName: null },
     sizes: new Map(),
-    manifest: 'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n',
+    manifest: 'format: 3\nprompts:\n  retirement-checker:\n    instruction: prompts/shared.md\n',
   });
 
   expect(change.files).toStrictEqual(
@@ -63,13 +63,13 @@ test("it moves a part file that another prompt reads to the prompt's own folder,
       ['prompts/compaction/shared.md', 'Keep it to {{ summary.words }} words.\n'],
       [
         'nixie.yaml',
-        'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n  compaction:\n    instruction: "prompts/compaction/shared.md"\n',
+        'format: 3\nprompts:\n  retirement-checker:\n    instruction: prompts/shared.md\n  compaction:\n    instruction: "prompts/compaction/shared.md"\n',
       ],
     ]),
   );
 
   expect(change.body).toInclude(
-    'The proposal names `prompts/shared.md`, which the `writer` prompt reads too, so the change writes the part to `prompts/compaction/shared.md`.',
+    'The proposal names `prompts/shared.md`, which the `retirement-checker` prompt reads too, so the change writes the part to `prompts/compaction/shared.md`.',
   );
 });
 
@@ -156,14 +156,14 @@ test('it keeps a part file of the replaced entry that another prompt reads', () 
     text: { agentName: null, ownerName: null },
     sizes: new Map(),
     manifest:
-      'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n  compaction:\n    instruction: prompts/shared.md\n',
+      'format: 3\nprompts:\n  retirement-checker:\n    instruction: prompts/shared.md\n  compaction:\n    instruction: prompts/shared.md\n',
   });
 
   expect(change.files).toStrictEqual(
     new Map([
       [
         'nixie.yaml',
-        'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n  compaction:\n    _template: "Summarize in {{ summary.words }} words."\n',
+        'format: 3\nprompts:\n  retirement-checker:\n    instruction: prompts/shared.md\n  compaction:\n    _template: "Summarize in {{ summary.words }} words."\n',
       ],
     ]),
   );
@@ -181,7 +181,7 @@ test("it refuses a part file that another prompt reads when that prompt also rea
       text: { agentName: null, ownerName: null },
       sizes: new Map(),
       manifest:
-        'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n    safety: prompts/compaction/shared.md\n',
+        'format: 3\nprompts:\n  retirement-checker:\n    instruction: prompts/shared.md\n    safety: prompts/compaction/shared.md\n',
     }),
   ).toThrowWithMessage(
     Error,
@@ -203,7 +203,7 @@ test("it refuses a part file that another prompt reads when the proposal holds a
       reason: 'Shorter summaries.',
       text: { agentName: null, ownerName: null },
       sizes: new Map(),
-      manifest: 'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n',
+      manifest: 'format: 3\nprompts:\n  retirement-checker:\n    instruction: prompts/shared.md\n',
     }),
   ).toThrowWithMessage(
     Error,

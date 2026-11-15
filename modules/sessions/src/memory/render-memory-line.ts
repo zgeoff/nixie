@@ -9,7 +9,6 @@ export interface NextVersion {
 
 const notedWords: Readonly<Record<MemoryOrigin, string | null>> = {
   conversation: 'you noted it',
-  memory_writer: 'the note-taker noted it',
   task: 'a task noted it',
   owner: null,
   lapse: 'its end time passed',

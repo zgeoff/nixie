@@ -40,7 +40,7 @@ test("it adds the entry beside another prompt's entry and keeps its comments", (
   const manifest = [
     'format: 3',
     'prompts:',
-    '    # the writer quotes every fact',
+    '    # the compaction quotes every fact',
     '    writer:',
     '        safety: prompts/writer.md',
     'skills: []',
@@ -52,7 +52,7 @@ test("it adds the entry beside another prompt's entry and keeps its comments", (
   ).toMatchInlineSnapshot(`
     "format: 3
     prompts:
-        # the writer quotes every fact
+        # the compaction quotes every fact
         writer:
             safety: prompts/writer.md
         compaction:

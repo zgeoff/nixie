@@ -27,12 +27,6 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'memory.forget.key_removed': 'memory.forget.key_removed',
   'memory.lapse.read': 'memory.lapse.read',
   'memory.approval.opened': 'memory.approval.opened',
-  'writer.batch.planned': 'writer.batch.planned',
-  'writer.batch.extracted': 'writer.batch.extracted',
-  'writer.batch.gated': 'writer.batch.gated',
-  'writer.publish.inside': 'writer.publish.inside',
-  'writer.publish.before': 'writer.publish.before',
-  'writer.publish.after': 'writer.publish.after',
   'backup.set.copied': 'backup.set.copied',
 };
 

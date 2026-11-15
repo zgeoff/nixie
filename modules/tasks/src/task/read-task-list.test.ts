@@ -228,7 +228,7 @@ test('it shows a task that asked a question as waiting on the task it asked', as
 });
 
 test.each(['question', 'request'] as const)(
-  'it shows no wait for a task that sent a %s to the memory writer, which runs on its own schedule',
+  'it shows no wait for a task that sent a %s to the sweeper, which runs on its own schedule',
   async (kind) => {
     const ctx = await setupTest();
 
@@ -242,8 +242,8 @@ test.each(['question', 'request'] as const)(
           speaker: 'plain_task' as const,
         },
         {
-          taskID: 'memory-writer',
-          name: 'Memory writer',
+          taskID: 'sweeper',
+          name: 'Sweeper',
           brief: 'Saves memory.',
           isWokenByMessages: false,
           speaker: 'plain_task' as const,
@@ -253,12 +253,12 @@ test.each(['question', 'request'] as const)(
     };
 
     await createSystemTask(ctx.context, 'planner');
-    await createSystemTask(ctx.context, 'memory-writer');
+    await createSystemTask(ctx.context, 'sweeper');
     await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
     const outcome = await writeTestTaskMessage(ctx.context, messaging, {
       from: 'planner',
-      to: 'memory-writer',
+      to: 'sweeper',
       kind,
       body: 'Keep the note about the allotment.',
       replyTo: null,
@@ -267,7 +267,7 @@ test.each(['question', 'request'] as const)(
     });
 
     const tasks = await readTaskList(ctx.context, messaging, {
-      callerID: 'memory-writer',
+      callerID: 'sweeper',
       limit: 20,
     });
 

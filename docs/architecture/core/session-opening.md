@@ -16,12 +16,11 @@ covers the turn, the fork on each resume and when a turn opens a new session,
 A new session opens with six slots, from what defines the model to the current turn:
 
 1. **Persona.** The system prompt holds the persona, the catalog of the conversation's
-   [skills](./skills.md#the-catalog), the line that says who the note-taker is, the rule for pasted
-   and dropped text and images, and the rule for system messages. It holds nothing about memory, so
-   it changes only when nixie's definitions change, when the conversation's
-   [skill pin](./skills.md#the-pin) moves, or when a restart changes the
-   [catalog's cap](./skills.md#the-catalog). Between those changes it stays the stable head of the
-   cached prefix.
+   [skills](./skills.md#the-catalog), the rule for pasted and dropped text and images, and the rule
+   for system messages. It holds nothing about memory, so it changes only when nixie's definitions
+   change, when the conversation's [skill pin](./skills.md#the-pin) moves, or when a restart changes
+   the [catalog's cap](./skills.md#the-catalog). Between those changes it stays the stable head of
+   the cached prefix.
 2. **Status.** A readout taken when the session opens.
 3. **Pinned memory.** The pinned core as it stands when the session opens, each item with the line
    that says where it came from, or a line that says nothing is pinned.

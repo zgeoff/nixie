@@ -113,7 +113,7 @@ test('it returns no override for a prompt that the definitions in force leave al
 
   const tool = buildPromptReadTool({
     readInForce: () => ({
-      prompts: { writer: { parts: { safety: 'Quote every fact.' }, template: null } },
+      prompts: { task: { parts: { safety: 'Quote every fact.' }, template: null } },
     }),
   });
 

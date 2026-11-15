@@ -4,7 +4,7 @@ import { canReplyWake } from './can-reply-wake';
 test.each([
   ['wakes a sender when the reply reaches the limit', 'planner', 2, true],
   ['never wakes a sender past the limit', 'planner', 3, false],
-  ['never wakes a scheduled sender', 'memory-writer', 0, false],
+  ['never wakes a scheduled sender', 'sweeper', 0, false],
   ['never wakes a sender outside the directory', 'gardener', 0, false],
 ] as const)('it %s', (_label, senderID, hop, expected) => {
   expect(
@@ -19,8 +19,8 @@ test.each([
             speaker: 'plain_task',
           },
           {
-            taskID: 'memory-writer',
-            name: 'Memory writer',
+            taskID: 'sweeper',
+            name: 'Sweeper',
             brief: 'Saves.',
             isWokenByMessages: false,
             speaker: 'plain_task',

@@ -3,8 +3,8 @@ import { buildPromptEntryLines } from './build-prompt-entry-lines';
 
 test('it writes a one-line value in JSON quotes', () => {
   expect(
-    buildPromptEntryLines('writer', { instruction: 'prompts/writer-instruction.md' }, '  '),
-  ).toStrictEqual(['  writer:', '    instruction: "prompts/writer-instruction.md"']);
+    buildPromptEntryLines('compaction', { instruction: 'prompts/compaction-instruction.md' }, '  '),
+  ).toStrictEqual(['  compaction:', '    instruction: "prompts/compaction-instruction.md"']);
 });
 
 test('it writes a value of several lines as a literal block, and leaves a blank line unindented', () => {

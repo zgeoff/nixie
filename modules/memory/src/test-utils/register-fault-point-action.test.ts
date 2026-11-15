@@ -5,13 +5,13 @@ import { registerFaultPointAction } from './register-fault-point-action';
 test('it runs the action before the first arrival continues', async () => {
   const events: string[] = [];
 
-  registerFaultPointAction('writer.batch.gated', async () => {
+  registerFaultPointAction('memory.lapse.read', async () => {
     await Promise.resolve();
 
     events.push('action');
   });
 
-  await waitAtFaultPoint('writer.batch.gated', { kind: 'task', id: 'memory-writer' });
+  await waitAtFaultPoint('memory.lapse.read', { kind: 'memory', id: null });
 
   events.push('continued');
 
@@ -21,10 +21,10 @@ test('it runs the action before the first arrival continues', async () => {
 test('it runs the action for the first arrival only', async () => {
   const action = mock(() => Promise.resolve());
 
-  registerFaultPointAction('writer.batch.gated', action);
+  registerFaultPointAction('memory.lapse.read', action);
 
-  await waitAtFaultPoint('writer.batch.gated', { kind: 'task', id: 'memory-writer' });
-  await waitAtFaultPoint('writer.batch.gated', { kind: 'task', id: 'memory-writer' });
+  await waitAtFaultPoint('memory.lapse.read', { kind: 'memory', id: null });
+  await waitAtFaultPoint('memory.lapse.read', { kind: 'memory', id: null });
 
   expect(action).toHaveBeenCalledOnce();
 });
@@ -32,9 +32,9 @@ test('it runs the action for the first arrival only', async () => {
 test('it lets another fault point through without the action', async () => {
   const action = mock(() => Promise.resolve());
 
-  registerFaultPointAction('writer.batch.gated', action);
+  registerFaultPointAction('memory.lapse.read', action);
 
-  await waitAtFaultPoint('writer.batch.extracted', { kind: 'task', id: 'memory-writer' });
+  await waitAtFaultPoint('memory.recall.checked', { kind: 'memory', id: null });
 
   expect(action).not.toHaveBeenCalled();
 });
@@ -42,10 +42,10 @@ test('it lets another fault point through without the action', async () => {
 test('it removes the handler when the test finishes', () => {
   const action = mock(() => Promise.resolve());
 
-  registerFaultPointAction('writer.batch.gated', action);
+  registerFaultPointAction('memory.lapse.read', action);
 
   onTestFinished(async () => {
-    await waitAtFaultPoint('writer.batch.gated', { kind: 'task', id: 'memory-writer' });
+    await waitAtFaultPoint('memory.lapse.read', { kind: 'memory', id: null });
 
     expect(action).not.toHaveBeenCalled();
   });

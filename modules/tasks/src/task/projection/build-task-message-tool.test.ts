@@ -124,7 +124,7 @@ test('it tells the sender of a question to a task on its own schedule that a rep
   const ctx = await setupTest();
 
   await createSystemTask(ctx.context, 'planner');
-  await createSystemTask(ctx.context, 'memory-writer');
+  await createSystemTask(ctx.context, 'sweeper');
 
   const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
@@ -140,8 +140,8 @@ test('it tells the sender of a question to a task on its own schedule that a rep
         speaker: 'plain_task',
       },
       {
-        taskID: 'memory-writer',
-        name: 'Memory writer',
+        taskID: 'sweeper',
+        name: 'Sweeper',
         brief: 'Saves memory.',
         isWokenByMessages: false,
         speaker: 'plain_task',
@@ -155,7 +155,7 @@ test('it tells the sender of a question to a task on its own schedule that a rep
   const outcome = await tool.run(
     buildMockToolCall({
       tool: 'task.message',
-      input: { to: 'memory-writer', kind: 'question', body: 'Did the gym note save?' },
+      input: { to: 'sweeper', kind: 'question', body: 'Did the gym note save?' },
     }),
     buildMockToolContext({ run: { thread: 'planner', stepRunID: buildStepRunID(claim) } }),
   );
@@ -167,7 +167,7 @@ test('it tells the sender of a question to a task on its own schedule that a rep
       woke: false,
       hop: 1,
       note: expect.stringMatching(
-        /^Delivered to Memory writer as \w+\. .* You do not wait on them for an answer, and a reply, if any, arrives as a new message\. /u,
+        /^Delivered to Sweeper as \w+\. .* You do not wait on them for an answer, and a reply, if any, arrives as a new message\. /u,
       ),
     },
   });

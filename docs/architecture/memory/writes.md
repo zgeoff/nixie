@@ -11,9 +11,9 @@ an unpin applies at once, because it adds nothing to memory ([pins](#pins)). A w
 passes the same gates as a write from the conversation.
 
 [The memory store](./store.md) covers the items, versions and keys that a write changes. The gates
-follow [0008](../../decisions/0008-memory-write-review.md). [The memory writer](./writer.md) covers
-the batched writer, and [memory consolidation](./consolidation.md) covers the weekly diff of merges,
-rewrites and retirements.
+follow [0008](../../decisions/0008-memory-write-review.md).
+[Memory consolidation](./consolidation.md) covers the weekly diff of merges, rewrites and
+retirements.
 
 ## The content gate
 
@@ -31,9 +31,6 @@ runs these steps in order:
 3. **The token check.** Every destination-like token in the memory text appears in the quote.
 4. **The checker.** The checker model confirms that the message asserts the memory.
 5. **Apply.** nixie writes the version, its record and the turn's notice entry in one transaction.
-
-A write from a memory writer batch skips the first step: the one message it cites is its evidence,
-and [the memory writer](./writer.md#publishing) covers how its batch publishes it.
 
 A memory text that holds a Unicode format character, such as a zero-width space or a bidirectional
 control, fails before any check runs.
@@ -88,10 +85,10 @@ the zone the user sent their one message in, then the message, with the quote ma
 every pasted span marked, then the memory text. The evidence mark avoids a quotation word, because
 the checker read words marked as a quote as someone else's speech. The checker sees no other
 message, no reply and no tool result, so outside content reaches it only as a marked span of the
-user's own message. The checker's prompt names the user the way the writer does, so its examples
-read like the memories it judges. The user writes to the assistant, so the prompt reads "you" in the
-message as the assistant: a memory about the user never takes a fact the message states about the
-assistant, and a shared memory needs the user to state it.
+user's own message. The checker's prompt names the user the way the conversation does, so its
+examples read like the memories it judges. The user writes to the assistant, so the prompt reads
+"you" in the message as the assistant: a memory about the user never takes a fact the message states
+about the assistant, and a shared memory needs the user to state it.
 
 A write with an end time adds that end time to the checker's input, in the message's zone, and the
 checker answers asserted only when the message states both the fact and a time limit that gives that
@@ -106,8 +103,7 @@ reaches only the sealed proposal.
 A seed can put a new snapshot in force while the checker runs, and that snapshot can hold another
 checker prompt. The write transaction refuses a pass whose checker ran under a snapshot that is no
 longer in force, so every applied version carries the verdict of the checker in force at its write.
-A write tool call then runs its gate again under the new snapshot. The memory writer drops the batch
-and gates it again on its next step.
+A write tool call then runs its gate again under the new snapshot.
 
 Each checker prompt joins the policy snapshot as the SHA-256 of its text, so a release that changes
 a prompt, or a change to the user's name, changes the snapshot hash that every record carries. The
@@ -158,9 +154,6 @@ the calling thread, and adds no version, so the store's undo never reaches it an
 item again from the memory view. An unpin of an item outside the core fails and writes nothing. The
 next turn's change note names the unpinned item ([the pinned core](./context.md#the-pinned-core)).
 
-The memory writer never pins, and its edit of a pinned item waits for review even when every check
-passes ([publishing](./writer.md#publishing)).
-
 ## Sensitive marks
 
 `memory.mark_sensitive` marks an item [sensitive](./store.md#sensitive-items), or clears the mark,
@@ -169,10 +162,8 @@ item stays in memory, where the model's own recall still finds it. It records th
 adds no version, and fails on a forgotten item. The user changes the mark again from the memory
 view.
 
-The memory writer marks only a new item, and that item waits for review with the sensitive reason
-even when every check passes ([publishing](./writer.md#publishing)). The proposal carries the mark
-in a record of its own, and an approval marks the item in the transaction that creates it. A pending
-proposal merges only with one that carries the same mark.
+A proposal carries a sensitive mark in a record of its own, and an approval marks the item in the
+transaction that creates it. A pending proposal merges only with one that carries the same mark.
 
 ## Self-notes
 
@@ -192,12 +183,10 @@ token check found, and the proposal's checks keep the token verdict, so the revi
 destination the user never typed. An approved self-note takes outside content as its source.
 
 Only the conversation creates a self-note, because only a persona thread speaks as nixie. A
-self-note write from a task or from the memory writer fails before any check runs and writes
-nothing, and so does the memory writer's edit of a self-note. The memory writer's tools take no self
-subject, and the writer [flags a possible self-note](./writer.md#flags-of-possible-self-notes) for
-nixie to write instead. A self-note takes a pin as any other item does ([pins](#pins)). A proposal
-merges only with a pending proposal of the same subject, and its close match on approval looks only
-at items of its own subject, so an item about the user never revises a self-note.
+self-note write from a task fails before any check runs and writes nothing. A self-note takes a pin
+as any other item does ([pins](#pins)). A proposal merges only with a pending proposal of the same
+subject, and its close match on approval looks only at items of its own subject, so an item about
+the user never revises a self-note.
 
 The conversation's retire of a self-note skips the intent gate and applies at once, with a notice
 entry whose undo brings the note back. The retire needs no quote, and its version records no intent
@@ -217,10 +206,8 @@ when its token check passes. A failed token check keeps the self-note reason, as
 self-note write. An edit that passes the item's own subject is a plain edit.
 
 A move into self is a self-note write, so only the conversation makes one, and a move out of self is
-an edit of a self-note, which the memory writer never makes. The memory writer's edit refuses any
-subject other than its item's own ([a batch's session](./writer.md#a-batchs-session)). To split an
-item that holds two subjects, nixie edits it down to one fact and stores the other as a new item,
-and each waits for review on its own.
+an edit of a self-note. To split an item that holds two subjects, nixie edits it down to one fact
+and stores the other as a new item, and each waits for review on its own.
 
 The proposal holds the subject its item has and the subject the item moves to. The second sits in a
 record of its own after the proposal record, for the reason that a subject mark does
@@ -236,12 +223,12 @@ item again.
 
 ## Writes from a photo
 
-Memory never holds an image or a description of one: the writer and the log reader see only a marker
-where the user attached an image. The conversation sees the image itself, and saves what it shows
-through `memory.remember` as it saves any other fact, with an image source: the event ID of the
-user's message that holds the image and the image's number in that message. The gate refuses an
-image source that does not name an image of one of the user's readable messages in the write's
-thread, and writes nothing.
+Memory never holds an image or a description of one: the log reader sees only a marker where the
+user attached an image. The conversation sees the image itself, and saves what it shows through
+`memory.remember` as it saves any other fact, with an image source: the event ID of the user's
+message that holds the image and the image's number in that message. The gate refuses an image
+source that does not name an image of one of the user's readable messages in the write's thread, and
+writes nothing.
 
 A photo never counts as the user's words, and neither does text the model reads inside one. The gate
 therefore skips the quote check and the checker for a write from a photo, whatever quote the write
@@ -274,12 +261,12 @@ user's conversation, so only a forget of the reply itself removes that copy.
 ## Provenance
 
 nixie sets every provenance field from the calling step, never from the tool's arguments: the origin
-from the run's thread, the task, and the model ID of the call that asked. A version that the memory
-writer applies names the model of its batch's session. The checker's verdict among the checks names
-the checker's model. A version that no checker judged names no checker model: a write whose token
-check failed, which stops before the checker, or an edit of a self-note, which goes to review before
-any check of its quote. A version whose checks all passed takes the user's words as its source and
-holds each check's verdict. Any other write has no version until the user approves it.
+from the run's thread, the task, and the model ID of the call that asked. The checker's verdict
+among the checks names the checker's model. A version that no checker judged names no checker model:
+a write whose token check failed, which stops before the checker, or an edit of a self-note, which
+goes to review before any check of its quote. A version whose checks all passed takes the user's
+words as its source and holds each check's verdict. Any other write has no version until the user
+approves it.
 
 A version's source labels its text, never its evidence. A proposal takes outside content as its
 source even when its quote lies in the user's message, because no check tied the text to the quote:
@@ -356,7 +343,7 @@ second proposer against the proposal and adds no proposal against the cap. It mo
 lapse to a full lapse window from the merge, so a fact proposed again never lapses sooner than a
 proposal of its own. The listing shows every source that proposed the change, and the second
 proposer's result says that it merged. A conversation whose proposal another source proposed again
-learns of it from an event in [the events block](./writer.md#changes-the-conversation-hears-of). A
+learns of it from an event in [the events block](../core/conversation-turns.md#the-events-block). A
 reworded fact stays a proposal of its own: wording that differs is the model's to reconcile.
 
 An approval of a proposal for a new item first searches the retrieval index with its text. When an
@@ -368,23 +355,21 @@ configurable share.
 
 A proposal lapses after a configurable time, or at its end time when that comes first, so an
 approval never applies a fact that has already ended. A server sweep lapses each overdue proposal. A
-conversation turn, a task run or a writer batch makes at most a configurable number of proposals,
-and the next one refuses, so an injected instruction cannot flood the user's review. A lapsed or
-rejected proposal for a new item deletes that item's key, because the proposal held its only
-reference, and so does an approval that applies it as a revision of another item. The key goes after
-the close commits, so store start and each lapse sweep delete any key that a crash or a failed
-deletion left behind.
+conversation turn or a task run makes at most a configurable number of proposals, and the next one
+refuses, so an injected instruction cannot flood the user's review. A lapsed or rejected proposal
+for a new item deletes that item's key, because the proposal held its only reference, and so does an
+approval that applies it as a revision of another item. The key goes after the close commits, so
+store start and each lapse sweep delete any key that a crash or a failed deletion left behind.
 
 ## Notices
 
 Each applied write and each proposal adds an entry to its group's notice: one conversation turn,
-keyed by the user's newest message in the thread, or one task run. The memory writer posts a notice
-record of its own for each live batch and for the end of its [catch-up](./writer.md#the-catch-up),
-which holds a count and no entries. The API lists a thread's notices of both kinds with each entry's
-current item, and the client shows a turn's notice under the turn's last reply and any other notice
-after the newest record its writes followed. A notice shows its counts on one muted line and opens
-to its entries, and each entry links to its item in the memory view, or to the proposals page for a
-proposal. An entry whose item has an end time shows the date the fact lasts until.
+keyed by the user's newest message in the thread, or one task run. The API lists a thread's notices
+with each entry's current item, and the client shows a turn's notice under the turn's last reply and
+any other notice after the newest record its writes followed. A notice shows its counts on one muted
+line and opens to its entries, and each entry links to its item in the memory view, or to the
+proposals page for a proposal. An entry whose item has an end time shows the date the fact lasts
+until.
 
 An entry whose item still stands at the version it wrote offers undo, keep and retire, each one tap
 and each a [checked action](../channels/api.md#checked-actions) bound to that version. An item that

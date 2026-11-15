@@ -2,7 +2,6 @@ import { createShortID } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type { WriteInTransaction } from '../../types';
-import { memoryWriterTaskID } from '../../utils/memory-writer-task-id';
 import type { KeepMomentRequest, MomentContext, MomentWrite } from '../../utils/moment-context';
 import { momentKeptCodec } from '../codec/moment-kept-codec';
 import { probeThreadSpan } from '../probe-thread-span';
@@ -13,10 +12,6 @@ export async function writeKeptMoment(
   writeInTransaction?: WriteInTransaction,
 ): Promise<MomentWrite> {
   const caller = request.caller;
-
-  if (caller.kind === 'model' && caller.thread === memoryWriterTaskID) {
-    return { status: 'refused', reason: 'memory_writer' };
-  }
 
   if (caller.kind === 'model' && caller.thread !== request.thread) {
     return { status: 'refused', reason: 'other_thread' };

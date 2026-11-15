@@ -32,10 +32,9 @@ test('it reads every section, with the default of each setting the file leaves o
   const config = await loadDeploymentConfig(ctx.path);
 
   const { models, ...sections } = config;
-  const { memory_writer: memoryWriter, memory, memory_consolidation: _, ...rest } = sections;
+  const { memory, memory_consolidation: _, ...rest } = sections;
 
   expect(models.roles).toStrictEqual({ conversation: 'chat-direct' });
-  expect(memoryWriter.batchMessages).toBe(4);
   expect(memory.pinnedCoreTokens).toBe(2000);
 
   expect(rest).toStrictEqual({
@@ -93,40 +92,6 @@ test('it reads every section, with the default of each setting the file leaves o
   });
 });
 
-test("it reads the memory writer's defaults when the file leaves its section out", async () => {
-  const ctx = await setupTest();
-
-  await writeFile(
-    ctx.path,
-    [
-      'models:',
-      '  profiles:',
-      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
-      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
-      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
-      '  roles: { conversation: chat-direct }',
-      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
-      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
-    ].join('\n'),
-  );
-
-  const config = await loadDeploymentConfig(ctx.path);
-
-  expect(config.memory_writer).toStrictEqual({
-    isEnabled: true,
-    batchMessages: 4,
-    batchTokens: 12_000,
-    idleMs: 300_000,
-    maxAgeMs: 1_200_000,
-    paceMs: 12_000,
-    itemListTokens: 8000,
-    topItems: 20,
-    proposalCap: 10,
-    firstBackoffMs: 30_000,
-    maxBackoffMs: 3_600_000,
-  });
-});
-
 test("it reads memory consolidation's weekly defaults when the file leaves its section out", async () => {
   const ctx = await setupTest();
 
@@ -157,7 +122,7 @@ test("it reads memory consolidation's weekly defaults when the file leaves its s
   });
 });
 
-test('it keeps the memory writer and consolidation on when their sections leave out the enabled key', async () => {
+test('it keeps consolidation on when its section leave out the enabled key', async () => {
   const ctx = await setupTest();
 
   await writeFile(
@@ -171,18 +136,16 @@ test('it keeps the memory writer and consolidation on when their sections leave 
       '  roles: { conversation: chat-direct }',
       'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
       'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
-      'memory_writer: { batches_per_hour: 60 }',
       'memory_consolidation: { period_days: 3 }',
     ].join('\n'),
   );
 
   const config = await loadDeploymentConfig(ctx.path);
 
-  expect(config.memory_writer.isEnabled).toBeTrue();
   expect(config.memory_consolidation.isEnabled).toBeTrue();
 });
 
-test('it turns off the memory writer and consolidation that the file turns off', async () => {
+test('it turns off the consolidation that the file turns off', async () => {
   const ctx = await setupTest();
 
   await writeFile(
@@ -196,38 +159,13 @@ test('it turns off the memory writer and consolidation that the file turns off',
       '  roles: { conversation: chat-direct }',
       'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
       'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
-      'memory_writer: { enabled: false }',
       'memory_consolidation: { enabled: false }',
     ].join('\n'),
   );
 
   const config = await loadDeploymentConfig(ctx.path);
 
-  expect(config.memory_writer.isEnabled).toBeFalse();
   expect(config.memory_consolidation.isEnabled).toBeFalse();
-});
-
-test("it reads the memory writer's hourly batch limit as the wait between batches", async () => {
-  const ctx = await setupTest();
-
-  await writeFile(
-    ctx.path,
-    [
-      'models:',
-      '  profiles:',
-      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
-      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
-      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
-      '  roles: { conversation: chat-direct }',
-      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
-      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
-      'memory_writer: { batches_per_hour: 60 }',
-    ].join('\n'),
-  );
-
-  const config = await loadDeploymentConfig(ctx.path);
-
-  expect(config.memory_writer.paceMs).toBe(60_000);
 });
 
 test('it reads a model profile, with the default of each setting it leaves out', async () => {

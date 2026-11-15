@@ -5,10 +5,8 @@ import { contentCheckerPrompt } from './content-checker-prompt';
 import { retirementCheckerPrompt } from './retirement-checker-prompt';
 import { sessionPrompt } from './session-prompt';
 import { taskPrompt } from './task-prompt';
-import { writerPrompt } from './writer-prompt';
 
 export const promptRegistry: { readonly [ID in PromptID]: PromptEntry<PromptContexts[ID]> } = {
-  writer: writerPrompt,
   consolidator: consolidatorPrompt,
   'content-checker': contentCheckerPrompt,
   'retirement-checker': retirementCheckerPrompt,

@@ -359,7 +359,7 @@ export const contract = {
       .input(z.object({ notes: z.array(ratingNoteRefSchema).min(1).max(100) }))
       .output(z.object({ notes: z.array(ratingNoteSchema) })),
 
-    writerStatus: signedIn.output(
+    writerStatus: signedIn.route({ deprecated: true }).output(
       z.object({
         isEnabled: z.boolean(),
         backlog: z.int().nonnegative(),

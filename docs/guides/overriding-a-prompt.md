@@ -11,16 +11,16 @@ covers how nixie renders a prompt and what the seed checks.
 
 ## Steps
 
-1. Write the new text of a part in a file under `prompts/`, such as `prompts/writer-instruction.md`.
-   A `{{ path }}` slot in the text takes a value from the tables under
-   [Parts and paths](#parts-and-paths).
+1. Write the new text of a part in a file under `prompts/`, such as
+   `prompts/compaction-instruction.md`. A `{{ path }}` slot in the text takes a value from the
+   tables under [Parts and paths](#parts-and-paths).
 2. Name the file in the `prompts:` map of `nixie.yaml`, under the prompt and the part it replaces:
 
    ```yaml
    format: 3
    prompts:
-     writer:
-       instruction: prompts/writer-instruction.md
+     compaction:
+       instruction: prompts/compaction-instruction.md
    ```
 
 3. To rearrange the parts, add an inline `_template` under the prompt:
@@ -80,15 +80,14 @@ already answered or lapsed, a stale proposal, or an edit that fails the checks i
 A template reads `parts.<name>` for each part of its prompt, and every path in its row. A part reads
 every path in its row and the parts listed before it.
 
-| Prompt               | Parts                                                  | Paths                                                                                                             |
-| -------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `writer`             | `persona`, `instruction`, `safety`                     | `persona`, `owner.name`, `owner.label`, `owner.mention`, `assistant.name`, `assistant.label`, `assistant.mention` |
-| `consolidator`       | `persona`, `nameRule`, `instruction`, `safety`         | `persona`, `owner.name`, `memory.maxChanges`                                                                      |
-| `content-checker`    | `nameRule`, `instruction`, `safety`                    | `owner.name`, `owner.nameAtSentenceStart`                                                                         |
-| `retirement-checker` | `instruction`, `safety`                                | none                                                                                                              |
-| `session`            | `skillCatalog`, `instruction`, `safety`                | `persona`, `skillCatalog`, `owner.name`                                                                           |
-| `compaction`         | `instruction`, `safety`                                | `owner.name`, `owner.nameAtSentenceStart`, `summary.words`                                                        |
-| `task`               | `persona`, `frame`, `inputs`, `instructions`, `safety` | `persona`, `owner.name`, `task.name`, `task.brief`                                                                |
+| Prompt               | Parts                                                  | Paths                                                      |
+| -------------------- | ------------------------------------------------------ | ---------------------------------------------------------- |
+| `consolidator`       | `persona`, `nameRule`, `instruction`, `safety`         | `persona`, `owner.name`, `memory.maxChanges`               |
+| `content-checker`    | `nameRule`, `instruction`, `safety`                    | `owner.name`, `owner.nameAtSentenceStart`                  |
+| `retirement-checker` | `instruction`, `safety`                                | none                                                       |
+| `session`            | `skillCatalog`, `safety`                               | `persona`, `skillCatalog`, `owner.name`                    |
+| `compaction`         | `instruction`, `safety`                                | `owner.name`, `owner.nameAtSentenceStart`, `summary.words` |
+| `task`               | `persona`, `frame`, `inputs`, `instructions`, `safety` | `persona`, `owner.name`, `task.name`, `task.brief`         |
 
 Each path holds one value:
 

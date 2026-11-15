@@ -161,8 +161,8 @@ test("it leaves the conversation turns passing when another task's errors reach 
   const state = buildStartState({ isReady: true, reason: null });
 
   makeConversationFailureMarker(state)({
-    taskID: 'memory-writer',
-    stepKey: 'memory-writer:9',
+    taskID: 'sweeper',
+    stepKey: 'sweeper:9',
     errors: 3,
     errorLimit: 3,
     nextState: 'failed',

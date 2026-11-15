@@ -151,7 +151,7 @@ test('it marks the words a version changed from the version before', async () =>
   ).toBeNull();
 });
 
-test('it shows the writer and checker models with the checks they ran', async () => {
+test('it shows the model and checker models with the checks they ran', async () => {
   await createDeviceSession();
 
   await store.memoryItems.create({
@@ -160,7 +160,7 @@ test('it shows the writer and checker models with the checks they ran', async ()
       {
         checkerModel: 'stub-checker-1',
         checks: { quote: 'pass', checker: { model: 'stub-checker-1', verdict: 'asserted' } },
-        origin: 'memory_writer',
+        origin: 'conversation',
         text: 'Rents a flat on Mill Lane',
         writerModel: 'stub-writer-2',
       },
@@ -172,7 +172,7 @@ test('it shows the writer and checker models with the checks they ran', async ()
   const version = await rendered.findByRole('listitem', { name: 'Version 1' });
 
   expect(version.querySelector('dl')).toHaveTextContent(
-    'Checks:quote passed · checker assertedWriter model:stub-writer-2Checker model:stub-checker-1',
+    'Checks:quote passed · checker assertedModel:stub-writer-2Checker model:stub-checker-1',
   );
 });
 

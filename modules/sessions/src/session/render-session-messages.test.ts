@@ -4,7 +4,7 @@ import { buildMockTaskMessageView } from '../test-utils/build-mock-task-message-
 import { renderSessionMessages } from './render-session-messages';
 
 test('it adds nothing to a session prompt when the inbox holds no task message', () => {
-  const wake = buildMockLogRecord({ kind: 'task.wake', thread: 'memory-writer', payload: {} });
+  const wake = buildMockLogRecord({ kind: 'task.wake', thread: 'sweeper', payload: {} });
 
   expect(
     renderSessionMessages(
@@ -19,12 +19,12 @@ test('it frames each task message in the inbox, after the note on messages past 
   const records = [
     buildMockLogRecord({
       kind: 'task_message',
-      thread: 'memory-writer',
+      thread: 'sweeper',
       recordedAt: new Date('2026-10-13T04:00:00Z'),
       payload: {
         messageID: 'k3vq8m2xpa',
         from: 'conversation',
-        to: 'memory-writer',
+        to: 'sweeper',
         kind: 'request',
         replyTo: null,
         onBehalfOf: [],
@@ -36,7 +36,7 @@ test('it frames each task message in the inbox, after the note on messages past 
       },
       erasable: { status: 'readable', fields: { body: 'Skip the bike note.' } },
     }),
-    buildMockLogRecord({ kind: 'task.wake', thread: 'memory-writer', payload: {} }),
+    buildMockLogRecord({ kind: 'task.wake', thread: 'sweeper', payload: {} }),
   ];
 
   const prompt = renderSessionMessages(

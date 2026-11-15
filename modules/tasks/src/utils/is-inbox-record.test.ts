@@ -5,7 +5,7 @@ test.each([
   ['owner_message', 'conversation', true],
   ['timer.fired', 'task-1', true],
   ['action.outcome', 'task-1', true],
-  ['task.wake', 'memory-writer', true],
+  ['task.wake', 'sweeper', true],
   ['task.limit_notice', 'conversation', true],
   ['recovery.notice', 'conversation', true],
   ['memory.proposal_rejected', 'task-1', true],

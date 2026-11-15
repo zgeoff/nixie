@@ -2,11 +2,7 @@ import { actionsConfigSchema } from '@heynixie/actions';
 import { backupConfigSchema } from '@heynixie/backup';
 import { searchConfigSchema, timeConfigSchema, webFetchConfigSchema } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
-import {
-  consolidationConfigSchema,
-  memoryConfigSchema,
-  writerConfigSchema,
-} from '@heynixie/memory';
+import { consolidationConfigSchema, memoryConfigSchema } from '@heynixie/memory';
 import { policyConfigSchema } from '@heynixie/policy';
 import { approvalsConfigSchema, quietHoursSchema } from '@heynixie/proposals';
 import { skillsConfigSchema } from '@heynixie/skills';
@@ -30,7 +26,6 @@ export const deploymentConfigSchema = z
     time: timeConfigSchema.default(timeConfigSchema.parse({})),
     tasks: tasksConfigSchema.default(tasksConfigSchema.parse({})),
     actions: actionsConfigSchema.default(actionsConfigSchema.parse({})),
-    memory_writer: writerConfigSchema.default(writerConfigSchema.parse({})),
     memory: memoryConfigSchema.default(memoryConfigSchema.parse({})),
     memory_consolidation: consolidationConfigSchema.default(consolidationConfigSchema.parse({})),
     policy: policyConfigSchema.default(policyConfigSchema.parse({})),

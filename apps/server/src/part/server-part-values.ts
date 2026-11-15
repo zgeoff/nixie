@@ -39,7 +39,6 @@ export interface ServerPartValues {
 
   readonly session_cleanup: CleanupRecordSessions;
   readonly record_forgets: void;
-  readonly memory_writer: ConversationImp['runStep'];
   readonly memory_consolidator: ConversationImp['runStep'];
   readonly definitions_seed: SeedResult;
   readonly start_record: void;

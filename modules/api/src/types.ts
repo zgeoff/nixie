@@ -24,8 +24,6 @@ export interface APISettings {
 
   readonly lastSeenIntervalMs: number;
 
-  readonly isMemoryWriterEnabled: boolean;
-
   readonly isMemoryConsolidatorEnabled: boolean;
 
   readonly isBackupEnabled: boolean;

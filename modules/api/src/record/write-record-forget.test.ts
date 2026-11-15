@@ -462,11 +462,11 @@ test("it forgets a tool result inside a moment's span, and refuses the moment's 
       erasable: { title: 'The locker code' },
     },
     {
-      kind: 'memory.self_note_flagged',
+      kind: 'memory.image_offered',
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
-      payload: { sourceSequence: result.sequence },
-      erasable: { text: 'The owner keeps a spare key in the shed.' },
+      payload: { messageSequence: call.sequence, image: 1, runID: 'run-offer' },
+      erasable: { text: 'A photo of the spare key in the shed.' },
     },
   ]);
 

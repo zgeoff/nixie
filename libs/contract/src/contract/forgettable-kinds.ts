@@ -5,7 +5,6 @@ export const forgettableKinds = [
   'action.outcome',
   'action.queued',
   'action.retry_scheduled',
-  'memory.writer_failed',
   'model.compaction_failed',
   'model.reply',
   'model.session_summarized',
