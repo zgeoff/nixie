@@ -99,6 +99,6 @@ test('it loads the released migrations from their files in released order, each 
   ).toStrictEqual(released.map(([fileName, name]) => [fileName, name, true]));
 });
 
-test('it holds the memory task records migration as the oldest reader', () => {
-  expect(nixieSchema.oldestReader).toBe(53);
+test('it holds the proposed rules migration as the oldest reader', () => {
+  expect(nixieSchema.oldestReader).toBe(57);
 });
