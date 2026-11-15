@@ -3,19 +3,19 @@ import { useRef } from 'react';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { describeRuleError } from './describe-rule-error';
 
-export interface ProposedRuleEdit {
+interface ProposedRuleEdit {
   readonly proposalID: string;
   readonly actionHash: string;
   readonly rule: Readonly<Record<string, unknown>>;
 }
 
-export interface ProposedRuleEditor {
+interface ProposedRuleEditor {
   readonly edit: (input: ProposedRuleEdit) => void;
   readonly isPending: boolean;
   readonly faults: readonly string[];
 }
 
-export interface ProposedRuleEditorOptions {
+interface ProposedRuleEditorOptions {
   readonly onEdited: () => void;
 }
 

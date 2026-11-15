@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import { describeRuleError } from '../rule/describe-rule-error';
 import { useNixieClient } from '../utils/use-nixie-client';
 
-export interface MandateRequest {
+interface MandateRequest {
   readonly title: string;
   readonly rules: readonly Readonly<Record<string, unknown>>[];
   readonly expires: string | undefined;
