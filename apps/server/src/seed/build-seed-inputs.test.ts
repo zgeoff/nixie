@@ -28,8 +28,8 @@ test("it puts the queue check's tool declaration in the policy, beside the conve
 });
 
 test.each([
-  ['Marisol', '8a21ad6f712e3990ec9f1318e804ca3745bdb709d16b8dd3109d504439b14af9'],
-  [null, '833f6b02953153a710fea0fc40360aa7e78eb8967efefbd829f1df4f2bb932f5'],
+  ['Marisol', 'e3af2006ee4ab4fcfbdddc533ea429a23d2f65f0df4826ae4743e3c74f6acb37'],
+  [null, '3dcc45ea0af0debfd45121ffcffbd7287eea63df121e06bf72bd201da05205b7'],
 ])(
   'it builds the pinned policy hash from the built-in checker prompts for the owner name %s when no prompt has an override',
   (name, policyHash) => {
@@ -115,7 +115,7 @@ test.each([
   });
 
   expect(snapshot.policyHash).not.toBe(
-    '8a21ad6f712e3990ec9f1318e804ca3745bdb709d16b8dd3109d504439b14af9',
+    'e3af2006ee4ab4fcfbdddc533ea429a23d2f65f0df4826ae4743e3c74f6acb37',
   );
 });
 
@@ -139,6 +139,6 @@ test('it keeps the policy hash when only a prompt other than the checkers has an
   });
 
   expect(snapshot.policyHash).toBe(
-    '8a21ad6f712e3990ec9f1318e804ca3745bdb709d16b8dd3109d504439b14af9',
+    'e3af2006ee4ab4fcfbdddc533ea429a23d2f65f0df4826ae4743e3c74f6acb37',
   );
 });

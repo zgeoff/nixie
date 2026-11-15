@@ -49,14 +49,16 @@ async function setupTest() {
       await sql`insert into definition_snapshots (snapshot_hash, persona_version, policy_hash, form, label, created_at)
         values (${hash}, 'p1', 'h1', ${JSON.stringify(form)}, 'rev', 1)`.execute(db);
     },
-    readForm: async (hash: string) => {
+    readForm: async (hash: string): Promise<unknown> => {
       const rows = await readQueryRows(
         sql`select form from definition_snapshots where snapshot_hash = ${hash}`,
         db,
         z.object({ form: z.string() }),
       );
 
-      return JSON.parse(rows[0]?.form ?? 'null');
+      const form: unknown = JSON.parse(rows[0]?.form ?? 'null');
+
+      return form;
     },
   };
 }
