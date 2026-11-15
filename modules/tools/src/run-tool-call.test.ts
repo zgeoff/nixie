@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { readRecordAttachments, readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
 import { readStarterDecisionPoint, readStarterRules } from '@heynixie/policy/test-utils';
 import { waitForCondition } from '@heynixie/testing';
@@ -11,6 +11,7 @@ import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition
 import { buildStubActionQueue } from './test-utils/build-stub-action-queue';
 import { setupTestLog } from './test-utils/setup-test-log';
 import type { ToolContext } from './types';
+import { ToolResultRefusedError } from './types';
 
 interface SetupConfig {
   readonly tools: readonly ReturnType<typeof buildMockToolDefinition>[];
@@ -1826,4 +1827,145 @@ test('it counts a call only against the task run that made it', async () => {
   );
 
   expect(next).toStrictEqual({ content: [], structuredContent: { text: 'a note' } });
+});
+
+test('it seals the attachments of a result under the result record, in order', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () =>
+          Promise.resolve({
+            status: 'ok',
+            result: { text: 'files' },
+            attachments: [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5])],
+          }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'notes_read', input: { query: 'files' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const resultSequence = entries[1]?.record.sequence;
+
+  invariant(resultSequence !== undefined);
+
+  const stored = await readRecordAttachments(ctx.log, [resultSequence]);
+
+  expect(stored.get(resultSequence)).toStrictEqual({
+    status: 'readable',
+    attachments: [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5])],
+  });
+
+  expect(entries[1]?.record.erasable).toStrictEqual({
+    status: 'readable',
+    fields: { result: { text: 'files' } },
+  });
+});
+
+test('it runs writeBeside in the result transaction with the result sequence', async () => {
+  const seen: number[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () =>
+          Promise.resolve({
+            status: 'ok',
+            result: { text: 'beside' },
+            writeBeside: async (tx, resultSequence) => {
+              seen.push(resultSequence);
+
+              await writeRecordsInTransaction(tx, ctx.log, [
+                {
+                  kind: 'tool_called',
+                  definitions: { snapshotHash: 'sha256:test' },
+                  thread: 'task-1',
+                  payload: {},
+                },
+              ]);
+            },
+          }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'notes_read', input: { query: 'beside' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries.map((entry) => entry.record.sequence)).toStrictEqual([1, 2, 3]);
+  expect(seen).toStrictEqual([2]);
+});
+
+test('it writes an error result with no attachments when writeBeside refuses the result', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () =>
+          Promise.resolve({
+            status: 'ok',
+            result: { text: 'beside' },
+            attachments: [new Uint8Array([9])],
+            writeBeside: async (tx) => {
+              await writeRecordsInTransaction(tx, ctx.log, [
+                {
+                  kind: 'tool_called',
+                  definitions: { snapshotHash: 'sha256:test' },
+                  thread: 'task-1',
+                  payload: {},
+                },
+              ]);
+
+              throw new ToolResultRefusedError('a forget ended this session');
+            },
+          }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'beside' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+  const stored = await readRecordAttachments(ctx.log, [2]);
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'a forget ended this session' }],
+    isError: true,
+  });
+
+  expect(entries.map((entry) => entry.record.kind)).toStrictEqual(['tool_called', 'tool_result']);
+  expect(entries[1]?.record.payload).toMatchObject({ outcome: 'error' });
+  expect(stored.get(2)).toStrictEqual({ status: 'none' });
 });

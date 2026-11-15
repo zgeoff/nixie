@@ -167,8 +167,9 @@ python /skills/pdf-forms/scripts/fill.py input.pdf
 
 The code run keeps everything else from the code tool: a fresh code sandbox, the `code_run` effect,
 the limits and its result as outside content. The skill files count towards the code tool's
-[input limit](../queue/code-tool.md#the-limits). The code tool's record holds each skill's hash. A
-rule can match the `skills` argument, such as "ask before a script from a vendored skill runs".
+[input limit](../../architecture/connectors/code-tool.md#the-limits). The code tool's record holds
+each skill's hash. A rule can match the `skills` argument, such as "ask before a script from a
+vendored skill runs".
 
 A code run has no network, so a script uses only what the
 [code image](connectors/sandbox-adapter.md#images) holds. A script that needs a missing package

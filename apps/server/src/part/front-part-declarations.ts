@@ -23,11 +23,11 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'context',
     needs: ['inputs'],
-    uses: ['session_cleanup'],
-    start: (parts) => {
+    uses: ['session_cleanup', 'code_run'],
+    start: async (parts) => {
       const options = parts.get('inputs').options;
 
-      return createServerContext(
+      const context = await createServerContext(
         options.writer,
         options.secrets.deploymentKey,
         () => parts.find('session_cleanup'),
@@ -53,6 +53,14 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           },
         },
       );
+
+      return {
+        ...context,
+        apiContext: {
+          ...context.apiContext,
+          readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,
+        },
+      };
     },
   },
   {

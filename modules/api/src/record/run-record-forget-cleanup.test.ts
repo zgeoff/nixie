@@ -1,6 +1,10 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecordKeys, readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
-import { readTestRecordRows, removeTestRecordKey } from '@heynixie/log/test-utils';
+import {
+  readTestRecordKeyRows,
+  readTestRecordRows,
+  removeTestRecordKey,
+} from '@heynixie/log/test-utils';
 import { writeImageOfferRecord } from '@heynixie/memory/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -422,3 +426,104 @@ test.each([
     ]);
   },
 );
+
+test('it destroys the code sandboxes of the forgotten record before it deletes any key', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const [result] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_result',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        outcome: 'result',
+        actionID: null,
+        sources: {},
+      },
+      erasable: { result: { stdout: { text: 'north 412.50' } } },
+    },
+  ]);
+
+  invariant(result);
+
+  await ctx.startForget({ thread: 'conversation', sequence: result.sequence });
+
+  const keysAtDestroy: number[] = [];
+
+  const destroyCode = mock<(sequences: readonly number[]) => Promise<void>>(async () => {
+    const keys = await readTestRecordKeyRows(ctx.context.log.writer);
+
+    keysAtDestroy.push(keys.length);
+  });
+
+  await runRecordForgetCleanup(
+    {
+      ...ctx.context,
+      readSessionCleanup: () => () => Promise.resolve(),
+      readCodeCleanup: () => destroyCode,
+    },
+    result.sequence,
+  );
+
+  const keysAfter = await readTestRecordKeyRows(ctx.context.log.writer);
+
+  expect(destroyCode.mock.calls).toStrictEqual([[[result.sequence]]]);
+  expect(keysAtDestroy).toStrictEqual([1]);
+  expect(keysAfter).toStrictEqual([]);
+});
+
+test('it deletes no key and writes no forgotten record when a code sandbox will not go, and a rerun finishes', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const [result] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_result',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        outcome: 'result',
+        actionID: null,
+        sources: {},
+      },
+      erasable: { result: { stdout: { text: 'north 412.50' } } },
+    },
+  ]);
+
+  invariant(result);
+
+  await ctx.startForget({ thread: 'conversation', sequence: result.sequence });
+
+  const failing = {
+    ...ctx.context,
+    readSessionCleanup: () => () => Promise.resolve(),
+    readCodeCleanup: () => () => Promise.reject(new Error('impd is down')),
+  };
+
+  const [failed] = await Promise.allSettled([runRecordForgetCleanup(failing, result.sequence)]);
+  const keysAfterFailure = await readTestRecordKeyRows(ctx.context.log.writer);
+
+  await runRecordForgetCleanup(
+    {
+      ...ctx.context,
+      readSessionCleanup: () => () => Promise.resolve(),
+      readCodeCleanup: () => () => Promise.resolve(),
+    },
+    result.sequence,
+  );
+
+  const keysAfterRerun = await readTestRecordKeyRows(ctx.context.log.writer);
+
+  expect(failed).toMatchObject({ status: 'rejected', reason: new Error('impd is down') });
+  expect(keysAfterFailure).toHaveLength(1);
+  expect(keysAfterRerun).toStrictEqual([]);
+});

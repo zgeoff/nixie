@@ -14,6 +14,7 @@ test('it names each image by its version tag and digest', () => {
       sandboxImages: {
         conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
         fetch: `ghcr.io/example/nixie-fetch@sha256:${'d'.repeat(64)}`,
+        code: `ghcr.io/example/nixie-code@sha256:${'f'.repeat(64)}`,
       },
       migrations: { since: 'v0.8.2', added: [], readableByReleaseBefore: true },
       configSchema: { since: 'v0.8.2', breaking: ['server.port: changes type to "string"'] },
@@ -40,6 +41,7 @@ test('it names each image by its version tag and digest', () => {
         "since": "v0.8.2",
       },
       "sandboxImages": {
+        "code": "ghcr.io/example/nixie-code:0.9.0@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         "conversation": "ghcr.io/example/nixie-conversation:0.9.0@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "fetch": "ghcr.io/example/nixie-fetch:0.9.0@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       },
@@ -61,6 +63,7 @@ test('it builds the same manifest from the same inputs', () => {
     sandboxImages: {
       conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
       fetch: `ghcr.io/example/nixie-fetch@sha256:${'d'.repeat(64)}`,
+      code: `ghcr.io/example/nixie-code@sha256:${'f'.repeat(64)}`,
     },
     migrations: { since: null, added: [], readableByReleaseBefore: null },
     configSchema: { since: null, breaking: [] },
@@ -81,6 +84,7 @@ test('it keeps the port of a registry host', () => {
     sandboxImages: {
       conversation: `registry.test:5000/nixie-conversation@sha256:${'c'.repeat(64)}`,
       fetch: `registry.test:5000/nixie-fetch@sha256:${'d'.repeat(64)}`,
+      code: `registry.test:5000/nixie-code@sha256:${'f'.repeat(64)}`,
     },
     migrations: { since: null, added: [], readableByReleaseBefore: null },
     configSchema: { since: null, breaking: [] },
@@ -102,6 +106,7 @@ test('it refuses an image that is not named by its digest', () => {
       sandboxImages: {
         conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
         fetch: `ghcr.io/example/nixie-fetch@sha256:${'d'.repeat(64)}`,
+        code: `ghcr.io/example/nixie-code@sha256:${'f'.repeat(64)}`,
       },
       migrations: { since: null, added: [], readableByReleaseBefore: null },
       configSchema: { since: null, breaking: [] },

@@ -44,6 +44,14 @@ export interface NixieTables {
   readonly closed_rule_proposals: {
     readonly proposal_hash: string;
   };
+  readonly code_files: {
+    readonly file_id: string;
+    readonly thread: string;
+    readonly sequence: number;
+    readonly position: number;
+    readonly bytes: number;
+    readonly media_type: string;
+  };
   readonly definition_rules: {
     readonly rule_id: string;
     readonly rule_hash: string;

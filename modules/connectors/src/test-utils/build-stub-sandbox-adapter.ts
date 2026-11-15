@@ -1,7 +1,9 @@
 import type {
   ExecExit,
+  ExecResult,
   MemoryKillRead,
   ProcessIO,
+  RunSpec,
   Sandbox,
   SandboxAdapter,
   SandboxSpec,
@@ -19,7 +21,25 @@ export interface StubSandboxAdapter extends SandboxAdapter {
   readonly destroyed: readonly string[];
   readonly spawned: readonly { readonly sandboxID: string; readonly argv: readonly string[] }[];
   readonly countMostLive: () => number;
+
+  // every exec a sandbox ran, in order
+  readonly execs: readonly { readonly sandboxID: string; readonly command: RunSpec }[];
+
+  // the files of each sandbox by guest path, which copyIn writes and copyOut reads
+  readonly files: ReadonlyMap<string, Map<string, Uint8Array<ArrayBuffer>>>;
 }
+
+export interface StubExecContext {
+  readonly sandboxID: string;
+  readonly files: Map<string, Uint8Array<ArrayBuffer>>;
+}
+
+// answers one exec of a sandbox; without it, a sandbox runs no exec
+export type StubExec = (
+  command: RunSpec,
+  ctx: StubExecContext,
+  signal: AbortSignal | undefined,
+) => Promise<ExecResult>;
 
 type StubCallFailure =
   | { readonly kind: 'reject'; readonly message: string }
@@ -32,6 +52,7 @@ export interface StubSandboxAdapterOptions {
   readonly destroyFailures?: readonly StubCallFailure[];
 
   readonly readMemoryKills?: () => Promise<MemoryKillRead>;
+  readonly exec?: StubExec;
 }
 
 export function buildStubSandboxAdapter(
@@ -44,7 +65,9 @@ export function buildStubSandboxAdapter(
   const created: { id: string; spec: SandboxSpec }[] = [];
   const destroyed: string[] = [];
   const spawned: { sandboxID: string; argv: readonly string[] }[] = [];
+  const execs: { sandboxID: string; command: RunSpec }[] = [];
 
+  const files = new Map<string, Map<string, Uint8Array<ArrayBuffer>>>();
   const live = new Map<string, Sandbox>();
 
   const mostLive = { count: 0 };
@@ -54,6 +77,8 @@ export function buildStubSandboxAdapter(
     created,
     destroyed,
     spawned,
+    execs,
+    files,
     create: async (spec) => {
       await Promise.resolve();
 
@@ -63,12 +88,19 @@ export function buildStubSandboxAdapter(
 
       const id = crypto.randomUUID();
 
+      const sandboxFiles = new Map<string, Uint8Array<ArrayBuffer>>();
+
+      files.set(id, sandboxFiles);
+
       const sandbox = buildStubSandbox(id, spec, {
         guest,
         live,
         spawned,
         destroyed,
         destroyFailures,
+        execs,
+        files: sandboxFiles,
+        exec: options.exec ?? null,
         readMemoryKills:
           options.readMemoryKills ?? (() => Promise.resolve({ kind: 'unsupported' })),
       });
@@ -113,6 +145,9 @@ interface StubState {
   readonly spawned: { sandboxID: string; argv: readonly string[] }[];
   readonly destroyed: string[];
   readonly destroyFailures: StubCallFailure[];
+  readonly execs: { sandboxID: string; command: RunSpec }[];
+  readonly files: Map<string, Uint8Array<ArrayBuffer>>;
+  readonly exec: StubExec | null;
   readonly readMemoryKills: () => Promise<MemoryKillRead>;
 }
 
@@ -120,7 +155,15 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
   return {
     id,
     spec,
-    exec: () => Promise.reject(new Error('the stub runs no exec')),
+    exec: (command, signal) => {
+      if (state.exec === null || !state.live.has(id)) {
+        return Promise.reject(new Error(`the stub runs no exec in sandbox ${id}`));
+      }
+
+      state.execs.push({ sandboxID: id, command });
+
+      return state.exec(command, { sandboxID: id, files: state.files }, signal);
+    },
     spawn: (command: SpawnSpec) => {
       if (!state.live.has(id)) {
         return Promise.reject(new Error(`sandbox ${id} is destroyed`));
@@ -130,8 +173,34 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
 
       return Promise.resolve(startExecStream(startGuest(state.guest), command.maxMessageBytes));
     },
-    copyIn: () => Promise.resolve(),
-    copyOut: () => Promise.resolve([]),
+    copyIn: (specs) => {
+      if (!state.live.has(id)) {
+        return Promise.reject(new Error(`sandbox ${id} is destroyed`));
+      }
+
+      for (const file of specs) {
+        state.files.set(file.path, file.content);
+      }
+
+      return Promise.resolve();
+    },
+    copyOut: (paths) => {
+      if (!state.live.has(id)) {
+        return Promise.reject(new Error(`sandbox ${id} is destroyed`));
+      }
+
+      return Promise.try(() =>
+        paths.map((path) => {
+          const content = state.files.get(path);
+
+          if (content === undefined) {
+            throw new Error(`the stub holds no file ${path}`);
+          }
+
+          return { path, content };
+        }),
+      );
+    },
     resolveHome: () => Promise.reject(new Error('the stub runs no exec')),
     readFilePaths: () => Promise.reject(new Error('the stub runs no exec')),
     applyMove: () => Promise.reject(new Error('the stub runs no exec')),

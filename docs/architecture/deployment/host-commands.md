@@ -93,9 +93,11 @@ prints the number of items it forgot and the key backup state of the forget.
 
 A reset with `--only conversations --yes` asks the server to
 [reset the conversation](../core/event-log.md#resetting-the-conversation), which shreds every record
-on the conversation thread, destroys the conversation's sandbox and removes no record. It passes the
-gate as the full reset does, and the server stops and exits 0 once it answers. It prints the key
-backup state of the reset, as a forget reports it.
+on the conversation thread, destroys the conversation's sandbox and the code sandbox of each tool
+call on that thread before it removes any key, and removes no record. A code sandbox that will not
+go fails the reset with every key in place. It passes the gate as the full reset does, and the
+server stops and exits 0 once it answers. It prints the key backup state of the reset, as a forget
+reports it.
 
 Both filtered resets print one key backup line, which reads the state a forget reports:
 

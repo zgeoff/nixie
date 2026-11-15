@@ -103,6 +103,7 @@ async function writeManifest(path: string): Promise<void> {
   const manifest = {
     conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
     fetch: `ghcr.io/example/nixie-fetch@sha256:${'f'.repeat(64)}`,
+    code: `ghcr.io/example/nixie-code@sha256:${'d'.repeat(64)}`,
   };
 
   await writeFile(path, JSON.stringify(manifest));

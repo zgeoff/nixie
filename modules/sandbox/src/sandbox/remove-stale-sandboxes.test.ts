@@ -63,3 +63,29 @@ test('it never destroys a kept owner’s sandbox or another adapter’s', async 
 
   expect(ctx.adapter.destroyed).toStrictEqual([]);
 });
+
+test('it destroys the code sandbox of a call that a restart cut short', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeEvents([
+    {
+      event: 'created',
+      sandboxID: 'nixie-code',
+      adapter: 'imp',
+      spec: buildMockSandboxSpec({
+        kind: 'code_run',
+        image: 'code',
+        owner: 'code_run:call-7',
+        toolRoute: false,
+      }),
+    },
+  ]);
+
+  await removeStaleSandboxes({
+    log: ctx.log,
+    adapter: ctx.adapter,
+    keptOwners: ['conversation', 'task-garden'],
+  });
+
+  expect(ctx.adapter.destroyed).toStrictEqual(['nixie-code']);
+});

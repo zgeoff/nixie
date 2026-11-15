@@ -122,9 +122,9 @@ it.
 | Fetch        | A minimal base and the fetcher that extracts a page's text  | The fetch sandbox               |
 | Coding       | The conversation image plus git and your toolchains         | Built-in coding sessions, later |
 
-[The code tool](../../queue/code-tool.md#the-image) lists what the code image holds. The image build
-pins every runtime, tool and library version, and the deployment pins the image by digest. Adding a
-runtime adds no egress and no grant.
+[The code tool](../../../architecture/connectors/code-tool.md#the-image) lists what the code image
+holds. The image build pins every runtime, tool and library version, and the deployment pins the
+image by digest. Adding a runtime adds no egress and no grant.
 
 ## A container adapter sketch
 

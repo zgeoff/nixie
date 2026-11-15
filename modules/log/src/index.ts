@@ -87,6 +87,7 @@ export type {
   WriterLock,
 } from './types';
 
+export type { WriteTransaction } from './record/with-write-transaction';
 export { withWriteTransaction } from './record/with-write-transaction';
 export { writeRecords } from './record/write-records';
 export { writeRecordsInTransaction } from './record/write-records-in-transaction';

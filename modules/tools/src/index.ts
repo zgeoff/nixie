@@ -37,4 +37,5 @@ export type {
   ToolSession,
 } from './types';
 
+export { ToolResultRefusedError } from './types';
 export type { ToolsRecordKind } from './tools-record-kind';

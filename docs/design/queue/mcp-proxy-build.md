@@ -458,12 +458,13 @@ type BridgeFrame =
   the sandbox at the server's first server listing and keeps it until nixie stops or you remove the
   server. A start destroys every sandbox of kind `mcp_server`, and the next server listing creates
   it again.
-- The sandbox runs the code image, which the code tool design ([code tool](code-tool.md)) adds, at
-  the `mcpServer` row. The proxy copies the bridge guest and the entry's files in, hashes the copied
-  files, and spawns the bridge only when that hash equals `filesHash` in the facts in use. A
-  mismatch fails the server listing as `start_failed` and holds the server, so files changed after
-  an approval never run without one. The bridge runs the command and turns its newline-delimited
-  JSON-RPC into frames, because a spawn stream carries framed messages.
+- The sandbox runs the code image, which the code tool design
+  ([code tool](../../architecture/connectors/code-tool.md)) adds, at the `mcpServer` row. The proxy
+  copies the bridge guest and the entry's files in, hashes the copied files, and spawns the bridge
+  only when that hash equals `filesHash` in the facts in use. A mismatch fails the server listing as
+  `start_failed` and holds the server, so files changed after an approval never run without one. The
+  bridge runs the command and turns its newline-delimited JSON-RPC into frames, because a spawn
+  stream carries framed messages.
 - The proxy caps each frame at 4 MiB. A frame past the cap stops the server, and the server listing
   or the call fails as `unparsable`.
 - A sandbox that fails to start fails its server listing as `start_failed`.

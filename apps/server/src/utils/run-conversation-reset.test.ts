@@ -337,3 +337,97 @@ test('it removes nothing when the conversation sandbox destroy fails', async () 
     ['owner_message', 'readable'],
   ]);
 });
+
+test('it destroys the code sandboxes of the conversation calls', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+  await createConversationTask(ctx.context);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { callID: 'call-1', runID: 'run-1', toolUseID: null, tool: 'code.run' },
+      erasable: { input: { program: 'print(1)' } },
+    },
+  ]);
+
+  const codeSandbox = await ctx.sandboxes.create(
+    buildMockSandboxSpec({
+      kind: 'code_run',
+      image: 'code',
+      owner: 'code_run:call-1',
+      toolRoute: false,
+    }),
+  );
+
+  const before = await ctx.readSandboxIDs();
+
+  await runConversationReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    stopWork: () => Promise.resolve(),
+    log: ctx.log,
+    removeTurnInputThreads: ctx.removeTurnInputThreads,
+    clearFetchPauses: ctx.clearFetchPauses,
+  });
+
+  const after = await ctx.readSandboxIDs();
+
+  expect(before).toStrictEqual([codeSandbox.id]);
+  expect(after).toStrictEqual([]);
+});
+
+test('it removes no key when a code sandbox will not go', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+  await createConversationTask(ctx.context);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { callID: 'call-1', runID: 'run-1', toolUseID: null, tool: 'code.run' },
+      erasable: { input: { program: 'print(1)' } },
+    },
+  ]);
+
+  const [outcome] = await Promise.allSettled([
+    runConversationReset({
+      context: ctx.context,
+      adapter: {
+        id: 'process',
+        list: (owner) => {
+          const refusing = [
+            { destroy: () => Promise.reject(new Error('the runtime refused the destroy')) },
+          ];
+
+          const sandboxes = owner === 'code_run:call-1' ? refusing : [];
+
+          return Promise.resolve(sandboxes);
+        },
+      },
+      stopWork: () => Promise.resolve(),
+      log: ctx.log,
+      removeTurnInputThreads: ctx.removeTurnInputThreads,
+      clearFetchPauses: ctx.clearFetchPauses,
+    }),
+  ]);
+
+  const read = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  const toolCall = read.find((entry) => entry.record.kind === 'tool_called');
+
+  expect(outcome).toMatchObject({
+    status: 'rejected',
+    reason: {
+      message: 'nixie could not destroy a code sandbox that holds this text. Try the forget again.',
+    },
+  });
+
+  expect(toolCall?.record.erasable.status).toBe('readable');
+});

@@ -524,7 +524,9 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/policy": "workspace:*",
         "@heynixie/testing": "workspace:*",
+        "@modelcontextprotocol/server": "catalog:",
       },
     },
     "modules/definitions": {

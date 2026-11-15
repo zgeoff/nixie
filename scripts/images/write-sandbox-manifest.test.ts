@@ -30,6 +30,7 @@ test('it writes the manifest of the digests that the build steps gave, under the
       STEPS: JSON.stringify({
         'setup-buildx': { outputs: {} },
         fetch: { outputs: { digest: 'sha256:bb22' } },
+        code: { outputs: { digest: 'sha256:dd44' } },
         conversation: { outputs: { digest: 'sha256:aa11' } },
         web: { outputs: { digest: 'sha256:cc33' } },
       }),
@@ -40,7 +41,7 @@ test('it writes the manifest of the digests that the build steps gave, under the
   expect(result.exitCode).toBe(0);
 
   expect(readFileSync(join(ctx.repoPath, 'apps', 'server', 'sandbox-manifest.json'), 'utf8')).toBe(
-    '{"conversation":"localhost:5000/nixie-conversation@sha256:aa11","fetch":"localhost:5000/nixie-fetch@sha256:bb22"}\n',
+    '{"conversation":"localhost:5000/nixie-conversation@sha256:aa11","fetch":"localhost:5000/nixie-fetch@sha256:bb22","code":"localhost:5000/nixie-code@sha256:dd44"}\n',
   );
 });
 

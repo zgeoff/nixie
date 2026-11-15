@@ -62,6 +62,7 @@ test('it needs each image that a declaration names', async () => {
   expect(listImageNeeds(config, serverPartDeclarations)).toStrictEqual([
     { key: 'conversation', neededBy: 'the profile scripted on the agent-sdk harness' },
     { key: 'fetch', neededBy: 'the web_fetch part' },
+    { key: 'code', neededBy: 'the code_run part' },
   ]);
 });
 
@@ -70,7 +71,7 @@ test('it needs no image for a declaration that names none', async () => {
   const config = await ctx.loadConfig({});
 
   const declarations = serverPartDeclarations.filter(
-    (declaration) => declaration.name !== 'web_fetch',
+    (declaration) => declaration.name !== 'web_fetch' && declaration.name !== 'code_run',
   );
 
   expect(listImageNeeds(config, declarations)).toStrictEqual([

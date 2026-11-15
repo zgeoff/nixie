@@ -151,6 +151,23 @@ jobs:
       dockerfile: guests/fetch/Dockerfile
       sha: ${{ needs.resolve.outputs.sha }}
 
+  code:
+    name: Release the code image
+    needs: resolve
+    concurrency:
+      group: release-code
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/release-image.yml
+    with:
+      image: nixie-code
+      dockerfile: guests/code/Dockerfile
+      sha: ${{ needs.resolve.outputs.sha }}
+
   backup:
     name: Release the backup image
     needs: resolve
@@ -170,7 +187,7 @@ jobs:
 
   sandbox-manifest:
     name: Release the sandbox manifest
-    needs: [resolve, conversation, fetch]
+    needs: [resolve, conversation, fetch, code]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:

@@ -26,10 +26,10 @@ nixie's pattern matches none of its imps.
 ## Images
 
 Each sandbox image is named `nixie-<key>-<12 hex>`, where the key is an image key of the sandbox
-manifest, such as `conversation` or `fetch`, and the hex digits are the first 12 of the image's
-SHA-256 digest. A release's images therefore sit beside the previous release's in impd, and a
-changed digest changes the name a sandbox's spec gives, which replaces the sandbox. Every image name
-starts with `nixie-`, so it falls within the token's pattern `nixie-*`.
+manifest, such as `conversation`, `fetch` or `code`, and the hex digits are the first 12 of the
+image's SHA-256 digest. A release's images therefore sit beside the previous release's in impd, and
+a changed digest changes the name a sandbox's spec gives, which replaces the sandbox. Every image
+name starts with `nixie-`, so it falls within the token's pattern `nixie-*`.
 
 `nixie sandbox-manifest` prints each image key's image with its ref and its name
 ([host commands](host-commands.md)), so a deployment adds an image under the name the command

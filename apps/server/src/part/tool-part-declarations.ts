@@ -6,6 +6,7 @@ import { buildActions } from '../test/build-actions';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool } from '../utils/build-test-send-tool';
 import type { ServerPartValues } from './server-part-values';
+import { startCodeRunPart } from './start-code-run-part';
 import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
 import { startWebFetchPart } from './start-web-fetch-part';
 
@@ -44,6 +45,18 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }),
   },
   {
+    name: 'code_run',
+    needs: ['inputs', 'context', 'sandbox_adapter'],
+    images: () => ['code'],
+    start: (parts) =>
+      startCodeRunPart({
+        options: parts.get('inputs').options,
+        adapter: parts.get('sandbox_adapter'),
+        log: parts.get('context').apiContext.log,
+        readInForce: () => parts.get('context').inForce.read(),
+      }),
+  },
+  {
     name: 'actions',
     needs: ['inputs', 'context'],
     start: (parts) =>
@@ -58,7 +71,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'tool_endpoint',
-    needs: ['inputs', 'context', 'web_fetch', 'actions', 'decisions'],
+    needs: ['inputs', 'context', 'web_fetch', 'code_run', 'actions', 'decisions'],
     uses: ['memory', 'server_parts', 'checker'],
     start: (parts) => {
       const options = parts.get('inputs').options;
@@ -73,6 +86,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         },
         {
           webFetch: parts.get('web_fetch').tool,
+          codeRun: parts.get('code_run').tool,
           search:
             options.search === null
               ? null

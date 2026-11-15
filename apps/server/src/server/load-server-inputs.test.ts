@@ -64,7 +64,7 @@ test('it refuses a manifest that lacks the image a part needs, before any image 
       log: mock<Logger>(),
     }),
   ).rejects.toThrow(
-    'nixie refuses to start: the web_fetch part needs the fetch image, and the sandbox manifest holds conversation',
+    'nixie refuses to start: the web_fetch part needs the fetch image; the code_run part needs the code image, and the sandbox manifest holds conversation',
   );
 });
 
@@ -83,7 +83,7 @@ test('it gives the images that the profiles and the parts need', async () => {
     log: mock<Logger>(),
   });
 
-  expect(Object.keys(inputs.images)).toStrictEqual(['conversation', 'fetch']);
+  expect(Object.keys(inputs.images)).toStrictEqual(['conversation', 'fetch', 'code']);
 });
 
 test('it logs a warning that names each config key it does not know', async () => {

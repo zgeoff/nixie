@@ -28,6 +28,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@heynixie/testing": "workspace:*"
+    "@heynixie/policy": "workspace:*",
+    "@heynixie/testing": "workspace:*",
+    "@modelcontextprotocol/server": "catalog:"
   }
 }
