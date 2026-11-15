@@ -16,6 +16,11 @@ export async function runRecordForgetCleanup(
   }
 
   const startCalls = await readForgetStartCalls(context, recordSequence);
+
+  // A code sandbox holds unencrypted copies of what a code call read and wrote, so it goes before
+  // any key does.
+  await context.readCodeCleanup?.()?.([recordSequence, ...startCalls]);
+
   const thread = await removeForgottenKey(context, recordSequence);
 
   for (const call of startCalls) {

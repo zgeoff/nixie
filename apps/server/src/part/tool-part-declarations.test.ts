@@ -16,6 +16,7 @@ import type { AnyPartDeclaration } from '../types';
 import { listImageNeeds } from './list-image-needs';
 import { serverPartDeclarations } from './server-part-declarations';
 import type { ServerPartValues } from './server-part-values';
+import { startCodeRunPart } from './start-code-run-part';
 import { startWebFetchPart } from './start-web-fetch-part';
 import { toolPartDeclarations } from './tool-part-declarations';
 
@@ -55,8 +56,22 @@ async function setupTest() {
       log: testRecorder.log,
     });
 
+  const startCodeRun = (declarations: readonly AnyPartDeclaration<ServerPartValues>[]) =>
+    startCodeRunPart({
+      options: {
+        config,
+        images: pickNeededImages(images, listImageNeeds(config, declarations)),
+        log: () => {},
+      },
+      adapter: sandboxes.adapter,
+      log: testRecorder.log,
+      readInForce: () => null,
+    });
+
   return {
     sandboxes,
+    startCodeRun,
+    codeImageName: images.code?.name,
     fetchImageName: images.fetch?.name,
     startWebFetch,
     webFetchWithoutImages: { name: webFetch.name, needs: webFetch.needs, start: webFetch.start },
@@ -85,6 +100,23 @@ test('it fails to start the web fetch part when its declaration names no image',
   expect(ctx.startWebFetch(withoutImages)).rejects.toThrow(
     'the sandbox manifest holds no fetch image',
   );
+});
+
+test('it starts the code run part with the code image that the real declarations pick', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.startCodeRun(serverPartDeclarations);
+
+  invariant(ctx.codeImageName !== undefined, 'the test manifest holds a code image');
+
+  expect(started.tool.name).toBe('code.run');
+});
+
+test('it fails to start the code run part when its declaration names no image', async () => {
+  const ctx = await setupTest();
+
+  const others = serverPartDeclarations.filter((declaration) => declaration.name !== 'code_run');
+
+  expect(() => ctx.startCodeRun(others)).toThrow('the sandbox manifest holds no code image');
 });
 
 test('it offers prompt_read and prompt_write to the conversation guest when the definitions export is configured', async () => {

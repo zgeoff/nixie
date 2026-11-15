@@ -37,11 +37,14 @@ test('it fails with the forget message when a destroy fails', async () => {
 
   const destroying = destroyCodeRunSandboxes(adapter, ['call-1']);
 
-  await expect(destroying).rejects.toBeInstanceOf(CodeSandboxDestroyError);
+  const [outcome] = await Promise.allSettled([destroying]);
 
-  await expect(destroying).rejects.toThrow(
-    'nixie could not destroy a code sandbox that holds this text. Try the forget again.',
-  );
+  expect(outcome).toMatchObject({
+    status: 'rejected',
+    reason: expect.objectContaining({
+      message: 'nixie could not destroy a code sandbox that holds this text. Try the forget again.',
+    }),
+  });
 });
 
 test('it fails the same way when the list of a call fails', async () => {
@@ -49,7 +52,10 @@ test('it fails the same way when the list of a call fails', async () => {
     listFailures: [{ kind: 'reject', message: 'impd is down' }],
   });
 
-  await expect(destroyCodeRunSandboxes(adapter, ['call-1'])).rejects.toBeInstanceOf(
-    CodeSandboxDestroyError,
-  );
+  const [outcome] = await Promise.allSettled([destroyCodeRunSandboxes(adapter, ['call-1'])]);
+
+  expect(outcome).toMatchObject({
+    status: 'rejected',
+    reason: expect.any(CodeSandboxDestroyError),
+  });
 });

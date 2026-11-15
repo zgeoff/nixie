@@ -9,6 +9,7 @@ import type { ServerParts } from '../types';
 import type { APIGate } from '../utils/build-api-gate';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
 import type { ServerInputs } from './server-inputs';
+import type { CodeRunPart } from './start-code-run-part';
 import type { Tools } from './tools';
 
 export interface ServerPartValues {
@@ -18,6 +19,7 @@ export interface ServerPartValues {
   readonly decisions: DecisionPointFactory;
   readonly sandbox_adapter: Tools['adapter'];
   readonly web_fetch: Tools['webFetch'];
+  readonly code_run: CodeRunPart;
   readonly actions: Tools['actions'];
   readonly tool_endpoint: Pick<Tools, 'definitions' | 'endpoint'>;
   readonly tools: Tools;

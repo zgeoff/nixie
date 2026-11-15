@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { claimAction, runActionAttempt } from '@heynixie/actions';
+import { CodeSandboxDestroyError } from '@heynixie/connectors';
 import {
   readRecordAttachments,
   readRecords,
@@ -807,4 +808,58 @@ test('it forgets the request and the end of a report with its delivered message,
     [{ recordSequence: requested.sequence }],
     [{ recordSequence: ended.sequence }],
   ]);
+
+test('it fails the forget with the destroy sentence when a code sandbox will not go, and a retry with the same action ID finishes it', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const sent = await writeOwnerMessage(ctx.context, laptop.caller, {
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The locker code is 2291.',
+    spans: [],
+  });
+
+  invariant(sent.status === 'written');
+
+  const input = {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: sent.sequence,
+  };
+
+  const failing = {
+    ...ctx.context,
+    readSessionCleanup: () => () => Promise.resolve(),
+    readCodeCleanup: () => () => Promise.reject(new CodeSandboxDestroyError()),
+  };
+
+  const [failed] = await Promise.allSettled([writeRecordForget(failing, laptop.caller, input)]);
+
+  const retried = await writeRecordForget(
+    {
+      ...ctx.context,
+      readSessionCleanup: () => () => Promise.resolve(),
+      readCodeCleanup: () => () => Promise.resolve(),
+    },
+    laptop.caller,
+    input,
+  );
+
+  const page = await readThreadPage(ctx.context, { thread: 'conversation' });
+
+  const gap = page?.records.find((record) => record.sequence === sent.sequence);
+
+  expect(failed).toMatchObject({
+    status: 'rejected',
+    reason: {
+      message: 'nixie could not destroy a code sandbox that holds this text. Try the forget again.',
+    },
+  });
+
+  expect(retried.status).toBe('forgotten');
+  expect(gap).toMatchObject({ isRemoved: true });
 });

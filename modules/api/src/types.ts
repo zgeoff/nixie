@@ -58,6 +58,11 @@ export interface APIContext extends TasksContext {
   readonly settings: APISettings;
 
   readonly readSessionCleanup: () => CleanupRecordSessions | null;
+
+  // Destroys the code sandboxes of the tool calls that the records name, and throws when one will
+  // not go. A forget runs it before it deletes any key. Null, or absent, means the server holds no
+  // code tool.
+  readonly readCodeCleanup?: () => ((sequences: readonly number[]) => Promise<void>) | null;
 }
 
 export type HostTurnInputs = Pick<TurnInputs, 'list' | 'open' | 'set'>;

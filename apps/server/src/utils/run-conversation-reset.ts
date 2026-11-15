@@ -1,6 +1,6 @@
 import type { ForgetBackupState } from '@heynixie/api';
 import { readForgetBackupState } from '@heynixie/api';
-import { removeWebFetchThread } from '@heynixie/connectors';
+import { makeCodeRunCleanup, removeWebFetchThread } from '@heynixie/connectors';
 import { removeThreadKeys, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
@@ -40,6 +40,10 @@ export async function runConversationReset(
   const sandboxes = await options.adapter.list(conversationTaskID);
 
   await Promise.all(sandboxes.map((sandbox) => sandbox.destroy()));
+
+  // A code sandbox holds unencrypted copies of what a code call read and wrote, so each one goes
+  // before any key does, and a destroy that fails ends the reset with every key still in place.
+  await makeCodeRunCleanup(log, options.adapter).destroyForThread(conversationTaskID);
 
   const [invalidated] = await writeRecords(log, [
     {

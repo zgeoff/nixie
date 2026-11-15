@@ -1,7 +1,7 @@
 import type { Log, LogTables } from '@heynixie/log';
-import type { SandboxAdapter } from '@heynixie/sandbox';
 import { z } from 'zod';
 import { codeRunToolName } from './code-run-tool-name';
+import type { CodeSandboxLister } from './destroy-code-run-sandboxes';
 import { destroyCodeRunSandboxes } from './destroy-code-run-sandboxes';
 
 export interface CodeRunCleanup {
@@ -17,7 +17,7 @@ const callPayloadSchema = z.object({ callID: z.string(), tool: z.string().option
 // The cleanup that a forget runs before it deletes any key that seals a tool call or a tool result.
 export function makeCodeRunCleanup(
   log: Pick<Log, 'writer'>,
-  adapter: Pick<SandboxAdapter, 'list'>,
+  adapter: CodeSandboxLister,
 ): CodeRunCleanup {
   const read = () =>
     log.writer.db

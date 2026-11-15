@@ -1,4 +1,6 @@
+import { CodeSandboxDestroyError } from '@heynixie/connectors';
 import { withWriteTransaction } from '@heynixie/log';
+import { ORPCError } from '@orpc/server';
 import { writeForgetStart } from '../forget/write-forget-start';
 import type { APIContext, Identity } from '../types';
 import { buildInputHash } from '../utils/build-input-hash';
@@ -76,7 +78,7 @@ export async function writeRecordForget(
   });
 
   if (result.status === 'forgotten') {
-    await runRecordForgetCleanup(context, input.sequence);
+    await runForgetCleanup(context, input.sequence);
   }
 
   return result;
@@ -103,4 +105,18 @@ function pickSettledForget(state: ForgetState): RecordForgetResult | null {
     state.earlier.inputHash === state.inputHash
     ? { status: 'forgotten', forgottenAt: Number(state.earlier.result['forgottenAt']) }
     : { status: 'reused' };
+}
+
+// A code sandbox that will not go fails the forget with the sentence that tells the owner to try
+// again, through the API's error path for an unexpected failure.
+async function runForgetCleanup(context: APIContext, sequence: number): Promise<void> {
+  try {
+    await runRecordForgetCleanup(context, sequence);
+  } catch (error) {
+    if (error instanceof CodeSandboxDestroyError) {
+      throw new ORPCError('INTERNAL_SERVER_ERROR', { message: error.message, cause: error });
+    }
+
+    throw error;
+  }
 }
