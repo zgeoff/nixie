@@ -376,3 +376,140 @@ test('it puts the approved rule in force with the reason that the export carries
     },
   );
 });
+
+test('it withdraws the old proposal and opens a new one with the edited rule, which keeps the group', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [old] = await ctx.readProposedRules();
+
+  invariant(old, 'the 3 approvals opened a proposal');
+
+  const edited = await ctx.editProposedRule(old.row.id, old.row.actionHash, {
+    outcome: 'allow',
+    tools: ['test.send'],
+    destinations: ['*@example.org'],
+  });
+
+  const open = await ctx.readProposedRules();
+  const withdrawn = await readProposal(ctx.log.writer.db, old.row.id);
+
+  expect({
+    edited: edited.status,
+    state: withdrawn?.state,
+    open: open.map((entry) => entry.body?.rule),
+    covers: open.map((entry) => entry.body?.fields['covers']),
+  }).toStrictEqual({
+    edited: 'edited',
+    state: 'withdrawn',
+    open: [{ outcome: 'allow', tools: ['test.send'], destinations: ['*@example.org'] }],
+    covers: ['3 approvals: 2 Nov, 3 Nov, 4 Nov'],
+  });
+});
+
+test('it gives the edited proposal the lifting risk class when its rule lets an always-ask effect through', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [old] = await ctx.readProposedRules();
+
+  invariant(old, 'the 3 approvals opened a proposal');
+
+  await ctx.editProposedRule(old.row.id, old.row.actionHash, {
+    outcome: 'allow',
+    tools: ['shop.buy'],
+    effects: ['spend'],
+  });
+
+  const open = await ctx.readProposedRules();
+
+  expect(open.map((entry) => entry.row.riskClass)).toStrictEqual(['lifting']);
+});
+
+test('it keeps the group quiet after an edited proposal gets Not now', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [old] = await ctx.readProposedRules();
+
+  invariant(old, 'the 3 approvals opened a proposal');
+
+  await ctx.editProposedRule(old.row.id, old.row.actionHash, {
+    outcome: 'allow',
+    tools: ['test.send'],
+  });
+
+  const [edited] = await ctx.readProposedRules();
+
+  invariant(edited, 'the edit opened a proposal');
+
+  await ctx.answer(edited.row.id, 'decline');
+  await ctx.approveSend();
+
+  const open = await ctx.readProposedRules();
+
+  expect(open).toStrictEqual([]);
+});
+
+test('it refuses an edit against a hash the card no longer shows', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [old] = await ctx.readProposedRules();
+
+  invariant(old, 'the 3 approvals opened a proposal');
+
+  const refused = await ctx.editProposedRule(old.row.id, 'stale', { outcome: 'allow' });
+
+  expect(refused).toStrictEqual({ status: 'conflict', actionHash: old.row.actionHash });
+});
+
+test('it refuses an edit of a proposal that is closed', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [old] = await ctx.readProposedRules();
+
+  invariant(old, 'the 3 approvals opened a proposal');
+
+  await ctx.answer(old.row.id, 'decline');
+
+  const refused = await ctx.editProposedRule(old.row.id, old.row.actionHash, { outcome: 'allow' });
+
+  expect(refused).toStrictEqual({ status: 'closed', state: 'declined' });
+});
+
+test.each([
+  ['an ask rule', { outcome: 'ask', tools: ['test.send'] }],
+  ['a rule with an unknown field', { outcome: 'allow', tone: 'warm' }],
+  ['a rule with a tool list that is empty', { outcome: 'allow', tools: [] }],
+])('it refuses an edit to %s as invalid', async (_name, rule) => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [old] = await ctx.readProposedRules();
+
+  invariant(old, 'the 3 approvals opened a proposal');
+
+  const refused = await ctx.editProposedRule(old.row.id, old.row.actionHash, rule);
+
+  expect(refused.status).toBe('invalid');
+});

@@ -107,3 +107,4 @@ export type { GapGroupKey } from './action/build-gap-group-hash';
 export { buildGapGroupHash } from './action/build-gap-group-hash';
 export { ruleBodySchema } from './rule/rule-body-schema';
 export { ruleObjectSchema } from './rule/rule-body-schema';
+export { isRuleMatch } from './rule/is-rule-match';

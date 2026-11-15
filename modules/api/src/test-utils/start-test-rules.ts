@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { actionsProjection } from '@heynixie/actions';
+import type { MandateInput } from '@heynixie/definitions';
 import {
   createPathSource,
   gapAnswersProjection,
@@ -11,12 +12,25 @@ import {
   readSnapshotPolicy,
   runInForceSeed,
   runSeed,
+  writeMandateProposal,
+  writeProposedRuleEdit,
 } from '@heynixie/definitions';
-import type { Log } from '@heynixie/log';
-import { logProjections, removeRecordKey, startWriter, writeRecords } from '@heynixie/log';
+import type { JSONObject, Log } from '@heynixie/log';
+import {
+  logProjections,
+  removeRecordKey,
+  startWriter,
+  withWriteTransaction,
+  writeRecords,
+} from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
 import type { PolicyCall } from '@heynixie/policy';
-import { buildActionProposalInput, makeDecisionPoint } from '@heynixie/policy';
+import {
+  buildActionProposalInput,
+  makeDecisionPoint,
+  replayDecision,
+  toStoredDecision,
+} from '@heynixie/policy';
 import type { ProposalAnswerInput } from '@heynixie/proposals';
 import { answerProposal, readProposal } from '@heynixie/proposals';
 import { createConversationTask, tasksProjections } from '@heynixie/tasks';
@@ -31,6 +45,10 @@ import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
 import { proposalsProjection } from '../proposal/proposals-projection';
 import type { APIContext } from '../types';
 import { defaultAPISettings } from '../utils/default-api-settings';
+
+interface DecidedCall extends Pick<PolicyCall, 'tool' | 'destinations'> {
+  readonly args: JSONObject;
+}
 
 interface AskFacts {
   readonly to: string;
@@ -103,27 +121,50 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
   const runSeedInForce = () =>
     runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) });
 
+  const rulesContext = { ...context, runInForceSeed: runSeedInForce };
+
   const deps = buildProposalCoreDeps(context, {
     readMemory: () => null,
     runInForceSeed: runSeedInForce,
   });
 
-  const decide = makeDecisionPoint({
+  const pointOptions = {
     findDeclaration: () => ({
-      effects: ['send'],
+      effects: ['send' as const],
       destinations: ['to'],
       amount: null,
       content: ['body'],
       results: {},
     }),
-    readInputs: async (snapshot) => {
+    readInputs: async (snapshot: string) => {
       const read = await readSnapshotPolicy(writer.db, snapshot);
 
       return { rules: read.rules, contacts: [], tools: read.tools, ownerDestinations: [] };
     },
     findJobDestinations: () => [],
-    readConsent: () => Promise.resolve(null),
-  });
+  };
+
+  const decide = makeDecisionPoint({ ...pointOptions, readConsent: () => Promise.resolve(null) });
+
+  const readCall = async (call: DecidedCall): Promise<PolicyCall> => {
+    const inForce = await readDefinitionsInForce(writer.db);
+
+    invariant(inForce, 'the seed put definitions in force');
+
+    return {
+      toolList: [call.tool],
+      tool: call.tool,
+      context: 'conversation',
+      definitionID: null,
+      args: call.args,
+      destinations: call.destinations,
+      sources: ['owner'],
+      at: clock.now(),
+      turnMessageSequence: null,
+      onBehalfOf: [],
+      snapshot: inForce.snapshotHash,
+    };
+  };
 
   return {
     log,
@@ -188,6 +229,18 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
       await removeRecordKey(log, keyID);
     },
 
+    // A record forget of the proposal that holds the mandate's title.
+    forgetMandateTitle: async (mandateID: string): Promise<void> => {
+      const found = await sql`select key_id from records
+        where kind = 'rules.mandate_proposed' and json_extract(payload, '$.mandateID') = ${mandateID}`.execute(
+        writer.db,
+      );
+
+      const keyID = z.object({ key_id: z.string() }).parse(found.rows[0]).key_id;
+
+      await removeRecordKey(log, keyID);
+    },
+
     readRuntimeChanges: async () => {
       const found =
         await sql`select reason, changed_by from runtime_rules order by changed_at, change_id`.execute(
@@ -197,24 +250,46 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
       return z.object({ reason: z.string(), changed_by: z.string() }).array().parse(found.rows);
     },
 
-    decide: async (call: Pick<PolicyCall, 'tool' | 'destinations' | 'args'>) => {
-      const inForce = await readDefinitionsInForce(writer.db);
+    decide: async (call: DecidedCall) => {
+      const policyCall = await readCall(call);
 
-      invariant(inForce, 'the seed put definitions in force');
-
-      return decide({
-        toolList: [call.tool],
-        tool: call.tool,
-        context: 'conversation',
-        definitionID: null,
-        args: call.args,
-        destinations: call.destinations,
-        sources: ['owner'],
-        at: clock.now(),
-        turnMessageSequence: null,
-        onBehalfOf: [],
-        snapshot: inForce.snapshotHash,
-      });
+      return decide(policyCall);
     },
+
+    // Decides a call, and returns a replay of that decision from the snapshot it ran under.
+    decideForReplay: async (call: DecidedCall) => {
+      const policyCall = await readCall(call);
+      const policy = await decide(policyCall);
+
+      return {
+        outcome: policy.decision.outcome,
+        replay: () =>
+          replayDecision(pointOptions, {
+            tool: call.tool,
+            input: call.args,
+            destinations: call.destinations,
+            decision: toStoredDecision(policy.decision, policyCall),
+            snapshot: policyCall.snapshot,
+            at: policyCall.at,
+          }),
+      };
+    },
+
+    rulesContext,
+
+    editProposedRule: (proposalID: string, actionHash: string, rule: unknown) =>
+      withWriteTransaction(writer, (tx) =>
+        writeProposedRuleEdit(tx, context, { proposalID, actionHash, rule }),
+      ),
+
+    proposeMandate: (input: MandateInput, proposedBy: 'owner' | 'nixie' = 'owner') =>
+      withWriteTransaction(writer, (tx) =>
+        writeMandateProposal(
+          tx,
+          context,
+          { maxHours: 24, readZone: () => Promise.resolve('Australia/Sydney') },
+          { input, proposedBy },
+        ),
+      ),
   };
 }

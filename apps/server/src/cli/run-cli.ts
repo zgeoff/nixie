@@ -10,6 +10,7 @@ import type { CLIFlags, CLIIO, Command, HostTransport } from '../types';
 import { buildBackupCommands } from './build-backup-commands';
 import { checkEncoder } from './check-encoder';
 import { createContactCommands } from './create-contact-commands';
+import { createMandateCommands } from './create-mandate-commands';
 import { createMemoryCommands } from './create-memory-commands';
 import { createPasskeyCommands } from './create-passkey-commands';
 import { createResetCommands } from './create-reset-commands';
@@ -39,6 +40,7 @@ const commands = new Map<string, Command>([
   ...createSkillCommands(host),
   ...createPromptCommands(host),
   ...createRuleCommands(host),
+  ...createMandateCommands(host),
   ...createContactCommands(host),
   ...createTurnInputCommands(host),
   ...buildBackupCommands(),

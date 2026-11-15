@@ -70,3 +70,16 @@ test('it names each conversation tool by its name', () => {
 
   expect(bounds.conversationTools).toStrictEqual(['skill_read', 'skill_reload']);
 });
+
+test('it never offers a task the tool that proposes a mandate', () => {
+  const bounds = buildTaskStartBounds(
+    buildMockModelsConfig({ profiles: { 'chat-direct': {} }, selectable: [] }),
+    [],
+    [
+      buildMockToolDefinition({ name: 'skills.list' }),
+      buildMockToolDefinition({ name: 'rules.propose_mandate' }),
+    ],
+  );
+
+  expect(bounds.conversationTools).toStrictEqual(['skills.list']);
+});

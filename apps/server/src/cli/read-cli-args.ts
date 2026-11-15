@@ -71,6 +71,11 @@ const PROPOSAL_ID_OPTIONS = {
   proposalID: { type: 'positional', required: true },
 } as const;
 
+const MANDATE_ID_OPTIONS = {
+  ...CLI_OPTIONS,
+  mandateID: { type: 'positional', required: true },
+} as const;
+
 const CONTACT_MARK_OPTIONS = {
   ...CLI_OPTIONS,
   destination: { type: 'positional', required: true },
@@ -92,6 +97,7 @@ type ActionOptions =
   | typeof CLI_OPTIONS
   | typeof RULE_RESOLVE_OPTIONS
   | typeof PROPOSAL_ID_OPTIONS
+  | typeof MANDATE_ID_OPTIONS
   | typeof CONTACT_MARK_OPTIONS
   | typeof CONTACT_UNMARK_OPTIONS
   | typeof TURN_INPUT_OPEN_OPTIONS;
@@ -100,6 +106,7 @@ const ACTION_OPTIONS: Readonly<Record<string, ActionOptions>> = {
   'rules resolve': RULE_RESOLVE_OPTIONS,
   'proposals approve': PROPOSAL_ID_OPTIONS,
   'proposals reject': PROPOSAL_ID_OPTIONS,
+  'mandates end': MANDATE_ID_OPTIONS,
   'contacts mark-known': CONTACT_MARK_OPTIONS,
   'contacts unmark': CONTACT_UNMARK_OPTIONS,
   'turn-input open': TURN_INPUT_OPEN_OPTIONS,

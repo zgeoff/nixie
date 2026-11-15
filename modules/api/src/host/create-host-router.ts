@@ -4,6 +4,7 @@ import type { HostRouterOptions } from '../types';
 import { createHostActionProcedures } from './create-host-action-procedures';
 import { createHostContactProcedures } from './create-host-contact-procedures';
 import { createHostItemProcedures } from './create-host-item-procedures';
+import { createHostMandateProcedures } from './create-host-mandate-procedures';
 import { createHostNixieProcedures } from './create-host-nixie-procedures';
 import { createHostPasskeyProcedures } from './create-host-passkey-procedures';
 import { createHostPromptProposalProcedures } from './create-host-prompt-proposal-procedures';
@@ -64,6 +65,11 @@ export function createHostRouter(options: HostRouterOptions) {
       .use(gated)
       .router(
         createHostRuleProcedures({ ...options.context, runInForceSeed: options.runInForceSeed }),
+      ),
+    mandates: hostImplementer.mandates
+      .use(gated)
+      .router(
+        createHostMandateProcedures({ ...options.context, runInForceSeed: options.runInForceSeed }),
       ),
     actions: hostImplementer.actions.use(gated).router(createHostActionProcedures(options.context)),
     contacts: hostImplementer.contacts

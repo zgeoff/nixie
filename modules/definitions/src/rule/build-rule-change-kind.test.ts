@@ -2,8 +2,9 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startWriter } from '@heynixie/log';
+import { startWriter, withWriteTransaction } from '@heynixie/log';
 import { createPathSource } from '../definition/create-path-source';
+import { writeMandateEnd } from '../mandate/write-mandate-end';
 import { writeRuntimeRule } from '../runtime/write-runtime-rule';
 import { runInForceSeed } from '../seed/run-in-force-seed';
 import { runDefinitionsExports } from '../skill/run-definitions-exports';
@@ -535,4 +536,75 @@ test('it opens no pull request on a repo whose format applies no rule file', asy
     pullRequests: 0,
     error: new Error('the definitions repo reads format 2, which applies no rule file'),
   });
+});
+
+test('it lists an approved proposed rule with the reason that its approval recorded', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await ctx.runSeed();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'proposed-k3x9m2p7qa',
+    rule: { outcome: 'allow', tools: ['mail.send'], destinations: ['sam@example.org'] },
+    changedBy: 'owner',
+    reason: 'proposed after 3 approvals',
+  });
+
+  await ctx.runExports();
+
+  const [pullRequest] = ctx.repo.readPullRequests();
+
+  expect(pullRequest?.change.body).toMatch(
+    /^- `proposed-k3x9m2p7qa`: \*\*Allow\*\* `mail.send` .+ Changed by you: proposed after 3 approvals$/mu,
+  );
+});
+
+test('it exports the same changes, with no removal and no mandate rule, once a mandate ends beside them', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await ctx.runSeed();
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'deny-shell',
+    rule: { outcome: 'deny', tools: ['shell.run'] },
+    changedBy: 'owner',
+    reason: 'No shell commands.',
+  });
+
+  await writeRuntimeRule(ctx.context, {
+    ruleID: 'h7d2n5r9wb-1',
+    rule: {
+      outcome: 'allow',
+      tools: ['calendar.invite'],
+      mandate: 'h7d2n5r9wb',
+      expires: '2026-10-20T23:59:59Z',
+    },
+    changedBy: 'owner',
+    reason: 'mandate h7d2n5r9wb',
+  });
+
+  await ctx.runExports();
+
+  const [before] = ctx.repo.readPullRequests();
+  const filesBefore = Object.fromEntries(before?.change.files ?? []);
+
+  await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    writeMandateEnd(tx, ctx.context, { mandateID: 'h7d2n5r9wb', reason: 'ended' }),
+  );
+
+  await ctx.context.runInForceSeed();
+  await ctx.runExports();
+
+  const [after] = ctx.repo.readPullRequests();
+
+  expect({
+    files: Object.fromEntries(after?.change.files ?? []),
+    isMandateListed: after?.change.body.includes('h7d2n5r9wb'),
+  }).toStrictEqual({ files: filesBefore, isMandateListed: false });
 });
