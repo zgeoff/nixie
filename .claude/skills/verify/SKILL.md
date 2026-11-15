@@ -126,16 +126,13 @@ command points that command alone.
 | --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------- |
 | `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | A test build of this tree, with a scripted model. No model call leaves it.      |
 | `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The pull request's preview, on the real model under a spend cap. Never stop it. |
+| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | The owner's nixie. It runs no feature journey; never send it a message.         |
 
 - Run the `sign-in-enrol` journey first. The other journeys use the browser it signs in, and
   `up --restart` starts a browser with no sign-in.
-- `preview` runs the pushed commit in an imp, a small VM, on a machine you reach over SSH. Set
-  `NIXIE_PREVIEW_SSH` to its SSH destination, and `NIXIE_PREVIEW_IMP_EXEC` to the words that start a
-  command in an imp there; ask the repo's maintainer for both. `attach` fails with `environment`
-  while the preview builds: run it again.
-- On `preview`, `doctor` fails when the preview serves another tree than `HEAD`: push, then attach.
-- Each feature file says what to skip on `preview`, or that it runs on `local` only. On `preview`,
-  `action reset-data` empties the data and keeps the sign-in.
+- Before you attach to `preview`, read [the preview setup](references/preview-setup.md).
+- Each feature file says what to skip on `preview`, or that it runs on `local` only.
+- After a release deploys, check `prod` as [the prod check](references/prod-check.md) says.
 - Evidence stays in `.wringer/`; `publish` adds only the report to the PR.
 
 <!-- /repo -->
