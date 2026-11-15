@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.72.0](https://github.com/zgeoff/nixie/compare/v0.71.0...v0.72.0) (2026-11-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **models:** run tasks on models outside claude through a request rewriter ([#1084](https://github.com/zgeoff/nixie/issues/1084))
+
+### Features
+
+* **api:** add pause controls and the recovery read ([#1101](https://github.com/zgeoff/nixie/issues/1101)) ([1353e21](https://github.com/zgeoff/nixie/commit/1353e2159c8e54f31023cb3da6f64a4e09f1e90d))
+* **api:** let a forget take every record with its own text ([#1082](https://github.com/zgeoff/nixie/issues/1082)) ([b44fb72](https://github.com/zgeoff/nixie/commit/b44fb7270764cd7862ba444b503e7d61359ec6b3))
+* **approvals:** show approval cards in the thread and a digest ([#1091](https://github.com/zgeoff/nixie/issues/1091)) ([fbab102](https://github.com/zgeoff/nixie/commit/fbab10225575ad68df087c879a18100ca08d5e6c))
+* **connectors:** pause a web fetch host that answers with a rate limit ([#1088](https://github.com/zgeoff/nixie/issues/1088)) ([fc5362a](https://github.com/zgeoff/nixie/commit/fc5362adf6c938cd9346756dcb4b09ebe093712c))
+* **connectors:** refuse a web fetch of a link that holds a secret ([#1095](https://github.com/zgeoff/nixie/issues/1095)) ([761cee3](https://github.com/zgeoff/nixie/commit/761cee361cc3018b2614f3ce30f1c66338e75ad4))
+* **connectors:** return a stored web fetch page inside the cache time ([#1098](https://github.com/zgeoff/nixie/issues/1098)) ([41bd9f3](https://github.com/zgeoff/nixie/commit/41bd9f35eec71012a1ce7efc6c42054b3378ed2b))
+* **db:** keep the newest 3 pre-migration copies and add an upgrade runbook ([#1092](https://github.com/zgeoff/nixie/issues/1092)) ([102da2c](https://github.com/zgeoff/nixie/commit/102da2cfc463c35897321d86971eed017892bf3f))
+* **log:** end a restore with a holding marker ([#1090](https://github.com/zgeoff/nixie/issues/1090)) ([4c16156](https://github.com/zgeoff/nixie/commit/4c1615660d654f513595d1c809ec0d013e8c32c7))
+* **memory:** let the user's rules decide memory writes ([#1085](https://github.com/zgeoff/nixie/issues/1085)) ([a0b8db4](https://github.com/zgeoff/nixie/commit/a0b8db4d53c38ec8f838257ff71f25e2ad097d05))
+* **models:** run tasks on models outside claude through a request rewriter ([#1084](https://github.com/zgeoff/nixie/issues/1084)) ([c24e024](https://github.com/zgeoff/nixie/commit/c24e024e182bd2f79e4cc1e141b27be83f3105b5))
+* **policy:** store rules in the new names definitions and task ([#1093](https://github.com/zgeoff/nixie/issues/1093)) ([1a7e1c2](https://github.com/zgeoff/nixie/commit/1a7e1c295b335dfb4f6f80d0fc4cc933475eb102))
+* **sandbox:** log each memory kill of a guest program ([#1102](https://github.com/zgeoff/nixie/issues/1102)) ([e4c909a](https://github.com/zgeoff/nixie/commit/e4c909a4eaa96d278cf07f4d3062b39c2d474075))
+* **sandbox:** take every sandbox's limits from one size table ([#1033](https://github.com/zgeoff/nixie/issues/1033)) ([1e53f83](https://github.com/zgeoff/nixie/commit/1e53f83427748cf9ea711cc9f0e68703c8444424))
+* **secret-scan:** add the secret scan lib with the pinned public rules ([#1083](https://github.com/zgeoff/nixie/issues/1083)) ([9038f5d](https://github.com/zgeoff/nixie/commit/9038f5db1e77be006942140b12a8cd7b9f189cd5))
+* **server:** check that the previous release starts on this build's data ([#1087](https://github.com/zgeoff/nixie/issues/1087)) ([363eef8](https://github.com/zgeoff/nixie/commit/363eef8b518b87ca30415d008b4f4eb1ee021c4c))
+* **server:** start a restored nixie paused ([#1094](https://github.com/zgeoff/nixie/issues/1094)) ([a2b5871](https://github.com/zgeoff/nixie/commit/a2b5871e4016553a172049925de809fc8c545405))
+* **tasks:** run each started task in task runs that end in one report ([#1100](https://github.com/zgeoff/nixie/issues/1100)) ([aed2082](https://github.com/zgeoff/nixie/commit/aed20829f87d2c4a93cd1ea01802d45083c2f5cc))
+* **tasks:** tell the conversation about a restore ([#1097](https://github.com/zgeoff/nixie/issues/1097)) ([6f036aa](https://github.com/zgeoff/nixie/commit/6f036aa6620c4177ede4527840442d1d07482f0e))
+
+
+### Bug Fixes
+
+* **policy:** remove the retired read-only rule id from stored data ([#1081](https://github.com/zgeoff/nixie/issues/1081)) ([d15b85a](https://github.com/zgeoff/nixie/commit/d15b85a5c9273493367bba4e2ff5c682273c3cc0))
+* **sessions:** read the status first in every session opening ([#1089](https://github.com/zgeoff/nixie/issues/1089)) ([f6ee083](https://github.com/zgeoff/nixie/commit/f6ee083ca8895d12afcb944c3101aa29cdfd52fa))
+
 ## [0.71.0](https://github.com/zgeoff/nixie/compare/v0.70.2...v0.71.0) (2026-11-14)
 
 
