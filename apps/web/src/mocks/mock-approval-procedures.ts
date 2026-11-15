@@ -21,7 +21,8 @@ export const mockApprovalProcedures = {
         morningAt: '08:00',
         zone: 'Australia/Sydney',
       },
-      items: [...readMockUnknownOutcomes(), ...readMockApprovalItems()],
+      items: readMockApprovalItems(),
+      unknownOutcomes: readMockUnknownOutcomes(),
     };
   }),
 

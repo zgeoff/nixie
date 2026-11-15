@@ -109,7 +109,7 @@ test('it allows the next matching send with no prompt once you answer an ask wit
 
   const listed = await client.approvals.listItems();
 
-  const item = listed.items.find((entry) => entry.group !== 'unknown_outcome');
+  const [item] = listed.items;
 
   invariant(item, 'the ask lists as a proposal');
 

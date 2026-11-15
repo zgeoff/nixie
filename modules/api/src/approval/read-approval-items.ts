@@ -54,17 +54,15 @@ export async function readApprovalItems(
       morningAt: approvals.morningAt,
       zone: messageZone ?? approvals.defaultZone,
     },
-    items: [
-      ...unknown.map((outcome) => buildUnknownItem(outcome, directory)),
-      ...collectOrderedRows(items).map((item) => ({
-        group: item.group,
-        proposal: toApprovalRow(item.proposal),
-        body: item.body,
-        task: item.taskID === null ? null : { id: item.taskID, name: item.taskName ?? item.taskID },
-        choices: [...pickProposalChoices(item.proposal)],
-        passkeyChoices: [...pickPasskeyChoices(item.proposal)],
-      })),
-    ],
+    items: collectOrderedRows(items).map((item) => ({
+      group: item.group,
+      proposal: toApprovalRow(item.proposal),
+      body: item.body,
+      task: item.taskID === null ? null : { id: item.taskID, name: item.taskName ?? item.taskID },
+      choices: [...pickProposalChoices(item.proposal)],
+      passkeyChoices: [...pickPasskeyChoices(item.proposal)],
+    })),
+    unknownOutcomes: unknown.map((outcome) => buildUnknownItem(outcome, directory)),
   };
 }
 

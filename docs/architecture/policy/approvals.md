@@ -34,14 +34,17 @@ records, and a test holds the backfill equal to the fold.
 `approvals.listItems` returns each open row that has a body, with the choices the host offers, in
 these groups and this order:
 
-1. Unknown outcome: an action whose outcome nixie could not settle and the user must. An item holds
-   the action as its proposal showed it, each attempt and each check with its time, the reason it
-   came to the user and its risk class. Items list oldest first, and the item has no fields when a
-   forget removed the arguments.
-2. Always-ask: `lifting` rows first, then `always_ask` rows.
-3. Routine, sorted by task, with each task's oldest row first.
-4. Memory.
-5. Deferred. A deferred row sits only here, whatever its risk class.
+1. Always-ask: `lifting` rows first, then `always_ask` rows.
+2. Routine, sorted by task, with each task's oldest row first.
+3. Memory.
+4. Deferred. A deferred row sits only here, whatever its risk class.
+
+The same call returns the unknown outcomes in a list of their own, apart from the rows, and a client
+shows them before every group. An unknown outcome is an action whose outcome nixie could not settle
+and the user must. An item holds the action as its proposal showed it, each attempt and each check
+with its time, the reason it came to the user and its risk class. Items list oldest first, and an
+item has no fields when a forget removed the arguments. The list sits apart so that a client of the
+release before still reads every row it knows.
 
 Every group but routine lists its oldest row first. The call leaves out a closed row, a row past its
 lapse and a row whose body is gone. A row whose kind has no handler, such as after a rollback of

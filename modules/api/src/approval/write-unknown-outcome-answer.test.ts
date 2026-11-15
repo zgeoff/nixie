@@ -38,7 +38,7 @@ async function setupTest() {
     listUnknown: async () => {
       const listed = await client.approvals.listItems();
 
-      return listed.items.filter((entry) => entry.group === 'unknown_outcome');
+      return listed.unknownOutcomes;
     },
   };
 }
@@ -162,7 +162,7 @@ test('#approvals.answerUnknownOutcome asks for a passkey to retry an always-ask 
     clientActionID: crypto.randomUUID(),
   });
 
-  await expect(retry).rejects.toMatchObject({ code: 'PASSKEY_REQUIRED' });
+  expect(retry).rejects.toMatchObject({ code: 'PASSKEY_REQUIRED' });
 });
 
 test('#approvals.answerUnknownOutcome retries an always-ask action on a passkey assertion', async () => {

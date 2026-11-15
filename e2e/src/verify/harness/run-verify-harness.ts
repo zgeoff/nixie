@@ -68,10 +68,6 @@ export async function runVerifyHarness(): Promise<void> {
 
       return {
         proposals: listed.items.flatMap((item) => {
-          if (item.group === 'unknown_outcome') {
-            return [];
-          }
-
           const tool = /^Run (?<tool>\S+)/u.exec(item.body.approveLabel)?.groups?.['tool'];
 
           return item.proposal.kind === 'action' && tool !== undefined

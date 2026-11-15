@@ -177,7 +177,11 @@ const answerErrors = signedIn.errors(reusedIDErrors).errors({
 
 const listedSchema = z.object({
   defer: deferSettingsSchema,
-  items: z.array(z.union([unknownItemSchema, itemSchema])),
+  items: z.array(itemSchema),
+
+  // apart from items, so a client of the release before reads every item it knows; a client
+  // shows these before every group of items
+  unknownOutcomes: z.array(unknownItemSchema),
 });
 
 const unknownAnswerSchema = z.object({

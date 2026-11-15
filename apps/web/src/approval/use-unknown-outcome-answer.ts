@@ -83,7 +83,11 @@ function toRefusal(error: unknown): UnknownOutcomeAnswerResult {
   }
 
   if (error instanceof ORPCError) {
-    if (['NO_PASSKEY', 'PASSKEY_FAILED', 'PASSKEY_REQUIRED'].includes(error.code)) {
+    if (
+      error.code === 'NO_PASSKEY' ||
+      error.code === 'PASSKEY_FAILED' ||
+      error.code === 'PASSKEY_REQUIRED'
+    ) {
       return { status: 'passkey_failed' };
     }
 

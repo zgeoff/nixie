@@ -30,18 +30,8 @@ export function useApprovalDigest(): ApprovalDigestState {
   });
 
   const [seen, setSeen] = useState<readonly SeenApproval[]>([]);
-  const listedItems = listed.data?.items;
-
-  const items = useMemo(
-    () => listedItems?.filter((item) => item.group !== 'unknown_outcome'),
-    [listedItems],
-  );
-
-  const unknownOutcomes = useMemo(
-    () => (listedItems ?? []).filter((item) => item.group === 'unknown_outcome'),
-    [listedItems],
-  );
-
+  const items = listed.data?.items;
+  const unknownOutcomes = listed.data?.unknownOutcomes ?? [];
   const merged = useMemo(() => mergeSeenApprovals(seen, items ?? []), [seen, items]);
 
   useEffect(() => {
