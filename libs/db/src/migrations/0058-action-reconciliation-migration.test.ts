@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { actionReconciliationMigration } from './0057-action-reconciliation-migration';
+import { actionReconciliationMigration } from './0058-action-reconciliation-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -39,8 +39,8 @@ async function setupTest() {
   return { db, directory };
 }
 
-test('it moves the schema to version 57', () => {
-  expect(nixieSchema.migrations.indexOf(actionReconciliationMigration) + 1).toBe(57);
+test('it moves the schema to version 58', () => {
+  expect(nixieSchema.migrations.indexOf(actionReconciliationMigration) + 1).toBe(58);
 });
 
 test('it gives an action it upgrades the routine class, no hold and no unknowns', async () => {
