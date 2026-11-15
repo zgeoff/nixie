@@ -1,11 +1,14 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import type { RuleDraft } from '../rule/rule-draft';
+import { toRuleDraft } from '../rule/rule-draft';
 import { css } from '../styled-system/css';
 import type { ApprovalRead } from '../types';
 import { ApprovalChanges } from './approval-changes';
 import { ApprovalControls } from './approval-controls';
 import { ApprovalMemoryBody } from './approval-memory-body';
+import { ApprovalRuleEditor } from './approval-rule-editor';
 import { ApprovalRuleNotice } from './approval-rule-notice';
 import { buildApprovalChanges } from './build-approval-changes';
 import type { DeferSettings } from './build-defer-times';
@@ -65,6 +68,7 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
   const [outcome, setOutcome] = useState<ApprovalOutcome | null>(null);
   const [ruleID, setRuleID] = useState<string | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
+  const [ruleDraft, setRuleDraft] = useState<RuleDraft | null>(null);
   const [hasSeenBounds, setSeenBounds] = useState(false);
   const isOpen = proposal.state === 'pending' || proposal.state === 'deferred';
 
@@ -92,6 +96,7 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
   const state = formatApprovalState(item);
   const isLifting = proposal.riskClass === 'lifting';
   const memory = body?.memory;
+  const proposedRule = proposal.cause === 'proposed_rule' ? body?.rule : undefined;
   const editedText = memory === undefined || draft === null || draft === memory.text ? null : draft;
 
   const closeMatch =
@@ -170,6 +175,18 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
           </button>
         </div>
       )}
+      {ruleDraft === null ? null : (
+        <ApprovalRuleEditor
+          draft={ruleDraft}
+          item={item}
+          onDraft={setRuleDraft}
+          onEdited={() => {
+            setRuleDraft(null);
+
+            props.onRefresh();
+          }}
+        />
+      )}
       <OutcomeLine isFailed={answerer.isFailed} outcome={outcome} />
       {isOpen && body !== null && closeMatch === null ? (
         <ApprovalControls
@@ -177,10 +194,19 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
           defer={props.defer}
           editedText={editedText}
           isApprovable={!isLifting || hasSeenBounds}
-          isEditable={memory?.operation === 'remember'}
-          isEditing={draft !== null}
+          isEditable={memory?.operation === 'remember' || proposedRule !== undefined}
+          isEditing={draft !== null || ruleDraft !== null}
+          isRuleProposal={proposal.cause === 'proposed_rule'}
           item={item}
           onEditToggle={() => {
+            if (proposedRule !== undefined) {
+              const nextRule = ruleDraft === null ? toRuleDraft(proposedRule) : null;
+
+              setRuleDraft(nextRule);
+
+              return;
+            }
+
             const next = draft === null ? (memory?.text ?? null) : null;
 
             setDraft(next);

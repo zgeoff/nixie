@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MandatesRouteImport } from './routes/mandates'
 import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as MomentsRouteImport } from './routes/moments'
 import { Route as PasskeysRouteImport } from './routes/passkeys'
@@ -21,6 +22,11 @@ import { Route as TasksTaskIDRouteImport } from './routes/tasks.$taskID'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MandatesRoute = MandatesRouteImport.update({
+  id: '/mandates',
+  path: '/mandates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MemoryRoute = MemoryRouteImport.update({
@@ -61,6 +67,7 @@ const TasksTaskIDRoute = TasksTaskIDRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
   '/passkeys': typeof PasskeysRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
   '/passkeys': typeof PasskeysRoute
@@ -82,6 +90,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
   '/passkeys': typeof PasskeysRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/mandates'
     | '/memory'
     | '/moments'
     | '/passkeys'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/mandates'
     | '/memory'
     | '/moments'
     | '/passkeys'
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/mandates'
     | '/memory'
     | '/moments'
     | '/passkeys'
@@ -125,6 +137,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MandatesRoute: typeof MandatesRoute
   MemoryRoute: typeof MemoryRoute
   MomentsRoute: typeof MomentsRoute
   PasskeysRoute: typeof PasskeysRoute
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mandates': {
+      id: '/mandates'
+      path: '/mandates'
+      fullPath: '/mandates'
+      preLoaderRoute: typeof MandatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/memory': {
@@ -197,6 +217,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MandatesRoute: MandatesRoute,
   MemoryRoute: MemoryRoute,
   MomentsRoute: MomentsRoute,
   PasskeysRoute: PasskeysRoute,

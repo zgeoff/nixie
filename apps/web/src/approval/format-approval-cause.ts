@@ -14,6 +14,8 @@ const causes: Readonly<Record<string, string>> = {
   ask_rule: 'a rule of yours asks before it.',
   no_rule: 'no rule covers it yet.',
   skill_write: 'nixie wants to change one of its skills.',
+  proposed_rule: 'you approved this kind of action 3 times, so nixie suggests a rule for it.',
+  mandate: 'a mandate lets nixie act on its own until it ends.',
   rule_widening: 'the change lets a rule through that it did not before.',
 };
 
