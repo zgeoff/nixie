@@ -1,9 +1,10 @@
 import type { Clock } from '@heynixie/clock';
 import type { ExecResult, MemoryKillRead, Sandbox } from '@heynixie/sandbox';
+import invariant from 'tiny-invariant';
 import type { CodeRunInput } from './code-run-input';
 import { codeRunLimits } from './code-run-limits';
 import type { OutFile } from './collect-out-listing';
-import { collectOutListing, isFilesLimitPassed } from './collect-out-listing';
+import { collectOutListing, isFilesLimitPassed, sumBytes } from './collect-out-listing';
 import type { ResolvedInputs } from './resolve-code-run-inputs';
 import { skillsDirectory, workDirectory } from './resolve-code-run-inputs';
 
@@ -67,12 +68,22 @@ export async function runCodeProgram(target: ProgramTarget): Promise<ProgramRun>
     argv: ['find', `${workDirectory}/out`, '-type', 'f', '-printf', String.raw`%s %P\0`],
   });
 
-  const listed = collectOutListing(listing.stdout.bytes);
   const isListingCut = listing.stdout.isCut;
-  const isPassed = isFilesLimitPassed(listed, isListingCut);
-  const copied = isPassed ? [] : await copyOutFiles(target.sandbox, listed);
+  const found = collectOutListing(listing.stdout.bytes);
 
-  return { exit: ran.exit, didStop: ran.didStop, before, after, listed, isListingCut, copied };
+  const out = isFilesLimitPassed(found, isListingCut)
+    ? { listed: found, copied: [] }
+    : await copyOutFiles(target.sandbox, found);
+
+  return {
+    exit: ran.exit,
+    didStop: ran.didStop,
+    before,
+    after,
+    listed: out.listed,
+    isListingCut,
+    copied: out.copied,
+  };
 }
 
 // The /work folder belongs to code, and /skills belongs to root and is read-only to code.
@@ -143,15 +154,31 @@ async function stopAtWallTime(
   }
 }
 
-async function copyOutFiles(
-  sandbox: Sandbox,
-  listed: readonly OutFile[],
-): Promise<readonly Uint8Array<ArrayBuffer>[]> {
-  if (listed.length === 0) {
-    return [];
+interface CopiedOut {
+  // the listing with the bytes each file held when it was copied
+  readonly listed: readonly OutFile[];
+  readonly copied: readonly Uint8Array<ArrayBuffer>[];
+}
+
+// A program's detached process can grow a file after the listing, so the copy counts the bytes it
+// gets. It copies one file at a time, and gives up at the first byte past the limit, which keeps
+// the host's memory within it.
+async function copyOutFiles(sandbox: Sandbox, listed: readonly OutFile[]): Promise<CopiedOut> {
+  const counted: OutFile[] = [];
+  const copied: Uint8Array<ArrayBuffer>[] = [];
+
+  for (const file of listed) {
+    const [out] = await sandbox.copyOut([`${workDirectory}/${file.path}`]);
+
+    invariant(out, `the sandbox copied out no file for ${file.path}`);
+
+    counted.push({ path: file.path, bytes: out.content.byteLength });
+    copied.push(out.content);
+
+    if (sumBytes(counted) > codeRunLimits.outputBytes) {
+      return { listed: [...counted, ...listed.slice(counted.length)], copied: [] };
+    }
   }
 
-  const files = await sandbox.copyOut(listed.map((file) => `${workDirectory}/${file.path}`));
-
-  return files.map((file) => file.content);
+  return { listed: counted, copied };
 }

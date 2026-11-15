@@ -13,6 +13,8 @@ import { codeRunMessages } from './code-run-messages';
 import { codeRunOwnerPrefix } from './destroy-code-run-sandboxes';
 import { destroyCodeSandbox } from './destroy-code-sandbox';
 import { finishCodeRun } from './finish-code-run';
+import type { CodeRunTracking } from './get-code-run-tracker';
+import { getCodeRunTracker } from './get-code-run-tracker';
 import type { CodeRunSlots } from './make-code-run-slots';
 import type { CodeRunInputDeps, ResolvedInputs } from './resolve-code-run-inputs';
 import { resolveCodeRunInputs } from './resolve-code-run-inputs';
@@ -49,6 +51,7 @@ export async function runCodeRun(
   }
 
   const state = { isSandboxed: false };
+  const tracking = getCodeRunTracker(deps.adapter).start(call.callID);
 
   try {
     const resolution = await resolveCodeRunInputs(deps, context.run, parsed.input);
@@ -64,8 +67,11 @@ export async function runCodeRun(
       context,
       input: parsed.input,
       inputs: resolution.inputs,
+      tracking,
     });
   } finally {
+    tracking.end();
+
     // a call that reached its sandbox frees the slot once the sandbox is destroyed
     if (!state.isSandboxed) {
       deps.slots.release();
@@ -78,6 +84,7 @@ interface SandboxedCall {
   readonly context: ToolContext;
   readonly input: CodeRunInput;
   readonly inputs: ResolvedInputs;
+  readonly tracking: CodeRunTracking;
 }
 
 async function runInSandbox(deps: CodeRunDeps, sandboxed: SandboxedCall): Promise<ToolOutcome> {
@@ -103,12 +110,24 @@ async function runInSandbox(deps: CodeRunDeps, sandboxed: SandboxedCall): Promis
 
   const sandbox = created.sandbox;
 
+  // a forget that came while the sandbox was being created found none to destroy
+  if (sandboxed.tracking.isForgotten()) {
+    await destroyCodeSandbox(deps, sandbox, () => deps.slots.release());
+
+    return { status: 'error', message: codeRunMessages.sessionEnded };
+  }
+
   const stop = new AbortController();
+
+  const outcome = { isTimedOut: false };
 
   try {
     return await waitOrTimeOut(runInCreatedSandbox(deps, sandbox, sandboxed, stop), limit);
   } catch (error) {
     stop.abort();
+
+    outcome.isTimedOut = isTimeout(error);
+
     deps.logger('code_run.failed', { sandbox: sandbox.id, ...toErrorFields(error) }, 'warn');
 
     return {
@@ -117,7 +136,14 @@ async function runInSandbox(deps: CodeRunDeps, sandboxed: SandboxedCall): Promis
       hidden: { sandbox: sandbox.id },
     };
   } finally {
-    await destroyCodeSandbox(deps, sandbox, () => deps.slots.release());
+    const destroying = destroyCodeSandbox(deps, sandbox, () => deps.slots.release());
+
+    // a call past its limit returns at the limit, and the destroy goes on in the background
+    if (outcome.isTimedOut) {
+      void destroying;
+    } else {
+      await destroying;
+    }
   }
 }
 

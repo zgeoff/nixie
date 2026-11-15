@@ -18,6 +18,7 @@ import { readCodeRunFiles } from '../test-utils/read-code-run-files';
 import { startTestLog } from '../test-utils/start-test-log';
 import { writeWebFetchPage } from '../web/write-web-fetch-page';
 import { buildCodeRunTool } from './build-code-run-tool';
+import { makeCodeRunCleanup } from './make-code-run-cleanup';
 import type { CodeSkill, SkillLookup } from './resolve-code-run-inputs';
 
 interface ToolConfig {
@@ -25,6 +26,7 @@ interface ToolConfig {
   readonly adapter?: StubSandboxAdapterOptions;
   readonly skills?: readonly CodeSkill[];
   readonly listingCutBytes?: number;
+  readonly growAfterListing?: Readonly<Record<string, Uint8Array<ArrayBuffer>>>;
 }
 
 async function setupTest() {
@@ -40,10 +42,12 @@ async function setupTest() {
   };
 
   const start = (config: ToolConfig = {}) => {
-    const execOptions =
-      config.listingCutBytes === undefined ? {} : { listingCutBytes: config.listingCutBytes };
-
-    const exec = makeStubCodeExec(config.program ?? (() => ({})), execOptions);
+    const exec = makeStubCodeExec(config.program ?? (() => ({})), {
+      ...(config.listingCutBytes === undefined ? {} : { listingCutBytes: config.listingCutBytes }),
+      ...(config.growAfterListing === undefined
+        ? {}
+        : { growAfterListing: config.growAfterListing }),
+    });
 
     const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
       ...config.adapter,
@@ -103,6 +107,12 @@ async function setupTest() {
     return entries.filter((entry) => entry.record.kind === 'tool_result');
   };
 
+  const readCallRecords = async () => {
+    const entries = await readRecords(log, { afterSequence: 0 });
+
+    return entries.filter((entry) => entry.record.kind === 'tool_called');
+  };
+
   const countStartedPrograms = (adapter: ReturnType<typeof start>['adapter']) =>
     adapter.execs.filter((exec) => exec.command.argv[0] === 'setpriv').length;
 
@@ -132,6 +142,7 @@ async function setupTest() {
     log,
     start,
     readResultRecords,
+    readCallRecords,
     countStartedPrograms,
     okResult,
     destroyBehind,
@@ -497,6 +508,75 @@ test('it returns the files limit when out/ holds more than 20 MiB', async () => 
     files: [],
     limit: { kind: 'files' },
   });
+});
+
+test('it returns the files limit and no files when a file grew past 20 MiB after the listing', async () => {
+  const ctx = await setupTest();
+
+  const code = ctx.start({
+    program: () => ({ writes: { 'out/big.bin': 'a' } }),
+    growAfterListing: { 'out/big.bin': new Uint8Array(21 * 1024 * 1024) },
+  });
+
+  const result = await code.call({});
+
+  expect(result.structuredContent).toMatchObject({ files: [], limit: { kind: 'files' } });
+});
+
+test('it returns the call-time error at 120 s when the sandbox destroy hangs', async () => {
+  const ctx = await setupTest();
+
+  const code = ctx.start({
+    program: () => ({ until: new Promise(() => {}) }),
+    adapter: { destroyFailures: [{ kind: 'hang' }] },
+  });
+
+  const running = code.call({});
+
+  await waitForCondition(() => ctx.countStartedPrograms(code.adapter) === 1);
+
+  ctx.clock.advance(120_000);
+
+  const outcome = await running;
+
+  expect(outcome).toStrictEqual(
+    buildToolErrorResult('The code run took more than 120 s, so nixie stopped it.'),
+  );
+});
+
+test('it destroys its sandbox and runs nothing when a forget came during the create', async () => {
+  const ctx = await setupTest();
+
+  const gate = Promise.withResolvers<void>();
+
+  const code = ctx.start({
+    program: () => ({ writes: { 'out/a.txt': 'a' } }),
+    adapter: { createFailures: [{ kind: 'wait', until: gate.promise }] },
+  });
+
+  const running = code.call({});
+
+  await waitForCondition(() => ctx.readCallRecords().then((records) => records.length === 1));
+  await makeCodeRunCleanup(ctx.log, code.adapter).destroyForThread('task-1');
+
+  gate.resolve();
+
+  const result = await running;
+  const rows = await sql`select * from code_files`.execute(ctx.log.writer.db);
+
+  const [created] = code.adapter.created;
+
+  invariant(created);
+
+  expect(result).toStrictEqual(
+    buildToolErrorResult(
+      'A forget ended this session during the code run, so nixie kept nothing from it.',
+    ),
+  );
+
+  expect(code.adapter.destroyed).toStrictEqual([created.id]);
+  expect(ctx.countStartedPrograms(code.adapter)).toBe(0);
+  expect(rows.rows).toStrictEqual([]);
 });
 
 test('it returns the files limit when the listing of out/ passes the exec cap', async () => {

@@ -38,6 +38,10 @@ export type StubProgram = (context: StubProgramContext) => StubProgramScript;
 export interface StubCodeExecOptions {
   // the listing of out/ stops at this many bytes of output, as the exec cap does
   readonly listingCutBytes?: number;
+
+  // files that appear in the work folder after the listing of out/, as when a detached process
+  // grows one
+  readonly growAfterListing?: Readonly<Record<string, StubBytes>>;
 }
 
 // The exec of a code sandbox: the setup answers success, the program runs the script that the
@@ -54,7 +58,13 @@ export function makeStubCodeExec(
     }
 
     if (first === 'find') {
-      return buildListing(ctx.files, options.listingCutBytes);
+      const listing = buildListing(ctx.files, options.listingCutBytes);
+
+      for (const [path, content] of Object.entries(options.growAfterListing ?? {})) {
+        ctx.files.set(`/work/${path}`, toBytes(content));
+      }
+
+      return listing;
     }
 
     if (first !== 'setpriv') {
