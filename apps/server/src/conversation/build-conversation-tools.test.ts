@@ -328,8 +328,6 @@ test('it allows the time tool, the log reader and each memory tool but export an
     'allow',
     'allow',
     'allow',
-    'allow',
-    'allow',
   ]);
 
   const written = await decide(buildPolicyCall({ tool: 'files.write', toolList }));

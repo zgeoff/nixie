@@ -74,6 +74,24 @@ async function setupTest() {
         },
         { parent },
       ),
+    writeProposalRow: async (proposalID: string, createdSequence: number): Promise<void> => {
+      await sql`insert into proposals (
+          proposal_id, short_id, family, kind, risk_class, action_hash, cause,
+          created_sequence, created_at, lapses_at, state
+        ) values (
+          ${proposalID}, ${proposalID}, 'action', 'action', 'routine', 'hash', 'no_rule',
+          ${createdSequence}, 1000, 2000, 'pending'
+        )`.execute(db);
+    },
+    readProposalIDs: async (): Promise<string[]> => {
+      const rows = await readQueryRows(
+        sql`select proposal_id from proposals order by proposal_id`,
+        db,
+        z.object({ proposal_id: z.string() }),
+      );
+
+      return rows.map((row) => row.proposal_id);
+    },
     readKinds: async (): Promise<string[]> => {
       const rows = await readQueryRows(
         sql`select kind from records order by sequence`,
@@ -128,11 +146,11 @@ test('it removes the calls and the results of the diff and comment tools and kee
   expect(kinds).toStrictEqual(['tool_called', 'tool_result']);
 });
 
-test('it removes the action proposal of a removed call and its answer', async () => {
+test('it removes the action proposal of a removed call, its row, its answer and its defer', async () => {
   const ctx = await setupTest();
   const comment = await ctx.writeCall('memory.comment');
 
-  await ctx.writeRecord('policy.action_proposed', {
+  const proposed = await ctx.writeRecord('policy.action_proposed', {
     proposalID: 'p1',
     shortID: 'A1',
     callSequence: comment,
@@ -142,18 +160,24 @@ test('it removes the action proposal of a removed call and its answer', async ()
     cause: 'no_rule',
   });
 
+  await ctx.writeProposalRow('p1', proposed);
+  await ctx.writeProposalRow('p2', 999);
+
   await ctx.writeRecord('policy.action_answered', {
     proposalID: 'p1',
     shortID: 'A1',
     answer: 'approved',
   });
 
+  await ctx.writeRecord('proposals.deferred', { proposalID: 'p1' });
   await ctx.writeRecord('policy.action_lapsed', { proposalID: 'p2' });
   await ctx.runMigration();
 
   const kinds = await ctx.readKinds();
+  const proposalIDs = await ctx.readProposalIDs();
 
   expect(kinds).toStrictEqual(['policy.action_lapsed']);
+  expect(proposalIDs).toStrictEqual(['p2']);
 });
 
 test('it stops and changes nothing when a kept record has a removed call as its parent', async () => {

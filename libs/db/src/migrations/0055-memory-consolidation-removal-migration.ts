@@ -25,9 +25,9 @@ export const memoryConsolidationRemovalMigration: Migration = {
       const calls = await readCalls(tx);
       const results = await readResults(tx, calls);
       const proposals = await readActionProposals(tx, calls);
-      const answers = await readActionAnswers(tx, proposals.ids);
+      const dependents = await readProposalDependents(tx, proposals.ids);
 
-      const removed = [...calls, ...results, ...proposals.sequences, ...answers];
+      const removed = [...calls, ...results, ...proposals.sequences, ...dependents];
 
       const forgets = await readForgetRecords(tx, removed);
 
@@ -99,7 +99,8 @@ async function readActionProposals(
   return { sequences, ids };
 }
 
-async function readActionAnswers(
+// Every record that names the proposal: its answer or lapse, and a defer, return or withdrawal.
+async function readProposalDependents(
   tx: Transaction<unknown>,
   proposalIDs: readonly string[],
 ): Promise<number[]> {
@@ -108,8 +109,8 @@ async function readActionAnswers(
   for (const chunk of toChunks(proposalIDs)) {
     const rows = await readQueryRows(
       sql`select sequence from records
-        where kind in ('policy.action_answered', 'policy.action_lapsed')
-          and json_extract(payload, '$.proposalID') in (${sql.join(chunk)})`,
+        where json_extract(payload, '$.proposalID') in (${sql.join(chunk)})
+          or proposal_id in (${sql.join(chunk)})`,
       tx,
       sequenceSchema,
     );
