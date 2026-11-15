@@ -3,6 +3,7 @@ import { buildStepRunID } from '@heynixie/tasks';
 import type { ActionOutcome, ActionQueue } from '@heynixie/tools';
 import type { ModelView } from '../types';
 import { createAllowedAction } from './create-allowed-action';
+import { readOpenRepeat } from './read-open-repeat';
 import { waitForActionOutcome } from './wait-for-action-outcome';
 
 export interface ActionQueueBridge {
@@ -49,6 +50,13 @@ export function buildActionQueue(
 
         return queued.actionID;
       },
+      readOpenRepeat: (query) =>
+        readOpenRepeat(context, {
+          taskID: query.run.thread,
+          tool: query.tool,
+          arguments: query.input,
+          actionHash: query.actionHash,
+        }),
       waitForOutcome: async (actionID, timeoutMs) => {
         const view = await waitForActionOutcome(context, actionID, {
           timeoutMs,

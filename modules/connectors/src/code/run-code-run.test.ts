@@ -81,6 +81,7 @@ async function setupTest() {
       definitions: () => ({ snapshotHash: 'sha256:test' }),
       queue: {
         enqueue: () => Promise.reject(new Error('code.run runs direct')),
+        readOpenRepeat: () => Promise.resolve(null),
         waitForOutcome: () => Promise.resolve(null),
       },
       queuedWaitMs: 1000,

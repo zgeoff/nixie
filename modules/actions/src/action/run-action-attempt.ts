@@ -17,6 +17,7 @@ import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
 import { buildUnknownRecords } from './build-unknown-records';
 import { defaultRetryDelaysMs } from './default-retry-delays-ms';
+import { isKeyExpired } from './is-key-expired';
 import type { Attempt, Settlement } from './leased-records';
 import { buildOutcomeRecord, readArguments, writeLeasedRecords } from './leased-records';
 import { pickAttemptStep } from './pick-attempt-step';
@@ -124,6 +125,19 @@ async function runAttempt(
 
   if (isPastDeadline(claimed.action, context.clock.now())) {
     await writeFailure(context, attempt, 'deadline_passed', 'the action passed its deadline');
+
+    return;
+  }
+
+  if (isKeyExpired(claimed.action, connector, context.clock.now())) {
+    await writeOutcome(
+      context,
+      { ...attempt, attempt: claimed.action.attempt_count },
+      {
+        outcome: { status: 'unknown', reason: 'ambiguous' },
+        ownerReason: 'key_expired',
+      },
+    );
 
     return;
   }

@@ -20,6 +20,7 @@ export type {
   PolicyFactsResolution,
   QueuedAction,
   RegisteredTool,
+  RepeatQuery,
   ResultSources,
   RunEndpoint,
   SchemaCheck,

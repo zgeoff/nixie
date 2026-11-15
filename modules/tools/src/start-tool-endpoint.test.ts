@@ -27,7 +27,7 @@ async function setupTest(config: SetupConfig) {
     log: testLog.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    queue: { enqueue: mock(), waitForOutcome: mock() },
+    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
   });
 
   onTestFinished(() => endpoint.stop());
@@ -471,7 +471,7 @@ test("it leaves a later writer's socket for the same run in place when its run s
     log: { ...ctx.log, writer: { ...ctx.log.writer, epoch: ctx.log.writer.epoch + 1 } },
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    queue: { enqueue: mock(), waitForOutcome: mock() },
+    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
   });
 
   onTestFinished(() => other.stop());
@@ -534,7 +534,7 @@ test('it gives a sandbox the socket of a run that another endpoint of the same w
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    queue: { enqueue: mock(), waitForOutcome: mock() },
+    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
   });
 
   onTestFinished(() => other.stop());

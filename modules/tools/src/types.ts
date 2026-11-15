@@ -229,8 +229,18 @@ export type ActionOutcome =
   | { readonly outcome: 'done'; readonly result: JSONObject }
   | { readonly outcome: 'failed' | 'unknown' | 'cancelled'; readonly reason: string };
 
+export interface RepeatQuery {
+  readonly run: ToolRun;
+  readonly tool: string;
+  readonly input: JSONObject;
+  readonly actionHash: string;
+}
+
 export interface ActionQueue {
   readonly enqueue: (action: QueuedAction) => Promise<string>;
+
+  // the ID of the pending or unknown action that the same call already queued, or null
+  readonly readOpenRepeat: (query: RepeatQuery) => Promise<string | null>;
 
   readonly waitForOutcome: (actionID: string, timeoutMs: number) => Promise<ActionOutcome | null>;
 }

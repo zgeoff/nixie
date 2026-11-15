@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { ActionConnector } from '@heynixie/connectors';
 import { readRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
@@ -90,6 +91,39 @@ test('it brings an unknown outcome to the owner once the provider no longer keep
   await ctx.runNext(stub.connector);
 
   const outcomes = await ctx.readOutcomes();
+
+  expect(outcomes).toStrictEqual([
+    {
+      actionID: ctx.actionID,
+      status: 'unknown',
+      attempt: 1,
+      reason: 'ambiguous',
+      ownerReason: 'key_expired',
+    },
+  ]);
+});
+
+test('it sends nothing again when the provider dropped the key while the retry waited', async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubConnector(() => ({ kind: 'ambiguous', reason: 'timed out' }), {
+    reconcile: { kind: 'idempotency_key', where: 'header', keptForMs: 3_600_000 },
+  });
+
+  await ctx.runNext(stub.connector);
+
+  const waiting = await ctx.readAction();
+
+  invariant(waiting.first_attempt_at !== null);
+
+  // the log stamps the first attempt on the wall clock, so move the test clock to that time
+  ctx.clock.advance(waiting.first_attempt_at - ctx.clock.now() + 3_600_000);
+
+  await ctx.runNext(stub.connector);
+
+  const outcomes = await ctx.readOutcomes();
+
+  expect(stub.calls).toHaveLength(1);
 
   expect(outcomes).toStrictEqual([
     {
