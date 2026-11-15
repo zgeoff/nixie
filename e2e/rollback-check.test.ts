@@ -4,7 +4,15 @@ import { runRollbackCheck } from './src/test-utils/run-rollback-check';
 
 test('it starts the previous release on the data this build wrote', async () => {
   const previous = await readPreviousReleaseBuild();
-  const result = await runRollbackCheck({ previous });
+
+  const result = await runRollbackCheck({
+    previous: {
+      ...previous,
+
+      // the images the previous release's sandbox manifest holds; update them when the release moves
+      imageKeys: ['conversation', 'fetch'],
+    },
+  });
 
   process.stdout.write(`rollback check against ${previous.tag}: ${JSON.stringify(result)}\n`);
 

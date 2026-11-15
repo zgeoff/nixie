@@ -883,7 +883,7 @@ test('it reads a file by its ID in a later code run on the same thread', async (
 
   const fileID = readCodeRunFiles(first)[0]?.file;
 
-  invariant(fileID);
+  invariant(fileID !== undefined);
 
   await code.call({ files: [{ path: 'in/a.csv', file: fileID }] });
 

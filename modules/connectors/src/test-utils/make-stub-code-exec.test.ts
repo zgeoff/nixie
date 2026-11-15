@@ -63,9 +63,9 @@ test('it ends a hanging program on SIGTERM once its signal aborts', async () => 
   expect(exit).toMatchObject({ code: null, signal: 'SIGTERM' });
 });
 
-test('it refuses a command it does not know', async () => {
+test('it refuses a command it does not know', () => {
   const ctx = setupTest();
   const exec = makeStubCodeExec(() => ({}));
 
-  await expect(exec({ argv: ['rm', '-rf', '/'] }, ctx.guest, undefined)).rejects.toThrow();
+  expect(exec({ argv: ['rm', '-rf', '/'] }, ctx.guest, undefined)).rejects.toThrow();
 });

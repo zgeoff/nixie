@@ -112,7 +112,9 @@ async function runInSandbox(deps: CodeRunDeps, sandboxed: SandboxedCall): Promis
 
   // a forget that came while the sandbox was being created found none to destroy
   if (sandboxed.tracking.isForgotten()) {
-    await destroyCodeSandbox(deps, sandbox, () => deps.slots.release());
+    await destroyCodeSandbox(deps, sandbox, () => {
+      deps.slots.release();
+    });
 
     return { status: 'error', message: codeRunMessages.sessionEnded };
   }

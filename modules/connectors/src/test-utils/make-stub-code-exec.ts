@@ -138,7 +138,13 @@ async function waitForAbort(signal: AbortSignal | undefined): Promise<void> {
     return;
   }
 
-  signal?.addEventListener('abort', () => aborted.resolve(), { once: true });
+  signal?.addEventListener(
+    'abort',
+    () => {
+      aborted.resolve();
+    },
+    { once: true },
+  );
 
   await aborted.promise;
 }
