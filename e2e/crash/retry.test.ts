@@ -182,7 +182,15 @@ test('it marks a retry unknown when nixie dies after its attempt record, and nev
 
   expect(
     records.filter((record) => record.kind === 'action.outcome').map((record) => record.payload),
-  ).toStrictEqual([{ actionID, status: 'unknown', attempt: 2, reason: 'attempt_without_result' }]);
+  ).toStrictEqual([
+    {
+      actionID,
+      status: 'unknown',
+      attempt: 2,
+      reason: 'attempt_without_result',
+      ownerReason: 'no_reconcile',
+    },
+  ]);
 
   expect(ctx.nixie.provider.calls).toStrictEqual([
     { idempotencyKey: actionID, body: { to: 'team', body: 'The summary.' } },
