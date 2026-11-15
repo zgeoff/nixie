@@ -126,14 +126,14 @@ that command alone. A command with neither runs on the registry's first target, 
 
 <!-- repo: targets -->
 
-| Target    | Start with                                                  | Access     | Notes                                                                                |
-| --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------ |
-| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | A test build of this tree, with a scripted model.                                    |
-| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, on the real model. Read [its setup](references/preview-setup.md).  |
-| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | Production. After a release, follow [the prod check](references/prod-check.md) only. |
+| Target    | Start with                                                  | Access     | Notes                                                                                              |
+| --------- | ----------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------- |
+| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | A test build of this tree, with a scripted model.                                                  |
+| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, on the real model. Never stop it. Read [its setup](references/preview-setup.md). |
+| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | Production. Read it as [the prod check](references/prod-check.md) says.                            |
 
-- Run the `sign-in-enrol` journey first. The other journeys use the browser it signs in, and
-  `up --restart` starts a browser with no sign-in.
+- Run the `sign-in-enrol` journey first, and again after each `up --restart`. The other journeys use
+  the browser it signs in.
 - Each feature file says what to skip on `preview`, or that it runs on `local` only.
 
 <!-- /repo -->
@@ -150,8 +150,8 @@ only the name of a group, such as `action`: run `bun verify <group> --help` for 
 
 <!-- repo: commands -->
 
-- Pass `--role` and `--name` to `browser type` and `browser click`. A `browser snapshot` names each
-  element with a `ref`, which changes when the page changes.
+- Pass `--role` and `--name` to `browser type` and `browser click`. Take each `ref` from a new
+  `browser snapshot`. A `ref` changes with the page.
 
 <!-- /repo -->
 
@@ -162,7 +162,7 @@ only the name of a group, such as `action`: run `bun verify <group> --help` for 
 [`create-verify-registry.ts`](../../../e2e/src/verify/create-verify-registry.ts) declares the
 targets, actions, commands, doctor checks and features.
 [`feature-paths.ts`](../../../e2e/src/verify/feature-paths.ts) holds each feature's `paths`, the
-shared globs that make every verdict stale, and the ignore list.
+shared globs that make every verdict stale, and the `.ignore` list.
 
 <!-- /repo -->
 
