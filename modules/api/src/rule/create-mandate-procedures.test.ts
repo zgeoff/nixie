@@ -19,7 +19,13 @@ async function setupTest() {
       try {
         await call;
       } catch (error) {
-        return error instanceof ORPCError ? error.code : null;
+        if (error instanceof ORPCError) {
+          const code: unknown = error.code;
+
+          return typeof code === 'string' ? code : null;
+        }
+
+        return null;
       }
 
       return null;

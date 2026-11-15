@@ -62,7 +62,7 @@ async function setupTest() {
     readEndReason: (mandateID: string) => readMandateEndReason(rules.log, mandateID),
     readChangeStates: async () => {
       const found = await rules.log.writer.db
-        .withTables<{ runtime_rules: { state: string; rule_id: string } }>()
+        .$extendTables<{ runtime_rules: { state: string; rule_id: string } }>()
         .selectFrom('runtime_rules')
         .select(['rule_id', 'state'])
         .orderBy('rule_id')
