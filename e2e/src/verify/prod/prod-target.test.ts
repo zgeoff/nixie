@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 // The prod target reads a cluster through kubectl, so the test puts a kubectl on PATH that answers
 // for a ready nixie, and serves the web origin from a loopback server. wringer keys each run to the
-// repo's head commit, so the test repo gets one.
+// repo's head commit against `main`, so the test repo gets a commit on `main`.
 async function setupTest() {
   const root = await mkdtemp(join(tmpdir(), 'nixie-verify-prod-'));
 
@@ -55,7 +55,7 @@ async function setupTest() {
   await writeFile(join(bin, 'kubectl'), kubectl);
   await chmod(join(bin, 'kubectl'), 0o755);
 
-  await $`git init --quiet`.cwd(root);
+  await $`git init --quiet --initial-branch=main`.cwd(root);
 
   await $`git -c user.name=test -c user.email=test@example.test commit --quiet --allow-empty --message start`.cwd(
     root,
