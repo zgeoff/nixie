@@ -1,11 +1,9 @@
 import type { MemoryProposals } from '../gate/gate-context';
 import type { MemoryStore } from '../types';
-import type { MemoryConsolidations } from '../utils/memory-consolidations';
 
 export interface LapseSweepOptions {
   readonly store: Pick<MemoryStore, 'lapse'> & {
     readonly proposals: Pick<MemoryProposals, 'lapse'>;
-    readonly consolidations: Pick<MemoryConsolidations, 'lapse'>;
   };
 
   readonly intervalMs?: number;
@@ -46,7 +44,6 @@ export function startLapseSweep(options: LapseSweepOptions): LapseSweep {
 async function runLapseSweep(options: LapseSweepOptions): Promise<void> {
   await tryRunLapse(() => options.store.lapse(), options.onError);
   await tryRunLapse(() => options.store.proposals.lapse(), options.onError);
-  await tryRunLapse(() => options.store.consolidations.lapse(), options.onError);
 }
 
 async function tryRunLapse(

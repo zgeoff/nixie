@@ -82,7 +82,6 @@ every path in its row and the parts listed before it.
 
 | Prompt               | Parts                                                  | Paths                                                      |
 | -------------------- | ------------------------------------------------------ | ---------------------------------------------------------- |
-| `consolidator`       | `persona`, `nameRule`, `instruction`, `safety`         | `persona`, `owner.name`, `memory.maxChanges`               |
 | `content-checker`    | `nameRule`, `instruction`, `safety`                    | `owner.name`, `owner.nameAtSentenceStart`                  |
 | `retirement-checker` | `instruction`, `safety`                                | none                                                       |
 | `session`            | `skillCatalog`, `safety`                               | `persona`, `skillCatalog`, `owner.name`                    |
@@ -102,7 +101,6 @@ Each path holds one value:
 | `assistant.name`            | The assistant's configured name, or "the assistant"             |
 | `assistant.label`           | The author label on the assistant's messages                    |
 | `assistant.mention`         | The words a shared memory uses for the assistant                |
-| `memory.maxChanges`         | The most changes one consolidation may propose                  |
 | `summary.words`             | The word target of a compaction summary                         |
 | `task.name`                 | The name of the task that the prompt runs                       |
 | `task.brief`                | The brief of the task that the prompt runs                      |

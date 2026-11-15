@@ -8,31 +8,6 @@ export { buildMemoryTools } from './memory/build-memory-tools';
 export { buildPinnedCoreStatus } from './pinned/build-pinned-core-status';
 export { buildMomentKeptKind } from './moment/kept/build-moment-kept-kind';
 export { buildMomentStatus } from './moment/build-moment-status';
-export { buildConsolidatorTools } from './consolidator/build-consolidator-tools';
-
-export type {
-  ConsolidationConfig,
-  ConsolidationConfigInput,
-} from './utils/schema/consolidation-config-schema';
-
-export { consolidationConfigSchema } from './utils/schema/consolidation-config-schema';
-
-export type {
-  ChangeAnswer,
-  ChangeInput,
-  ChangeKind,
-  ChangeOutcome,
-  ConsolidationChange,
-  ConsolidationDiff,
-  ConsolidationSchedule,
-  MemoryConsolidations,
-} from './utils/memory-consolidations';
-
-export type { ConsolidationStaging } from './consolidation/create-consolidation-staging';
-export { createConsolidationStaging } from './consolidation/create-consolidation-staging';
-export { memoryConsolidatorTaskID } from './utils/memory-consolidator-task-id';
-export type { MemoryConsolidator } from './memory/start-memory-consolidator';
-export { startMemoryConsolidator } from './memory/start-memory-consolidator';
 export { defaultGateLimits } from './gate/default-gate-limits';
 export { defaultOwnerPronouns } from './owner/default-owner-pronouns';
 export type { MemoryConfig } from './gate/memory-config-schema';
@@ -57,8 +32,8 @@ export { buildProposalAnswerKind } from './proposal/build-proposal-answer-kind';
 export { buildMemoryChangeKind } from './memory/build-memory-change-kind';
 export type { HostMemory, HostMemoryStore } from './memory/build-host-memory';
 export { buildHostMemory } from './memory/build-host-memory';
-export type { LapseSweep } from './consolidation/start-lapse-sweep';
-export { startLapseSweep } from './consolidation/start-lapse-sweep';
+export type { LapseSweep } from './lapse/start-lapse-sweep';
+export { startLapseSweep } from './lapse/start-lapse-sweep';
 export { buildProposalMergeKind } from './proposal/build-proposal-merge-kind';
 export type { VersionTextResult } from './version/read-version-texts';
 export { readVersionTexts } from './version/read-version-texts';
@@ -72,8 +47,6 @@ export type { MomentDestroyPreview } from './moment/destroy/read-moment-destroy-
 export type { MomentRow } from './moment/read-moment-row';
 export type { StartedMemoryStore } from './memory/start-memory-store';
 export { startMemoryStore } from './memory/start-memory-store';
-export type { MemoryConsolidatorRunnerOptions } from './memory/start-memory-consolidator-runner';
-export { startMemoryConsolidatorRunner } from './memory/start-memory-consolidator-runner';
 
 export type {
   GateContext,

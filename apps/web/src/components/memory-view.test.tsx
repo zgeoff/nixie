@@ -330,28 +330,6 @@ test('it shows the pinned core with its size against its budget', async () => {
   expect(within(core).queryByRole('listitem', { name: 'p7x2rd' })).toBeNull();
 });
 
-test('it shows the consolidation as off when the deployment turns it off', async () => {
-  await createDeviceSession();
-
-  await store.memoryConsolidator.create({ isEnabled: false });
-
-  const rendered = render(<MemoryView />);
-
-  const consolidation = await rendered.findByRole('region', { name: 'Memory consolidation' });
-
-  expect(consolidation).toHaveTextContent(/^Memory consolidation: off$/u);
-});
-
-test('it shows no consolidation line while the consolidator is on', async () => {
-  await createDeviceSession();
-
-  const rendered = render(<MemoryView />);
-
-  await rendered.findByRole('region', { name: 'Pinned core' });
-
-  expect(rendered.queryByRole('region', { name: 'Memory consolidation' })).toBeNull();
-});
-
 test('it shows an item with who wrote it, from what, and when', async () => {
   setupBrowserTimeZone('UTC');
 

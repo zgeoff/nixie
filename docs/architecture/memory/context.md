@@ -69,9 +69,9 @@ them, so an approved item keeps outside content as its source and still reads as
   such as a forwarded email, reads as from a pasted page. Any other outside content reads as
   unconfirmed, because the store keeps nothing that tells the model's own note from a web page it
   read.
-- Who confirmed it: a version from a proposal or a consolidation change the user approved reads as
-  approved by the user by name. The approval belongs to the version, so a restore or an undo, which
-  the user runs without a proposal, reads as unapproved even when it brings back approved text.
+- Who confirmed it: a version from a proposal the user approved reads as approved by the user by
+  name. The approval belongs to the version, so a restore or an undo, which the user runs without a
+  proposal, reads as unapproved even when it brings back approved text.
 
 The model ID that wrote an item stays in `memory.recall`, because it serves checking an item and not
 answering with it.
@@ -196,14 +196,14 @@ memory learns only what the user wrote.
 
 A tool entry shows the call's `result` or its `message` alone, so a field the tool records under
 `hidden` never reaches the model, and `moment.read` prints a tool result the same way. A stored
-result of an earlier release can hold a UUID under `momentID`, `itemID`, `changeID`, `momentIDs` or
-`itemIDs`, so the entry prints that UUID's short ID, read from the live row. A UUID under
-`proposalID` prints the short ID derived from it, with no row read. It leaves the key out when no
-live row gives one: the item or change has no row, or the moment was destroyed. An element of
-`momentIDs` or `itemIDs` with no short ID leaves the list. A word search matches the printed text,
-so it finds the short ID and never the UUID. A failed row read fails the call and never falls back
-to the UUID. The call's record holds only the event IDs it returned, so a forget leaves no readable
-copy of what the model read, and a forgotten message reads with no text and never matches a search.
+result of an earlier release can hold a UUID under `momentID`, `itemID`, `momentIDs` or `itemIDs`,
+so the entry prints that UUID's short ID, read from the live row. A UUID under `proposalID` prints
+the short ID derived from it, with no row read. It leaves the key out when no live row gives one:
+the item has no row, or the moment was destroyed. An element of `momentIDs` or `itemIDs` with no
+short ID leaves the list. A word search matches the printed text, so it finds the short ID and never
+the UUID. A failed row read fails the call and never falls back to the UUID. The call's record holds
+only the event IDs it returned, so a forget leaves no readable copy of what the model read, and a
+forgotten message reads with no text and never matches a search.
 
 The model opens one image with the `log.read_image` tool, by the event ID of the user's message that
 holds it and the image's number in that message, which comes from the message's `<dropped-image>`

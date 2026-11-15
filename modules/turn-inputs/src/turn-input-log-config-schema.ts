@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { parseDuration } from './utils/parse-duration';
 
-const turnInputRoles = ['conversation', 'task', 'memory-consolidator'] as const;
+const turnInputRoles = ['conversation', 'task'] as const;
 
 export type TurnInputRole = (typeof turnInputRoles)[number];
 

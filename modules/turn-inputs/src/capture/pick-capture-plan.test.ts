@@ -47,7 +47,7 @@ test('it takes no capture and no miss with the log off', () => {
 test('it takes no capture and no miss for a role outside the roles', () => {
   const ctx = setupTest();
 
-  expect(pickCapturePlan({ ...ctx.input, role: 'memory-consolidator' })).toStrictEqual({
+  expect(pickCapturePlan({ ...ctx.input, role: 'checker' })).toStrictEqual({
     kind: 'none',
   });
 });

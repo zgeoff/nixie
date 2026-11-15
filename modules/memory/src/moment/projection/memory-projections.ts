@@ -1,6 +1,4 @@
 import type { Projection } from '@heynixie/log';
-import { memoryConsolidationChangesProjection } from '../../consolidation/memory-consolidation-changes-projection';
-import { memoryConsolidationsProjection } from '../../consolidation/memory-consolidations-projection';
 import { memoryForgottenEvidenceProjection } from '../../forgotten/memory-forgotten-evidence-projection';
 import { memoryItemsProjection } from '../../item/memory-items-projection';
 import { memoryProposalMergesProjection } from '../../proposal/memory-proposal-merges-projection';
@@ -19,8 +17,6 @@ export const memoryProjections: readonly Projection[] = [
   memoryProposalMergesProjection,
   memoryNoticesProjection,
   memoryForgottenEvidenceProjection,
-  memoryConsolidationsProjection,
-  memoryConsolidationChangesProjection,
   momentsProjection,
   momentReflectionsProjection,
   momentLinksProjection,

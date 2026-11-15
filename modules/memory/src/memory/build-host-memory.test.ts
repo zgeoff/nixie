@@ -1,8 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import invariant from 'tiny-invariant';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
-import { createConsolidationDiff } from '../test-utils/create-consolidation-diff';
 import { createMemoryItem } from '../test-utils/create-memory-item';
 import { createProposal } from '../test-utils/create-proposal';
 import { readApprovalRecords } from '../test-utils/read-approval-records';
@@ -198,74 +196,4 @@ test('it forgets every item for good as your own change, and reports the forgott
     { kind: 'memory.forget_started', contentSource: null, thread: null },
     { kind: 'memory.forgotten' },
   ]);
-});
-
-test('it approves each named change as the host and leaves the rest pending', async () => {
-  const ctx = await setupTest();
-
-  const [stale, trip] = await Promise.all([
-    createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' }),
-    createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
-  ]);
-
-  const diff = await createConsolidationDiff(ctx.memory, {
-    changes: [
-      { kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' },
-      { kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' },
-    ],
-  });
-
-  const [first, second] = diff.changes;
-
-  invariant(first && second);
-
-  const outcomes = await ctx.host.approveChanges([
-    { changeID: first.changeID, actionHash: first.actionHash },
-  ]);
-
-  const [records, pending] = await Promise.all([
-    readApprovalRecords(ctx.memory.log, {
-      proposalID: first.changeID,
-      itemID: stale.itemID,
-      actionHash: first.actionHash,
-    }),
-    ctx.memory.store.consolidations.readPending(),
-  ]);
-
-  expect(outcomes).toStrictEqual([
-    { changeID: first.changeID, status: 'applied', versions: [{ ...stale, version: 2 }] },
-  ]);
-
-  expect(records[0]).toMatchObject({
-    kind: 'memory.consolidation_approved',
-    payload: { identityID: 'host' },
-  });
-
-  expect(pending?.changes.map((change) => change.changeID)).toStrictEqual([second.changeID]);
-});
-
-test('it rejects a change as the host, which leaves the diff', async () => {
-  const ctx = await setupTest();
-  const stale = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
-
-  const diff = await createConsolidationDiff(ctx.memory, {
-    changes: [{ kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' }],
-  });
-
-  const [change] = diff.changes;
-
-  invariant(change);
-
-  await ctx.host.rejectChange({ changeID: change.changeID, actionHash: change.actionHash });
-
-  const [records, pending] = await Promise.all([
-    readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['memory.consolidation_rejected'] }),
-    ctx.memory.store.consolidations.readPending(),
-  ]);
-
-  expect(records.map((entry) => entry.record.payload)).toStrictEqual([
-    { changeID: change.changeID, identityID: 'host' },
-  ]);
-
-  expect(pending).toBeNull();
 });

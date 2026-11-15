@@ -41,5 +41,5 @@ async function readProposalApproval(
       ? null
       : { operation: proposal.operation, reason: toReviewReason(proposal.reason) };
 
-  return buildVersionApproval(proposalID, approved);
+  return buildVersionApproval(approved);
 }

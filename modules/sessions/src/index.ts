@@ -71,8 +71,6 @@ export { getHarnessImage } from './task/get-harness-image';
 export type { SystemTaskOptions, SystemTaskRunner } from './task/make-system-task-runner';
 export { makeSystemTaskRunner } from './task/make-system-task-runner';
 export { readCleanedTaskIDs } from './task/read-cleaned-task-ids';
-export type { ToolSessionOptions } from './session/start-tool-session';
-export { startToolSession } from './session/start-tool-session';
 
 export type {
   CheckerAnswer,

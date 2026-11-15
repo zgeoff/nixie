@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { css } from '../styled-system/css';
 import type { MemoryItem } from '../types';
 import { useNixieClient } from '../utils/use-nixie-client';
-import { ConsolidatorStatusPanel } from './consolidator-status-panel';
 import { makeMemoryItemRenderer } from './make-memory-item-renderer';
 import { MemoryExportButton } from './memory-export-button';
 import { MemoryItemList } from './memory-item-list';
@@ -43,7 +42,6 @@ export function MemoryView(props: MemoryViewProps): ReactNode {
       {props.openItemID === undefined ? null : (
         <OpenedItem itemID={props.openItemID} renderItem={renderItem} />
       )}
-      <ConsolidatorStatusPanel />
       <PinnedCorePanel renderItem={renderItem} />
       <MemoryExportButton />
       <MemorySearchForm onSearch={setQuery} query={query} />

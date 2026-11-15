@@ -1223,38 +1223,3 @@ test("#sessions.issueCode refuses another session's retry of the action", async 
 
   expect(retry.error).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
 });
-
-test('#memory.consolidatorStatus reports the consolidator as on by default', async () => {
-  const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
-  const status = await buildTestClient(ctx.url, laptop.token).memory.consolidatorStatus();
-
-  expect(status).toStrictEqual({ isEnabled: true });
-});
-
-test('#memory.consolidatorStatus reports the consolidator as off when the deployment turns it off', async () => {
-  const api = await startTestAPI({
-    enrolmentCodeLifetimeMs: 900_000,
-    sessionIdleMs: 2_592_000_000,
-    refusalIntervalMs: 3_600_000,
-    lastSeenIntervalMs: 60_000,
-    isMemoryConsolidatorEnabled: false,
-    isBackupEnabled: true,
-    taskDirectory: [],
-  });
-
-  const laptop = await createDeviceSession(api.context, 'laptop');
-  const status = await buildTestClient(api.url, laptop.token).memory.consolidatorStatus();
-
-  expect(status).toStrictEqual({ isEnabled: false });
-});
-
-test('#memory.consolidatorStatus refuses a caller with no session', async () => {
-  const ctx = await setupTest();
-
-  const status = buildTestClient(ctx.url).memory.consolidatorStatus();
-
-  await status.catch(() => {});
-
-  expect(status).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
-});

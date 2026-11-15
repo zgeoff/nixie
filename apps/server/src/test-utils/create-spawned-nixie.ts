@@ -270,14 +270,10 @@ function startDoubles(stack: AsyncDisposableStack): TestDoubles {
 
 const checkerTimeoutMs = 60 * 60 * 1000;
 
-// The consolidator asks the model on its own schedule, so a test keeps it off and its scripted
-// replies for the turns it drives. A test that scripts the checker's answers gives it its own model.
+// A test that scripts the checker's answers gives it its own model.
 function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
   return {
     config: [
-      'memory_consolidation:',
-      '  enabled: false',
-
       // The checker's timeout runs on the harness clock, which a suite advances in steps while the
       // check starts the real SDK on the wall clock. On a busy host 2 steps outran the default
       // timeout mid-check, and the write became a proposal instead of the active item.

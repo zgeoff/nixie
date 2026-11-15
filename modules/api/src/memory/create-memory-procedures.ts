@@ -35,11 +35,5 @@ export function createMemoryProcedures(context: APIContext) {
         retryAt: null,
       };
     }),
-
-    consolidatorStatus: apiImplementer.memory.consolidatorStatus.handler(async (options) => {
-      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-      return { isEnabled: context.settings.isMemoryConsolidatorEnabled };
-    }),
   };
 }

@@ -9,7 +9,6 @@ import { createTurnInputCommands } from '../turn/create-turn-input-commands';
 import type { CLIFlags, CLIIO, Command, HostTransport } from '../types';
 import { buildBackupCommands } from './build-backup-commands';
 import { checkEncoder } from './check-encoder';
-import { createConsolidationCommands } from './create-consolidation-commands';
 import { createContactCommands } from './create-contact-commands';
 import { createMemoryCommands } from './create-memory-commands';
 import { createPasskeyCommands } from './create-passkey-commands';
@@ -36,7 +35,6 @@ const commands = new Map<string, Command>([
   ...createPauseCommands(host),
   ...createResetCommands(host),
   ...createMemoryCommands(host),
-  ...createConsolidationCommands(host),
   ...createSubjectCommands(host),
   ...createSkillCommands(host),
   ...createPromptCommands(host),

@@ -219,10 +219,3 @@ test('it gives the checker an hour on the harness clock before its timeout', asy
 
   expect(config.memory.checkerTimeoutMs).toBe(3_600_000);
 });
-
-test('it keeps the consolidator off', async () => {
-  const nixie = await startSpawnedNixie();
-  const config = await loadDeploymentConfig(nixie.configPath);
-
-  expect(config.memory_consolidation.isEnabled).toBeFalse();
-});

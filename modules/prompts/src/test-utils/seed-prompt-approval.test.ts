@@ -34,7 +34,7 @@ async function setupTest() {
 
 test('it leaves a current approval of the prompt it is given', async () => {
   const ctx = await setupTest();
-  const approval = await seedPromptApproval(ctx, { promptID: 'consolidator' });
+  const approval = await seedPromptApproval(ctx, { promptID: 'task' });
 
   const rows = await ctx.log.writer.db
     .$extendTables<PromptsTables>()
@@ -43,6 +43,6 @@ test('it leaves a current approval of the prompt it is given', async () => {
     .execute();
 
   expect(rows).toStrictEqual([
-    { approval_id: approval.approvalID, prompt_id: 'consolidator', state: 'current' },
+    { approval_id: approval.approvalID, prompt_id: 'task', state: 'current' },
   ]);
 });

@@ -145,9 +145,7 @@ UUID, because no record in the log carries a page.
 
 The record that creates a row carries the row's short ID, so a rebuild from the log gives the same
 ID. A row from before short IDs takes one derived from its UUID, and the migration that adds the
-short ID backfills the same derived value, so the fold and the backfill agree. A memory
-consolidation change always takes the ID its UUID gives, because its proposal record keeps the shape
-that the release before reads. That release rejects an unknown key in the record, so a rollback
-could not rebuild its tables from a record that carried the short ID. A memory proposal takes its ID
-the same way, derived from its UUID on each read with no column, because its `memory.proposed`
-record keeps the shape that release reads.
+short ID backfills the same derived value, so the fold and the backfill agree. A memory proposal
+takes its ID derived from its UUID on each read with no column, because its `memory.proposed` record
+keeps the shape that the release before reads. That release rejects an unknown key in the record, so
+a rollback could not rebuild its tables from a record that carried the short ID.

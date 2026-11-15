@@ -1,11 +1,5 @@
 export type MemoryRecordKind =
   | 'memory.approval_recorded'
-  | 'memory.consolidation_approved'
-  | 'memory.consolidation_commented'
-  | 'memory.consolidation_lapsed'
-  | 'memory.consolidation_proposed'
-  | 'memory.consolidation_rejected'
-  | 'memory.consolidation_summarized'
   | 'memory.forget_started'
   | 'memory.forgotten'
   | 'memory.image_offered'

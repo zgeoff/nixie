@@ -4,8 +4,8 @@ import type { ShortIDKind, ShortIDLookup } from '../utils/key/swapped-keys';
 import { swappedKeys } from '../utils/key/swapped-keys';
 import { isUUIDShaped } from './is-uuid-shaped';
 
-// A stored result of an earlier release can hold the UUID of a moment, an item, a change or a
-// proposal. The model reads its short ID instead, and reads no key at all when no live row gives one.
+// A stored result of an earlier release can hold the UUID of a moment, an item or a proposal. The
+// model reads its short ID instead, and reads no key at all when no live row gives one.
 // A proposal's short ID derives from its UUID, so it needs no row.
 const proposalIDKey = 'proposalID';
 

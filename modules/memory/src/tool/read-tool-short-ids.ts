@@ -1,19 +1,17 @@
-import { buildShortIDFromUUID } from '@heynixie/db';
 import type { Log, LogRecord } from '@heynixie/log';
 import type { MemoryTables } from '../types';
 import { getItemShortID } from '../utils/item/get-item-short-id';
 import type { ShortIDLookup } from '../utils/key/swapped-keys';
-import type { ConsolidationTables } from '../utils/memory-consolidations';
 import type { MomentTables } from '../utils/moment-context';
 import { collectToolResultUUIDs } from './collect-tool-result-uuids';
 
-// Reads, with one query per table, the short ID of each moment, item and change that a stored tool
+// Reads, with one query per table, the short ID of each moment and item that a stored tool
 // result of the records names by UUID. A batch with no UUID reads no row.
 export async function readToolShortIDs(
   log: Pick<Log, 'writer'>,
   records: readonly LogRecord[],
 ): Promise<ShortIDLookup> {
-  const found = { moment: new Set<string>(), item: new Set<string>(), change: new Set<string>() };
+  const found = { moment: new Set<string>(), item: new Set<string>() };
 
   for (const record of records) {
     if (record.kind === 'tool_result' && record.erasable.status === 'readable') {
@@ -27,7 +25,7 @@ export async function readToolShortIDs(
 
   const db = log.writer.db;
 
-  const [moment, item, change] = await Promise.all([
+  const [moment, item] = await Promise.all([
     found.moment.size === 0
       ? []
       : db
@@ -45,21 +43,10 @@ export async function readToolShortIDs(
           .select(['item_id', 'short_id'])
           .where('item_id', 'in', [...found.item])
           .execute(),
-    found.change.size === 0
-      ? []
-      : db
-          .$extendTables<ConsolidationTables>()
-          .selectFrom('memory_consolidation_changes')
-          .select(['change_id', 'short_id'])
-          .where('change_id', 'in', [...found.change])
-          .execute(),
   ]);
 
   return {
     moment: new Map(moment.map((row) => [row.moment_id, row.short_id])),
     item: new Map(item.map((row) => [row.item_id, getItemShortID(row)])),
-    change: new Map(
-      change.map((row) => [row.change_id, row.short_id ?? buildShortIDFromUUID(row.change_id)]),
-    ),
   };
 }

@@ -17,8 +17,6 @@ import { runCheckQuery } from '../../guests/conversation/src/check/run-check-que
 // @boundaries-ignore a spike imports the code it measures
 import { runTurn } from '../../guests/conversation/src/turn/run-turn';
 // @boundaries-ignore a spike imports the code it measures
-import { renderConsolidatorPrompt } from '../../modules/memory/src/consolidator/render-consolidator-prompt';
-// @boundaries-ignore a spike imports the code it measures
 import { encodeInboxUUID } from '../../modules/sessions/src/inbox/encode-inbox-uuid';
 // @boundaries-ignore a spike imports the code it measures
 import { renderInboxMessage } from '../../modules/sessions/src/inbox/render-inbox-message';
@@ -74,7 +72,6 @@ const dir = import.meta.dir;
 const runners: Record<string, () => Promise<readonly SessionResult[]>> = {
   conversation: runConversation,
   checker: runChecker,
-  'memory-consolidator': runConsolidator,
   task: runTasks,
   worker: runWorkers,
 };
@@ -210,26 +207,6 @@ async function runChecker(): Promise<readonly SessionResult[]> {
     });
   }
   return results;
-}
-
-// one consolidation over 60 items, the 10 pinned and 50 others, each with its quote
-async function runConsolidator(): Promise<readonly SessionResult[]> {
-  const items = [...fixtures.coreItems, ...fixtures.otherItems].map((item, index) => ({
-    ...item,
-    isPinned: index < fixtures.coreItems.length,
-  }));
-  const result = await runGuestSession('consolidation-1', 'memory-consolidator', {
-    home: await mkdtemp(join(tmpdir(), 'turn-tokens-')),
-    systemPrompt: renderPrompt(
-      'consolidator',
-      { persona: fixtures.persona, owner: { name: fixtures.ownerName }, memory: { maxChanges: 30 } },
-      {},
-    ),
-    input: [buildPlainMessage(renderConsolidatorPrompt({ items, isComplete: true }))],
-    resume: null,
-  });
-
-  return [result.session];
 }
 
 // simulated: a job run as one fresh session on the conversation's prompt, opening and tools

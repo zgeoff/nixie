@@ -6,14 +6,12 @@ import { buildTimeTool } from '../../modules/connectors/src/time/build-time-tool
 // @boundaries-ignore a spike imports the code it measures
 import { buildWebFetchTool } from '../../modules/connectors/src/web/build-web-fetch-tool';
 // @boundaries-ignore a spike imports the code it measures
-import { buildConsolidatorTools } from '../../modules/memory/src/consolidator/build-consolidator-tools';
-// @boundaries-ignore a spike imports the code it measures
 import { buildLogReadTool } from '../../modules/memory/src/log/build-log-read-tool';
 // @boundaries-ignore a spike imports the code it measures
 import { buildMemoryTools } from '../../modules/memory/src/memory/build-memory-tools';
 import type { ListedTool } from './start-tool-server';
 
-export type ToolSet = 'conversation' | 'memory-consolidator' | 'worker';
+export type ToolSet = 'conversation' | 'worker';
 
 const unused = {} as never;
 const options = {
@@ -32,7 +30,6 @@ export function buildRoleTools(set: ToolSet): readonly ListedTool[] {
       buildLogReadTool(unused),
       ...buildMemoryTools(unused, options),
     ],
-    'memory-consolidator': () => buildConsolidatorTools(unused, unused, 20),
     worker: () => [webFetch],
   }[set]();
 

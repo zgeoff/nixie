@@ -39,7 +39,6 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           }),
           settings: {
             ...defaultAPISettings,
-            isMemoryConsolidatorEnabled: options.config.memory_consolidation.isEnabled,
             isBackupEnabled: options.config.backup.isEnabled,
             taskDirectory: buildTaskMessaging(options.config).directory,
             approvals: {

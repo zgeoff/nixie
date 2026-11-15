@@ -46,10 +46,10 @@ rule for it. **Why:** the gate's checks let your own typed words apply at once, 
 allows `outside` lets a page that the conversation fetched write a memory that every later prompt
 reads.
 
-A pin, an unpin, a rating, a comment and a consolidator suggestion declare `note`. Each one either
-changes nothing you rely on or produces a proposal, so the starter rule `allow-notes` lets the call
-run and the proposal still waits for you. A self-note is a `memory.remember` call, so it declares
-`memory_write` and runs the gate, which always makes it a proposal.
+A pin, an unpin and a rating declare `note`. Each one either changes nothing you rely on or produces
+a proposal, so the starter rule `allow-notes` lets the call run and the proposal still waits for
+you. A self-note is a `memory.remember` call, so it declares `memory_write` and runs the gate, which
+always makes it a proposal.
 
 ## Who writes
 

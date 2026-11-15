@@ -109,37 +109,6 @@ export interface NixieTables {
     readonly epoch: number;
     readonly generation: number;
   };
-  readonly memory_consolidation_changes: {
-    readonly change_id: string;
-    readonly diff_id: string;
-    readonly position: number;
-    readonly kind: string;
-    readonly item_id: string;
-    readonly inputs: string;
-    readonly source: string;
-    readonly status: string;
-    readonly action_hash: string;
-    readonly sealed: string;
-    readonly model: string | null;
-    readonly created_sequence: number;
-    readonly created_at: number;
-    readonly lapse_at: number;
-    readonly resolved_sequence: number | null;
-    readonly short_id: string | null;
-    readonly comment: string | null;
-    readonly comment_sequence: number | null;
-  };
-  readonly memory_consolidations: {
-    readonly diff_id: string;
-    readonly model: string | null;
-    readonly changes: number;
-    readonly shown_items: number;
-    readonly sequence: number;
-    readonly created_at: number;
-    readonly summary: string | null;
-    readonly summary_shares: string | null;
-    readonly summary_lapse_at: number | null;
-  };
   readonly memory_forgotten_evidence: {
     readonly evidence_key: string;
     readonly record_sequence: number;

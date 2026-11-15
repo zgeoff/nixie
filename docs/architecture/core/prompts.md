@@ -1,13 +1,13 @@
 # Prompts
 
-Six built-in prompts start nixie's model calls: the consolidator's, the content checker's, the
-retirement checker's, the conversation's session prompt, the compaction instruction, and the task
-prompt of each [started task](./started-tasks.md). Each prompt is a set of named parts and a
-template that arranges them. A deployment can override any part or the template of any prompt from
-its definitions, and every part or template it leaves unset keeps nixie's built-in text. Each prompt
-has a part named `safety` that holds its rules against pasted text, fetched pages and other input
-that tries to steer the model. An override can replace or drop that part, and the operator log is
-the one place that shows it.
+Five built-in prompts start nixie's model calls: the content checker's, the retirement checker's,
+the conversation's session prompt, the compaction instruction, and the task prompt of each
+[started task](./started-tasks.md). Each prompt is a set of named parts and a template that arranges
+them. A deployment can override any part or the template of any prompt from its definitions, and
+every part or template it leaves unset keeps nixie's built-in text. Each prompt has a part named
+`safety` that holds its rules against pasted text, fetched pages and other input that tries to steer
+the model. An override can replace or drop that part, and the operator log is the one place that
+shows it.
 
 ## Parts, templates and paths
 
@@ -19,9 +19,8 @@ when no persona is in force, renders as empty text. The filled text is never fil
 inside a persona or a name stay literal. The delimiter is `{{ }}` because the built-in text holds
 backticks, «» and ⟦⟧ as literal text.
 
-Each prompt accepts its own paths: the consolidator reads the cap on changes, and the compaction
-instruction reads the word target. [Overriding a prompt](../../guides/overriding-a-prompt.md) lists
-each prompt's parts and paths.
+Each prompt accepts its own paths: the compaction instruction reads the word target, for example.
+[Overriding a prompt](../../guides/overriding-a-prompt.md) lists each prompt's parts and paths.
 
 ## Overrides from the definitions
 

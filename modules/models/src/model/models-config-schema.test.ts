@@ -71,7 +71,6 @@ test('it reads an aggregator profile with its provider pin and the role map into
     roles: {
       conversation: 'background-aggregator',
       checker: 'checker',
-      'memory-consolidator': 'background-aggregator',
     },
   });
 
@@ -109,7 +108,6 @@ test('it reads an aggregator profile with its provider pin and the role map into
     roles: {
       conversation: 'background-aggregator',
       checker: 'checker',
-      'memory-consolidator': 'background-aggregator',
     },
     selectable: [],
     limits: {
@@ -294,28 +292,6 @@ test('it refuses a price table without the 1-hour cache write price', () => {
 
   expect(result.error?.issues).toPartiallyContain({
     path: ['profiles', 'chat-direct', 'prices', 'cache_write_1h'],
-  });
-});
-
-test('it reads the profile the memory consolidator role names', () => {
-  const result = modelsConfigSchema.safeParse({
-    profiles: {
-      'chat-direct': {
-        harness: 'agent-sdk',
-        base_url: 'https://api.anthropic.com',
-        credential: 'deployment:anthropic',
-        auth_header: 'x-api-key',
-        model: 'claude-test-1',
-        effort: 'medium',
-        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
-      },
-    },
-    roles: { conversation: 'chat-direct', 'memory-consolidator': 'chat-direct' },
-  });
-
-  expect(result.data?.roles).toStrictEqual({
-    conversation: 'chat-direct',
-    'memory-consolidator': 'chat-direct',
   });
 });
 

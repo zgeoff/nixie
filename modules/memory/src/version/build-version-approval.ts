@@ -7,16 +7,12 @@ export interface ApprovedProposal {
   readonly reason: ReviewReason;
 }
 
-export function buildVersionApproval(
-  proposalID: string | null,
-  proposal: ApprovedProposal | null,
-): MemoryApproval | null {
-  if (proposalID === null) {
+export function buildVersionApproval(proposal: ApprovedProposal | null): MemoryApproval | null {
+  if (proposal === null) {
     return null;
   }
 
   return {
-    isQuotePasted:
-      proposal?.operation === 'remember' && proposal.reason === 'quote_in_quoted_block',
+    isQuotePasted: proposal.operation === 'remember' && proposal.reason === 'quote_in_quoted_block',
   };
 }
