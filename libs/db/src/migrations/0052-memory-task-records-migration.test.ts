@@ -9,7 +9,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { readQueryRows } from '../read-query-rows';
 import { nixieSchema } from '../schema/nixie-schema';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { memoryTaskRecordsMigration } from './0050-memory-task-records-migration';
+import { memoryTaskRecordsMigration } from './0052-memory-task-records-migration';
 
 interface RecordRow {
   readonly kind: string;
@@ -62,9 +62,9 @@ async function setupTest() {
   };
 }
 
-test('it moves the schema to version 50, which the release before cannot read', () => {
-  expect(nixieSchema.migrations.indexOf(memoryTaskRecordsMigration) + 1).toBe(50);
-  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(50);
+test('it moves the schema to version 52, which the release before cannot read', () => {
+  expect(nixieSchema.migrations.indexOf(memoryTaskRecordsMigration) + 1).toBe(52);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(52);
 });
 
 test('it rewrites a consolidation version as a conversation version and removes the change records', async () => {
@@ -165,6 +165,45 @@ test('it removes the record that forgets a removed record', async () => {
   const records = await ctx.readRecords();
 
   expect(records).toMatchObject([{ kind: 'record.forget_started' }]);
+});
+
+test('it removes the task runs of the 2 tasks and keeps the conversation run', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRecord({
+    kind: 'task.run_opened',
+    thread: 'memory-writer',
+    payload: { taskID: 'memory-writer', runID: 'run-writer' },
+  });
+
+  await ctx.writeRecord({
+    kind: 'task.run_opened',
+    thread: 'conversation',
+    payload: { taskID: 'conversation', runID: 'run-talk' },
+  });
+
+  for (const [sequence, runID, taskID] of [
+    [1, 'run-writer', 'memory-writer'],
+    [2, 'run-talk', 'conversation'],
+  ] as const) {
+    const row = { run_id: runID, task_id: taskID, opened_sequence: sequence };
+
+    await sql`insert into task_runs (run_id, task_id, opened_sequence, started_at, opened)
+      values (${runID}, ${taskID}, ${sequence}, 1, '{}')`.execute(ctx.db);
+
+    await sql`insert into projection_changes (sequence, projection, row_key, row)
+      values (${sequence}, 'task_runs', ${runID}, ${JSON.stringify(row)})`.execute(ctx.db);
+  }
+
+  await ctx.runMigration();
+
+  const runs = await readQueryRows(
+    sql`select run_id from task_runs order by run_id`,
+    ctx.db,
+    z.object({ run_id: z.string() }),
+  );
+
+  expect(runs).toStrictEqual([{ run_id: 'run-talk' }]);
 });
 
 test('it refuses a message from a memory task to another task and changes nothing', async () => {

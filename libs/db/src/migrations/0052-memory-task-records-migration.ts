@@ -392,7 +392,8 @@ async function removeTaskRows(tx: Transaction<unknown>): Promise<void> {
   await sql`delete from projection_changes
     where projection in ('memory_writer', 'memory_consolidations', 'memory_consolidation_changes')
       or (projection in ('tasks', 'pause_exemptions') and row_key in (${ids}))
-      or (projection in ('timers', 'actions') and json_extract(row, '$.task_id') in (${ids}))
+      or (projection in ('timers', 'actions', 'task_runs')
+        and json_extract(row, '$.task_id') in (${ids}))
       or (projection = 'task_messages' and (json_extract(row, '$.from_task') in (${ids})
         or json_extract(row, '$.to_task') in (${ids})))`.execute(tx);
 
@@ -401,6 +402,7 @@ async function removeTaskRows(tx: Transaction<unknown>): Promise<void> {
   await sql`delete from memory_consolidations`.execute(tx);
   await sql`delete from timers where task_id in (${ids})`.execute(tx);
   await sql`delete from actions where task_id in (${ids})`.execute(tx);
+  await sql`delete from task_runs where task_id in (${ids})`.execute(tx);
   await sql`delete from leases where kind = 'task' and work_id in (${ids})`.execute(tx);
   await sql`delete from pause_exemptions where task_id in (${ids})`.execute(tx);
   await sql`delete from tasks where task_id in (${ids})`.execute(tx);
