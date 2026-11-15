@@ -905,7 +905,7 @@ test('it refuses a file of another thread', async () => {
 
   const fileID = readCodeRunFiles(first)[0]?.file;
 
-  invariant(fileID);
+  invariant(fileID !== undefined);
 
   const result = await code.call(
     { files: [{ path: 'a.csv', file: fileID }] },
@@ -924,7 +924,7 @@ test('it refuses a file whose result record a forget made unreadable', async () 
 
   const fileID = readCodeRunFiles(first)[0]?.file;
 
-  invariant(fileID);
+  invariant(fileID !== undefined);
 
   const [stored] = await ctx.readResultRecords();
 
@@ -937,7 +937,7 @@ test('it refuses a file whose result record a forget made unreadable', async () 
     .where('sequence', '=', stored.record.sequence)
     .executeTakeFirst();
 
-  invariant(row?.key_id);
+  invariant(typeof row?.key_id === 'string');
 
   await removeRecordKey(ctx.log, row.key_id);
 

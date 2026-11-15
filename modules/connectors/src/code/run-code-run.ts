@@ -138,7 +138,9 @@ async function runInSandbox(deps: CodeRunDeps, sandboxed: SandboxedCall): Promis
       hidden: { sandbox: sandbox.id },
     };
   } finally {
-    const destroying = destroyCodeSandbox(deps, sandbox, () => deps.slots.release());
+    const destroying = destroyCodeSandbox(deps, sandbox, () => {
+      deps.slots.release();
+    });
 
     // a call past its limit returns at the limit, and the destroy goes on in the background
     if (outcome.isTimedOut) {
@@ -178,7 +180,9 @@ async function destroyLateSandbox(deps: CodeRunDeps, creating: Promise<Sandbox>)
   try {
     const late = await creating;
 
-    await destroyCodeSandbox(deps, late, () => deps.slots.release());
+    await destroyCodeSandbox(deps, late, () => {
+      deps.slots.release();
+    });
   } catch {
     deps.slots.release();
   }
