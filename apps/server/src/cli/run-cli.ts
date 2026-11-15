@@ -12,6 +12,7 @@ import { checkEncoder } from './check-encoder';
 import { createConsolidationCommands } from './create-consolidation-commands';
 import { createContactCommands } from './create-contact-commands';
 import { createMemoryCommands } from './create-memory-commands';
+import { createPasskeyCommands } from './create-passkey-commands';
 import { createResetCommands } from './create-reset-commands';
 import { createRuleCommands } from './create-rule-commands';
 import { createSessionCommands } from './create-session-commands';
@@ -30,6 +31,7 @@ const commands = new Map<string, Command>([
   ['check-encoder', (flags, io) => checkEncoder(flags.encoder, io)],
   ...createDeploymentCommands(),
   ...createSessionCommands(host),
+  ...createPasskeyCommands(host),
   ...taskCommands,
   ...createPauseCommands(host),
   ...createResetCommands(host),

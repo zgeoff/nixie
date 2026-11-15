@@ -181,3 +181,77 @@ test('it applies the edited text of an approved memory write', async () => {
 
   expect(stored?.appliedText).toBe('Keeps bees');
 });
+
+test('it refuses the approval of an always-ask row with NO_PASSKEY when no passkey is live', async () => {
+  const ctx = await setupTest();
+  const row = await store.approvalRows.create({ riskClass: 'always_ask' });
+
+  const outcome = await writeMockApprovalAnswer(
+    { ...ctx.buildAnswer(row), choice: 'approve' },
+    ctx.sessionID,
+  );
+
+  expect(outcome).toStrictEqual({ status: 'passkey_refused', refusal: 'NO_PASSKEY' });
+});
+
+test('it refuses the approval of an always-ask row with no assertion as PASSKEY_REQUIRED', async () => {
+  const ctx = await setupTest();
+
+  await store.passkeyRows.create({});
+
+  const row = await store.approvalRows.create({ riskClass: 'always_ask' });
+
+  const outcome = await writeMockApprovalAnswer(
+    { ...ctx.buildAnswer(row), choice: 'approve' },
+    ctx.sessionID,
+  );
+
+  expect(outcome).toStrictEqual({ status: 'passkey_refused', refusal: 'PASSKEY_REQUIRED' });
+});
+
+test('it keeps the assertion that approves an always-ask row', async () => {
+  const ctx = await setupTest();
+  const passkey = await store.passkeyRows.create({ credentialID: 'cred-1' });
+  const row = await store.approvalRows.create({ riskClass: 'always_ask' });
+
+  const clientData = Buffer.from(JSON.stringify({ challenge: 'chal-1' })).toString('base64url');
+
+  const outcome = await writeMockApprovalAnswer(
+    {
+      ...ctx.buildAnswer(row),
+      choice: 'approve',
+      passkey: {
+        id: passkey.credentialID,
+        rawId: passkey.credentialID,
+        type: 'public-key',
+        clientExtensionResults: {},
+        response: { clientDataJSON: clientData, authenticatorData: 'ad', signature: 'sig' },
+      },
+    },
+    ctx.sessionID,
+  );
+
+  expect([outcome.status, store.passkeyChecks.all()]).toStrictEqual([
+    'answered',
+    [
+      expect.objectContaining({
+        challenge: 'chal-1',
+        choice: 'approve',
+        credentialID: 'cred-1',
+        proposalID: row.proposalID,
+      }),
+    ],
+  ]);
+});
+
+test('it takes a decline of an always-ask row with no passkey', async () => {
+  const ctx = await setupTest();
+  const row = await store.approvalRows.create({ riskClass: 'always_ask' });
+
+  const outcome = await writeMockApprovalAnswer(
+    { ...ctx.buildAnswer(row), choice: 'decline' },
+    ctx.sessionID,
+  );
+
+  expect(outcome.status).toBe('answered');
+});

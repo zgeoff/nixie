@@ -14,6 +14,7 @@ import type { QuietHours } from '@heynixie/proposals';
 import type { TaskProfile, TasksContext } from '@heynixie/tasks';
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
+import type { PasskeyState } from './passkey/passkey-state';
 
 export interface APISettings {
   readonly enrolmentCodeLifetimeMs: number;
@@ -54,6 +55,9 @@ export type CleanupRecordSessions = (cause: ForgottenRecord) => Promise<void>;
 
 export interface APIContext extends TasksContext {
   readonly settings: APISettings;
+
+  // challenges, registration options and the host code, which a restart drops
+  readonly passkeys: PasskeyState;
 
   readonly readSessionCleanup: () => CleanupRecordSessions | null;
 
@@ -144,6 +148,9 @@ interface HostConversationReset {
 export interface APIRequestContext extends ResponseHeadersPluginContext {
   readonly sessionToken: string | undefined;
   readonly tokenSource: 'bearer' | 'cookie' | 'none';
+
+  // the Origin header of the call
+  readonly origin?: string | undefined;
 }
 
 export interface Identity {
@@ -205,6 +212,26 @@ interface RecordRow {
   readonly key_id: string | null;
 }
 
+interface PasskeyRow {
+  readonly passkey_id: string;
+  readonly credential_id: string;
+  readonly public_key: Uint8Array<ArrayBuffer>;
+  readonly user_handle: Uint8Array<ArrayBuffer>;
+  readonly rp_id: string;
+  readonly origin: string;
+  readonly sign_count: number;
+  readonly backup_eligible: number;
+  readonly backed_up: number;
+  readonly transports: string;
+  readonly aaguid: string;
+  readonly label: string;
+  readonly registered_by: string;
+  readonly authorized_by: string;
+  readonly registered_at: number;
+  readonly last_used_at: number | null;
+  readonly revoked_at: number | null;
+}
+
 interface ThreadRow {
   readonly thread: string;
 }
@@ -219,6 +246,7 @@ export type APITables = CheckedTables<
     tasks: TaskRow;
     records: RecordRow;
     threads: ThreadRow;
+    passkeys: PasskeyRow;
   }>,
-  'tasks' | 'records' | 'threads'
+  'tasks' | 'records' | 'threads' | 'passkeys'
 >;

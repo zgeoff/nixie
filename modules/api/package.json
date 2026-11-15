@@ -31,6 +31,7 @@
     "@heynixie/tools": "workspace:*",
     "@heynixie/turn-inputs": "workspace:*",
     "@orpc/server": "catalog:",
+    "@simplewebauthn/server": "catalog:",
     "elysia": "catalog:",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",

@@ -1,4 +1,5 @@
 import type { ContractInputs } from '@heynixie/contract';
+import { pickMockPasskeyChoices } from './pick-mock-passkey-choices';
 import { store } from './store';
 
 export type MockApprovalAnswer = ContractInputs['approvals']['answerProposal'];
@@ -30,6 +31,10 @@ export type MockApprovalResult =
           }
         | { readonly error: 'CLOSED'; readonly state: MockApprovalState }
         | { readonly error: 'NOT_ALLOWED'; readonly reason: string };
+    }
+  | {
+      readonly status: 'passkey_refused';
+      readonly refusal: 'NO_PASSKEY' | 'PASSKEY_REQUIRED';
     };
 
 // An answer to one row, as the host answers it: the hashes the card showed must match, and a
@@ -66,6 +71,12 @@ export async function writeMockApprovalAnswer(
     });
   }
 
+  const passkeyRefusal = await checkMockPasskey(row, answer);
+
+  if (passkeyRefusal !== null) {
+    return { status: 'passkey_refused', refusal: passkeyRefusal };
+  }
+
   const proposalID = row.proposalID;
 
   if (answer.choice === 'defer') {
@@ -100,13 +111,49 @@ function refuse(
   return { status: 'refused', refusal };
 }
 
+type StoredRow = NonNullable<ReturnType<typeof store.approvalRows.findFirst>>;
+
+// The passkey step, as the host runs it, except that the mock keeps the assertion it was given
+// instead of checking its signature.
+async function checkMockPasskey(
+  row: StoredRow,
+  answer: MockApprovalAnswer,
+): Promise<'NO_PASSKEY' | 'PASSKEY_REQUIRED' | null> {
+  if (!pickMockPasskeyChoices(row).includes(answer.choice)) {
+    return null;
+  }
+
+  if (store.passkeyRows.findFirst((query) => query.where({ revokedAt: null })) === undefined) {
+    return 'NO_PASSKEY';
+  }
+
+  if (answer.passkey === undefined) {
+    return 'PASSKEY_REQUIRED';
+  }
+
+  await store.passkeyChecks.create({
+    challenge: readChallenge(answer.passkey.response.clientDataJSON),
+    choice: answer.choice,
+    credentialID: answer.passkey.id,
+    proposalID: row.proposalID,
+  });
+
+  return null;
+}
+
+function readChallenge(clientDataJSON: string): string {
+  const data: unknown = JSON.parse(Buffer.from(clientDataJSON, 'base64url').toString('utf8'));
+
+  return typeof data === 'object' && data !== null && 'challenge' in data
+    ? String(data.challenge)
+    : '';
+}
+
 function answered(
   result: Extract<MockApprovalResult, { status: 'answered' }>['result'],
 ): MockApprovalResult {
   return { status: 'answered', result };
 }
-
-type StoredRow = NonNullable<ReturnType<typeof store.approvalRows.findFirst>>;
 
 async function writeApproval(
   row: StoredRow,

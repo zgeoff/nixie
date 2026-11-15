@@ -1,0 +1,215 @@
+import { expect, onTestFinished, test } from 'bun:test';
+import { waitFor } from '@testing-library/react';
+import { z } from 'zod';
+import { mockPasskeyCode } from '../mocks/passkey-rows';
+import { store } from '../mocks/store';
+import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
+import { startBuiltWeb } from '../test-utils/start-built-web';
+import { startFrontProxy } from '../test-utils/start-front-proxy';
+import { startStubAPI } from '../test-utils/start-stub-api';
+
+async function setupTest() {
+  const authenticatorSchema = z.object({ authenticatorId: z.string() });
+  const credentialsSchema = z.object({ credentials: z.array(z.unknown()) });
+  const hydrated = "Object.keys(document).some((key) => key.startsWith('_reactListening'))";
+  const api = startStubAPI();
+
+  const web = await startBuiltWeb(api.url);
+
+  const proxy = startFrontProxy({ apiURL: api.url, webURL: web.url });
+
+  // WebAuthn refuses an IP address as the RP ID, so the page opens on localhost
+  const appURL = proxy.url.replace('127.0.0.1', 'localhost');
+
+  const view = new Bun.WebView({ backend: 'chrome' });
+
+  await view.navigate('about:blank');
+  await view.cdp('Network.clearBrowserCookies');
+
+  const session = await store.sessions.create({ deviceName: 'laptop' });
+
+  await setupSignedInBrowser(view, { appURL, token: session.token });
+
+  await view.cdp('WebAuthn.enable');
+
+  const addedRaw = await view.cdp('WebAuthn.addVirtualAuthenticator', {
+    options: {
+      automaticPresenceSimulation: true,
+      hasResidentKey: true,
+      hasUserVerification: true,
+      isUserVerified: true,
+      protocol: 'ctap2',
+      transport: 'internal',
+    },
+  });
+
+  const added = authenticatorSchema.parse(addedRaw);
+
+  onTestFinished(async () => {
+    await view.cdp('WebAuthn.removeVirtualAuthenticator', {
+      authenticatorId: added.authenticatorId,
+    });
+
+    await view.cdp('WebAuthn.disable');
+  });
+
+  // Bun runs one Chrome for the whole test process, and runs these hooks in the order they were
+  // added, so the view closes after its authenticator is gone.
+  onTestFinished(() => {
+    view.close();
+  });
+
+  const waitForPage = (expression: string) =>
+    waitFor(
+      async () => {
+        const holds: unknown = await view.evaluate(expression);
+
+        expect(holds).toBeTrue();
+      },
+      { timeout: 8000 },
+    );
+
+  return {
+    view,
+    waitForPage,
+    findRow: (proposalID: string) =>
+      store.approvalRows.findFirst((query) => query.where({ proposalID })),
+    countCredentials: async () => {
+      const raw = await view.cdp('WebAuthn.getCredentials', {
+        authenticatorId: added.authenticatorId,
+      });
+
+      return credentialsSchema.parse(raw).credentials.length;
+    },
+    registerPasskey: async () => {
+      await view.navigate(`${appURL}/passkeys`);
+
+      await waitForPage(
+        `${hydrated} && document.querySelector('form[aria-label="Add a passkey"]') !== null`,
+      );
+
+      await view.click('form[aria-label="Add a passkey"] label:nth-of-type(2) input');
+      await view.type(mockPasskeyCode);
+      await view.click('form[aria-label="Add a passkey"] button[type=submit]');
+
+      await waitForPage(`document.querySelector('ul[aria-label="Passkeys"] li') !== null`);
+    },
+    openLine: async (sentence: string) => {
+      await view.navigate(`${appURL}/memory/proposals`);
+
+      await waitForPage(`document.querySelector('li[aria-label="${sentence}"] summary') !== null`);
+
+      await view.click(`li[aria-label="${sentence}"] summary`);
+    },
+  };
+}
+
+test('it asks the passkey before it sends the approval of an always-ask row, and sends the assertion with it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.registerPasskey();
+
+  const row = await store.approvalRows.create({
+    choices: ['approve', 'defer', 'decline'],
+    riskClass: 'always_ask',
+    sentence: 'Pay the berth fee.',
+  });
+
+  await ctx.openLine('Pay the berth fee.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+  await ctx.view.click('button[name="approve"]');
+
+  await waitFor(
+    () => {
+      expect(ctx.findRow(row.proposalID)?.state).toBe('approved');
+    },
+    { timeout: 8000 },
+  );
+
+  const checks = store.passkeyChecks.all();
+  const credentialIDs = store.passkeyRows.all().map((passkey) => passkey.credentialID);
+
+  expect([
+    checks.map((check) => [check.proposalID, check.choice]),
+    checks.map((check) => check.credentialID),
+    await ctx.countCredentials(),
+  ]).toStrictEqual([[[row.proposalID, 'approve']], credentialIDs, 1]);
+});
+
+test('it asks no passkey for a decline', async () => {
+  const ctx = await setupTest();
+
+  await ctx.registerPasskey();
+
+  const row = await store.approvalRows.create({
+    choices: ['approve', 'defer', 'decline'],
+    riskClass: 'always_ask',
+    sentence: 'Pay the berth fee.',
+  });
+
+  await ctx.openLine('Pay the berth fee.');
+  await ctx.waitForPage(`document.querySelector('button[name="decline"]') !== null`);
+  await ctx.view.click('button[name="decline"]');
+
+  await ctx.waitForPage(
+    `document.querySelector('[aria-label="Decline this proposal"] button') !== null`,
+  );
+
+  await ctx.view.click('[aria-label="Decline this proposal"] button');
+
+  await waitFor(
+    () => {
+      expect(ctx.findRow(row.proposalID)?.state).toBe('declined');
+    },
+    { timeout: 8000 },
+  );
+
+  expect(store.passkeyChecks.all()).toStrictEqual([]);
+});
+
+test('it asks no passkey for a defer', async () => {
+  const ctx = await setupTest();
+
+  await ctx.registerPasskey();
+
+  const row = await store.approvalRows.create({
+    choices: ['approve', 'defer', 'decline'],
+    riskClass: 'always_ask',
+    sentence: 'Pay the berth fee.',
+  });
+
+  await ctx.openLine('Pay the berth fee.');
+  await ctx.waitForPage(`document.querySelector('button[name="defer"]') !== null`);
+  await ctx.view.click('button[name="defer"]');
+  await ctx.waitForPage(`document.querySelector('button[name="defer-default"]') !== null`);
+  await ctx.view.click('button[name="defer-default"]');
+
+  await waitFor(
+    () => {
+      expect(ctx.findRow(row.proposalID)?.state).toBe('deferred');
+    },
+    { timeout: 8000 },
+  );
+
+  expect(store.passkeyChecks.all()).toStrictEqual([]);
+});
+
+test('it offers to add a passkey and names the host command when the host has none', async () => {
+  const ctx = await setupTest();
+
+  const row = await store.approvalRows.create({
+    choices: ['approve', 'defer', 'decline'],
+    riskClass: 'always_ask',
+    sentence: 'Pay the berth fee.',
+  });
+
+  await ctx.openLine('Pay the berth fee.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+  await ctx.view.click('button[name="approve"]');
+
+  await ctx.waitForPage(
+    `document.body.innerText.includes('No passkey is set up') && document.body.innerText.includes('nixie passkey-code') && document.querySelector('a[href="/passkeys"]') !== null`,
+  );
+
+  expect(ctx.findRow(row.proposalID)?.state).toBe('pending');
+});

@@ -59,10 +59,10 @@ days without use by default. The client lists every session, and revoking one is
 sends it only to `/rpc`, so Start would render every page signed out.
 
 Once the [passkey check](approvals.md#cards) ships, you register a passkey from a signed-in client,
-the first one with a code from the host, as the [passkeys design](../../queue/passkeys.md) sets.
-Always-ask approvals then ask for it, and new devices can later sign in with it. WebAuthn needs
-HTTPS on a fixed host name, which the expected private-network deployment serves: the one name the
-web client and the API share.
+the first one with a code from the host, as the
+[passkeys doc](../../../architecture/policy/passkeys.md) sets. Always-ask approvals then ask for it,
+and new devices can later sign in with it. WebAuthn needs HTTPS on a fixed host name, which the
+expected private-network deployment serves: the one name the web client and the API share.
 
 ## Sending a message
 

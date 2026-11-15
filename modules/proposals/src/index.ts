@@ -2,6 +2,9 @@ export type {
   AnswerHooks,
   AnswerOutcome,
   AnswerSettlement,
+  PasskeyFailure,
+  PasskeyGate,
+  PasskeyRefusal,
   ProposalCoreDeps,
 } from './answer/types';
 
@@ -10,6 +13,7 @@ export { approvalsConfigSchema, quietHoursSchema } from './settings/approvals-co
 export { buildProposalOutcomes } from './build-proposal-outcomes';
 export { buildProposalsProjection } from './rows/build-proposals-projection';
 export { canMoveProposal } from './can-move-proposal';
+export { pickPasskeyChoices } from './answer/pick-passkey-choices';
 export { pickProposalChoices } from './answer/pick-proposal-choices';
 export type { QuietHours } from './sweeps/pick-return-at';
 

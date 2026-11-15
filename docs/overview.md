@@ -93,8 +93,7 @@ set. A model gateway on the host enforces a hard spending stop
 ([rules](architecture/policy/rules.md)). auto-mode decides only what the deterministic layers leave
 open, and nixie runs fully without it
 ([the policy decision point](design/platform/policy/decision-point.md)). Approvals for the
-always-ask set take a passkey check
-([approvals in the client](design/platform/channels/approvals.md)).
+always-ask set take a passkey check ([passkeys](architecture/policy/passkeys.md)).
 
 ## Memory
 

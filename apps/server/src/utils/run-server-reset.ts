@@ -1,5 +1,5 @@
 import type { APIContext, KeptSession } from '@heynixie/api';
-import { readKeptSessions, writeKeptSessions } from '@heynixie/api';
+import { readKeptSessions, removeRevokedPasskeys, writeKeptSessions } from '@heynixie/api';
 import type { ResetSeed } from '@heynixie/definitions';
 import { readResetSeed, ruleStoreTables, writeResetSeed } from '@heynixie/definitions';
 import type { LogReset, LogResetOptions } from '@heynixie/log';
@@ -42,11 +42,15 @@ export async function runServerReset(options: ServerResetOptions): Promise<Serve
   const kept = { sessions: 0 };
 
   const reset = await runLogReset(options.context.log, {
-    keptTables: ['identities', ...ruleStoreTables],
-    readKept: async (tx) => ({
-      seed: await readResetSeed(tx, options.context.clock.now()),
-      sessions: await readKeptSessions(tx, options.context),
-    }),
+    keptTables: ['identities', 'passkeys', ...ruleStoreTables],
+    readKept: async (tx) => {
+      await removeRevokedPasskeys(tx);
+
+      return {
+        seed: await readResetSeed(tx, options.context.clock.now()),
+        sessions: await readKeptSessions(tx, options.context),
+      };
+    },
     writeFirstRecords: async (tx, read, logReset) => {
       kept.sessions = read.sessions.length;
 

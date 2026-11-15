@@ -1,9 +1,12 @@
 import { z } from 'zod';
+import { authenticationResponseSchema } from './authentication-response-schema';
+import { choiceSchema } from './choice-schema';
 import { memoryProposalSchema } from './memory-view-contract';
+import { noPasskeyError } from './no-passkey-error';
+import { passkeyFailedError } from './passkey-failed-error';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
-const choiceSchema = z.enum(['approve', 'always_allow', 'defer', 'decline']);
 const stateSchema = z.enum(['pending', 'deferred', 'approved', 'declined', 'lapsed', 'withdrawn']);
 const hashesSchema = z.object({ actionHash: z.string(), ruleHash: z.string().nullable() });
 const versionSchema = z.int().positive();
@@ -42,6 +45,7 @@ const itemSchema = z.object({
   body: bodySchema,
   task: taskSchema.nullable(),
   choices: z.array(choiceSchema),
+  passkeyChoices: z.array(choiceSchema),
 });
 
 const readItemSchema = z.object({
@@ -49,6 +53,7 @@ const readItemSchema = z.object({
   body: bodySchema.nullable(),
   task: taskSchema.nullable(),
   choices: z.array(choiceSchema),
+  passkeyChoices: z.array(choiceSchema),
   answeredOn: z.string().nullable(),
   isAnsweredHere: z.boolean(),
 });
@@ -77,6 +82,10 @@ const answerSchema = z.object({
   memory: memoryAnswerSchema.optional(),
 });
 
+const passkeyAnswerSchema = answerSchema.extend({
+  passkey: authenticationResponseSchema.optional(),
+});
+
 const ruleRefSchema = z.object({ id: z.string(), revision: versionSchema });
 const closeMatchSchema = z.object({ itemID: z.string(), text: z.string(), version: versionSchema });
 
@@ -102,7 +111,7 @@ const resultSchema = z.discriminatedUnion('state', [
 
 const refusedSchema = z.object({
   proposalID: z.string(),
-  error: z.enum(['CONFLICT', 'CLOSED', 'NOT_ALLOWED']),
+  error: z.enum(['CONFLICT', 'CLOSED', 'NOT_ALLOWED', 'PASSKEY_REQUIRED']),
   current: hashesSchema.optional(),
   state: stateSchema.optional(),
   reason: z.string().optional(),
@@ -124,6 +133,9 @@ const answerErrors = signedIn.errors(reusedIDErrors).errors({
     status: 403,
     data: z.object({ reason: z.string() }),
   },
+  PASSKEY_REQUIRED: { message: 'This answer needs a passkey check', status: 403 },
+  ...noPasskeyError,
+  ...passkeyFailedError,
 });
 
 const listedSchema = z.object({ defer: deferSettingsSchema, items: z.array(itemSchema) });
@@ -142,7 +154,7 @@ export const approvalContract = {
     .input(readInputSchema)
     .output(z.object({ proposals: z.array(readItemSchema) })),
 
-  answerProposal: answerErrors.input(answerSchema).output(resultSchema),
+  answerProposal: answerErrors.input(passkeyAnswerSchema).output(resultSchema),
 
   answerProposals: signedIn
     .errors(reusedIDErrors)

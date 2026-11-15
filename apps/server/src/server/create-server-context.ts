@@ -1,5 +1,5 @@
 import type { APIContext, APISettings, CleanupRecordSessions } from '@heynixie/api';
-import { defaultAPISettings } from '@heynixie/api';
+import { createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { readDefinitionsInForce } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
 import type { RunSettings } from '@heynixie/tasks';
@@ -40,6 +40,7 @@ export async function createServerContext(
       definitions: () => ({ snapshotHash: inForce.read()?.snapshotHash ?? '' }),
       runSettings: options.runSettings,
       settings: options.settings ?? defaultAPISettings,
+      passkeys: createPasskeyState(),
       readSessionCleanup,
     },
   };

@@ -18,6 +18,7 @@
     "@heynixie/retry": "workspace:*",
     "@heynixie/task-control": "workspace:*",
     "@orpc/client": "catalog:",
+    "@simplewebauthn/browser": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-router-ssr-query": "catalog:",

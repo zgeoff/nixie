@@ -696,6 +696,7 @@ test('#approvals.readProposals reads an open row with its choices, its approve l
         body: item.body,
         task: item.task,
         choices: ['approve', 'defer', 'decline'],
+        passkeyChoices: [],
         answeredOn: null,
         isAnsweredHere: false,
       },

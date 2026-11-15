@@ -7,6 +7,7 @@ const refusalWords: Readonly<Record<string, string>> = {
   CONFLICT: 'changed after you opened it, so open it and check it',
   CLOSED: 'was answered, withdrawn or lapsed already',
   NOT_ALLOWED: 'does not take this answer',
+  PASSKEY_REQUIRED: 'needs your passkey, so open it and approve it there',
 };
 
 // One line for each answer of a batch that the host refused, so nothing fails without a word.

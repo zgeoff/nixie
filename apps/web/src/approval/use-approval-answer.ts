@@ -3,9 +3,13 @@ import { ORPCError } from '@orpc/client';
 import { useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { z } from 'zod';
+import { askPasskey } from '../passkey/ask-passkey';
 import { useNixieClient } from '../utils/use-nixie-client';
 
-type ApprovalAnswerInput = Omit<ContractInputs['approvals']['answerProposal'], 'clientActionID'>;
+type ApprovalAnswerInput = Omit<
+  ContractInputs['approvals']['answerProposal'],
+  'clientActionID' | 'passkey'
+>;
 
 type ApprovalAnswerResult = ContractOutputs['approvals']['answerProposal'];
 
@@ -13,7 +17,13 @@ export type ApprovalOutcome =
   | { readonly status: 'answered'; readonly result: ApprovalAnswerResult }
   | { readonly status: 'conflict' }
   | { readonly status: 'closed' }
-  | { readonly status: 'refused'; readonly reason: string };
+  | { readonly status: 'refused'; readonly reason: string }
+
+  // no passkey is registered, so nothing changed
+  | { readonly status: 'no_passkey' }
+
+  // the passkey prompt was cancelled or the check failed, so nothing changed
+  | { readonly status: 'passkey_failed' };
 
 export interface ApprovalAnswerer {
   readonly send: (input: ApprovalAnswerInput) => void;
@@ -25,10 +35,14 @@ export interface ApprovalAnswerer {
 
 export interface ApprovalAnswerOptions {
   readonly onOutcome: (outcome: ApprovalOutcome) => void;
+
+  // the choices of the row that take a passkey, which the answer asks for before it sends one
+  readonly passkeyChoices: readonly ApprovalAnswerInput['choice'][];
 }
 
 // Sends one answer through the checked path. A second send of the same answer reuses its client
-// action ID, so a retry after a lost reply settles once.
+// action ID, so a retry after a lost reply settles once. A choice that takes a passkey asks for a
+// fresh assertion on each send, and the signature of an answer leaves the assertion out.
 export function useApprovalAnswer(options: ApprovalAnswerOptions): ApprovalAnswerer {
   const client = useNixieClient().client;
   const last = useRef<{ readonly signature: string; readonly clientActionID: string } | null>(null);
@@ -43,9 +57,23 @@ export function useApprovalAnswer(options: ApprovalAnswerOptions): ApprovalAnswe
       last.current = { signature, clientActionID };
 
       try {
+        const passkey = options.passkeyChoices.includes(input.choice)
+          ? await askPasskey(client, {
+              kind: 'answer',
+              proposalID: input.proposalID,
+              actionHash: input.actionHash,
+              choice: input.choice,
+              ...(input.ruleHash === undefined ? {} : { ruleHash: input.ruleHash }),
+            })
+          : undefined;
+
         return {
           status: 'answered',
-          result: await client.approvals.answerProposal({ ...input, clientActionID }),
+          result: await client.approvals.answerProposal({
+            ...input,
+            clientActionID,
+            ...(passkey === undefined ? {} : { passkey }),
+          }),
         };
       } catch (error) {
         const outcome = toRefusal(error);
@@ -72,8 +100,21 @@ export function useApprovalAnswer(options: ApprovalAnswerOptions): ApprovalAnswe
 const refusalSchema = z.object({ reason: z.string() });
 
 function toRefusal(error: unknown): ApprovalOutcome | null {
+  // the browser rejects with a DOMException when the person cancels the passkey prompt
+  if (error instanceof Error && (error.name === 'NotAllowedError' || error.name === 'AbortError')) {
+    return { status: 'passkey_failed' };
+  }
+
   if (!(error instanceof ORPCError)) {
     return null;
+  }
+
+  if (error.code === 'NO_PASSKEY') {
+    return { status: 'no_passkey' };
+  }
+
+  if (error.code === 'PASSKEY_FAILED' || error.code === 'PASSKEY_REQUIRED') {
+    return { status: 'passkey_failed' };
   }
 
   if (error.code === 'CONFLICT') {

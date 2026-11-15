@@ -63,6 +63,14 @@ first paired time and encrypts its label, and the identity row points at that re
 enrolment record, which the reset deleted. The session's enrol, label and revoke history goes with
 the old log.
 
+## Passkeys
+
+The `passkeys` procedures register, list and revoke the passkeys that approve a high-risk proposal,
+and issue the challenge that an assertion answers. [Passkeys](../policy/passkeys.md) describes the
+check, the challenge and the registration rules. Each call reads the `Origin` header, because the RP
+ID is the hostname of the origin the client runs on. The API keeps its challenges, its registration
+options and the host's code in memory, so a restart drops them.
+
 ## Checked actions
 
 Enrolment, code issue, revoke, message send, record forget, the changes of the

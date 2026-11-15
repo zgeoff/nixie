@@ -7,6 +7,7 @@ import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
 import { memoryViewContract } from './memory-view-contract';
+import { passkeyContract } from './passkey-contract';
 import { pauseStateSchema } from './pause-state-schema';
 import { recoverySchema } from './recovery-schema';
 import { reusedIDErrors } from './reused-id-errors';
@@ -388,6 +389,7 @@ export const contract = {
   },
   rules: ruleContract,
   approvals: approvalContract,
+  passkeys: passkeyContract,
   log: {
     // Clients of earlier releases call this path. A content blocker's generic rule for /rpc/log/
     // stops a browser from reaching it.

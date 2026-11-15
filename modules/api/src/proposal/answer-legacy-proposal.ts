@@ -40,8 +40,12 @@ export async function answerLegacyProposal(
     runInForceSeed: parts.runInForceSeed,
   });
 
+  // A host route has no session and needs no passkey. A device route names a caller and, with no
+  // passkey check of its own, is refused a choice that takes one.
   const hooks =
-    parts.caller === undefined ? { family } : { family, probeCaller: parts.caller.probe };
+    parts.caller === undefined
+      ? { family, passkey: { kind: 'host' as const } }
+      : { family, probeCaller: parts.caller.probe };
 
   const outcome = await answerProposal(
     deps,
@@ -60,6 +64,11 @@ export async function answerLegacyProposal(
     invariant(parts.caller, 'only a route with a caller checks it');
     throw parts.caller.buildUnauthorized();
   }
+
+  invariant(
+    outcome.status !== 'passkey_refused',
+    'a legacy route answers a choice that takes no passkey, or answers from the host',
+  );
 
   return outcome;
 }

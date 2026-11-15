@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
@@ -68,6 +69,7 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
   const isOpen = proposal.state === 'pending' || proposal.state === 'deferred';
 
   const answerer = useApprovalAnswer({
+    passkeyChoices: item.passkeyChoices,
     onOutcome: (next) => {
       setOutcome(next);
 
@@ -237,6 +239,19 @@ function OutcomeLine(props: OutcomeLineProps): ReactNode {
 
   if (outcome?.status === 'closed') {
     return <p role="alert">This proposal was answered, withdrawn or lapsed, so nothing changed.</p>;
+  }
+
+  if (outcome?.status === 'no_passkey') {
+    return (
+      <p role="alert">
+        No passkey is set up, so nothing changed. <Link to="/passkeys">Add a passkey</Link>, or run
+        nixie passkey-code on the host for a one-time code.
+      </p>
+    );
+  }
+
+  if (outcome?.status === 'passkey_failed') {
+    return <p role="alert">The passkey check did not pass, so nothing changed. Try again.</p>;
   }
 
   if (outcome?.status === 'refused') {

@@ -1,13 +1,14 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import type { AnswerSettlement } from '@heynixie/proposals';
 import { requireCaller } from '../memory/require-caller';
+import { createPasskeyAnswerGate } from '../passkey/create-passkey-answer-gate';
 import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
 import type { ProposalParts } from '../proposal/build-proposal-core-deps';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { readApprovalItems } from './read-approval-items';
 import { readApprovalProposals } from './read-approval-proposals';
-import type { ApprovalAnswer } from './run-approval-answer';
+import type { ApprovalAnswer, ApprovalRun } from './run-approval-answer';
 import { runApprovalAnswer } from './run-approval-answer';
 
 export function createApprovalProcedures(context: APIContext, parts: ProposalParts) {
@@ -41,10 +42,26 @@ export function createApprovalProcedures(context: APIContext, parts: ProposalPar
         options.errors.UNAUTHORIZED,
       );
 
-      const run = await runApprovalAnswer(context, deps, caller, options.input);
+      const run = await runApprovalAnswer(context, deps, caller, {
+        answer: options.input,
+        passkey: createPasskeyAnswerGate(context, { caller, assertion: options.input.passkey }),
+      });
 
       if (run.status === 'unauthorized') {
         throw options.errors.UNAUTHORIZED();
+      }
+
+      if (run.status === 'passkey_refused') {
+        throw {
+          PASSKEY_REQUIRED: options.errors.PASSKEY_REQUIRED,
+          NO_PASSKEY: options.errors.NO_PASSKEY,
+          PASSKEY_FAILED: () =>
+            options.errors.PASSKEY_FAILED({
+              data: {
+                reason: run.refusal.error === 'PASSKEY_FAILED' ? run.refusal.reason : 'signature',
+              },
+            }),
+        }[run.refusal.error]();
       }
 
       if (run.status === 'reused') {
@@ -82,20 +99,13 @@ export function createApprovalProcedures(context: APIContext, parts: ProposalPar
       const results = [];
 
       for (const answer of options.input.answers) {
-        const run = await runApprovalAnswer(context, deps, caller, answer);
+        const run = await runApprovalAnswer(context, deps, caller, { answer, passkey: undefined });
 
         if (run.status === 'unauthorized') {
           throw options.errors.UNAUTHORIZED();
         }
 
-        const result =
-          run.status === 'reused'
-            ? {
-                proposalID: answer.proposalID,
-                error: 'NOT_ALLOWED' as const,
-                reason: 'client_action_id_reused',
-              }
-            : toBatchResult(answer, run.settlement);
+        const result = toRunResult(answer, run);
 
         results.push(result);
       }
@@ -103,6 +113,26 @@ export function createApprovalProcedures(context: APIContext, parts: ProposalPar
       return { results };
     }),
   };
+}
+
+function toRunResult(
+  answer: ApprovalAnswer,
+  run: Exclude<ApprovalRun, { status: 'unauthorized' }>,
+) {
+  if (run.status === 'reused') {
+    return {
+      proposalID: answer.proposalID,
+      error: 'NOT_ALLOWED' as const,
+      reason: 'client_action_id_reused',
+    };
+  }
+
+  // a batch carries no assertion, so a passkey refusal is always PASSKEY_REQUIRED
+  if (run.status === 'passkey_refused') {
+    return { proposalID: answer.proposalID, error: 'PASSKEY_REQUIRED' as const };
+  }
+
+  return toBatchResult(answer, run.settlement);
 }
 
 function toBatchResult(answer: ApprovalAnswer, settlement: AnswerSettlement) {

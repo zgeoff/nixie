@@ -40,6 +40,12 @@ export const mockApprovalProcedures = {
       return outcome.result;
     }
 
+    if (outcome.status === 'passkey_refused') {
+      throw outcome.refusal === 'NO_PASSKEY'
+        ? options.errors.NO_PASSKEY()
+        : options.errors.PASSKEY_REQUIRED();
+    }
+
     const refusal = outcome.refusal;
 
     if (refusal.error === 'CONFLICT') {
@@ -70,6 +76,10 @@ export const mockApprovalProcedures = {
 function toBatchResult(proposalID: string, outcome: MockApprovalResult) {
   if (outcome.status === 'answered') {
     return outcome.result;
+  }
+
+  if (outcome.status === 'passkey_refused') {
+    return { proposalID, error: 'PASSKEY_REQUIRED' as const };
   }
 
   const refusal = outcome.refusal;

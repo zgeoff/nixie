@@ -6,6 +6,7 @@ import { createHostConsolidationProcedures } from './create-host-consolidation-p
 import { createHostContactProcedures } from './create-host-contact-procedures';
 import { createHostItemProcedures } from './create-host-item-procedures';
 import { createHostNixieProcedures } from './create-host-nixie-procedures';
+import { createHostPasskeyProcedures } from './create-host-passkey-procedures';
 import { createHostPromptProposalProcedures } from './create-host-prompt-proposal-procedures';
 import { createHostProposalProcedures } from './create-host-proposal-procedures';
 import { createHostRecoveryProcedures } from './create-host-recovery-procedures';
@@ -48,6 +49,9 @@ export function createHostRouter(options: HostRouterOptions) {
     sessions: hostImplementer.sessions
       .use(gated)
       .router(createHostSessionProcedures(options.context)),
+    passkeys: hostImplementer.passkeys
+      .use(gated)
+      .router(createHostPasskeyProcedures(options.context)),
     memory: hostImplementer.memory.use(gated).router({
       proposals: createHostProposalProcedures(options.readMemory),
       items: createHostItemProcedures(options.context, options.readMemory),

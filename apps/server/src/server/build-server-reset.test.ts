@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { defaultAPISettings } from '@heynixie/api';
+import { createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { runTestSeed } from '../test-utils/run-test-seed';
 import { startTestServer } from '../test-utils/start-test-server';
 import { buildCleanup } from './build-cleanup';
@@ -10,7 +10,12 @@ async function setupTest() {
 
   return {
     ...server,
-    context: { ...server.context, settings: defaultAPISettings, readSessionCleanup: () => null },
+    context: {
+      ...server.context,
+      settings: defaultAPISettings,
+      readSessionCleanup: () => null,
+      passkeys: createPasskeyState(),
+    },
     work: buildCleanup(),
   };
 }

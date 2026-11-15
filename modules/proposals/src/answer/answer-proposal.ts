@@ -1,6 +1,8 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { checkAnswer } from './check-answer';
+import { checkPasskey } from './check-passkey';
+import { PasskeyRefusedError } from './passkey-refused-error';
 import type { ApplyOutcome, ApplyRun, ProposalAnswerInput } from './proposal-kind-handler';
 import { RefusedError } from './refused-error';
 import type {
@@ -8,6 +10,7 @@ import type {
   AnswerOutcome,
   AnswerSettlement,
   Checked,
+  PasskeyRefusal,
   ProposalCoreDeps,
 } from './types';
 import { UnauthorizedError } from './unauthorized-error';
@@ -24,7 +27,7 @@ export async function answerProposal(
     decideAnswer(deps, tx, { answer, hooks }),
   );
 
-  if (decision.status === 'unauthorized') {
+  if (decision.status === 'unauthorized' || decision.status === 'passkey_refused') {
     return decision;
   }
 
@@ -43,6 +46,7 @@ type Ready = Extract<Checked, { readonly status: 'checked' }>;
 
 type Decision =
   | { readonly status: 'unauthorized' }
+  | { readonly status: 'passkey_refused'; readonly refusal: PasskeyRefusal }
   | { readonly status: 'owned'; readonly ready: Ready }
   | (AnswerSettlement & { readonly afterCommit?: () => Promise<void> });
 
@@ -71,6 +75,14 @@ async function decideAnswer(
 
   if (checked.status === 'refused') {
     return settle(tx, hooks, { status: 'refused', refusal: checked.refusal });
+  }
+
+  if (!checked.handler.ownsTransaction) {
+    const refusal = await checkPasskey(tx, hooks.passkey, { row: checked.row, answer });
+
+    if (refusal !== null) {
+      return { status: 'passkey_refused', refusal };
+    }
   }
 
   if (answer.choice === 'defer') {
@@ -159,12 +171,18 @@ async function runOwnedApply(
       throw new RefusedError(again.refusal);
     }
 
+    const refusal = await checkPasskey(tx, hooks.passkey, { row: again.row, answer });
+
+    if (refusal !== null) {
+      throw new PasskeyRefusedError(refusal);
+    }
+
     await hooks.writeSettlement?.(tx, predicted);
   };
 
   const applied = await applyOwned(ready, answer, guard);
 
-  if (applied.status === 'unauthorized') {
+  if (applied.status === 'unauthorized' || applied.status === 'passkey_refused') {
     return applied;
   }
 
@@ -183,12 +201,20 @@ async function applyOwned(
   ready: Ready,
   answer: ProposalAnswerInput,
   guard: ApplyRun['guard'],
-): Promise<ApplyOutcome | { readonly status: 'unauthorized' }> {
+): Promise<
+  | ApplyOutcome
+  | { readonly status: 'unauthorized' }
+  | { readonly status: 'passkey_refused'; readonly refusal: PasskeyRefusal }
+> {
   try {
     return await applyChoice(ready, answer, { tx: null, guard });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return { status: 'unauthorized' };
+    }
+
+    if (error instanceof PasskeyRefusedError) {
+      return { status: 'passkey_refused', refusal: error.refusal };
     }
 
     if (error instanceof RefusedError) {

@@ -1,7 +1,8 @@
 import { expect, mock, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { defaultAPISettings } from '@heynixie/api';
+import { createPasskeyState, defaultAPISettings, readAllPasskeys } from '@heynixie/api';
+import { createDeviceSession, seedPasskey, seedRevokedPasskey } from '@heynixie/api/test-utils';
 import {
   createPathSource,
   readRuleProposals,
@@ -25,6 +26,7 @@ async function setupTest() {
     ...server.context,
     settings: defaultAPISettings,
     readSessionCleanup: () => null,
+    passkeys: createPasskeyState(),
   };
 
   return { ...server, context };
@@ -213,7 +215,12 @@ test('it refuses a reset before any definitions are in force, and stops no work'
   const stopWork = mock(() => Promise.resolve());
 
   const reset = runServerReset({
-    context: { ...server.context, settings: defaultAPISettings, readSessionCleanup: () => null },
+    context: {
+      ...server.context,
+      settings: defaultAPISettings,
+      readSessionCleanup: () => null,
+      passkeys: createPasskeyState(),
+    },
     adapter: server.sandboxes,
     stopWork,
   });
@@ -304,4 +311,25 @@ test('it folds the reset on the conversation thread, which the conversation task
   expect(tasks.map((task) => [task.id, task.createdSequence])).toStrictEqual([
     ['conversation', reset.lastSequence + 3],
   ]);
+});
+
+test('it keeps each live passkey and deletes each revoked one through a reset', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+
+  const session = await createDeviceSession(ctx.context, 'laptop');
+  const live = await seedPasskey(ctx.context, { caller: session.caller });
+
+  await seedRevokedPasskey(ctx.context, { caller: session.caller });
+
+  await runServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    stopWork: () => Promise.resolve(),
+  });
+
+  const kept = await readAllPasskeys(ctx.context.log.writer.db);
+
+  expect(kept.map((row) => row.passkey_id)).toStrictEqual([live.passkeyID]);
 });

@@ -1,5 +1,5 @@
 import type { ProposalCoreDeps } from '@heynixie/proposals';
-import { pickProposalChoices, readProposalsByID } from '@heynixie/proposals';
+import { pickPasskeyChoices, pickProposalChoices, readProposalsByID } from '@heynixie/proposals';
 import type { APIContext, APITables, Identity, ReadViewMemory } from '../types';
 import { readApprovalBodies } from './read-approval-bodies';
 import { toApprovalRow } from './to-approval-row';
@@ -46,6 +46,7 @@ export async function readApprovalProposals(
           body,
           task: taskID === null ? null : { id: taskID, name: directory.get(taskID) ?? taskID },
           choices: isOpen ? [...pickProposalChoices(row)] : [],
+          passkeyChoices: isOpen ? [...pickPasskeyChoices(row)] : [],
           answeredOn: row.answeredBy === null ? null : (labels.get(row.answeredBy) ?? null),
           isAnsweredHere: row.answeredBy === request.caller.identityID,
         },

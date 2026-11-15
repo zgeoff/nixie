@@ -57,14 +57,17 @@ first that fails:
 4. The choice is one the row offers, a note is neither empty nor too long, a memory edit goes only
    with approving a memory write, and a defer time lies within the limits the host sets. Otherwise
    the answer is refused as not allowed.
+5. For an `approve` or `always_allow` on an `always_ask` or `lifting` row, the caller's passkey
+   assertion passes the [passkey check](./passkeys.md). Otherwise the answer is refused as
+   `NO_PASSKEY`, `PASSKEY_REQUIRED` or `PASSKEY_FAILED`, and the refusal is not stored.
 
 Then the kind's handler applies the choice. Always allow is offered only for a routine action that
 policy held because no rule steered it, and it writes the rule the proposal carried and approves the
 call in the same transaction. A kind whose writes open their own transaction, such as memory, runs a
 guard inside it that repeats the checks at the commit.
 
-A refusal is stored under the client action ID in the same transaction, so a retry gets the same
-refusal. A batch answer settles each of its answers alone.
+A refusal other than a passkey refusal is stored under the client action ID in the same transaction,
+so a retry gets the same refusal. A batch answer settles each of its answers alone.
 
 ## Defer
 

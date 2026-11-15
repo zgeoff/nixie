@@ -3,12 +3,13 @@ import { clientHeaderName } from '@heynixie/contract';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 
-export function buildTestClient(url: string, token?: string): ContractClient {
+export function buildTestClient(url: string, token?: string, origin?: string): ContractClient {
   return createORPCClient<ContractClient>(
     new RPCLink({
       url: `${url}/rpc`,
       headers: {
         [clientHeaderName]: 'test',
+        ...(origin === undefined ? {} : { origin }),
         ...(token === undefined ? {} : { authorization: `Bearer ${token}` }),
       },
     }),

@@ -5,3 +5,8 @@ export { buildIdentitySeeder } from './build-identity-seeder';
 export type { IdentitySeederDeps } from './build-identity-seeder';
 export { createDeviceSession } from './create-device-session';
 export { startTestAPI } from './start-test-api';
+export { createTestAuthenticator } from './create-test-authenticator';
+export type { AuthenticatorFlags, TestAuthenticator } from './create-test-authenticator';
+export { seedPasskey } from './seed-passkey';
+export type { SeededPasskey } from './seed-passkey';
+export { seedRevokedPasskey } from './seed-revoked-passkey';
