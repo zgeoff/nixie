@@ -30,4 +30,4 @@ RUN useradd --create-home --home-dir /home/nixie --shell /usr/sbin/nologin nixie
 USER nixie
 WORKDIR /home/nixie
 ENV HOME=/home/nixie
-CMD ["bun", "/app/conversation/main.js"]
+CMD ["bun", "--no-install", "/app/conversation/main.js"]

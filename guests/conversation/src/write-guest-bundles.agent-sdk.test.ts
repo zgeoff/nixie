@@ -6,8 +6,9 @@ import {
   checkReplySchema,
   decodeTurnFrame,
   encodeFrame,
-  encodeTurnFrame,
+  encodeHostFrame,
   guestFrameSchema,
+  harnessCapabilities,
   makeFrameDecoder,
 } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
@@ -63,7 +64,7 @@ test('it answers one turn from the main bundle in a folder with no node_modules'
     tools: { url: tools.config.url, token: 'imp-placeholder' },
   });
 
-  await guest.stdin.write(encodeFrame(encodeTurnFrame(turn)));
+  await guest.stdin.write(encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], turn)));
   await guest.stdin.end();
 
   const [stdout, exitCode] = await Promise.all([new Response(guest.stdout).bytes(), guest.exited]);
@@ -89,10 +90,13 @@ test('it answers one check from the check bundle in a folder with no node_module
 
   const request = {
     profile: {
+      harness: 'agent-sdk',
       model: 'claude-sonnet-5-5',
       baseURL: ctx.model.url,
       effort: 'low',
       authHeader: 'x-api-key',
+      contextTokens: null,
+      cacheTTL: '5m',
     },
     systemPrompt: 'You check one candidate memory.',
     input: '<owner_message>\nI take my coffee black\n</owner_message>',

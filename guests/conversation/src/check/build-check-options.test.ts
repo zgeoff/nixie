@@ -166,10 +166,14 @@ test('it passes the CLI path that the build defined to the SDK', () => {
   const options = buildCheckOptions(
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'low',
         authHeader: 'x-api-key',
+        contextTokens: null,
+        cacheTTL: '5m',
+        requestRewrite: null,
       },
       systemPrompt: 'You check one candidate memory.',
       input: 'the input',
@@ -184,10 +188,14 @@ test('it names no CLI path when the guest runs from source', () => {
   const options = buildCheckOptions(
     {
       profile: {
+        harness: 'agent-sdk',
         model: 'claude-sonnet-5-5',
         baseURL: 'https://api.anthropic.com',
         effort: 'low',
         authHeader: 'x-api-key',
+        contextTokens: null,
+        cacheTTL: '5m',
+        requestRewrite: null,
       },
       systemPrompt: 'You check one candidate memory.',
       input: 'the input',

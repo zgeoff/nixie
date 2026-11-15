@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { createRunTemplate } from '@heynixie/testing';
-import { resolveInstalledCLIPath } from './resolve-installed-cli-path';
 import { writeGuestBundles } from '../write-guest-bundles';
+import { resolveInstalledCLIPath } from './resolve-installed-cli-path';
 
 const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
 

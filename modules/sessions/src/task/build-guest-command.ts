@@ -24,7 +24,8 @@ export function buildGuestCommand(
   }
 
   return {
-    argv: ['bun', `/app/${guest.package}/${file}.js`],
+    // without --no-install, Bun installs a package that a bundle imports and the image lacks
+    argv: ['bun', '--no-install', `/app/${guest.package}/${file}.js`],
     env: { HOME: '/home/nixie' },
   };
 }
