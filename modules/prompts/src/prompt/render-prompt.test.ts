@@ -53,18 +53,16 @@ test('it renders the built-in prompt when only another prompt has an override', 
 test('it fills an earlier part into an overridden part', () => {
   expect(
     renderPrompt(
-      'consolidator',
-      { persona: '', owner: { name: 'Marisol' }, memory: { maxChanges: 4 } },
+      'content-checker',
+      { owner: { name: 'Marisol' } },
       {
-        consolidator: {
-          parts: { instruction: 'Tidy the items.{{ parts.nameRule }}' },
+        'content-checker': {
+          parts: { instruction: 'Judge the memory.{{ parts.nameRule }}' },
           template: '{{ parts.instruction }}',
         },
       },
     ),
-  ).toBe(
-    'Tidy the items.\n- One exception: always replace "the owner" with "Marisol". That is the only change allowed for consistency alone.',
-  );
+  ).toBe("Judge the memory. The owner's name is Marisol, and a memory names them Marisol.");
 });
 
 test('it leaves out an overridden part that the context hides', () => {

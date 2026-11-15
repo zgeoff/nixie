@@ -377,7 +377,7 @@ test.each([
     'an unknown prompt',
     'format: 3\nprompts:\n  greeter:\n    safety: prompts/greeter.md\n',
     [],
-    'nixie.yaml: prompts: no prompt is named greeter; the prompts are consolidator, content-checker, retirement-checker, session, compaction, task',
+    'nixie.yaml: prompts: no prompt is named greeter; the prompts are content-checker, retirement-checker, session, compaction, task',
   ],
   [
     'an unknown part',

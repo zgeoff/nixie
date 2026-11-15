@@ -102,8 +102,6 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
     'memory.pin',
     'memory.unpin',
     'memory.mark_sensitive',
-    'memory.diff',
-    'memory.comment',
     'memory.export',
     'moment.keep',
     'moment.edit',
@@ -309,8 +307,6 @@ test('it allows the time tool, the log reader and each memory tool but export an
     'memory.pin',
     'memory.unpin',
     'memory.mark_sensitive',
-    'memory.diff',
-    'memory.comment',
   ];
 
   const toolList = ['web.fetch', ...readTools, 'files.write'];
@@ -343,7 +339,7 @@ test('it allows the time tool, the log reader and each memory tool but export an
   });
 });
 
-test('it offers no tool that approves, rejects or edits a consolidation change', async () => {
+test('it offers no tool that takes an action hash, which only the owner approves with', async () => {
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
@@ -393,10 +389,6 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
   expect(inputs).toSatisfyAll(
     ([, keys]: readonly [string, readonly string[]]) => !keys.includes('actionHash'),
   );
-
-  expect(inputs.filter(([, keys]) => keys.includes('changeID'))).toStrictEqual([
-    ['memory.comment', ['changeID', 'comment']],
-  ]);
 });
 
 test('it asks about a model call to memory.export under the starter rules, so nothing exports', async () => {

@@ -3,12 +3,12 @@ import { checkPromptOverride } from './check-prompt-override';
 
 test('it accepts parts and a template that read only the paths the prompt has', () => {
   expect(
-    checkPromptOverride('consolidator', {
+    checkPromptOverride('content-checker', {
       parts: {
-        instruction: 'Tidy what {{ owner.name }} keeps.{{ parts.nameRule }}',
-        safety: 'Propose at most {{ memory.maxChanges }} changes.',
+        instruction: 'Judge what {{ owner.name }} says.{{ parts.nameRule }}',
+        safety: 'Answer for {{ owner.nameAtSentenceStart }}.',
       },
-      template: '{{ persona }}\n{{ parts.persona }}{{ parts.instruction }}\n{{ parts.safety }}',
+      template: '{{ parts.instruction }}\n{{ parts.safety }}',
     }),
   ).toStrictEqual([]);
 });

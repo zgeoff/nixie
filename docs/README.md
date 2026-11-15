@@ -123,8 +123,6 @@ holds the design for a piece of work that is not built yet, with its spikes in
   tools
 - [Memory writes](architecture/memory/writes.md) — the content gate and its quote, token and checker
   checks, retirement intent, provenance, memory proposals and notices
-- [Memory consolidation](architecture/memory/consolidation.md) — the weekly diff of merges, rewrites
-  and retirements, each change bound to the versions it read, and answers whole or per change
 - [The memory view](architecture/memory/view.md) — lists by state, search, the pinned core against
   its budget, each version's provenance and evidence, and changes bound to a version
 - [Memory export](architecture/memory/export.md) — every item with its history in one versioned JSON

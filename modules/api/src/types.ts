@@ -25,8 +25,6 @@ export interface APISettings {
 
   readonly lastSeenIntervalMs: number;
 
-  readonly isMemoryConsolidatorEnabled: boolean;
-
   readonly isBackupEnabled: boolean;
 
   readonly taskDirectory: readonly TaskProfile[];

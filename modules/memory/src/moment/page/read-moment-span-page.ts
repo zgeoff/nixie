@@ -123,7 +123,7 @@ export async function readMomentSpanPage(
   return { entries, next: null };
 }
 
-const emptyLookup: ShortIDLookup = { moment: new Map(), item: new Map(), change: new Map() };
+const emptyLookup: ShortIDLookup = { moment: new Map(), item: new Map() };
 
 // The owner's export keeps every field as stored, so it reads no short ID.
 function readBatchShortIDs(

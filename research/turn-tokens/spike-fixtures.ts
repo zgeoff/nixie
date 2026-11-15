@@ -267,26 +267,11 @@ const conversationAnswers: Record<string, (input: Record<string, unknown>) => un
     itemID: String(input['itemID'] ?? ''),
     version: Number(input['version'] ?? 1),
   }),
-  'memory.diff': () => ({ changes: [] }),
-  'memory.comment': (input) => ({ changeID: String(input['changeID'] ?? ''), status: 'commented' }),
-};
-
-const consolidatorAnswers: Record<string, (input: Record<string, unknown>) => unknown> = {
-  'memory.recall': (input) => ({
-    items: findItems(input['query']).map((item) => ({
-      itemID: item.shortID,
-      text: item.text,
-      quote: item.evidenceQuote,
-    })),
-  }),
-  'memory.consolidate': (input) => ({
-    staged: Array.isArray(input['changes']) ? input['changes'].length : 0,
-  }),
 };
 
 // the scripted answer to one call, as JSON text, from the answers of the role's tool set
 const answerCall = (set: ToolSet, name: string, input: Record<string, unknown>): string => {
-  const answers = { conversation: conversationAnswers, worker: conversationAnswers, 'memory-consolidator': consolidatorAnswers }[set];
+  const answers = { conversation: conversationAnswers, worker: conversationAnswers }[set];
   const answer = answers[name];
 
   if (answer === undefined) {

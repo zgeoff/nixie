@@ -73,7 +73,6 @@ test('it passes a failed sweep to onError, and sweeps again', async () => {
     store: {
       lapse: () => Promise.resolve(0),
       proposals: { lapse: () => Promise.reject(new Error('the database is locked')) },
-      consolidations: { lapse: () => Promise.resolve(0) },
     },
     intervalMs: 10,
     onError,
@@ -89,26 +88,6 @@ test('it passes a failed sweep to onError, and sweeps again', async () => {
   ]);
 });
 
-test('it lapses the consolidation changes when the proposal lapse fails', async () => {
-  const lapseConsolidations = mock(() => Promise.resolve(0));
-
-  const sweep = startLapseSweep({
-    store: {
-      lapse: () => Promise.resolve(0),
-      proposals: { lapse: () => Promise.reject(new Error('the database is locked')) },
-      consolidations: { lapse: lapseConsolidations },
-    },
-    intervalMs: 10,
-    onError: () => {},
-  });
-
-  onTestFinished(() => sweep.stop());
-
-  await waitForCondition(() => lapseConsolidations.mock.calls.length > 0);
-
-  expect(lapseConsolidations).toHaveBeenCalled();
-});
-
 test('it sweeps again after onError throws', async () => {
   const lapseProposals = mock(() => Promise.reject(new Error('the database is locked')));
 
@@ -116,7 +95,6 @@ test('it sweeps again after onError throws', async () => {
     store: {
       lapse: () => Promise.resolve(0),
       proposals: { lapse: lapseProposals },
-      consolidations: { lapse: () => Promise.resolve(0) },
     },
     intervalMs: 10,
     onError: () => {

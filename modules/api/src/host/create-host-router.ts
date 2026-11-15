@@ -2,7 +2,6 @@ import { checkPromptProposal } from '@heynixie/definitions';
 import { ORPCError, os } from '@orpc/server';
 import type { HostRouterOptions } from '../types';
 import { createHostActionProcedures } from './create-host-action-procedures';
-import { createHostConsolidationProcedures } from './create-host-consolidation-procedures';
 import { createHostContactProcedures } from './create-host-contact-procedures';
 import { createHostItemProcedures } from './create-host-item-procedures';
 import { createHostNixieProcedures } from './create-host-nixie-procedures';
@@ -55,7 +54,6 @@ export function createHostRouter(options: HostRouterOptions) {
     memory: hostImplementer.memory.use(gated).router({
       proposals: createHostProposalProcedures(options.readMemory),
       items: createHostItemProcedures(options.context, options.readMemory),
-      consolidation: createHostConsolidationProcedures(options.readMemory),
       subjects: createHostSubjectsProcedure(options.readMemory),
     }),
     skills: hostImplementer.skills.use(gated).router({

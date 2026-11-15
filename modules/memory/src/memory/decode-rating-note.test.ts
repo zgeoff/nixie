@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { encodeChangeComment } from '../change/encode-change-comment';
 import { encodeRatingNote } from '../proposal/encode-rating-note';
 import { decodeRatingNote } from './decode-rating-note';
 
@@ -51,14 +50,5 @@ test('it rejects a note sealed for another rating', async () => {
 
   expect(
     decodeRatingNote(ctx.key, { ratingID: 'rating-b', itemID: 'item-a' }, sealed),
-  ).rejects.toThrow();
-});
-
-test('it rejects a change comment in place of a note', async () => {
-  const ctx = await setupTest();
-  const sealed = await encodeChangeComment(ctx.key, 'rating-a', 'Keep the joke.');
-
-  expect(
-    decodeRatingNote(ctx.key, { ratingID: 'rating-a', itemID: 'item-a' }, sealed),
   ).rejects.toThrow();
 });

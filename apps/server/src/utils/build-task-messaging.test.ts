@@ -1,12 +1,10 @@
 import { expect, test } from 'bun:test';
-import { memoryConsolidatorTaskID } from '@heynixie/memory';
 import { conversationTaskID } from '@heynixie/tasks';
 import { buildTaskMessaging } from './build-task-messaging';
 
-test('it lists the conversation and the consolidator when it is on', () => {
+test('it lists the conversation with the owner and agent names', () => {
   expect(
     buildTaskMessaging({
-      memory_consolidation: { isEnabled: true },
       owner: { name: 'Rowan' },
       agent: { names: ['Pip', 'Pippin'] },
       tasks: { messaging: { hopLimit: 7 } },
@@ -20,14 +18,6 @@ test('it lists the conversation and the consolidator when it is on', () => {
         isWokenByMessages: true,
         speaker: 'conversation',
       },
-      {
-        taskID: memoryConsolidatorTaskID,
-        name: 'Memory consolidator',
-        brief:
-          'Tidies memory on its own schedule, and proposes merges, rewrites and retirements for Rowan to review.',
-        isWokenByMessages: false,
-        speaker: 'plain_task',
-      },
     ],
     hopLimit: 7,
     ownerName: 'Rowan',
@@ -35,10 +25,9 @@ test('it lists the conversation and the consolidator when it is on', () => {
   });
 });
 
-test('it leaves out the consolidator when it is off, and names an unnamed owner as the owner', () => {
+test('it names an unnamed owner as the owner', () => {
   expect(
     buildTaskMessaging({
-      memory_consolidation: { isEnabled: false },
       owner: { name: null },
       agent: { names: [] },
       tasks: { messaging: { hopLimit: 20 } },

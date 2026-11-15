@@ -147,7 +147,7 @@ async function readVersion(key: CryptoKey, row: ApprovableVersionRow): Promise<R
     evidenceQuote: text.evidenceQuote,
     image: row.checks === null ? null : findImageSource(parseChecks(row.checks)),
     model: row.model,
-    approval: buildVersionApproval(row.proposal_id, toApprovedProposal(row)),
+    approval: buildVersionApproval(toApprovedProposal(row)),
   };
 }
 

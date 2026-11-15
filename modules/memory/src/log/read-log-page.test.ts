@@ -5,7 +5,6 @@ import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { startTestMemory } from '../test-utils';
-import { createConsolidationDiff } from '../test-utils/create-consolidation-diff';
 import { createMemoryItem } from '../test-utils/create-memory-item';
 import { createProposal } from '../test-utils/create-proposal';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
@@ -773,39 +772,6 @@ test('it prints the short ID of a moment and an item in the entry of each moment
   expect(texts[1]).toBe(texts[0]);
   expect(texts[13]).toBe(texts[12]);
   expect(texts[11]).toBe(texts[10]);
-});
-
-test('it prints the short ID of a change while its row exists, and no changeID when none does', async () => {
-  const ctx = await setupTest();
-  const first = await createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' });
-
-  const diff = await createConsolidationDiff(ctx.memory, {
-    changes: [
-      {
-        kind: 'rewrite',
-        inputs: [first],
-        text: 'Takes oat milk',
-        reason: 'Shorter.',
-        source: 'owner',
-      },
-    ],
-  });
-
-  const [change] = diff.changes;
-
-  invariant(change);
-
-  const texts = await ctx.readToolEntries([
-    { result: { changes: [{ changeID: change.changeID, kind: 'rewrite' }] } },
-    {
-      result: { changes: [{ changeID: '0b4e7a3c-52d1-4f08-9a6e-3c1d8f27b5a9', kind: 'rewrite' }] },
-    },
-  ]);
-
-  expect(texts).toStrictEqual([
-    JSON.stringify({ result: { changes: [{ changeID: change.shortID, kind: 'rewrite' }] } }),
-    JSON.stringify({ result: { changes: [{ kind: 'rewrite' }] } }),
-  ]);
 });
 
 test('it prints no momentID for a moment that was destroyed', async () => {

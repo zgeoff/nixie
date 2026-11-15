@@ -148,17 +148,16 @@ never a state, so the conversation keeps answering you while it waits.
 - **Memory.** The memory content gate never takes the body of a task message as your words, so a
   quote that only a task message holds backs no memory.
 
-A scheduled task, such as the consolidator, receives messages but is not woken by them. A message to
-one waits unread, and its next scheduled session reads it, so the sender gets `woke: false` with a
-note that says so. A scheduled task never finishes, so a wait on one would stay open until a reply
-that may never come. A question or a request to one therefore marks no wait, and its note tells the
-sender that a reply, if any, arrives as a new message.
+A scheduled task receives messages but is not woken by them. A message to one waits unread, and its
+next scheduled session reads it, so the sender gets `woke: false` with a note that says so. A
+scheduled task never finishes, so a wait on one would stay open until a reply that may never come. A
+question or a request to one therefore marks no wait, and its note tells the sender that a reply, if
+any, arrives as a new message.
 
 ### Silent turns
 
 The `turn.end_silently` tool lets a turn send nothing. The conversation and every
-[started task](../../../architecture/core/started-tasks.md) have it. The consolidator lacks it,
-because it never replies.
+[started task](../../../architecture/core/started-tasks.md) have it.
 
 The model calls the tool when only a task message or a timer woke the turn and nothing needs saying,
 as the tool's description asks. nixie then keeps none of the turn's text: the text the model wrote

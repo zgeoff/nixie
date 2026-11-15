@@ -8,11 +8,6 @@ interface PromptOwner {
 }
 
 export interface PromptContexts {
-  readonly consolidator: {
-    readonly persona: string;
-    readonly owner: PromptOwner;
-    readonly memory: { readonly maxChanges: number };
-  };
   readonly 'content-checker': { readonly owner: PromptOwner };
   readonly 'retirement-checker': Readonly<Record<string, never>>;
   readonly session: {

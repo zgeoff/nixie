@@ -162,7 +162,7 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface, sandboxes by kind and the sandbox double                                         |
 | `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                                                                 |
 | `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) tools                              |
-| `memory`      | The [memory store](memory/store.md), its writer, consolidation and context                                                                 |
+| `memory`      | The [memory store](memory/store.md) and its context                                                                                        |
 | `backup`      | The snapshot sets and receipts of [backups](deployment/backups.md) and their schedule                                                      |
 | `ops`         | The health checks behind [the server's](deployment/server.md) health endpoint                                                              |
 | `skills`      | [Skills](core/skills.md): the pins, the catalog, the skill tools and the skill proposals                                                   |
@@ -217,8 +217,8 @@ suite's doc lists the probes that only the real model can check, which no guest 
 suite's probes run only with `NIXIE_SDK_CONTRACT=1` and a model credential, and skip otherwise, so a
 plain `bun test` never calls a model. Whole-program suites in `e2e/` run nixie with the sandbox
 double, which starts the conversation guest as a local process, so the SDK still loads only from its
-own package. A module's tests of a system task that runs its own session, such as the consolidator,
-run the conversation guest in the sandbox double too, which the sessions module's test helpers start
+own package. A module's tests of a system task that runs its own session, such as the checker, run
+the conversation guest in the sandbox double too, which the sessions module's test helpers start
 beside a log outside the server. An eval run that calls a real model is a script a contributor runs
 by hand, and its suite checks only the committed report.
 

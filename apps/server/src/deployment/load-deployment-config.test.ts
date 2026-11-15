@@ -32,7 +32,7 @@ test('it reads every section, with the default of each setting the file leaves o
   const config = await loadDeploymentConfig(ctx.path);
 
   const { models, ...sections } = config;
-  const { memory, memory_consolidation: _, ...rest } = sections;
+  const { memory, ...rest } = sections;
 
   expect(models.roles).toStrictEqual({ conversation: 'chat-direct' });
   expect(memory.pinnedCoreTokens).toBe(2000);
@@ -90,82 +90,6 @@ test('it reads every section, with the default of each setting the file leaves o
     skills: { catalogShare: 0.02 },
     backup: { isEnabled: true, intervalMs: 3_600_000 },
   });
-});
-
-test("it reads memory consolidation's weekly defaults when the file leaves its section out", async () => {
-  const ctx = await setupTest();
-
-  await writeFile(
-    ctx.path,
-    [
-      'models:',
-      '  profiles:',
-      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
-      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
-      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
-      '  roles: { conversation: chat-direct }',
-      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
-      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
-    ].join('\n'),
-  );
-
-  const config = await loadDeploymentConfig(ctx.path);
-
-  expect(config.memory_consolidation).toStrictEqual({
-    isEnabled: true,
-    periodMs: 604_800_000,
-    maxChanges: 30,
-    itemListTokens: 24_000,
-    topItems: 20,
-    lapseMs: 604_800_000,
-    retryMs: 3_600_000,
-  });
-});
-
-test('it keeps consolidation on when its section leave out the enabled key', async () => {
-  const ctx = await setupTest();
-
-  await writeFile(
-    ctx.path,
-    [
-      'models:',
-      '  profiles:',
-      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
-      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
-      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
-      '  roles: { conversation: chat-direct }',
-      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
-      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
-      'memory_consolidation: { period_days: 3 }',
-    ].join('\n'),
-  );
-
-  const config = await loadDeploymentConfig(ctx.path);
-
-  expect(config.memory_consolidation.isEnabled).toBeTrue();
-});
-
-test('it turns off the consolidation that the file turns off', async () => {
-  const ctx = await setupTest();
-
-  await writeFile(
-    ctx.path,
-    [
-      'models:',
-      '  profiles:',
-      '    chat-direct: { harness: agent-sdk, base_url: https://api.anthropic.com, credential: deployment:anthropic,',
-      '      auth_header: x-api-key, model: claude-test-1, effort: medium,',
-      '        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 0.1, output: 4 } }',
-      '  roles: { conversation: chat-direct }',
-      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
-      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
-      'memory_consolidation: { enabled: false }',
-    ].join('\n'),
-  );
-
-  const config = await loadDeploymentConfig(ctx.path);
-
-  expect(config.memory_consolidation.isEnabled).toBeFalse();
 });
 
 test('it reads a model profile, with the default of each setting it leaves out', async () => {

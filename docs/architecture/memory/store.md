@@ -109,10 +109,6 @@ mark is a record of its own, as a subject mark is, so the release before skips i
 and clears an item in [the memory view](./view.md#changes), and the model does through its own tool
 ([sensitive marks](./writes.md#sensitive-marks)).
 
-A consolidation merge that retires a sensitive item marks the item it keeps, in the transaction that
-writes the merged text, because that text can hold the detail. A merge into a sensitive item keeps
-its mark.
-
 ## End times
 
 An item can carry an end time, the UTC instant after which its fact stops holding, such as the end
@@ -126,13 +122,13 @@ retired items returns it as retired and unpinned. A restore accepts such an item
 retired one, and unpins it as the sweep's retirement would. The cut-off sits at read time, against
 the store's clock, because the indexes change only when a version is written.
 
-The lapse sweep, which also lapses old proposals and consolidation changes, retires each active item
-past its end time with the lapse origin. The retirement keeps the end time on its version, so the
-history shows when the fact was set to end, and it unpins the item as every retirement does. When an
-item changed between the sweep's read and its retirement, the sweep leaves the item to the next
-sweep. A lapse retires an item and never forgets it, so an early end costs the user one restore. A
-restore clears the end time, and so does an undo of a lapse, so the next sweep leaves the item
-active. A forget clears the end time from the item's row.
+The lapse sweep, which also lapses old proposals, retires each active item past its end time with
+the lapse origin. The retirement keeps the end time on its version, so the history shows when the
+fact was set to end, and it unpins the item as every retirement does. When an item changed between
+the sweep's read and its retirement, the sweep leaves the item to the next sweep. A lapse retires an
+item and never forgets it, so an early end costs the user one restore. A restore clears the end
+time, and so does an undo of a lapse, so the next sweep leaves the item active. A forget clears the
+end time from the item's row.
 
 ## Keys
 
@@ -196,8 +192,7 @@ items, and a function that measures each item exactly as the tool returns it. Th
 item while the measured bytes, with a byte for each comma, fit the budget, and stops at the first
 item that does not fit. It always keeps the first item. The record lists exactly the item versions
 the result holds, so a later `memory.retire` of an item the page left out finds no record of it and
-goes to review. A request with no budget cuts nothing, and the consolidator's recall tools pass
-none.
+goes to review. A request with no budget cuts nothing.
 
 When the first item alone passes the budget, the store keeps its current version and the newest past
 versions that fit, and the tool drops the item's moment links from the end until the result fits. A
@@ -346,8 +341,6 @@ The model reaches memory through these tools over the same interface:
 | `memory.pin`            | `note` | Asks to pin an item at a version it read                   |
 | `memory.unpin`          | `note` | Takes an item out of the pinned core                       |
 | `memory.mark_sensitive` | `note` | Marks an item sensitive, or clears the mark                |
-| `memory.diff`           | `read` | Shows the pending consolidation diff                       |
-| `memory.comment`        | `note` | Leaves a comment on one change of that diff                |
 | `memory.rate`           | `note` | Rates how the items of the thread's latest recall worked   |
 
 Creating and editing are separate tools because the tool list is where the model learns what it can
@@ -363,10 +356,9 @@ past it, because the turn note reads its items after the turn's retrieval and wo
 the retrieval from the rating. One rating record holds the call's ratings, each by item and the
 newest version the recall delivered, and names the recall it rates, so the user sees the rating
 beside that turn's memories. The note is free text the model can copy an item's words into, so the
-record seals it under the rated item's key, as a consolidation comment is sealed, and a forget
-leaves the note unreadable. The call's own record keeps only item IDs and known verdicts, and a
-refusal names an item only by its stored short ID, so no copy of the model's words outlives a
-forget.
+record seals it under the rated item's key and a forget leaves the note unreadable. The call's own
+record keeps only item IDs and known verdicts, and a refusal names an item only by its stored short
+ID, so no copy of the model's words outlives a forget.
 
 Each write tool runs its gate, and returns either the version it applied or the proposal it became,
 with its review reason. A missing quote is no tool error, because the gate turns it into a proposal.

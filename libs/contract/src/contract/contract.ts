@@ -373,7 +373,10 @@ export const contract = {
       }),
     ),
 
-    consolidatorStatus: signedIn.output(z.object({ isEnabled: z.boolean() })),
+    consolidatorStatus: signedIn
+      .route({ deprecated: true })
+      .output(z.object({ isEnabled: z.boolean() })),
+
     ...memoryViewContract,
   },
   nixie: {

@@ -31,10 +31,6 @@ export function buildConversationMemoryTools(
       proposals: { listPending: () => requireStore().proposals.listPending() },
       readItemIDMap: (ids) => requireStore().readItemIDMap(ids),
       readShortIDs: (itemIDs) => requireStore().readShortIDs(itemIDs),
-      consolidations: {
-        readDelivered: () => requireStore().consolidations.readDelivered(),
-        comment: (request) => requireStore().consolidations.comment(request),
-      },
       writes: {
         remember: (request) => requireStore().writes.remember(request),
         retire: (request) => requireStore().writes.retire(request),

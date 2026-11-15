@@ -671,44 +671,6 @@ test('it keeps the text of a forgotten message in no data file', async () => {
   expect(files.filter((file) => file.text.includes('Lilac-message-5JX'))).toStrictEqual([]);
 });
 
-test('it starts the memory consolidator when the configuration leaves out its enabled key', async () => {
-  const ctx = await setupTest();
-  const started = await ctx.waitForLogEvent('memory_consolidator.started');
-
-  expect(started).toMatchObject({ periodMs: 604_800_000 });
-  expect(ctx.readLogEvents()).not.toPartiallyContain({ event: 'memory_consolidator.off' });
-});
-
-test('it never runs the memory consolidator the configuration turns off', async () => {
-  const nixie = await startInProcessNixie({
-    extraConfig: ['memory_consolidation: { enabled: false }'],
-  });
-
-  await nixie.waitForLogEvent('memory_consolidator.off');
-  await nixie.waitForLogEvent('ready');
-
-  nixie.signalStop();
-
-  const exited = await nixie.waitForExit();
-
-  expect(exited.records.filter((record) => record.thread === 'memory-consolidator')).toStrictEqual(
-    [],
-  );
-
-  expect(nixie.readLogEvents()).not.toPartiallyContain({ event: 'memory_consolidator.started' });
-});
-
-test('it reports the consolidator the configuration turns off as off to a device', async () => {
-  const nixie = await startInProcessNixie({
-    extraConfig: ['memory_consolidation: { enabled: false }'],
-  });
-
-  const api = await createTestClient(nixie);
-  const consolidator = await api.client.memory.consolidatorStatus();
-
-  expect(consolidator).toStrictEqual({ isEnabled: false });
-});
-
 test('it queues one action for the log-only connector at start, which the action runners log', async () => {
   const nixie = await startInProcessNixie();
 

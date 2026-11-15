@@ -5523,6 +5523,7 @@
     "/memory/consolidatorStatus": {
       "post": {
         "operationId": "memory.consolidatorStatus",
+        "deprecated": true,
         "responses": {
           "200": {
             "description": "OK",

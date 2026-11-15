@@ -28,8 +28,7 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
   reference
 - the task and action [claim pool](../core/leases-and-recovery.md#claim-pools) sizes
 - whether nixie stages [backups](backups.md), and how often
-- the tuning of [memory in context](../memory/context.md) and
-  [consolidation](../memory/consolidation.md)
+- the tuning of [memory in context](../memory/context.md)
 
 The model profiles and the definitions source have no defaults, so the file always sets them. The
 imp section is required when the sandbox adapter is imp, which a release build always runs. Every

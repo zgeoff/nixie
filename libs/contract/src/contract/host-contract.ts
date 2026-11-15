@@ -96,50 +96,6 @@ const itemHistorySchema = z.object({
   versions: z.array(historyVersionSchema),
 });
 
-const changeInputSchema = z.object({
-  itemID: z.string(),
-  version: z.int(),
-  text: z.string().nullable(),
-  isCurrent: z.boolean(),
-});
-
-const changeCommentSchema = z.object({ text: z.string(), at: z.date() });
-
-const consolidationChangeSchema = z.object({
-  changeID: z.string(),
-  shortID: z.string(),
-  kind: z.enum(['merge', 'rewrite', 'retire']),
-  inputs: z.array(changeInputSchema),
-  text: z.string().nullable(),
-  reason: z.string(),
-  source: contentSourceSchema,
-  actionHash: z.string(),
-  lapseAt: z.date(),
-  comment: changeCommentSchema.nullable(),
-});
-
-const consolidationDiffSchema = z.object({
-  diffID: z.string(),
-  model: z.string().nullable(),
-  createdAt: z.date(),
-  changes: z.array(consolidationChangeSchema),
-  summary: z.string().nullable(),
-});
-
-const changeOutcomeSchema = z.discriminatedUnion('status', [
-  z.object({
-    changeID: z.string(),
-    status: z.literal('applied'),
-    versions: z.array(versionRefSchema),
-  }),
-  z.object({ changeID: z.string(), status: z.literal('refused'), code: z.string() }),
-]);
-
-const changeAnswerSchema = z.strictObject({
-  changeID: z.string().min(1),
-  actionHash: z.string().min(1),
-});
-
 const proposalAnswerSchema = z.strictObject({
   proposalID: z.string().min(1),
   actionHash: z.string().min(1),
@@ -474,14 +430,6 @@ export const hostContract = {
       pin: memory
         .input(z.strictObject({ itemID: z.string().min(1), isPinned: z.boolean() }))
         .output(z.object({ itemID: z.string(), isPinned: z.boolean() })),
-    },
-    consolidation: {
-      read: memory.output(consolidationDiffSchema.nullable()),
-
-      approve: memory
-        .input(z.strictObject({ answers: z.array(changeAnswerSchema).min(1).max(30) }))
-        .output(z.object({ outcomes: z.array(changeOutcomeSchema) })),
-      reject: memory.input(changeAnswerSchema).output(z.object({ changeID: z.string() })),
     },
   },
   skills: {

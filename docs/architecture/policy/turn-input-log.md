@@ -26,7 +26,7 @@ capture and the three host procedures answer `NOT_CONFIGURED`.
 | `default`         | `always`               | `always` captures from the start, `off` waits for `nixie turn-input on`                   |
 | `max_window`      | `24h`                  | the longest a `turn-input on --for` window can last                                       |
 | `close_wait`      | `5s`                   | how long a step end waits for a spool file that a gateway still writes                    |
-| `roles`           | `conversation`, `task` | the roles that capture: also `memory-consolidator`                                        |
+| `roles`           | `conversation`, `task` | the roles that capture                                                                    |
 | `retention.days`  | `7`                    | 3, 7 or 30; a request older than this is removed                                          |
 | `retention.bytes` | `2147483648`           | the most the bodies take; the oldest go first                                             |
 | `sources`         | none                   | each gateway as `base_url` and `dir`, the origin a profile points at and its spool folder |

@@ -1,11 +1,6 @@
 import type { MemorySubjectCounts } from '@heynixie/db';
 import type { ApprovalResult, MemoryProposal, MemoryProposals } from '../gate/gate-context';
 import type { ForgetStatus, MemoryStore, Provenance, VersionRef } from '../types';
-import type {
-  ChangeOutcome,
-  ConsolidationDiff,
-  MemoryConsolidations,
-} from '../utils/memory-consolidations';
 import type { ItemHistory } from '../view/memory-view';
 
 export type HostMemoryStore = Pick<
@@ -19,7 +14,7 @@ export type HostMemoryStore = Pick<
   | 'finishForgets'
   | 'readHistory'
   | 'readSubjectCounts'
-> & { readonly proposals: MemoryProposals; readonly consolidations: MemoryConsolidations };
+> & { readonly proposals: MemoryProposals };
 
 interface HostAnswer {
   readonly actionHash: string;
@@ -40,10 +35,6 @@ interface HostRejection extends HostAnswer {
   readonly reason?: string;
 }
 
-interface HostChangeAnswer extends HostAnswer {
-  readonly changeID: string;
-}
-
 export interface HostMemory {
   readonly listProposals: () => Promise<readonly MemoryProposal[]>;
   readonly approveProposal: (approval: HostApproval) => Promise<ApprovalResult>;
@@ -57,11 +48,6 @@ export interface HostMemory {
   readonly forget: (target: VersionRef) => Promise<ForgetStatus>;
 
   readonly forgetAll: () => Promise<ForgetStatus>;
-  readonly readDiff: () => Promise<ConsolidationDiff | null>;
-  readonly approveChanges: (
-    answers: readonly HostChangeAnswer[],
-  ) => Promise<readonly ChangeOutcome[]>;
-  readonly rejectChange: (answer: HostChangeAnswer) => Promise<void>;
   readonly readSubjectCounts: () => Promise<MemorySubjectCounts>;
 }
 
@@ -98,13 +84,6 @@ export function buildHostMemory(store: HostMemoryStore): HostMemory {
 
       return store.finishForgets(itemIDs);
     },
-    readDiff: () => store.consolidations.readPending(),
-    approveChanges: (answers) =>
-      store.consolidations.approveAll(
-        answers.map((answer) => ({ ...answer, identityID: hostIdentityID })),
-      ),
-    rejectChange: (answer) =>
-      store.consolidations.reject({ ...answer, identityID: hostIdentityID }),
     readSubjectCounts: () => store.readSubjectCounts(),
   };
 }

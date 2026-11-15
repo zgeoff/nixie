@@ -39,27 +39,6 @@
         "prompts": {
           "type": "object",
           "properties": {
-            "consolidator": {
-              "type": "object",
-              "properties": {
-                "_template": {
-                  "type": "string"
-                },
-                "persona": {
-                  "type": "string"
-                },
-                "nameRule": {
-                  "type": "string"
-                },
-                "instruction": {
-                  "type": "string"
-                },
-                "safety": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            },
             "content-checker": {
               "type": "object",
               "properties": {

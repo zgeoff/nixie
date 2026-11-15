@@ -55,13 +55,13 @@ readable, as it does the message behind a quote, so a forgotten item never shows
 ## The web view
 
 The web client shows the memory view as its own page, behind the same session check as the
-conversation. A consolidator that the deployment turns off shows as off. The pinned core with its
-size follows, then the active items or the matches of a search, then the retired and the forgotten
-items, each list apart. Every list draws an item through one row, so a control on an item shows in
-every list. The active items and the matches show self-notes in a section of their own, apart from
-the user's and the shared items, and a self-note's row in any other list carries a self-note label.
-A row offers a pin whatever the item's subject. A row shows whether its item is
-[sensitive](./store.md#sensitive-items) and offers to mark it or clear the mark.
+conversation. The pinned core with its size follows, then the active items or the matches of a
+search, then the retired and the forgotten items, each list apart. Every list draws an item through
+one row, so a control on an item shows in every list. The active items and the matches show
+self-notes in a section of their own, apart from the user's and the shared items, and a self-note's
+row in any other list carries a self-note label. A row offers a pin whatever the item's subject. A
+row shows whether its item is [sensitive](./store.md#sensitive-items) and offers to mark it or clear
+the mark.
 
 An item's history loads only when the user opens it, so a long list reads no history it never shows.
 Each version shows the words it changed from the version before as a word diff, and its evidence as

@@ -235,12 +235,6 @@ const backupNotices = new Collection({
   }),
 });
 
-const memoryConsolidator = new Collection({
-  schema: z.object({
-    isEnabled: z.boolean().default(true),
-  }),
-});
-
 const noticeEntrySchema = z.object({
   change: z
     .enum(['created', 'edited', 'retired', 'restored', 'undone', 'proposed'])
@@ -434,7 +428,6 @@ export const store = {
   enrolmentCodes,
   forgetActions,
   memoryActions,
-  memoryConsolidator,
   memoryItems,
   memoryNotices,
   memoryProposals,
@@ -465,7 +458,6 @@ export const store = {
       passkeyChecks,
       passkeyRows,
       rules,
-      memoryConsolidator,
       backupNotices,
       memoryVersions,
       moments,

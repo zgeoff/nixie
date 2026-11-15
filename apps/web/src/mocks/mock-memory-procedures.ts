@@ -2,7 +2,6 @@
 import { findMockMemoryItems } from './find-mock-memory-items';
 import { mockImplementer } from './mock-implementer';
 import { readMemoryVersion } from './read-memory-version';
-import { readMockConsolidatorStatus } from './read-mock-consolidator-status';
 import { readMockMemoryItem } from './read-mock-memory-item';
 import { readMockMemoryNotices } from './read-mock-memory-notices';
 import { readMockMemoryPage } from './read-mock-memory-page';
@@ -45,7 +44,7 @@ export const mockMemoryProcedures = {
   consolidatorStatus: memory.consolidatorStatus.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-    return readMockConsolidatorStatus();
+    return { isEnabled: false };
   }),
 
   listItems: memory.listItems.handler((options) => {
