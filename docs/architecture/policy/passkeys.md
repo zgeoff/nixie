@@ -48,6 +48,15 @@ directly, as it writes the identity record, and no log record rebuilds it.
   `passkey.used`, because whoever runs a host command can already read the database and the key
   store.
 
+## Unknown outcomes
+
+A retry of an unknown outcome takes the passkey when the action's risk class is `always_ask` or
+`lifting`, because the retry may send again what the user once approved. `approvals.listItems` lists
+`retry` in the item's `passkeyChoices` for such an action. `happened` and `drop` never take one,
+because neither sends. `approvals.answerUnknownOutcome` checks the passkey in its own write
+transaction, against an `unknown_outcome` challenge for the same action, and refuses in the same
+order as below. A retry of a routine action takes none.
+
 ## The answer check
 
 The passkey step runs after step 4 and before step 5 of the
@@ -72,10 +81,10 @@ takes the passkey.
 ## Challenges
 
 `passkeys.challenge` takes the check it is for: an answer with its proposal ID, action hash, choice
-and, for Always allow, rule hash; a `register` check; or a `revoke` check for one passkey. It
-refuses with `NO_PASSKEY` when no passkey is live. Otherwise it returns options with the RP ID of
-the live passkeys, an empty `allowCredentials`, `userVerification: 'required'` and a timeout of 5
-minutes.
+and, for Always allow, rule hash; an `unknown_outcome` check with an action ID and the choice
+`retry`; a `register` check; or a `revoke` check for one passkey. It refuses with `NO_PASSKEY` when
+no passkey is live. Otherwise it returns options with the RP ID of the live passkeys, an empty
+`allowCredentials`, `userVerification: 'required'` and a timeout of 5 minutes.
 
 - A challenge is the SHA-256 of 32 random bytes, the session's identity ID and the canonical form of
   its check. The server keeps the bytes and the check in memory.

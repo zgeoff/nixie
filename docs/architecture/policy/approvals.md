@@ -34,10 +34,14 @@ records, and a test holds the backfill equal to the fold.
 `approvals.listItems` returns each open row that has a body, with the choices the host offers, in
 these groups and this order:
 
-1. Always-ask: `lifting` rows first, then `always_ask` rows.
-2. Routine, sorted by task, with each task's oldest row first.
-3. Memory.
-4. Deferred. A deferred row sits only here, whatever its risk class.
+1. Unknown outcome: an action whose outcome nixie could not settle and the user must. An item holds
+   the action as its proposal showed it, each attempt and each check with its time, the reason it
+   came to the user and its risk class. Items list oldest first, and the item has no fields when a
+   forget removed the arguments.
+2. Always-ask: `lifting` rows first, then `always_ask` rows.
+3. Routine, sorted by task, with each task's oldest row first.
+4. Memory.
+5. Deferred. A deferred row sits only here, whatever its risk class.
 
 Every group but routine lists its oldest row first. The call leaves out a closed row, a row past its
 lapse and a row whose body is gone. A row whose kind has no handler, such as after a rollback of
@@ -69,6 +73,11 @@ first that fails:
    assertion passes the [passkey check](./passkeys.md). Otherwise the answer is refused as
    `NO_PASSKEY`, `PASSKEY_REQUIRED` or `PASSKEY_FAILED`, and the refusal is not stored.
 
+Approving an action proposal queues the action once, under the proposal's ID, as
+[actions](../core/actions.md#approved-actions) describes. A proposal for a call with a deadline
+lapses at the earlier of its usual lapse and the deadline, and an approval after the deadline fails
+the action.
+
 Then the kind's handler applies the choice. Always allow is offered only for a routine action that
 policy held because no rule steered it, and it writes the rule the proposal carried and approves the
 call in the same transaction. A kind whose writes open their own transaction, such as memory, runs a
@@ -76,6 +85,15 @@ guard inside it that repeats the checks at the commit.
 
 A refusal other than a passkey refusal is stored under the client action ID in the same transaction,
 so a retry gets the same refusal. A batch answer settles each of its answers alone.
+
+## Answering an unknown outcome
+
+`approvals.answerUnknownOutcome` takes the action ID, one choice of `happened`, `retry` or `drop`, a
+client action ID and, for a retry that needs one, a passkey assertion. The host answers in one write
+transaction: the caller is a live identity, the action waits on the user, and a retry of an action
+that always asks or lifts passes the [passkey check](./passkeys.md#unknown-outcomes). The answer is
+stored under the client action ID, and it records the identity that gave it. A second answer to the
+same action is refused as not allowed. The host's own route needs no passkey.
 
 ## Defer
 
