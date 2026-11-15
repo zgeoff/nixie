@@ -62,11 +62,20 @@ test('it puts the allows of a first seed in force when you approve their proposa
 test('it puts the allows of a first seed in force when a device approves their proposal', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
-  const pending = await api.client.rules.listProposals();
+  const pending = await api.client.approvals.listItems();
 
-  const [proposal] = z.tuple([z.object({ proposalID: z.string() })]).parse(pending.proposals);
+  const itemSchema = z.object({
+    proposal: z.object({ proposalID: z.string(), actionHash: z.string() }),
+  });
 
-  await api.client.rules.approveProposal({ proposalID: proposal.proposalID });
+  const [item] = z.tuple([itemSchema]).parse(pending.items);
+
+  await api.client.approvals.answerProposal({
+    proposalID: item.proposal.proposalID,
+    actionHash: item.proposal.actionHash,
+    choice: 'approve',
+    clientActionID: crypto.randomUUID(),
+  });
 
   const listed = await runHostCommand(ctx.configPath, ['rules', 'list']);
 

@@ -1,6 +1,19 @@
 import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
+import type { RecordLookups } from './to-contract-record';
 import { toContractRecord } from './to-contract-record';
+
+function setupTest() {
+  const noLookups: RecordLookups = {
+    cancelledActionIDs: new Set(),
+    proposals: new Map(),
+    removedSequences: new Set(),
+    stopCancelledActions: new Map(),
+    taskDirectory: [],
+  };
+
+  return { noLookups };
+}
 
 test('it carries your message with its text and spans', () => {
   const record = buildMockLogRecord({
@@ -363,6 +376,7 @@ test('it shows a failed tool result as cancelled when its action is among the ca
 
   const lookups = {
     cancelledActionIDs: new Set(['action-1']),
+    proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     taskDirectory: [],
@@ -774,6 +788,7 @@ test('it carries a task message with its sender named from the directory', () =>
 
   const lookups = {
     cancelledActionIDs: new Set<string>(),
+    proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     taskDirectory: [
@@ -852,6 +867,7 @@ test('it renders an exchange notice that names both tasks and links to the recei
 
   const lookups = {
     cancelledActionIDs: new Set<string>(),
+    proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
     taskDirectory: [
@@ -889,6 +905,7 @@ test('it lists the actions a stop cancelled on its record', () => {
 
   const lookups = {
     cancelledActionIDs: new Set<string>(),
+    proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map([
       [19, [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }]],
@@ -911,6 +928,7 @@ test('it marks a shredded record that a forget named as removed', () => {
 
   const lookups = {
     cancelledActionIDs: new Set<string>(),
+    proposals: new Map(),
     removedSequences: new Set([12]),
     stopCancelledActions: new Map(),
     taskDirectory: [],
@@ -932,10 +950,50 @@ test.each([
 
   const lookups = {
     cancelledActionIDs: new Set<string>(),
+    proposals: new Map(),
     removedSequences,
     stopCancelledActions: new Map(),
     taskDirectory: [],
   };
 
   expect(toContractRecord(record, lookups)).not.toHaveProperty('isRemoved');
+});
+
+test('it carries the proposal that a record created', () => {
+  const ctx = setupTest();
+
+  const record = buildMockLogRecord({
+    sequence: 12,
+    recordedAt: new Date('2026-10-10T12:00:02Z'),
+    kind: 'policy.action_proposed',
+    thread: 'conversation',
+    payload: {},
+  });
+
+  const proposals = new Map([[12, { proposalID: 'a1b2c3d4', shortID: 'xk3p9q2w7a' }]]);
+
+  expect(toContractRecord(record, { ...ctx.noLookups, proposals })).toStrictEqual({
+    kind: 'policy.action_proposed',
+    proposal: { proposalID: 'a1b2c3d4', shortID: 'xk3p9q2w7a' },
+    recordedAt: new Date('2026-10-10T12:00:02Z'),
+    sequence: 12,
+    thread: 'conversation',
+  });
+});
+
+test('it leaves the proposal off a record that created none', () => {
+  const record = buildMockLogRecord({
+    sequence: 13,
+    recordedAt: new Date('2026-10-10T12:00:03Z'),
+    kind: 'policy.action_proposed',
+    thread: 'conversation',
+    payload: {},
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'policy.action_proposed',
+    recordedAt: new Date('2026-10-10T12:00:03Z'),
+    sequence: 13,
+    thread: 'conversation',
+  });
 });

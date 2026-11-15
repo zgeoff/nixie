@@ -6,6 +6,7 @@ import type { ProposalParts } from '../proposal/build-proposal-core-deps';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { readApprovalItems } from './read-approval-items';
+import { readApprovalProposals } from './read-approval-proposals';
 import type { ApprovalAnswer } from './run-approval-answer';
 import { runApprovalAnswer } from './run-approval-answer';
 
@@ -18,6 +19,19 @@ export function createApprovalProcedures(context: APIContext, parts: ProposalPar
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       return readApprovalItems(context, deps, parts.readMemory);
+    }),
+
+    readProposals: approvals.readProposals.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      return readApprovalProposals(context, deps, parts.readMemory, {
+        caller,
+        proposalIDs: options.input.proposalIDs,
+      });
     }),
 
     answerProposal: approvals.answerProposal.handler(async (options) => {

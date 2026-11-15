@@ -339,6 +339,7 @@ export interface NixieTables {
     readonly defer_generation: number;
     readonly defer_until: number | null;
     readonly return_at: number | null;
+    readonly answered_by: string | null;
   };
   readonly record_attachments: {
     readonly sequence: number;

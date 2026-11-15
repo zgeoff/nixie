@@ -19,6 +19,7 @@ test('it builds a pending routine action proposal by default', () => {
     deadlineAt: null,
     state: 'pending',
     usedBy: null,
+    answeredBy: null,
     deferGeneration: 0,
     deferUntil: null,
     returnAt: null,

@@ -2,16 +2,19 @@
 
 The model can propose a memory item, a fact about the user that nixie keeps. When the user's own
 words in the conversation do not state the fact, nixie holds the item as a proposal until the user
-approves it on the proposals page, `/memory/proposals`. An approved item shows on the memory page,
+approves it on the approvals page, `/memory/proposals`. An approved item shows on the memory page,
 `/memory`, and its row in the `memory_items` table has the state `active`. A proposal has no row in
 that table.
 
-Run [sign-in-enrol](feature-sign-in-enrol.md) first, unless the browser is still signed in from an
-earlier journey since `up` or `attach`.
+Before you start:
 
-On `local`, run this journey on fresh data: before a second pass, run `bun verify up --restart` and
-`bun verify doctor`, then sign-in-enrol. Keep the message and the memory item text below as they
-are. A message that states the item's fact would make nixie keep the item at once, with no proposal.
+- When the browser has no sign-in since `up` or `attach`, run
+  [sign-in-enrol](feature-sign-in-enrol.md) first.
+- On `local`, step 3 expects no memory item since `up`. Before a second pass of this journey, run
+  `bun verify up --restart` and `bun verify doctor`, then sign-in-enrol.
+
+On `local`, keep the message and the memory item text below as they are. A message that states the
+item's fact would make nixie keep the item at once, with no proposal.
 
 ## Journey
 
@@ -23,11 +26,12 @@ are. A message that states the item's fact would make nixie keep the item at onc
    bun verify action script-reply --memory 'The user keeps bees on the allotment.' --text 'I will ask you before I remember that.'
    ```
 
-   Expect: `data.replies` is 2, one for the proposal and one for the reply.
+   Expect: `data.replies` is 2: the memory call is one scripted step, and the text reply is the
+   other.
 
-2. Send the message. On `preview`, type a message that asks nixie to guess a fact about you and
-   remember it, such as "Guess which city I grew up in, and remember it.", and skip the
-   `conversation turn` line. When the real model proposes nothing, step 4 ends the journey.
+2. Send the message. On `preview`, change the message to one that asks nixie to guess a fact about
+   you and remember it, such as "Guess which city I grew up in, and remember it.". Skip the
+   `conversation turn` line there, and take snapshots of `/` until the reply shows.
 
    ```bash
    bun verify browser goto /
@@ -46,26 +50,33 @@ are. A message that states the item's fact would make nixie keep the item at onc
 
    Expect: `data.rows` is empty.
 
-4. Open the proposals page:
+4. Open the approvals page:
 
    ```bash
    bun verify browser goto /memory/proposals
    bun verify browser snapshot
    ```
 
-   Expect: one item in the "Pending proposals" list, with an Approve button. Note the item's text.
-   On `preview`, when that list is empty, skip the rest and `done`. Report the snapshot, and which
-   case it shows:
-   - The "Pending actions" list holds "Run memory.remember (note).": nixie's policy held the model's
-     call as an action. Approving an action runs nothing yet, so the item never reaches the memory
-     page.
-   - Neither list holds an item: the model proposed nothing.
+   Expect: the "Memory" list holds one collapsed item, which shows the item's text and no buttons.
+   Note the text.
 
-5. Approve the proposal. The disabled "Approve selected" button never matches this command.
+   On `preview`, the "Memory" list can be empty. Then skip steps 5 and 6, and skip `done`. Report
+   the snapshot, and which case it shows:
+   - The "Routine" list holds "Run memory.remember (note).": nixie's policy held the model's call as
+     an action. An approved action never writes the memory item, so the item never reaches the
+     memory page.
+   - No list holds an item: the model proposed nothing.
+
+5. Expand the item, then approve it. In the snapshot of step 4, find the line that holds the item's
+   text and `[cursor=pointer]`. Pass that line's `ref`, such as `f3e11`, as `<item_ref>`. Each
+   snapshot gives new refs.
 
    ```bash
-   bun verify browser click --role button --name Approve
+   bun verify browser click --ref '<item_ref>'
+   bun verify browser click --role button --name 'Save to memory'
    ```
+
+   Expect: both clicks exit 0.
 
 6. Check the memory. On `preview`, skip the `db query` line.
 
@@ -79,7 +90,7 @@ are. A message that states the item's fact would make nixie keep the item at onc
 
 ## End state
 
-- The proposals page of step 4 listed the item.
+- The approvals page of step 4 listed the item.
 - On `local`, the `db query` of step 6 returns one row, whose `state` is `active`.
 - The memory page shows the item's text from step 4: on `local`, "The user keeps bees on the
   allotment.".

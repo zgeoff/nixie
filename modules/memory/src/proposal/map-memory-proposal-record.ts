@@ -39,6 +39,7 @@ export function mapMemoryProposalRecord(record: EnvelopeRecord): ProposalChange 
       proposalID: parsed.proposalID,
       state: 'approved',
       usedBy: parsed.approvalID,
+      answeredBy: parsed.identityID,
     };
   }
 
@@ -47,5 +48,6 @@ export function mapMemoryProposalRecord(record: EnvelopeRecord): ProposalChange 
     proposalID: parsed.proposalID,
     state: parsed.kind === 'memory.proposal_rejected' ? 'declined' : 'lapsed',
     usedBy: null,
+    answeredBy: parsed.kind === 'memory.proposal_rejected' ? (parsed.identityID ?? null) : null,
   };
 }

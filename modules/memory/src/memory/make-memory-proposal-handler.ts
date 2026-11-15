@@ -45,7 +45,14 @@ export function makeMemoryProposalHandler(
 
           return [
             row.id,
-            text === undefined ? null : { sentence: text, fields: {}, ruleSentence: null },
+            text === undefined
+              ? null
+              : {
+                  sentence: text,
+                  fields: {},
+                  ruleSentence: null,
+                  approveLabel: 'Save to memory',
+                },
           ];
         }),
       );

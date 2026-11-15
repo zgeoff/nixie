@@ -9,7 +9,6 @@ export { hostContract } from './contract/host-contract';
 export { imageLimits } from './contract/image-limits';
 export { isTimeZone } from './contract/is-time-zone';
 export { pickSpanSource } from './span/pick-span-source';
-export { proposalOutcomeSchema } from './contract/proposal-outcome-schema';
 export { renderSessionCookie } from './contract/render-session-cookie';
 export { sessionCookieName } from './contract/session-cookie-name';
 export { spanSchema } from './span/span-schema';

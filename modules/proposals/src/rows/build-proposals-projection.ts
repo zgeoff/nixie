@@ -56,6 +56,7 @@ export function buildProposalsProjection(mappers: readonly ProposalRecordMapper[
           proposalID: withdrawn.proposalID,
           state: 'withdrawn',
           usedBy: null,
+          answeredBy: null,
         });
 
         return [withdrawn.proposalID];
@@ -111,6 +112,7 @@ async function writeChange(
         deadline_at: proposal.deadlineAt,
         state: 'pending',
         used_by: null,
+        answered_by: null,
         defer_generation: 0,
         defer_until: null,
         return_at: null,
@@ -124,7 +126,13 @@ async function writeChange(
   if (change.type === 'close') {
     await db
       .updateTable('proposals')
-      .set({ state: change.state, used_by: change.usedBy, defer_until: null, return_at: null })
+      .set({
+        state: change.state,
+        used_by: change.usedBy,
+        answered_by: change.answeredBy,
+        defer_until: null,
+        return_at: null,
+      })
       .where('proposal_id', '=', change.proposalID)
       .where('state', 'in', ['pending', 'deferred'])
       .execute();

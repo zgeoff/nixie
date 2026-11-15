@@ -26,7 +26,7 @@ export async function writeProposalRejection(
         kind: 'memory.proposal_rejected',
         definitions: parts.context.definitions(),
         ...(pending.thread === null ? {} : { thread: pending.thread }),
-        payload: { proposalID: pending.proposal_id },
+        payload: { proposalID: pending.proposal_id, identityID: answer.identityID },
         ...(answer.reason === undefined ? {} : { erasable: { reason: answer.reason } }),
       },
     );

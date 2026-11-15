@@ -24,6 +24,7 @@ export type ProposalChange =
       readonly proposalID: string;
       readonly state: ClosedProposalState;
       readonly usedBy: string | null;
+      readonly answeredBy: string | null;
     }
   | { readonly type: 'extend'; readonly proposalID: string; readonly lapsesAt: number };
 

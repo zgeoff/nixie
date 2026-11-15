@@ -36,6 +36,7 @@ export function mapActionProposalRecord(record: EnvelopeRecord): ProposalChange 
       proposalID: answered.proposalID,
       state: answered.answer,
       usedBy: null,
+      answeredBy: answered.identityID ?? null,
     };
   }
 
@@ -45,6 +46,7 @@ export function mapActionProposalRecord(record: EnvelopeRecord): ProposalChange 
       proposalID: actionLapsedCodec.decode(record.payload).proposalID,
       state: 'lapsed',
       usedBy: null,
+      answeredBy: null,
     };
   }
 

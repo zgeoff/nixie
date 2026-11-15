@@ -17,9 +17,9 @@ is built from.
 Terms:
 
 - A **proposal** is a tool call or a change that waits for your answer, with one row in the approval
-  record ([approval record](approval-record.md)). Its risk class is `routine`, `always_ask` or
-  `lifting`, as [risk class](../platform/policy/approvals.md#risk-class) defines, and a memory write
-  is a proposal of the kind `memory_write`.
+  record ([approval record](../../architecture/policy/approvals.md)). Its risk class is `routine`,
+  `always_ask` or `lifting`, as [risk class](../platform/policy/approvals.md#risk-class) defines,
+  and a memory write is a proposal of the kind `memory_write`.
 - A **defer** puts a proposal aside until a time you pick. The proposal then returns as new.
 - An **item** is one waiting proposal or unknown outcome, as `approvals.listItems` lists them. A
   deferred proposal becomes an item again only when it returns.
@@ -242,7 +242,7 @@ channels:
   [configuration and secrets](../../architecture/deployment/server.md#configuration-and-secrets)
   describes.
 - The notifier reads quiet hours from the top-level `quiet_hours` that
-  [approval record](approval-record.md) owns, and has no quiet hours of its own.
+  [approval record](../../architecture/policy/approvals.md) owns, and has no quiet hours of its own.
 
 ## Constraints
 

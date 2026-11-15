@@ -7,5 +7,6 @@ export const actionAnsweredCodec = defineRecordCodec(
     proposalID: z.string(),
     shortID: z.string(),
     answer: z.enum(['approved', 'declined']),
+    identityID: z.string().exactOptional(),
   }),
 );

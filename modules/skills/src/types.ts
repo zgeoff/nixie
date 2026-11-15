@@ -55,12 +55,14 @@ export type SkillProposalAnswer =
       readonly proposalID: string;
       readonly skillHash: string;
       readonly files?: readonly SkillFile[];
+      readonly identityID?: string;
     }
   | {
       readonly answer: 'reject';
       readonly proposalID: string;
       readonly skillHash: string;
       readonly reason: string;
+      readonly identityID?: string;
     };
 
 export interface SkillProposalAnswerResult {

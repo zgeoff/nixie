@@ -17,11 +17,12 @@ with another passkey check, or with a host command.
 
 The
 [approvals design for the client](../platform/channels/approvals.md#how-the-server-checks-an-answer)
-requires the check. The approval record design ([approval record](approval-record.md)) owns
-`approvals.answerProposal` and its batch form `approvals.answerProposals`. Each proposal is a row in
-its list, which the client shows as a card. The server checks an answer in 5 numbered steps: 1, the
-session is live; 2, the row is open; 3, the hashes match; 4, the choice is one the row offers; 5,
-the proposal kind's handler applies it. This design adds a step between 4 and 5.
+requires the check. The approval record design
+([approval record](../../architecture/policy/approvals.md)) owns `approvals.answerProposal` and its
+batch form `approvals.answerProposals`. Each proposal is a row in its list, which the client shows
+as a card. The server checks an answer in 5 numbered steps: 1, the session is live; 2, the row is
+open; 3, the hashes match; 4, the choice is one the row offers; 5, the proposal kind's handler
+applies it. This design adds a step between 4 and 5.
 
 A passkey here is a WebAuthn discoverable credential, whether one device holds it or a provider
 syncs it between your devices.

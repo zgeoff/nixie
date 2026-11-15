@@ -34,6 +34,7 @@ export function makeSkillProposalHandler(context: SkillAnswerContext): ProposalK
             sentence: `Write the skill ${state.proposal.name}.`,
             fields: { files: state.proposal.files.map((file) => file.path).join(', ') },
             ruleSentence: null,
+            approveLabel: 'Save the skill',
           },
         ]),
       );
@@ -114,11 +115,13 @@ async function writeAnswer(
         proposalID: row.id,
         skillHash: state.proposal.skillHash,
         reason: answer.note ?? '',
+        identityID: answer.identityID,
       }
     : {
         answer: 'approve',
         proposalID: row.id,
         skillHash: state.proposal.skillHash,
+        identityID: answer.identityID,
         ...(answer.files === undefined ? {} : { files: answer.files }),
       };
 

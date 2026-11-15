@@ -1,10 +1,11 @@
 import { readMessageTimeZone } from '@heynixie/connectors';
-import type { ProposalBody, ProposalCoreDeps, SharedProposal } from '@heynixie/proposals';
+import type { ProposalCoreDeps } from '@heynixie/proposals';
 import { pickProposalChoices, readOpenProposals } from '@heynixie/proposals';
-import { toContractProposal } from '../memory/create-memory-proposal-procedures';
 import type { APIContext, ReadViewMemory } from '../types';
 import { defaultApprovalSettings } from '../utils/default-api-settings';
 import { collectOrderedRows, pickApprovalGroup } from './collect-ordered-rows';
+import { readApprovalBodies } from './read-approval-bodies';
+import { toApprovalRow } from './to-approval-row';
 
 // The open rows that have a handler and a body, in the digest's order.
 export async function readApprovalItems(
@@ -16,8 +17,7 @@ export async function readApprovalItems(
   const approvals = context.settings.approvals ?? defaultApprovalSettings;
 
   const rows = await readOpenProposals(db, context.clock.now());
-  const bodies = await readBodies(deps, rows);
-  const memory = await readMemoryBodies(readMemory);
+  const bodies = await readApprovalBodies(deps, readMemory, rows);
 
   const directory = new Map(context.settings.taskDirectory.map((task) => [task.taskID, task.name]));
 
@@ -36,7 +36,7 @@ export async function readApprovalItems(
         group: pickApprovalGroup(row),
         taskName: taskID === null ? null : (directory.get(taskID) ?? taskID),
         taskID,
-        body: { ...body, ...(memory.has(row.id) ? { memory: memory.get(row.id) } : {}) },
+        body,
       },
     ];
   });
@@ -52,57 +52,10 @@ export async function readApprovalItems(
     },
     items: collectOrderedRows(items).map((item) => ({
       group: item.group,
-      proposal: toContractRow(item.proposal),
+      proposal: toApprovalRow(item.proposal),
       body: item.body,
       task: item.taskID === null ? null : { id: item.taskID, name: item.taskName ?? item.taskID },
       choices: [...pickProposalChoices(item.proposal)],
     })),
-  };
-}
-
-async function readBodies(
-  deps: ProposalCoreDeps,
-  rows: readonly SharedProposal[],
-): Promise<ReadonlyMap<string, ProposalBody | null>> {
-  const bodies = new Map<string, ProposalBody | null>();
-
-  for (const [family, handler] of deps.handlers) {
-    const own = rows.filter((row) => row.family === family);
-
-    for (const [id, body] of await handler.readBodies(deps.log.writer.db, own)) {
-      bodies.set(id, body);
-    }
-  }
-
-  return bodies;
-}
-
-async function readMemoryBodies(readMemory: ReadViewMemory) {
-  const store = readMemory();
-
-  if (store === null) {
-    return new Map<string, ReturnType<typeof toContractProposal>>();
-  }
-
-  const proposals = await store.view.readProposals();
-
-  return new Map(proposals.map((proposal) => [proposal.proposalID, toContractProposal(proposal)]));
-}
-
-function toContractRow(row: SharedProposal) {
-  return {
-    proposalID: row.id,
-    shortID: row.shortID,
-    kind: row.kind,
-    riskClass: row.riskClass,
-    actionHash: row.actionHash,
-    ruleHash: row.ruleHash,
-    cause: row.cause,
-    state: row.state,
-    createdAt: new Date(row.createdAt),
-    lapsesAt: new Date(row.lapsesAt),
-    deadlineAt: row.deadlineAt === null ? null : new Date(row.deadlineAt),
-    deferGeneration: row.deferGeneration,
-    deferUntil: row.deferUntil === null ? null : new Date(row.deferUntil),
   };
 }

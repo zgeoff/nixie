@@ -238,7 +238,7 @@ errors ignores case, and a line for `self_note` would then accept `SELF_NOTE` to
 message from the failed check and starts with the Linear issue that plans the break:
 
 ```text
-GEO-556: POST /memory/listProposals added the new `self_note` enum value to the `proposals/items/reason` response property for the response status `200`
+GEO-556: POST /approvals/listItems added the new `self_note` enum value to the `items/body/memory/reason` response property for the response status `200`
 ```
 
 The pull request that makes the break adds its line, so the review sees both. A line stops matching

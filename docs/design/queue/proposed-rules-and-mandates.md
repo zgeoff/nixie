@@ -12,7 +12,7 @@ nixie proposes 2 kinds of allow rule, and each takes effect only once you approv
   form in the client, or nixie proposes one from the conversation when you ask for it there.
 
 Each one waits for you as an always-ask proposal on the shared approval record
-([approval record](approval-record.md)). Your approval adds its rules to
+([approval record](../../architecture/policy/approvals.md)). Your approval adds its rules to
 [the rule store](../../architecture/policy/rules.md#rules-in-force) as runtime changes: rules that
 nixie holds beside the ones your definitions repo holds. A proposed rule then goes into the rolling
 pull request of [the rule export](../../architecture/policy/rules.md#the-rule-export), which offers
@@ -37,7 +37,7 @@ Some terms this doc uses:
   one.
 - **The proposal terms,** such as the shared row, the always-ask and lifting risk classes, the
   action hash, Always allow, Defer, a lapse and a withdrawal, come from the approval record design
-  ([approval record](approval-record.md)).
+  ([approval record](../../architecture/policy/approvals.md)).
 - **An action proposal** and its cause `no_rule` come from the decision point cutover
   ([decision point cutover](decision-point-cutover.md)).
 - **A lift** is the `lift` field on an allow rule, which lets a `spend` call past the always-ask set

@@ -74,6 +74,18 @@ async function setupTest() {
 
       return read.rows;
     },
+    runAnsweredByBackfill: () =>
+      withWriteTransaction(api.context.log.writer, async (tx) => {
+        // The backfill is checked against the fold, so the column is cleared first.
+        // oxlint-disable-next-line zgeoff/seed-only
+        await sql`update proposals set answered_by = null`.execute(tx);
+
+        const migration = nixieSchema.migrations.find(
+          (entry) => entry.name === 'record who answered each proposal',
+        );
+
+        await migration?.up(tx);
+      }),
     runBackfill: () =>
       withWriteTransaction(api.context.log.writer, async (tx) => {
         const tables = await readQueryRows(
@@ -92,7 +104,18 @@ async function setupTest() {
         );
 
         await migration?.up(tx);
+
+        const answeredBy = nixieSchema.migrations.find(
+          (entry) => entry.name === 'record who answered each proposal',
+        );
+
+        await answeredBy?.up(tx);
       }),
+    readAnsweredBy: async () => {
+      const read = await sql`select answered_by from proposals`.execute(db);
+
+      return read.rows;
+    },
   };
 }
 
@@ -155,4 +178,36 @@ test('it folds the same rows from the log as the migration backfills from it', a
   const backfilled = await ctx.readRows();
 
   expect({ rows: backfilled, count: backfilled.length }).toStrictEqual({ rows: folded, count: 5 });
+});
+
+test('it folds the answering identity of each answered row as the migration backfills it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.writes.remember({
+    text: 'Keeps a rowing boat at the lake',
+    caller: buildMockWriteCaller(),
+  });
+
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.group === 'memory');
+
+  await ctx.client.approvals.answerProposal({
+    proposalID: item?.proposal.proposalID ?? 'missing',
+    actionHash: item?.proposal.actionHash ?? 'missing',
+    choice: 'decline',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const folded = await ctx.readRows();
+
+  await ctx.runAnsweredByBackfill();
+
+  const backfilled = await ctx.readRows();
+
+  expect(backfilled).toStrictEqual(folded);
+
+  const answeredBy = await ctx.readAnsweredBy();
+
+  expect(answeredBy).toContainEqual({ answered_by: expect.toBeString() });
 });

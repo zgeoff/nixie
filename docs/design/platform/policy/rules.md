@@ -61,8 +61,8 @@ content sources read strictly in both directions:
 - **A deny or ask rule catches a call when it catches any part of it.** One shared effect, one
   element that passes a check, one destination that matches, or one shared source is enough.
 
-[Memory writes on rules](../../queue/approval-record.md#memory-writes-on-rules) sets how the host
-resolves a memory write's sources. A write whose sources the host cannot resolve counts as
+[Memory writes on rules](../../../architecture/memory/writes.md#rules-on-memory-writes) sets how the
+host resolves a memory write's sources. A write whose sources the host cannot resolve counts as
 `outside`, so no allow rule for trusted content covers it.
 
 ### Rendering

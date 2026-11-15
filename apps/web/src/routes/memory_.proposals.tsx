@@ -1,16 +1,16 @@
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { MemoryProposals } from '../components/memory-proposals';
+import { ApprovalDigest } from '../approval/approval-digest';
 import { SignedInPage } from '../components/signed-in-page';
 import { readRouteSession } from '../conversation/read-route-session';
 import { css } from '../styled-system/css';
 
 export const Route = createFileRoute('/memory_/proposals')({
-  component: Proposals,
+  component: Approvals,
   loader: (options) => readRouteSession(options.context),
 });
 
-function Proposals(): ReactNode {
+function Approvals(): ReactNode {
   const data = Route.useLoaderData();
   const router = useRouter();
 
@@ -21,7 +21,7 @@ function Proposals(): ReactNode {
       }}
       session={data.session}
     >
-      <MemoryProposals
+      <ApprovalDigest
         navigation={
           <Link className={link} to="/memory">
             Memory

@@ -33,6 +33,7 @@ export type ProposalTables = CheckedTables<
       readonly deadline_at: number | null;
       readonly state: SharedProposalState;
       readonly used_by: string | null;
+      readonly answered_by: string | null;
       readonly defer_generation: number;
       readonly defer_until: number | null;
       readonly return_at: number | null;

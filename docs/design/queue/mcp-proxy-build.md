@@ -145,7 +145,7 @@ nixie mcp diff notes.search          # the pinned tool form and the latest one, 
 
 - Each command that widens creates one `internal_change` proposal of the `mcp` family and prints its
   short ID. You answer it in the client or with `nixie proposals approve <id>`, through the shared
-  answer path of the approval record ([approval record](approval-record.md)).
+  answer path of the approval record ([approval record](../../architecture/policy/approvals.md)).
 
 ```ts
 // mcp module: the canonical operation of an mcp proposal, whose SHA-256 is the row's action hash

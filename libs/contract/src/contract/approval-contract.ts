@@ -23,12 +23,16 @@ const proposalSchema = z.object({
   deadlineAt: z.date().nullable(),
   deferGeneration: z.int().nonnegative(),
   deferUntil: z.date().nullable(),
+  thread: z.string().nullable(),
+  taskID: z.string().nullable(),
+  sequence: z.int().positive(),
 });
 
 const bodySchema = z.object({
   sentence: z.string(),
   fields: z.record(z.string(), z.string()),
   ruleSentence: z.string().nullable(),
+  approveLabel: z.string(),
   memory: memoryProposalSchema.optional(),
 });
 
@@ -38,6 +42,15 @@ const itemSchema = z.object({
   body: bodySchema,
   task: taskSchema.nullable(),
   choices: z.array(choiceSchema),
+});
+
+const readItemSchema = z.object({
+  proposal: proposalSchema,
+  body: bodySchema.nullable(),
+  task: taskSchema.nullable(),
+  choices: z.array(choiceSchema),
+  answeredOn: z.string().nullable(),
+  isAnsweredHere: z.boolean(),
 });
 
 const deferSettingsSchema = z.object({
@@ -114,11 +127,20 @@ const answerErrors = signedIn.errors(reusedIDErrors).errors({
 });
 
 const listedSchema = z.object({ defer: deferSettingsSchema, items: z.array(itemSchema) });
+
+const readInputSchema = z.object({
+  proposalIDs: z.array(z.string().min(1).max(200)).min(1).max(100),
+});
+
 const batchInputSchema = z.object({ answers: z.array(answerSchema).min(1).max(100) });
 const batchResultSchema = z.object({ results: z.array(z.union([resultSchema, refusedSchema])) });
 
 export const approvalContract = {
   listItems: signedIn.output(listedSchema),
+
+  readProposals: signedIn
+    .input(readInputSchema)
+    .output(z.object({ proposals: z.array(readItemSchema) })),
 
   answerProposal: answerErrors.input(answerSchema).output(resultSchema),
 

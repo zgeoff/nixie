@@ -131,6 +131,8 @@ const recordSchema = z.object({
 
   rating: ratingSchema.optional(),
 
+  proposal: z.object({ proposalID: z.string(), shortID: z.string() }).optional(),
+
   recall: recallSchema.optional(),
   recordedAt: z.date(),
 

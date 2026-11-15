@@ -35,6 +35,7 @@ const approvalRecorded = z.strictObject({
 });
 
 const resolved = z.strictObject({ proposalID: z.string() });
+const rejected = z.strictObject({ proposalID: z.string(), identityID: z.string().exactOptional() });
 
 const merged = z.strictObject({
   mergeID: z.string(),
@@ -95,7 +96,11 @@ export type ProposalRecord =
       readonly answer: 'approved' | 'edited';
       readonly identityID: string;
     }
-  | { readonly kind: 'memory.proposal_rejected'; readonly proposalID: string }
+  | {
+      readonly kind: 'memory.proposal_rejected';
+      readonly proposalID: string;
+      readonly identityID?: string;
+    }
   | { readonly kind: 'memory.proposal_lapsed'; readonly proposalID: string };
 
 export function parseProposalRecord(record: EnvelopeRecord): ProposalRecord | null {
@@ -111,7 +116,11 @@ export function parseProposalRecord(record: EnvelopeRecord): ProposalRecord | nu
     return { kind: record.kind, ...approvalRecorded.parse(record.payload) };
   }
 
-  if (record.kind === 'memory.proposal_rejected' || record.kind === 'memory.proposal_lapsed') {
+  if (record.kind === 'memory.proposal_rejected') {
+    return { kind: record.kind, ...rejected.parse(record.payload) };
+  }
+
+  if (record.kind === 'memory.proposal_lapsed') {
     return { kind: record.kind, ...resolved.parse(record.payload) };
   }
 

@@ -311,6 +311,21 @@
                               "recalledSequence"
                             ]
                           },
+                          "proposal": {
+                            "type": "object",
+                            "properties": {
+                              "proposalID": {
+                                "type": "string"
+                              },
+                              "shortID": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "proposalID",
+                              "shortID"
+                            ]
+                          },
                           "recall": {
                             "type": "object",
                             "properties": {
@@ -801,6 +816,21 @@
                               "required": [
                                 "items",
                                 "recalledSequence"
+                              ]
+                            },
+                            "proposal": {
+                              "type": "object",
+                              "properties": {
+                                "proposalID": {
+                                  "type": "string"
+                                },
+                                "shortID": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "proposalID",
+                                "shortID"
                               ]
                             },
                             "recall": {
@@ -11777,1108 +11807,6 @@
         }
       }
     },
-    "/memory/listProposals": {
-      "post": {
-        "operationId": "memory.listProposals",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "proposals": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "actionHash": {
-                            "type": "string"
-                          },
-                          "createdAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "x-native-type": "date"
-                          },
-                          "evidence": {
-                            "anyOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "end": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 9007199254740991
-                                  },
-                                  "message": {
-                                    "anyOf": [
-                                      {
-                                        "type": "object",
-                                        "properties": {
-                                          "status": {
-                                            "enum": [
-                                              "readable",
-                                              "shredded",
-                                              "unreadable",
-                                              "missing"
-                                            ],
-                                            "type": "string"
-                                          },
-                                          "text": {
-                                            "type": "string"
-                                          }
-                                        },
-                                        "required": [
-                                          "status"
-                                        ]
-                                      },
-                                      {
-                                        "type": "null"
-                                      }
-                                    ]
-                                  },
-                                  "sequence": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 9007199254740991
-                                  },
-                                  "start": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 9007199254740991
-                                  }
-                                },
-                                "required": [
-                                  "end",
-                                  "message",
-                                  "sequence",
-                                  "start"
-                                ]
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "image": {
-                            "anyOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "position": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 9007199254740991
-                                  },
-                                  "sequence": {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991,
-                                    "exclusiveMinimum": 0
-                                  },
-                                  "thread": {
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "position",
-                                  "sequence",
-                                  "thread"
-                                ]
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "isPinned": {
-                            "type": "boolean"
-                          },
-                          "isSensitive": {
-                            "type": "boolean"
-                          },
-                          "itemID": {
-                            "type": "string"
-                          },
-                          "kind": {
-                            "enum": [
-                              "fact",
-                              "self"
-                            ],
-                            "type": "string"
-                          },
-                          "lapseAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "x-native-type": "date"
-                          },
-                          "newSubject": {
-                            "anyOf": [
-                              {
-                                "enum": [
-                                  "owner",
-                                  "self",
-                                  "shared"
-                                ],
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "operation": {
-                            "enum": [
-                              "remember",
-                              "retire",
-                              "pin"
-                            ],
-                            "type": "string"
-                          },
-                          "origin": {
-                            "enum": [
-                              "owner",
-                              "conversation",
-                              "task",
-                              "memory_writer"
-                            ],
-                            "type": "string"
-                          },
-                          "proposalID": {
-                            "type": "string"
-                          },
-                          "quote": {
-                            "anyOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "reason": {
-                            "enum": [
-                              "no_quote",
-                              "quote_not_typed",
-                              "quote_in_quoted_block",
-                              "invisible_character",
-                              "token_missing",
-                              "checker_not_asserted",
-                              "checker_unsure",
-                              "checker_unreachable",
-                              "forgotten_evidence",
-                              "ambiguous_target",
-                              "pinned",
-                              "other",
-                              "self_note",
-                              "from_photo",
-                              "sensitive",
-                              "subject_change",
-                              "ask_rule"
-                            ],
-                            "type": "string"
-                          },
-                          "source": {
-                            "enum": [
-                              "owner",
-                              "owner_data",
-                              "untrusted"
-                            ],
-                            "type": "string"
-                          },
-                          "sources": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "origin": {
-                                  "enum": [
-                                    "owner",
-                                    "conversation",
-                                    "task",
-                                    "memory_writer"
-                                  ],
-                                  "type": "string"
-                                },
-                                "proposedAt": {
-                                  "type": "string",
-                                  "format": "date-time",
-                                  "x-native-type": "date"
-                                },
-                                "thread": {
-                                  "anyOf": [
-                                    {
-                                      "type": "string"
-                                    },
-                                    {
-                                      "type": "null"
-                                    }
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "origin",
-                                "proposedAt",
-                                "thread"
-                              ]
-                            }
-                          },
-                          "subject": {
-                            "enum": [
-                              "owner",
-                              "self",
-                              "shared"
-                            ],
-                            "type": "string"
-                          },
-                          "targetVersion": {
-                            "anyOf": [
-                              {
-                                "type": "integer",
-                                "minimum": -9007199254740991,
-                                "maximum": 9007199254740991,
-                                "exclusiveMinimum": 0
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "text": {
-                            "type": "string"
-                          },
-                          "until": {
-                            "anyOf": [
-                              {
-                                "type": "string",
-                                "format": "date-time",
-                                "x-native-type": "date"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          }
-                        },
-                        "required": [
-                          "actionHash",
-                          "createdAt",
-                          "evidence",
-                          "image",
-                          "isPinned",
-                          "isSensitive",
-                          "itemID",
-                          "kind",
-                          "lapseAt",
-                          "newSubject",
-                          "operation",
-                          "origin",
-                          "proposalID",
-                          "quote",
-                          "reason",
-                          "source",
-                          "sources",
-                          "subject",
-                          "targetVersion",
-                          "text",
-                          "until"
-                        ]
-                      }
-                    }
-                  },
-                  "required": [
-                    "proposals"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "401",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "UNAUTHORIZED"
-                        },
-                        "status": {
-                          "const": 401
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The device session is missing, lapsed or revoked"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "503",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "MEMORY_NOT_STARTED"
-                        },
-                        "status": {
-                          "const": 503
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The memory store has not started yet"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/memory/approveProposals": {
-      "post": {
-        "operationId": "memory.approveProposals",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "answers": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 50,
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "actionHash": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200
-                        },
-                        "clientActionID": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "proposalID": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200
-                        },
-                        "editedText": {
-                          "type": "string",
-                          "maxLength": 2000,
-                          "pattern": "\\S"
-                        },
-                        "ignoreCloseMatch": {
-                          "type": "boolean"
-                        },
-                        "revisionOf": {
-                          "type": "object",
-                          "properties": {
-                            "itemID": {
-                              "type": "string",
-                              "minLength": 1,
-                              "maxLength": 200
-                            },
-                            "version": {
-                              "type": "integer",
-                              "minimum": -9007199254740991,
-                              "maximum": 9007199254740991,
-                              "exclusiveMinimum": 0
-                            }
-                          },
-                          "required": [
-                            "itemID",
-                            "version"
-                          ]
-                        }
-                      },
-                      "required": [
-                        "actionHash",
-                        "clientActionID",
-                        "proposalID"
-                      ]
-                    }
-                  }
-                },
-                "required": [
-                  "answers"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "outcomes": {
-                      "type": "array",
-                      "items": {
-                        "anyOf": [
-                          {
-                            "type": "object",
-                            "properties": {
-                              "proposalID": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "const": "applied"
-                              }
-                            },
-                            "required": [
-                              "proposalID",
-                              "status"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "proposalID": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "const": "rejected"
-                              }
-                            },
-                            "required": [
-                              "proposalID",
-                              "status"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "item": {
-                                "type": "object",
-                                "properties": {
-                                  "itemID": {
-                                    "type": "string"
-                                  },
-                                  "text": {
-                                    "type": "string"
-                                  },
-                                  "version": {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991,
-                                    "exclusiveMinimum": 0
-                                  }
-                                },
-                                "required": [
-                                  "itemID",
-                                  "text",
-                                  "version"
-                                ]
-                              },
-                              "proposalID": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "const": "close_match"
-                              }
-                            },
-                            "required": [
-                              "item",
-                              "proposalID",
-                              "status"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "cause": {
-                                "enum": [
-                                  "lapsed",
-                                  "answered",
-                                  "moved",
-                                  "changed",
-                                  "gone"
-                                ],
-                                "type": "string"
-                              },
-                              "proposalID": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "const": "stale"
-                              }
-                            },
-                            "required": [
-                              "cause",
-                              "proposalID",
-                              "status"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "code": {
-                                "enum": [
-                                  "CLIENT_ACTION_ID_REUSED",
-                                  "PIN_EDIT",
-                                  "PINNED_CORE_FULL",
-                                  "RETIREMENT_EDIT",
-                                  "REVISION_TARGET",
-                                  "WRONG_STATE"
-                                ],
-                                "type": "string"
-                              },
-                              "proposalID": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "const": "refused"
-                              }
-                            },
-                            "required": [
-                              "code",
-                              "proposalID",
-                              "status"
-                            ]
-                          }
-                        ]
-                      }
-                    }
-                  },
-                  "required": [
-                    "outcomes"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "401",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "UNAUTHORIZED"
-                        },
-                        "status": {
-                          "const": 401
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The device session is missing, lapsed or revoked"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "503",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "MEMORY_NOT_STARTED"
-                        },
-                        "status": {
-                          "const": 503
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The memory store has not started yet"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/memory/rejectProposals": {
-      "post": {
-        "operationId": "memory.rejectProposals",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "answers": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 50,
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "actionHash": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200
-                        },
-                        "clientActionID": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "proposalID": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200
-                        },
-                        "reason": {
-                          "type": "string",
-                          "maxLength": 500,
-                          "pattern": "\\S"
-                        }
-                      },
-                      "required": [
-                        "actionHash",
-                        "clientActionID",
-                        "proposalID"
-                      ]
-                    }
-                  }
-                },
-                "required": [
-                  "answers"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "outcomes": {
-                      "type": "array",
-                      "items": {
-                        "anyOf": [
-                          {
-                            "type": "object",
-                            "properties": {
-                              "proposalID": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "const": "applied"
-                              }
-                            },
-                            "required": [
-                              "proposalID",
-                              "status"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "proposalID": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "const": "rejected"
-                              }
-                            },
-                            "required": [
-                              "proposalID",
-                              "status"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "item": {
-                                "type": "object",
-                                "properties": {
-                                  "itemID": {
-                                    "type": "string"
-                                  },
-                                  "text": {
-                                    "type": "string"
-                                  },
-                                  "version": {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991,
-                                    "exclusiveMinimum": 0
-                                  }
-                                },
-                                "required": [
-                                  "itemID",
-                                  "text",
-                                  "version"
-                                ]
-                              },
-                              "proposalID": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "const": "close_match"
-                              }
-                            },
-                            "required": [
-                              "item",
-                              "proposalID",
-                              "status"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "cause": {
-                                "enum": [
-                                  "lapsed",
-                                  "answered",
-                                  "moved",
-                                  "changed",
-                                  "gone"
-                                ],
-                                "type": "string"
-                              },
-                              "proposalID": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "const": "stale"
-                              }
-                            },
-                            "required": [
-                              "cause",
-                              "proposalID",
-                              "status"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "code": {
-                                "enum": [
-                                  "CLIENT_ACTION_ID_REUSED",
-                                  "PIN_EDIT",
-                                  "PINNED_CORE_FULL",
-                                  "RETIREMENT_EDIT",
-                                  "REVISION_TARGET",
-                                  "WRONG_STATE"
-                                ],
-                                "type": "string"
-                              },
-                              "proposalID": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "const": "refused"
-                              }
-                            },
-                            "required": [
-                              "code",
-                              "proposalID",
-                              "status"
-                            ]
-                          }
-                        ]
-                      }
-                    }
-                  },
-                  "required": [
-                    "outcomes"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "401",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "UNAUTHORIZED"
-                        },
-                        "status": {
-                          "const": 401
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The device session is missing, lapsed or revoked"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "503",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "MEMORY_NOT_STARTED"
-                        },
-                        "status": {
-                          "const": 503
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The memory store has not started yet"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/memory/export": {
       "post": {
         "operationId": "memory.export",
@@ -16955,9 +15883,29 @@
         }
       }
     },
-    "/rules/listProposals": {
+    "/rules/readRule": {
       "post": {
-        "operationId": "rules.listProposals",
+        "operationId": "rules.readRule",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ruleID": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "ruleID"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -16966,227 +15914,39 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "proposals": {
+                    "ruleID": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "exclusiveMinimum": 0
+                    },
+                    "sentence": {
+                      "type": "string"
+                    },
+                    "outcome": {
+                      "enum": [
+                        "allow",
+                        "ask",
+                        "deny"
+                      ],
+                      "type": "string"
+                    },
+                    "destinations": {
                       "type": "array",
                       "items": {
-                        "type": "object",
-                        "properties": {
-                          "proposalID": {
-                            "type": "string"
-                          },
-                          "changes": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "ruleID": {
-                                  "type": "string"
-                                },
-                                "before": {
-                                  "anyOf": [
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "ruleHash": {
-                                          "type": "string"
-                                        },
-                                        "sentence": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "required": [
-                                        "ruleHash",
-                                        "sentence"
-                                      ]
-                                    },
-                                    {
-                                      "type": "null"
-                                    }
-                                  ]
-                                },
-                                "after": {
-                                  "anyOf": [
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "ruleHash": {
-                                          "type": "string"
-                                        },
-                                        "sentence": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "required": [
-                                        "ruleHash",
-                                        "sentence"
-                                      ]
-                                    },
-                                    {
-                                      "type": "null"
-                                    }
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "ruleID",
-                                "before",
-                                "after"
-                              ]
-                            }
-                          },
-                          "effectChanges": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "tool": {
-                                  "type": "string"
-                                },
-                                "remove": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "string"
-                                  }
-                                },
-                                "sentence": {
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "tool",
-                                "remove",
-                                "sentence"
-                              ]
-                            }
-                          },
-                          "createdAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "x-native-type": "date"
-                          },
-                          "lapseAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "x-native-type": "date"
-                          }
-                        },
-                        "required": [
-                          "proposalID",
-                          "changes",
-                          "effectChanges",
-                          "createdAt",
-                          "lapseAt"
-                        ]
+                        "type": "string"
                       }
                     }
                   },
                   "required": [
-                    "proposals"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "401",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "UNAUTHORIZED"
-                        },
-                        "status": {
-                          "const": 401
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The device session is missing, lapsed or revoked"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/rules/approveProposal": {
-      "post": {
-        "operationId": "rules.approveProposal",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "proposalID": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
-                  }
-                },
-                "required": [
-                  "proposalID"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "proposalID": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "proposalID"
+                    "ruleID",
+                    "revision",
+                    "sentence",
+                    "outcome",
+                    "destinations"
                   ]
                 }
               }
@@ -17272,67 +16032,7 @@
                         },
                         "message": {
                           "type": "string",
-                          "default": "No rule change proposal has this ID"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "409",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "PROPOSAL_CLOSED"
-                        },
-                        "status": {
-                          "const": 409
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The rule change proposal is answered, withdrawn or lapsed"
+                          "default": "No rule has this ID"
                         },
                         "data": {}
                       },
@@ -17375,9 +16075,9 @@
         }
       }
     },
-    "/rules/rejectProposal": {
+    "/rules/removeRule": {
       "post": {
-        "operationId": "rules.rejectProposal",
+        "operationId": "rules.removeRule",
         "requestBody": {
           "required": true,
           "content": {
@@ -17385,20 +16085,26 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "proposalID": {
+                  "ruleID": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 200
                   },
-                  "reason": {
+                  "revision": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "exclusiveMinimum": 0
+                  },
+                  "clientActionID": {
                     "type": "string",
-                    "maxLength": 500,
-                    "pattern": "\\S"
+                    "format": "uuid"
                   }
                 },
                 "required": [
-                  "proposalID",
-                  "reason"
+                  "ruleID",
+                  "revision",
+                  "clientActionID"
                 ]
               }
             }
@@ -17412,12 +16118,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "proposalID": {
+                    "ruleID": {
                       "type": "string"
                     }
                   },
                   "required": [
-                    "proposalID"
+                    "ruleID"
                   ]
                 }
               }
@@ -17483,8 +16189,8 @@
               }
             }
           },
-          "404": {
-            "description": "404",
+          "403": {
+            "description": "403",
             "content": {
               "application/json": {
                 "schema": {
@@ -17496,171 +16202,295 @@
                           "const": true
                         },
                         "code": {
-                          "const": "NOT_FOUND"
+                          "const": "NOT_ALLOWED"
                         },
                         "status": {
-                          "const": 404
+                          "const": 403
                         },
                         "message": {
                           "type": "string",
-                          "default": "No rule change proposal has this ID"
+                          "default": "The rule takes no such change"
                         },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "409",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "PROPOSAL_CLOSED"
-                        },
-                        "status": {
-                          "const": 409
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The rule change proposal is answered, withdrawn or lapsed"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/rules/listActionProposals": {
-      "post": {
-        "operationId": "rules.listActionProposals",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "proposals": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "proposalID": {
-                            "type": "string"
-                          },
-                          "tool": {
-                            "type": "string"
-                          },
-                          "sentence": {
-                            "type": "string"
-                          },
-                          "destinations": {
-                            "type": "array",
-                            "items": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "reason": {
+                              "enum": [
+                                "widens",
+                                "empty"
+                              ],
                               "type": "string"
                             }
                           },
-                          "createdAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "x-native-type": "date"
+                          "required": [
+                            "reason"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "NOT_FOUND"
+                        },
+                        "status": {
+                          "const": 404
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "No rule has this ID"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "CLIENT_ACTION_ID_REUSED"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The client action ID belongs to a different action"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "CONFLICT"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The rule changed since the notice showed it"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "revision": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "exclusiveMinimum": 0
+                            }
                           },
-                          "lapseAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "x-native-type": "date"
-                          }
+                          "required": [
+                            "revision"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
                         },
-                        "required": [
-                          "proposalID",
-                          "tool",
-                          "sentence",
-                          "destinations",
-                          "createdAt",
-                          "lapseAt"
-                        ]
-                      }
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rules/editRule": {
+      "post": {
+        "operationId": "rules.editRule",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ruleID": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "exclusiveMinimum": 0
+                  },
+                  "destinations": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^\\S+$"
+                    }
+                  },
+                  "clientActionID": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "ruleID",
+                  "revision",
+                  "destinations",
+                  "clientActionID"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ruleID": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "exclusiveMinimum": 0
                     }
                   },
                   "required": [
-                    "proposals"
+                    "ruleID",
+                    "revision"
                   ]
                 }
               }
@@ -17725,54 +16555,9 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/rules/approveActionProposal": {
-      "post": {
-        "operationId": "rules.approveActionProposal",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "proposalID": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
-                  }
-                },
-                "required": [
-                  "proposalID"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "proposalID": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "proposalID"
-                  ]
-                }
-              }
-            }
           },
-          "401": {
-            "description": "401",
+          "403": {
+            "description": "403",
             "content": {
               "application/json": {
                 "schema": {
@@ -17784,22 +16569,37 @@
                           "const": true
                         },
                         "code": {
-                          "const": "UNAUTHORIZED"
+                          "const": "NOT_ALLOWED"
                         },
                         "status": {
-                          "const": 401
+                          "const": 403
                         },
                         "message": {
                           "type": "string",
-                          "default": "The device session is missing, lapsed or revoked"
+                          "default": "The rule takes no such change"
                         },
-                        "data": {}
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "reason": {
+                              "enum": [
+                                "widens",
+                                "empty"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "reason"
+                          ]
+                        }
                       },
                       "required": [
                         "defined",
                         "code",
                         "status",
-                        "message"
+                        "message",
+                        "data"
                       ]
                     },
                     {
@@ -17851,7 +16651,7 @@
                         },
                         "message": {
                           "type": "string",
-                          "default": "No rule change proposal has this ID"
+                          "default": "No rule has this ID"
                         },
                         "data": {}
                       },
@@ -17904,14 +16704,14 @@
                           "const": true
                         },
                         "code": {
-                          "const": "PROPOSAL_CLOSED"
+                          "const": "CLIENT_ACTION_ID_REUSED"
                         },
                         "status": {
                           "const": 409
                         },
                         "message": {
                           "type": "string",
-                          "default": "The rule change proposal is answered, withdrawn or lapsed"
+                          "default": "The client action ID belongs to a different action"
                         },
                         "data": {}
                       },
@@ -17926,231 +16726,39 @@
                       "type": "object",
                       "properties": {
                         "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/rules/rejectActionProposal": {
-      "post": {
-        "operationId": "rules.rejectActionProposal",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "proposalID": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
-                  },
-                  "reason": {
-                    "type": "string",
-                    "maxLength": 500,
-                    "pattern": "\\S"
-                  }
-                },
-                "required": [
-                  "proposalID",
-                  "reason"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "proposalID": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "proposalID"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "401",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
                           "const": true
                         },
                         "code": {
-                          "const": "UNAUTHORIZED"
-                        },
-                        "status": {
-                          "const": 401
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The device session is missing, lapsed or revoked"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "404",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "NOT_FOUND"
-                        },
-                        "status": {
-                          "const": 404
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "No rule change proposal has this ID"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "409",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "PROPOSAL_CLOSED"
+                          "const": "CONFLICT"
                         },
                         "status": {
                           "const": 409
                         },
                         "message": {
                           "type": "string",
-                          "default": "The rule change proposal is answered, withdrawn or lapsed"
+                          "default": "The rule changed since the notice showed it"
                         },
-                        "data": {}
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "revision": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "revision"
+                          ]
+                        }
                       },
                       "required": [
                         "defined",
                         "code",
                         "status",
-                        "message"
+                        "message",
+                        "data"
                       ]
                     },
                     {
@@ -18326,6 +16934,32 @@
                                     "type": "null"
                                   }
                                 ]
+                              },
+                              "thread": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "taskID": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "sequence": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "exclusiveMinimum": 0
                               }
                             },
                             "required": [
@@ -18341,7 +16975,10 @@
                               "lapsesAt",
                               "deadlineAt",
                               "deferGeneration",
-                              "deferUntil"
+                              "deferUntil",
+                              "thread",
+                              "taskID",
+                              "sequence"
                             ]
                           },
                           "body": {
@@ -18368,6 +17005,9 @@
                                     "type": "null"
                                   }
                                 ]
+                              },
+                              "approveLabel": {
+                                "type": "string"
                               },
                               "memory": {
                                 "type": "object",
@@ -18669,7 +17309,8 @@
                             "required": [
                               "sentence",
                               "fields",
-                              "ruleSentence"
+                              "ruleSentence",
+                              "approveLabel"
                             ]
                           },
                           "task": {
@@ -18720,6 +17361,652 @@
                   "required": [
                     "defer",
                     "items"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approvals/readProposals": {
+      "post": {
+        "operationId": "approvals.readProposals",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "proposalIDs": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  }
+                },
+                "required": [
+                  "proposalIDs"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "proposals": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "proposal": {
+                            "type": "object",
+                            "properties": {
+                              "proposalID": {
+                                "type": "string"
+                              },
+                              "shortID": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "enum": [
+                                  "action",
+                                  "memory_write",
+                                  "internal_change"
+                                ],
+                                "type": "string"
+                              },
+                              "riskClass": {
+                                "enum": [
+                                  "routine",
+                                  "always_ask",
+                                  "lifting"
+                                ],
+                                "type": "string"
+                              },
+                              "actionHash": {
+                                "type": "string"
+                              },
+                              "ruleHash": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "cause": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "enum": [
+                                  "pending",
+                                  "deferred",
+                                  "approved",
+                                  "declined",
+                                  "lapsed",
+                                  "withdrawn"
+                                ],
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "lapsesAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "deadlineAt": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "x-native-type": "date"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "deferGeneration": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "deferUntil": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "x-native-type": "date"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "thread": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "taskID": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "sequence": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "exclusiveMinimum": 0
+                              }
+                            },
+                            "required": [
+                              "proposalID",
+                              "shortID",
+                              "kind",
+                              "riskClass",
+                              "actionHash",
+                              "ruleHash",
+                              "cause",
+                              "state",
+                              "createdAt",
+                              "lapsesAt",
+                              "deadlineAt",
+                              "deferGeneration",
+                              "deferUntil",
+                              "thread",
+                              "taskID",
+                              "sequence"
+                            ]
+                          },
+                          "body": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "sentence": {
+                                    "type": "string"
+                                  },
+                                  "fields": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "ruleSentence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "approveLabel": {
+                                    "type": "string"
+                                  },
+                                  "memory": {
+                                    "type": "object",
+                                    "properties": {
+                                      "actionHash": {
+                                        "type": "string"
+                                      },
+                                      "createdAt": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "x-native-type": "date"
+                                      },
+                                      "evidence": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "end": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "message": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "status": {
+                                                        "enum": [
+                                                          "readable",
+                                                          "shredded",
+                                                          "unreadable",
+                                                          "missing"
+                                                        ],
+                                                        "type": "string"
+                                                      },
+                                                      "text": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "status"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "null"
+                                                  }
+                                                ]
+                                              },
+                                              "sequence": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "start": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "end",
+                                              "message",
+                                              "sequence",
+                                              "start"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "image": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "position": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "sequence": {
+                                                "type": "integer",
+                                                "minimum": -9007199254740991,
+                                                "maximum": 9007199254740991,
+                                                "exclusiveMinimum": 0
+                                              },
+                                              "thread": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "required": [
+                                              "position",
+                                              "sequence",
+                                              "thread"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "isPinned": {
+                                        "type": "boolean"
+                                      },
+                                      "isSensitive": {
+                                        "type": "boolean"
+                                      },
+                                      "itemID": {
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "enum": [
+                                          "fact",
+                                          "self"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "lapseAt": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "x-native-type": "date"
+                                      },
+                                      "newSubject": {
+                                        "anyOf": [
+                                          {
+                                            "enum": [
+                                              "owner",
+                                              "self",
+                                              "shared"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "operation": {
+                                        "enum": [
+                                          "remember",
+                                          "retire",
+                                          "pin"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "origin": {
+                                        "enum": [
+                                          "owner",
+                                          "conversation",
+                                          "task",
+                                          "memory_writer"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "proposalID": {
+                                        "type": "string"
+                                      },
+                                      "quote": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "reason": {
+                                        "enum": [
+                                          "no_quote",
+                                          "quote_not_typed",
+                                          "quote_in_quoted_block",
+                                          "invisible_character",
+                                          "token_missing",
+                                          "checker_not_asserted",
+                                          "checker_unsure",
+                                          "checker_unreachable",
+                                          "forgotten_evidence",
+                                          "ambiguous_target",
+                                          "pinned",
+                                          "other",
+                                          "self_note",
+                                          "from_photo",
+                                          "sensitive",
+                                          "subject_change",
+                                          "ask_rule"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "source": {
+                                        "enum": [
+                                          "owner",
+                                          "owner_data",
+                                          "untrusted"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "sources": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "origin": {
+                                              "enum": [
+                                                "owner",
+                                                "conversation",
+                                                "task",
+                                                "memory_writer"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            "proposedAt": {
+                                              "type": "string",
+                                              "format": "date-time",
+                                              "x-native-type": "date"
+                                            },
+                                            "thread": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "origin",
+                                            "proposedAt",
+                                            "thread"
+                                          ]
+                                        }
+                                      },
+                                      "subject": {
+                                        "enum": [
+                                          "owner",
+                                          "self",
+                                          "shared"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "targetVersion": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "exclusiveMinimum": 0
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "text": {
+                                        "type": "string"
+                                      },
+                                      "until": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "x-native-type": "date"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "actionHash",
+                                      "createdAt",
+                                      "evidence",
+                                      "image",
+                                      "isPinned",
+                                      "isSensitive",
+                                      "itemID",
+                                      "kind",
+                                      "lapseAt",
+                                      "newSubject",
+                                      "operation",
+                                      "origin",
+                                      "proposalID",
+                                      "quote",
+                                      "reason",
+                                      "source",
+                                      "sources",
+                                      "subject",
+                                      "targetVersion",
+                                      "text",
+                                      "until"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "sentence",
+                                  "fields",
+                                  "ruleSentence",
+                                  "approveLabel"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "choices": {
+                            "type": "array",
+                            "items": {
+                              "enum": [
+                                "approve",
+                                "always_allow",
+                                "defer",
+                                "decline"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "answeredOn": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "isAnsweredHere": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "proposal",
+                          "body",
+                          "task",
+                          "choices",
+                          "answeredOn",
+                          "isAnsweredHere"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "proposals"
                   ]
                 }
               }
@@ -19962,6 +19249,21 @@
                                     "recalledSequence"
                                   ]
                                 },
+                                "proposal": {
+                                  "type": "object",
+                                  "properties": {
+                                    "proposalID": {
+                                      "type": "string"
+                                    },
+                                    "shortID": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "proposalID",
+                                    "shortID"
+                                  ]
+                                },
                                 "recall": {
                                   "type": "object",
                                   "properties": {
@@ -20614,6 +19916,21 @@
                                   "required": [
                                     "items",
                                     "recalledSequence"
+                                  ]
+                                },
+                                "proposal": {
+                                  "type": "object",
+                                  "properties": {
+                                    "proposalID": {
+                                      "type": "string"
+                                    },
+                                    "shortID": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "proposalID",
+                                    "shortID"
                                   ]
                                 },
                                 "recall": {

@@ -9,6 +9,7 @@ import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { readProposal, runProposalLapses, runProposalReturns } from '@heynixie/proposals';
 import { createConversationTask, readInbox } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
 import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -674,4 +675,86 @@ test('#runProposalLapses lapses a proposal deferred past its deadline at the dea
   const afterDeadline = await runProposalLapses(deps);
 
   expect({ beforeDeadline, afterDeadline }).toStrictEqual({ beforeDeadline: 0, afterDeadline: 1 });
+});
+
+test('#approvals.readProposals reads an open row with its choices, its approve label and no answering device', async () => {
+  const ctx = await setupTest();
+  const listed = await ctx.client.approvals.listItems();
+
+  const [item] = listed.items;
+
+  invariant(item);
+
+  const read = await ctx.client.approvals.readProposals({
+    proposalIDs: [item.proposal.proposalID],
+  });
+
+  expect(read).toStrictEqual({
+    proposals: [
+      {
+        proposal: item.proposal,
+        body: item.body,
+        task: item.task,
+        choices: ['approve', 'defer', 'decline'],
+        answeredOn: null,
+        isAnsweredHere: false,
+      },
+    ],
+  });
+});
+
+test('#approvals.readProposals reads a closed row with no choices and the device that answered it', async () => {
+  const ctx = await setupTest();
+  const listed = await ctx.client.approvals.listItems();
+
+  const [item] = listed.items;
+  const proposalID = item?.proposal.proposalID ?? 'missing';
+
+  await ctx.client.approvals.answerProposal({
+    proposalID,
+    actionHash: item?.proposal.actionHash ?? 'missing',
+    choice: 'approve',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const phone = await createDeviceSession(ctx.api.context, 'phone');
+
+  const fromPhone = buildTestClient(ctx.url, phone.token);
+
+  const here = await ctx.client.approvals.readProposals({ proposalIDs: [proposalID] });
+  const elsewhere = await fromPhone.approvals.readProposals({ proposalIDs: [proposalID] });
+
+  expect({
+    here: here.proposals.map((read) => [
+      read.proposal.state,
+      read.choices,
+      read.answeredOn,
+      read.isAnsweredHere,
+    ]),
+    elsewhere: elsewhere.proposals.map((read) => [
+      read.choices,
+      read.answeredOn,
+      read.isAnsweredHere,
+    ]),
+  }).toStrictEqual({
+    here: [['approved', [], 'laptop', true]],
+    elsewhere: [[[], 'laptop', false]],
+  });
+});
+
+test('#approvals.readProposals reads a row by its short ID and leaves out an ID that names no row', async () => {
+  const ctx = await setupTest();
+  const listed = await ctx.client.approvals.listItems();
+
+  const [item] = listed.items;
+
+  invariant(item);
+
+  const read = await ctx.client.approvals.readProposals({
+    proposalIDs: [item.proposal.shortID, 'no-such-proposal'],
+  });
+
+  expect(read.proposals.map((entry) => entry.proposal.proposalID)).toStrictEqual([
+    item.proposal.proposalID,
+  ]);
 });

@@ -206,6 +206,31 @@ permission again to tell the two apart. An installed app shares the site's permi
 one grant covers the app and the browser tab, and the web server sends no Permissions-Policy header
 that could block the microphone.
 
+## Approvals
+
+A proposal shows as a card, in the conversation under the record that created it and on the
+approvals page. The card's text and state come from the proposal's row, read through
+`approvals.readProposals`, and never from a model's reply, so a reply that claims the action is done
+leaves the card pending.
+
+The card shows the approve label on its Approve button, and offers only the choices the host lists.
+A lifting row shows the rule's bounds before Approve takes effect. Always allow shows the rule it
+adds on the card, and after it the card shows "Rule added" with Undo, and Edit when the rule has
+more than one destination. Undo and Edit call `rules.removeRule` and `rules.editRule`. Defer offers
+an hour, this evening, tomorrow morning and a custom time within the host's limits, from the
+settings `listItems` returns. A closed card shows its state and, when another device answered, that
+device's name.
+
+A card keeps the body it first showed. When the action hash or the rule hash moves under it, the
+card shows a before and after of the changed text, and answers against the hashes the host holds
+now, so one more tap approves what the user saw last.
+
+The approvals page lists the groups of `listItems` and keeps a row that leaves the list as a
+collapsed line with its state. "Approve selected" and "Approve all routine" send `answerProposals`
+for routine action rows against the hash the page first showed, in calls of at most 100 answers, and
+each row settles alone. Memory, always-ask, lifting and deferred rows never join a batch. The
+Deferred group is collapsed.
+
 ## The task dashboard
 
 The dashboard at `/tasks` lists every open task in three groups: the conversation, the working tasks

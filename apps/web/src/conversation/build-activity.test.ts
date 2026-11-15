@@ -722,3 +722,15 @@ test('it names the record and thread of a call result, and none for a call witho
     { kind: 'tool_result', sequence: 4, thread: 'conversation' },
   ]);
 });
+
+test('it makes an activity item of the record that created a proposal', () => {
+  const record = buildMockLogRecord({
+    kind: 'policy.action_proposed',
+    sequence: 7,
+    proposal: { proposalID: 'c3d7e9a1', shortID: 'xk3p9q2w7a' },
+  });
+
+  expect(buildActivity([record])).toStrictEqual([
+    { kind: 'proposal', record, proposal: { proposalID: 'c3d7e9a1', shortID: 'xk3p9q2w7a' } },
+  ]);
+});

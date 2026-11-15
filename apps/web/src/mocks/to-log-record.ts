@@ -15,6 +15,7 @@ export function toLogRecord(record: StoredRecord): LogRecord {
     ...(record.isRemoved === undefined ? {} : { isRemoved: record.isRemoved }),
     kind: record.kind,
     ...(record.message === undefined ? {} : { message: toLogMessage(record.message) }),
+    ...(record.proposal === undefined ? {} : { proposal: { ...record.proposal } }),
     ...(record.rating === undefined ? {} : { rating: toLogRating(record.rating) }),
     ...(record.recall === undefined ? {} : { recall: toLogRecall(record.recall) }),
     recordedAt: record.recordedAt,

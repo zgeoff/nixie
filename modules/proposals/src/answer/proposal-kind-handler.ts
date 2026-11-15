@@ -23,6 +23,9 @@ export interface SharedProposal {
   readonly deadlineAt: number | null;
   readonly state: SharedProposalState;
   readonly usedBy: string | null;
+
+  // the identity whose answer closed the row, null when none did
+  readonly answeredBy: string | null;
   readonly deferGeneration: number;
   readonly deferUntil: number | null;
   readonly returnAt: number | null;
@@ -98,6 +101,9 @@ export interface ProposalBody {
   readonly sentence: string;
   readonly fields: Readonly<Record<string, string>>;
   readonly ruleSentence: string | null;
+
+  // the approve button's text, built from the kind's template and never from a model
+  readonly approveLabel: string;
 }
 
 export interface ProposalHashes {

@@ -103,6 +103,7 @@ function toBody(record: LogRecord | undefined): ProposalBody | null {
       Object.entries(erasable.input).map(([name, value]) => [name, toFieldText(value)]),
     ),
     ruleSentence: erasable.ruleSentence ?? null,
+    approveLabel: buildActionApproveLabel(payload.tool, destinations[0]),
   };
 }
 
@@ -124,6 +125,10 @@ function findErasable(record: LogRecord): z.output<typeof erasableSchema> | null
 
 function toFieldText(value: unknown): string {
   return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
+function buildActionApproveLabel(tool: string, destination: string | undefined): string {
+  return destination === undefined ? `Run ${tool}` : `Run ${tool} to ${destination}`;
 }
 
 async function writeAnswer(
@@ -160,6 +165,7 @@ async function writeAnswer(
       proposalID: row.id,
       shortID: row.shortID,
       answer: isDeclined ? 'declined' : 'approved',
+      identityID: answer.identityID,
     }),
     ...(isDeclined && answer.note !== undefined ? { erasable: { reason: answer.note } } : {}),
   });

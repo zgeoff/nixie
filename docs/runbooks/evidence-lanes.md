@@ -71,9 +71,9 @@ The API read procedures of a device session are `conversation/read`, `conversati
 `tasks/list`, `tasks/read`, `tasks/readActions`, `memory/readVersions`, `memory/readRatingNotes`,
 `memory/writerStatus`, `memory/consolidatorStatus`, `memory/listItems`, `memory/findItems`,
 `memory/readPinnedCore`, `memory/readItem`, `memory/listNotices`, `memory/previewForget`,
-`memory/previewForgetRetired`, `memory/readForgetStatus`, `memory/listProposals`,
-`memory/listMoments`, `memory/readMoment`, `memory/readMomentSpan`, `memory/previewMomentDestroy`,
-`backups/readNotice`, `rules/listProposals`, `sessions/list`, `records/follow` and `log/follow`.
+`memory/previewForgetRetired`, `memory/readForgetStatus`, `memory/listMoments`, `memory/readMoment`,
+`memory/readMomentSpan`, `memory/previewMomentDestroy`, `backups/readNotice`, `approvals/listItems`,
+`approvals/readProposals`, `rules/readRule`, `sessions/list`, `records/follow` and `log/follow`.
 
 An API read needs a device session, and getting one has side effects:
 

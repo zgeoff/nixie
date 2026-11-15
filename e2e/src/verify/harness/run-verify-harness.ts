@@ -64,13 +64,16 @@ export async function runVerifyHarness(): Promise<void> {
       };
     },
     readActionProposals: async () => {
-      const listed = await api.client.rules.listActionProposals();
+      const listed = await api.client.approvals.listItems();
 
       return {
-        proposals: listed.proposals.map((proposal) => ({
-          proposalID: proposal.proposalID,
-          tool: proposal.tool,
-        })),
+        proposals: listed.items.flatMap((item) => {
+          const tool = /^Run (?<tool>\S+)/u.exec(item.body.approveLabel)?.groups?.['tool'];
+
+          return item.proposal.kind === 'action' && tool !== undefined
+            ? [{ proposalID: item.proposal.proposalID, tool }]
+            : [];
+        }),
       };
     },
   });

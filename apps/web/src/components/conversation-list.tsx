@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react';
 import { Fragment } from 'react';
 import { match } from 'ts-pattern';
+import { ThreadApprovalCard } from '../approval/thread-approval-card';
 import type { ActivityItem, TaskMessageActivity } from '../conversation/build-activity';
 import { buildActivity } from '../conversation/build-activity';
 import { isWorking } from '../conversation/is-working';
@@ -129,6 +130,9 @@ function ActivityEntry(props: ActivityEntryProps): ReactNode {
     .with({ kind: 'moment' }, (item) => <MomentKeptNotice moment={item.moment} />)
     .with({ kind: 'taskMessage' }, (item) => renderMessage(item.message))
     .with({ kind: 'exchange' }, (item) => <ExchangeNotice notice={item.notice} />)
+    .with({ kind: 'proposal' }, (item) => (
+      <ThreadApprovalCard proposalID={item.proposal.proposalID} />
+    ))
     .with({ kind: 'stop' }, (item) => <StopMarker stop={item.stop} />)
     .with({ kind: 'step' }, (item) => (
       <>

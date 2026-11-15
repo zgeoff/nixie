@@ -2,9 +2,9 @@ import { faker } from '@faker-js/faker';
 import { nixieRunnerControls } from '@heynixie/task-control';
 import { Collection } from '@msw/data';
 import { z } from 'zod';
+import { approvalRows } from './approval-rows';
+import { mockSequence } from './mock-sequence';
 import { pauseStore } from './pause-store';
-
-const counter = { lastSequence: 0 };
 
 const sessions = new Collection({
   schema: z.object({
@@ -129,6 +129,7 @@ const exchangeNoticeSchema = z.object({
 
 const listedActionSchema = z.object({ actionID: z.string(), tool: z.string() });
 const stopSchema = z.object({ cancelledActions: z.array(listedActionSchema) });
+const proposalRefSchema = z.object({ proposalID: z.string(), shortID: z.string() });
 
 const records = new Collection({
   schema: z.object({
@@ -141,13 +142,14 @@ const records = new Collection({
     isRemoved: z.literal(true).optional(),
     kind: z.string().default('owner_message'),
     message: messageSchema.optional(),
+    proposal: proposalRefSchema.optional(),
     rating: ratingSchema.optional(),
     recall: recallSchema.optional(),
     recordedAt: z.date().default(() => new Date()),
     sequence: z.int().default(() => {
-      counter.lastSequence += 1;
+      mockSequence.lastSequence += 1;
 
-      return counter.lastSequence;
+      return mockSequence.lastSequence;
     }),
     stop: stopSchema.optional(),
     summary: summarySchema.optional(),
@@ -358,42 +360,15 @@ const momentReflectionSchema = z.object({
 
 const momentNoteSchema = z.object({ text: z.string(), writtenAt: z.date() });
 const itemIDsSchema = z.array(z.string());
-const ruleVersionSchema = z.object({ ruleHash: z.string(), sentence: z.string() });
+const destinationsSchema = z.array(z.string());
 
-const ruleChangeSchema = z.object({
-  after: ruleVersionSchema.nullable(),
-  before: ruleVersionSchema.nullable(),
-  ruleID: z.string(),
-});
-
-const effectChangeSchema = z.object({
-  tool: z.string(),
-  remove: z.array(z.string()),
-  sentence: z.string(),
-});
-
-const ruleProposals = new Collection({
+const rules = new Collection({
   schema: z.object({
-    changes: z.array(ruleChangeSchema).default(() => []),
-    createdAt: z.date().default(() => faker.date.recent()),
-    effectChanges: z.array(effectChangeSchema).default(() => []),
-    lapseAt: z.date().default(() => faker.date.soon({ days: 14 })),
-    proposalID: z.string().default(() => faker.string.alphanumeric(10).toLowerCase()),
-    reason: z.string().nullable().default(null),
-    status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
-  }),
-});
-
-const actionProposals = new Collection({
-  schema: z.object({
-    createdAt: z.date().default(() => faker.date.recent()),
-    destinations: z.string().array().default([]),
-    lapseAt: z.date().default(() => faker.date.soon({ days: 3 })),
-    proposalID: z.string().default(buildMockProposalID),
-    reason: z.string().nullable().default(null),
-    sentence: z.string().default('Run mail.send (send).'),
-    status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
-    tool: z.string().default('mail.send'),
+    destinations: destinationsSchema.default(() => []),
+    outcome: z.enum(['allow', 'ask', 'deny']).default('allow'),
+    revision: z.int().positive().default(1),
+    ruleID: z.string().default(() => faker.string.alphanumeric({ length: 10, casing: 'lower' })),
+    sentence: z.string().default('Allow mail.send.'),
   }),
 });
 
@@ -488,8 +463,8 @@ export const store = {
   ratingNotes,
   records,
   retryActions,
-  ruleProposals,
-  actionProposals,
+  rules,
+  approvalRows,
 
   // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
@@ -504,8 +479,8 @@ export const store = {
       memoryItems,
       memoryNotices,
       memoryProposals,
-      ruleProposals,
-      actionProposals,
+      approvalRows,
+      rules,
       memoryWriter,
       memoryConsolidator,
       backupNotices,
@@ -520,14 +495,10 @@ export const store = {
 
     pauseStore.reset();
 
-    counter.lastSequence = 0;
+    mockSequence.lastSequence = 0;
   },
   sessions,
   taskActions,
   taskControlActions,
   tasks,
 };
-
-function buildMockProposalID(): string {
-  return faker.string.alphanumeric(10).toLowerCase();
-}

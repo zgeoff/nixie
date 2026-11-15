@@ -103,6 +103,11 @@ export type ActivityItem =
       readonly notice: NonNullable<LiveRecord['exchangeNotice']>;
     }
   | {
+      readonly kind: 'proposal';
+      readonly record: LiveRecord;
+      readonly proposal: NonNullable<LiveRecord['proposal']>;
+    }
+  | {
       readonly kind: 'stop';
       readonly record: LiveRecord;
       readonly stop: NonNullable<LiveRecord['stop']>;
@@ -174,6 +179,8 @@ const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply
 function foldRecord(state: ActivityState, record: LiveRecord): void {
   if (record.message !== undefined || messageKinds.has(record.kind)) {
     state.items.push({ kind: 'message', record });
+  } else if (record.proposal !== undefined) {
+    state.items.push({ kind: 'proposal', record, proposal: record.proposal });
   } else if (record.kind === 'log_reset') {
     state.items.push({ kind: 'reset', record });
   } else if (record.moment !== undefined) {

@@ -35,7 +35,7 @@ export function createHostActionProcedures(context: APIContext) {
   };
 }
 
-export function buildActionProposalEntry(entry: PendingActionProposal) {
+function buildActionProposalEntry(entry: PendingActionProposal) {
   return {
     proposalID: entry.shortID,
     tool: entry.tool,

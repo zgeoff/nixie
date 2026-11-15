@@ -120,3 +120,8 @@ export type { RulesRecordKind } from './skill/rules-record-kind';
 export { makeRuleProposalHandler } from './rule/make-rule-proposal-handler';
 export { mapRuleProposalRecord } from './rule/map-rule-proposal-record';
 export { writeRuntimeRuleInTransaction } from './runtime/write-runtime-rule';
+export type { CurrentRuleVersion } from './runtime/read-current-rule';
+export { readCurrentRule } from './runtime/read-current-rule';
+export type { RuleEditRequest } from './runtime/pick-rule-edit';
+export type { RuleEditOutcome } from './runtime/write-rule-edit';
+export { writeRuleEdit } from './runtime/write-rule-edit';
