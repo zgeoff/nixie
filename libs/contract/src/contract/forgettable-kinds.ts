@@ -9,6 +9,7 @@ export const forgettableKinds = [
   'model.reply',
   'model.session_summarized',
   'owner_message',
+  'passkey.registered',
   'policy.action_answered',
   'policy.action_proposed',
   'policy.contact_marked_known',

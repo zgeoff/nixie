@@ -1,6 +1,7 @@
 import { createApprovalProcedures } from '../approval/create-approval-procedures';
 import { createMemoryProcedures } from '../memory/create-memory-procedures';
 import { createMemoryViewRouter } from '../memory/create-memory-view-router';
+import { createPasskeyProcedures } from '../passkey/create-passkey-procedures';
 import { createNixieProcedures } from '../pause/create-nixie-procedures';
 import { createRecoveryProcedures } from '../pause/create-recovery-procedures';
 import { createConversationProcedures } from '../record/create-conversation-procedures';
@@ -29,6 +30,7 @@ export function createAPIRouter(
     },
     nixie: createNixieProcedures(context),
     ...createRecordProcedures(context),
+    passkeys: createPasskeyProcedures(context),
     recovery: createRecoveryProcedures(context),
     rules: createRuleProcedures({ ...context, runInForceSeed }),
     sessions: {

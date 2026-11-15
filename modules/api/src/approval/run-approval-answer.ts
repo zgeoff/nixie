@@ -1,5 +1,11 @@
 import type { ContractInputs } from '@heynixie/contract';
-import type { AnswerOutcome, AnswerSettlement, ProposalCoreDeps } from '@heynixie/proposals';
+import type {
+  AnswerOutcome,
+  AnswerSettlement,
+  PasskeyGate,
+  PasskeyRefusal,
+  ProposalCoreDeps,
+} from '@heynixie/proposals';
 import { answerProposal } from '@heynixie/proposals';
 import { z } from 'zod';
 import type { APIContext, Identity } from '../types';
@@ -15,18 +21,26 @@ export type ApprovalAnswer = ContractInputs['approvals']['answerProposal'];
 export type ApprovalRun =
   | { readonly status: 'settled'; readonly settlement: AnswerSettlement }
   | { readonly status: 'unauthorized' }
+  | { readonly status: 'passkey_refused'; readonly refusal: PasskeyRefusal }
   | { readonly status: 'reused' };
 
 const procedure = 'approvals.answerProposal';
 
-// A checked action: the refusal of an answer is stored under the client action ID in the answer's
-// own transaction, so a retry gets the same refusal.
+export interface ApprovalAnswerRequest {
+  readonly answer: ApprovalAnswer;
+  readonly passkey: PasskeyGate | undefined;
+}
+
+// A checked action: the refusal of an answer is stored under the client action ID, so a retry gets
+// the same refusal. A passkey refusal is the exception: nothing is stored, so a retry with a fresh
+// assertion runs every check again.
 export async function runApprovalAnswer(
   context: APIContext,
   deps: ProposalCoreDeps,
   caller: Identity,
-  answer: ApprovalAnswer,
+  request: ApprovalAnswerRequest,
 ): Promise<ApprovalRun> {
+  const answer = request.answer;
   const inputHash = buildInputHash(buildHashedInput(answer));
   const query = { context, caller, answer, inputHash };
 
@@ -38,6 +52,7 @@ export async function runApprovalAnswer(
 
   try {
     const outcome = await answerProposal(deps, buildAnswerInput(answer, caller), {
+      ...(request.passkey === undefined ? {} : { passkey: request.passkey }),
       probeCaller: (tx) => probeLiveIdentity(tx, context, caller.identityID),
       writeSettlement: async (tx, settlement) => {
         const settled = await readSettled(tx, query);
@@ -130,7 +145,9 @@ function buildAnswerInput(answer: ApprovalAnswer, caller: Identity) {
 }
 
 function toRun(outcome: AnswerOutcome): ApprovalRun {
-  return outcome.status === 'unauthorized'
-    ? { status: 'unauthorized' }
-    : { status: 'settled', settlement: outcome };
+  if (outcome.status === 'unauthorized' || outcome.status === 'passkey_refused') {
+    return outcome;
+  }
+
+  return { status: 'settled', settlement: outcome };
 }

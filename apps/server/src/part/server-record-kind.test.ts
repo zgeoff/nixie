@@ -18,6 +18,7 @@ function setupTest() {
     moment_edited: ['title', 'note', 'reflection'],
     moment_kept: ['title'],
     owner_message: ['text', 'spans', 'sessionLabel'],
+    'passkey.registered': ['label'],
     'policy.action_answered': ['reason'],
     'policy.action_proposed': ['rule', 'ruleID', 'ruleSentence', 'input', 'destinations'],
     'policy.contact_marked_known': ['name', 'destination'],

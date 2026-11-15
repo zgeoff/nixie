@@ -27,3 +27,5 @@ GEO-1805: POST /rules/listActionProposals api path removed without deprecation
 GEO-1805: POST /rules/listProposals api path removed without deprecation
 GEO-1805: POST /rules/rejectActionProposal api path removed without deprecation
 GEO-1805: POST /rules/rejectProposal api path removed without deprecation
+GEO-310: POST /approvals/answerProposal added `subschema #2, subschema #3, subschema #4` to the response body `oneOf` list for the response status `403`
+GEO-310: POST /approvals/answerProposals added the new `PASSKEY_REQUIRED` enum value to the `results/items/anyOf[subschema #2]/error` response property for the response status `200`

@@ -1,6 +1,6 @@
 import { readMessageTimeZone } from '@heynixie/connectors';
 import type { ProposalCoreDeps } from '@heynixie/proposals';
-import { pickProposalChoices, readOpenProposals } from '@heynixie/proposals';
+import { pickPasskeyChoices, pickProposalChoices, readOpenProposals } from '@heynixie/proposals';
 import type { APIContext, ReadViewMemory } from '../types';
 import { defaultApprovalSettings } from '../utils/default-api-settings';
 import { collectOrderedRows, pickApprovalGroup } from './collect-ordered-rows';
@@ -56,6 +56,7 @@ export async function readApprovalItems(
       body: item.body,
       task: item.taskID === null ? null : { id: item.taskID, name: item.taskName ?? item.taskID },
       choices: [...pickProposalChoices(item.proposal)],
+      passkeyChoices: [...pickPasskeyChoices(item.proposal)],
     })),
   };
 }

@@ -2,6 +2,7 @@ import { oc } from '@orpc/contract';
 import { z } from 'zod';
 import { actionProposalSchema } from './action-proposal-schema';
 import { forgetBackupSchema } from './forget-backup-schema';
+import { hostPasskeyContract } from './host-passkey-contract';
 import { knownContactSchema } from './known-contact-schema';
 import { pauseStateSchema } from './pause-state-schema';
 import { recoverySchema } from './recovery-schema';
@@ -436,6 +437,7 @@ export const hostContract = {
       .input(z.strictObject({ sessionID: z.string().min(1), label: z.string() }))
       .output(z.object({ sessionID: z.string(), label: z.string() })),
   },
+  passkeys: hostPasskeyContract,
   memory: {
     proposals: {
       list: memory.output(z.array(pendingProposalSchema)),

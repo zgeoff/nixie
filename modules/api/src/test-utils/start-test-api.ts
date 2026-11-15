@@ -11,6 +11,7 @@ import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
 import { apiProjections } from '../api/api-projections';
 import { createAPIApp } from '../api/create-api-app';
+import { createPasskeyState } from '../passkey/passkey-state';
 import { proposalsProjection } from '../proposal/proposals-projection';
 import { defaultAPISettings } from '../utils/default-api-settings';
 
@@ -86,6 +87,7 @@ async function createTestContext(
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
     settings,
+    passkeys: createPasskeyState(),
 
     readSessionCleanup: () => null,
   };

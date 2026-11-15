@@ -3,6 +3,7 @@ import { createMemoryItem, startTestMemory } from '@heynixie/memory/test-utils';
 import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
 import { createRouterClient } from '@orpc/server';
 import invariant from 'tiny-invariant';
+import { createPasskeyState } from '../passkey/passkey-state';
 import { defaultAPISettings } from '../utils/default-api-settings';
 import { createHostItemProcedures } from './create-host-item-procedures';
 
@@ -16,6 +17,7 @@ async function setupTest() {
     runSettings: buildTestRunSettings(),
     settings: defaultAPISettings,
     readSessionCleanup: () => null,
+    passkeys: createPasskeyState(),
   };
 
   return {

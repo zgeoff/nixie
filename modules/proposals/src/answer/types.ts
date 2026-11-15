@@ -5,6 +5,7 @@ import type { ProposalFamily } from '../rows/proposal-tables';
 import type { QuietHours } from '../sweeps/pick-return-at';
 import type {
   AnswerResult,
+  ProposalAnswerInput,
   ProposalKindHandler,
   ProposalRefusal,
   SharedProposal,
@@ -33,7 +34,42 @@ export type AnswerSettlement =
   | { readonly status: 'answered'; readonly result: AnswerResult }
   | { readonly status: 'refused'; readonly refusal: ProposalRefusal };
 
-export type AnswerOutcome = AnswerSettlement | { readonly status: 'unauthorized' };
+export type PasskeyFailure =
+  | 'unknown_challenge'
+  | 'binding'
+  | 'unknown_passkey'
+  | 'origin'
+  | 'no_user_verification'
+  | 'signature'
+  | 'counter';
+
+export type PasskeyRefusal =
+  | { readonly error: 'PASSKEY_REQUIRED' }
+  | { readonly error: 'NO_PASSKEY' }
+  | { readonly error: 'PASSKEY_FAILED'; readonly reason: PasskeyFailure };
+
+// A passkey refusal is never a settlement: nothing is stored under the client action ID, so a retry
+// with a fresh assertion runs every check again.
+export type AnswerOutcome =
+  | AnswerSettlement
+  | { readonly status: 'unauthorized' }
+  | { readonly status: 'passkey_refused'; readonly refusal: PasskeyRefusal };
+
+// Who answers decides how a gated choice passes: a host command needs no passkey, a device route
+// checks one, and a route that names neither is refused.
+export type PasskeyGate =
+  | { readonly kind: 'host' }
+  | {
+      readonly kind: 'device';
+
+      // Returns null when the assertion passes, after it writes what the pass changes in the
+      // answer's transaction.
+      readonly check: (
+        tx: Transaction<unknown>,
+        row: SharedProposal,
+        answer: ProposalAnswerInput,
+      ) => Promise<PasskeyRefusal | null>;
+    };
 
 export interface AnswerHooks {
   // a route that answers one kind only never reaches a row of another
@@ -41,6 +77,9 @@ export interface AnswerHooks {
 
   // runs first, in the answer's transaction; false stops the answer with nothing written
   readonly probeCaller?: (tx: Transaction<unknown>) => Promise<boolean>;
+
+  // the passkey gate of a choice that takes one; with none, such a choice is refused
+  readonly passkey?: PasskeyGate;
 
   // runs in the answer's transaction, after the answer or its refusal is decided
   readonly writeSettlement?: (

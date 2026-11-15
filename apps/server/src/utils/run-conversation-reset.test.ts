@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { defaultAPISettings } from '@heynixie/api';
+import { createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { readLinkTarget } from '@heynixie/connectors';
 import { readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
@@ -17,6 +17,7 @@ async function setupTest() {
     ...server.context,
     settings: defaultAPISettings,
     readSessionCleanup: () => null,
+    passkeys: createPasskeyState(),
   };
 
   return {

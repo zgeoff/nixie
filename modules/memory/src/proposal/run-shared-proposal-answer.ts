@@ -68,7 +68,10 @@ export async function runSharedProposalAnswer(
     throw error instanceof CallerWriteError ? error.cause : error;
   });
 
-  invariant(outcome.status !== 'unauthorized', 'a memory answer names no caller check of its own');
+  invariant(
+    outcome.status !== 'unauthorized' && outcome.status !== 'passkey_refused',
+    'a memory answer names no caller check of its own and takes no passkey',
+  );
 
   if (outcome.status === 'refused') {
     throw toMemoryError(answer.proposalID, outcome.refusal);

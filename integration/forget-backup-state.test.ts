@@ -3,7 +3,13 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { APIContext } from '@heynixie/api';
-import { apiProjections, createAPIApp, defaultAPISettings, makeHostResponder } from '@heynixie/api';
+import {
+  apiProjections,
+  createAPIApp,
+  createPasskeyState,
+  defaultAPISettings,
+  makeHostResponder,
+} from '@heynixie/api';
 import { buildTestClient } from '@heynixie/api/test-utils';
 import type { BackupPass } from '@heynixie/backup';
 import { getBackupStagingDir, startBackupSchedule } from '@heynixie/backup';
@@ -61,6 +67,7 @@ async function setupTest() {
     runSettings: buildTestRunSettings(),
     settings: defaultAPISettings,
     readSessionCleanup: () => null,
+    passkeys: createPasskeyState(),
   };
 
   const memory = await startMemoryStore({
