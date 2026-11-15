@@ -1,10 +1,11 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { renderRule, toRuleForm } from '@heynixie/policy';
+import { parseRule, renderRule, toRuleForm } from '@heynixie/policy';
 import type { ProposalContext } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
 import type { DefinitionsTables } from '../types';
 import type { RuntimeRuleInput } from './build-runtime-rule-row';
 import { buildRuntimeRuleRow } from './build-runtime-rule-row';
+import { MandateRuleError } from './mandate-rule-error';
 import { rulesRuntimeChangedCodec } from './rules-runtime-changed-codec';
 import { writeRuntimeRuleState } from './write-runtime-rule-state';
 
@@ -48,6 +49,8 @@ export async function writeRuntimeRuleInTransaction(
     .where('rule_id', '=', input.ruleID)
     .executeTakeFirst();
 
+  await refuseMandateRuleChange(tx, input);
+
   const write = buildRuntimeRuleRow({
     changeID,
     input,
@@ -89,4 +92,28 @@ export async function writeRuntimeRuleInTransaction(
   ]);
 
   return changeID;
+}
+
+// A mandate rule's ID belongs to its mandate alone, so no other change writes it.
+async function refuseMandateRuleChange(
+  tx: Transaction<unknown>,
+  input: RuntimeRuleInput,
+): Promise<void> {
+  const held = await tx
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('runtime_rules')
+    .innerJoin('rule_versions', 'rule_versions.rule_hash', 'runtime_rules.rule_hash')
+    .select('rule_versions.rule')
+    .where('runtime_rules.rule_id', '=', input.ruleID)
+    .execute();
+
+  const isMandate = held.some((row) => {
+    const rule = parseRule(JSON.parse(row.rule));
+
+    return rule.mandate !== undefined && rule.id.startsWith(`${rule.mandate}-`);
+  });
+
+  if (isMandate && input.rule?.mandate === undefined) {
+    throw new MandateRuleError(input.ruleID);
+  }
 }

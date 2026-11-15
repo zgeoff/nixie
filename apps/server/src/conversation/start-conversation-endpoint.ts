@@ -17,6 +17,7 @@ import {
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildContactTool } from '../cli/build-contact-tool';
+import { buildMandateTool } from '../rule/build-mandate-tool';
 import { buildTaskStartBounds } from '../task/build-task-start-bounds';
 import type { ServerParts } from '../types';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
@@ -141,6 +142,11 @@ export async function startConversationEndpoint(
     ),
     ...search,
     buildContactTool(options.context, tools.refreshDefinitions),
+    buildMandateTool({
+      context: options.context,
+      maxHours: options.config.policy.mandates.maxHours,
+      defaultZone: options.config.time.default_zone,
+    }),
     buildSilentEndTool(messaging),
     buildTaskReportTool(options.context),
   ];

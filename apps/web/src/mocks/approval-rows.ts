@@ -26,6 +26,7 @@ const closeMatchSchema = z.object({
   version: z.int().positive(),
 });
 
+const fieldsRuleSchema = z.record(z.string(), z.unknown());
 const ruleRefSchema = z.object({ destinations: z.array(z.string()), ruleID: z.string() });
 
 type ApprovalMemory = NonNullable<
@@ -59,6 +60,9 @@ export const approvalRows = new Collection({
     proposalID: z.uuid().default(() => faker.string.uuid()),
     riskClass: z.enum(['routine', 'always_ask', 'lifting']).default('routine'),
     rule: ruleRefSchema.optional(),
+
+    // the rule form of a proposed rule, which its card opens in Edit
+    proposedRule: fieldsRuleSchema.optional(),
     ruleHash: z.string().nullable().default(null),
     ruleSentence: z.string().nullable().default(null),
     sentence: z.string().default('Run mail.send (send).'),

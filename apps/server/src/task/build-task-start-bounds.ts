@@ -3,6 +3,7 @@ import { checkHarnessFit, roleNeeds } from '@heynixie/models';
 import type { TaskStartBounds } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
+import { mandateToolName } from '../rule/build-mandate-tool';
 
 export function buildTaskStartBounds(
   models: ModelsConfig<ModelProfile>,
@@ -30,7 +31,9 @@ export function buildTaskStartBounds(
       read: memoryTools.filter((tool) => isReadOnlyTool(tool)).map((tool) => tool.name),
       write: memoryTools.filter((tool) => !isReadOnlyTool(tool)).map((tool) => tool.name),
     },
-    conversationTools: conversationTools.map((tool) => tool.name),
+    conversationTools: conversationTools
+      .filter((tool) => tool.name !== mandateToolName)
+      .map((tool) => tool.name),
   };
 }
 

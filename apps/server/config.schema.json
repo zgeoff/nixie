@@ -1273,6 +1273,51 @@
             }
           },
           "additionalProperties": false
+        },
+        "proposed_rules": {
+          "default": {
+            "approvals": 3,
+            "window_days": 30,
+            "quiet_days": 30
+          },
+          "type": "object",
+          "properties": {
+            "approvals": {
+              "default": 3,
+              "description": "Approved answers to the same kind of call before nixie proposes an allow rule for it.",
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "window_days": {
+              "default": 30,
+              "description": "Days back from now that those approved answers count.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "quiet_days": {
+              "default": 30,
+              "description": "Days that Not now, or a proposal you left to lapse, keeps nixie from proposing a rule for the same kind of call again.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "mandates": {
+          "default": {
+            "max_hours": 24
+          },
+          "type": "object",
+          "properties": {
+            "max_hours": {
+              "default": 24,
+              "description": "The latest end of a mandate, in hours from the moment it is proposed.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

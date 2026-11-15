@@ -85,6 +85,20 @@ export interface NixieTables {
     readonly used_at: number | null;
     readonly identity_id: string | null;
   };
+  readonly gap_answers: {
+    readonly proposal_id: string;
+    readonly group_hash: string;
+    readonly answer: string;
+    readonly answered_at: number;
+    readonly answered_sequence: number;
+  };
+  readonly gap_groups: {
+    readonly group_hash: string;
+    readonly quiet_until: number | null;
+    readonly proposal_id: string | null;
+    readonly checked_sequence: number | null;
+    readonly lapsed_at: number | null;
+  };
   readonly identities: {
     readonly identity_id: string;
     readonly channel: string;

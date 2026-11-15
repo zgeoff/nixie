@@ -1,4 +1,8 @@
-import { mapRuleProposalRecord } from '@heynixie/definitions';
+import {
+  mapMandateRecord,
+  mapProposedRuleRecord,
+  mapRuleProposalRecord,
+} from '@heynixie/definitions';
 import { mapMemoryProposalRecord } from '@heynixie/memory';
 import { mapActionProposalRecord } from '@heynixie/policy';
 import { buildProposalsProjection } from '@heynixie/proposals';
@@ -10,4 +14,6 @@ export const proposalsProjection = buildProposalsProjection([
   mapMemoryProposalRecord,
   mapSkillProposalRecord,
   mapRuleProposalRecord,
+  mapProposedRuleRecord,
+  mapMandateRecord,
 ]);

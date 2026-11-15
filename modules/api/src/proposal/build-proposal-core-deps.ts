@@ -1,5 +1,13 @@
 import { readMessageTimeZone } from '@heynixie/connectors';
-import { makeRuleProposalHandler, writeRuntimeRuleInTransaction } from '@heynixie/definitions';
+import {
+  makeMandateHandler,
+  makeProposedRuleHandler,
+  makeRuleChangeHandler,
+  makeRuleProposalHandler,
+  runGapCheck,
+  writeGapWithdrawal,
+  writeRuntimeRuleInTransaction,
+} from '@heynixie/definitions';
 import type { RecordInput } from '@heynixie/log';
 import { makeMemoryProposalHandler } from '@heynixie/memory';
 import { makeActionProposalHandler } from '@heynixie/policy';
@@ -8,11 +16,11 @@ import { makeSkillProposalHandler } from '@heynixie/skills';
 import { writeThreadRecordInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import type { APISettings, ReadViewMemory } from '../types';
-import { defaultApprovalSettings } from '../utils/default-api-settings';
+import { defaultApprovalSettings, defaultPolicySettings } from '../utils/default-api-settings';
 import { proposalsProjection } from './proposals-projection';
 
 export type ProposalAPIContext = ProposalContext & {
-  readonly settings?: Pick<APISettings, 'approvals'>;
+  readonly settings?: Pick<APISettings, 'approvals' | 'policy'>;
 };
 
 export interface ProposalParts {
@@ -28,6 +36,9 @@ export function buildProposalCoreDeps(
   context: ProposalAPIContext,
   parts: ProposalParts,
 ): ProposalCoreDeps {
+  const gapSettings =
+    context.settings?.policy?.proposedRules ?? defaultPolicySettings.proposedRules;
+
   const writeThreadRecord = (tx: Transaction<unknown>, input: RecordInput) =>
     writeThreadRecordInTransaction(tx, context, input);
 
@@ -45,6 +56,8 @@ export function buildProposalCoreDeps(
         });
       },
       runAfterRule: parts.runInForceSeed,
+      writeGapDecline: (tx, groupHash) => writeGapWithdrawal(tx, context, groupHash),
+      runGapCheck: (groupHash) => runGapCheck(context, gapSettings, groupHash),
     }),
     makeMemoryProposalHandler({
       log: context.log,
@@ -73,11 +86,26 @@ export function buildProposalCoreDeps(
         await parts.runInForceSeed();
       },
     }),
-    makeRuleProposalHandler({
-      log: context.log,
-      clock: context.clock,
-      definitions: context.definitions,
-      runInForceSeed: parts.runInForceSeed,
+    makeRuleChangeHandler({
+      rule_widening: makeRuleProposalHandler({
+        log: context.log,
+        clock: context.clock,
+        definitions: context.definitions,
+        runInForceSeed: parts.runInForceSeed,
+      }),
+      proposed_rule: makeProposedRuleHandler({
+        log: context.log,
+        clock: context.clock,
+        definitions: context.definitions,
+        runInForceSeed: parts.runInForceSeed,
+        settings: gapSettings,
+      }),
+      mandate: makeMandateHandler({
+        log: context.log,
+        clock: context.clock,
+        definitions: context.definitions,
+        runInForceSeed: parts.runInForceSeed,
+      }),
     }),
   ];
 

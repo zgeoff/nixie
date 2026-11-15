@@ -118,6 +118,8 @@ export { writeRuleProposalAnswer } from './rule/write-rule-proposal-answer';
 export type { DefinitionsRecordKind } from './skill/definitions-record-kind';
 export type { RulesRecordKind } from './skill/rules-record-kind';
 export { makeRuleProposalHandler } from './rule/make-rule-proposal-handler';
+export { makeRuleChangeHandler } from './rule/make-rule-change-handler';
+export { writeProposedRule } from './proposed-rule/write-proposed-rule';
 export { mapRuleProposalRecord } from './rule/map-rule-proposal-record';
 export { writeRuntimeRuleInTransaction } from './runtime/write-runtime-rule';
 export type { CurrentRuleVersion } from './runtime/read-current-rule';
@@ -125,3 +127,36 @@ export { readCurrentRule } from './runtime/read-current-rule';
 export type { RuleEditRequest } from './runtime/pick-rule-edit';
 export type { RuleEditOutcome } from './runtime/write-rule-edit';
 export { writeRuleEdit } from './runtime/write-rule-edit';
+export type { GapSettings } from './proposed-rule/gap-settings';
+export { gapAnswersProjection } from './proposed-rule/gap-answers-projection';
+export { gapGroupsProjection } from './proposed-rule/gap-groups-projection';
+export { mapProposedRuleRecord } from './proposed-rule/map-proposed-rule-record';
+export type { ProposedRuleHandlerDeps } from './proposed-rule/make-proposed-rule-handler';
+export { makeProposedRuleHandler } from './proposed-rule/make-proposed-rule-handler';
+export { runGapCheck } from './proposed-rule/run-gap-check';
+export { runGapChecks } from './proposed-rule/run-gap-checks';
+export { writeGapWithdrawal } from './proposed-rule/write-gap-withdrawal';
+export { isLiftingRule } from './utils/is-lifting-rule';
+export type { MandateInput } from './mandate/mandate-input-schema';
+export { mandateInputSchema } from './mandate/mandate-input-schema';
+export { makeMandateHandler } from './mandate/make-mandate-handler';
+export { mapMandateRecord } from './mandate/map-mandate-record';
+export type { ActiveMandate } from './mandate/read-active-mandates';
+export { readActiveMandates } from './mandate/read-active-mandates';
+export { runMandateEnd } from './mandate/run-mandate-end';
+export { runMandateExpiry } from './mandate/run-mandate-expiry';
+export { startMandateTimer } from './mandate/start-mandate-timer';
+
+export type {
+  MandateProposalOptions,
+  MandateProposalResult,
+} from './mandate/write-mandate-proposal';
+
+export { writeMandateProposal } from './mandate/write-mandate-proposal';
+export { mandateEndedCodec } from './mandate/mandate-ended-codec';
+export { mandateProposedCodec } from './mandate/mandate-proposed-codec';
+export { mandateStartedCodec } from './mandate/mandate-started-codec';
+export type { ProposedRuleEdit } from './proposed-rule/write-proposed-rule-edit';
+export { writeProposedRuleEdit } from './proposed-rule/write-proposed-rule-edit';
+export { readMandateEndReason, readMandateTitles } from './mandate/read-mandate-titles';
+export { writeMandateEnd } from './mandate/write-mandate-end';

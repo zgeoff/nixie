@@ -1,4 +1,9 @@
-import { buildProposalCoreDeps, createFirstEnrolmentCode } from '@heynixie/api';
+import {
+  buildProposalCoreDeps,
+  createFirstEnrolmentCode,
+  defaultPolicySettings,
+} from '@heynixie/api';
+import { runGapChecks, runMandateExpiry, startMandateTimer } from '@heynixie/definitions';
 import { toErrorFields } from '@heynixie/logger';
 import { startPromptLapseSweep } from '@heynixie/prompts';
 import type { RunStep } from '@heynixie/tasks';
@@ -116,19 +121,34 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     uses: ['memory', 'definitions_exports'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
+      const apiContext = reader.get('context').apiContext;
+
+      const runInForceSeed = () =>
+        runInForceSeedAndWake(reader.find('server_parts'), reader.find('definitions_exports'));
+
+      const rules = { ...apiContext, runInForceSeed };
+      const policy = apiContext.settings.policy ?? defaultPolicySettings;
+
+      const onError = (error: unknown) => {
+        parts.log('proposals.sweep_failed', toErrorFields(error));
+      };
+
+      // A crash between an answer and its check, or while the release before ran, loses nothing.
+      await runGapChecks(rules, policy.proposedRules);
+      await runMandateExpiry(rules);
+
+      const timer = startMandateTimer({ context: rules, clock: parts.context.clock, onError });
 
       const sweeps = startProposalSweeps({
-        deps: buildProposalCoreDeps(reader.get('context').apiContext, {
+        deps: buildProposalCoreDeps(apiContext, {
           readMemory: () => reader.find('memory'),
-          runInForceSeed: () =>
-            runInForceSeedAndWake(reader.find('server_parts'), reader.find('definitions_exports')),
+          runInForceSeed,
         }),
         clock: parts.context.clock,
-        onError: (error) => {
-          parts.log('proposals.sweep_failed', toErrorFields(error));
-        },
+        onError,
       });
 
+      await parts.cleanup.defer(() => timer.stop());
       await parts.cleanup.defer(() => sweeps.stop());
     },
   },

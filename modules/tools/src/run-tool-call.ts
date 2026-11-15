@@ -7,7 +7,7 @@ import type {
   WriteTransaction,
 } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { CallDestination, DecisionPoint, PolicyDecision } from '@heynixie/policy';
+import type { CallDestination, DecisionPoint, PolicyCall, PolicyDecision } from '@heynixie/policy';
 import {
   buildActionProposalInput,
   makeFaultSafeDecisionPoint,
@@ -111,7 +111,13 @@ export async function runToolCall(
 
   const stored = toStoredDecision(policy.decision, policyCall);
 
-  const written = await recorder.writeCall({ policy, stored, destinations, args: policyArgs });
+  const written = await recorder.writeCall({
+    policy,
+    stored,
+    destinations,
+    args: policyArgs,
+    frame: policyCall,
+  });
 
   const settled = written.isCapped
     ? buildMessage('denied', renderCallCapRefusal(run, call.tool), { source: 'owner_data' })
@@ -158,6 +164,9 @@ interface CallPolicy {
 
   // the arguments the decision read, which a replay of the stored decision reads again
   readonly args: JSONObject;
+
+  // the frame the call ran under, which a no_rule ask records
+  readonly frame: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
 }
 
 interface WrittenCall {
@@ -265,6 +274,7 @@ function makeCallRecorder(
           input: call.input,
           destinations,
           content: registered.definition.declaration.content,
+          frame: decided.frame,
         });
 
         await writeRecordsInTransaction(tx, options.log, [proposal.record]);

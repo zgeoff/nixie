@@ -2,6 +2,8 @@ import { oc } from '@orpc/contract';
 import { z } from 'zod';
 import { actionProposalSchema } from './action-proposal-schema';
 import { forgetBackupSchema } from './forget-backup-schema';
+import { forgottenItemsSchema } from './forgotten-items-schema';
+import { hostMandatesContract } from './host-mandates-contract';
 import { hostPasskeyContract } from './host-passkey-contract';
 import { knownContactSchema } from './known-contact-schema';
 import { pauseStateSchema } from './pause-state-schema';
@@ -286,11 +288,6 @@ const contacts = oc.errors({
   NOT_FOUND: { message: 'no known contact has that ID', status: 404 },
 });
 
-const forgottenItemsSchema = z.object({
-  itemIDs: z.array(z.string()),
-  backup: forgetBackupSchema,
-});
-
 const hostTaskStateSchema = z.enum([
   'ready',
   'running',
@@ -482,6 +479,7 @@ export const hostContract = {
       reject: rules.input(actionRejectionSchema).output(z.object({ proposalID: z.string() })),
     },
   },
+  mandates: hostMandatesContract,
   contacts: {
     list: contacts.output(z.array(knownContactSchema)),
 

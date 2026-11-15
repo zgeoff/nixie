@@ -25,9 +25,37 @@ const ruleChange = signedIn.errors(reusedIDErrors).errors({
   NOT_ALLOWED: {
     message: 'The rule takes no such change',
     status: 403,
-    data: z.object({ reason: z.enum(['widens', 'empty']) }),
+    data: z.object({ reason: z.enum(['widens', 'empty', 'mandate']) }),
   },
 });
+
+const currentHashSchema = z.object({ current: z.object({ actionHash: z.string() }) });
+
+const closedStateSchema = z.object({
+  state: z.enum(['approved', 'declined', 'lapsed', 'withdrawn']),
+});
+
+const proposalIDSchema = z.string().min(1).max(64);
+const ruleFormSchema = z.record(z.string(), z.unknown());
+const mandateRuleSchema = z.object({ ruleID: z.string(), sentence: z.string() });
+
+const mandateSchema = z.object({
+  mandateID: z.string(),
+  title: z.string().nullable(),
+  rules: z.array(mandateRuleSchema),
+  startedAt: z.date(),
+  expires: z.date(),
+});
+
+const faultsSchema = z.object({ faults: z.array(z.string()) });
+
+const invalid = {
+  INVALID: {
+    message: 'The rule or the mandate breaks the rule format or its limits',
+    status: 400,
+    data: faultsSchema,
+  },
+};
 
 const destinationsSchema = z.array(z.string().regex(/^\S+$/u)).max(100);
 
@@ -51,4 +79,51 @@ export const ruleContract = {
       }),
     )
     .output(z.object({ ruleID: z.string(), revision: revisionSchema })),
+
+  editProposedRule: signedIn
+    .errors(reusedIDErrors)
+    .errors({
+      ...invalid,
+      NOT_FOUND: { message: 'No proposed rule has this ID', status: 404 },
+      CONFLICT: {
+        message: 'The proposed rule changed since the card showed it',
+        status: 409,
+        data: currentHashSchema,
+      },
+      CLOSED: {
+        message: 'The proposed rule is no longer open',
+        status: 409,
+        data: closedStateSchema,
+      },
+    })
+    .input(
+      z.object({
+        proposalID: proposalIDSchema,
+        actionHash: z.string(),
+        rule: ruleFormSchema,
+        clientActionID: z.uuid(),
+      }),
+    )
+    .output(z.object({ proposalID: z.string() })),
+
+  proposeMandate: signedIn
+    .errors(reusedIDErrors)
+    .errors(invalid)
+    .input(
+      z.object({
+        title: z.string(),
+        rules: z.array(ruleFormSchema),
+        expires: z.string().optional(),
+        clientActionID: z.uuid(),
+      }),
+    )
+    .output(z.object({ proposalID: z.string(), mandateID: z.string(), expires: z.date() })),
+
+  listMandates: signedIn.output(z.object({ mandates: z.array(mandateSchema) })),
+
+  endMandate: signedIn
+    .errors(reusedIDErrors)
+    .errors({ NOT_FOUND: { message: 'No mandate has this ID', status: 404 } })
+    .input(z.object({ mandateID: z.string().min(1).max(64), clientActionID: z.uuid() }))
+    .output(z.object({ mandateID: z.string(), state: z.enum(['ended', 'expired']) })),
 };

@@ -18,6 +18,9 @@ export interface ApprovalControlsProps {
   readonly editedText: string | null;
 
   readonly isEditable: boolean;
+
+  // a proposed rule, whose Decline is Not now and takes no note
+  readonly isRuleProposal: boolean;
   readonly isEditing: boolean;
   readonly onEditToggle: () => void;
 }
@@ -131,7 +134,19 @@ export function ApprovalControls(props: ApprovalControlsProps): ReactNode {
           settings={props.defer}
         />
       ) : null}
-      {choices.includes('decline') ? (
+      {choices.includes('decline') && props.isRuleProposal ? (
+        <button
+          disabled={isBusy}
+          name="decline"
+          onClick={() => {
+            props.answerer.send({ ...base, choice: 'decline' });
+          }}
+          type="button"
+        >
+          Not now
+        </button>
+      ) : null}
+      {choices.includes('decline') && !props.isRuleProposal ? (
         <button
           name="decline"
           onClick={() => {

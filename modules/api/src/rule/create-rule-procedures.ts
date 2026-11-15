@@ -88,7 +88,7 @@ interface ConflictOptions {
 }
 
 interface NotAllowedOptions {
-  readonly data: { readonly reason: 'widens' | 'empty' };
+  readonly data: { readonly reason: 'widens' | 'empty' | 'mandate' };
 }
 
 interface ChangeErrors {

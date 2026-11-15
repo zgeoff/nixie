@@ -4,7 +4,7 @@ export { createAPIApp } from './api/create-api-app';
 export { createEnrolmentCode } from './enrolment/create-enrolment-code';
 export { createFirstEnrolmentCode } from './enrolment/create-first-enrolment-code';
 export { createPasskeyState } from './passkey/passkey-state';
-export { defaultAPISettings } from './utils/default-api-settings';
+export { defaultAPISettings, defaultPolicySettings } from './utils/default-api-settings';
 export { makeHostResponder } from './host/make-host-responder';
 export { readForgetBackupState } from './forget/read-forget-backup-state';
 export type { KeptSession } from './kept/read-kept-sessions';

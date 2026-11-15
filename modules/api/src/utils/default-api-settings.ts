@@ -9,6 +9,11 @@ export const defaultApprovalSettings = {
   defaultZone: 'Australia/Sydney',
 } as const;
 
+export const defaultPolicySettings = {
+  proposedRules: { approvals: 3, windowDays: 30, quietDays: 30 },
+  mandates: { maxHours: 24 },
+} as const;
+
 export const defaultAPISettings: APISettings = {
   enrolmentCodeLifetimeMs: 15 * 60 * 1000,
   sessionIdleMs: 30 * 24 * 60 * 60 * 1000,
@@ -17,6 +22,7 @@ export const defaultAPISettings: APISettings = {
   readOnlyTokenHashes: [],
   isBackupEnabled: true,
   approvals: defaultApprovalSettings,
+  policy: defaultPolicySettings,
   taskDirectory: [
     {
       taskID: conversationTaskID,

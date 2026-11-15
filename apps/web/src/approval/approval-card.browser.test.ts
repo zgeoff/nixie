@@ -213,3 +213,126 @@ test('it offers to add a passkey and names the host command when the host has no
 
   expect(ctx.findRow(row.proposalID)?.state).toBe('pending');
 });
+
+test('it shows Approve, Edit, Not now and Defer on a proposed rule card', async () => {
+  const ctx = await setupTest();
+
+  await store.approvalRows.create({
+    cause: 'proposed_rule',
+    choices: ['approve', 'defer', 'decline'],
+    kind: 'internal_change',
+    proposedRule: { outcome: 'allow', tools: ['mail.send'] },
+    riskClass: 'always_ask',
+    sentence: 'Allow mail.send to kim@example.org.',
+    approveLabel: 'Allow this rule',
+    thread: null,
+  });
+
+  await ctx.openLine('Allow mail.send to kim@example.org.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+
+  const labels = await ctx.view.evaluate(
+    `['approve', 'edit-text', 'decline', 'defer'].map((name) => document.querySelector('button[name="' + name + '"]')?.textContent ?? null)`,
+  );
+
+  expect(labels).toStrictEqual(['Allow this rule', 'Edit', 'Not now', expect.any(String)]);
+});
+
+test('it shows the title, each rule and the end of a mandate on its card', async () => {
+  const ctx = await setupTest();
+
+  await store.approvalRows.create({
+    cause: 'mandate',
+    choices: ['approve', 'defer', 'decline'],
+    kind: 'internal_change',
+    riskClass: 'always_ask',
+    sentence: 'Allow calendar.respond, until 2026-11-14T13:00:00Z.',
+    approveLabel: 'Start the mandate',
+    fields: {
+      title: 'Full authority over my calendar invites',
+      ends: '2026-11-14T13:00:00.000Z',
+      'rule 1': 'Allow calendar.respond, until 2026-11-14T13:00:00Z.',
+    },
+    thread: null,
+  });
+
+  await ctx.openLine('Allow calendar.respond, until 2026-11-14T13:00:00Z.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+
+  const shown = await ctx.view.evaluate(
+    `(() => { const text = document.querySelector('li[aria-label="Allow calendar.respond, until 2026-11-14T13:00:00Z."]').innerText; return ['Full authority over my calendar invites', '2026-11-14T13:00:00.000Z', 'Start the mandate', 'Decline'].map((part) => text.includes(part)); })()`,
+  );
+
+  expect(shown).toStrictEqual([true, true, true, true]);
+});
+
+test('it says Not now for a proposed rule and declines it without asking for a note', async () => {
+  const ctx = await setupTest();
+
+  const row = await store.approvalRows.create({
+    cause: 'proposed_rule',
+    choices: ['approve', 'defer', 'decline'],
+    kind: 'internal_change',
+    proposedRule: { outcome: 'allow', tools: ['mail.send'] },
+    riskClass: 'routine',
+    sentence: 'Allow mail.send to sam@example.org.',
+    thread: null,
+  });
+
+  await ctx.openLine('Allow mail.send to sam@example.org.');
+  await ctx.waitForPage(`document.querySelector('button[name="decline"]') !== null`);
+
+  const label = await ctx.view.evaluate(
+    `document.querySelector('button[name="decline"]').textContent`,
+  );
+
+  await ctx.view.evaluate(`document.querySelector('button[name="decline"]').click()`);
+
+  await waitFor(
+    () => {
+      expect(ctx.findRow(row.proposalID)?.state).toBe('declined');
+    },
+    { timeout: 8000 },
+  );
+
+  expect(label).toBe('Not now');
+});
+
+test('it saves an edited proposed rule as a new proposal and withdraws the old one', async () => {
+  const ctx = await setupTest();
+
+  const row = await store.approvalRows.create({
+    cause: 'proposed_rule',
+    choices: ['approve', 'defer', 'decline'],
+    kind: 'internal_change',
+    proposedRule: { outcome: 'allow', tools: ['mail.send'] },
+    riskClass: 'routine',
+    sentence: 'Allow mail.send to sam@example.org.',
+    thread: null,
+  });
+
+  await ctx.openLine('Allow mail.send to sam@example.org.');
+  await ctx.waitForPage(`document.querySelector('button[name="edit-text"]') !== null`);
+  await ctx.view.evaluate(`document.querySelector('button[name="edit-text"]').click()`);
+
+  await ctx.waitForPage(
+    `document.querySelector('div[aria-label="The proposed rule"] textarea') !== null`,
+  );
+
+  await ctx.view.click('div[aria-label="The proposed rule"] textarea');
+  await ctx.view.type(',mail.draft');
+  await ctx.view.evaluate(`document.querySelector('button[name="save-rule"]').click()`);
+
+  await waitFor(
+    () => {
+      expect(ctx.findRow(row.proposalID)?.state).toBe('withdrawn');
+    },
+    { timeout: 8000 },
+  );
+
+  const opened = store.approvalRows.all().filter((entry) => entry.state === 'pending');
+
+  expect(opened.map((entry) => entry.proposedRule)).toStrictEqual([
+    { outcome: 'allow', tools: ['mail.send', 'mail.draft'] },
+  ]);
+});

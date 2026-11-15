@@ -39,6 +39,16 @@ export interface APISettings {
     readonly quietHours: QuietHours | null;
     readonly defaultZone: string;
   };
+
+  // the policy settings of proposed rules and mandates
+  readonly policy?: {
+    readonly proposedRules: {
+      readonly approvals: number;
+      readonly windowDays: number;
+      readonly quietDays: number;
+    };
+    readonly mandates: { readonly maxHours: number };
+  };
 }
 
 export interface OwnerImage {

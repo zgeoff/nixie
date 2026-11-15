@@ -1,5 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import type { RuleContext, RuleProposalAnswer } from '@heynixie/definitions';
+import { readProposal } from '@heynixie/proposals';
 import type { LegacyCaller } from './answer-legacy-proposal';
 import { answerLegacyProposal } from './answer-legacy-proposal';
 
@@ -17,6 +18,15 @@ export async function runRuleProposalAnswer(
   errors: RuleAnswerErrors,
   caller?: LegacyCaller,
 ): Promise<{ readonly proposalID: string }> {
+  const row = await readProposal(context.log.writer.db, answer.proposalID);
+
+  // A proposed rule and a mandate share the family but take the passkey, which this route, with no
+  // hash and no passkey, cannot give. The row's cause never changes, so a read before the answer
+  // holds.
+  if (row !== null && row.cause !== 'rule_widening') {
+    throw errors.NOT_FOUND({ message: `no rule change proposal has ID ${answer.proposalID}` });
+  }
+
   const parts = caller === undefined ? context : { runInForceSeed: context.runInForceSeed, caller };
 
   const settlement = await answerLegacyProposal(context, parts, 'rule_change', {

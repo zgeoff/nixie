@@ -17,6 +17,8 @@ import {
 import { buildSkillProposalAnswerKind, buildSkillReloadKind } from '@heynixie/skills';
 import { conversationTaskID } from '@heynixie/tasks';
 import { buildPromptProposalAnswerKind } from '../prompt/build-prompt-proposal-answer-kind';
+import { buildMandateEndedKind } from './build-mandate-ended-kind';
+import { buildMandateStartedKind } from './build-mandate-started-kind';
 import { buildRestartKind } from './build-restart-kind';
 import { readTurnNotes } from './read-turn-notes';
 
@@ -55,6 +57,8 @@ export function makeTurnNoteReader(
     buildSkillReloadKind(options.log, conversationTaskID),
     buildSkillProposalAnswerKind(options.log, conversationTaskID),
     buildPromptProposalAnswerKind(options.log, conversationTaskID),
+    buildMandateStartedKind(options.log),
+    buildMandateEndedKind(options.log),
   ]);
 
   return (request) => readTurnNotes({ ...options, events }, request);
