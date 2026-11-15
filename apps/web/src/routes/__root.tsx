@@ -2,6 +2,7 @@
 
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { AppShell } from '../components/app-shell';
 import { css } from '../styled-system/css';
 import styles from '../styles.css?url';
 import { buildThemeScript } from '../theme/build-theme-script';
@@ -37,7 +38,9 @@ function RootDocument(): ReactNode {
       </head>
       <body className={css({ fontFamily: 'sans', lineHeight: 'relaxed' })}>
         <NixieClientContext value={{ client: context.client, queryUtils: context.queryUtils }}>
-          <Outlet />
+          <AppShell>
+            <Outlet />
+          </AppShell>
         </NixieClientContext>
         <Scripts />
       </body>

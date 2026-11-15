@@ -206,6 +206,17 @@ permission again to tell the two apart. An installed app shares the site's permi
 one grant covers the app and the browser tab, and the web server sends no Permissions-Policy header
 that could block the microphone.
 
+## The app shell
+
+Every page sits in one shell, which the root route renders. Its bar holds 5 links: Conversation,
+Memory, Moments, Tasks and Passkeys. The link of the current page carries `aria-current="page"`, and
+a detail page marks its parent, so a task marks Tasks and the proposals page marks Memory. A page
+with no entry, such as the approvals page, marks nothing. Below 768px the links fold into a menu
+button that opens a side drawer. The drawer is a native modal dialog, so the rest of the page goes
+inert while it is open. It closes on a link tap, on Escape and on a tap outside it, and focus
+returns to the menu button. CSS alone switches between the bar and the button, so the server render
+matches the client. The conversation fills the height below the bar.
+
 ## Approvals
 
 A proposal shows as a card, in the conversation under the record that created it and on the
