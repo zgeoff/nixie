@@ -11,7 +11,18 @@ import { z } from 'zod';
 async function setupTest() {
   const root = await mkdtemp(join(tmpdir(), 'nixie-verify-prod-'));
 
-  onTestFinished(() => rm(root, { recursive: true, force: true }));
+  const verifyPath = join(import.meta.dir, '..', 'verify.ts');
+
+  // An attached run keeps a supervisor that writes into the repo until `detach`, and bun runs these
+  // callbacks in the order they were added, so the one callback ends the run before the folder goes.
+  onTestFinished(async () => {
+    await Bun.spawn([process.execPath, verifyPath, 'detach', '--target', 'prod'], {
+      cwd: root,
+      stdout: 'ignore',
+    }).exited;
+
+    await rm(root, { recursive: true, force: true });
+  });
 
   const server = Bun.serve({
     hostname: '127.0.0.1',
@@ -62,8 +73,6 @@ async function setupTest() {
     ok: z.boolean(),
     error: z.looseObject({ code: z.string(), hint: z.string().nullable() }).nullable(),
   });
-
-  const verifyPath = join(import.meta.dir, '..', 'verify.ts');
 
   const runVerify = async (args: readonly string[]) => {
     // `exec` passes on each word after `--`, so the target flag goes before it.
