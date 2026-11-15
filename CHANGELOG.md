@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.74.0](https://github.com/zgeoff/nixie/compare/v0.73.0...v0.74.0) (2026-11-15)
+
+
+### Features
+
+* **verify:** add a read-only prod target ([#1111](https://github.com/zgeoff/nixie/issues/1111)) ([b432409](https://github.com/zgeoff/nixie/commit/b432409120e7e5ff3283aa0571f3509259edb728))
+
 ## [0.73.0](https://github.com/zgeoff/nixie/compare/v0.72.0...v0.73.0) (2026-11-15)
 
 
