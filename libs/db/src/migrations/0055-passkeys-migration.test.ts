@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { passkeysMigration } from './0054-passkeys-migration';
+import { passkeysMigration } from './0055-passkeys-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -30,8 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 54', () => {
-  expect(nixieSchema.migrations.indexOf(passkeysMigration) + 1).toBe(54);
+test('it moves the schema to version 55', () => {
+  expect(nixieSchema.migrations.indexOf(passkeysMigration) + 1).toBe(55);
 });
 
 test('it creates a table that holds one row for each passkey', async () => {
