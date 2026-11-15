@@ -12,7 +12,7 @@ import { checkConsent, makeDecisionPoint, readKnownContacts } from '@heynixie/po
 
 // A decision point that rereads a stored call passes the consent answer the call recorded, because
 // the consent checker is a model.
-export interface DecisionOverrides {
+interface DecisionOverrides {
   readonly readConsent: DecisionPointOptions['readConsent'];
 }
 

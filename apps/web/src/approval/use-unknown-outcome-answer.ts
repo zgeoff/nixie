@@ -5,7 +5,7 @@ import { useRef } from 'react';
 import { askPasskey } from '../passkey/ask-passkey';
 import { useNixieClient } from '../utils/use-nixie-client';
 
-export type UnknownChoice = ContractInputs['approvals']['answerUnknownOutcome']['choice'];
+type UnknownChoice = ContractInputs['approvals']['answerUnknownOutcome']['choice'];
 
 export type UnknownOutcomeAnswerResult =
   | { readonly status: 'answered' }

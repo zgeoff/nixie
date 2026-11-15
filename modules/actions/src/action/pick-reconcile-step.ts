@@ -3,7 +3,7 @@ import { defaultTrustNegativeAfterMs } from '@heynixie/connectors';
 import type { OwnerReason } from '../types';
 
 // The 3rd unknown in a row goes to the owner whatever the connector declares.
-export const unknownStreakLimit = 3;
+const unknownStreakLimit = 3;
 
 export interface ReconcileFacts {
   readonly reconcile: Reconcile;

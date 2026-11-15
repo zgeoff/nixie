@@ -104,24 +104,6 @@ async function writeUnknown(
   }
 }
 
-export async function writeOutcome(
-  context: TasksContext,
-  attempt: Attempt,
-  settlement: Settlement,
-): Promise<void> {
-  const actionID = attempt.action.action_id;
-
-  await writeLeasedRecords(context, attempt.lease, {
-    records: [buildOutcomeRecord(context, attempt, settlement)],
-    reset: true,
-  });
-
-  if (NIXIE_TEST_BUILD) {
-    await waitAtFaultPoint('attempt.result.after', { kind: 'action', id: actionID });
-    await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: attempt.action.task_id });
-  }
-}
-
 async function runAttempt(
   context: TasksContext,
   claimed: Omit<Attempt, 'attempt'>,
@@ -207,6 +189,24 @@ async function runAttempt(
     startedAt,
     options,
   });
+}
+
+async function writeOutcome(
+  context: TasksContext,
+  attempt: Attempt,
+  settlement: Settlement,
+): Promise<void> {
+  const actionID = attempt.action.action_id;
+
+  await writeLeasedRecords(context, attempt.lease, {
+    records: [buildOutcomeRecord(context, attempt, settlement)],
+    reset: true,
+  });
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('attempt.result.after', { kind: 'action', id: actionID });
+    await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: attempt.action.task_id });
+  }
 }
 
 function isPastDeadline(action: ActionRow, now: number): boolean {
