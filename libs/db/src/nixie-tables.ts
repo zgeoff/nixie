@@ -274,6 +274,25 @@ export interface NixieTables {
     readonly recovery_id: string | null;
     readonly paused_sequence: number;
   };
+  readonly passkeys: {
+    readonly passkey_id: string;
+    readonly credential_id: string;
+    readonly public_key: Uint8Array<ArrayBuffer>;
+    readonly user_handle: Uint8Array<ArrayBuffer>;
+    readonly rp_id: string;
+    readonly origin: string;
+    readonly sign_count: number;
+    readonly backup_eligible: number;
+    readonly backed_up: number;
+    readonly transports: string;
+    readonly aaguid: string;
+    readonly label: string;
+    readonly registered_by: string;
+    readonly authorized_by: string;
+    readonly registered_at: number;
+    readonly last_used_at: number | null;
+    readonly revoked_at: number | null;
+  };
   readonly pause_exemptions: {
     readonly task_id: string;
     readonly exempt_sequence: number;
