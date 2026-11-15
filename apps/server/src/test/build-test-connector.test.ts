@@ -21,6 +21,7 @@ test('it sends the call to the provider with its idempotency key and returns its
     arguments: { to: 'the pantry list', body: 'Buy oat milk' },
     attempt: 1,
     idempotencyKey: 'send-1',
+    destinations: [],
   });
 
   expect(response).toStrictEqual({ kind: 'success', result: { delivered: true } });
@@ -45,6 +46,7 @@ test('it reports a provider that asks for a retry later as retryable, with its d
     arguments: { to: 'the pantry list', body: 'Buy oat milk' },
     attempt: 1,
     idempotencyKey: 'send-2',
+    destinations: [],
   });
 
   expect(response).toStrictEqual({
@@ -65,6 +67,7 @@ test('it reports a provider that refuses the call as refused', async () => {
     arguments: { to: 'the pantry list', body: 'Buy oat milk' },
     attempt: 1,
     idempotencyKey: 'send-3',
+    destinations: [],
   });
 
   expect(response).toStrictEqual({ kind: 'refused', reason: 'the list is closed' });

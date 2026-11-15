@@ -3,6 +3,7 @@ import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { TasksContext } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import type { ActionRow, ActionStatus, ActionsTables, AllowedCall } from '../types';
+import { buildActionHash } from './build-action-hash';
 import { buildCancelledCheck } from './build-cancelled-check';
 
 export interface QueuedAction {
@@ -50,6 +51,10 @@ export async function createAllowedAction(
           tool: call.tool,
           actionHash: call.actionHash,
           nextAttemptAt: context.clock.now(),
+          ...(call.callSequence === undefined ? {} : { callSequence: call.callSequence }),
+          ...(call.deadlineAt === undefined || call.deadlineAt === null
+            ? {}
+            : { deadlineAt: call.deadlineAt }),
         },
         erasable: { arguments: call.arguments },
       },
@@ -69,19 +74,23 @@ function readRepeat(
   tx: Transaction<unknown>,
   call: AllowedCall,
 ): Promise<Pick<ActionRow, 'action_id' | 'status'> | undefined> {
-  return tx
-    .$extendTables<ActionsTables>()
-    .selectFrom('actions')
-    .select(['action_id', 'status'])
-    .where('task_id', '=', call.step.lease.workID)
-    .where('action_hash', '=', call.actionHash)
-    .where((eb) => {
-      const isLive = eb.not(buildCancelledCheck(eb));
-      const isOpen = eb.and([eb('status', 'in', ['pending', 'unknown']), isLive]);
+  return (
+    tx
+      .$extendTables<ActionsTables>()
+      .selectFrom('actions')
+      .select(['action_id', 'status'])
+      .where('task_id', '=', call.step.lease.workID)
 
-      return eb.or([eb('step_key', '=', call.step.stepKey), isOpen]);
-    })
-    .orderBy('queued_sequence', 'desc')
-    .limit(1)
-    .executeTakeFirst();
+      // an action queued before the hash covered the destinations holds the older hash
+      .where('action_hash', 'in', [call.actionHash, buildActionHash(call.tool, call.arguments)])
+      .where((eb) => {
+        const isLive = eb.not(buildCancelledCheck(eb));
+        const isOpen = eb.and([eb('status', 'in', ['pending', 'unknown']), isLive]);
+
+        return eb.or([eb('step_key', '=', call.step.stepKey), isOpen]);
+      })
+      .orderBy('queued_sequence', 'desc')
+      .limit(1)
+      .executeTakeFirst()
+  );
 }

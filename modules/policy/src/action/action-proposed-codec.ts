@@ -39,5 +39,8 @@ export const actionProposedCodec = defineRecordCodec(
     definitionID: z.string().nullable().exactOptional(),
     sources: z.enum(ruleSources).array().exactOptional(),
     content: z.string().array().exactOptional(),
+
+    // the action a reopening proposal asks about, when it is not the proposal's own ID
+    actionID: z.string().exactOptional(),
   }),
 );

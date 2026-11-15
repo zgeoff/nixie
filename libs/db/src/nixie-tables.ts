@@ -16,6 +16,15 @@ export interface NixieTables {
     readonly outcome_sequence: number | null;
     readonly updated_sequence: number;
     readonly cancelled_sequence: number | null;
+    readonly call_sequence: number | null;
+    readonly deadline_at: number | null;
+    readonly risk_class: string;
+    readonly is_approved: number;
+    readonly held_by_proposal_id: string | null;
+    readonly unknown_streak: number;
+    readonly first_attempt_at: number | null;
+    readonly last_attempt_at: number | null;
+    readonly reconcile_at: number | null;
   };
   readonly backup_notices: {
     readonly sequence: number;

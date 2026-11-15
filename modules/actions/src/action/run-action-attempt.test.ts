@@ -79,6 +79,7 @@ test('it calls the provider with the action ID as the idempotency key', async ()
       arguments: { to: 'team' },
       attempt: 1,
       idempotencyKey: queued.actionID,
+      destinations: [],
     },
   ]);
 });

@@ -3,7 +3,13 @@ import { buildModelView } from './build-model-view';
 
 test('it shows a done action with the connector result', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'done', reason: null, isCancelled: false },
+    {
+      action_id: 'action-1',
+      status: 'done',
+      reason: null,
+      outcome_sequence: 9,
+      isCancelled: false,
+    },
     {
       sequence: 9,
       recordedAt: new Date(0),
@@ -30,7 +36,13 @@ test('it shows a done action with the connector result', () => {
 
 test('it shows a done action whose result was forgotten with no result', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'done', reason: null, isCancelled: false },
+    {
+      action_id: 'action-1',
+      status: 'done',
+      reason: null,
+      outcome_sequence: 9,
+      isCancelled: false,
+    },
     {
       sequence: 9,
       recordedAt: new Date(0),
@@ -53,7 +65,13 @@ test('it shows a done action whose result was forgotten with no result', () => {
 
 test('it shows a failed action with the provider reason', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'failed', reason: 'refused', isCancelled: false },
+    {
+      action_id: 'action-1',
+      status: 'failed',
+      reason: 'refused',
+      outcome_sequence: 9,
+      isCancelled: false,
+    },
     {
       sequence: 9,
       recordedAt: new Date(0),
@@ -80,7 +98,13 @@ test('it shows a failed action with the provider reason', () => {
 
 test('it shows a failed action with no provider text by its reason code', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'failed', reason: 'unknown_tool', isCancelled: false },
+    {
+      action_id: 'action-1',
+      status: 'failed',
+      reason: 'unknown_tool',
+      outcome_sequence: 9,
+      isCancelled: false,
+    },
     null,
   );
 
@@ -89,7 +113,13 @@ test('it shows a failed action with no provider text by its reason code', () => 
 
 test('it shows a pending action as queued under its ID', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'pending', reason: null, isCancelled: false },
+    {
+      action_id: 'action-1',
+      status: 'pending',
+      reason: null,
+      outcome_sequence: 9,
+      isCancelled: false,
+    },
     null,
   );
 
@@ -100,27 +130,74 @@ test('it shows a pending action as queued under its ID', () => {
   });
 });
 
-test('it shows an unknown action as a question put to you', () => {
+test('it shows an unknown action that reached the owner as a question put to the owner by name', () => {
   const view = buildModelView(
     {
       action_id: 'action-1',
       status: 'unknown',
       reason: 'attempt_without_result',
+      outcome_sequence: 9,
+      isCancelled: false,
+    },
+    null,
+    { ownerName: 'Robin' },
+  );
+
+  expect(view).toStrictEqual({
+    status: 'unknown',
+    actionID: 'action-1',
+    message: 'Robin was asked whether this happened',
+  });
+});
+
+test('it names the owner as the owner when the config holds no name', () => {
+  const view = buildModelView(
+    {
+      action_id: 'action-1',
+      status: 'unknown',
+      reason: 'ambiguous',
+      outcome_sequence: 9,
+      isCancelled: false,
+    },
+    null,
+    { ownerName: null },
+  );
+
+  expect(view).toStrictEqual({
+    status: 'unknown',
+    actionID: 'action-1',
+    message: 'the owner was asked whether this happened',
+  });
+});
+
+test('it shows an unknown action that nixie still reconciles as pending', () => {
+  const view = buildModelView(
+    {
+      action_id: 'action-1',
+      status: 'unknown',
+      reason: 'ambiguous',
+      outcome_sequence: null,
       isCancelled: false,
     },
     null,
   );
 
   expect(view).toStrictEqual({
-    status: 'unknown',
+    status: 'pending',
     actionID: 'action-1',
-    message: 'you were asked whether this happened',
+    message: 'queued as `action-1`',
   });
 });
 
 test('it shows a cancelled action as cancelled unsent by a stop, never as queued', () => {
   const view = buildModelView(
-    { action_id: 'action-1', status: 'pending', reason: null, isCancelled: true },
+    {
+      action_id: 'action-1',
+      status: 'pending',
+      reason: null,
+      outcome_sequence: 9,
+      isCancelled: true,
+    },
     null,
   );
 

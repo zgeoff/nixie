@@ -29,13 +29,23 @@ export function claimAction(
         )
         .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
         .select(['actions.action_id', 'actions.task_id'])
-        .where('actions.status', '=', 'pending')
+        .where((eb) =>
+          eb.or([
+            eb.and([
+              eb('actions.status', '=', 'pending'),
+              eb('actions.next_attempt_at', '<=', now),
+            ]),
+
+            // an action whose outcome is unknown comes back for its read-only check
+            eb.and([eb('actions.status', '=', 'unknown'), eb('actions.reconcile_at', '<=', now)]),
+          ]),
+        )
+        .where('actions.held_by_proposal_id', 'is', null)
         .where((eb) => eb.not(buildCancelledCheck(eb)))
-        .where('actions.next_attempt_at', '<=', now)
         .where((eb) => buildPauseCheck(eb, 'actions.task_id'))
         .where((eb) => eb.not(buildHeldCheck(eb)))
         .where((eb) => eb.or([eb('leases.holder', 'is', null), eb('leases.expires_at', '<=', now)]))
-        .orderBy('actions.next_attempt_at')
+        .orderBy(sql`coalesce(actions.reconcile_at, actions.next_attempt_at)`)
         .limit(1)
         .executeTakeFirst();
 

@@ -9,6 +9,7 @@ function setupTest() {
   const erasableFieldNames = {
     'action.outcome': ['result', 'message'],
     'action.queued': ['arguments'],
+    'action.reconcile_checked': ['result', 'message'],
     'action.retry_scheduled': ['result', 'message'],
     'memory.image_offered': ['text'],
     'memory.proposal_rejected': ['reason'],

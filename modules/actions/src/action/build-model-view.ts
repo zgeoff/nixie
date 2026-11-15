@@ -2,9 +2,17 @@ import type { JSONObject, LogRecord } from '@heynixie/log';
 import type { ActionRow, ModelView } from '../types';
 import { isJSONObject } from './is-json-object';
 
+export interface ModelViewOptions {
+  // the owner's name from the config, or null when it is unset
+  readonly ownerName: string | null;
+}
+
 export function buildModelView(
-  action: Pick<ActionRow, 'action_id' | 'reason' | 'status'> & { readonly isCancelled: boolean },
+  action: Pick<ActionRow, 'action_id' | 'reason' | 'status' | 'outcome_sequence'> & {
+    readonly isCancelled: boolean;
+  },
   outcome: LogRecord | null,
+  options?: ModelViewOptions,
 ): ModelView {
   const fields = outcome?.erasable.status === 'readable' ? outcome.erasable.fields : null;
   const actionID = action.action_id;
@@ -21,11 +29,17 @@ export function buildModelView(
     return { status: 'failed', actionID, reason: toReason(fields) ?? action.reason ?? 'failed' };
   }
 
-  if (action.status === 'pending') {
+  // an unknown outcome that no outcome record settled is still being reconciled, which the task
+  // hears nothing about
+  if (action.status === 'pending' || action.outcome_sequence === null) {
     return { status: 'pending', actionID, message: `queued as \`${actionID}\`` };
   }
 
-  return { status: 'unknown', actionID, message: 'you were asked whether this happened' };
+  return {
+    status: 'unknown',
+    actionID,
+    message: `${options?.ownerName ?? 'the owner'} was asked whether this happened`,
+  };
 }
 
 function toResult(fields: JSONObject | null): JSONObject | null {

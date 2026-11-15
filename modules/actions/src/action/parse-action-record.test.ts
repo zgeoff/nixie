@@ -22,6 +22,7 @@ test('it reads an outcome record', () => {
     actionID: 'action-1',
     status: 'unknown',
     reason: 'ambiguous',
+    ownerReason: null,
   });
 });
 

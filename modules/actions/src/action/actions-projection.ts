@@ -1,6 +1,7 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import { taskStoppedCodec } from '@heynixie/tasks';
-import type { Transaction, UpdateObject } from 'kysely';
+import type { ExpressionBuilder, Transaction, UpdateObject } from 'kysely';
+import { match } from 'ts-pattern';
 import type { ActionsTables } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
 import type { ActionRecord } from './parse-action-record';
@@ -77,6 +78,15 @@ async function applyActionRecord(
         outcome_sequence: null,
         cancelled_sequence: null,
         updated_sequence: record.sequence,
+        call_sequence: parsed.callSequence,
+        deadline_at: parsed.deadlineAt,
+        risk_class: parsed.riskClass,
+        is_approved: parsed.isApproved ? 1 : 0,
+        held_by_proposal_id: null,
+        unknown_streak: 0,
+        first_attempt_at: null,
+        last_attempt_at: null,
+        reconcile_at: null,
       })
       .execute();
 
@@ -85,27 +95,81 @@ async function applyActionRecord(
 
   await db
     .updateTable('actions')
-    .set({ updated_sequence: record.sequence, ...buildActionUpdate(parsed, record.sequence) })
+    .set((eb) => ({
+      updated_sequence: record.sequence,
+      ...buildActionUpdate(eb, parsed, {
+        sequence: record.sequence,
+        at: record.recordedAt.getTime(),
+      }),
+    }))
     .where('action_id', '=', parsed.actionID)
     .execute();
 }
 
+interface RecordStamp {
+  readonly sequence: number;
+  readonly at: number;
+}
+
 function buildActionUpdate(
+  eb: ExpressionBuilder<ActionsTables, 'actions'>,
   parsed: Exclude<ActionRecord, { readonly kind: 'action.queued' }>,
-  sequence: number,
+  stamp: RecordStamp,
 ): UpdateObject<ActionsTables, 'actions'> {
-  if (parsed.kind === 'action.attempt_started') {
-    return { attempt_count: parsed.attempt, attempt_open: 1 };
-  }
-
-  if (parsed.kind === 'action.retry_scheduled') {
-    return { attempt_open: 0, next_attempt_at: parsed.nextAttemptAt, reason: parsed.reason };
-  }
-
-  return {
-    status: parsed.status,
-    attempt_open: 0,
-    reason: parsed.reason,
-    outcome_sequence: sequence,
-  };
+  return match(parsed)
+    .with({ kind: 'action.attempt_started' }, (record) => ({
+      attempt_count: record.attempt,
+      attempt_open: 1,
+      last_attempt_at: stamp.at,
+      first_attempt_at: eb.fn.coalesce('first_attempt_at', eb.val(stamp.at)),
+    }))
+    .with({ kind: 'action.retry_scheduled' }, (record) => ({
+      attempt_open: 0,
+      next_attempt_at: record.nextAttemptAt,
+      reason: record.reason,
+      unknown_streak: 0,
+    }))
+    .with({ kind: 'action.reconcile_scheduled', step: 'retry' }, (record) => ({
+      status: 'pending' as const,
+      attempt_open: 0,
+      next_attempt_at: record.at,
+      reconcile_at: null,
+      unknown_streak: eb('unknown_streak', '+', 1),
+    }))
+    .with({ kind: 'action.reconcile_scheduled', step: 'check' }, (record) => ({
+      status: 'unknown' as const,
+      attempt_open: 0,
+      reconcile_at: record.at,
+      outcome_sequence: null,
+      unknown_streak: eb('unknown_streak', '+', 1),
+    }))
+    .with({ kind: 'action.reconcile_checked' }, (record) =>
+      record.nextAttemptAt === null
+        ? { reconcile_at: null }
+        : { reconcile_at: null, status: 'pending' as const, next_attempt_at: record.nextAttemptAt },
+    )
+    .with({ kind: 'action.held' }, (record) => ({ held_by_proposal_id: record.proposalID }))
+    .with({ kind: 'action.released' }, (record) => ({
+      held_by_proposal_id: null,
+      is_approved: 1 as const,
+      ...(record.riskClass === null ? {} : { risk_class: record.riskClass }),
+    }))
+    .with({ kind: 'action.unknown_answered', choice: 'retry' }, (record) => ({
+      status: 'pending' as const,
+      attempt_open: 0,
+      outcome_sequence: null,
+      reason: null,
+      unknown_streak: 0,
+      next_attempt_at: record.nextAttemptAt ?? stamp.at,
+    }))
+    .with({ kind: 'action.unknown_answered' }, () => ({}))
+    .with({ kind: 'action.outcome' }, (record) => ({
+      status: record.status,
+      attempt_open: 0,
+      reason: record.reason,
+      outcome_sequence: stamp.sequence,
+      held_by_proposal_id: null,
+      reconcile_at: null,
+    }))
+    .exhaustive();
 }

@@ -10,6 +10,7 @@ test('it answers each call with the response the test set, and records the call'
     arguments: { to: 'someone' },
     attempt: 1,
     idempotencyKey: 'action-1',
+    destinations: [],
   });
 
   expect(response).toStrictEqual({ kind: 'success', result: { messageID: 'm-1' } });
@@ -21,6 +22,7 @@ test('it answers each call with the response the test set, and records the call'
       arguments: { to: 'someone' },
       attempt: 1,
       idempotencyKey: 'action-1',
+      destinations: [],
     },
   ]);
 });
@@ -36,6 +38,7 @@ test('it rejects the call when the response throws, as a dropped connection does
     arguments: {},
     attempt: 1,
     idempotencyKey: 'action-1',
+    destinations: [],
   });
 
   expect(call).rejects.toThrowWithMessage(Error, 'socket hang up');

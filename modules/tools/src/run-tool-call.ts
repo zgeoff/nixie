@@ -9,6 +9,7 @@ import type {
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { CallDestination, DecisionPoint, PolicyCall, PolicyDecision } from '@heynixie/policy';
 import {
+  buildActionHash,
   buildActionProposalInput,
   makeFaultSafeDecisionPoint,
   toStoredDecision,
@@ -17,9 +18,12 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
 import { callCapRefusal } from './cap/call-cap-refusal';
 import { countCapCalls } from './cap/count-cap-calls';
+import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
+import { resolveCallDeadline } from './policy-call/resolve-call-deadline';
 import { resolveCallDestinations } from './policy-call/resolve-call-destinations';
 import { resolveCallPolicyFacts } from './policy-call/resolve-call-policy-facts';
+import { toStepKey } from './policy-call/to-step-key';
 import { toolCalledCodec } from './tool-called-codec';
 import { toolResultCodec } from './tool-result-codec';
 import { ToolResultRefusedError } from './types';
@@ -83,6 +87,17 @@ export async function runToolCall(
 
   const destinations = resolution.destinations;
 
+  const deadline =
+    registered !== null && run.tools.includes(call.tool)
+      ? await resolveCallDeadline(registered, call.input, run)
+      : { status: 'ok' as const, deadlineAt: null };
+
+  if (deadline.status === 'error') {
+    return writeInvalidCall(recorder, deadline.message);
+  }
+
+  const deadlineAt = deadline.deadlineAt;
+
   const facts =
     registered !== null && run.tools.includes(call.tool)
       ? await resolveCallPolicyFacts(registered, call.input, run)
@@ -92,10 +107,10 @@ export async function runToolCall(
     return writeInvalidCall(recorder, facts.message);
   }
 
-  const deadline =
+  const decisionTimeout =
     options.decisionDeadlineMs === undefined ? {} : { deadlineMs: options.decisionDeadlineMs };
 
-  const decide = makeFaultSafeDecisionPoint(options.decide, deadline);
+  const decide = makeFaultSafeDecisionPoint(options.decide, decisionTimeout);
   const policyArgs = facts?.args ?? call.input;
 
   const policyCall = buildToolPolicyCall(run, {
@@ -117,6 +132,7 @@ export async function runToolCall(
     destinations,
     args: policyArgs,
     frame: policyCall,
+    deadlineAt,
   });
 
   const settled = written.isCapped
@@ -129,6 +145,8 @@ export async function runToolCall(
         run,
         callSequence: written.sequence,
         shortID: written.shortID,
+        destinations,
+        deadlineAt,
         options,
       });
 
@@ -167,6 +185,9 @@ interface CallPolicy {
 
   // the frame the call ran under, which a no_rule ask records
   readonly frame: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
+
+  // the time after which the call's action must not start, null when it has none
+  readonly deadlineAt: number | null;
 }
 
 interface WrittenCall {
@@ -211,11 +232,15 @@ function makeCallRecorder(
             kind: 'tool_called',
             definitions,
             thread: run.thread,
+            ...(run.stepRunID === undefined ? {} : { stepKey: toStepKey(run.stepRunID) }),
             payload: toolCalledCodec.encode({
               ...ids,
               tool: call.tool,
               model: run.model.model,
               profile: run.model.profile,
+              ...(decided === null || decided.deadlineAt === null
+                ? {}
+                : { deadlineAt: decided.deadlineAt }),
             }),
             erasable: {
               input,
@@ -275,6 +300,8 @@ function makeCallRecorder(
           destinations,
           content: registered.definition.declaration.content,
           frame: decided.frame,
+          deadlineAt: decided.deadlineAt,
+          now: options.log.writer.clock.now(),
         });
 
         await writeRecordsInTransaction(tx, options.log, [proposal.record]);
@@ -328,17 +355,6 @@ function makeCallRecorder(
       }
     },
   };
-}
-
-// An ask rule on memory_write makes the write a memory proposal, which the memory gate writes, so
-// the call writes no action proposal.
-function isMemoryRuleAsk(policy: PolicyDecision): boolean {
-  return (
-    policy.memoryWrite !== undefined &&
-    policy.decision.outcome === 'ask' &&
-    policy.decision.cause === 'ask_rule' &&
-    policy.decision.rule !== null
-  );
 }
 
 const trustOrder: readonly ContentSource[] = ['untrusted', 'owner_data', 'owner'];
@@ -432,6 +448,8 @@ interface DecidedCall {
   readonly run: ToolRun;
   readonly callSequence: number;
   readonly shortID: string | null;
+  readonly destinations: readonly CallDestination[];
+  readonly deadlineAt: number | null;
   readonly options: ToolCallOptions;
 }
 
@@ -476,28 +494,6 @@ function buildAskMessage(shortID: string | null): Settled {
   );
 }
 
-// What the decision point said about a memory write, for the tool's own gate. A decision from a
-// declaration that did not hold memory_write, such as a snapshot from before the release that
-// changed it, gives no verdict, and the tool runs every check.
-function buildMemoryVerdict(policy: PolicyDecision): MemoryWriteVerdict | undefined {
-  const facts = policy.memoryWrite;
-  const decision = policy.decision;
-
-  if (facts === undefined) {
-    return undefined;
-  }
-
-  if (decision.outcome === 'allow' && decision.rule !== null) {
-    return { kind: 'rule-allow', rules: facts.allowing };
-  }
-
-  if (isMemoryRuleAsk(policy) && decision.rule !== null) {
-    return { kind: 'rule-ask', rule: { id: decision.rule.id, revision: decision.rule.revision } };
-  }
-
-  return { kind: 'gate' };
-}
-
 interface AllowedCall {
   readonly registered: RegisteredTool;
   readonly decision: Decision;
@@ -505,6 +501,8 @@ interface AllowedCall {
   readonly run: ToolRun;
 
   readonly callSequence: number;
+  readonly destinations: readonly CallDestination[];
+  readonly deadlineAt: number | null;
   readonly options: ToolCallOptions;
 
   readonly verdict?: MemoryWriteVerdict;
@@ -576,6 +574,13 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
     run: allowed.run,
     decision: allowed.decision,
     callSequence: allowed.callSequence,
+    actionHash: buildActionHash({
+      tool: allowed.call.tool,
+      input: allowed.call.input,
+      destinations: allowed.destinations.map((destination) => destination.value),
+      deadlineAt: allowed.deadlineAt,
+    }),
+    deadlineAt: allowed.deadlineAt,
   });
 
   const outcome = await allowed.options.queue

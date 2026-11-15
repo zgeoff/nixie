@@ -11,5 +11,6 @@ export const toolCalledCodec = defineRecordCodec(
     model: z.string().exactOptional(),
     profile: z.string().exactOptional(),
     taskRunID: z.string().exactOptional(),
+    deadlineAt: z.number().nullable().exactOptional(),
   }),
 );
