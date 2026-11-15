@@ -17,10 +17,11 @@ You need:
 - your recovery key, the age key that opens the deployment's sops files without the lost host's key;
 - a release of nixie that starts paused after a restore, pinned in your deployment repo.
 
-**Use a release that starts paused after a restore.** An earlier release refuses to start on the
-data directory that the restore leaves. Once a release that starts paused has run on that data
-directory, an earlier release refuses it with `SchemaTooNewError` until you resume nixie, and the
-error does not say that the pause is the cause.
+**Use a release that starts paused after a restore.** Its release notes list the restore pause. A
+release without the pause refuses to start on the data directory that the restore leaves. After a
+release with the pause has started on that data directory, a release without it refuses the data
+directory with `SchemaTooNewError` for as long as nixie stays paused. The error does not say that
+the pause is the cause.
 
 Each step marked **Get approval first** stops the live nixie or does something that no later step
 puts back. When someone else follows these steps for you, they stop before each such step and ask
@@ -28,20 +29,21 @@ you.
 
 Replace these placeholders in each command:
 
-| Placeholder         | Stands for                                                          |
-| ------------------- | ------------------------------------------------------------------- |
-| `<restore_volume>`  | a volume for the fetched copies: a named volume, or a claim         |
-| `<backup_service>`  | the Compose service that runs the backup job                        |
-| `<backup_env_file>` | a file of the `NIXIE_BACKUP_*` variables that your backup job reads |
-| `<backup_image>`    | the backup image of your release, by its tag and digest             |
-| `<nixie_image>`     | nixie's image of your release, by its tag and digest                |
-| `<namespace>`       | the Kubernetes namespace of nixie                                   |
-| `<job_name>`        | a backup Job that has not finished                                  |
-| `<config_map>`      | the ConfigMap that holds nixie's `config.yaml`                      |
-| `<sops_file>`       | one sops file of the deployment                                     |
-| `<age_key_file>`    | the age key file that the Compose commands read                     |
-| `<task_id>`         | the ID of one task that `nixie recovery` lists                      |
-| `<snapshot_id>`     | the full ID of a data snapshot                                      |
+| Placeholder          | Stands for                                                          |
+| -------------------- | ------------------------------------------------------------------- |
+| `<restore_volume>`   | a volume for the fetched copies: a named volume, or a claim         |
+| `<backup_service>`   | the Compose service that runs the backup job                        |
+| `<backup_env_file>`  | a file of the `NIXIE_BACKUP_*` variables that your backup job reads |
+| `<backup_image>`     | the backup image of your release, by its tag and digest             |
+| `<nixie_image>`      | nixie's image of your release, by its tag and digest                |
+| `<namespace>`        | the Kubernetes namespace of nixie                                   |
+| `<job_name>`         | a backup Job that has not finished                                  |
+| `<config_map>`       | the ConfigMap that holds nixie's `config.yaml`                      |
+| `<sops_file>`        | one sops file of the deployment                                     |
+| `<age_key_file>`     | the age key file that the Compose commands read                     |
+| `<new_age_key_file>` | a path that you pick for the restored host's new age key            |
+| `<task_id>`          | the ID of one task that `nixie recovery` lists                      |
+| `<snapshot_id>`      | the full ID of a data snapshot                                      |
 
 On Compose, set `NIXIE_SECRETS_FILE=<sops_file>` and `NIXIE_AGE_KEY_FILE=<age_key_file>` on each
 `docker compose` command, as the [Compose guide](../guides/compose.md) does. Until step 9, the age
@@ -50,8 +52,8 @@ key file is your recovery key.
 **On a new cluster, deploy nixie without its backup job first.** The restore pod needs the claim
 `data-nixie-0`, which exists only once the StatefulSet has run. A backup job beside that empty nixie
 would publish its empty database and remove the key store backup that you restore from. With the
-Pulumi component, leave out the `backup` argument for now. The reference manifests run no backup
-job. Then follow step 1.
+Pulumi component, leave out the `backup` argument for now. The reference manifests define no backup
+job, so apply them as they are. Then follow step 1.
 
 Each container below mounts `<restore_volume>` at `/restore`, and the fetch writes the copies into
 the folder `/restore/pair`, which it creates. The fetch refuses a folder that holds any file, and a
@@ -61,8 +63,9 @@ new claim can hold a `lost+found` folder at its root, so the copies never go at 
 
 ### 1. Stop nixie and its backup job
 
-**Get approval first.** This stops the live nixie, if it still runs anywhere. A backup job that
-keeps running can publish, during the restore, a backup of the database that the restore replaces.
+**Get approval first.** This stops nixie and its backup job on the new host or cluster. When the
+lost host still runs, stop both there too. A backup job that keeps running can publish, during the
+restore, a backup of the database that the restore replaces.
 
 - Compose:
 
@@ -70,10 +73,16 @@ keeps running can publish, during the restore, a backup of the database that the
   docker compose stop <backup_service> nixie
   ```
 
-- Kubernetes: scale the StatefulSet to 0, suspend the backup CronJob, and list the Jobs:
+- Kubernetes: scale the StatefulSet to 0:
 
   ```bash
   kubectl -n <namespace> scale statefulset/nixie --replicas=0
+  ```
+
+  When the namespace runs the backup CronJob `nixie-backup`, as the Pulumi component's `backup`
+  argument makes it, suspend the CronJob and list its Jobs:
+
+  ```bash
   kubectl -n <namespace> patch cronjob/nixie-backup -p '{"spec":{"suspend":true}}'
   kubectl -n <namespace> get jobs
   ```
@@ -105,8 +114,10 @@ only `<restore_volume>`, never nixie's data volume.
 - Kubernetes: create a claim named `<restore_volume>` with room for a copy of `nixie.db` and
   `keys.db`. Then save this pod as `nixie-fetch.yaml`. It reads the `nixie-backup` Secret, which the
   Pulumi component creates under that fixed name when it runs the backup job. When no such Secret
-  exists, create it from `<backup_env_file>`. The security fields meet the `restricted` Pod Security
-  level that the reference namespace enforces, and `fsGroup` gives user 10001 the claim:
+  exists, create it with
+  `kubectl -n <namespace> create secret generic nixie-backup --from-env-file=<backup_env_file>`. The
+  security fields meet the `restricted` Pod Security level that the reference namespace enforces,
+  and `fsGroup` gives user 10001 the claim:
 
   ```yaml
   apiVersion: v1
@@ -185,18 +196,17 @@ backup that the key store backup holds every key for, after the words `name data
   loses its text, unless its current version had a version key of its own and stayed current until
   the purge.
 
-**Warning: a key store backup with no publish number.** A backup job of a release before publish
-numbers tagged none. `nixie-backup snapshots` prints one line of JSON for each backup, and such a
-line shows `"publish":null`. Under such a key store backup, the fetch checks a named database backup
-only by its `set` number, and a `set` number can repeat after an earlier restore. Name a database
-backup whose `set` is the key store backup's or lower, and whose `time` is earlier than the key
-store backup's.
+**Warning: a key store backup with no publish number.** `nixie-backup snapshots` prints one line of
+JSON for each backup, in the backup image, as the fetch runs. When the line of the newest key store
+backup shows `"publish":null`, the fetch checks a named database backup only by its `set` number,
+and a `set` number can repeat after an earlier restore. Name a database backup whose `set` is the
+key store backup's or lower, and whose `time` is earlier than the key store backup's.
 
-Then fetch again with that ID. On Compose, add the flag to the `docker run` fetch command. On
-Kubernetes, add it to the pod's `args`:
+Then fetch again into a new folder, with `--data-snapshot` and that ID. On Compose, change the end
+of the `docker run` fetch command. On Kubernetes, change the pod's `args`:
 
 ```bash
-nixie-backup fetch --to /restore/pair-2 --data-snapshot <snapshot_id>
+fetch --to /restore/pair-2 --data-snapshot <snapshot_id>
 ```
 
 Expect: `"relation":"older-data"`, which means the database backup is older than the key store
@@ -272,7 +282,8 @@ The restore runs in a one-off container of nixie's image that mounts the data vo
         emptyDir: {}
   ```
 
-Expect: exit 0, and a line with both databases and `/restore/pair`.
+Expect: exit 0, and the line `nixie restored nixie.db and keys.db from /restore/pair`, with the
+folder that you restored from.
 
 When the restore stops part way, for a crash or any error, run the same command again. When the
 error begins `a backup job pass holds the staging lock`, a backup job still runs. Stop it with step
@@ -296,9 +307,9 @@ Start nixie, and leave the backup job stopped.
   kubectl -n <namespace> rollout status statefulset/nixie
   ```
 
-Expect: nixie starts paused. While nixie is paused, no task takes a step, no action starts, and no
-schedule fires. The web client shows that nixie is paused after a restore. A release that does not
-start paused fails here: see [Before you start](#before-you-start).
+Expect: nixie starts paused. While nixie is paused, no task works, no action starts, and no schedule
+fires. The web client shows that nixie is paused after a restore. A release that does not start
+paused fails here: see [Before you start](#before-you-start).
 
 ### 5. Read the recovery
 
@@ -308,10 +319,10 @@ Run each `nixie` command in steps 5 to 7 inside nixie's container:
 - Kubernetes: `kubectl -n <namespace> exec nixie-0 -c nixie -- nixie recovery`
 
 Expect: one line of JSON, `{"recovery":{…}}`, with `restoredAt`, `backupTakenAt` and `toCheck`.
-`toCheck` lists each task that was midway through a step, or that had an action with no outcome,
-when the backup was taken. Each entry gives the task's `taskID`, `name` and `stateAtBackup`. It also
-gives `wasRunning`, true when a step had started and not finished, and `pendingActions`, the number
-of the task's actions with no outcome.
+`toCheck` lists each task that was midway through a unit of its work, or that had an action with no
+outcome, when the backup was taken. Each entry gives the task's `taskID`, `name` and
+`stateAtBackup`. It also gives `wasRunning`, true when such a unit of work had started and not
+finished, and `pendingActions`, the number of the task's actions with no outcome.
 
 ### 6. Check each listed task
 
@@ -323,8 +334,8 @@ outside world after the backup. For each task in `toCheck`, check what it may ha
 backup, and that its task had not yet taken, can start a task run once you resume that task or
 nixie. Check each task's triggers before you resume it.
 
-To let one task run before the rest, resume it. Most often that task is the conversation, so that
-you can talk to nixie while the rest stay paused:
+To let one task run before the rest, resume it. Resume the conversation to talk to nixie while the
+rest stay paused:
 
 ```bash
 nixie task-resume <task_id>
@@ -352,19 +363,19 @@ Expect: `{"paused":null}`, which means nixie is no longer paused.
   docker compose up -d --wait --no-deps <backup_service>
   ```
 
-- Kubernetes with the manifests: unsuspend the CronJob:
+- Kubernetes with the Pulumi component: when you left out the `backup` argument on a new cluster,
+  put it back. Delete the `nixie-backup` Secret that you created in step 2, so that the component
+  can create its own. Then run `pulumi up`, which sets `suspend: false` on the CronJob.
+- Kubernetes with a backup CronJob of your own: unsuspend it:
 
   ```bash
   kubectl -n <namespace> patch cronjob/nixie-backup -p '{"spec":{"suspend":false}}'
   ```
 
-- Kubernetes with the Pulumi component: run `pulumi up`, which sets `suspend: false`. When you left
-  out the `backup` argument on a new cluster, put it back, and delete the `nixie-backup` Secret that
-  you created in step 2, so that the component can create its own.
-
 Expect: the next backup job run publishes a backup, with a publish number one above the highest in
-either repository. Remove `<restore_volume>` once the restore is done, because it holds a copy of
-the key store.
+either repository.
+
+Then remove `<restore_volume>`, because it holds a copy of the key store.
 
 ### 9. Make a host key for the restored host
 
@@ -374,7 +385,8 @@ the key store.
    age-keygen -o <new_age_key_file>
    ```
 
-2. Add the public key to the recipients in the deployment repo's `.sops.yaml`.
+2. In the deployment repo's `.sops.yaml`, replace the lost host's public key with the new one. Keep
+   the recovery key's public key.
 3. Re-encrypt each sops file of the deployment to the new recipients:
 
    ```bash
@@ -383,8 +395,9 @@ the key store.
 
 4. Commit the change in your deployment repo.
 5. Give nixie the new key, then deploy. On Compose, set `NIXIE_AGE_KEY_FILE=<new_age_key_file>`. On
-   Kubernetes, put the key in the age key of nixie's secrets.
-6. Put the recovery key away.
+   Kubernetes, put the key in the `age.key` entry of the `nixie-secrets` Secret with the manifests,
+   or in the component's `ageKey` argument with Pulumi.
+6. Store the recovery key offline again, away from the host.
 
 Expect: `SOPS_AGE_KEY_FILE=<new_age_key_file> sops --decrypt <sops_file> > /dev/null` exits 0.
 
@@ -405,7 +418,7 @@ holds its keys.
 ## Drill
 
 A drill restores into a fresh namespace and volume on Kubernetes, to show that the restore works.
-Which repository credential a drill reads with is still open, in
+Which repository credential a drill reads the repositories with is still open, in
 [the restore checks by hand](https://linear.app/zgeoff/issue/GEO-2576). Run no drill until that
 issue settles it.
 
@@ -413,10 +426,11 @@ Set up the drill nixie so that it can harm nothing live:
 
 - Set `backup.enabled: false` in its `config.yaml`, and run no backup job. One backup that a drill
   publishes removes every other key store backup, the live one included.
-- Give it no sandbox backend that it can reach. At its start, nixie destroys the sandbox of each
-  step that had ended.
+- Give it no sandbox backend that it can reach. At its start, nixie destroys the sandboxes of the
+  task work that the restored log shows as ended.
 
 **Get approval first.** Creating the namespace and its volume changes the cluster.
 
-Follow steps 2 to 5 in the drill's namespace. Send no message to the drill nixie. The evidence is
-the output of `nixie recovery`, the paused tasks it lists, and `nixie health`.
+Deploy nixie into the drill's namespace with no backup job, as [Before you start](#before-you-start)
+says for a new cluster. Then follow steps 2 to 5 there. Send no message to the drill nixie. The
+evidence is the output of `nixie recovery`, the paused tasks it lists, and `nixie health`.
