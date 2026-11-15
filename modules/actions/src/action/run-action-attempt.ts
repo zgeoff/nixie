@@ -181,9 +181,15 @@ async function runAttempt(
     return;
   }
 
-  const isStarted = await writeAttemptStarted(context, attempt);
+  const start = await writeAttemptStarted(context, attempt);
 
-  if (!isStarted) {
+  if (start === 'past_deadline') {
+    await writeFailure(context, attempt, 'deadline_passed', 'the action passed its deadline');
+
+    return;
+  }
+
+  if (start === 'barred') {
     return;
   }
 
@@ -223,7 +229,7 @@ async function writeOutcome(
   }
 }
 
-function isPastDeadline(action: ActionRow, now: number): boolean {
+function isPastDeadline(action: Pick<ActionRow, 'deadline_at'>, now: number): boolean {
   return action.deadline_at !== null && now >= action.deadline_at;
 }
 
@@ -239,52 +245,63 @@ function writeFailure(
   });
 }
 
-// A stop, a pause, a close or a pause of all of nixie can commit between the claim and the attempt's
-// start, so the start reads the cancel, the hold and the nixie pause again in its own transaction,
-// and frees the lease of an action that must not start.
-async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Promise<boolean> {
-  const isStarted = await withWriteTransaction(context.log.writer, async (tx) => {
-    await requireLease(tx, attempt.lease, context.clock.now());
+type AttemptStart = 'started' | 'barred' | 'past_deadline';
 
-    const action = await tx
-      .$extendTables<ActionsTables>()
-      .selectFrom('actions')
-      .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
-      .select((eb) => eb.or([buildCancelledCheck(eb), buildHeldCheck(eb)]).as('is_barred'))
-      .select('actions.held_by_proposal_id')
-      .where('actions.action_id', '=', attempt.action.action_id)
-      .executeTakeFirstOrThrow();
+// A stop, a pause, a close or a pause of all of nixie can commit, and the deadline can pass, while
+// the policy check runs, so the start reads them again in its own transaction. An action past its
+// deadline keeps its lease for the failure.
+async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Promise<AttemptStart> {
+  const start = await withWriteTransaction(
+    context.log.writer,
+    async (tx): Promise<AttemptStart> => {
+      const now = context.clock.now();
 
-    const isPaused = await probeTaskPaused(tx, attempt.action.task_id);
+      await requireLease(tx, attempt.lease, now);
 
-    const isBarred = action.is_barred === 1 || action.is_barred === true;
+      const action = await tx
+        .$extendTables<ActionsTables>()
+        .selectFrom('actions')
+        .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
+        .select((eb) => eb.or([buildCancelledCheck(eb), buildHeldCheck(eb)]).as('is_barred'))
+        .select(['actions.held_by_proposal_id', 'actions.deadline_at'])
+        .where('actions.action_id', '=', attempt.action.action_id)
+        .executeTakeFirstOrThrow();
 
-    if (isBarred || isPaused || action.held_by_proposal_id !== null) {
-      await resetLease(tx, attempt.lease);
+      const isPaused = await probeTaskPaused(tx, attempt.action.task_id);
 
-      return false;
-    }
+      const isBarred = action.is_barred === 1 || action.is_barred === true;
 
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: 'action.attempt_started',
-        definitions: context.definitions(),
-        thread: attempt.action.task_id,
-        payload: { actionID: attempt.action.action_id, attempt: attempt.attempt },
-      },
-    ]);
+      if (isBarred || isPaused || action.held_by_proposal_id !== null) {
+        await resetLease(tx, attempt.lease);
 
-    return true;
-  });
+        return 'barred';
+      }
 
-  if (isStarted && NIXIE_TEST_BUILD) {
+      if (isPastDeadline(action, now)) {
+        return 'past_deadline';
+      }
+
+      await writeRecordsInTransaction(tx, context.log, [
+        {
+          kind: 'action.attempt_started',
+          definitions: context.definitions(),
+          thread: attempt.action.task_id,
+          payload: { actionID: attempt.action.action_id, attempt: attempt.attempt },
+        },
+      ]);
+
+      return 'started';
+    },
+  );
+
+  if (start === 'started' && NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.record.after', {
       kind: 'action',
       id: attempt.action.action_id,
     });
   }
 
-  return isStarted;
+  return start;
 }
 
 interface ConnectorCall {

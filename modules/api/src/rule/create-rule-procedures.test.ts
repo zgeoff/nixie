@@ -48,7 +48,7 @@ async function setupTest() {
   // A first seed holds its allow rules as a proposal until the user answers it.
   const listed = await over.approvals.listItems();
 
-  const item = listed.items.find((entry) => entry.group !== 'unknown_outcome');
+  const [item] = listed.items;
 
   invariant(item);
 

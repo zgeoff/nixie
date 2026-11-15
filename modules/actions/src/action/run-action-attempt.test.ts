@@ -561,6 +561,39 @@ test('it starts an action whose deadline has not come', async () => {
   expect(action).toMatchObject({ status: 'done', deadline_at: 1_005_000 });
 });
 
+test('it fails an action whose deadline passes while its policy check runs, and calls no provider', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+    deadlineAt: 1_005_000,
+  });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    checkAttempt: () => {
+      ctx.clock.advance(5000);
+
+      return Promise.resolve({ kind: 'go', destinations: [] });
+    },
+  });
+
+  const action = await readTestAction(ctx.writer, queued.actionID);
+
+  expect(stub.calls).toStrictEqual([]);
+  expect(action).toMatchObject({ status: 'failed', reason: 'deadline_passed', attempt_count: 0 });
+});
+
 test('it fails an action that a rule now denies, and names the rule in the outcome', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);

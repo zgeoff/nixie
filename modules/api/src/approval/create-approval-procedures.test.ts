@@ -65,24 +65,12 @@ async function setupTest() {
 
   const laptop = await createDeviceSession(api.context, 'laptop');
 
-  const client = buildTestClient(api.url, laptop.token);
-
-  return {
-    api,
-    memory,
-    url: api.url,
-    client,
-    readProposalItems: async () => {
-      const listed = await client.approvals.listItems();
-
-      return { ...listed, items: listed.items.filter((item) => item.group !== 'unknown_outcome') };
-    },
-  };
+  return { api, memory, url: api.url, client: buildTestClient(api.url, laptop.token) };
 }
 
 test('#approvals.listItems lists a pending rule change with the choices it takes', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   expect(listed.items.map((item) => [item.group, item.choices])).toStrictEqual([
     ['routine', ['approve', 'defer', 'decline']],
@@ -91,7 +79,7 @@ test('#approvals.listItems lists a pending rule change with the choices it takes
 
 test('#approvals.answerProposal refuses a stale hash with CONFLICT and keeps the row open', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const proposalID = listed.items[0]?.proposal.proposalID ?? 'missing';
 
@@ -104,14 +92,14 @@ test('#approvals.answerProposal refuses a stale hash with CONFLICT and keeps the
 
   expect(answer).rejects.toMatchObject({ code: 'CONFLICT' });
 
-  const after = await ctx.readProposalItems();
+  const after = await ctx.client.approvals.listItems();
 
   expect(after.items).toHaveLength(1);
 });
 
 test('#approvals.answerProposal refuses always allow on a rule change with NOT_ALLOWED', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
 
@@ -127,7 +115,7 @@ test('#approvals.answerProposal refuses always allow on a rule change with NOT_A
 
 test('#approvals.answerProposal refuses an answer to a closed proposal with CLOSED', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
   const proposalID = item?.proposal.proposalID ?? 'missing';
@@ -152,7 +140,7 @@ test('#approvals.answerProposal refuses an answer to a closed proposal with CLOS
 
 test('#approvals.answerProposal gives a retry of a refused answer the same refusal', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const clientActionID = crypto.randomUUID();
   const proposalID = listed.items[0]?.proposal.proposalID ?? 'missing';
@@ -168,7 +156,7 @@ test('#approvals.answerProposal gives a retry of a refused answer the same refus
 
 test('#approvals.answerProposal defers a proposal, which then lists as deferred', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
 
@@ -180,7 +168,7 @@ test('#approvals.answerProposal defers a proposal, which then lists as deferred'
     clientActionID: crypto.randomUUID(),
   });
 
-  const after = await ctx.readProposalItems();
+  const after = await ctx.client.approvals.listItems();
 
   expect({ state: answered.state, groups: after.items.map((entry) => entry.group) }).toStrictEqual({
     state: 'deferred',
@@ -190,7 +178,7 @@ test('#approvals.answerProposal defers a proposal, which then lists as deferred'
 
 test('#approvals.answerProposals answers each item and refuses a stale one alone', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
   const proposalID = item?.proposal.proposalID ?? 'missing';
@@ -224,7 +212,7 @@ test('#approvals.answerProposals answers each item and refuses a stale one alone
 
 test('#runProposalReturns brings a deferred proposal back once its return time passes', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
   const hourMs = 60 * 60 * 1000;
@@ -247,7 +235,7 @@ test('#runProposalReturns brings a deferred proposal back once its return time p
   ctx.api.clock.advance(3 * hourMs);
 
   const due = await runProposalReturns(deps);
-  const after = await ctx.readProposalItems();
+  const after = await ctx.client.approvals.listItems();
 
   expect({ early, due, groups: after.items.map((entry) => entry.group) }).toStrictEqual({
     early: 0,
@@ -258,7 +246,7 @@ test('#runProposalReturns brings a deferred proposal back once its return time p
 
 test('#runProposalLapses lapses a proposal at the new time after a defer, not the old one', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
   const dayMs = 24 * 60 * 60 * 1000;
@@ -292,7 +280,7 @@ test('#runProposalLapses lapses a proposal at the new time after a defer, not th
 
 test('#runSeed withdraws a rule change a defer kept open past its first lapse time when its widening goes', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
   const dayMs = 24 * 60 * 60 * 1000;
@@ -333,7 +321,7 @@ test('#approvals.answerProposal applies no memory write when the session is revo
     caller: buildMockWriteCaller(),
   });
 
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const item = listed.items.find((entry) => entry.group === 'memory');
 
@@ -376,7 +364,7 @@ test('#approvals.answerProposal puts the note of a declined memory proposal in t
     caller: buildMockWriteCaller({ thread: 'conversation' }),
   });
 
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const item = listed.items.find((entry) => entry.group === 'memory');
 
@@ -404,7 +392,7 @@ test('#approvals.answerProposal puts the note of a declined memory proposal in t
 
 test('#approvals.listItems lists the open rows in the digest order, and leaves out closed, lapsed and erased rows', async () => {
   const ctx = await setupTest();
-  const before = await ctx.readProposalItems();
+  const before = await ctx.client.approvals.listItems();
 
   const ruleChange = before.items[0]?.proposal.shortID ?? 'missing';
   const log = ctx.api.context.log;
@@ -451,7 +439,7 @@ test('#approvals.listItems lists the open rows in the digest order, and leaves o
     caller: buildMockWriteCaller(),
   });
 
-  const open = await ctx.readProposalItems();
+  const open = await ctx.client.approvals.listItems();
 
   const findHash = (shortID: string) =>
     open.items.find((item) => item.proposal.shortID === shortID)?.proposal.actionHash ?? 'missing';
@@ -471,7 +459,7 @@ test('#approvals.listItems lists the open rows in the digest order, and leaves o
     clientActionID: crypto.randomUUID(),
   });
 
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   expect(listed.items.map((item) => [item.group, item.proposal.shortID])).toStrictEqual([
     ['always_ask', alwaysAsk.shortID],
@@ -500,7 +488,7 @@ test('#approvals.answerProposal puts the note of a declined action in the inbox 
 
   await writeRecords(ctx.api.context.log, [proposed.record]);
 
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const item = listed.items.find((entry) => entry.proposal.shortID === proposed.shortID);
 
@@ -542,7 +530,7 @@ test('#approvals.answerProposal puts a defer and its note in the inbox of the ta
 
   await writeRecords(ctx.api.context.log, [proposed.record]);
 
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const item = listed.items.find((entry) => entry.proposal.shortID === proposed.shortID);
 
@@ -569,7 +557,7 @@ test('#approvals.answerProposal puts a defer and its note in the inbox of the ta
 
 test('#runProposalReturns brings a proposal back at the time of its second defer, not its first', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
   const hourMs = 60 * 60 * 1000;
@@ -604,7 +592,7 @@ test('#runProposalReturns brings a proposal back at the time of its second defer
 
 test('#runProposalReturns never brings back a deferred proposal answered before its return', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
   const hourMs = 60 * 60 * 1000;
@@ -635,7 +623,7 @@ test('#runProposalReturns never brings back a deferred proposal answered before 
   ctx.api.clock.advance(3 * hourMs);
 
   const returned = await runProposalReturns(deps);
-  const after = await ctx.readProposalItems();
+  const after = await ctx.client.approvals.listItems();
 
   expect({ returned, items: after.items }).toStrictEqual({ returned: 0, items: [] });
 });
@@ -661,7 +649,7 @@ test('#runProposalLapses lapses a proposal deferred past its deadline at the dea
     { ...proposed.record, payload: { ...proposed.record.payload, deadlineAt } },
   ]);
 
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const item = listed.items.find((entry) => entry.proposal.shortID === proposed.shortID);
 
@@ -691,7 +679,7 @@ test('#runProposalLapses lapses a proposal deferred past its deadline at the dea
 
 test('#approvals.readProposals reads an open row with its choices, its approve label and no answering device', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
 
@@ -718,7 +706,7 @@ test('#approvals.readProposals reads an open row with its choices, its approve l
 
 test('#approvals.readProposals reads a closed row with no choices and the device that answered it', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
   const proposalID = item?.proposal.proposalID ?? 'missing';
@@ -757,7 +745,7 @@ test('#approvals.readProposals reads a closed row with no choices and the device
 
 test('#approvals.readProposals reads a row by its short ID and leaves out an ID that names no row', async () => {
   const ctx = await setupTest();
-  const listed = await ctx.readProposalItems();
+  const listed = await ctx.client.approvals.listItems();
 
   const [item] = listed.items;
 

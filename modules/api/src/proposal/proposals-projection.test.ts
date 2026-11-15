@@ -153,13 +153,8 @@ test('it folds the same rows from the log as the migration backfills from it', a
 
   const listed = await ctx.client.approvals.listItems();
 
-  const declined = listed.items
-    .filter((entry) => entry.group !== 'unknown_outcome')
-    .find((item) => item.proposal.kind === 'action');
-
-  const approved = listed.items
-    .filter((entry) => entry.group !== 'unknown_outcome')
-    .find((item) => item.group === 'memory');
+  const declined = listed.items.find((item) => item.proposal.kind === 'action');
+  const approved = listed.items.find((item) => item.group === 'memory');
 
   await ctx.client.approvals.answerProposal({
     proposalID: declined?.proposal.proposalID ?? 'missing',
@@ -195,9 +190,7 @@ test('it folds the answering identity of each answered row as the migration back
 
   const listed = await ctx.client.approvals.listItems();
 
-  const item = listed.items
-    .filter((entry) => entry.group !== 'unknown_outcome')
-    .find((entry) => entry.group === 'memory');
+  const item = listed.items.find((entry) => entry.group === 'memory');
 
   await ctx.client.approvals.answerProposal({
     proposalID: item?.proposal.proposalID ?? 'missing',
