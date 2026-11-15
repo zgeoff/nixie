@@ -1,6 +1,6 @@
 import type { PreviousReleaseBuild } from './read-previous-release-build';
 
-export function formatPreviousReleaseBuild(build: PreviousReleaseBuild): string {
+export function formatPreviousReleaseBuild(build: Omit<PreviousReleaseBuild, 'imageKeys'>): string {
   if (build.times === null) {
     return `the previous release ${build.tag} was cached, so no phase ran`;
   }
