@@ -1,3 +1,4 @@
+import { pickMockPasskeyChoices } from './pick-mock-passkey-choices';
 import { store } from './store';
 import { toMockApprovalBody, toMockApprovalProposal } from './to-mock-approval-proposal';
 
@@ -25,6 +26,7 @@ export function readMockApprovalItems() {
       body: toMockApprovalBody(entry.row),
       choices: [...entry.row.choices],
       group: entry.group,
+      passkeyChoices: [...pickMockPasskeyChoices(entry.row)],
       proposal: toMockApprovalProposal(entry.row),
       task: toMockTask(entry.row, entry.taskName),
     }));

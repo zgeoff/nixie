@@ -29,6 +29,7 @@ function setupTest() {
         body: { sentence, fields: {}, ruleSentence: null, approveLabel: 'Run' },
         task: null,
         choices: ['approve'],
+        passkeyChoices: [],
         answeredOn: null,
         isAnsweredHere: false,
       },
@@ -59,5 +60,18 @@ test('it gives each refused answer its own line and leaves the approved ones out
   expect(lines).toStrictEqual([
     'Send B. changed after you opened it, so open it and check it.',
     'Send C. was answered, withdrawn or lapsed already.',
+  ]);
+});
+
+test('it says that an answer which needs a passkey is for the card, not the batch', () => {
+  const ctx = setupTest();
+
+  const lines = collectBatchRefusals(
+    [{ proposalID: 'a', error: 'PASSKEY_REQUIRED' }],
+    [ctx.buildEntry('a', 'Pay the berth fee.')],
+  );
+
+  expect(lines).toStrictEqual([
+    'Pay the berth fee. needs your passkey, so open it and approve it there.',
   ]);
 });

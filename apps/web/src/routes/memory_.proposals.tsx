@@ -23,9 +23,14 @@ function Approvals(): ReactNode {
     >
       <ApprovalDigest
         navigation={
-          <Link className={link} to="/memory">
-            Memory
-          </Link>
+          <nav className={css({ display: 'flex', gap: '3' })}>
+            <Link className={link} to="/passkeys">
+              Passkeys
+            </Link>
+            <Link className={link} to="/memory">
+              Memory
+            </Link>
+          </nav>
         }
       />
     </SignedInPage>

@@ -37,6 +37,7 @@ function setupTest() {
         body: { sentence: 'Run it.', fields: {}, ruleSentence: null, approveLabel: 'Run it' },
         task: null,
         choices: ['approve'],
+        passkeyChoices: [],
         answeredOn: null,
         isAnsweredHere: false,
       },

@@ -1,3 +1,4 @@
+import { pickMockPasskeyChoices } from './pick-mock-passkey-choices';
 import { readMockTaskName, toMockTask } from './read-mock-approval-items';
 import { store } from './store';
 import { toMockApprovalBody, toMockApprovalProposal } from './to-mock-approval-proposal';
@@ -27,6 +28,7 @@ export function readMockApprovalProposals(proposalIDs: readonly string[], caller
       body: row.isBodyGone ? null : toMockApprovalBody(row),
       choices: isOpen ? [...row.choices] : [],
       isAnsweredHere: answeredBy === callerSessionID,
+      passkeyChoices: isOpen ? [...pickMockPasskeyChoices(row)] : [],
       proposal: toMockApprovalProposal(row),
       task: toMockTask(row, readMockTaskName(row)),
     };

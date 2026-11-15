@@ -33,6 +33,7 @@ function setupTest() {
         },
         task: null,
         choices: ['approve', 'defer', 'decline'],
+        passkeyChoices: [],
       };
 
       return item;

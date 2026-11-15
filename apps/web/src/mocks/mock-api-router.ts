@@ -7,6 +7,7 @@ import { isForgettableKind } from './is-forgettable-kind';
 import { mockApprovalProcedures } from './mock-approval-procedures';
 import { mockImplementer } from './mock-implementer';
 import { mockMemoryRouter } from './mock-memory-router';
+import { mockPasskeyProcedures } from './mock-passkey-procedures';
 import { mockRuleProcedures } from './mock-rule-procedures';
 import { readMockBackupNotice } from './read-mock-backup-notice';
 import { readMockPause } from './read-mock-pause';
@@ -187,6 +188,7 @@ export const mockAPIRouter = os.router({
       return { recovery: readMockRecovery() };
     }),
   },
+  passkeys: mockPasskeyProcedures,
   records: { follow: followProcedure },
   rules: mockRuleProcedures,
   sessions: {

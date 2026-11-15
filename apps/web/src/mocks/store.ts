@@ -4,6 +4,7 @@ import { Collection } from '@msw/data';
 import { z } from 'zod';
 import { approvalRows } from './approval-rows';
 import { mockSequence } from './mock-sequence';
+import { passkeyChecks, passkeyRows } from './passkey-rows';
 import { pauseStore } from './pause-store';
 
 const sessions = new Collection({
@@ -439,6 +440,8 @@ export const store = {
   memoryProposals,
   memoryVersions,
   moments,
+  passkeyChecks,
+  passkeyRows,
   ratingNotes,
   records,
   retryActions,
@@ -459,6 +462,8 @@ export const store = {
       memoryNotices,
       memoryProposals,
       approvalRows,
+      passkeyChecks,
+      passkeyRows,
       rules,
       memoryConsolidator,
       backupNotices,
