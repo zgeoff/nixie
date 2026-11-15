@@ -95,6 +95,11 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     input: facts.input.arguments,
     destinations: facts.stored.destinations,
     content: facts.declaration.content,
+    frame: {
+      context: facts.stored.inputs.context,
+      definitionID: facts.stored.inputs.definitionID,
+      sources: facts.stored.inputs.sources,
+    },
     deadlineAt: action.deadline_at,
     now: options.clock.now(),
     reopen: { proposalID: facts.input.proposalID, actionID: action.action_id },
