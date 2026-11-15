@@ -93,9 +93,6 @@ async function setupTest() {
     return { exitCode, envelope: envelopeSchema.parse(JSON.parse(lastLine)) };
   };
 
-  await runVerify(['attach']);
-  await runVerify(['doctor']);
-
   return { runVerify };
 }
 
@@ -105,6 +102,10 @@ test.each([
   ['an API write', ['http', 'request', '--method', 'POST', '--path', '/rpc/conversation/send']],
 ])('it refuses %s on prod with exit 3 and the needs-owner hint', async (_name, args) => {
   const ctx = await setupTest();
+
+  await ctx.runVerify(['attach']);
+  await ctx.runVerify(['doctor']);
+
   const ran = await ctx.runVerify(args);
 
   expect({
@@ -120,6 +121,10 @@ test.each([
 
 test('it refuses a database write on prod, which gives the db driver no config', async () => {
   const ctx = await setupTest();
+
+  await ctx.runVerify(['attach']);
+  await ctx.runVerify(['doctor']);
+
   const ran = await ctx.runVerify(['db', 'query', 'delete from records', '--write']);
 
   expect({ exitCode: ran.exitCode, code: ran.envelope.error?.code }).toStrictEqual({
@@ -128,9 +133,25 @@ test('it refuses a database write on prod, which gives the db driver no config',
   });
 });
 
+test('it attaches to a ready prod', async () => {
+  const ctx = await setupTest();
+  const ran = await ctx.runVerify(['attach']);
+
+  expect({ exitCode: ran.exitCode, error: ran.envelope.error }).toStrictEqual({
+    exitCode: 0,
+    error: null,
+  });
+});
+
 test('it passes the doctor on a ready prod', async () => {
   const ctx = await setupTest();
+
+  await ctx.runVerify(['attach']);
+
   const ran = await ctx.runVerify(['doctor']);
 
-  expect({ exitCode: ran.exitCode, ok: ran.envelope.ok }).toStrictEqual({ exitCode: 0, ok: true });
+  expect({ exitCode: ran.exitCode, error: ran.envelope.error }).toStrictEqual({
+    exitCode: 0,
+    error: null,
+  });
 });
