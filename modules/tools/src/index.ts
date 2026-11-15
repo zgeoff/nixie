@@ -13,6 +13,7 @@ export { toSDKToolName } from './to-sdk-tool-name';
 export type {
   ActionOutcome,
   ActionQueue,
+  DeadlineResolution,
   GuestToolRun,
   JsonSchema,
   MemoryWriteVerdict,

@@ -324,12 +324,10 @@ async function queueAction(
     return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'action_changed' } };
   }
 
-  const calls = await readRecordsBySequence(deps, tx, [payload.callSequence]);
-
   const actionID = await deps.queueApproved(tx, {
     proposalID: row.id,
     taskID: row.thread,
-    stepKey: calls.get(payload.callSequence)?.stepKey ?? null,
+    stepKey: payload.stepKey ?? null,
     tool: payload.tool,
     actionHash: row.actionHash,
     arguments: toJSONObject(erasable.input),

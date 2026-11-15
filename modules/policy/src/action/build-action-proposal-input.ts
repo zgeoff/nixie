@@ -27,6 +27,9 @@ export interface ActionProposalFacts {
   readonly deadlineAt?: number | null;
   readonly now?: number;
 
+  // the step of the task that made the call, which an approved action queues under
+  readonly stepKey?: string;
+
   // For a proposal that reopens an action that already exists, such as an approved action that has
   // newly fallen in the always-ask set. The row takes the proposal ID, and the action's ID is
   // `actionID`.
@@ -91,6 +94,7 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
       rule: alwaysAllow === null ? null : { hash: alwaysAllow.hash },
       ...gap,
       ...(facts.reopen === undefined ? {} : { actionID: facts.reopen.actionID }),
+      ...(facts.stepKey === undefined ? {} : { stepKey: facts.stepKey }),
       ...(facts.deadlineAt === undefined || facts.deadlineAt === null || facts.now === undefined
         ? {}
         : { deadlineAt: facts.deadlineAt, lapsesAt: pickActionLapse(facts.now, facts.deadlineAt) }),

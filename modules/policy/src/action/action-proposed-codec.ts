@@ -42,5 +42,8 @@ export const actionProposedCodec = defineRecordCodec(
 
     // the action a reopening proposal asks about, when it is not the proposal's own ID
     actionID: z.string().exactOptional(),
+
+    // the step that made the call
+    stepKey: z.string().exactOptional(),
   }),
 );

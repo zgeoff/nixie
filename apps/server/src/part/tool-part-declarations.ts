@@ -4,7 +4,7 @@ import { startConversationEndpoint } from '../conversation/start-conversation-en
 import { refreshDefinitions } from '../definition/refresh-definitions';
 import { buildActions } from '../test/build-actions';
 import type { AnyPartDeclaration } from '../types';
-import { buildTestSendTool } from '../utils/build-test-send-tool';
+import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
 import type { ServerPartValues } from './server-part-values';
 import { startCodeRunPart } from './start-code-run-part';
 import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
@@ -63,6 +63,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       Promise.resolve(
         buildActions(parts.get('context').apiContext, {
           log: parts.get('inputs').options.log,
+          ownerName: parts.get('inputs').options.config.owner.name,
           testProviderURL: NIXIE_TEST_BUILD
             ? (parts.get('inputs').options.harness?.providerURL ?? null)
             : null,
@@ -97,7 +98,12 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
                   }),
                   dailyCallCap: options.search.dailyCallCap,
                 },
-          testTools: NIXIE_TEST_BUILD && options.harness !== undefined ? [buildTestSendTool()] : [],
+          testTools:
+            NIXIE_TEST_BUILD && options.harness !== undefined
+              ? testSendKinds.map((kind) =>
+                  buildTestSendTool(kind, { providerURL: options.harness?.providerURL ?? null }),
+                )
+              : [],
           queue: parts.get('actions').queue,
           makeDecide: parts.get('decisions'),
           readStore: () => parts.find('memory'),

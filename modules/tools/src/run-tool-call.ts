@@ -232,7 +232,6 @@ function makeCallRecorder(
             kind: 'tool_called',
             definitions,
             thread: run.thread,
-            ...(run.stepRunID === undefined ? {} : { stepKey: toStepKey(run.stepRunID) }),
             payload: toolCalledCodec.encode({
               ...ids,
               tool: call.tool,
@@ -302,6 +301,7 @@ function makeCallRecorder(
           frame: decided.frame,
           deadlineAt: decided.deadlineAt,
           now: options.log.writer.clock.now(),
+          ...(run.stepRunID === undefined ? {} : { stepKey: toStepKey(run.stepRunID) }),
         });
 
         await writeRecordsInTransaction(tx, options.log, [proposal.record]);

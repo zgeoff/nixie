@@ -2,6 +2,8 @@ import { startActionRunners } from '@heynixie/actions';
 import { toErrorFields } from '@heynixie/logger';
 import type { RunStep } from '@heynixie/tasks';
 import { startTaskClaimPools } from '@heynixie/tasks';
+import { buildToolRegistry } from '@heynixie/tools';
+import { makeAttemptCheck } from '../action/make-attempt-check';
 import { makeConversationFailureMarker } from '../conversation/make-conversation-failure-marker';
 import { startQueueCheckTask } from '../queue/start-queue-check-task';
 import type { ServerParts } from '../types';
@@ -38,8 +40,20 @@ export async function startRunners(parts: ServerParts, runSteps: RunnerSteps): P
     size: parts.config.tasks.runners,
   });
 
+  const registry = buildToolRegistry([
+    ...parts.tools.definitions,
+    parts.tools.actions.logConnector.tool,
+  ]);
+
   const actions = startActionRunners(parts.context, {
     connectors: parts.tools.actions.connectors,
+    checkAttempt: makeAttemptCheck({
+      log: parts.apiContext.log,
+      clock: parts.context.clock,
+      definitions: parts.apiContext.definitions,
+      decisions: parts.decisions,
+      registry,
+    }),
     onError,
     size: parts.config.actions.runners,
   });
