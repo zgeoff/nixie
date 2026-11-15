@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { proposedRulesMigration } from './0056-proposed-rules-migration';
+import { proposedRulesMigration } from './0057-proposed-rules-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -42,8 +42,8 @@ async function setupTest() {
   };
 }
 
-test('it is the migration of version 56', () => {
-  expect(nixieSchema.migrations.indexOf(proposedRulesMigration) + 1).toBe(56);
+test('it is the migration of version 57', () => {
+  expect(nixieSchema.migrations.indexOf(proposedRulesMigration) + 1).toBe(57);
 });
 
 test('it accepts a proposed rule and a mandate in the proposals table', async () => {
