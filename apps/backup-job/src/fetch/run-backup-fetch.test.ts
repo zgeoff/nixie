@@ -111,6 +111,7 @@ test('it refuses a data snapshot ahead of the key copy and leaves the marker', a
     status: 'failed',
     step: 'pick',
     refusal: 'data-newer-than-keys',
+    message: expect.stringContaining(ahead),
   });
 
   expect(names).toStrictEqual([unfinishedBackupMarker]);

@@ -51,7 +51,7 @@ async function setupTest() {
     now: () => 1_798_761_660_000,
   };
 
-  return { request, keyID, dataID };
+  return { directory, repos, request, keyID, dataID };
 }
 
 test('it exits 0 after one backup.fetched line', async () => {
@@ -97,7 +97,45 @@ test('it exits 1 after one backup.fetch_failed line with the refusal of a refuse
   expect(exitCode).toBe(1);
 
   expect(lines).toStrictEqual([
-    ['backup.fetch_failed', { step: 'pick', refusal: 'no-such-data-snapshot' }, 'error'],
+    [
+      'backup.fetch_failed',
+      {
+        step: 'pick',
+        refusal: 'no-such-data-snapshot',
+        message: 'the data repository holds no data snapshot with the ID that was named',
+      },
+      'error',
+    ],
+  ]);
+});
+
+test('it names the data snapshot to take in the line of a fetch whose newest key snapshot has no data snapshot', async () => {
+  const ctx = await setupTest();
+
+  // a publish that stopped between its key snapshot and its data snapshot
+  await ctx.repos.keys.writeSnapshot(join(ctx.directory, 'copy.bin'), 'keys.db', [
+    'set-5',
+    'publish-8',
+  ]);
+
+  const lines: [string, LogFields | undefined, LogLevel | undefined][] = [];
+
+  const exitCode = await runLoggedFetch(ctx.request, (event, fields, level) => {
+    lines.push([event, fields, level]);
+  });
+
+  expect(exitCode).toBe(1);
+
+  expect(lines).toStrictEqual([
+    [
+      'backup.fetch_failed',
+      {
+        step: 'pick',
+        refusal: 'no-data-of-publish',
+        message: expect.stringContaining(`name data snapshot ${ctx.dataID} with --data-snapshot`),
+      },
+      'error',
+    ],
   ]);
 });
 
