@@ -84,7 +84,7 @@ takes the passkey.
 and, for Always allow, rule hash; an `unknown_outcome` check with an action ID and the choice
 `retry`; a `register` check; or a `revoke` check for one passkey. It refuses with `NO_PASSKEY` when
 no passkey is live. Otherwise it returns options with the RP ID of the live passkeys, an empty
-`allowCredentials`, `userVerification: 'required'` and a timeout of 5 minutes.
+`allowCredentials`, `userVerification: 'required'` and a timeout.
 
 - A challenge is the SHA-256 of 32 random bytes, the session's identity ID and the canonical form of
   its check. The server keeps the bytes and the check in memory.
