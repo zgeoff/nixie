@@ -19,7 +19,10 @@ which holds only the profiles and the call cost.
 
 The guest is the one package that imports the Agent SDK, under
 [0003](../../decisions/0003-sdk-placement.md), so the SDK and the CLI it spawns run only inside a
-sandbox. The conversation image holds the guest and its production dependencies, and runs as an
+sandbox. The conversation image holds the guest's 2 bundles, `/app/conversation/main.js` for a turn
+and `/app/conversation/check.js` for a check, and the SDK's CLI at `/app/claude`, and nothing of the
+workspace. The host starts a guest as `bun --no-install /app/<package>/<file>.js`, so Bun never
+installs a package that a bundle lacks, and the bundles name the CLI's path. The image runs as an
 unprivileged user whose home holds the SDK's session transcripts.
 
 At start, nixie stores the conversation profile's credential with the sandbox backend and keeps the

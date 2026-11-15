@@ -286,6 +286,9 @@
         "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+      },
     },
     "guests/fetch": {
       "name": "@heynixie/fetch",

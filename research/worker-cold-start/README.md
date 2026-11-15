@@ -24,7 +24,9 @@ Ship one worker image with the code runtimes, and start one fetch sandbox per fe
 
 ## Run it
 
-Run as root in an imp guest that has Docker and imp's broker, from this folder.
+Run as root in an imp guest that has Docker and imp's broker, from this folder. `run.sh` builds the
+conversation image from the checkout, and the spike's turn imports the SDK from that image's
+packages. Check out commit `2250dae44` first, the last one whose conversation image holds them.
 
 ```bash
 bash run.sh

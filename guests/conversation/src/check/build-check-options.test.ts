@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { buildCheckOptions } from './build-check-options';
 
 test('it gives a checker query no tools, no MCP server, no settings, no prompt dispatch, no CLI compaction and no saved session', () => {
@@ -156,4 +156,52 @@ test('it refuses a guest with no placeholder for the profile auth header', () =>
       { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
     ),
   ).toThrowWithMessage(Error, /ANTHROPIC_AUTH_TOKEN/u);
+});
+
+test('it passes the CLI path that the build defined to the SDK', () => {
+  Reflect.set(globalThis, 'NIXIE_CLI_PATH', '/app/claude');
+
+  onTestFinished(() => Reflect.deleteProperty(globalThis, 'NIXIE_CLI_PATH'));
+
+  const options = buildCheckOptions(
+    {
+      profile: {
+        harness: 'agent-sdk',
+        model: 'claude-sonnet-5-5',
+        baseURL: 'https://api.anthropic.com',
+        effort: 'low',
+        authHeader: 'x-api-key',
+        contextTokens: null,
+        cacheTTL: '5m',
+        requestRewrite: null,
+      },
+      systemPrompt: 'You check one candidate memory.',
+      input: 'the input',
+    },
+    { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+  );
+
+  expect(options.pathToClaudeCodeExecutable).toBe('/app/claude');
+});
+
+test('it names no CLI path when the guest runs from source', () => {
+  const options = buildCheckOptions(
+    {
+      profile: {
+        harness: 'agent-sdk',
+        model: 'claude-sonnet-5-5',
+        baseURL: 'https://api.anthropic.com',
+        effort: 'low',
+        authHeader: 'x-api-key',
+        contextTokens: null,
+        cacheTTL: '5m',
+        requestRewrite: null,
+      },
+      systemPrompt: 'You check one candidate memory.',
+      input: 'the input',
+    },
+    { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+  );
+
+  expect(options).not.toContainKey('pathToClaudeCodeExecutable');
 });
