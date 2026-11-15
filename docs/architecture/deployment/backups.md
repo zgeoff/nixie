@@ -123,15 +123,17 @@ key snapshot. The wire library owns its schema. The file holds no checksum, beca
 SQLite's integrity check on each copy.
 
 On success the fetch exits 0 after one `backup.fetched` line. On any failure it exits 1 after one
-`backup.fetch_failed` line that holds the failed step, and the refusal when the pick refused. A
-failed fetch leaves the marker, so `nixie restore` refuses the directory. The fetch only restores
-the newest key snapshot, because an older one would make a forgotten item readable again.
+`backup.fetch_failed` line that holds the failed step. When the pick refused, the line also holds
+the refusal and its message, which names the data snapshot to take when one goes with the key
+snapshot. A failed fetch leaves the marker, so `nixie restore` refuses the directory. The fetch only
+restores the newest key snapshot, because an older one would make a forgotten item readable again.
 
 `nixie restore --from <directory>` reads `fetched-pair.json` and returns the pair. It then empties
 the staging folder and writes `restore-note.json` there, which holds the restore time and the key
 snapshot ID of the pair, or none for a directory that `backup --to` wrote. The next publish reads
 and removes the note, so it knows which key snapshot the restore came from.
-[Backup and restore](host-commands.md#backup-and-restore) describes the restore.
+[Backup and restore](host-commands.md#backup-and-restore) describes the restore, and the
+[restore runbook](../../runbooks/restore.md) gives the steps.
 
 `nixie-backup snapshots` prints one line of JSON for each snapshot of the data and key repositories:
 the repository, the full snapshot ID, restic's time, and the set, kind and publish number from the

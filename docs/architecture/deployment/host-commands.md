@@ -116,6 +116,8 @@ them.
 
 ## Backup and restore
 
+The [restore runbook](../../runbooks/restore.md) gives the steps on a new host.
+
 The backup command, `backup --to <directory>`, copies `nixie.db` and `keys.db` into a directory it
 creates, which a deployment then uploads as one snapshot. It refuses a directory that exists, so two
 backups never write into one directory. It runs in any container of nixie's image that mounts the

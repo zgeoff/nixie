@@ -27,9 +27,9 @@ export async function runLoggedFetch(request: BackupFetchRequest, logger: Logger
 
   if (fetched.status === 'failed') {
     const fields =
-      fetched.refusal === undefined
-        ? { step: fetched.step }
-        : { step: fetched.step, refusal: fetched.refusal };
+      'refusal' in fetched
+        ? { step: fetched.step, refusal: fetched.refusal, message: fetched.message }
+        : { step: fetched.step };
 
     logger('backup.fetch_failed', fields, 'error');
 

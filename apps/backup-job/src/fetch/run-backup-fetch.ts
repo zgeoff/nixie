@@ -25,7 +25,13 @@ export interface BackupFetchRequest {
 
 export type BackupFetch =
   | { readonly status: 'fetched'; readonly pair: FetchedPair }
-  | { readonly status: 'failed'; readonly step: string; readonly refusal?: PairRefusal };
+  | { readonly status: 'failed'; readonly step: string }
+  | {
+      readonly status: 'failed';
+      readonly step: 'pick';
+      readonly refusal: PairRefusal;
+      readonly message: string;
+    };
 
 // The marker goes first and comes off last, so a failure at any step leaves the directory marked
 // and nixie refuses it. A publish that lands during the copies changes the newest key snapshot, and
@@ -57,7 +63,7 @@ export async function runBackupFetch(request: BackupFetchRequest): Promise<Backu
       const pick = pickBackupPair(keys, data, request.dataSnapshotID);
 
       if ('refused' in pick) {
-        return { status: 'failed', step: 'pick', refusal: pick.refused };
+        return { status: 'failed', step: 'pick', refusal: pick.refused, message: pick.message };
       }
 
       step = 'copy-key';
