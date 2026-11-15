@@ -34,6 +34,7 @@ export interface ApprovedActionFacts {
   readonly taskID: string;
   readonly stepKey: string | null;
   readonly tool: string;
+  readonly effects: readonly string[];
   readonly actionHash: string;
   readonly arguments: JSONObject;
   readonly callSequence: number;
@@ -329,6 +330,7 @@ async function queueAction(
     taskID: row.thread,
     stepKey: payload.stepKey ?? null,
     tool: payload.tool,
+    effects: payload.effects,
     actionHash: row.actionHash,
     arguments: toJSONObject(erasable.input),
     callSequence: payload.callSequence,

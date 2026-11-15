@@ -220,6 +220,9 @@ export interface QueuedAction {
   // the hash of the operation the policy checked: tool, input, destinations and deadline
   readonly actionHash: string;
   readonly deadlineAt: number | null;
+
+  // the effects the tool declares, which the owner reads in a question about the action
+  readonly effects: readonly string[];
 }
 
 export type ActionOutcome =

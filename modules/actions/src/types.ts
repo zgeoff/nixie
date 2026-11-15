@@ -49,6 +49,7 @@ export interface AllowedCall {
   // the tool_called record of the call, which the check before each attempt reads again
   readonly callSequence?: number;
   readonly deadlineAt?: number | null;
+  readonly effects?: readonly string[];
 }
 
 export type ModelView =

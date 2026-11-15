@@ -862,7 +862,7 @@ test('it shows the conversation your reason for a proposal you rejected in the w
 
   const listed = await api.client.approvals.listItems();
 
-  const [item] = listed.items;
+  const item = listed.items.find((entry) => entry.group !== 'unknown_outcome');
 
   invariant(item);
 

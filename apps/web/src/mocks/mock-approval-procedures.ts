@@ -2,9 +2,11 @@
 import { mockImplementer } from './mock-implementer';
 import { readMockApprovalItems } from './read-mock-approval-items';
 import { readMockApprovalProposals } from './read-mock-approval-proposals';
+import { readMockUnknownOutcomes } from './read-mock-unknown-outcomes';
 import { requireMockSession } from './require-mock-session';
 import type { MockApprovalResult } from './write-mock-approval-answer';
 import { writeMockApprovalAnswer } from './write-mock-approval-answer';
+import { writeMockUnknownOutcomeAnswer } from './write-mock-unknown-outcome-answer';
 
 const approvals = mockImplementer.approvals;
 
@@ -19,7 +21,7 @@ export const mockApprovalProcedures = {
         morningAt: '08:00',
         zone: 'Australia/Sydney',
       },
-      items: readMockApprovalItems(),
+      items: [...readMockUnknownOutcomes(), ...readMockApprovalItems()],
     };
   }),
 
@@ -57,6 +59,24 @@ export const mockApprovalProcedures = {
     }
 
     throw options.errors.NOT_ALLOWED({ data: { reason: refusal.reason } });
+  }),
+
+  answerUnknownOutcome: approvals.answerUnknownOutcome.handler(async (options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    const outcome = await writeMockUnknownOutcomeAnswer(options.input);
+
+    if (outcome.status === 'answered') {
+      return { actionID: options.input.actionID, choice: options.input.choice };
+    }
+
+    if (outcome.status === 'passkey_refused') {
+      throw outcome.refusal === 'NO_PASSKEY'
+        ? options.errors.NO_PASSKEY()
+        : options.errors.PASSKEY_REQUIRED();
+    }
+
+    throw options.errors.NOT_ALLOWED({ data: { reason: 'not_waiting' } });
   }),
 
   answerProposals: approvals.answerProposals.handler(async (options) => {

@@ -13,6 +13,10 @@ export function toBindingPayload(binding: ChallengeFor): JSONObject {
     };
   }
 
+  if (binding.kind === 'unknown_outcome') {
+    return { kind: binding.kind, actionID: binding.actionID, choice: binding.choice };
+  }
+
   if (binding.kind === 'revoke') {
     return { kind: binding.kind, passkeyID: binding.passkeyID };
   }

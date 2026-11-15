@@ -44,6 +44,7 @@ export function buildActionQueue(
           decision: action.decision,
           callSequence: action.callSequence,
           deadlineAt: action.deadlineAt,
+          effects: action.effects,
         });
 
         return queued.actionID;

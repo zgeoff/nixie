@@ -52,6 +52,7 @@ export async function createAllowedAction(
           actionHash: call.actionHash,
           nextAttemptAt: context.clock.now(),
           ...(call.callSequence === undefined ? {} : { callSequence: call.callSequence }),
+          ...(call.effects === undefined ? {} : { effects: [...call.effects] }),
           ...(call.deadlineAt === undefined || call.deadlineAt === null
             ? {}
             : { deadlineAt: call.deadlineAt }),

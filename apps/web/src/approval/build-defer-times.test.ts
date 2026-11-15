@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildDeferTimes, isDeferInRange } from './build-defer-times';
+import { buildDeferTimes, isDeferBeforeDeadline, isDeferInRange } from './build-defer-times';
 
 function setupTest() {
   return {
@@ -99,4 +99,14 @@ test.each([
   const custom = new Date(now.getTime() + aheadMs);
 
   expect(isDeferInRange(now, custom)).toBe(isInRange);
+});
+
+test('it refuses a deferral that ends at or after the deadline', () => {
+  const deadlineAt = new Date('2026-11-16T05:00:00Z');
+
+  expect([
+    isDeferBeforeDeadline(new Date('2026-11-16T04:59:00Z'), deadlineAt),
+    isDeferBeforeDeadline(new Date('2026-11-16T05:00:00Z'), deadlineAt),
+    isDeferBeforeDeadline(new Date('2026-11-20T05:00:00Z'), null),
+  ]).toStrictEqual([true, false, true]);
 });

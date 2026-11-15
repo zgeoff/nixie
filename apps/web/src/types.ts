@@ -47,7 +47,11 @@ export type RetiredForgetItem = ReadonlyDeep<
 
 export type MemoryVersion = ReadonlyDeep<ContractOutputs['memory']['readItem']['versions'][number]>;
 
-export type ApprovalItem = ReadonlyDeep<ContractOutputs['approvals']['listItems']['items'][number]>;
+type ListedApprovalItem = ReadonlyDeep<ContractOutputs['approvals']['listItems']['items'][number]>;
+
+export type UnknownOutcomeItem = Extract<ListedApprovalItem, { readonly group: 'unknown_outcome' }>;
+
+export type ApprovalItem = Exclude<ListedApprovalItem, UnknownOutcomeItem>;
 
 export type ApprovalRead = ReadonlyDeep<
   ContractOutputs['approvals']['readProposals']['proposals'][number]

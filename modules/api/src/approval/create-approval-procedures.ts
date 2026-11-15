@@ -10,6 +10,7 @@ import { readApprovalItems } from './read-approval-items';
 import { readApprovalProposals } from './read-approval-proposals';
 import type { ApprovalAnswer, ApprovalRun } from './run-approval-answer';
 import { runApprovalAnswer } from './run-approval-answer';
+import { writeUnknownOutcomeAnswer } from './write-unknown-outcome-answer';
 
 export function createApprovalProcedures(context: APIContext, parts: ProposalParts) {
   const approvals = apiImplementer.approvals;
@@ -87,6 +88,43 @@ export function createApprovalProcedures(context: APIContext, parts: ProposalPar
       throw options.errors.NOT_ALLOWED({
         data: { reason: refusal.error === 'NOT_FOUND' ? 'not_found' : refusal.reason },
       });
+    }),
+
+    answerUnknownOutcome: approvals.answerUnknownOutcome.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      const result = await writeUnknownOutcomeAnswer(context, caller, options.input);
+
+      if (result.status === 'answered') {
+        return { actionID: result.actionID, choice: result.choice };
+      }
+
+      if (result.status === 'passkey_refused') {
+        throw {
+          PASSKEY_REQUIRED: options.errors.PASSKEY_REQUIRED,
+          NO_PASSKEY: options.errors.NO_PASSKEY,
+          PASSKEY_FAILED: () =>
+            options.errors.PASSKEY_FAILED({
+              data: {
+                reason:
+                  result.refusal.error === 'PASSKEY_FAILED' ? result.refusal.reason : 'signature',
+              },
+            }),
+        }[result.refusal.error]();
+      }
+
+      if (result.status === 'not_allowed') {
+        throw options.errors.NOT_ALLOWED({ data: { reason: result.reason } });
+      }
+
+      throw {
+        reused: options.errors.CLIENT_ACTION_ID_REUSED,
+        unauthorized: options.errors.UNAUTHORIZED,
+      }[result.status]();
     }),
 
     answerProposals: approvals.answerProposals.handler(async (options) => {

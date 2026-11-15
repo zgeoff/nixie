@@ -49,6 +49,7 @@ test('it queues a call that a step makes under that step and returns its action 
       callSequence: 1,
       actionHash: 'hash-1',
       deadlineAt: null,
+      effects: ['send'],
     });
 
     return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
@@ -101,6 +102,7 @@ test('it returns the action a step queued when its rerun makes the same call', a
       callSequence: 1,
       actionHash: 'hash-1',
       deadlineAt: null,
+      effects: ['send'],
     });
 
   const step = queue.trackSteps(async () => {
@@ -151,6 +153,7 @@ test('it refuses a call on a thread where no step runs', async () => {
       callSequence: 1,
       actionHash: 'hash-1',
       deadlineAt: null,
+      effects: ['send'],
     }),
   ).rejects.toThrow(`no step of ${stepInput.taskID} runs, so its call queues nothing`);
 });
@@ -193,6 +196,7 @@ test('it forgets the step once it ends, so a later call queues nothing', async (
       callSequence: 1,
       actionHash: 'hash-1',
       deadlineAt: null,
+      effects: ['send'],
     }),
   ).rejects.toThrow(`no step of ${stepInput.taskID} runs, so its call queues nothing`);
 });
@@ -234,6 +238,7 @@ test('it refuses a call from a step whose claim a takeover replaced, and queues 
       callSequence: 1,
       actionHash: 'hash-1',
       deadlineAt: null,
+      effects: ['send'],
     });
 
     return { next: 'wait', records: [], acknowledged: [] };
@@ -279,6 +284,7 @@ test('it refuses a call that carries no step run ID, and queues nothing', async 
       callSequence: 1,
       actionHash: 'hash-1',
       deadlineAt: null,
+      effects: ['send'],
     });
 
     return { next: 'wait', records: [], acknowledged: [] };
@@ -325,6 +331,7 @@ test('it gives no outcome for an action still pending when the wait ends', async
       callSequence: 1,
       actionHash: 'hash-1',
       deadlineAt: null,
+      effects: ['send'],
     });
 
     return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
@@ -386,6 +393,7 @@ test.each([
         callSequence: 1,
         actionHash: 'hash-1',
         deadlineAt: null,
+        effects: ['send'],
       });
 
       return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
@@ -441,6 +449,7 @@ test('it gives a cancelled outcome for an action that a stop of its task cancell
       callSequence: 1,
       actionHash: 'hash-1',
       deadlineAt: null,
+      effects: ['send'],
     });
 
     return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };

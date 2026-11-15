@@ -71,7 +71,9 @@ async function setupTest() {
 
     const listed = await client.approvals.listItems();
 
-    const item = listed.items.find((entry) => entry.proposal.shortID === row.shortID);
+    const item = listed.items
+      .filter((entry) => entry.group !== 'unknown_outcome')
+      .find((entry) => entry.proposal.shortID === row.shortID);
 
     invariant(item, 'the seeded row is not listed');
 
@@ -567,10 +569,12 @@ test('#approvals.answerProposal leaves a waiting approval pending after the revo
   const listed = await ctx.client.approvals.listItems();
   const result = await ctx.answer({ ...row, choice: 'approve', passkey });
 
-  expect([listed.items.map((item) => item.proposal.state), result.state]).toStrictEqual([
-    ['pending'],
-    'approved',
-  ]);
+  expect([
+    listed.items
+      .filter((entry) => entry.group !== 'unknown_outcome')
+      .map((item) => item.proposal.state),
+    result.state,
+  ]).toStrictEqual([['pending'], 'approved']);
 });
 
 test('#approvals.answerProposals refuses each answer that takes a passkey as PASSKEY_REQUIRED, with or without a live passkey', async () => {

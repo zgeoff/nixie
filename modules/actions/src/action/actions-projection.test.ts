@@ -158,6 +158,7 @@ test('it rebuilds an approved action that a proposal held equal to the live one'
       taskID: step.lease.workID,
       stepKey: null,
       tool: 'test.send',
+      effects: ['send'],
       actionHash: 'sha256:approved',
       arguments: { to: 'team' },
       callSequence: 1,

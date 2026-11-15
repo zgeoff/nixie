@@ -27,6 +27,7 @@ async function setupTest() {
         taskID,
         stepKey: null,
         tool: 'test.send',
+        effects: ['send'],
         actionHash: 'sha256:approved',
         arguments: { to: 'team' },
         callSequence: 1,

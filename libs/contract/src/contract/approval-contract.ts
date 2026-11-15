@@ -49,6 +49,42 @@ const itemSchema = z.object({
   passkeyChoices: z.array(choiceSchema),
 });
 
+const unknownReasonSchema = z.enum([
+  'inconclusive',
+  'unknown_streak',
+  'no_reconcile',
+  'key_expired',
+  'not_found_ask',
+]);
+
+const checkAnswerSchema = z.enum(['found', 'not_found', 'inconclusive']);
+const attemptSchema = z.object({ attempt: z.int().nonnegative(), at: z.date() });
+const checkSchema = z.object({ answer: checkAnswerSchema, at: z.date() });
+
+const unknownOutcomeSchema = z.object({
+  actionID: z.string(),
+  tool: z.string(),
+
+  // the action as its proposal showed it
+  sentence: z.string(),
+  fields: z.record(z.string(), z.string()),
+  riskClass: z.enum(['routine', 'always_ask', 'lifting']),
+  reason: unknownReasonSchema,
+  becameUnknownAt: z.date(),
+  attempts: z.array(attemptSchema),
+  checks: z.array(checkSchema),
+});
+
+const unknownChoiceSchema = z.enum(['happened', 'retry', 'drop']);
+
+const unknownItemSchema = z.object({
+  group: z.literal('unknown_outcome'),
+  action: unknownOutcomeSchema,
+  task: taskSchema.nullable(),
+  choices: z.array(unknownChoiceSchema),
+  passkeyChoices: z.array(unknownChoiceSchema),
+});
+
 const readItemSchema = z.object({
   proposal: proposalSchema,
   body: bodySchema.nullable(),
@@ -139,7 +175,28 @@ const answerErrors = signedIn.errors(reusedIDErrors).errors({
   ...passkeyFailedError,
 });
 
-const listedSchema = z.object({ defer: deferSettingsSchema, items: z.array(itemSchema) });
+const listedSchema = z.object({
+  defer: deferSettingsSchema,
+  items: z.array(z.union([unknownItemSchema, itemSchema])),
+});
+
+const unknownAnswerSchema = z.object({
+  actionID: z.string().min(1).max(200),
+  choice: unknownChoiceSchema,
+  clientActionID: z.uuid(),
+  passkey: authenticationResponseSchema.optional(),
+});
+
+const unknownAnswerErrors = signedIn.errors(reusedIDErrors).errors({
+  NOT_ALLOWED: {
+    message: 'The action waits for no answer about its outcome',
+    status: 403,
+    data: z.object({ reason: z.string() }),
+  },
+  PASSKEY_REQUIRED: { message: 'This answer needs a passkey check', status: 403 },
+  ...noPasskeyError,
+  ...passkeyFailedError,
+});
 
 const readInputSchema = z.object({
   proposalIDs: z.array(z.string().min(1).max(200)).min(1).max(100),
@@ -156,6 +213,10 @@ export const approvalContract = {
     .output(z.object({ proposals: z.array(readItemSchema) })),
 
   answerProposal: answerErrors.input(passkeyAnswerSchema).output(resultSchema),
+
+  answerUnknownOutcome: unknownAnswerErrors
+    .input(unknownAnswerSchema)
+    .output(z.object({ actionID: z.string(), choice: unknownChoiceSchema })),
 
   answerProposals: signedIn
     .errors(reusedIDErrors)

@@ -30,7 +30,10 @@ const fieldsRuleSchema = z.record(z.string(), z.unknown());
 const ruleRefSchema = z.object({ destinations: z.array(z.string()), ruleID: z.string() });
 
 type ApprovalMemory = NonNullable<
-  ContractOutputs['approvals']['listItems']['items'][number]['body']['memory']
+  Extract<
+    ContractOutputs['approvals']['listItems']['items'][number],
+    { readonly group: 'always_ask' | 'routine' | 'memory' | 'deferred' }
+  >['body']['memory']
 >;
 
 // A shared approval row with its body, as the host's approvals procedures return it. A row names

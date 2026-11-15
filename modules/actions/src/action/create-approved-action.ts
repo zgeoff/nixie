@@ -17,6 +17,7 @@ export interface ApprovedAction {
   readonly taskID: string;
   readonly stepKey: string | null;
   readonly tool: string;
+  readonly effects: readonly string[];
   readonly actionHash: string;
   readonly arguments: JSONObject;
   readonly callSequence: number;
@@ -78,6 +79,7 @@ export async function createApprovedAction(
         taskID: approved.taskID,
         stepKey: approved.stepKey ?? approved.proposalID,
         tool: approved.tool,
+        effects: [...approved.effects],
         actionHash: approved.actionHash,
         nextAttemptAt: context.clock.now(),
         callSequence: approved.callSequence,

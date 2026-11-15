@@ -32,6 +32,8 @@ async function setupTest() {
     appURL: app.url,
     session,
     view,
+    findUnknown: (actionID: string) =>
+      store.unknownOutcomeRows.findFirst((query) => query.where({ actionID })),
     findRow: (proposalID: string) =>
       store.approvalRows.findFirst((query) => query.where({ proposalID })),
     openDigest: async () => {
@@ -276,4 +278,65 @@ test('it collapses an item answered on another session to its state with that de
   await ctx.waitForPage(
     `document.querySelector('li[aria-label="Send the tide table to harbour."][data-state="approved"]')?.innerText.includes('Approved on kitchen tablet') === true`,
   );
+});
+
+test('it lists an unknown outcome before every other group', async () => {
+  const ctx = await setupTest();
+
+  await store.approvalRows.create({ riskClass: 'always_ask', sentence: 'Pay the berth fee.' });
+  await store.unknownOutcomeRows.create({ sentence: 'Run mail.send to team (send).' });
+  await ctx.openDigest();
+
+  await ctx.waitForPage(
+    `document.querySelector('[aria-label="Unknown outcomes"]') !== null && document.querySelector('[aria-label="Always asks"]') !== null`,
+  );
+
+  const unknownIsFirst: unknown = await ctx.view.evaluate(
+    `Boolean(document.querySelector('[aria-label="Unknown outcomes"]').compareDocumentPosition(document.querySelector('[aria-label="Always asks"]')) & Node.DOCUMENT_POSITION_FOLLOWING)`,
+  );
+
+  expect(unknownIsFirst).toBeTrue();
+});
+
+test.each([
+  ['happened', 'happened'],
+  ['retry', 'retried'],
+  ['drop', 'dropped'],
+] as const)('it answers an unknown outcome with %s', async (choice, state) => {
+  const ctx = await setupTest();
+  const row = await store.unknownOutcomeRows.create({});
+
+  await ctx.openDigest();
+
+  await ctx.waitForPage(
+    `document.querySelector('button[name="unknown-${choice}"]:not([disabled])') !== null`,
+  );
+
+  await ctx.view.click(`button[name="unknown-${choice}"]`);
+
+  await waitFor(
+    () => {
+      expect(ctx.findUnknown(row.actionID)?.state).toBe(state);
+    },
+    { timeout: 8000 },
+  );
+});
+
+test('it asks for the passkey before it retries an always-ask action, and changes nothing without one', async () => {
+  const ctx = await setupTest();
+  const row = await store.unknownOutcomeRows.create({ riskClass: 'always_ask' });
+
+  await ctx.openDigest();
+
+  await ctx.waitForPage(
+    `document.querySelector('button[name="unknown-retry"]:not([disabled])') !== null`,
+  );
+
+  await ctx.view.click('button[name="unknown-retry"]');
+
+  await ctx.waitForPage(
+    `document.querySelector('[role="alert"]')?.innerText.includes('passkey') === true`,
+  );
+
+  expect(ctx.findUnknown(row.actionID)?.state).toBe('waiting');
 });

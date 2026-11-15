@@ -581,6 +581,7 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
       deadlineAt: allowed.deadlineAt,
     }),
     deadlineAt: allowed.deadlineAt,
+    effects: allowed.registered.definition.declaration.effects,
   });
 
   const outcome = await allowed.options.queue
@@ -595,8 +596,7 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
     return buildTypedResult(allowed.registered, outcome, actionID);
   }
 
-  // The tool result record keeps a cancel under failed, because the release before refuses an
-  // outcome its record codec does not list, and only the text names the cancel.
+  // The record codec lists no cancel, so the result record keeps it under failed and the text names it.
   const recorded = outcome.outcome === 'cancelled' ? 'failed' : outcome.outcome;
 
   return buildMessage(recorded, `action ${actionID} ${outcome.outcome}: ${outcome.reason}`, {

@@ -35,6 +35,12 @@ export function isDeferInRange(now: Date, until: Date): boolean {
   return ahead >= minDeferMs && ahead <= maxDeferMs;
 }
 
+// A deferral never runs past the action's deadline, because an answer after it would find nothing
+// left to do.
+export function isDeferBeforeDeadline(until: Date, deadlineAt: Date | null): boolean {
+  return deadlineAt === null || until.getTime() < deadlineAt.getTime();
+}
+
 interface Day {
   readonly year: number;
   readonly month: number;

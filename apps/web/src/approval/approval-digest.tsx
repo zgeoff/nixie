@@ -8,6 +8,7 @@ import { buildBatchAnswers, isBatchable } from './build-batch-answers';
 import type { DeferSettings } from './build-defer-times';
 import { collectBatchRefusals } from './collect-batch-refusals';
 import type { SeenApproval } from './merge-seen-approvals';
+import { UnknownOutcomeCard } from './unknown-outcome-card';
 import { useApprovalDigest } from './use-approval-digest';
 
 export interface ApprovalDigestProps {
@@ -70,9 +71,23 @@ export function ApprovalDigest(props: ApprovalDigestProps): ReactNode {
       {digest.status === 'failed' ? (
         <p role="alert">The approvals did not load. Reload to try again.</p>
       ) : null}
-      {digest.status === 'ready' && entries.length === 0 ? (
+      {digest.status === 'ready' && entries.length === 0 && digest.unknownOutcomes.length === 0 ? (
         <p>Nothing waits for your answer.</p>
       ) : null}
+      {digest.unknownOutcomes.length === 0 ? null : (
+        <section aria-label="Unknown outcomes">
+          <h2 className={heading}>Did it happen?</h2>
+          <ul>
+            {digest.unknownOutcomes.map((item) => (
+              <UnknownOutcomeCard
+                item={item}
+                key={item.action.actionID}
+                onRefresh={digest.refresh}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
       {always.length === 0 ? null : (
         <section aria-label="Always asks">
           <h2 className={heading}>Always asks</h2>
