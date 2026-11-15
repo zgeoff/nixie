@@ -103,9 +103,9 @@ declarations are policy data that you can read and edit. Removing an effect from
 counts as a widening, because it can move a call out of the always-ask set or past an ask rule.
 
 Every `code_run` call, from the conversation, a task or a worker, gets a fresh sandbox with no
-network and no grants, as [the code tool](../../queue/code-tool.md) sets out. The sandbox record
-holds its spec, so the log shows that the program ran with no grant. A program holds no credential,
-so `code_run` never reaches a budget.
+network and no grants, as [the code tool](../../../architecture/connectors/code-tool.md) sets out.
+The sandbox record holds its spec, so the log shows that the program ran with no grant. A program
+holds no credential, so `code_run` never reaches a budget.
 
 ### The always-ask set and narrowing changes
 

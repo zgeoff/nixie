@@ -18,8 +18,9 @@ A code run has fixed limits: 60 s of wall time, 512 MiB of memory, 1 MiB of outp
 MiB of files out and 1 vCPU. Input files are files an earlier code run wrote and pages the web fetch
 stored. A `skills` list places each named skill's folder read-only in the sandbox, as the
 [skills design](../skills.md#scripts) sets out. A program that needs outside data gets it through
-another tool first, because the code imp has no route out. [The code tool](../../queue/code-tool.md)
-holds the contracts, the limits and what the code image holds.
+another tool first, because the code imp has no route out.
+[The code tool](../../../architecture/connectors/code-tool.md) holds the contracts, the limits and
+what the code image holds.
 
 ## The coding adapter
 

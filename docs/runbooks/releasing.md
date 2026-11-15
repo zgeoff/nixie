@@ -134,7 +134,7 @@ before a rollback to it.
 
   ```bash
   gh auth token | docker login ghcr.io -u <owner> --password-stdin
-  .github/scripts/tag-images.sh <version> <conversation_ref> <fetch_ref> <web_ref> <nixie_ref>
+  .github/scripts/tag-images.sh <version> <conversation_ref> <fetch_ref> <code_ref> <backup_ref> <web_ref> <nixie_ref>
   ```
 
   Each ref is a `ghcr.io/<owner>/<image>@sha256:<digest>` line from the release notes. Expect one

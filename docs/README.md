@@ -102,6 +102,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   checks, the limits and the result
 - [Web fetch images](architecture/connectors/web-fetch-images.md) — a fetched image as image
   content, its limits, and how the host downscales it
+- [The code tool](architecture/connectors/code-tool.md) — `code.run`, its fresh sandbox, the limits,
+  the files it writes and how a forget destroys its sandbox
 - [Time](architecture/connectors/time.md) — the time zone on each message, and the time tool that
   answers in the user's newest zone
 - [Search](architecture/connectors/search.md) — the search tool on the host, its daily call cap, the

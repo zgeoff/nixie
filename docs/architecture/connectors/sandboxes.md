@@ -10,9 +10,10 @@ runs. The test sandbox runs each guest as a local process, so any module's tests
 guest.
 
 [Tool calls](./tool-calls.md) covers the endpoint a sandbox's tool route reaches.
-[Web fetch](./web-fetch.md) covers the fetch sandbox's lifetime and the fetcher that runs in it.
-`modules/sandbox` holds the interface, the kinds, the sandbox records and the test sandbox, and
-`adapters/sandbox-imp` is the one package that imports imp's client.
+[The code tool](./code-tool.md) covers the code run's sandbox. [Web fetch](./web-fetch.md) covers
+the fetch sandbox's lifetime and the fetcher that runs in it. `modules/sandbox` holds the interface,
+the kinds, the sandbox records and the test sandbox, and `adapters/sandbox-imp` is the one package
+that imports imp's client.
 
 ## Kinds of work
 
@@ -58,6 +59,7 @@ to a role. A sandbox kind or an image never picks a row.
 | conversation | the conversation                                    | 2     | 512 MiB | 4096 MiB |
 | system task  | the checker, each started task and each system task | 1     | 384 MiB | 4096 MiB |
 | fetch        | web fetch and skill fetch                           | 1     | 192 MiB | 4096 MiB |
+| code run     | each `code.run` call                                | 1     | 512 MiB | 4096 MiB |
 ```
 
 A size is a constant with no config key, and a release changes it. A kept sandbox whose stored size

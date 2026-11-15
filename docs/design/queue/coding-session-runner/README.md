@@ -21,8 +21,8 @@ of the [coding design](../../platform/connectors/coding.md).
 
 Three sibling designs touch this one:
 
-- The code tool design, [code tool](../code-tool.md), owns the code tool section of the coding
-  design.
+- The code tool design, [code tool](../../../architecture/connectors/code-tool.md), owns the code
+  tool section of the coding design.
 - The MCP proxy build, [mcp proxy build](../mcp-proxy-build.md), leaves atc out: the proxy carries
   none of atc's tools, because this runner calls atc directly.
 - The decision point cutover, [decision point cutover](../decision-point-cutover.md), builds the
